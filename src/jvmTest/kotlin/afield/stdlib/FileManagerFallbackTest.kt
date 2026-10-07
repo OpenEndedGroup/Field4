@@ -79,4 +79,42 @@ class FileManagerFallbackTest {
             temp.deleteRecursively()
         }
     }
+
+    @Test fun bundledDocsLocationIsIndependentOfTheDocumentAndWorkingDirectory() {
+        val temp = Files.createTempDirectory("docs-installation").toFile()
+        try {
+            val docs = File(temp, "public/docs").apply { mkdirs() }
+            File(docs, "index.md").writeText("# Documentation")
+            File(docs, "assets").mkdir()
+            assertEquals(docs.toPath(), bundledDocsDirectory(File(temp, "build/classes/kotlin/jvm/main").toPath()))
+            assertEquals(docs.toPath(), bundledDocsDirectory(File(temp, "build/libs/field.jar").toPath()))
+            File(docs, "index.md").delete()
+            assertNull(bundledDocsDirectory(temp.toPath()))
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test fun bundledDocsMappingResolvesAndRecordsAnAsset() {
+        val temp = Files.createTempDirectory("docs-asset").toFile()
+        val original = FileManager["docs"]
+        try {
+            val docs = File(temp, "public/docs").apply { mkdirs() }
+            val asset = File(docs, "assets/example.wav").apply { parentFile.mkdirs(); writeText("fixture") }
+            FileManager.add("docs", docs)
+            val document = File(temp, "elsewhere/document").apply { mkdirs() }
+            val root = Box("root")
+            val session = SessionInformation(document.absolutePath, "document", ConcurrentHashMap(), root)
+            root.inside = session
+            session.boxes[root.id] = root
+            val manager = FileManager.forSession(session)
+            assertEquals(asset.toPath(), manager.path("%docs/assets/example.wav"))
+            assertFailsWith<IllegalArgumentException> { manager.path("%docs/../outside.wav") }
+            val history = root.getPropertyRaw(FILE_MANAGER_ACCESS_HISTORY_PROPERTY) as List<*>
+            assertEquals("%docs", (history.last() as Map<*, *>)["source"])
+        } finally {
+            if (original == null) FileManager.remove("docs") else FileManager.add("docs", original)
+            temp.deleteRecursively()
+        }
+    }
 }

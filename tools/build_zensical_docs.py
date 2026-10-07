@@ -379,7 +379,18 @@ def dirt_samples_root_path(repo_root: Path) -> Path:
     return root if root.is_dir() and not problems_in(root, manifest) else root / "incomplete"
 
 
+def loris_executable_path(repo_root: Path) -> Path:
+    override = os.environ.get("AFIELD_LORIS_EXECUTABLE", "").strip()
+    if override:
+        return Path(override).expanduser()
+    name = "field_loris.exe" if sys.platform == "win32" else "field_loris"
+    base = repo_root / "build/field-loris/build"
+    choices = [base / name, base / "Release" / name]
+    return next((p for p in choices if p.is_file()), choices[0])
+
+
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
+    "loris": (loris_executable_path, "./gradlew buildLorisNative"),
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),

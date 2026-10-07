@@ -1899,6 +1899,20 @@ Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_render_analysis/metadata.edn)
 
+### loris_partial_explorer
+
+Analyze the committed public-domain film dialogue, follow native-worker status, inspect irregular
+frequency/amplitude/phase/bandwidth trajectories, and audition source and resynthesis with a shared
+cursor and full-band ERB/Hz/cents views. Further boxes select and transform partials, compare
+independent fine-time and fine-frequency passes, and twist one chunk into a noisy spectral whirlpool
+with playable resynthesis. Every complete box is compile-checked; running analysis requires the optional
+`./gradlew buildLorisNative` build, not a GPU or audio-model server.
+Walkthrough: [Loris partial tracks and resynthesis](loris.md).
+
+![A three-second spectral whirlpool: partial tracks bend through 6–9 seconds, with amber noise bandwidth, above the resynthesized waveform and audio player](assets/loris/spectral-whirlpool.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror

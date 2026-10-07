@@ -75,6 +75,18 @@ and where the file is in neither, it throws as ambiguous.
 Asking for `%document/...` creates the document's `files/` directory if it is missing, as does
 reading `files.documentFilesDirectory`.
 
+Field also registers `%docs` when the loaded installation contains `public/docs/`. This points
+to the bundled documentation, not to the current document or working directory. For example,
+the [Loris study](loris.md) uses its included recording directly:
+
+```diffstatic {data-lang=kotlin}
+val source = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+```
+
+No files are copied into the document. Like other named directories, `%docs` can be replaced
+with `FileManager.add("docs", anotherDirectory)`; an installation without bundled docs does not
+register it.
+
 ## Roots of your own
 
 Give a directory outside the document a name, then ask for files in it with `%name/`:
