@@ -203,6 +203,7 @@ $region
 
             return {
                 fromJson: function (json) { return JSON.parse(json); },
+                bufferFromJson: function (json) { return new Uint8Array(JSON.parse(json)).buffer; },
                 ${exports.joinToString(",\n                ") { "$it: $it" }}
             };
         })
@@ -223,6 +224,10 @@ $region
 
         /** `JSON.parse`, so a Kotlin caller can hand the guest a real JS array rather than a host list. */
         fun fromJson(json: String): Value = exports.getMember("fromJson").execute(json)
+
+        /** [bytes] as a guest `ArrayBuffer`, for a region that reads binary responses. */
+        fun arrayBuffer(bytes: ByteArray): Value =
+            exports.getMember("bufferFromJson").execute(bytes.joinToString(",", "[", "]") { (it.toInt() and 0xff).toString() })
 
         /** An exported member of the region — a function, or one of the tolerance constants. */
         fun member(name: String): Value =
@@ -280,11 +285,12 @@ $region
         ),
         "cubic-sampling" to listOf("EDGE_SAMPLES", "cubicPoint", "sampleCubic"),
         "wire-payload" to listOf(
-            "WIRE_BASE64_ALPHABET",
-            "wireBase64BytesPortable",
-            "unpackWirePayload",
+            "WIRE_BUFFER_TYPES",
+            "bindWireBuffers",
             "partAppearancePayload",
             "receiveWireMessage",
+            "wireAbandon",
+            "wireCompactQueue",
         ),
         "fline-hit-picking" to listOf(
             "FLINE_PICK_CUBIC_SAMPLES",

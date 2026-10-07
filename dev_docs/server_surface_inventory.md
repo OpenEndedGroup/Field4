@@ -68,7 +68,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-45 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
+46 routes, 36 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -130,6 +130,7 @@ mutation; it is a different one.
 | `GET /min/{...}` | `Server.kt` | none |
 | `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
+| `GET /three-buffers` | `Server.kt` | none |
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
@@ -642,6 +643,8 @@ Demonstrated rather than asserted:
 | one ledger row's path edited by hand, 2026-08-22 | failed naming the row as both `missing` and `stale` |
 
 ### Geometry review
+
+`GET /three-buffers?uid=<view>&generation=<id>` streams the binary arrays that a view's latest `three/geometry` description refers to; a superseded generation is a 404. It carries the trust of the WebSocket that delivered the description and no guard of its own: a remote native client may fetch it, and the application-wide origin guard refuses cross-site browser reads.
 
 `GET /three-review?uid=<view>` reads the source box’s selection and saved geometry notes under the same-site docs access policy. `three-selection` and `three-observation` WebSocket messages validate the view and artifact before mutating the review inbox. See [Geometry review](agents/GEOMETRY_REVIEW.md).
 
