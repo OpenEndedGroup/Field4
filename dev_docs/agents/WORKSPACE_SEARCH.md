@@ -74,15 +74,12 @@ Unicode coordinates, bounds, changing/binary files, symlinks, cancellation and c
 `WorkspaceSearchIntegrationTest` covers shared registry availability/metadata/dispatch, all four
 chat helper paths, and the backdoor's saved/live distinction.
 
-Run in a provisioned Field checkout:
+Verified in a provisioned Field checkout after merging current `main`:
 
 ```sh
 ./gradlew jvmTest --tests 'afield.ai.core.WorkspaceSearchTest' --tests 'afield.ai.core.WorkspaceSearchIntegrationTest'
 ./gradlew compileKotlinJvm
 ```
 
-Authoring validation: the engine, unchanged `ToolMeta.kt`, and core test class were compiled in
-isolation using Kotlin 2.2.20/JVM 17, Jackson 2.19.1 (the repository version), and JUnit Platform
-1.11.4. The only shim was the unrelated `SummarisesForToolLog` interface required by ToolMeta.
-This does not establish a full Field build or execution of the integration test class. Those
-require the complete authenticated checkout and Field's provisioned compiler/dependencies.
+Both focused test classes and the full JVM source compilation passed. The merge regeneration
+also passed the generated-reference, KDoc, box-idiom, citation and documentation guards.
