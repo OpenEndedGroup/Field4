@@ -315,3 +315,16 @@ The series lens across houses, two ways (all twelve outlines are 80 k tokens):
 - B: a storyline per house first (about 300 k each, so about 3.3 M for the eleven missing), then a
   cheap series lens over `series:house-machine-*@storyline`, which also leaves a storyline for every
   house and the full hierarchy series → storyline → episodes → chat.
+
+## 13. Public page
+
+`public/docs/ai4_chat_archive.md` ("Reading Saved AI4 Chats") covers phases 1–4 for users, over the real
+`harbour` chat in `public/docs/assets/ai4_chat_archive/chats/` (the 2026-10-05 `ai4_paint_studio` run kept in
+`field-user-dir/painting-state-browser-2026-10-05/`, slimmed: history images as `ai4img:` refs, blobs at
+640 px, no `ai4_blobs/state/`), a hand-written `storyline` lens, and a `demo/` document of the page's four boxes.
+It replaced an invented `garden-shed` fixture at the human's request. Capture notes: `println` output is inline, not a panel, so the
+fences `display(...)` a `<pre>`; the viewer fence uses `capture="window"`, and its `clip` is in CSS px at the
+runner's 0.56 window scale, so `clip="0,0,2210,1460"` is the lens channel; `trim` cannot crop the grained
+canvas background. When the lens markup or viewer changes, recapture with
+`FIELD_DOCS_RUNNER_MODE=always ... --page ai4_chat_archive.md` and update the lens record's stats from the
+`stats.png` capture.

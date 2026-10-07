@@ -1,0 +1,14 @@
+{
+    "chat": "harbour",
+    "name": "storyline",
+    "brief": "One block per request and one per answer; say which branches were rewound; keep each finished canvas.",
+    "model": "hand-written",
+    "stats": {
+        "blocks": "6",
+        "citedBlocks": "71",
+        "chatBlocks": "103",
+        "lensChars": "1016",
+        "citedChars": "45459",
+        "compression": "44.7"
+    }
+}

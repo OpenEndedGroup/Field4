@@ -1,0 +1,1 @@
+{:version 2 :boxes [{"id" "studio" "properties" {"name" "Studio" "ai4_chat_history" #afield/file "studio_ai4_chat_history_.md" "ai4_session" #afield/file "studio_ai4_session_.jsonl"}}]}
