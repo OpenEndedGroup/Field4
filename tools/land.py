@@ -53,6 +53,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -1018,6 +1019,45 @@ def _hold_awake(pid: int) -> subprocess.Popen | None:
         return None
 
 
+_CURRENT_BUILD: dict[str, int] = {}
+
+
+def _group_alive(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except (ProcessLookupError, PermissionError):
+        return False
+
+
+def _stop_group(pgid: int) -> None:
+    """TERM the build's process group, then KILL whatever is left after 10 s."""
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, 15)
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline and _group_alive(pgid):
+        time.sleep(0.2)
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, 9)
+
+
+def _stop_orphaned_build(queue: Path) -> None:
+    """A lander that died without cleaning up (kill -9, a crash) leaves its build running under the
+    next one: two builds in one worktree, which corrupts Kotlin output. Stop it before landing."""
+    record = queue / "build.json"
+    try:
+        info = json.loads(record.read_text())
+    except (OSError, json.JSONDecodeError):
+        return
+    pgid = int(info.get("pgid", 0))
+    if pgid and info.get("lander") != os.getpid() and _group_alive(pgid):
+        leader = subprocess.run(["ps", "-o", "command=", "-p", str(pgid)], stdout=subprocess.PIPE, text=True).stdout
+        if "merge_regen" in leader or not leader.strip():  # only ever the lander's own build
+            print(f"land: stopping an orphaned build from a previous lander (process group {pgid})", flush=True)
+            _stop_group(pgid)
+    record.unlink(missing_ok=True)
+
+
 def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | None:
     """Run [cmd] with its output in [log], holding the machine awake while it runs. None if it went
     silent for WATCHDOG_MINUTES: a build that writes nothing for that long is wedged (the hour in
@@ -1029,9 +1069,16 @@ def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | 
     with the wall clock bounced a whole batch of seven on 2026-10-07."""
     proc = subprocess.Popen(cmd, cwd=cwd, stdout=out, stderr=subprocess.STDOUT, env=env, start_new_session=True)
     awake = _hold_awake(proc.pid)
+    # Its own session, so the watchdog can stop the whole build: which also means stopping the lander
+    # no longer stops it. Record it, so a SIGTERM'd lander stops it and a new lander finds an orphan.
+    record = log.parent.parent / "build.json"
+    record.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    _CURRENT_BUILD["pgid"] = proc.pid
     try:
         return _watch(proc, cwd, env, log, out)
     finally:
+        _CURRENT_BUILD.pop("pgid", None)
+        record.unlink(missing_ok=True)
         if awake is not None and awake.poll() is None:
             awake.terminate()
             with contextlib.suppress(subprocess.TimeoutExpired):
@@ -1325,6 +1372,20 @@ def cmd_run(args: argparse.Namespace) -> int:
             "a terminal" if sys.stdin.isatty() else "a background process")
         (queue / "lander.json").write_text(json.dumps(
             {"pid": os.getpid(), "started": _now(), "once": args.once, "via": via, "worktree": str(wt)}) + "\n")
+        _stop_orphaned_build(queue)
+
+        def stop(signum, _frame):
+            # launchd's kickstart -k and bootout send SIGTERM. Take the build down with us, or it
+            # keeps running under the next lander.
+            pgid = _CURRENT_BUILD.get("pgid")
+            if pgid:
+                print(f"land: signal {signum}; stopping the running build (process group {pgid})", flush=True)
+                _stop_group(pgid)
+                (queue / "build.json").unlink(missing_ok=True)
+            raise SystemExit(128 + signum)
+
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
         print(f"land: lander up in {wt}; queue {queue}", flush=True)
         limit, bisecting, suspects = args.batch, None, set()
         while True:
