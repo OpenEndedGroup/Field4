@@ -613,7 +613,7 @@ class KotlinSourcePartitionTest {
                 First::class,
                 Second::class
             )
-            package fixture
+            package afield.fixture
             fun choose(flag: Boolean) =
                 if (
                     flag && check("parentheses ) ( in a string")

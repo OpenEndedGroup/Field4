@@ -107,7 +107,7 @@ fun installLiveOutputIframeClient() {
         val promise = window.asDynamic().fieldElectron.outputIframe(request).unsafeCast<Promise<dynamic>>()
         promise.then({ answer: dynamic ->
             val value = if (jsTypeOf(answer.value) == "undefined") JsonNull
-                else Json.parseToJsonElement(JSON.stringify(answer.value) as String)
+                else Json.parseToJsonElement(JSON.stringify(answer.value))
             send(Message("live-output-iframe-reply").payload(
                 LiveOutputIframeReply(command.id, true, value, answer.frameUrl as? String ?: "")
             ))

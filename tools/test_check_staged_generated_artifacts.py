@@ -7,9 +7,12 @@ import unittest.mock
 from pathlib import Path
 
 from tools.check_staged_generated_artifacts import (
+    _PERSONAL_BOUNDARY_REL,
     _REFERENCE_GENERATOR_REL,
     _SOURCE_ROOTS_DECL,
+    PersonalBoundaryCorpusUnreadable,
     ReferenceRootsUnreadable,
+    _personal_boundary_corpus,
     _reference_input,
     _reference_source_roots,
     conflicting_unstaged_paths,
@@ -80,13 +83,23 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
     def test_transcript_change_selects_bundle_and_index(self) -> None:
         self.assertEqual(
             task_names(["dev_docs/agents/transcripts/hello.yaml"]),
-            ["checkAgentTranscripts", "checkAgentTranscriptIndex", "checkBoxIdioms", "checkBoxCodeCompiles"],
+            # citationGates because PersonalBoundaryTest reads transcript yaml: a box program is
+            # committed inside one as literal text, so it can leak a private import.
+            [
+                "checkAgentTranscripts",
+                "checkAgentTranscriptIndex",
+                "checkBoxIdioms",
+                "checkBoxCodeCompiles",
+                "citationGates",
+            ],
         )
 
-    def test_a_lesson_sidecar_selects_the_idiom_check_only(self) -> None:
+    def test_a_lesson_sidecar_selects_the_idiom_check_and_the_boundary_gate(self) -> None:
+        # citationGates for PersonalBoundaryTest: a loose `<uid>_code_.kt` sidecar is committed box
+        # code, and the canonical_graphics bundle is where a private import once shipped.
         self.assertEqual(
             task_names(["public/docs/assets/canonical_graphics/abc_code_.kt"]),
-            ["checkBoxIdioms"],
+            ["checkBoxIdioms", "citationGates"],
         )
 
     def test_materialized_transcript_also_selects_completion_corpus(self) -> None:
@@ -96,13 +109,16 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex",
                 "checkCompletionCorpusFixtures",
+                "citationGates",
             ],
         )
 
-    def test_template_change_selects_completion_corpus_only(self) -> None:
+    def test_template_change_also_selects_the_private_boundary_gate(self) -> None:
+        # A template's box code lives in `metadata.edn` as an `#afield/file-inline` string, one of
+        # the three committed forms PersonalBoundaryTest reads.
         self.assertEqual(
             task_names(["templates/hello/metadata.edn"]),
-            ["checkCompletionCorpusFixtures"],
+            ["checkCompletionCorpusFixtures", "citationGates"],
         )
 
     def test_unrelated_change_selects_nothing(self) -> None:
@@ -206,6 +222,58 @@ class ReferenceSourceRootsTests(unittest.TestCase):
                     _reference_source_roots()
         finally:
             _reference_source_roots.cache_clear()
+
+
+class PrivateBoundarySelectionTests(unittest.TestCase):
+    """The selection of ``citationGates`` for ``PersonalBoundaryTest``'s own corpus.
+
+    That guard walks ``src/**``, ``dev_docs/**``, ``public/docs/**`` and ``templates/**``. Before
+    this selection existed, a change staging only ``dev_docs/agents/**`` — an agent's evidence
+    directory, where the failure the guard was written for happens — selected nothing, at commit
+    time or at landing.
+    """
+
+    def test_agent_evidence_kotlin_selects_the_boundary_gate(self) -> None:
+        self.assertIn("citationGates", task_names(["dev_docs/agents/demos/house_audit/probe.kt"]))
+
+    def test_agent_evidence_patch_selects_the_boundary_gate(self) -> None:
+        # A patch carries the body of what it changes, so it quotes source rather than naming it.
+        for path in (
+            "dev_docs/agents/demos/house_audit/changes.patch",
+            "dev_docs/agents/demos/house_audit/changes.diff",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(task_names([path]), ["citationGates"])
+
+    def test_an_unscanned_extension_under_dev_docs_still_selects_nothing(self) -> None:
+        # The widening is the guard's population, not "everything under dev_docs".
+        self.assertEqual(task_names(["dev_docs/agents/demos/house_audit/window.png"]), [])
+
+    def test_the_private_tree_itself_is_not_an_input(self) -> None:
+        # It is gitignored and the guard excludes it; selecting on it would be meaningless.
+        self.assertEqual(task_names(["src/personal/x/y.patch"]), [])
+
+    def test_the_population_is_read_from_the_guard(self) -> None:
+        roots, extensions = _personal_boundary_corpus()
+        for root in ("src/jvmTest", "dev_docs", "public/docs", "templates"):
+            with self.subTest(root=root):
+                self.assertIn(root, roots)
+        for extension in ("kt", "md", "edn", "yaml", "patch", "diff"):
+            with self.subTest(extension=extension):
+                self.assertIn(extension, extensions)
+
+    def test_an_unreadable_guard_raises_instead_of_selecting_nothing(self) -> None:
+        self.assertTrue((REPO / _PERSONAL_BOUNDARY_REL).is_file(), _PERSONAL_BOUNDARY_REL)
+        _personal_boundary_corpus.cache_clear()
+        self.addCleanup(_personal_boundary_corpus.cache_clear)
+        try:
+            with unittest.mock.patch(
+                "tools.check_staged_generated_artifacts.Path.is_file", return_value=False
+            ):
+                with self.assertRaises(PersonalBoundaryCorpusUnreadable):
+                    _personal_boundary_corpus()
+        finally:
+            _personal_boundary_corpus.cache_clear()
 
 
 class MergeSelectionTests(unittest.TestCase):
