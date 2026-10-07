@@ -1,10 +1,9 @@
+import afield.four.fabricated.FabricateBuiltChain
 import afield.four.fabricated.FabricatePassLibrary
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.addPassChain
 
-// Fully qualified for the same reason as the scene box: `prop<>`'s rewrite loses the
-// snippet's imports.
-prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+prop<FabricateBuiltChain>(chain)
 
 val r: Renderer = fromContext()
 val b: StandardRenderer.Bundle = fromContext()

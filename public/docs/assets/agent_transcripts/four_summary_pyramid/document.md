@@ -36,29 +36,19 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-`prop<StandardRenderer.Bundle>(bundle)` under an
-`import afield.four.fabricated.StandardRenderer` fails with
-`Unresolved reference 'StandardRenderer'` reported against the *import* line.
+`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 
 ```edn [field-box id="sp_bundle" role="properties"]
-{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 33 "characters" 1405 "sha256" "fd91de787c436466d30ce1daf97b4c0488bd130a2f26b67c131cebeb36b118d0"}]}
+{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 28 "characters" 1013 "sha256" "4a0e744a265a5e311bb014e36b178641aab5638bc270c24f25fb2af585f064a5"}]}
 ```
 
 ```kotlin [field-property box="sp_bundle" name="code" path="sp_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-// itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-// rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-// `prop<StandardRenderer.Bundle>(bundle)` under an
-// `import afield.four.fabricated.StandardRenderer` fails with
-// `Unresolved reference 'StandardRenderer'` reported against the *import* line.
+// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
 import afield.stdlib.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 // `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
 // there is nothing to fetch with `fromContext()`.

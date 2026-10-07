@@ -1,16 +1,10 @@
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-// itself, so these are needed. The `prop<>` type argument is written out in full on
-// purpose: `prop<>` rewrites the box's code and the rewrite does not carry the snippet's
-// own imports, so `prop<StandardRenderer.Bundle>(bundle)` under an
-// `import afield.four.fabricated.StandardRenderer` fails with
-// `Unresolved reference 'StandardRenderer'` reported against the *import* line. Every
-// other reference in the box resolves through the import normally.
+// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 val r: Renderer = fromContext()
 
