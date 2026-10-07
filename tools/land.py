@@ -930,17 +930,59 @@ def _lander_gradle_home() -> Path | None:
     return home
 
 
+# What keeps the machine awake while a build runs: macOS's `caffeinate`. The lander runs on a laptop,
+# and asleep a build makes no progress. FIELD_LAND_CAFFEINATE names another command, or "off".
+CAFFEINATE = os.environ.get("FIELD_LAND_CAFFEINATE", "caffeinate" if sys.platform == "darwin" else "off")
+
+
+def _hold_awake(pid: int) -> subprocess.Popen | None:
+    """Keeps the machine from idle sleep until [pid] exits (`caffeinate -i -w <pid>`), or None where
+    there is no such command. Closing a laptop's lid still sleeps it; see _run_watched for why that
+    no longer bounces the build."""
+    exe = shutil.which(CAFFEINATE) if CAFFEINATE and CAFFEINATE != "off" else None
+    if not exe:
+        return None
+    try:
+        return subprocess.Popen([exe, "-i", "-w", str(pid)], stdin=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        return None
+
+
 def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | None:
-    """Run [cmd] with its output in [log]. None if it went silent for WATCHDOG_MINUTES: a build that
-    writes nothing for that long is wedged (the hour in configuration), and waiting longer only holds
-    up everyone behind it. Its whole process group and the lander's Gradle daemons are stopped."""
+    """Run [cmd] with its output in [log], holding the machine awake while it runs. None if it went
+    silent for WATCHDOG_MINUTES: a build that writes nothing for that long is wedged (the hour in
+    configuration), and waiting longer only holds up everyone behind it. Its whole process group and
+    the lander's Gradle daemons are stopped.
+
+    Silence is timed on the monotonic clock, which on macOS stops while the machine sleeps, so a
+    build that a closed lid paused is not taken for a wedged one. Timing it from the log's mtime
+    with the wall clock bounced a whole batch of seven on 2026-10-07."""
     proc = subprocess.Popen(cmd, cwd=cwd, stdout=out, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+    awake = _hold_awake(proc.pid)
+    try:
+        return _watch(proc, cwd, env, log, out)
+    finally:
+        if awake is not None and awake.poll() is None:
+            awake.terminate()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                awake.wait(timeout=5)
+
+
+def _watch(proc: subprocess.Popen, cwd: Path, env: dict, log: Path, out) -> int | None:
+    last_write = log.stat().st_mtime
+    quiet_since = time.monotonic()
     while True:
         try:
             return proc.wait(timeout=min(30.0, max(WATCHDOG_MINUTES * 60 / 4, 0.5)))
         except subprocess.TimeoutExpired:
             pass
-        silent = time.time() - log.stat().st_mtime
+        written = log.stat().st_mtime
+        if written != last_write:
+            last_write = written
+            quiet_since = time.monotonic()
+            continue
+        silent = time.monotonic() - quiet_since
         if silent < WATCHDOG_MINUTES * 60:
             continue
         out.write(f"\nland: watchdog: no output for {silent / 60:.0f} min; stopping the build\n")
