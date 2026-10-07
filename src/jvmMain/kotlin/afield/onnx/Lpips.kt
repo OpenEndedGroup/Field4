@@ -52,6 +52,13 @@ import java.util.concurrent.TimeUnit
  * one-off of about a minute that downloads PyTorch if `uv` has not cached it — and checks the result
  * against [MODEL]'s pinned sha256, which two exports with the pinned package versions reproduced
  * byte for byte.
+ *
+ * ## Its gradient
+ *
+ * [distanceAndGradientPlanar] also returns d distance / d candidate pixel, from a second exported
+ * graph ([GRAD_MODEL]) that the same script builds and checks against PyTorch's autograd. That is
+ * what lets a fit descend on LPIPS: `afield.stacksl.cpu.StackSLFit` seeds its per-pixel tapes with
+ * it.
  */
 object Lpips {
 
@@ -62,6 +69,23 @@ object Lpips {
         fileName = "lpips-alex/lpips_alex.onnx",
         sha256 = "6b99961b1b2b5a2c475d74fcaed30e26151833c06db4fdd48e81468b70ff35c3",
         note = "LPIPS v0.1, AlexNet backbone, fp32, exported by tools/export_lpips_onnx.py."
+    )
+
+    /**
+     * The gradient model: the same inputs, `distance [N]` and `gradient [N,3,H,W]` out, the
+     * gradient being d `distance[i]` / d `candidate[i]` on the `0..1` pixels.
+     *
+     * Exported by the same script (`--model grad`) as a hand-written vector-Jacobian product, since
+     * an ONNX export traces only forward code. The script checks it against `torch.autograd.grad`
+     * on the PyTorch LPIPS module and refuses a disagreement beyond 1e-4 relative; measured, the
+     * worst of fourteen pairs was 5.4e-6. Max-pool ties are the one wrinkle: see [distanceAndGradientPlanar].
+     */
+    val GRAD_MODEL = OnnxModel(
+        id = "lpips-alex-grad",
+        url = "",
+        fileName = "lpips-alex/lpips_alex_grad.onnx",
+        sha256 = "8f9569d2fabe9f68cc5fc0e6d071d88347832ff2733589e725d840df53986e7c",
+        note = "LPIPS v0.1 AlexNet distance and its gradient w.r.t. the candidate, fp32, exported by tools/export_lpips_onnx.py --model grad."
     )
 
     /** Smallest side the network accepts: AlexNet's deepest stage is 1x1 at 32. */
@@ -75,8 +99,14 @@ object Lpips {
         "python", "tools/export_lpips_onnx.py", "--out"
     )
 
+    /** The command [ensureGradModel] runs: [EXPORT_ARGS]' environment, the gradient graph only. */
+    val GRAD_EXPORT_ARGS: List<String> = EXPORT_ARGS.dropLast(1) + listOf("--model", "grad", "--grad-out")
+
     @Volatile
     private var verified: Path? = null
+
+    @Volatile
+    private var verifiedGrad: Path? = null
 
     /**
      * The model file, exporting it first if it is not in the cache, and checked against [MODEL]'s
@@ -87,21 +117,34 @@ object Lpips {
     @Synchronized
     fun ensureModel(): Path {
         verified?.let { return it }
-        val path = MODEL.localPath
-        if (!Files.isRegularFile(path)) export(path)
+        return ensure(MODEL, EXPORT_ARGS).also { verified = it }
+    }
+
+    /**
+     * The gradient model file, exported on first use and checked against [GRAD_MODEL]'s sha256,
+     * exactly as [ensureModel] does for the forward model.
+     */
+    @Synchronized
+    fun ensureGradModel(): Path {
+        verifiedGrad?.let { return it }
+        return ensure(GRAD_MODEL, GRAD_EXPORT_ARGS).also { verifiedGrad = it }
+    }
+
+    private fun ensure(model: OnnxModel, args: List<String>): Path {
+        val path = model.localPath
+        if (!Files.isRegularFile(path)) export(path, args)
         val actual = sha256(path)
-        check(actual.equals(MODEL.sha256, ignoreCase = true)) {
-            "LPIPS model at $path has sha256 $actual, expected ${MODEL.sha256}. Delete it and let " +
+        check(actual.equals(model.sha256, ignoreCase = true)) {
+            "LPIPS model at $path has sha256 $actual, expected ${model.sha256}. Delete it and let " +
                 "Field export it again, or run tools/export_lpips_onnx.py by hand to see why it differs."
         }
-        verified = path
         return path
     }
 
-    private fun export(path: Path) {
+    private fun export(path: Path, args: List<String>) {
         val root = repoRoot()
         val uv = uvExecutable()
-        val command = listOf(uv) + EXPORT_ARGS + path.toString()
+        val command = listOf(uv) + args + path.toString()
         lprintln("info,onnx", "exporting LPIPS to $path: ${command.joinToString(" ")}")
         val process = ProcessBuilder(command).directory(root).redirectErrorStream(true).start()
         val output = process.inputStream.bufferedReader().readText()
@@ -113,6 +156,9 @@ object Lpips {
 
     /** The cached session. */
     val session: OnnxRuntime.LoadedSession get() = OnnxRuntime.session(ensureModel())
+
+    /** The cached session of the gradient model. */
+    val gradSession: OnnxRuntime.LoadedSession get() = OnnxRuntime.session(ensureGradModel())
 
     /** LPIPS distance between [a] and [b], which must be the same size. */
     fun distance(a: Img, b: Img): Double = distances(listOf(a), b)[0]
@@ -150,6 +196,54 @@ object Lpips {
                     val out = (result.get("distance").orElse(null) ?: result.get(0)) as OnnxTensor
                     val fb = out.floatBuffer
                     DoubleArray(n) { fb.get(it).toDouble() }
+                }
+            }
+        }
+    }
+
+    /**
+     * The LPIPS distance from [candidate] to [reference] and its gradient with respect to every
+     * candidate value: planar `3 x height x width` floats in `0..1`, as [distancesPlanar] takes
+     * them. The gradient has the candidate's layout.
+     *
+     * It is the derivative of exactly the distance [distancesPlanar] computes (the two models agree
+     * on the distance to 1e-7), through the network's `0..1 -> -1..1` input mapping, so a caller
+     * chains it straight onto whatever produced the pixels. It is the gradient of the function as
+     * the network sees it, so two things a caller may expect are not in it: a value outside `0..1`
+     * is not clamped here (clamp before, and carry the clamp's zero derivative yourself), and where
+     * two positions in an AlexNet max-pool window are exactly equal — common on flat-coloured
+     * pictures — the gradient goes to the one ONNX Runtime picks, which can differ from PyTorch's.
+     * Either is a valid subgradient; `tools/export_lpips_onnx.py` checks that every disagreement it
+     * sees is such a tie.
+     */
+    fun distanceAndGradientPlanar(candidate: FloatArray, width: Int, height: Int, reference: FloatArray): Pair<Double, FloatArray> {
+        val (d, g) = distancesAndGradientsPlanar(candidate, 1, width, height, reference, 1)
+        return d[0] to g
+    }
+
+    /**
+     * Batched [distanceAndGradientPlanar]: [n] candidates against [references] of batch [m], which
+     * is `1` (one broadcast reference) or [n] (one each, as the regions of a tiled image are). The
+     * gradients come back concatenated, `n x 3 x height x width`.
+     */
+    fun distancesAndGradientsPlanar(
+        candidates: FloatArray, n: Int, width: Int, height: Int, references: FloatArray, m: Int = 1
+    ): Pair<DoubleArray, FloatArray> {
+        require(width >= MIN_SIDE && height >= MIN_SIDE) { "LPIPS needs at least ${MIN_SIDE}x$MIN_SIDE, got ${width}x$height" }
+        require(m == 1 || m == n) { "references must be a batch of 1 or of $n, got $m" }
+        val one = 3 * width * height
+        require(candidates.size == n * one) { "candidates hold ${candidates.size} floats, expected ${n * one}" }
+        require(references.size == m * one) { "references hold ${references.size} floats, expected ${m * one}" }
+        val loaded = gradSession
+        val env = OnnxRuntime.env
+        return OnnxTensor.createTensor(env, buffer(candidates), longArrayOf(n.toLong(), 3, height.toLong(), width.toLong())).use { a ->
+            OnnxTensor.createTensor(env, buffer(references), longArrayOf(m.toLong(), 3, height.toLong(), width.toLong())).use { b ->
+                loaded.session.run(mapOf("candidate" to a, "reference" to b)).use { result ->
+                    val dist = (result.get("distance").orElse(null) as OnnxTensor).floatBuffer
+                    val grad = (result.get("gradient").orElse(null) as OnnxTensor).floatBuffer
+                    val g = FloatArray(n * one)
+                    grad.get(g)
+                    DoubleArray(n) { dist.get(it).toDouble() } to g
                 }
             }
         }
