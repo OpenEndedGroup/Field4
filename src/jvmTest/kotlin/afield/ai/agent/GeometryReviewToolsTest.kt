@@ -234,7 +234,7 @@ class GeometryReviewToolsTest {
         assertFalse(call(f, ReadGeometryNoteRequest(f.view.uid, id)).success)
         val resolve = ReviewGeometryNoteRequest(f.view.uid, id, "resolved", "gone", "a", "r1", 0)
         assertContains(assertFailsWith<IllegalStateException> { call(f, resolve) }.message.orEmpty(), "read-only")
-        assertFalse(f.ctx.fieldGraph!!.geometryReviews.review(resolve).success)
+        assertFalse(f.ctx.fieldGraph.geometryReviews.review(resolve).success)
     }
 
     @Test fun inboxIsPagedAndLongSummariesDoNotFillTheContext() {

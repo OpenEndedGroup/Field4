@@ -127,7 +127,7 @@ data class Location(val inside: Box, val property: String, val line: Int, val co
  * on such an event (`flipbox`) anchor here.
  */
 fun Marker.locationInSource(then: String? = null): Location? {
-    val lines = box.code?.split("\n") ?: return null
+    val lines = box.code.split("\n")
     val mark = "__m(\"$name\")"
     lines.forEachIndexed { i, line ->
         val m = line.indexOf(mark)

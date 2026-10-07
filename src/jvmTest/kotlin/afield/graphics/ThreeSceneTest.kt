@@ -400,7 +400,7 @@ class ThreeSceneTest {
         val defaults = ThreeSceneBuilder(48).apply { mesh(square()); linkCamera(); turntable() }.payload("t")
         assertEquals("default", defaults.cameraLink!!.group, "the default group is the one the button joins")
         assertEquals(6.0, defaults.turntable!!.degreesPerSecond)
-        assertEquals(2.0, defaults.turntable!!.resumeAfterSeconds)
+        assertEquals(2.0, defaults.turntable.resumeAfterSeconds)
 
         val plain = json.encodeToString(ThreeSceneBuilder(48).apply { mesh(square()) }.payload("t"))
         assertFalse(plain.contains("\"cameraLink\""), "a view that did not ask must open unlinked")

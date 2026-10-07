@@ -77,7 +77,7 @@ private fun Marker.flipboxDraw() {
     val glyph = if (on) "☑" else "☐"
     // The argument only says how the box starts, which the checkbox already shows, so the
     // checkbox is drawn over it, as the marker rune is drawn over the `__m(...)` text.
-    val line = box.code?.split("\n")?.getOrNull(at.line - 1) ?: return
+    val line = box.code.split("\n").getOrNull(at.line - 1) ?: return
     val close = line.indexOf(')', at.col - 1)
     val arg = if (close < 0) "" else line.substring(at.col - 1, close)
     // Only a bare literal: Monaco splits a longer argument into tokens, and each would draw a box.
