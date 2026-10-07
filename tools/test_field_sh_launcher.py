@@ -172,7 +172,7 @@ class FieldShSandbox:
         self.command_bin.mkdir(parents=True)
         for name in ("sh", "bash", "zsh", "dash", "ksh", "head", "grep", "tr", "sed",
                      "basename", "dirname", "cat", "mkdir", "awk", "uname", "curl", "tar",
-                     "gzip", "sha256sum", "shasum", "g++", "cmake", "make", "ldd", "stty",
+                     "gzip", "sha256sum", "shasum", "g++", "cmake", "make", "xcrun", "ldd", "stty",
                      "cksum", "nohup", "sleep", "ls", "rm", "mv", "python3"):
             executable = shutil.which(name)
             if executable:

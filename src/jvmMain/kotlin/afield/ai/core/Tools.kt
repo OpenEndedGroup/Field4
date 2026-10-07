@@ -895,6 +895,7 @@ data class ToolExecutionContext(
 
     // Optional extra tools
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+    val workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
 
     /** What this conversation is about, when it is about one box: see [ToolFocus]. */
     val focus: ToolFocus? = null,
@@ -1390,3 +1391,4 @@ fun validateNoMarkers(code: String) {
     val hit = bad.firstOrNull { code.contains(it) }
     if (hit != null) throw MalformedAI("Model output still contained marker '$hit'. Refusing to apply.")
 }
+

@@ -7,7 +7,7 @@ in.**
 
 ---
 
-## Thirty seconds
+## Which one to pick
 
 * **"I have a rhythm and I want to hear it."** → `pat-stand-in`. Nothing to install; `patSynth` for
   the speakers, `patRenderStereo` for a file, and the same voice either way.
@@ -53,15 +53,15 @@ own](pat_spatial.md), because what it needs explaining is why a tag in a pattern
 why the synthesis is a thread away from the audio. Read whichever you have picked; this page only
 helps you pick.
 
-Two of the nine are **realtime only**, and for unrelated reasons. `pat-spatial` cannot render into a
-buffer because its synthesis runs on its own clock, ahead of whoever consumes it — its own page gives
-[the three reasons](pat_spatial.md#why-there-is-no-clip-of-the-output), and it is the
-only path in this table whose published clips are of its *input* rather than of what it sounds like.
+Two of the nine are **realtime only**, for unrelated reasons. `pat-spatial` cannot render into a
+buffer because its synthesis runs on its own clock, ahead of whoever consumes it; its own page
+explains [why](pat_spatial.md#why-there-is-no-clip-of-the-output), and why its clips on this site
+are of its *input* rather than of what it sounds like.
 
 `sonic-pi` is the other, and it is the more extreme case: it is the only path where **no sample ever
 enters this process**. Field sends text and receives log lines; the audio exists entirely inside
-another program's synthesiser. Everything you can do to samples in the other eight — filter them,
-plot them, write them to a file — you cannot do to those. The way back in is `link-audio-in`, below.
+another program's synthesiser. You cannot filter, plot or record Sonic Pi's output the way you can
+the others'. The way back in is `link-audio-in`, below.
 
 ## The five that carry samples out
 
@@ -73,11 +73,12 @@ plot them, write them to a file — you cannot do to those. The way back in is `
 | `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt` | an output device | — |
 | `link-audio-out` | the engine's output mirrored into Ableton Link Audio, tempo-locked, so another app on the network hears it. `fun enableAudioOutput` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
 
-Every audio figure in these docs comes out of the `wav-file` sink, which is why they regenerate on
-a build machine with no sound card. That is also what bounds what `pat-spatial` can publish: its
-two figures are the *mono source* its dough engine produces, and neither is its spatialised output,
-because this sink cannot be pointed at a path that only runs in realtime.
-[Its page says why](pat_spatial.md#why-there-is-no-clip-of-the-output).
+??? aside "Where the clips on this site come from"
+
+    Every audio figure in these docs comes out of the `wav-file` sink, so they regenerate on a build
+    machine with no sound card. That is why `pat-spatial`'s figures are the *mono source* its dough
+    engine produces rather than its spatialised output: this sink cannot be pointed at a path that
+    only runs in realtime.
 
 ## Spatial audio with OpenAL, and rendering with no device
 
@@ -94,12 +95,12 @@ sitting at.
 initializes it, so a box can have 3D audio of its own while another thread's ordinary output keeps
 playing. Use the engine and its sources on that thread and destroy it there; destroying it restores
 whichever thread-local context was current before, and nested contexts must close in reverse
-creation order. The mode needs `ALC_EXT_thread_local_context` and fails initialization where the
-extension is absent.
+creation order. The mode needs the OpenAL extension `ALC_EXT_thread_local_context` and fails to initialize
+without it.
 
 `loopbackSampleRate = 48000` renders instead of playing. Initialize as usual, request HRTF, then
 call `renderSamples(output, frames)` with a reusable direct stereo `ShortBuffer`. That call, and
-nothing else, advances playback — so the output is deterministic, and it needs the bundled OpenAL
+nothing else, advances playback, so the output is deterministic, and it needs the bundled OpenAL
 Soft library rather than an output device. A test or a docs build can use it.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
@@ -111,9 +112,6 @@ Soft library rather than an output device. A test or a docs build can use it.
 | the scalar `setListener` overload | Updates listener position and orientation from scalar components. Use it in frequent tracking updates to avoid allocating vectors on every call. |
 
 </div>
-
-The `audio.spatial.loopback` smoke drives both modes through the real mixer;
-`dev_docs/SOUND_PATH_MAP_AGREEMENT.md` lists what it asserts and to what tolerance.
 
 ## The four that bring samples in
 
@@ -129,8 +127,7 @@ are not equally well tested. **Field → Sonic Pi** is: Field publishes a channe
 `enableAudioOutput`, Sonic Pi v5's `link_audio` subscribes to it, and a probe puts a 440 Hz tone in
 one end and looks for it at the other. See [Sonic Pi](sonic_pi.md), including the Link visibility
 toggle that defaults to Off and gives you silence with nothing to explain it. **Sonic Pi → Field**
-has an API on both sides, `link_audio_publish_set!` and `linkAudioIn(channelName)`, but nothing in
-this tree exercises it.
+has an API on both sides, `link_audio_publish_set!` and `linkAudioIn(channelName)`, but is untested.
 
 ---
 
@@ -142,16 +139,16 @@ Everything realtime is driven through one signature:
 fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext)
 ```
 
-`AudioPatchSpec.Renderer` declares it. `StereoRenderable` declares it, character for character. So
-does every node in the graph, `DirtSamplePlayer`, `FaustNode`, `FaustPolyNode`, `DoughAudioSink`,
-`PatSynthBank`, `PatSpatialBank` and `PdNode`. Twelve of the eighteen paths above share it, and any
-of them can be plugged into any other.
+`AudioPatchSpec.Renderer` declares it, and so does `StereoRenderable`. So does every node in the
+graph: `DirtSamplePlayer`, `FaustNode`, `FaustPolyNode`, `DoughAudioSink`, `PatSynthBank`,
+`PatSpatialBank` and `PdNode`. Every path marked "yes" in the table above shares it, and any of them
+can be plugged into any other.
 
-Faust is the clearest case of what that buys, twice over. `class FaustNode` is 23 lines that fill an
-input buffer and call `dsp.render`. `class FaustPolyNode` is five lines, and behind them is an event
-scheduler, a voice allocator and N WebAssembly instances in one GraalVM context — none of which the
-engine has to know about. Sharing `render` is what gets both of them the speakers, the engine's
-visualisers, the Link output and the box lifecycle, with no adapter written for any of them.
+Faust shows what that buys. `class FaustNode` only fills an input buffer and calls `dsp.render`.
+`class FaustPolyNode` is a few lines more, and behind them is an event scheduler, a voice allocator
+and N WebAssembly instances in one GraalVM context, none of which the engine has to know about.
+Because both share `render`, both get the speakers, the engine's visualisers, the Link output and
+the box lifecycle with no adapter.
 
 Of the nine paths that make samples, `sonic-pi` is the only one that does not share `render`, and no
 wrapper can make it: it is a different process, and no sample ever enters this one.
@@ -164,21 +161,19 @@ buffer size that is not a multiple of 128. The default is 512.
 Getting a pattern onto `render` is the general case, because a pattern has to be *queried* over an
 arc and there is no "next 128 frames" to ask one for. The answer is a scheduler in two halves: a
 thread that queries a cycle at a time and turns events into notes stamped with the absolute frame
-they start on, and an audio-thread voice bank whose only remaining job is an integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` divide the
-work the same way, and being early costs nothing because what crosses between the halves is frames.
+they start on, and an audio-thread voice bank whose only remaining job is an integer comparison.
+`DirtSamplePlayer` and `FaustPatternFeeder` divide the work the same way, and being early costs nothing because what crosses between the halves is frames.
 See [A pattern that moves particles](chain_pattern_particles.md).
 
-`pat-spatial` is the newest path to share `render`, and it settles a question the column leaves open:
-sharing `render` and being able to render offline are **independent**. It is the first path that can
-fill a block when asked and cannot do it faster than wall clock — `render` asks for a block, not for
-a buffer, and a render thread feeding a ring satisfies that with an `arraycopy`. Like `faust-poly`,
+Sharing `render` and being able to render offline are **independent**. `pat-spatial` shares
+`render` but cannot run faster than wall clock: `render` asks for a block, not a whole buffer, and
+its render thread feeding a ring buffer answers that with an `arraycopy`. Like `faust-poly`,
 it opens no device and encodes no WAV.
 
-`AudioPatchSpec` is what every box that makes a noise returns. Five of the eighteen paths above have
-no page of their own — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`,
-`wav-file-in` — and the em-dash in those table cells means absent, not merely unlisted. For those
-five, this map and [`afield.four.synth` in the generated reference](reference/synthesis.md) are what
-there is.
+`AudioPatchSpec` is what every box that makes a noise returns. The paths with "—" in the page
+column (`audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`, `wav-file-in`) have no
+page of their own; this page and [`afield.four.synth` in the generated reference](reference/synthesis.md)
+are their documentation.
 
 ---
 
@@ -187,7 +182,7 @@ there is.
 Here are three of the paths on **bit-identical input**.
 
 One buffer: `pat("bd ~ sd ~, hh*8")` at 2 cps for four cycles, two seconds, played from real Tidal
-one-shots by `patRenderStereoDirt` — a kick, a hard snare and a closed hi-hat out of
+one-shots by `patRenderStereoDirt`: a kick, a hard snare and a closed hi-hat out of
 [tidalcycles/Dirt-Samples](https://github.com/tidalcycles/Dirt-Samples). Then a 900 Hz lowpass from
 two different paths.
 
@@ -213,8 +208,8 @@ two different paths.
 **Path: `faust`.** The same buffer, through `fi.lowpass(1, 900)`, compiled at runtime.
 
 Through either filter the kick comes out nearly whole, while the closed hat loses its tick and the
-snare its crack, until both are dull thuds riding on the kick. The two filters do this differently. `ChamberlinLowpass` is a two-pole
-state-variable filter, 12 dB per octave; `fi.lowpass(1, 900)` is first-order, 6 dB per octave. Ask
+snare its crack, until both are dull thuds riding on the kick. The two filters do this differently.
+`ChamberlinLowpass` is a two-pole state-variable filter, 12 dB per octave; `fi.lowpass(1, 900)` is first-order, 6 dB per octave. Ask
 both for 900 Hz and the steeper one leaves less of the hat behind:
 
 | figure | spectral centroid | vs dry | rolloff |
@@ -226,35 +221,29 @@ both for 900 Hz and the steeper one leaves less of the hat behind:
 Their waveform similarity to each other is **0.9899**: high, because they are lowpasses of one
 buffer, and short of 1.0 because they are not the same lowpass. Most of what either one leaves is
 the kick, which neither filter touches much, so they agree more closely than they would on a
-brighter input. Every number here is printed by
-`run_field_tests.py --id synth.sound.path.map`, which is where to re-measure them.
+brighter input.
 
 ??? aside "Do not compare the three clips by loudness"
 
     All three players above are peak-normalized to 0.9 of full scale, so they compare timbre and
     not level. That is `fun writeStereo16` being called with `normalizePeak = 0.9f`. Listen to
     them back to back and they will seem to arrive at a matched volume; that is the writer's
-    doing, not the paths'. The levels the filters actually produced, and the rest of the
-    comparison's arithmetic, are in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
+    doing, not the paths'. The levels the filters actually produced, and the numbers in the table
+    above, are printed by `run_field_tests.py --id synth.sound.path.map`.
 
-A lowpass shows that the paths differ. Feed the same buffer a plain gain instead — 0.5 by the
-graph, 0.5 by Faust — and the two are bit-equal, which is the stronger claim: two separate
-implementations behind one `render` call, with no adapter in between.
+A lowpass shows that the paths differ. Feed the same buffer a plain gain of 0.5 instead, once by
+the graph and once by Faust, and the two outputs are bit-equal: two separate implementations behind
+one `render` call, with no adapter in between.
 
 ---
 
-## Where the list comes from
+??? aside "How the tables stay current"
 
-Everything that shares `render` is here, and not because somebody keeps the page up to date. If a table
-above names a path, that path exists, in that file, under that name: the `synth.sound.path.map`
-smoke re-derives the list from the tree on every `check`, and cites each entry point by *symbol*,
-so a rename fails the build rather than leaving a dead citation.
-
-Beyond `render` the derivation is blind, and both of the shapes it cannot find are listed above
-anyway, because somebody declared them: a player in another process, like `sonic-pi`, and a
-whole-buffer free function, like `patRenderStereo`. A third of either kind could be added to Field
-tomorrow and this page would not notice. The marker literals, the assertions and the tolerances are
-in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
+    The `synth.sound.path.map` smoke re-derives the list of paths that share `render` from the tree
+    on every `check`, and cites each entry point by symbol, so a rename fails the build. It cannot
+    find a player in another process (like `sonic-pi`) or a whole-buffer free function (like
+    `patRenderStereo`); those are declared by hand in `SoundPathMap.kt`, and the marker literals and
+    tolerances are in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
 
 ---
 

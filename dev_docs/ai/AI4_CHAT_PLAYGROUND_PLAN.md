@@ -5,7 +5,7 @@ let AI4 agents write **lenses**: shorter, filtered versions of the chat, drawn i
 the chat panel, with lines running across from each summary block to the stretch of the original
 it stands for. Lenses can be stacked, so the hierarchy is a lens of a lens.
 
-Status (2026-10-06): phases 1–4 built (sections 8–11); phase 5 planned. Revised after Marc's notes: we trust the chat (it made a house), so
+Status (2026-10-07): phases 1–5 built (sections 8–12); the series lens across houses waits on a budget choice. Revised after Marc's notes: we trust the chat (it made a house), so
 there is no fidelity checking. Tool records count only for which tool ran, whether it failed and
 how long it took. What matters is the shape of the chat and the moments the machine itself
 changed: notes, the house playbook, recipes, searches and stabilization.
@@ -280,7 +280,43 @@ Left for phase 5: lens of a lens (the viewer would show three columns); abandone
 source column when a lens cites them; the offline single-file export; a series lens across houses;
 and keeping a lens's brief in its box rather than in the chat message.
 
-## 12. Public page
+## 12. Phase 5: voices, chains, series, saved views
+
+- **Voices.** A band takes the colour of the voice it comes from: amber from `<<you>>`, cyan from
+  `<<ai>>`, grey from `<<summary>>`, a third voice for a lens block that condenses several turns of
+  both speakers (grey text, both speakers' rules).
+- **A lens is a chat.** `<chat>#<lens>` resolves to the lens read as a chat (blocks
+  `lens:<name>.b<i>`), so the tools outline, read and cite it and `lens.write` checks a lens over a
+  lens. The viewer shows the whole chain, one labelled column per level, bands between each pair,
+  follow running down the chain; `showChatLens` sizes itself by depth.
+- **Series.** `series:<glob>` runs the matching chats end to end as one chat (addresses are the
+  chats' own, already unique), `series:<glob>@<lens>` each one's lens of that name (lens nodes
+  renamed `lens:<chat>#<lens>`). Outlines mark where each chat begins; pictures resolve from
+  whichever member holds them.
+- **Saved views.** The viewer's *save* writes the view as rendered into one HTML file: columns,
+  `field.css`, the theme's custom properties, pictures as data URLs and `chatLensWire.js` (the
+  behaviour, split from rendering for this), so bands, follow and hover work with no Field. Fonts
+  are not embedded; the file falls back to the system monospace.
+- The `chat-lens` UI regression shows a summary lens over a lens over a chat, checks the voices,
+  and loads the saved file into an iframe to check its bands draw on their own.
+
+The third lens, *overview* over `house-machine-10#episodes`: eight grey phases and three amber
+turning-point requests. 8 rounds, 80 s, 113 k input tokens (83 k cached). Its first save put every
+`<<source:…>>` line above its block's marker, so ten of eleven blocks cited nothing and `lens.write`
+accepted it, because it refused only a lens with no citation at all. That was the tool's bug:
+`lens.write` now refuses any block that cites nothing and any source line not directly under its
+marker, with the reason, and its description shows the shape. Told so, the lens's own chat moved
+the lines and saved again (5 rounds, 39 s): 51 of 51 episodes cited, 2.9× shorter than the
+episodes, about 24× shorter than the chat.
+
+The series lens across houses, two ways (all twelve outlines are 80 k tokens):
+- A: one series lens straight over `series:house-machine-*`: roughly 0.6–0.8 M input tokens,
+  mostly cached.
+- B: a storyline per house first (about 300 k each, so about 3.3 M for the eleven missing), then a
+  cheap series lens over `series:house-machine-*@storyline`, which also leaves a storyline for every
+  house and the full hierarchy series → storyline → episodes → chat.
+
+## 13. Public page
 
 `public/docs/ai4_chat_archive.md` ("Reading Saved AI4 Chats") covers phases 1–4 for users, over the real
 `harbour` chat in `public/docs/assets/ai4_chat_archive/chats/` (the 2026-10-05 `ai4_paint_studio` run kept in

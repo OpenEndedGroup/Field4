@@ -5,20 +5,16 @@ sounding between *here* and *there*. Ask it about one cycle and you get four eve
 about the second half and you get two. Ask about a hundred cycles and it will tell you,
 because nothing was ever stored; the events are computed from the query.
 
-That one decision is what makes the rest composable. A pattern can be reversed, slowed,
-sliced, stacked against another, or handed a continuous curve to read its volume from, and
-none of those operations has to know how long the music is or where it will be sampled.
-The design comes from [TidalCycles](https://tidalcycles.org), and where Field's operators
-share a name with Tidal's they mean the same thing; the places they do not are called out
-below.
+This is why patterns compose. A pattern can be reversed, slowed, sliced, stacked against
+another, or handed a continuous curve to read its volume from, and none of those operations
+has to know how long the music is or where it will be sampled. The design comes from
+[TidalCycles](https://tidalcycles.org), and where Field's operators share a name with Tidal's
+they mean the same thing; the places they do not are listed below.
 
-The piano rolls below are drawn from live `PatPattern.events(...)` queries and the audio is
-rendered offline. All three clips use the **stand-in synth** (`patVoice`): a sine for `bd`,
-filtered noise for `sd` and `hh`. It needs no assets, so these figures regenerate on a clean
-checkout, and it does not sound like a drum machine. Field can render the
-same patterns through the real Tidal sample library instead;
-[Sound: the Pattern → Audio Path](sound.md) puts the two voices side by side and says which
-clip in these docs is which.
+The piano rolls on this page show the events each pattern produces. The clips are played by a
+simple built-in synth (`patVoice`), a sine for `bd` and filtered noise for `sd` and `hh`, so
+they do not sound like a drum machine. To hear the same patterns through the Tidal sample
+library, see [Sound](sound.md).
 
 ---
 
@@ -52,19 +48,13 @@ still line up perfectly fifteen cycles later.
 
 The string inside `pat(...)` is a small language of its own, and it is the same mini-notation
 [TidalCycles](https://tidalcycles.org) uses. A space divides, brackets group, and about a dozen
-suffixes say the things a space cannot. It is small enough to learn in one sitting and dense
-enough that a table of glosses does not teach it, so every form gets a card below: the notation,
-a piano roll of exactly what it schedules, and a clip of it.
+suffixes say the things a space cannot. Each form gets a card below: the notation, a piano roll
+of exactly what it schedules, and a clip of it.
 
-Three things to know before reading them. **Colour is the instrument** — `bd` blue, `sd` orange,
-`cp` pink, `oh` green, `hh` yellow — and those colours *are* the drum map, so two bars that look
-different sound different. **Height is pitch**, so the kick sits at the bottom of every lane and
-the hats at the top, in this section and in every roll further down the page. And **the rolls are
-queries, not drawings**: each rectangle is one real event out of `PatPattern.events(...)`, with the
-figure's own test asserting there is exactly one rectangle per event, so a picture cannot flatter
-the notation it illustrates. The clips are those same events rendered offline through the stand-in
-synth, with the envelope scaled to each pattern's own shortest gap so a sixteenth-note hat still
-articulates where a kick rings.
+Colour is the instrument (`bd` blue, `sd` orange, `cp` pink, `oh` green, `hh` yellow), so two
+bars that look different sound different. Height is pitch, so the kick sits at the bottom of
+every lane and the hats at the top, here and in every roll further down the page. Each rectangle
+is one event of the pattern.
 
 <!-- BEGIN GENERATED: PatMiniNotation.markdownSection -->
 ### Steps, and the space between them
@@ -613,6 +603,8 @@ Tidal meaning.
 
 ## Rhythm transforms
 
+Each lane applies one transform to the same four-step source:
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/rhythm.png" wait="2" capture="box" open-outputs="true" name="pat-doc-rhythm"}
 :::static
 // pat("a b c d") and seven transforms over four cycles, so the per-cycle ones are visible.
@@ -989,12 +981,9 @@ crosses bar lines plays correctly without the consumer knowing anything about cy
 
 ## Where to go next
 
-- **The full operator surface, and the design decisions behind it** —
-  `dev_docs/PATTERN_LANGUAGE.md` in the repository, including the whole/part model and the
-  contract sweep.
-- **Every roll and clip on this page, regenerated** — the eight full-width piano rolls, the
-  twenty-six mini-notation cards (a roll and a clip each) and the three longer `.wav` scenes are
-  all built headlessly; `dev_docs/PAT_GALLERY.md` documents the harness.
-- **A loadable document** — the *Pattern language* starting point in the welcome screen
-  opens eight boxes covering signals, structure choice, parameters, voice leading, groove
-  and mini-notation, each with a live roll and most with audio. Edit any string and re-run.
+- The *Pattern language* starting point in the welcome screen opens the page's boxes (signals,
+  structure choice, parameters, voice leading, groove and mini-notation), each with a live roll
+  and most with audio. Edit any string and re-run.
+- [Sound](sound.md) plays patterns through samples and synths.
+- [Audio render and analysis](audio_render_analysis.md) renders a pattern to a file and
+  transcribes audio back into one.

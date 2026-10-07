@@ -350,7 +350,7 @@ fun aiChatHistoryToHtml(history: String?): String {
                 "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
                 aiChatMarkdownToHtml(turn.content) + "</div>")
         } else {
-            val badge = if (turn.role == "ai") {
+            val badge = if (turn.role == "ai" || turn.role == "summary") {
                 // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
                 val lens = turn.model == null && turn.sources.isNotEmpty()
                 val label = turn.model?.label() ?: if (lens) "Lens" else "Model not recorded"

@@ -237,7 +237,7 @@ class GeneratedCompletionDocSweepTest {
 
         /** Two declarations, because a snippet ends where the next indexed one begins. */
         val SOURCE = """
-            package fixture
+            package afield.fixture
 
             fun documentMe(a: Int): Int {
                 return a + 1

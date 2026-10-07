@@ -28,7 +28,7 @@ fun Route.installChatlogRoutes() {
         val p = call.request.queryParameters
         val document = p["document"].orEmpty()
         val chat = p["chat"].orEmpty()
-        val result = runCatching { ChatLensViewer.payload(document, chat, p["lens"]?.ifBlank { null }) }
+        val result = runCatching { ChatLensViewer.payload(document, chat, requireNotNull(p["lens"]?.ifBlank { null }) { "which lens?" }) }
         result.onSuccess { call.respondText(Json.encodeToString(JsonObject.serializer(), it), ContentType.Application.Json) }
             .onFailure { call.respondText(it.message ?: "not found", status = HttpStatusCode.NotFound) }
     }
@@ -38,7 +38,7 @@ fun Route.installChatlogRoutes() {
         val ref = p["ref"].orEmpty()
         val file = runCatching {
             require(blobName.matches(ref))
-            File(ChatLensViewer.store(p["document"])!!.blobDir(p["chat"].orEmpty()), ref).takeIf { it.isFile }
+            ChatLensViewer.store(p["document"])!!.blobFile(p["chat"].orEmpty(), ref)
         }.getOrNull()
         if (file == null) call.respond(HttpStatusCode.NotFound)
         else {

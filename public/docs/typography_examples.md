@@ -1,11 +1,8 @@
 # Typography as geometry — a string becomes contours
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[Graphics](reference/graphics.md).*
-
-A string in Field is geometry. `GlyphVector.getOutline()` hands back the font's real Bézier outlines,
-and everything after that is arithmetic, so a word can be extruded, marched, sampled, clustered or
-animated like any other value. Two files do it and they add no dependency.
+A string in Field is geometry. Field reads the font's own Bézier outlines, so a word can be
+extruded, marched, sampled, clustered or animated like any other shape. Every function used below is
+listed, with its documentation, in the [Graphics](reference/graphics.md) reference.
 
 <div class="field-data-table" markdown>
 
@@ -19,6 +16,8 @@ animated like any other value. Two files do it and they add no dependency.
 </div>
 
 ## Hello, legibility
+
+Load a face, lay out a word, and fill its outlines into an image:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/word.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="640" padding="14"}
 :::static
@@ -36,15 +35,13 @@ showImgGrid(
 
 ![The word Handgloves in white sans-serif on black, every counter open](assets/typography_examples/word.png)
 
-AWT did not draw that raster. `rasterizeText` is a scanline fill over the contours *this family*
-extracted, and it has to be: `imaging_field.kt` will not touch AWT text in-process, which is why
-`montage` burns its captions in with a 5×7 bitmap table.
+`rasterizeText` fills the word's contours itself rather than asking the system to draw text, so the
+image is exactly the geometry the rest of this page works with.
 
 ## The winding convention, and the control arm
 
-A counter (the hole in `o`, `e`, `a`, `B`) is only a hole if something says so. `isoContourFLines`
-in `contours.kt` leaves its winding arbitrary and every consumer downstream has to cope. This family
-decides instead:
+A counter (the hole in `o`, `e`, `a`, `B`) is only a hole if something says so. Field's text
+contours follow one rule:
 
 > A ring's signed area is `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space. **Outer contours are positive; holes
 > are negative.** Nesting depth, how many other rings of the same glyph contain this one, is
@@ -102,10 +99,12 @@ there is nothing for a winding rule to get wrong.
 
 The third cell is the cross-check. `EVEN_ODD` ignores direction entirely, so over correct rings it
 must produce the *identical* raster, and the worst per-pixel difference printed in its caption is
-`0.00000`. Reverse the hole rings and the two rules diverge. Both fill rules are in the API for that
-reason, not only the one this code happens to use.
+`0.00000`. Reverse the hole rings and the two rules diverge, which makes `EVEN_ODD` a quick check on
+rings you have built yourself.
 
 ## The rings themselves
+
+This box draws the outer rings and the hole rings of `aeg` separately, then together, then filled:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/rings.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="640" padding="14"}
 :::static
@@ -298,15 +297,13 @@ animate {
 
 Three handles per letter and one wave function is the whole animation. Note the fixed `window`:
 without it the frame rescales to whatever the letters are doing and no motion is legible.
-`rasterizeFLinesFramed` in `alife_animate.kt` records the same constraint.
 
 ## Extrusion, counters and all
 
-`triangulatePolygon` in `mesh_generate.kt` says outright that holes are not supported, and
-`extrudeMesh` caps with it, so neither can build a letter: a letter is a ring *system*. `toMesh`
-triangulates the caps with `FloatEarcut` and hole indices instead, and builds the walls from the
-**same flattened vertices the caps used**, so every wall meets a cap on a shared edge and the
-surface closes. `genus()` is then a meaningful question to ask about a letter.
+`toMesh` extrudes a layout into a closed solid, holes included. (The general `extrudeMesh` cannot,
+because its caps do not support holes.) The caps are triangulated with their counters punched out,
+and the walls are built from the same vertices as the caps, so every wall meets a cap on a shared
+edge and the surface closes. That makes `genus()` a meaningful question to ask about a letter.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/mesh.png" wait="4.0" capture="box" open-outputs="true" w="960" h="1140" padding="14"}
 :::static
@@ -354,17 +351,12 @@ showMesh(
 
 **Genus 1 for `o` and 0 for `l`**: a 2D count — rings nested at odd depth — agreeing with a 3D one,
 χ over the mesh's vertices, edges and faces. The extruded volume agrees with the ink area times the
-depth in the same way, a shoelace sum against the divergence theorem. Either identity breaks on a
-dropped cap triangle, a wall wound the wrong way or an unpunched counter, which is why
-`TypographyTest.extrudedGenusEqualsHoleCount` and `extrudedVolumeMatchesInkAreaTimesDepth` hold both
-over a list of letters rather than over the two in the figure.
+depth in the same way. Either identity breaks on a dropped cap triangle, a wall wound the wrong way
+or an unpunched counter, so they are a quick check on any mesh you build from text.
 
-(The fact line under the `word` panel is the *renderer's* own, computed by `showMesh` from what it
-was handed; a `showMeshGrid` sheet does not carry one, and
-[Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter) says why.)
-
-Back-face culling is on in `MeshView`, so an inside-out wall would be a *missing* wall in that render
-rather than merely odd shading. A GPU fails it the same way.
+Back faces are culled in this render, so an inside-out wall would show up as a *missing* wall rather
+than as odd shading. The line of facts under the `word` panel is computed by `showMesh` from the
+mesh it was given ([Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter)).
 
 ??? aside "`flatShaded()` and the figure's fact line"
 
@@ -461,6 +453,9 @@ agents in [Spatial Artificial Life](alife_examples.md) will happily eat a headli
 
 ## Loading a font
 
+The examples above use the logical families `SansSerif` and `Serif`, which every machine has. To
+ask for a particular font, or load one from a file:
+
 ```diffstatic {data-lang=kotlin}
 typeface("SansSerif", 64.0)                              // logical family: always resolves
 Typefaces.named("Futura", 64.0, strict = true)           // throws instead of substituting silently
@@ -468,33 +463,23 @@ Typefaces.firstAvailable("Futura", "Avenir", size = 64)  // the first one this m
 Typefaces.fromFile("/path/to/Whatever.ttf", 64.0)        // Font.createFont, not registered globally
 ```
 
-`Typefaces.available()` lists the installed families, and is held apart from the rest:
-enumerating families needs a `GraphicsEnvironment` and loading a face **by name** does not.
+`Typefaces.available()` lists the installed families.
 
-Because the figures above are rendered on whatever machine builds these docs, they are set in that
-machine's logical `SansSerif` and `Serif`. Build them somewhere else and the pictures look different
-and are equally correct. Every claim on this page is therefore about a *structural* property rather
-than a particular curve.
+`SansSerif` and `Serif` map to different real fonts on different machines, so the pictures above
+will look a little different on yours. The ring counts, genus and winding do not change.
 
-### Reading outlines in a JVM you launched yourself
+??? aside "Reading outlines in a JVM you launched yourself"
 
-A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
-`-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
-`sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
-`-XstartOnFirstThread`, which GLFW requires, that thread only services the dispatch if something is
-pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
-message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
-so you only meet this in a JVM you launched yourself.
+    A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
+    `-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
+    `sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
+    `-XstartOnFirstThread`, which GLFW requires, that thread only services the dispatch if something is
+    pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
+    message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
+    so you only meet this in a JVM you launched yourself.
 
 ## Run it yourself
 
-<div class="field-data-table" markdown>
-
-| what | how |
-|---|---|
-| every figure on this page | it *is* the docs build: `uv run --group docs python tools/build_zensical_docs.py --page typography_examples.md`. Each fence's code runs in a live Field and the image is what came out |
-| the eight boxes as a document you can edit | replay `dev_docs/agents/transcripts/typography_worked_example.yaml` with the agent backdoor (`field_run_transcript`), or open the materialised document at `public/docs/assets/agent_transcripts/typography_worked_example/` |
-| the structural assertions | `./gradlew jvmTest --tests afield.stdlib.TypographyTest` |
-| the demo, replayed through the real engine | `python3 tools/run_field_tests.py --id examples.demo-transcript.exec --port 9700` |
-
-</div>
+The page's boxes are also a document you can open and edit:
+`public/docs/assets/agent_transcripts/typography_worked_example/` in the repository, replayed from
+[`typography_worked_example.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/typography_worked_example.yaml).

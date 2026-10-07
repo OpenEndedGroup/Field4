@@ -10,7 +10,8 @@ import kotlinx.serialization.Serializable
  *
  * A transcript is markdown cut into blocks by marker lines: `<<you>>`, `<<ai>>` (whose first line may be a
  * `<<model:…>>` identity, [AiChatModelIdentity]), `<<progress>>`, `<<progress-open>>` (the live item of a
- * running turn) and `<<queued>>` (display only). Text before the first marker, or a transcript with none, is
+ * running turn), `<<queued>>` (display only) and `<<summary>>`: a lens's third voice, a block that condenses
+ * several turns of both speakers at once. Text before the first marker, or a transcript with none, is
  * one `ai` block.
  */
 data class AiChatBlock(
@@ -57,7 +58,7 @@ fun splitLensMarkers(content: String): AiChatLensMarkers {
     return AiChatLensMarkers(address, sources, rest)
 }
 
-private val chatMarkers = listOf("<<you>>", "<<ai>>", "<<progress>>", "<<progress-open>>", "<<queued>>")
+private val chatMarkers = listOf("<<you>>", "<<ai>>", "<<summary>>", "<<progress>>", "<<progress-open>>", "<<queued>>")
 
 fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
     val text = (history ?: "").replace("\r\n", "\n")

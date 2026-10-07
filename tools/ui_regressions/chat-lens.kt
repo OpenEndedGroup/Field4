@@ -4,7 +4,8 @@ import java.nio.file.Files
 import java.security.MessageDigest
 
 // A fixture chat archive in a temp folder: one document with a two-turn chat (a round of tool calls,
-// a tool picture), and a two-block lens over it. Nothing is written into the test document itself.
+// a tool picture), a two-block lens over it, and a one-block summary lens over that lens. Nothing is
+// written into the test document itself.
 val root = Files.createTempDirectory("chat-lens-fixture").toFile()
 val doc = File(root, "fixture-house").apply { mkdirs() }
 val png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
@@ -36,5 +37,10 @@ File(lenses, "fixture-house/fixture.md").writeText(
     "<<you>>\n<<source:t-a.b0>>\nPlan a small house.\n" +
     "<<ai>>\n<<source:t-a.b3..t-a.b6>>\nDrew the rooms and looked at them.\n![the plan](ai4img:$sha.png)\n")
 File(lenses, "fixture-house/fixture.json").writeText("""{"chat":"fixture-house","name":"fixture","brief":"a fixture lens","model":"fixture-model","stats":{"compression":"2.0"}}""")
-showChatLens("fixture-house", "fixture", height = 640)
+// A lens over the lens: one summary block condensing both of its blocks. The viewer shows the chain.
+File(lenses, "fixture-house#fixture").mkdirs()
+File(lenses, "fixture-house#fixture/overview.md").writeText(
+    "<<summary>>\n<<source:lens:fixture.b0..lens:fixture.b1>>\nAsked for a plan; the rooms were drawn and checked.\n")
+File(lenses, "fixture-house#fixture/overview.json").writeText("""{"chat":"fixture-house#fixture","name":"overview","brief":"one line","model":"fixture-model"}""")
+showChatLens("fixture-house#fixture", "overview", height = 640)
 println("chat lens fixture shown")

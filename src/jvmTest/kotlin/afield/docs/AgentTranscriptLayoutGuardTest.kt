@@ -152,6 +152,71 @@ class AgentTranscriptLayoutGuardTest {
         assertTrue(result.problems.any { "no demo corpus at" in it }, report(result))
     }
 
+    @Test
+    fun aDemoTranscriptThatAgreesWithItsDocumentPasses() {
+        val repo = fixture(
+            transcript = transcript("compact", 40.0, 40.0, 340.0, 100.0),
+            demo = demoDocument(demoBox("shown", 305.3, 86.0)),
+            demoTranscript = demoTranscript("shown", 40.0, 40.0, 305.3, 86.0),
+        )
+
+        val result = AgentTranscriptLayoutGuard.audit(repo)
+
+        assertEquals(emptyList(), result.problems, report(result))
+        assertEquals(1, result.demoTranscripts)
+        assertEquals(3, result.frames, "one corpus create, the demo box, and the demo transcript's create")
+    }
+
+    /**
+     * The drift this check exists for: the document was compacted and its transcript kept the roomy
+     * authoring frame, so replaying the transcript would undo the compaction.
+     */
+    @Test
+    fun aDemoTranscriptThatWouldOverwriteItsDocumentFails() {
+        val repo = fixture(
+            transcript = transcript("compact", 40.0, 40.0, 340.0, 100.0),
+            demo = demoDocument(demoBox("shown", 305.3, 86.0)),
+            demoTranscript = demoTranscript("shown", 40.0, 40.0, 700.0, 470.0),
+        )
+
+        val result = AgentTranscriptLayoutGuard.audit(repo)
+
+        assertTrue(
+            result.problems.any { "example_demo/build.yaml#shown" in it && "does not match" in it },
+            report(result),
+        )
+    }
+
+    @Test
+    fun aDemoTranscriptCreatingABoxTheDocumentLacksFails() {
+        val repo = fixture(
+            transcript = transcript("compact", 40.0, 40.0, 340.0, 100.0),
+            demo = demoDocument(demoBox("shown", 305.3, 86.0)),
+            demoTranscript = demoTranscript("stray", 40.0, 40.0, 305.3, 86.0),
+        )
+
+        val result = AgentTranscriptLayoutGuard.audit(repo)
+
+        assertTrue(
+            result.problems.any { "example_demo/build.yaml#stray" in it && "does not carry" in it },
+            report(result),
+        )
+    }
+
+    /** An agreeing large frame is the document's frame, so the document's one exception covers both. */
+    @Test
+    fun anAgreeingLargeDemoTranscriptFrameNeedsNoSecondException() {
+        val repo = fixture(
+            transcript = transcript("compact", 40.0, 40.0, 340.0, 100.0),
+            exceptions = "example_demo/metadata.edn#wide_panel: Saved demo document; the box holds " +
+                "the eight-term table it prints, which is 80 columns wide.",
+            demo = demoDocument(demoBox("wide_panel", 1180.0, 900.0)),
+            demoTranscript = demoTranscript("wide_panel", 40.0, 40.0, 1180.0, 900.0),
+        )
+
+        assertEquals(emptyList(), AgentTranscriptLayoutGuard.audit(repo).problems)
+    }
+
     /**
      * What the audit actually saw, for a message that would otherwise be the empty string.
      *
@@ -161,10 +226,16 @@ class AgentTranscriptLayoutGuardTest {
      */
     private fun report(result: AgentTranscriptLayoutGuard.AuditResult): String =
         "no problem matched. Population: ${result.transcripts} transcript(s), ${result.demos} demo " +
-            "document(s), ${result.frames} frame(s), ${result.largeFrames} large. Problems:\n" +
+            "document(s), ${result.demoTranscripts} demo transcript(s), ${result.frames} frame(s), " +
+            "${result.largeFrames} large. Problems:\n" +
             result.problems.joinToString("\n").ifBlank { "  (none)" }
 
-    private fun fixture(transcript: String, exceptions: String = "", demo: String? = null): File {
+    private fun fixture(
+        transcript: String,
+        exceptions: String = "",
+        demo: String? = null,
+        demoTranscript: String? = null,
+    ): File {
         val repo = Files.createTempDirectory("transcript-layout-guard").toFile()
         val corpus = File(repo, "dev_docs/agents/transcripts").also { it.mkdirs() }
         File(corpus, "example.yaml").writeText(transcript + "\n")
@@ -172,6 +243,10 @@ class AgentTranscriptLayoutGuardTest {
         if (demo != null) {
             File(demos, "example_demo").also { it.mkdirs() }
                 .let { File(it, "metadata.edn").writeText(demo + "\n") }
+        }
+        if (demoTranscript != null) {
+            File(demos, "example_demo").also { it.mkdirs() }
+                .let { File(it, "build.yaml").writeText(demoTranscript + "\n") }
         }
         File(repo, "dev_docs/agents/transcript_layout_exceptions.yaml").writeText(
             "version: 1\nlargeFrames:\n" +
@@ -200,6 +275,15 @@ class AgentTranscriptLayoutGuardTest {
         val body = boxes.joinToString(" ") { (id, props) -> """{"id" "$id" "properties" {$props}}""" }
         return """{"version" 2 "boxes" [$body {"id" "root" "properties" {"name" "root"}}]}"""
     }
+
+    private fun demoTranscript(box: String, x: Double, y: Double, width: Double, height: Double): String = """
+        name: example_demo
+        operations:
+          - create:
+              box: $box
+              name: $box
+              frame: { x: $x, y: $y, w: $width, h: $height }
+    """.trimIndent()
 
     private fun demoBox(id: String, width: Double, height: Double): Pair<String, String> =
         id to """"name" "$id" "frame" #afield/rect [40.0 40.0 $width $height]"""

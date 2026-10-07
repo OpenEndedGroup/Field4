@@ -75,6 +75,11 @@ def ledger_line(rel: str) -> str:
 CARRIER_PAGES = {
     "public/docs/afield_four_graphics.md",
     "public/docs/agent_transcripts.md",
+    # Added 2026-10-07 (nightly CI): six pages gained starting-point links between 2026-10-04
+    # and 10-06 (800c6f340, 71f8c9b19, 6b2ad8e66, ad0e0671b, 40f6f6fa5, 302bb21c3) and left this
+    # ledger behind. Shape checked on each: `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`,
+    # no leading slash, and every target metadata.edn exists.
+    "public/docs/ai4_live_iframe.md",
     "public/docs/aperture_playground.md",
     "public/docs/direct_lighting.md",
     # Added 2026-09-29: the drawing page links its starting point. Shape checked:
@@ -91,12 +96,16 @@ CARRIER_PAGES = {
     "public/docs/gpu_state.md",
     # Added 2026-09-30: the Lua page links its starting point. Shape checked:
     # `offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn`, no leading slash.
+    "public/docs/keyframe_autosweep.md",
+    "public/docs/keyframe_editor.md",
     "public/docs/lua.md",
+    "public/docs/mesh_examples.md",
     "public/docs/nano_examples.md",
     # Added 2026-10-03: both new pages link their starting points. Shape checked:
     # `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`, no leading slash.
     "public/docs/open_dlss_nr.md",
     "public/docs/openxr_eye_intersection.md",
+    "public/docs/particle_video.md",
     "public/docs/profiling_timeline.md",
     # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
     # `offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn`, no leading slash.
@@ -109,6 +118,7 @@ CARRIER_PAGES = {
     "public/docs/solid_notation.md",
     "public/docs/sound_paths.md",
     "public/docs/stacksl_examples.md",
+    "public/docs/stipple_transport.md",
     "public/docs/streaming_diffusion.md",
     "public/docs/three_output.md",
     "public/docs/vision_geometry.md",

@@ -733,7 +733,8 @@ object KotlinSourcePartition {
             var depth = open.second
             var line = index + 1
             // A bound, so a line that never balances cannot swallow the rest of the file while looking
-            // like one declaration. No annotation in the repository wraps over more than nine lines.
+            // like one declaration. The longest wrapped annotation in the repository closes 13 lines past
+            // its opener (RunToolProgramRequest's @JsonClassDescription, since 8f8e3c23b).
             val last = minOf(hi, index + 1 + MAX_ANNOTATION_WRAP)
             while (line < last) {
                 val text = masked.code[line]
@@ -1031,7 +1032,7 @@ object KotlinSourcePartition {
     }
 
     /** How many lines past its opener a wrapped annotation may close on. See [Builder.multiLineAnnotationEnd]. */
-    private const val MAX_ANNOTATION_WRAP = 12
+    private const val MAX_ANNOTATION_WRAP = 24
 
     /**
      * How many annotation/modifier-only lines [Builder.continuesPastPrefixRun] will look past.
