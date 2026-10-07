@@ -851,6 +851,9 @@ pre code {
     --ai-chat-ai-rule: var(--field-accent-muted);
     --ai-chat-you-fg: color-mix(in srgb, rgb(var(--field-warning-rgb)) 70%, rgb(var(--field-white-rgb)));
     --ai-chat-you-rule: rgba(var(--field-warning-rgb), 0.4);
+    /* A lens's third voice: a summary of several turns of both speakers. */
+    --ai-chat-summary-fg: var(--field-fg-muted);
+    --ai-chat-summary-rule: var(--field-border-medium);
     background: var(--field-surface);
     display: flex;
     flex-direction: column;
@@ -1114,6 +1117,149 @@ pre code {
     margin-left: 2px;
 }
 
+/* The lens viewer (chatLens.js): a lens beside the chat it summarizes, in the chat's own type and
+   colours, with a band from each lens block to the stretch it stands for. The root also carries
+   .ai-chat-window, which supplies the shell and the --ai-chat-* colours. */
+.chat-lens {
+    border-radius: 8px;
+    font-family: var(--field-font);
+}
+
+.chat-lens-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    padding: 6px 10px 4px;
+    color: var(--ai-chat-ai-fg);
+    font-size: 11px;
+}
+
+.chat-lens-title {
+    color: var(--field-fg-strong);
+    font-size: 13px;
+}
+
+.chat-lens-meta {
+    opacity: 0.7;
+}
+
+.chat-lens-tools {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+}
+
+.chat-lens-follow {
+    opacity: 0.8;
+    cursor: pointer;
+}
+
+.chat-lens-save {
+    font: inherit;
+    font-size: 10px;
+    padding: 0 6px;
+    border: 1px solid var(--field-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ai-chat-ai-fg);
+    cursor: pointer;
+}
+
+/* One label per column: which level of the chain it is, and what wrote it. */
+.chat-lens-labels {
+    display: grid;
+    padding: 0 6px 4px;
+    color: var(--ai-chat-ai-fg);
+    font-size: 10px;
+    opacity: 0.75;
+    border-bottom: 1px solid var(--field-border);
+}
+
+.chat-lens-col-name {
+    color: var(--field-fg-strong);
+}
+
+.chat-lens-brief {
+    flex-basis: 100%;
+    font-style: italic;
+    opacity: 0.65;
+}
+
+.chat-lens-body {
+    flex: 1 1 0;
+    min-height: 0;
+    display: grid;
+    /* chatLens.js sets the columns: one per level of the chain, a gutter between each pair. */
+    grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1.25fr);
+}
+
+.chat-lens-col {
+    margin: 0;
+    padding: 0 6px;
+}
+
+.chat-lens-gutter {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.chat-lens-band {
+    fill: color-mix(in srgb, var(--ai-chat-ai-fg) 16%, transparent);
+    stroke: color-mix(in srgb, var(--ai-chat-ai-fg) 45%, transparent);
+    stroke-width: 0.75;
+    transition: fill 120ms;
+}
+
+.chat-lens-band.active {
+    fill: color-mix(in srgb, var(--ai-chat-ai-fg) 24%, transparent);
+    stroke: var(--ai-chat-ai-fg);
+}
+
+/* A band takes the colour of the voice it comes from: amber from the user's words, grey from a summary. */
+.chat-lens-band.voice-you {
+    fill: color-mix(in srgb, var(--ai-chat-you-fg) 16%, transparent);
+    stroke: color-mix(in srgb, var(--ai-chat-you-fg) 45%, transparent);
+}
+
+.chat-lens-band.voice-you.active {
+    fill: color-mix(in srgb, var(--ai-chat-you-fg) 26%, transparent);
+    stroke: var(--ai-chat-you-fg);
+}
+
+.chat-lens-band.voice-summary {
+    fill: color-mix(in srgb, var(--ai-chat-summary-fg) 14%, transparent);
+    stroke: color-mix(in srgb, var(--ai-chat-summary-fg) 45%, transparent);
+}
+
+.chat-lens-band.voice-summary.active {
+    fill: color-mix(in srgb, var(--ai-chat-summary-fg) 26%, transparent);
+    stroke: var(--ai-chat-summary-fg);
+}
+
+.chat-lens-lens [data-ai-sources] {
+    cursor: pointer;
+}
+
+.chat-lens .chat-lens-active {
+    outline: 1px solid color-mix(in srgb, var(--ai-chat-ai-fg) 55%, transparent);
+    outline-offset: 1px;
+    border-radius: 4px;
+}
+
+/* What the lens leaves out reads dimmer, so the chat column shows the filter as well as the chat. */
+.chat-lens-middle .chat-lens-uncited,
+.chat-lens-source .chat-lens-uncited {
+    opacity: 0.38;
+}
+
+.chat-lens-error {
+    padding: 12px;
+    color: #e9a2a2;
+}
+
 .ai-chat-turn.ai {
     align-self: flex-start;
     text-align: left;
@@ -1129,6 +1275,18 @@ pre code {
     border-right: 2px solid var(--ai-chat-you-rule, var(--field-border));
     color: var(--ai-chat-you-fg, var(--field-fg));
     font-style: italic;
+}
+
+/* A summary speaks for both: grey, with both speakers' rules. */
+.ai-chat-turn.summary {
+    border-left: 2px solid var(--ai-chat-summary-rule, var(--field-border));
+    border-right: 2px solid var(--ai-chat-summary-rule, var(--field-border));
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
+}
+
+.ai-chat-turn.summary .ai-chat-markdown {
+    text-align: left;
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
 }
 
 /* The conversation itself reads larger than the chat's chrome (progress, status, actions). */
