@@ -1,12 +1,54 @@
 package afield.stdlib.loris
 
+import afield.four.audio.WavFloatArrayWriter
 import java.nio.file.Files
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
 import kotlin.math.*
 import kotlin.test.*
 
 class LorisTest {
     private fun point(t: Double, f: Double = 440.0) = LorisBreakpoint(t, f, .2, 0.0, .1)
     private fun model() = LorisModel(48000, 48000, listOf(LorisPartial(73, 0, listOf(point(.1), point(.9)))))
+
+    /** Exercise the documented futures in every environment, without downloading a native worker. */
+    @Test fun asynchronousWavAnalysisAndSynthesisCompleteOrReportMissingWorker() {
+        val folder = Files.createTempDirectory("field-loris-async-test-")
+        try {
+            val rate = 48000
+            val wav = folder.resolve("source.wav")
+            WavFloatArrayWriter.writeMono16(wav.toString(),
+                FloatArray(rate) { (.2 * sin(2 * PI * 440 * it / rate)).toFloat() }, rate)
+            val client = LorisClient(folder.resolve("cache"))
+            val invalidRange = client.analyzeWavAsync(wav, startSeconds = 2.0)
+            val rangeError = assertFailsWith<ExecutionException> { invalidRange.get(60, TimeUnit.SECONDS) }
+            assertIs<IllegalArgumentException>(rangeError.cause)
+            assertTrue(rangeError.cause!!.message!!.contains("outside WAV"))
+
+            val analysis = client.analyzeWavAsync(wav, startSeconds = .1, durationSeconds = .4)
+            val synthesis = client.synthesizeAsync(model())
+            if (LorisNative.isAvailable) {
+                val analyzed = analysis.get(60, TimeUnit.SECONDS)
+                assertEquals(19200, analyzed.samples.size)
+                assertEquals(rate, analyzed.model.sampleRate)
+                assertTrue(analyzed.model.partials.isNotEmpty())
+                val synthesized = synthesis.get(60, TimeUnit.SECONDS)
+                assertEquals(rate, synthesized.samples.size)
+                assertEquals(73, synthesized.model.partials.single().id)
+                assertTrue(synthesized.samples.any { abs(it) > .05f })
+                assertTrue(client.analyzeWavAsync(wav, startSeconds = .1, durationSeconds = .4)
+                    .get(60, TimeUnit.SECONDS).provenance.cacheHit)
+                assertTrue(client.synthesizeAsync(model()).get(60, TimeUnit.SECONDS).provenance.cacheHit)
+            } else {
+                for (future in listOf(analysis, synthesis)) {
+                    val failure = assertFailsWith<ExecutionException> { future.get(60, TimeUnit.SECONDS) }
+                    assertIs<IllegalStateException>(failure.cause)
+                    assertTrue(failure.cause!!.message!!.contains("buildLorisNative"))
+                }
+                assertFalse(Files.exists(folder.resolve("cache")))
+            }
+        } finally { Files.walk(folder).use { it.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) } }
+    }
 
     @Test fun validatesNativeDataAndIndependentControls() {
         assertFailsWith<IllegalArgumentException> { LorisOptions(hopSeconds = 0.0) }
