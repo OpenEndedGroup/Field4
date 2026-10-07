@@ -5,6 +5,7 @@ package afield.stdlib
 import afield.stacksl.cpu.AdAnnealing
 import afield.stacksl.cpu.StackSLCpu
 import afield.stacksl.cpu.StackSLFit
+import afield.stacksl.cpu.StackSLFitLoss
 import afield.stacksl.cpu.StackSLWires
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -268,21 +269,31 @@ class StackSLEvolution(
      * A round of Adam on [program]'s numeric literals, toward the current stage's target, then
      * scored under the search's own metric and offered to the population as [origin].
      *
-     * The descent's loss is the mean squared error of the clamped render (the only loss with an
-     * exact gradient here: LPIPS is a forward-only network), with `step`-family annealing so a
-     * `threshold` or `select` edge can move. So a fit can lower its own loss and still score worse
-     * under LPIPS; the population decides. [literals] picks which literals may move by **token
-     * index** (0-based), all of them when `null`.
+     * The descent's loss follows the stage's metric: the mean squared error of the clamped render
+     * under PIXEL, and under LPIPS and LPIPS_PIXEL the mean of LPIPS (through its exported
+     * gradient, the stage's region grid averaged in) and that squared error. Not pure LPIPS under
+     * LPIPS: measured on 2026-10-07 (`StackSLLpipsFitMeasurements`), a pure-LPIPS descent never
+     * turned an inverted seed the right way round and on a `bands` seed with the wrong stripe
+     * frequency drifted from polarity +0.25 to -0.13, while the mean gained the most skill under
+     * LPIPS of the three and never ended inverted. [loss] overrides it. Always with `step`-family
+     * annealing, so a `threshold` or `select` edge can move. A fit can still
+     * lower its own loss and score worse under the search's; the population decides. [literals]
+     * picks which literals may move by **token index** (0-based), all of them when `null`.
      */
     fun fit(
         program: StackSLProgram,
         literals: List<Int>? = null,
         iterations: Int = settings.fitIterations,
         learningRate: Double = settings.fitLearningRate,
-        origin: String = "fit"
+        origin: String = "fit",
+        loss: StackSLFitLoss? = null
     ): StackSLFitOutcome = timed("fit") {
         ensureStartedQuietly()
         val dim = stage.dim
+        val descent = loss ?: when (stage.metric) {
+            StackSLMetric.PIXEL -> StackSLFitLoss.MSE
+            StackSLMetric.LPIPS, StackSLMetric.LPIPS_PIXEL -> StackSLFitLoss.LPIPS_PIXEL
+        }
         val result = runCatching {
             val wired = StackSLWires.lift(program.text, "program")
             val wires = wired.literalWires
@@ -295,7 +306,8 @@ class StackSLEvolution(
             StackSLFit.fit(
                 program.text, targetOf(dim).raster, template = StackSLCpu.stillTemplate(time), dim = dim,
                 iterations = iterations, learningRate = learningRate, indices = chosen, parallel = parallel,
-                annealing = AdAnnealing.stepOnly(iterations)
+                annealing = AdAnnealing.stepOnly(iterations), loss = descent, lpipsSide = stage.lpipsSide(),
+                lpipsGrid = if (descent != StackSLFitLoss.MSE && stage.lpipsGrid >= 2) stage.lpipsGrid else 0
             )
         }
         val fitted = result.getOrElse { e ->
@@ -303,7 +315,7 @@ class StackSLEvolution(
         }
         val before = objective.evaluate(program).fitness
         val outcome = inject(listOf(fitted.fittedProgram), origin).single()
-        notes += "gen $generation: fit ${fitted.fittedIndices.size} literal(s) of a %.3f program, mse %.4f -> %.4f, skill %s".format(
+        notes += "gen $generation: fit ${fitted.fittedIndices.size} literal(s) of a %.3f program, ${descent.label} %.4f -> %.4f, skill %s".format(
             skill(before), fitted.seedLoss, fitted.fittedLoss, outcome.skill?.let { "%.3f".format(it) } ?: outcome.problem
         )
         StackSLFitOutcome(program.text, fitted.fittedProgram, fitted.seedLoss, fitted.fittedLoss, skill(before), outcome.skill, outcome.problem)
