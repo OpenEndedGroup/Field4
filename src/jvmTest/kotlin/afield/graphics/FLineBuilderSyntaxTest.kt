@@ -1,6 +1,5 @@
-package organic
+package afield.graphics
 
-import afield.graphics.FLine
 import afield.stdlib.fline
 import afield.stdlib.lineTo
 import afield.stdlib.pointSize
