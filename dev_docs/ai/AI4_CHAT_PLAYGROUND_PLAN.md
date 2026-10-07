@@ -282,9 +282,11 @@ and keeping a lens's brief in its box rather than in the chat message.
 
 ## 12. Public page
 
-`public/docs/ai4_chat_archive.md` ("Reading Saved AI4 Chats") covers phases 1–4 for users, over an invented
-`garden-shed` fixture in `public/docs/assets/ai4_chat_archive/` (chat, hand-written `storyline` lens, and a
-`demo/` document of the page's four boxes). Capture notes: `println` output is inline, not a panel, so the
+`public/docs/ai4_chat_archive.md` ("Reading Saved AI4 Chats") covers phases 1–4 for users, over the real
+`harbour` chat in `public/docs/assets/ai4_chat_archive/chats/` (the 2026-10-05 `ai4_paint_studio` run kept in
+`field-user-dir/painting-state-browser-2026-10-05/`, slimmed: history images as `ai4img:` refs, blobs at
+640 px, no `ai4_blobs/state/`), a hand-written `storyline` lens, and a `demo/` document of the page's four boxes.
+It replaced an invented `garden-shed` fixture at the human's request. Capture notes: `println` output is inline, not a panel, so the
 fences `display(...)` a `<pre>`; the viewer fence uses `capture="window"`, and its `clip` is in CSS px at the
 runner's 0.56 window scale, so `clip="0,0,2210,2600"` is the lens channel; `trim` cannot crop the grained
 canvas background. When the lens markup or viewer changes, recapture with

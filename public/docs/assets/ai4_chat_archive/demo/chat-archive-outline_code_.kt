@@ -1,6 +1,6 @@
 import afield.chatlog.*
 import java.io.File
 
-val shed = File("public/docs/assets/ai4_chat_archive/chats/garden-shed")
-val tree = ChatArchive.tree(ChatArchive.chats(shed).single())
+val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
+val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
 display("outline", "<pre style='margin:8px'>" + ChatLogViews.outline(tree).replace("<", "&lt;") + "</pre>")
