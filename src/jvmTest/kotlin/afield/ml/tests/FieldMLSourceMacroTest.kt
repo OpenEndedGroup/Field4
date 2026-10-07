@@ -65,7 +65,7 @@ class FieldMLSourceMacroTest {
     fun theRegistryIsWhatThisTestThinksItIs() {
         val registered = FieldMLMacroLayer.registeredMacroNames()
 
-        val fromMacrosKt = setOf("moduleHere", "prop", "rootProp", "println", "sourceBlock")
+        val fromMacrosKt = setOf("moduleHere", "prop", "rootProp", "println", "sourceBlock", "interpolant")
         assertTrue(
             registered.containsAll(fromMacrosKt),
             "MacroRegistry's own init did not run: missing ${fromMacrosKt - registered}",
@@ -81,8 +81,8 @@ class FieldMLSourceMacroTest {
         )
 
         assertTrue(
-            registered.size >= 19,
-            "expected at least the 19 source macros known on 2026-08-20, found ${registered.size}: " +
+            registered.size >= 20,
+            "expected at least 20 source macros, found ${registered.size}: " +
                 registered.sorted().joinToString(", "),
         )
         assertTrue(
@@ -185,7 +185,7 @@ class FieldMLSourceMacroTest {
      * Reachable means one of two things, both verified elsewhere in this file rather than asserted
      * here: a `CALL_SHAPED` route whose method reflection can find, or a `NATIVE_FORM` whose FieldML
      * prelude name reaches the same effect. The `NEEDS_KOTLIN` set is pinned **exactly**, not floored:
-     * those four are the irreducible core of mechanism A — macros that generate Kotlin *declarations* —
+     * those five are the irreducible core of mechanism A — macros that require Kotlin source —
      * and if one of them ever moves out, that is the interesting event, not a number going up.
      */
     @Test
@@ -204,8 +204,7 @@ class FieldMLSourceMacroTest {
         }
         println(report)
 
-        // 15 of 19 = 78.9% on 2026-08-20. The floor is one macro below the measurement, which is the
-        // smallest step this number can take: 14/19 is 73.7% and fails.
+        // 15 of 20 = 75%. Losing one reachable macro drops to 14/20 and fails.
         assertTrue(
             reachable >= 15,
             "only $reachable of $total source macros are reachable, expected at least 15\n$report",
@@ -215,9 +214,9 @@ class FieldMLSourceMacroTest {
             "the reachable fraction fell below 75%\n$report",
         )
         assertEquals(
-            setOf("sourceBlock", "jsonParser", "graphLens", "ai"),
+            setOf("sourceBlock", "interpolant", "jsonParser", "graphLens", "ai"),
             byReach[FieldMLMacroLayer.Reach.NEEDS_KOTLIN].orEmpty().map { it.macro }.toSet(),
-            "the macros that need a Kotlin compiler are the ones that generate Kotlin declarations, " +
+            "the macros that need a Kotlin compiler are the ones that require Kotlin source, " +
                 "and that set is the claim\n$report",
         )
     }

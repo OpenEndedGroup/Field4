@@ -299,12 +299,13 @@ class AlphaBetaFilter(var alpha: Float, var beta: Float, var dt: Float = 1f) : F
  * speed, so a slow-moving hand gets smoothed hard while a fast gesture is barely delayed. The usual
  * pick for pointer, touch or tracker input, where lag is more objectionable than jitter.
  *
- * **It reads the wall clock.** Every call takes `System.currentTimeMillis()` and derives `dt` from
- * the gap since the previous call, floored at 1 ms, which makes this the one filter here that is
- * not deterministic. Pushing a stored array through it in a tight loop yields `dt = 1 ms` and so far
- * heavier smoothing than the same data arriving at, say, 120 Hz. The cutoffs are in Hz, so they only
- * mean what you think when the samples really do arrive in real time. The first sample is passed
- * through to seed the state.
+ * The cutoffs are in Hz, so the filter needs the time between samples. Give it [sampleRate] when
+ * you know the rate — stored or synthesised data pushed through in a loop — and every sample is
+ * taken to be `1 / sampleRate` seconds after the last, so the output is deterministic. Leave it
+ * `null` for live input and each call reads `System.currentTimeMillis()` instead, deriving `dt` from
+ * the gap since the previous call, floored at 1 ms; a tight loop without [sampleRate] therefore sees
+ * `dt = 1 ms` and smooths far harder than the cutoffs suggest. The first sample is passed through
+ * to seed the state.
  */
 class OneEuroFilter(
     /** Cutoff (Hz) used when the signal is standing still — lower is smoother and laggier. */
@@ -318,7 +319,12 @@ class OneEuroFilter(
      * Cutoff (Hz) of the low-pass applied to the speed estimate itself. Raise it if the adaptation
      * feels sluggish, lower it if noise in the speed makes the cutoff jitter.
      */
-    var dCutoff: Float = 1.0f
+    var dCutoff: Float = 1.0f,
+    /**
+     * The rate in Hz the samples were taken at. When set, `dt` is `1 / sampleRate` on every call;
+     * when `null`, `dt` is measured from the wall clock between calls.
+     */
+    var sampleRate: Float? = null
 ) : FloatFilter {
     private var xPrev: Float? = null
     private var dxPrev: Float = 0f
@@ -330,11 +336,12 @@ class OneEuroFilter(
     }
 
     /**
-     * The filtered sample. Reads the clock, so the amount of smoothing depends on *when* you call
-     * this, not only on what you pass in.
+     * The filtered sample. Without [sampleRate] this reads the clock, so the amount of smoothing
+     * depends on *when* you call it, not only on what you pass in.
      */
     override fun invoke(value: Float): Float {
-        val t = System.currentTimeMillis()
+        val rate = sampleRate
+        val t = if (rate == null) System.currentTimeMillis() else 0L
         if (xPrev == null) {
             xPrev = value
             dxPrev = 0f
@@ -342,7 +349,7 @@ class OneEuroFilter(
             return value
         }
 
-        val dt = ((t - tPrev) / 1000.0f).coerceAtLeast(0.001f)
+        val dt = if (rate != null) 1.0f / rate else ((t - tPrev) / 1000.0f).coerceAtLeast(0.001f)
         tPrev = t
 
         val dx = (value - xPrev!!) / dt

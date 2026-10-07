@@ -1,0 +1,34 @@
+name: keyframe_custom_types
+description: >
+  The custom key types example from `public/docs/keyframe_editor.md` as one executed box, for the
+  video of its second key being dragged round a circle while the shapes either side follow.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: kf_custom_video
+      name: custom types
+      frame: { x: 40.0, y: 30.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          interpolant("overshoot") { lerp(1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
+          interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
+          // Deterministic chaos: the logistic map, seeded by where we are, and pinned to both keys.
+          interpolant("chaos") {
+              var x = 0.1 + 0.8 * u
+              repeat(30) { x = 3.97 * x * (1 - x) }
+              lerp(u) + 0.25 * sin(PI * u) * (x - 0.5)
+          }
+
+          val custom = keyframes(name = "custom", keys = listOf(
+              Keyframe(0.0, 0.1, "overshoot"),
+              Keyframe(1.5, 0.8, "wobble"),
+              Keyframe(3.0, 0.3, "chaos"),
+              Keyframe(4.5, 0.6, "linear"),
+          ))
+  - execute: { box: kf_custom_video, property: code }
+  # Before the recording starts: time for a cold compile and the editor to receive its keys.
+  - wait:
+      millis: 12000

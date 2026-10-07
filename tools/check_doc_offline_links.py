@@ -67,9 +67,19 @@ OFFLINE_REF = re.compile(r"""(?P<lead>[^\s"'()]*?)offline\.html\?file=(?P<file>[
 # Set equality both ways, so a new carrier page fails as loudly as a removed one: adding a
 # transcript to a page already on this list is routine and does not touch it, but a *new* page
 # growing an offline link is exactly the moment to check the link's shape.
+def ledger_line(rel: str) -> str:
+    """The exact CARRIER_PAGES entry a newly measured carrier page needs."""
+    return f'"{rel}",'
+
+
 CARRIER_PAGES = {
     "public/docs/afield_four_graphics.md",
     "public/docs/agent_transcripts.md",
+    # Added 2026-10-07 (nightly CI): six pages gained starting-point links between 2026-10-04
+    # and 10-06 (800c6f340, 71f8c9b19, 6b2ad8e66, ad0e0671b, 40f6f6fa5, 302bb21c3) and left this
+    # ledger behind. Shape checked on each: `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`,
+    # no leading slash, and every target metadata.edn exists.
+    "public/docs/ai4_live_iframe.md",
     "public/docs/aperture_playground.md",
     "public/docs/direct_lighting.md",
     # Added 2026-09-29: the drawing page links its starting point. Shape checked:
@@ -86,20 +96,29 @@ CARRIER_PAGES = {
     "public/docs/gpu_state.md",
     # Added 2026-09-30: the Lua page links its starting point. Shape checked:
     # `offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn`, no leading slash.
+    "public/docs/keyframe_autosweep.md",
+    "public/docs/keyframe_editor.md",
     "public/docs/lua.md",
+    "public/docs/mesh_examples.md",
     "public/docs/nano_examples.md",
     # Added 2026-10-03: both new pages link their starting points. Shape checked:
     # `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`, no leading slash.
     "public/docs/open_dlss_nr.md",
     "public/docs/openxr_eye_intersection.md",
+    "public/docs/particle_video.md",
     "public/docs/profiling_timeline.md",
     # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
     # `offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn`, no leading slash.
     "public/docs/pure_data.md",
+    # Added 2026-10-04: `489bd01b5` landed the Python CV page with a starting-point link and left
+    # this ledger behind (red on `main`). Shape checked:
+    # `offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn`, no leading slash.
+    "public/docs/python_cv.md",
     "public/docs/rectsl_examples.md",
     "public/docs/solid_notation.md",
     "public/docs/sound_paths.md",
     "public/docs/stacksl_examples.md",
+    "public/docs/stipple_transport.md",
     "public/docs/streaming_diffusion.md",
     "public/docs/three_output.md",
     "public/docs/vision_geometry.md",
@@ -258,7 +277,8 @@ def main() -> int:
         for extra in sorted(seen - CARRIER_PAGES):
             ledger_problems.append(
                 f"{extra}: carries {per_page[extra]} `offline.html?file=` link(s) and is not in "
-                f"CARRIER_PAGES. Check the shape, then add it."
+                f"CARRIER_PAGES. Check the shape, then add this line to CARRIER_PAGES in "
+                f"tools/check_doc_offline_links.py (alphabetical):\n      {ledger_line(extra)}"
             )
 
     if failures:

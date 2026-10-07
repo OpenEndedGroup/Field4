@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "fences": [
+    {
+      "language": "mermaid",
+      "name": "Mermaid",
+      "purpose": "Flowcharts, sequence diagrams, and other relationship or process diagrams. Its layout does not represent measured geometry.",
+      "syntaxGuidance": "Start with a Mermaid diagram declaration such as `flowchart LR` or `sequenceDiagram`, then define its nodes and links. Ground labels and connections in what you know.",
+      "example": "flowchart LR\n  A[Hall] --> B[Living room]",
+      "modulePath": "/mermaid/field-mermaid.js",
+      "exportName": "renderMermaid"
+    }
+  ]
+}

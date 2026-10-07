@@ -5,6 +5,9 @@ pluck.setChannel("cutoff", 900)                 // chnget "cutoff" reads it next
 pluck.setStringChannel("voice", "from Kotlin")  // an S channel; Reverb outvalues it back
 println("level now: ${"%.4f".format(pluck.channel("level"))}")
 
+// Every channel the orchestra allocated, with the range chn_k declared for it.
+pluck.channels().forEach { c -> println("${c.name}: ${c.hints?.let { "${it.default} in ${it.min}..${it.max}" } ?: "no hints"}") }
+
 // Score events with p-fields from Kotlin values: a rising arpeggio, half a second apart.
 listOf(57, 60, 64, 69).forEachIndexed { k, note ->
     pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12")

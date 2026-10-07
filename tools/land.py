@@ -6,6 +6,7 @@
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
+    uv run python tools/land.py huh [--context]                   # ask claude -p what the queue is doing
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
 Why: every agent used to land itself. Each merged `main`, ran ~45 minutes of guards, found `main` had
@@ -141,14 +142,19 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     if _ok(here, "merge-base", "--is-ancestor", sha, "refs/heads/main"):
         print(f"land: {branch} ({sha[:9]}) is already on main; nothing to land")
         return 0
+    replaced: dict | None = None
     for item in _items(queue, PENDING):
         # An item the lander has started stays: removing its file mid-landing hid it from status
         # while it landed anyway. The new commit queues behind it instead.
         if item["branch"] == branch and not item.get("started"):
-            # A re-enqueue replaces the older request: the newest commit is the one meant.
+            # A re-enqueue replaces the older request: the newest commit is the one meant. It keeps
+            # the older one's place in line, and says whose it was, since two agents can enqueue
+            # the same branch and one would otherwise silently undo the other.
             (queue / PENDING / f"{item['id']}.json").unlink(missing_ok=True)
-            print(f"land: replacing queued {item['id']} ({item['sha'][:9]})")
+            replaced = item
+            print(f"land: replacing queued {item['id']} ({item['sha'][:9]}, enqueued by {item['by']}), keeping its place")
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    replaced_seq = replaced.get("seq") if replaced else None
     item = {
         "id": f"{stamp}-{re.sub(r'[^A-Za-z0-9._-]+', '-', branch)}",
         "branch": branch,
@@ -160,7 +166,7 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
         "enqueued": _now(),
         # Queue order. Ids only resolve to the second, so sorting by them put two branches enqueued in
         # the same second in alphabetical order instead of the order they arrived.
-        "seq": time.time_ns(),
+        "seq": replaced_seq or time.time_ns(),
     }
     # Ids are per second; a second enqueue of the same branch within it must not overwrite the first.
     base, n = item["id"], 1
@@ -350,6 +356,125 @@ def _lander_line(queue: Path) -> str:
     return f"lander: running, pid {info.get('pid')}, up {_span(_since(info.get('started')))} ({mode}), worktree {info.get('worktree')}"
 
 
+# ---------------------------------------------------------------------------- huh?
+
+
+def _huh_context(queue: Path) -> str:
+    """Everything a person would look at when the queue seems stuck, as one plain-text bundle."""
+    here = Path.cwd()
+    primary = _primary(here)
+    out: list[str] = []
+
+    def section(title: str, body: str) -> None:
+        out.append(f"===== {title} =====\n{body.rstrip()}\n")
+
+    def run(*cmd: str, cwd: Path = primary) -> str:
+        try:
+            r = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=20)
+            return r.stdout
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return f"({' '.join(cmd)} failed: {e})"
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        cmd_status(argparse.Namespace(id=None, recent=8, plain=True, watch=False))
+    section("land.py status --plain", buf.getvalue())
+    try:
+        section("lander.json", (queue / "lander.json").read_text())
+    except OSError:
+        section("lander.json", "(missing)")
+    active = [i for i in _items(queue, PENDING) if i.get("started")]
+    if active and active[0].get("log"):
+        try:
+            lines = Path(active[0]["log"]).read_text(errors="replace").splitlines()
+            section(f"tail of the current round's log ({len(lines)} lines total)", "\n".join(lines[-150:]))
+            log_age = time.time() - Path(active[0]["log"]).stat().st_mtime
+            section("current log last written", f"{int(log_age)} s ago")
+        except OSError:
+            pass
+    for item in _items(queue, BOUNCED)[-3:]:
+        if item.get("log"):
+            failures = Path(item["log"]).with_suffix(".failures.txt")
+            if failures.exists():
+                section(f"failures of bounced {item['id']}", failures.read_text()[:3000])
+    section("load", run("uptime"))
+    section("lander, gradle and kotlin processes",
+            "\n".join(l for l in run("ps", "-eo", "pid,ppid,etime,pcpu,rss,command").splitlines()
+                      if any(k in l for k in ("land.py", "merge_regen", "GradleDaemon", "GradleWrapperMain", "KotlinCompileDaemon", "gradlew")))[:6000])
+    holder = _main_holder(primary)
+    if holder:
+        section(f"uncommitted files in main's checkout ({holder})", run("git", "status", "--porcelain", cwd=holder)[:3000])
+    section("main", run("git", "log", "-5", "--format=%h %cr %s", "refs/heads/main"))
+    section("verification locks", run("sh", "-c", "ls -la .field-backdoor/verification.lock* 2>/dev/null; "
+                                       f"ls -la {_lander_worktree_path(primary)}/.field-backdoor/verification.lock* 2>/dev/null"))
+    return "\n".join(out)
+
+
+def _lander_worktree_path(primary: Path) -> Path:
+    try:
+        return Path(json.loads((_queue_dir(primary) / "lander.json").read_text())["worktree"])
+    except (OSError, KeyError, json.JSONDecodeError):
+        return primary.parent / f"{primary.name}-worktrees" / "lander"
+
+
+HUH_PROMPT = """You are looking at Field4's landing queue (tools/land.py): agents enqueue branches, and one lander
+merges them in batches, regenerates generated files, runs one guard (Gradle), and fast-forwards main.
+The person asking pressed "huh?" because something looks wrong or slow. From the context below:
+1. Say in one or two sentences what the queue is doing right now.
+2. Say whether it is stuck or merely slow, and the evidence (log age, CPU of the Gradle processes,
+   load, a lock, a blocked item, a dead lander).
+3. Give the one or two concrete things to do next, as commands where possible. Do not suggest
+   merging into main by hand: only the lander may move main.
+Be brief and specific. Plain text, no markdown headers.
+
+"""
+
+
+def _ask_huh(queue: Path) -> str:
+    claude = shutil.which("claude")
+    if not claude:
+        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + _huh_context(queue)
+    context = _huh_context(queue)
+    try:
+        result = subprocess.run([claude, "-p", "--output-format", "text"], input=HUH_PROMPT + context,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=240)
+        return result.stdout.strip() or "(claude returned nothing)"
+    except subprocess.TimeoutExpired:
+        return "claude -p took more than 4 minutes; giving up."
+
+
+def cmd_huh(args: argparse.Namespace) -> int:
+    queue = _queue_dir(Path.cwd())
+    if args.context:
+        print(_huh_context(queue))
+        return 0
+    print(_ask_huh(queue))
+    return 0
+
+
+def _pager(text: str, stdin: int) -> None:
+    """A small pager on the alternate screen: j/k or arrows to scroll, space for a page, q back."""
+    import textwrap
+    cols, rows = shutil.get_terminal_size((100, 24))
+    lines = [w for para in text.splitlines() for w in (textwrap.wrap(para, cols - 2) or [""])]
+    top = 0
+    while True:
+        view = lines[top: top + rows - 2]
+        sys.stdout.write("\033[H" + "\033[K\n".join(view) + "\033[K\n\033[J")
+        sys.stdout.write(_Style().dim(f"huh? \u00b7 {top + 1}-{min(top + rows - 2, len(lines))} of {len(lines)} "
+                                      "\u00b7 j/k scroll \u00b7 space page \u00b7 q back"))
+        sys.stdout.flush()
+        key = os.read(stdin, 3)
+        if key in (b"q", b"Q", b"\x1b", b"h"):
+            return
+        if key in (b"j", b"\x1b[B"):
+            top = min(top + 1, max(len(lines) - (rows - 2), 0))
+        elif key in (b"k", b"\x1b[A"):
+            top = max(top - 1, 0)
+        elif key == b" ":
+            top = min(top + rows - 3, max(len(lines) - (rows - 2), 0))
+
+
 # ---------------------------------------------------------------------------- terminal rendering
 #
 # Only when stdout is a terminal: agents and pipes get the plain text above, which stays stable.
@@ -367,6 +492,7 @@ class _Style:
             "branch": "\ue0a0" if nerd else "", "user": "\uf007" if nerd else "",
             "gradle": "\ue660" if nerd else "", "note": "\uf249" if nerd else "#",
             "log": "\uf15c" if nerd else "", "main": "\uf126" if nerd else "",
+            "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
         }
 
     def c(self, code: str, text: str) -> str:
@@ -465,7 +591,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
     print()
 
     finished = sorted(
-        [(LANDED, i) for i in _items(queue, LANDED)] + [(BOUNCED, i) for i in _items(queue, BOUNCED)],
+        [(LANDED, i) for i in _items(queue, LANDED)] + [(BOUNCED, i) for i in _items(queue, BOUNCED)]
+        + [("push", e) for e in _events(queue, "push")],
         key=lambda pair: pair[1].get("finished", ""),
     )[-recent:]
     rule("recent")
@@ -473,7 +600,21 @@ def _pretty_status(queue: Path, recent: int) -> None:
         print(st.dim("  nothing yet"))
     for state, item in reversed(finished):
         ago = _span(_since(item.get("finished")))
+        if state == "push":
+            commits = item.get("commits", "?")
+            what = f"main {item.get('sha', '')[:9]} \u2192 origin  ({commits} commit{'s' if commits != '1' else ''})"
+            if item.get("error"):
+                print(f"  {st.red(g['push'] + ' push failed')}  {what}  {st.dim(ago + ' ago')}")
+                print(f"    {st.red(item['error'][: width - 6])}")
+            else:
+                print(f"  {st.cyan(g['push'] + ' pushed')}  {what}  {st.dim(ago + ' ago')}")
+            continue
         took = _took(item)
+        if state == LANDED and _is_pull(item):
+            origin_note = "from origin \u00b7 " + g["main"] + " " + item.get("landed_as", "")[:9]
+            print(f"  {st.cyan(g['pull'] + ' pulled')}  {who(item)}  {st.dim(origin_note)}"
+                  f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)}") if took is not None else ""))
+            continue
         if state == LANDED:
             how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
             print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
@@ -521,13 +662,20 @@ def cmd_status(args: argparse.Namespace) -> int:
                 lines = frame.getvalue().split("\n")
                 if len(lines) > rows - 2:
                     lines = lines[: rows - 3] + [_Style().dim(f"  \u2026 {len(lines) - rows + 3} more lines (make the window taller)")]
-                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 q to quit")
+                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 h huh? \u00b7 q to quit")
                 sys.stdout.write("\033[H" + "\033[K\n".join(lines) + "\033[K\n" + footer + "\033[K\033[J")
                 sys.stdout.flush()
                 if stdin is None:
                     time.sleep(2)
-                elif select.select([stdin], [], [], 2)[0] and os.read(stdin, 1) in (b"q", b"Q", b"\x1b", b"\x03"):
-                    break
+                elif select.select([stdin], [], [], 2)[0]:
+                    key = os.read(stdin, 1)
+                    if key in (b"q", b"Q", b"\x1b", b"\x03"):
+                        break
+                    if key in (b"h", b"H"):
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking claude about the queue (gathering context, then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.flush()
+                        _pager(_ask_huh(queue), stdin)
+                        sys.stdout.write("\033[2J")
         except KeyboardInterrupt:
             pass
         finally:
@@ -560,6 +708,12 @@ def cmd_status(args: argparse.Namespace) -> int:
             ahead += typical
     else:
         print("\nqueued   nothing")
+    pushes = _events(queue, "push")[-args.recent:]
+    if pushes:
+        print("\nrecent pushes (oldest first):")
+        for e in pushes:
+            line = f"push     main {e.get('sha', '')[:9]} -> origin, {e.get('commits', '?')} commit(s), {_span(_since(e.get('finished')))} ago"
+            print(line + (f"\n         FAILED: {e['error']}" if e.get("error") else ""))
     for state in (BOUNCED, LANDED):
         recent = _items(queue, state)[-args.recent:]
         if recent:
@@ -740,18 +894,156 @@ def _blocking_edits(primary: Path, item: dict) -> list[str]:
     return sorted(dirty & changed)
 
 
+# The lander's own Gradle user home. Sharing ~/.gradle with every other session's daemons made the
+# lander's build wait on their cross-process cache locks: at load 90 one round spent an hour in
+# configuration, handing the file-hash cache lock back and forth with another daemon. Its own home
+# means its own daemons and caches; seeded as an APFS copy-on-write clone (cp -c) of ~/.gradle, so
+# it starts warm and costs almost no disk. FIELD_LAND_GRADLE_HOME=shared opts out.
+WATCHDOG_MINUTES = float(os.environ.get("FIELD_LAND_WATCHDOG_MIN", "30"))
+
+
+def _lander_gradle_home() -> Path | None:
+    setting = os.environ.get("FIELD_LAND_GRADLE_HOME", "")
+    if setting == "shared":
+        return None
+    home = Path(setting) if setting else Path.home() / ".field4" / "lander-gradle-home"
+    if (home / ".seeded").exists():
+        return home
+    source = Path(os.environ.get("GRADLE_USER_HOME", Path.home() / ".gradle"))
+    home.mkdir(parents=True, exist_ok=True)
+    print(f"land: seeding the lander's Gradle home {home} from {source} (copy-on-write)", flush=True)
+    for entry in sorted(source.iterdir()) if source.is_dir() else []:
+        # Daemon state and profiling output are per-process; the rest is what makes a build warm.
+        if entry.name in ("daemon", "kotlin-profile", "build-scan-data") or (home / entry.name).exists():
+            continue
+        for cmd in (["cp", "-cR", str(entry), str(home / entry.name)],              # macOS APFS clone
+                    ["cp", "-a", "--reflink=auto", str(entry), str(home / entry.name)]):  # Linux
+            if subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                break
+    # Locks and the file-hash databases are the shared-state part: start them fresh.
+    for stale in list(home.glob("**/*.lock")) + list(home.glob("caches/*/fileHashes")):
+        if stale.is_dir():
+            shutil.rmtree(stale, ignore_errors=True)
+        else:
+            stale.unlink(missing_ok=True)
+    (home / ".seeded").write_text(f"seeded {_now()} from {source}\n")
+    return home
+
+
+# What keeps the machine awake while a build runs: macOS's `caffeinate`. The lander runs on a laptop,
+# and asleep a build makes no progress. FIELD_LAND_CAFFEINATE names another command, or "off".
+CAFFEINATE = os.environ.get("FIELD_LAND_CAFFEINATE", "caffeinate" if sys.platform == "darwin" else "off")
+
+
+def _hold_awake(pid: int) -> subprocess.Popen | None:
+    """Keeps the machine from idle sleep until [pid] exits (`caffeinate -i -w <pid>`), or None where
+    there is no such command. Closing a laptop's lid still sleeps it; see _run_watched for why that
+    no longer bounces the build."""
+    exe = shutil.which(CAFFEINATE) if CAFFEINATE and CAFFEINATE != "off" else None
+    if not exe:
+        return None
+    try:
+        return subprocess.Popen([exe, "-i", "-w", str(pid)], stdin=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        return None
+
+
+def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | None:
+    """Run [cmd] with its output in [log], holding the machine awake while it runs. None if it went
+    silent for WATCHDOG_MINUTES: a build that writes nothing for that long is wedged (the hour in
+    configuration), and waiting longer only holds up everyone behind it. Its whole process group and
+    the lander's Gradle daemons are stopped.
+
+    Silence is timed on the monotonic clock, which on macOS stops while the machine sleeps, so a
+    build that a closed lid paused is not taken for a wedged one. Timing it from the log's mtime
+    with the wall clock bounced a whole batch of seven on 2026-10-07."""
+    proc = subprocess.Popen(cmd, cwd=cwd, stdout=out, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+    awake = _hold_awake(proc.pid)
+    try:
+        return _watch(proc, cwd, env, log, out)
+    finally:
+        if awake is not None and awake.poll() is None:
+            awake.terminate()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                awake.wait(timeout=5)
+
+
+def _watch(proc: subprocess.Popen, cwd: Path, env: dict, log: Path, out) -> int | None:
+    last_write = log.stat().st_mtime
+    quiet_since = time.monotonic()
+    while True:
+        try:
+            return proc.wait(timeout=min(30.0, max(WATCHDOG_MINUTES * 60 / 4, 0.5)))
+        except subprocess.TimeoutExpired:
+            pass
+        written = log.stat().st_mtime
+        if written != last_write:
+            last_write = written
+            quiet_since = time.monotonic()
+            continue
+        silent = time.monotonic() - quiet_since
+        if silent < WATCHDOG_MINUTES * 60:
+            continue
+        out.write(f"\nland: watchdog: no output for {silent / 60:.0f} min; stopping the build\n")
+        out.flush()
+        try:
+            os.killpg(proc.pid, 15)
+            proc.wait(timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                os.killpg(proc.pid, 9)
+            except OSError:
+                pass
+        # The daemon outlives its client; stop the ones in the lander's own Gradle home.
+        if env.get("GRADLE_USER_HOME"):
+            subprocess.run([str(cwd / "gradlew"), "--stop"], cwd=cwd, env=env, stdout=out, stderr=subprocess.STDOUT)
+        return None
+
+
 def _push_main(primary: Path, sha: str, out) -> str | None:
     """Push main to origin. None on success, else why not. Never forces, never touches local main."""
     out.write(f"merge_regen: pushing main {sha[:9]} to origin\n")
     out.flush()
+    count = _git(primary, "rev-list", "--count", f"refs/remotes/origin/main..{sha}", check=False) or "?"
     result = subprocess.run(["git", "push", "origin", f"{sha}:refs/heads/main"], cwd=primary,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     out.write(result.stdout)
-    if result.returncode == 0:
-        return None
-    if "rejected" in result.stdout or "fetch first" in result.stdout or "non-fast-forward" in result.stdout:
-        return "origin/main has commits main lacks; run `uv run python tools/land.py sync --push`"
-    return " ".join(result.stdout.split())[-300:] or f"git push exited {result.returncode}"
+    why = None
+    if result.returncode != 0:
+        if "rejected" in result.stdout or "fetch first" in result.stdout or "non-fast-forward" in result.stdout:
+            why = "origin/main has commits main lacks; run `uv run python tools/land.py sync --push`"
+        else:
+            why = " ".join(result.stdout.split())[-300:] or f"git push exited {result.returncode}"
+    _record_event(_queue_dir(primary), "push", sha=sha, commits=count, error=why)
+    return why
+
+
+def _record_event(queue: Path, kind: str, **fields) -> None:
+    """Pushes (and anything else that is not a queue item) for status's `recent`, one JSON per line."""
+    with (queue / "events.jsonl").open("a") as f:
+        f.write(json.dumps({"kind": kind, "finished": _now(), **fields}) + "\n")
+
+
+def _events(queue: Path, kind: str) -> list[dict]:
+    try:
+        lines = (queue / "events.jsonl").read_text().splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("kind") == kind:
+            out.append(event)
+    return out
+
+
+def _is_pull(item: dict) -> bool:
+    """A sync item: origin's main, landed through the queue."""
+    return item["branch"].startswith("sync/origin")
 
 
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
@@ -801,6 +1093,9 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
             item.update(reason="its commit no longer exists", finished=_now())
             _move(queue, item, BOUNCED)
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    gradle_home = _lander_gradle_home()
+    if gradle_home:
+        env["GRADLE_USER_HOME"] = str(gradle_home)
 
     for _attempt in range(MAX_MAIN_RACES):
         main_sha = _git(primary, "rev-parse", "refs/heads/main")
@@ -847,11 +1142,24 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
             names = "\n".join(f"- {m['branch']} ({m['id']})" for m in members)
             out.write(f"merge_regen: one regeneration and one guard for {len(members)} branch(es)\n")
             out.flush()
-            code = subprocess.run(
+            code = _run_watched(
                 [sys.executable, str(wt / "tools/merge_regen.py"), "--regen-since", main_sha,
                  "-m", f"Regenerate generated artifacts after landing {len(members)} branch(es)\n\n{names}"],
-                cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env,
-            ).returncode
+                wt, env, log, out,
+            )
+        if code is None:
+            # Wedged, which says nothing about the branches. Retry the round once; a second
+            # wedge bounces them, so a build that always hangs cannot hold the queue forever.
+            _reset(wt, main_sha)
+            for item in members:
+                item["watchdog"] = item.get("watchdog", 0) + 1
+                if item["watchdog"] >= 2:
+                    item.update(reason=f"the landing build went silent for {WATCHDOG_MINUTES:.0f} min twice "
+                                       f"(watchdog); see the log", finished=_now())
+                    _move(queue, item, BOUNCED)
+                else:
+                    _requeue(queue, item, f"{batch_id}: watchdog stopped a build silent for {WATCHDOG_MINUTES:.0f} min; retrying")
+            return "blocked"
         if code != 0:
             failures = _collect_failures(wt, round_started, log)
             _reset(wt, main_sha)
@@ -984,6 +1292,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
     p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
+    p = sub.add_parser("huh", help="ask claude -p what is going on with the queue (what --watch's h key does)")
+    p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
+    p.set_defaults(func=cmd_huh)
     p = sub.add_parser("sync", help="fetch origin/main and land it through the queue (--push: push main after)")
     p.add_argument("--push", action="store_true", help="push main to origin once it has landed")
     p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")

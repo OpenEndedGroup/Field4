@@ -10,6 +10,7 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -201,7 +202,7 @@ class ThreeSceneTest {
         val payload = buildThreeGeometryPayload("t", listOf(line), 12, autoFrame = true, editable = false)
         val encoded = json.encodeToString(payload)
 
-        for (key in listOf("drawables", "panels", "columns", "background", "camera", "helpers")) {
+        for (key in listOf("drawables", "panels", "columns", "background", "camera", "helpers", "cameraLink", "turntable")) {
             assertFalse(
                 encoded.contains("\"$key\""),
                 "an FLine payload should not mention `$key`; the drawable layer is additive",
@@ -371,6 +372,72 @@ class ThreeSceneTest {
         assertEquals(1, payload.interactive.size, "the annotation must still be its own interactive object")
         assertTrue(payload.interactive.single().callbackId.startsWith("fline-"))
         assertNotNull(payload.inspector, "and the toolbar that measures between them must be on")
+    }
+
+    /**
+     * A display page of linked, turning views is two builder calls, and both have to reach the viewer.
+     *
+     * The viewer reads `payload.cameraLink.group` and `payload.turntable.degreesPerSecond` by those
+     * names, so the test reads the encoded JSON with the production encoder rather than the data class.
+     */
+    @Test
+    fun `linkCamera and turntable ride the payload, and only when asked`() {
+        val payload = ThreeSceneBuilder(48).apply {
+            mesh(square())
+            linkCamera(group = "houses")
+            turntable(degreesPerSecond = 9.0, resumeAfterSeconds = 4.0)
+        }.payload("t")
+        assertEquals(ThreeCameraLinkSpec(group = "houses"), payload.cameraLink)
+        assertEquals(ThreeTurntableSpec(degreesPerSecond = 9.0, resumeAfterSeconds = 4.0), payload.turntable)
+
+        val encoded = json.encodeToString(payload)
+        assertTrue(encoded.contains("\"cameraLink\":{\"group\":\"houses\"}"), encoded.takeLast(200))
+        assertTrue(
+            encoded.contains("\"turntable\":{\"degreesPerSecond\":9.0,\"resumeAfterSeconds\":4.0}"),
+            encoded.takeLast(200),
+        )
+
+        val defaults = ThreeSceneBuilder(48).apply { mesh(square()); linkCamera(); turntable() }.payload("t")
+        assertEquals("default", defaults.cameraLink!!.group, "the default group is the one the button joins")
+        assertEquals(6.0, defaults.turntable!!.degreesPerSecond)
+        assertEquals(2.0, defaults.turntable.resumeAfterSeconds)
+
+        val plain = json.encodeToString(ThreeSceneBuilder(48).apply { mesh(square()) }.payload("t"))
+        assertFalse(plain.contains("\"cameraLink\""), "a view that did not ask must open unlinked")
+        assertFalse(plain.contains("\"turntable\""), "a view that did not ask must stand still")
+    }
+
+    @Test
+    fun `presentation settings do not change the geometry revision notes are kept against`() {
+        val still = ThreeSceneBuilder(48).apply { mesh(square()) }.payload("t")
+        val turning = ThreeSceneBuilder(48).apply { mesh(square()); linkCamera(); turntable() }.payload("t")
+        assertEquals(threeReviewRevision(still), threeReviewRevision(turning))
+    }
+
+    /**
+     * The settings are checked where they are written, so a mistake names itself in the box that made
+     * it rather than as a view that silently refuses to link or turn.
+     */
+    @Test
+    fun `a contact sheet cannot link, and a turntable needs a rate`() {
+        val sheet = ThreeSceneBuilder(48).apply {
+            mesh(square(), panel = -1)
+            panel(title = "a"); panel(title = "b")
+            linkCamera()
+        }
+        assertFailsWith<IllegalArgumentException> { sheet.payload("t") }
+        // A contact sheet may still turn: every panel follows the shared orbit.
+        val turningSheet = ThreeSceneBuilder(48).apply {
+            mesh(square(), panel = -1)
+            panel(title = "a"); panel(title = "b")
+            turntable()
+        }.payload("t")
+        assertNotNull(turningSheet.turntable)
+
+        assertFailsWith<IllegalArgumentException> { ThreeSceneBuilder(48).linkCamera(" ") }
+        assertFailsWith<IllegalArgumentException> { ThreeSceneBuilder(48).turntable(0.0) }
+        assertFailsWith<IllegalArgumentException> { ThreeSceneBuilder(48).turntable(Double.NaN) }
+        assertFailsWith<IllegalArgumentException> { ThreeSceneBuilder(48).turntable(resumeAfterSeconds = -1.0) }
     }
 
     @Test

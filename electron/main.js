@@ -1423,6 +1423,91 @@ function createMainWindow() {
     return payload;
   };
 
+  // This command reaches the user's live tab. The renderer first resolves the box and output
+  // channel to one iframe and gives it a unique name; Electron resolves that name again in its
+  // frame tree. No independently launched capture page or remote debugging port is involved.
+  const onLiveOutputIframe = async (event, request) => {
+    const tab = activeTab();
+    const contents = liveContents(tab);
+    if (!contents || event.sender !== contents ||
+        event.senderFrame?.routingId !== contents.mainFrame.routingId ||
+        event.senderFrame?.processId !== contents.mainFrame.processId) {
+      throw new Error("The requesting Field tab is no longer active");
+    }
+    if (!request || typeof request.id !== "string" ||
+        request.frameName !== `field-live-iframe-${request.id}`) {
+      throw new Error("Invalid live iframe request");
+    }
+    const candidates = contents.mainFrame.framesInSubtree.filter(frame =>
+      !frame.isDestroyed() && frame !== contents.mainFrame);
+    let frames = candidates.filter(frame => frame.name === request.frameName);
+    // WebFrameMain.name can retain the navigation-time name after an iframe is renamed. Ask each
+    // child in its own context; this also works when that child is on another localhost origin.
+    if (frames.length === 0) {
+      const names = await Promise.all(candidates.map(async frame => {
+        try { return await frame.executeJavaScript("window.name"); }
+        catch (_) { return null; }
+      }));
+      frames = candidates.filter((_, index) => names[index] === request.frameName);
+    }
+    // A unique URL is useful for ordinary already-loaded frames whose page resets window.name.
+    // If two frames share it, refuse to guess which one the box/channel phrase meant.
+    if (frames.length === 0 && typeof request.frameUrl === "string") {
+      frames = candidates.filter(frame => frame.url === request.frameUrl);
+    }
+    if (frames.length !== 1) {
+      throw new Error(`Could not identify one live iframe for ${request.frameName}; found ${frames.length}`);
+    }
+    const frame = frames[0];
+    const timeoutMillis = Math.max(1, Math.min(Number(request.timeoutMillis) || 10000, 120000));
+    const work = async () => {
+      if (request.operation === "evaluate") {
+        const source = JSON.stringify(String(request.javascript || ""));
+        const result = await frame.executeJavaScript(
+          `Promise.resolve((0, eval)(${source})).then(value => JSON.stringify({ value }))`);
+        return { value: JSON.parse(result).value, frameUrl: frame.url };
+      }
+      if (request.operation === "screenshot") {
+        const rect = request.captureRect;
+        if (!rect || ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+            rect.width <= 0 || rect.height <= 0 || rect.width > 8192 || rect.height > 8192) {
+          throw new Error("Invalid live iframe screenshot rectangle");
+        }
+        const image = await contents.capturePage({
+          x: Math.floor(rect.x), y: Math.floor(rect.y),
+          width: Math.ceil(rect.width), height: Math.ceil(rect.height),
+        });
+        if (!image || image.isEmpty()) throw new Error("Electron captured no visible iframe pixels");
+        const size = image.getSize();
+        const scale = Math.min(1, 1600 / Math.max(size.width, size.height));
+        const bounded = scale < 1
+          ? image.resize({ width: Math.max(1, Math.round(size.width * scale)), quality: "best" })
+          : image;
+        const jpeg = bounded.toJPEG(85);
+        return { value: `data:image/jpeg;base64,${jpeg.toString("base64")}`, frameUrl: frame.url };
+      }
+      if (request.operation === "cdp") {
+        const debug = contents.debugger;
+        if (!debug.isAttached()) debug.attach("1.3");
+        const value = await debug.sendCommand(
+          String(request.method || ""), request.params || {}, request.sessionId || undefined);
+        return { value, frameUrl: frame.url };
+      }
+      throw new Error(`Unknown live iframe operation '${request.operation}'`);
+    };
+    let timer;
+    try {
+      return await Promise.race([
+        work(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`Live iframe command timed out after ${timeoutMillis}ms`)), timeoutMillis);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   ipcMain.on("field4-tabs-ready", onTabsReady);
   ipcMain.on("field4-tabs-activate", onTabActivate);
   ipcMain.on("field4-tabs-close", onTabClose);
@@ -1431,6 +1516,8 @@ function createMainWindow() {
   ipcMain.on("field4-tabs-hide", onHideTabs);
   ipcMain.removeHandler("field4-history-capture-window");
   ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
+  ipcMain.removeHandler("field4-live-output-iframe");
+  ipcMain.handle("field4-live-output-iframe", onLiveOutputIframe);
   ipcMain.removeHandler("field4-microphone-access");
   ipcMain.handle("field4-microphone-access", onMicrophoneAccess);
 

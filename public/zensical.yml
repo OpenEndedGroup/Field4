@@ -122,6 +122,8 @@ nav:
       - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
+      # Directly after the interpolants page: that page eases a value from code, this one draws it.
+      - Keyframe Editor: keyframe_editor.md
       # Directly after the interpolants page, which is the other half of the same subject: that
       # page is a value eased once to a target that stays put, this one is springs and a steering
       # model for a target that keeps moving. Filed under Time & Signals rather than beside
@@ -132,7 +134,7 @@ nav:
       - Keyframes: keyframer_examples.md
       # Directly after the keyframes page, because it is that page's collection noun: one saved key
       # is a look, a directory of them is a space, and this is what explores the space overnight.
-      - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
+      - Sweeping Saved Keyframes Overnight: keyframe_autosweep.md
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md
       # One page for both halves of signal processing: timeseries_examples.md (filters and
@@ -151,7 +153,7 @@ nav:
     - Point Sets & Shape:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
       - Flow Matching: flow_matching.md
-      - Stipple Transport & Video: stipple_transport.md
+      - Stipple Transport: stipple_transport.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
       - Paint and Pencil from FLines: paint_canvas.md
@@ -187,6 +189,8 @@ nav:
       # peer, with Field acting as a node — here Art-Net and sACN over UDP to lighting hardware. It
       # was a one-page "Lighting" group of its own; the only other lighting page is a chain.
       - "Driving Lights: Art-Net and sACN": dmx_lighting.md
+      - "MQTT: sensors, devices and brokers": mqtt.md
+      - "OSCQuery: controls other tools can find": oscquery.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md
@@ -322,6 +326,8 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - Talking to AI4: voice_input.md
+    - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
     - Experimenting with AI4: ai4_experiments.md
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
@@ -332,6 +338,7 @@ nav:
     # and this one is the layer they share, which reads best once you have seen one.
     - Studies: studies.md
     - AI Tool-Use History: ai_tool_use_history.md
+    - Reading Saved AI4 Chats: ai4_chat_archive.md
     - AI Documentation Polish: ai_doc_polish.md
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
@@ -408,6 +415,7 @@ nav:
     # you look up after something has already surprised you rather than while composing.
     - What a Capture Can and Cannot Show: capture_limits.md
     - Building & Testing: building_and_testing.md
+    - Landing on main: landing_queue.md
 
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts

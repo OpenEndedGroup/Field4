@@ -1,4 +1,32 @@
-import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
+import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
+import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
+import { renderAiChatFences } from "./aiChatFenceRenderers.js";
+import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
+
+// Rebuild every open chat once, for a catalog that arrived after it first rendered.
+function rerenderOpenChats() {
+        document.querySelectorAll(".ai-chat-messages").forEach(messages => {
+                const markdown = messages.__chatMarkdown;
+                if (markdown == null) return;
+                messages.__chatMarkdown = null;
+                renderChatMessages(messages, markdown);
+        });
+}
+
+// This local catalog also supplies AI4's JVM instructions. If it arrives after a chat first
+// opens, rebuild that chat once so its existing fenced blocks gain their previews.
+installAiChatFenceCatalog().then(rerenderOpenChats)
+        .catch(error => console.warn("AI4 fence catalog unavailable:", error));
+
+// The tool families a round's summary line counts ("2 notes · 1 edit"); the chat archive reads the
+// same file (afield.chatlog). Without it a round still shows its calls, time and failures.
+fetch(new URL("./ai4-chat-tool-families.json", import.meta.url))
+        .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.text();
+        })
+        .then(text => { aiChatSetToolFamilies(text); rerenderOpenChats(); })
+        .catch(error => console.warn("AI4 chat tool families unavailable:", error));
 
 const DEFAULT_W = 480;
 const DEFAULT_H = 150;
@@ -1816,6 +1844,17 @@ function renderChatMessages(messages, markdown, options) {
                 top: pending ? pending.top : messages.scrollTop
         };
         messages.__chatScrollRestore = restore;
+        if (!messages.__chatRoundStates) {
+                // A round (a folded run of tool activity) stays as the reader left it: the whole thread is
+                // re-rendered on every streamed update, which would otherwise close it again.
+                messages.__chatRoundStates = new Map();
+                messages.addEventListener("click", event => {
+                        const summary = event.target.closest?.(".ai-chat-round > summary");
+                        if (!summary || !messages.contains(summary)) return;
+                        const round = summary.parentElement;
+                        messages.__chatRoundStates.set(round.dataset.aiRound, !round.open);
+                }, true);
+        }
         if (!messages.__chatScrollInputBound) {
                 const cancelRestore = () => { messages.__chatScrollRestore = null; };
                 for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
@@ -1831,8 +1870,14 @@ function renderChatMessages(messages, markdown, options) {
                 const height = img.naturalHeight || Number(img.getAttribute("height"));
                 if (width > 0 && height > 0) dimensions.set(img.getAttribute("src"), {width, height});
         });
+        // Round numbers belong to one transcript: another box's chat, or a cleared one, starts afresh.
+        const previous = messages.__chatMarkdown;
+        if (previous != null && messages.__chatRoundStates && previous.slice(0, 256) !== text.slice(0, 256)) {
+                messages.__chatRoundStates.clear();
+        }
         messages.innerHTML = aiChatHistoryToHtml(text);
         messages.__chatMarkdown = text;
+        restoreRoundStates(messages);
         // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
         // otherwise restart the sweep on every render and it would never get across the text.
         messages.querySelectorAll(".ai-chat-shimmer").forEach(el => {
@@ -1840,6 +1885,10 @@ function renderChatMessages(messages, markdown, options) {
         });
         decorateAfieldLinks(messages);
         applyCodeHighlight(messages);
+        let pendingFenceRenders = renderAiChatFences(messages, (event) => {
+                if (event === "settled") pendingFenceRenders--;
+                finish();
+        });
         const images = Array.from(messages.querySelectorAll("img"));
         images.forEach(img => {
                 const size = dimensions.get(img.getAttribute("src"));
@@ -1856,7 +1905,7 @@ function renderChatMessages(messages, markdown, options) {
         };
         const finish = () => {
                 settle();
-                if (images.every(img => img.complete) && messages.__chatScrollRestore === restore) {
+                if (images.every(img => img.complete) && pendingFenceRenders === 0 && messages.__chatScrollRestore === restore) {
                         messages.__chatScrollRestore = null;
                 }
         };
@@ -1867,6 +1916,15 @@ function renderChatMessages(messages, markdown, options) {
                 img.addEventListener("error", finish, {once: true});
         });
         requestAnimationFrame(finish);
+}
+
+function restoreRoundStates(messages) {
+        const states = messages.__chatRoundStates;
+        if (!states || states.size === 0) return;
+        messages.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
+                const open = states.get(round.dataset.aiRound);
+                if (open !== undefined) round.open = open;
+        });
 }
 
 // Fetch on panel creation, without replacing a newer streamed/local turn or another box's chat.
@@ -1891,10 +1949,12 @@ function ensureAiChat(container, uid, property) {
                         existing.root.dataset.uid = uid || existing.root.dataset.uid || "";
                         existing.root.dataset.property = existing.property || "code";
                         if (changedBox) {
+                                existing.stateBrowser?.reset();
                                 container.__aiChatHistory = controllerChatHistory.get(uid) || "";
                                 renderChatMessages(existing.messages, container.__aiChatHistory);
                                 restoreAiChat(container, uid);
                         }
+                        if (!changedBox) existing.stateBrowser?.refreshAvailability();
                         return existing;
                 }
         }
@@ -2367,12 +2427,26 @@ function ensureAiChat(container, uid, property) {
         inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
 
+        const stateBrowser = mountStateTreeBrowser(root, {
+                chatUid,
+                request: payload => new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error("State history request timed out. Refresh to retry.")), 15000);
+                        sendWithReply("ai-state-tree", payload, `ai-state-tree-${Date.now()}-${Math.random()}`, (_m, reply) => {
+                                clearTimeout(timeout); resolve(reply); return "remove";
+                        });
+                }),
+                insertReference: text => {
+                        textarea.value += (textarea.value ? "\n\n" : "") + text;
+                        textarea.dispatchEvent(new Event("input", {bubbles: true}));
+                        textarea.focus();
+                }
+        });
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, submit: submitPrompt};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, submit: submitPrompt};
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2666,7 +2740,14 @@ function openAiChatForBox(uid, property) {
         setTimeout(() => {
                 chat.textarea.focus();
         }, 0);
+        return chat;
 }
+
+window.openAiStateBrowser = async (uid, source, node, offset) => {
+        const chat = openAiChatForBox(uid, "code");
+        if (!chat) return false;
+        return !!await chat.stateBrowser.reveal(source, node, offset);
+};
 
 // ---- voice target ----------------------------------------------------------
 //

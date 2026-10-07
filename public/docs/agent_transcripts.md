@@ -89,6 +89,15 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### stipple_sheet
+
+**A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
+box loads the small model the page trained and deforms 400 particles and a coordinate lattice with
+it. Three sliders move transport time, movie time and the number of integration steps separately,
+so you can push the sheet past the times it was trained on and watch where it stops holding.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn)
+
 ### particle_video_reader
 
 Inspect recorded trajectories as continuous polylines, with time, history length, identity color
@@ -104,6 +113,14 @@ Minimal blank-canvas macro that creates one runnable output box.
 ![One box named main on an otherwise empty canvas, its output a pale card reading "hello from OperationTranscript"](assets/macro-hello-display.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/hello_display/metadata.edn)
+
+### ai4_iframe_hello
+
+A single box embeds a page served by Field and exposes its iframe to AI4. Run the box, open its
+AI Chat panel, and ask it to write “hello” in the textbox. [Live iframe tools](ai4_live_iframe.md)
+explains the opt-in and the tools.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
 
 ### marf_field_clocks
 
@@ -1112,6 +1129,32 @@ is provably inside the search space. The empty half of that cost plane is the fi
 
 [Open ↗](offline.html?file=assets/agent_transcripts/morpho_circuit_search/metadata.edn)
 
+### keyframe_editor
+
+The keyframe editor, `keyframes(...)`, as the three boxes of its page,
+[The keyframe editor](keyframe_editor.md). `brightness` plays a hand-drawn curve with a `loop`, moving
+the editor's playhead with `setTime` and sending `evaluateValueAt` to a meter, so you can edit the
+curve while it plays. `shape` starts a curve with one key of each type through
+`keys = listOf(Keyframe(...))`. `smoothed` draws a smoothed copy of its curve as an overlay and keeps
+it up to date with `onChange`. `custom types` defines an overshoot, a wobble and a chaotic scribble
+(the logistic map, pinned to both keys) as key types of its own with `interpolant(...)`, which then appear in the key menu. CI launches `brightness`, executes the
+other three, advances 90 frames, and stops.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn)
+
+### gesture_to_keyframes
+
+A performed gesture turned into keys you can edit, and back, from
+[The keyframe editor](keyframe_editor.md#from-a-performed-gesture). One box holds a
+[gesture pad](visualizers.md#recording-a-gesture) with a hand-wobbly figure eight in it, and the x and
+y lanes that `bakeGesture` reduces the take to, within a tolerance of 0.02. Running the box bakes only
+when the lanes are empty, so your edits survive a rerun. Drag a key in either lane and press
+**replay lanes**: `setTake` sends the edited lanes back to the pad and its trail redraws. Shift-drag
+on the pad to record a take of your own, then press **bake take**. CI launches the box, advances 90
+frames, and stops.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gesture_to_keyframes/metadata.edn)
+
 ### keyframer_worked_example
 
 `KeyframeScope`, the thing that stops a look you spent twenty minutes
@@ -1690,6 +1733,8 @@ number; then the seven refusals, which carry *reasons* rather than nulls, and th
 that matters — a swallowed child under a hard `Union` is dead, because a pointwise `min` gives the
 whole derivative to whichever child is nearest, and it presents as a *converged* optimisation.
 
+![Seed, fitted and target solids side by side: a rounded capsule converges to the target ball and rod](assets/solid_notation/inverse.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/solidsl_inverse/metadata.edn)
 
 ## Service-backed composition scenes
@@ -1817,6 +1862,8 @@ to see that the answer is a flow and not a plausible picture. Install the worker
 `uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels.
 Requires Manifold.
 
+![Solved streamlines passing around a sphere-and-rod obstacle, above a mid-plane velocity slice of its wake](assets/transcript_gallery/kratos-flow.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/kratos_flow_playground/metadata.edn)
 
 ### kratos_structural_playground
@@ -1943,6 +1990,8 @@ reads `'out' = 42.0`, live from the playing patch. **typo** has `[osc 440]` on l
 once with `./gradlew buildLibpdNative`. The build does not own that, so CI compiles the four Kotlin
 boxes and skips the three Pd ones, as it skips Python cells; every box was run by hand against a
 built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
+
+![A Pure Data drone patch: frequency and cutoff receivers drive a filtered phasor into stereo output](assets/pure_data/drone-patch.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
 
@@ -2256,7 +2305,7 @@ is a name with no midpoint, so it is taken whole from one parent and the manifes
 `grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
 outside its own range — where the target clamps it and the key keeps the number, so the archive still
 records the point that was visited. The morning box needs no renderer at all: an archive describes
-itself. The companion page is [Keyframe autosweeping](keyframe_autosweep.md).
+itself. The companion page is [Sweeping saved keyframes overnight](keyframe_autosweep.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_autosweep/metadata.edn)
 
@@ -2308,6 +2357,8 @@ destroys mass. `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
 `tools/run_field_tests.py --id four.simulation-chain.smoke` is both chains driven headlessly — the jump
 flood against exact ground truth, and the fluid against the one thing no plan can check: with the input
 switched off, the picture has to keep changing.
+
+![Cyan dye swirling through the GPU fluid, with blue and gold signed-distance bands inset at the upper right](assets/transcript_gallery/simulation-chain.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/four_simulation_chain/metadata.edn)
 
@@ -2755,6 +2806,8 @@ Canonical gC sliced at 48 layer midpoints, extruded with small gaps and coloured
 by height. The real path tracer accumulates at least 900 samples before the
 Linux/NVIDIA capture. See [the layer-stack walkthrough](chain_ceres_manifold_contours.md).
 
+![Forty-eight extruded layers of canonical gC, coloured by height and path traced over a pale floor](assets/chain_ceres_manifold_contours/stack.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn)
 
 ### photo_mount_path_trace
@@ -2873,6 +2926,8 @@ straight lines between surfaces" stops being true — the integrator has to samp
 the density rather than picking one is what makes that legible: the geometry never moves, so everything
 that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is the write-up.
 
+![A slatted ceiling light casts visible shafts through haze over a sphere](assets/path_tracing/medium_shafts.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
 
 ### neural_particles
@@ -2894,6 +2949,8 @@ an undertrained field. And the source jitter that seeds the particles is the opp
 used in training — train on the exact correspondence, seed near it.
 `tools/run_field_tests.py --id four.neural-particles.smoke` grades the GPU's trajectories against the
 CPU integrator per particle.
+
+![The word FIELD assembled from warm gold particles on black](assets/neural_particles/word.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/neural_particles/metadata.edn)
 
@@ -2938,6 +2995,8 @@ a single closed contour in the typeface — C, S, E, F, L, T, V, Z — because o
 paired with two contours at once, and both must be trained from the same source and the same seed.
 `WeightInterpolationTest` holds the numbers, including a check that the hand-written integrator
 agrees with the library's.
+
+![Three particle glyphs from the same trained letter pair, with network weights pinned at three interpolation values](assets/neural_particles/interpolation.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/letter_interpolation/metadata.edn)
 

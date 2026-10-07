@@ -827,10 +827,10 @@ If none of the three explains your dropped frames, look here.
 
 ## Try it
 
-The `profiling_timeline` starting point needs no GPU. Replay it into an empty document as in
-[Try the demo](#try-the-demo), then change **one** thing, in box **2. Periodic bursts**: shorten `quietMillis` from 240 to
-16, relaunch it, and record again. The lane's `wallMs` per resume should barely move — each
-burst still costs about the same 2.2 ms — while the number of bursts in three seconds goes
+The `profiling_timeline` starting point needs no GPU. Open it as in [Try the demo](#try-the-demo),
+then change **one** thing, in box **2. Periodic bursts**: shorten `quietMillis` from 240 to 16,
+relaunch it, and record again. The lane's `wallMs` per resume should barely move (each
+burst still costs about the same 2.2 ms), while the number of bursts in three seconds goes
 from a dozen to something near two hundred. A per-resume percentile tells you how
 expensive one turn is; only the number of turns tells you whether the work fits in a frame.
 The same box with the same `p99` can be cheap or far too expensive depending on how often

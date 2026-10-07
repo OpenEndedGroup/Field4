@@ -24,11 +24,19 @@ import kotlin.math.min
 private const val THREE_CHANNEL = "__threejs__"
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class ThreeAttribute(
     val itemSize: Int,
     val array: FloatArray,
     val type: String = "Float32Array",
-    val normalized: Boolean = false
+    val normalized: Boolean = false,
+    /**
+     * Wire only: which entry of the description's buffer table holds [array], sent empty. Set by
+     * `splitForWire` (`ThreeWire.kt`) and never otherwise, so every other encoding — the review
+     * revision included — is what it was.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    internal val buffer: Int? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeAttribute",
@@ -40,9 +48,13 @@ data class ThreeAttribute(
 }
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class ThreeIndex(
     val type: String,
-    val array: IntArray
+    val array: IntArray,
+    /** Wire only, as [ThreeAttribute.buffer]: the buffer-table entry holding [array] as [type] elements. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    internal val buffer: Int? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeIndex",
@@ -362,7 +374,28 @@ data class ThreeGeometryPayload(
      * the rasterizer had to bring [MeshView]'s four numbers with it.
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val camera: ThreeCameraSpec? = null
+    val camera: ThreeCameraSpec? = null,
+    /** Join the document's camera link on load, in this group. See [ThreeSceneBuilder.linkCamera]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val cameraLink: ThreeCameraLinkSpec? = null,
+    /** Turn slowly about the up axis until somebody interacts. See [ThreeSceneBuilder.turntable]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val turntable: ThreeTurntableSpec? = null,
+    /** A looping dolly, explode and x-ray move. See [ThreeSceneBuilder.shot]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val shot: ThreeShotSpec? = null,
+    /**
+     * The view's stored part styles, by [ThreeDrawable.id], for the viewer to apply.
+     *
+     * Set by [ThreeGeometryViewState.update] from the source box's `geometryAppearance`. The viewer
+     * applies them itself, as `applyPartAppearance` does, so that a later style change can be a small
+     * `three/appearance` message instead of this whole payload encoded again.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val partAppearance: Map<String, ThreePartAppearance> = emptyMap(),
+    /** Wire only: where a description's arrays are. See `ThreeWire.kt`. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    internal val buffers: ThreeWireBuffers? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -379,7 +412,10 @@ data class ThreeGeometryPayload(
         "inspector" to (inspector != null),
         "drawables" to drawables.size,
         "panels" to panels.size,
-        "camera" to camera
+        "camera" to camera,
+        "cameraLink" to cameraLink,
+        "turntable" to turntable,
+        "shot" to shot
     )
 }
 
@@ -408,42 +444,132 @@ class ThreeGeometryViewState(val uid: String) {
     fun reviews(includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject = reviewInbox.snapshot(includeResolved)
 
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
-    @Volatile private var lastPayload: String? = null
+
+    /** Sessions whose hello asked for `buffers`. The rest are native clients; see [forNativeClient]. */
+    private val bufferSessions = CopyOnWriteArraySet<WebSocketSession>()
+
+    /**
+     * The geometry as published: the description sent over the websocket (UTF-8 JSON), the part styles
+     * it was encoded with, the buffers `/three-buffers` serves for [generation], and the JSON a native
+     * client gets instead — encoded only once one asks, and `null` when it would be over the limit.
+     */
+    private class Published(
+        val generation: String,
+        val description: ByteArray,
+        val appearance: Map<String, ThreePartAppearance>,
+        val buffers: ThreeGeometryBuffers?,
+        val native: Lazy<ByteArray?>,
+    )
+    private var published: Published? = null
     private var editSessionId: String? = null
     internal var sourcePayload: ThreeGeometryPayload? = null
         private set
 
+    /** [threeReviewRevision] of [sourcePayload], worked out once per [update] rather than per style change. */
+    private var sourceRevision: String? = null
+    private var updatesStarted = 0L
+    private var updatesCommitted = 0L
+
+    /** The most geometry this view sends at once. See [ThreePayloadTooLargeException]. */
+    internal var payloadLimitBytes: Long = defaultThreePayloadLimitBytes
+    private val encodes = java.util.concurrent.atomic.AtomicInteger()
+
+    /** Geometry messages encoded so far. A style change leaves this alone; `ThreeGeometryWireTest` holds it to that. */
+    internal val geometryEncodes: Int get() = encodes.get()
+
+    /** Sees every message a viewer is sent, once each, whether or not one is attached. For tests. */
+    internal var onBroadcast: ((ByteArray) -> Unit)? = null
+
     /**
      * Attach a websocket session to this viewer and replay the latest payload.
      *
-     * This is used by the server's Three.js websocket handler.
+     * This is used by the server's Three.js websocket handler. A session that does not fetch [buffers] —
+     * a native client, which sent a hello without them — is sent [forNativeClient] JSON instead.
      */
-    fun attach(session: WebSocketSession) {
+    @Synchronized
+    fun attach(session: WebSocketSession, buffers: Boolean = false) {
         sessions.add(session)
-        lastPayload?.let { sendTo(session, it) }
+        if (buffers) {
+            bufferSessions.add(session)
+            replayMessages().forEach { sendTo(session, it) }
+        } else {
+            bufferSessions.remove(session)
+            published?.let { sendNative(session, it) }
+        }
     }
 
     /**
      * Push a new payload to all attached viewers.
+     *
+     * Throws [ThreePayloadTooLargeException] when the geometry would be over [payloadLimitBytes] —
+     * checked from array lengths before anything is encoded — and the view keeps what it was showing.
+     *
+     * What this encodes is the description, which is small: the arrays stay where they are and are
+     * written to a viewer's `/three-buffers` request on a Ktor IO thread. So the payload's arrays are the
+     * view's from here on, and must not be changed. When two updates overlap, the one that started last is
+     * the one that stays, as it was when the whole of this was synchronized.
      */
-    @Synchronized
     fun update(payload: ThreeGeometryPayload) {
+        val costs = threeWireCosts(payload)
+        val estimate = costs.sumOf { it.bytes }
+        if (estimate > payloadLimitBytes) throw threePayloadTooLarge(uid, estimate, payloadLimitBytes, costs, measured = false)
+        val generation = UUID.randomUUID().toString()
+        // Split first: it names a NaN's part and attribute, where the revision's encoder would not.
+        val split = payload.splitForWire(generation)
         val revision = threeReviewRevision(payload)
-        reviewInbox.update(revision)
-        sourcePayload = payload
-        val styled = applyPartAppearance(payload, storedAppearance()[appearanceKey()].orEmpty())
-        val encoded = threeJson.encodeToString(styled.copy(revision = revision, sourceBox = reviewInbox.owner?.id,
-            cameraLinkScope = cameraLinkScope()))
-        val nextSession = payload.scene?.sessionId?.takeIf { it.isNotEmpty() }
-        if (editSessionId != nextSession) editSessionId?.let(::removeFLineEditSession)
-        editSessionId = nextSession
+        val ticket: Long
+        val appearance: Map<String, ThreePartAppearance>
+        synchronized(this) {
+            ticket = ++updatesStarted
+            appearance = storedAppearance()[appearanceKey()].orEmpty()
+        }
+        val ids = payload.drawables.mapTo(HashSet()) { it.id }
+        appearance.forEach { (id, style) -> if (id in ids) style.validate() }
+        fun ThreeGeometryPayload.stamped() = copy(revision = revision, sourceBox = reviewInbox.owner?.id,
+            cameraLinkScope = cameraLinkScope(), partAppearance = appearance)
+        val bufferBytes = split.buffers?.bytes ?: 0L
+        val description = encodeThreeWire(threeJson, split.description.stamped(), estimate - bufferBytes)
+        encodes.incrementAndGet()
+        if (description.size + bufferBytes > payloadLimitBytes) {
+            throw threePayloadTooLarge(uid, description.size + bufferBytes, payloadLimitBytes, costs, measured = true)
+        }
+        val limit = payloadLimitBytes
+        val native = lazy {
+            encodeForNativeClient(threeJson, payload.stamped(), limit).also { if (it != null) encodes.incrementAndGet() }
+        }
+        // Encoded here, outside the lock, when a native client is already listening.
+        if (sessions.any { it !in bufferSessions } || threeGlobalListeners.isNotEmpty()) native.value
+        synchronized(this) {
+            val nextSession = payload.scene?.sessionId?.takeIf { it.isNotEmpty() }
+            if (ticket < updatesCommitted) {
+                // A later update is already on screen; this one never will be.
+                if (nextSession != editSessionId) nextSession?.let(::removeFLineEditSession)
+                return
+            }
+            updatesCommitted = ticket
+            reviewInbox.update(revision)
+            sourcePayload = payload
+            sourceRevision = revision
+            if (editSessionId != nextSession) editSessionId?.let(::removeFLineEditSession)
+            editSessionId = nextSession
 
-        lastPayload = encoded
-        sessions.forEach { sendTo(it, encoded) }
-        // Global listeners (native "subscribe-all" viewers) see every view's updates, including
-        // newly-created views: threeLines() calls update() right after creating the view.
-        threeGlobalListeners.forEach { sendTo(it, encoded) }
+            val next = Published(generation, description, appearance, split.buffers, native)
+            published = next
+            onBroadcast?.invoke(description)
+            sessions.forEach { if (it in bufferSessions) sendTo(it, description) else sendNative(it, next) }
+            // Global listeners (native "subscribe-all" viewers) see every view's updates, including
+            // newly-created views: threeLines() calls update() right after creating the view.
+            threeGlobalListeners.forEach { sendNative(it, next) }
+            // A style that landed while this was encoding is not in it.
+            val current = storedAppearance()[appearanceKey()].orEmpty()
+            if (current != appearance) broadcast(appearanceMessage(replace = true, parts = current))
+        }
     }
+
+    /** The buffers for [generation], while it is the view's current geometry; `null` once superseded. */
+    @Synchronized
+    internal fun buffers(generation: String): ThreeGeometryBuffers? =
+        published?.takeIf { it.generation == generation }?.buffers
 
     private fun appearanceKey(): String = reviewInbox.localViewId ?: uid
     private fun storedAppearance(): Map<String, Map<String, ThreePartAppearance>> =
@@ -451,13 +577,20 @@ class ThreeGeometryViewState(val uid: String) {
             threeJson.decodeFromString<Map<String, Map<String, ThreePartAppearance>>>(it)
         }.orEmpty()
 
-    /** Persist display styles on this view's source box and refresh connected viewers. */
+    /**
+     * Persist display styles on this view's source box and send them to connected viewers.
+     *
+     * Presentation only, so the geometry on screen and the description kept for the next viewer to attach
+     * are both still right: what goes out is a `three/appearance` message of [styles] and nothing else.
+     * It used to be the whole payload, encoded again on the caller's thread — which on 2026-10-07 was the
+     * runloop, for a view of 224 high-resolution panels, for twenty minutes.
+     */
     @Synchronized
     fun styleParts(expectedRevision: String, styles: Map<String, ThreePartAppearance>, replace: Boolean = false) {
         val owner = checkNotNull(reviewInbox.owner) { "View has no document owner" }
         check(!ReadOnlyDocuments.blocksWritesFrom(owner)) { "Document is read-only" }
         val payload = checkNotNull(sourcePayload) { "View has no geometry" }
-        check(threeReviewRevision(payload) == expectedRevision) { "Geometry changed; inspect the current revision" }
+        check(sourceRevision == expectedRevision) { "Geometry changed; inspect the current revision" }
         require(styles.size <= 10000) { "Too many part styles" }
         val ids = payload.drawables.map { it.id }.toSet()
         require(styles.keys.all { it.isNotBlank() && it in ids }) { "A styled part is absent from the current view" }
@@ -465,18 +598,66 @@ class ThreeGeometryViewState(val uid: String) {
         val all = storedAppearance().toMutableMap()
         all[appearanceKey()] = (if (replace) emptyMap() else all[appearanceKey()].orEmpty()) + styles
         owner.properties["geometryAppearance"] = threeJson.encodeToString(all)
-        update(payload)
+        broadcast(appearanceMessage(replace, styles))
     }
 
-    private fun sendTo(session: WebSocketSession, payload: String) {
-        inMain {
-            runCatching { session.send(payload) }
+    private fun appearanceMessage(
+        replace: Boolean,
+        parts: Map<String, ThreePartAppearance>,
+        beforeGeometry: Boolean = false,
+    ): ByteArray = threeJson.encodeToString(
+        ThreeAppearanceMessage(uid = uid, revision = sourceRevision, replace = replace, parts = parts, beforeGeometry = beforeGeometry)
+    ).encodeToByteArray()
+
+    /**
+     * What a viewer attaching now is sent: the description as last encoded and, ahead of it, the current
+     * part styles when they have changed since that encoding — flagged `beforeGeometry`, so the viewer
+     * applies them to the geometry that follows rather than to whatever it was showing.
+     */
+    @Synchronized
+    internal fun replayMessages(): List<ByteArray> {
+        val geometry = published ?: return emptyList()
+        // Read on a websocket thread: a hand-edited property must not stop the geometry arriving.
+        val current = runCatching { storedAppearance()[appearanceKey()].orEmpty() }.getOrDefault(geometry.appearance)
+        return if (current == geometry.appearance) listOf(geometry.description)
+        else listOf(appearanceMessage(replace = true, parts = current, beforeGeometry = true), geometry.description)
+    }
+
+    /** What a native client attaching now is sent: [forNativeClient] JSON, or nothing when over the limit. */
+    internal fun nativeMessage(): ByteArray? = synchronized(this) { published }?.native?.value
+
+    private fun broadcast(message: ByteArray) {
+        onBroadcast?.invoke(message)
+        sessions.forEach { sendTo(it, message) }
+        threeGlobalListeners.forEach { sendTo(it, message) }
+    }
+
+    /**
+     * Send [geometry]'s native JSON. When nobody has asked for it yet it is encoded off this thread —
+     * which may be a websocket thread — and sent only if it is still the view's geometry by then.
+     */
+    private fun sendNative(session: WebSocketSession, geometry: Published) {
+        if (geometry.native.isInitialized()) {
+            geometry.native.value?.let { sendTo(session, it) }
+            return
+        }
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val bytes = geometry.native.value ?: return@launch
+            synchronized(this@ThreeGeometryViewState) { if (published === geometry) sendTo(session, bytes) }
         }
     }
 
-    /** Broadcast the last payload to a newly-attached global listener (replay on subscribe-all). */
+    private fun sendTo(session: WebSocketSession, message: ByteArray) {
+        inMain {
+            runCatching { session.send(Frame.Text(true, message)) }
+        }
+    }
+
+    /** Send the last payload to a newly-attached global listener (replay on subscribe-all). */
+    @Synchronized
     fun replayTo(session: WebSocketSession) {
-        lastPayload?.let { sendTo(session, it) }
+        published?.let { sendNative(session, it) }
     }
 
     internal fun cameraLinkScope(): String? = reviewInbox.owner?.let(::threeDocumentScope)
@@ -485,7 +666,7 @@ class ThreeGeometryViewState(val uid: String) {
         "ThreeGeometryViewState",
         "uid" to uid,
         "sessions" to sessions.size,
-        "hasPayload" to (lastPayload != null)
+        "hasPayload" to (published != null)
     )
 }
 
@@ -510,6 +691,9 @@ fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx
 
 internal fun updateThreeGeometryReview(uid: String, request: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject? =
     (knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid))?.updateNote(request)
+
+/** What `/three-buffers` serves: a view's current buffers, for the generation its description named. */
+internal fun threeGeometryBuffers(uid: String, generation: String): ThreeGeometryBuffers? = knownThreeViews[uid]?.buffers(generation)
 
 internal fun threeGeometryReviewImage(uid: String, hash: String): ByteArray? = (knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid))?.image(hash)
 
@@ -652,9 +836,10 @@ fun installThreeJsHandler() {
                 knownThreeViews.values.forEach { it.replayTo(session) }
             }
             else -> {
-                // Default: treat as a hello/attach message
+                // Default: treat as a hello/attach message. The web viewer's hello asks for `buffers`;
+                // a native client's does not, and it is sent JSON it can decode.
                 val viewer = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
-                viewer.attach(session)
+                viewer.attach(session, buffers = payload["buffers"] != null)
             }
         }
         Handled.yes

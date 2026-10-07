@@ -14,6 +14,13 @@ data class ThreePartAppearance(val color: List<Double>, val unlit: Boolean = fal
     }
 }
 
+/**
+ * What [styles] do to a payload's drawables: a solid vertex colour, and the style's `unlit` and `xrayOpacity`.
+ *
+ * The viewer does this itself (`partAppearancePayload` in `threejs_viewer.html`), since the server sends
+ * the styles beside the geometry rather than baked into it. This is the definition it is held to, by
+ * `ThreeGeometryWireTest`.
+ */
 internal fun applyPartAppearance(payload: ThreeGeometryPayload, styles: Map<String, ThreePartAppearance>): ThreeGeometryPayload =
     payload.copy(drawables = payload.drawables.map { drawable ->
         val style = styles[drawable.id] ?: return@map drawable

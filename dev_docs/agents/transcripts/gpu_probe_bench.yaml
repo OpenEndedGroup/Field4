@@ -43,10 +43,7 @@ operations:
       frame: { x: 40.0, y: 200.0, w: 420.0, h: 150.0 }
       properties:
         code: |
-          import afield.four.modules.fromContext
           import afield.four.util.GpuProbe
-
-          val renderer: Renderer = fromContext()
 
           // A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
           // what is NOT here: no `defaultBuffer` whose access pattern you have to remember
@@ -102,10 +99,7 @@ operations:
       frame: { x: 520.0, y: 200.0, w: 460.0, h: 160.0 }
       properties:
         code: |
-          import afield.four.modules.fromContext
           import afield.four.util.GpuProbe
-
-          val renderer: Renderer = fromContext()
 
           // The chain the workspace document actually runs, at a size that fits in a box.
           //
@@ -305,11 +299,8 @@ operations:
       frame: { x: 40.0, y: 420.0, w: 420.0, h: 150.0 }
       properties:
         code: |
-          import afield.four.modules.fromContext
           import afield.four.util.GpuProbe
           import afield.four.util.GpuProbeNeverLanded
-
-          val renderer: Renderer = fromContext()
 
           // The same shader as box 2, told to write half as many cells on purpose. This is the
           // box that says whether the sentinel is load-bearing: a hand-rolled probe that waits

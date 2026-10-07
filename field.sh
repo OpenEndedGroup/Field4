@@ -699,7 +699,7 @@ build_field() {
         echo "field: AFIELD_SKIP_BUILD=1 — skipping build" >&2
         return 0
     fi
-    echo "field: building (JVM + JS; the first run compiles everything and can take a few minutes)…" >&2
+    echo "field: building (JVM + JS; the first run downloads dependencies and compiles everything)…" >&2
     BUILD_OK=0
     field_gradlew jvmJar dumpFieldLaunch || BUILD_OK=1
     if [ "$BUILD_OK" != "0" ]; then

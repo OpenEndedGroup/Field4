@@ -1,6 +1,8 @@
-// The point of writing shapes as expressions: every combinator is one line, and the
-// smooth versions fillet where the surfaces meet, which is what makes this feel like clay
-// rather than CSG. Change a k, re-run this box, look again.
+/*
+The point of writing shapes as expressions: every combinator is one line, and the
+smooth versions fillet where the surfaces meet, which is what makes this feel like clay
+rather than CSG. Change a k, re-run this box, look again.
+*/
 val ball = sdfSphere(0.8)
 val bar = sdfBox(vec(2.2, 0.34, 0.34))
 val sharp = sdfUnion(ball, bar)
@@ -17,15 +19,22 @@ val twistedMesh = marchingCubes(twisted, boundsAround(radius = 1.2), 72)
 // A fillet only ever ADDS material, so the smooth union must enclose more than the sharp
 // one. That is a property you can assert rather than eyeball.
 println("sharp union  volume %.5f".format(sharpMesh.signedVolume()))
-println("smooth union volume %.5f  (the fillet adds %.5f)".format(
-    softMesh.signedVolume(), softMesh.signedVolume() - sharpMesh.signedVolume()))
+println(
+    "smooth union volume %.5f  (the fillet adds %.5f)"
+        .format(
+            softMesh.signedVolume(),
+            softMesh.signedVolume() - sharpMesh.signedVolume(),
+        ),
+)
 println("drilled      ${drilledMesh.summary()}")
 println("twisted      ${twistedMesh.summary()}")
 
-// A shell looked at from outside is indistinguishable from the solid, so cut it open with
-// a half-space: intersecting with sdfPlane keeps only the half you want, and the wall
-// thickness becomes visible. chi = 2 for the half shell, 4 for the closed one (two
-// nested surfaces).
+/*
+A shell looked at from outside is indistinguishable from the solid, so cut it open with
+a half-space: intersecting with sdfPlane keeps only the half you want, and the wall
+thickness becomes visible. chi = 2 for the half shell, 4 for the closed one (two
+nested surfaces).
+*/
 val shell = soft.shell(0.07)
 val closedShell = marchingCubes(shell, window, 88)
 val cutaway = marchingCubes(sdfIntersect(shell, sdfPlane(vec(0, 0, -1), 0.0)), window, 88)

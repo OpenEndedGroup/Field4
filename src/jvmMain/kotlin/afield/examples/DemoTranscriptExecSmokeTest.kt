@@ -142,6 +142,15 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
+        // The keyframe editor: a launched loop playing a curve into a meter, and three executed boxes
+        // (typed keys; an onChange overlay; key types of its own with interpolant(...)). Pure CPU — the editor is an iframe in `display` — so what
+        // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
+        // through the real box path.
+        "keyframe_editor",
+        // A gesture take baked into two keyframe lanes: one launched loop that bakes on first run and
+        // plays the pad, its playhead and both lanes, stopped after 90 frames. Pure CPU; what running it
+        // buys is bakeGesture, toKeyframes and setTake through the real box path.
+        "gesture_to_keyframes",
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",
@@ -165,6 +174,7 @@ object DemoTranscriptExecSmokeTest {
         "linalg_thumbnails_demo",
         "hello_display",
         "hello_display_capture",
+        "ai4_iframe_hello",
         "two_box_context",
         // Compiles a data class onto the shared classloader and uses it from three other boxes, one
         // of them through @rootExported. Slower than its neighbours — box 1 shells out to
@@ -373,6 +383,9 @@ object DemoTranscriptExecSmokeTest {
         // click handlers; neither needs a Window or a Renderer. three_inspector_wall's code is also
         // that page's captured fence, which ThreeInspectorDemoDriftTest holds character for character.
         "three_inspector_wall",
+        // stipple_transport.md's live sheet: a committed JSON model evaluated in plain Kotlin,
+        // drawn through lines() and controlGroup sliders. CPU only.
+        "stipple_sheet",
         "fline_hit_records",
         // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
         // into inline players, so no audio device; with no Dirt-Samples on the build machine every
@@ -736,7 +749,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- KOTLINJS: build the graph, then compile each kotlinjs box body Kotlin -> JS for real ----
 
-    private fun runKotlinJsDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runKotlinJsDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val ops = loadOps(yaml)
         val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
@@ -819,7 +832,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- EXECUTE: run the whole transcript through the real runner and assert no error output ----
 
-    private fun runExecuteDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runExecuteDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val macrosDir = File(document, "macros").also { it.mkdirs() }
         File(macrosDir, "$name.yaml").writeText(yaml.readText())
@@ -862,10 +875,15 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- COMPILE-ONLY: build the graph, then compile each box's Kotlin with eval skipped ----
 
-    private fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val ops = loadOps(yaml)
-        val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+        val ownOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+        // A transcript that connects under a stable parent another transcript creates (the
+        // graphics context) gets that transcript's graph first, so its boxes resolve `renderer`
+        // the way they do in Field, through the parent's prop<Renderer>, rather than needing a
+        // local lookup that exists only to make this harness compile them.
+        val graphOps = stableParentOps(ownOps) + ownOps
 
         // Build the box graph with the real apply path — create/connect/edit/move only, no launch.
         val macrosDir = File(document, "macros").also { it.mkdirs() }
@@ -910,6 +928,16 @@ object DemoTranscriptExecSmokeTest {
                 println("[compile]   $id: code_language=$codeLanguage, not Kotlin — skipped")
                 continue
             }
+            // The other way a box becomes a guest one: its parent is a language root
+            // (`mainLanguage: python`, as fieldcv_webcam's cv_python is), and the child carries no
+            // `code_language` of its own.
+            val rootLanguage = target.parents.firstNotNullOfOrNull { p ->
+                p.getPropertyRaw("mainLanguage")?.toString()?.trim()?.takeIf { it.isNotEmpty() && !it.equals("kotlin", ignoreCase = true) }
+            }
+            if (rootLanguage != null) {
+                println("[compile]   $id: child of a mainLanguage=$rootLanguage root, not Kotlin — skipped")
+                continue
+            }
             val diags = compileBoxOnly(target)
             if (diags.isEmpty()) {
                 println("[compile]   $id: PASS")
@@ -940,7 +968,7 @@ object DemoTranscriptExecSmokeTest {
             // Then substitute the `__line__` sentinel the print macros emit — standardExecutionPractice
             // (the real path) does this between applyMacros and eval; skipping it leaves an unresolved
             // `__line__` reference. The exact number is irrelevant to compilation.
-            val expanded = box.ki.applyMacros(box, box.code)
+            val expanded = box.ki.applyMacros(box, requireNotNull(box.code) { "${box.name} has no Kotlin code to compile" })
                 .split("\n")
                 .mapIndexed { i, line -> line.replace("__line__", "$i") }
                 .joinToString("\n")
@@ -964,6 +992,26 @@ object DemoTranscriptExecSmokeTest {
             }
         }
         errors
+    }
+
+    /** Stable parents a transcript may connect under without creating, and the transcript that creates each. */
+    private val STABLE_PARENTS = mapOf("agent_graphics_context" to "graphics_renderer_launch")
+
+    private fun createdId(op: Map<String, Any?>): String? {
+        if ((op.keys.firstOrNull()?.lowercase() ?: "") !in setOf("create", "new-box", "box")) return null
+        val p = op.values.firstOrNull() as? Map<*, *>
+        return (p?.get("box") ?: p?.get("uid") ?: p?.get("id") ?: p?.get("target"))?.toString()
+    }
+
+    private fun stableParentOps(ops: List<Map<String, Any?>>): List<Map<String, Any?>> {
+        val created = ops.mapNotNull(::createdId).toSet()
+        val text = ops.toString()
+        return STABLE_PARENTS
+            .filter { (parent, _) -> parent !in created && parent in text }
+            .flatMap { (_, source) ->
+                loadOps(File(locateTranscriptsDir(), "$source.yaml"))
+                    .filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+            }
     }
 
     // ---- shared setup ----
@@ -999,7 +1047,7 @@ object DemoTranscriptExecSmokeTest {
         return raw.mapNotNull { it as? Map<String, Any?> }
     }
 
-    private fun startRunloopDaemon() {
+    internal fun startRunloopDaemon() {
         val t = Thread({ afield.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()
@@ -1011,7 +1059,7 @@ object DemoTranscriptExecSmokeTest {
         println("DemoTranscriptExecSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
     }
 
-    private fun locateTranscriptsDir(): File {
+    internal fun locateTranscriptsDir(): File {
         val rel = "dev_docs/agents/transcripts"
         val candidates = buildList {
             System.getProperty("afield.repo")?.let { add(File(it, rel)) }

@@ -40,12 +40,6 @@ before the mesher ever sees it, and refining the grid only makes the rounded rad
 Structural stress concentrates at exactly those edges. [The sharp edge](#the-sharp-edge) below
 shows both.
 
-??? aside "Where the numbers on this page come from"
-    They were produced in this repository on an Apple M-series laptop, natively, with no container,
-    except the beam deflections under [Into Kratos](#into-kratos), which come from the solver
-    container. `dev_docs/TETGEN.md` has the mesher comparison that chose TetGen, including a sweep of
-    `StructuralMechanicsApplication` for an immersed element.
-
 ## The first mesh
 
 A tetrahedral mesh is awkward to look at, which is a real obstacle to trusting one. Render it
@@ -122,7 +116,87 @@ The middle panel is the one that answers "did it work". A conforming mesh's boun
 encloses the body's volume; if the mesher had cheated anywhere, the cut face would be ragged and the
 bores would not come through it round.
 
-## The two quality measures
+## Sizing
+
+`targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
+takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
+
+A coarse request gets you almost exactly what no request gets you, because **the input surface
+sets a floor that `targetEdgeLength` cannot lift**. TetGen conforms to the triangles it is given, and this bracket's
+618 triangles are already about 10 mm across; the quality refinement then subdivides from there. A
+coarse request is silently ignored, and there is no warning, so check `cellCount` rather than
+assuming the number you passed did something.
+
+Finer requests behave: cost grows roughly in proportion to the element count, about 11–14 µs per
+element, so a 36,000-element mesh takes about half a second. That is fast enough to re-mesh on every
+geometry edit, which is what `afield.tetgen` expects; nothing in it updates a mesh in place. The
+measured sweep is under [Measurements](#measurements).
+
+## Into Kratos
+
+`structural.bodyFitted` is what this feeds. It runs a small-displacement element on the supplied mesh
+with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is the
+protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat `positions`/`cells`
+layout matches the wire format, so nothing is reshaped in between. The mesh
+picks the element: four nodes per cell gets `SmallDisplacementElement3D4N`, ten gets
+`SmallDisplacementElement3D10N`. There is no parameter, so there is nothing for the two ends to
+disagree about.
+
+That matters, because the 4-node tetrahedron is a **constant-strain** element. Its four corners
+carry a linear displacement field, so strain is one value for the whole element and cannot vary
+inside it. Bending is precisely the case where strain has to vary across a section: tension on one
+face, compression on the other. An element that cannot represent that resists it instead. It
+**locks**, and is far too stiff, converging on the right answer from below and slowly.
+
+Refining is not a way out of it. On a cantilever under self-weight, the 4-node element reaches 62% of
+the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-node element is within
+5% at *thirty*. So if you are bending anything, pass `order = 2` and mesh coarsely, rather than
+passing `order = 1` and refining. `optional/kratos/VERIFICATION.md` has the per-mesh numbers, the
+axial-extension control, and why landing just under 100% is right.
+
+### Asking for 10-node elements
+
+`order = 2` tetrahedralizes exactly as before and then promotes the result.
+
+```diffstatic {data-lang=kotlin}
+val linear = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0)
+val quadratic = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0, order = 2)
+// equivalently, from a mesh already in hand: linear.quadratic()
+
+linear.nodeCount        // 8279
+quadratic.nodeCount     // 57495 — 6.94x, one new node per distinct edge
+quadratic.cellCount     // 36475, the same tetrahedra
+quadratic.nodesPerCell  // 10
+quadratic.volume()      // 76958.90896392865 — linear.volume() to the last bit
+quadratic.corners()     // the 4-node view back, sharing the same node array
+```
+
+The shape does not change. The six new nodes sit at the exact midpoints of straight edges, so the
+region, the boundary, the volume and both quality measures come out the same numbers; what changes
+is the interpolation inside an element. `qualities()`, `boundary()`, `filtered()` and `toTriMesh()`
+read a cell's first four indices and are unaffected.
+
+??? aside "TetGen's `-o2` has a use-after-free"
+    TetGen 1.6.0's `highorder()` `delete[]`s the `highordertable` holding every element's extra-node
+    pointers before it returns, and `outelements()` then dereferences them. Driven from the command
+    line it usually survives; driven through `tetgenio` it does not, because `outelements()`
+    allocates the output node array first and the allocator hands back the block just freed — so
+    TetGen reads its own coordinates as pointers. `tools/tetgen_o2_use_after_free.py` pins that
+    outside the JVM: the same cube built twice from the same TetGen source, SIGSEGV as shipped and
+    229 nodes with that one `delete[]` commented out.
+
+    `TetMesh.quadratic()` does the promotion on this side instead, which also means the midside
+    nodes are emitted in Kratos's `Tetrahedra3D10` order by construction rather than recovered from
+    TetGen's internal edge tables. That ordering is checked geometrically at both ends, because a
+    mis-ordered quadratic element does not fail — it assembles, it solves, and it returns a
+    plausible displacement field that is wrong.
+
+## Checking a mesh
+
+Check a mesh before you solve on it. Two things go wrong: elements too badly shaped for the solver,
+and an input surface that TetGen accepts but that is not the body you meant.
+
+### The two quality measures
 
 Two quality measures get used here and they are not the same number. Confusing them is the easiest
 mistake in this subsystem, so both have their own call.
@@ -219,7 +293,118 @@ On that bracket at `targetEdgeLength = 3.0`: 66,489 elements, median radius rati
 `0.0362`, and **4** elements below `0.05`. A long thin tail under a healthy median is the normal
 shape for Delaunay refinement, so judge a mesh by its tail rather than by its median.
 
-### Choosing the `quality` bound
+### Input surfaces
+
+Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
+
+<div class="field-data-table" markdown>
+
+| surface | outcome |
+|---|---|
+| a closed cube (control) | 213 elements, volume `1.000000` |
+| **five faces of a cube** | `TetgenException: TetGen failed (status 2): TetGen returned an empty mesh` |
+| one face of a cube | `TetgenException: ... (status 1): a closed surface needs at least 4 vertices and 4 triangles` |
+| **two interpenetrating cubes** | `TetgenException: ... (status 2): TetGen aborted with code 3; the surface is probably not closed, self-intersects, or has duplicate vertices` |
+| **a zero-volume "solid"** | `TetgenException: ... (status 2): TetGen aborted with code 10; ...` |
+| an inside-out cube | *accepted*: 210 elements, volume `1.000000` |
+| a cube with one face duplicated | *accepted*: 228 elements, volume `1.000000` |
+| a cube with two coincident corners | *accepted*: 145 elements, volume `0.666667` |
+
+</div>
+
+The three acceptances are all correct answers.
+
+**TetGen does not care which way your surface is wound.** Its input is a piecewise-linear complex,
+which is unoriented — a set of facets, not an oriented boundary. So an inside-out cube meshes the
+cube. [Manifold behaves differently on the same input](manifold.md): an inwardly-wound closed
+surface is a legal manifold there with a *negative* volume, and the next Boolean computes the
+complement of what you meant. If you are pushing a repaired scan through both,
+`TriMesh.diagnose()` reporting `INVERTED_ORIENTATION` matters to the Manifold half and not to this
+one.
+
+The coincident-corner cube is not a failure either: collapsing one corner of a unit cube onto its
+neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. This is the
+shape the mistake takes in practice: a mesh off disk with an unwelded or over-welded seam produces a
+plausible solid of the wrong size, and nothing in this path will tell you. Compare `mesh.volume()`
+against `Solid.volume` before you trust a result.
+
+??? aside "The fatal path"
+    Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
+    normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
+    wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
+    `field_tetgen.cpp` catches it: letting a C++ exception unwind through FFM's downcall frames
+    aborts the VM. `TetgenTest.anOpenSurfaceIsRefusedWithoutTakingTheProcessDown` guards that the
+    process survives — though note that on this build the five-faced cube it uses comes back through
+    the *empty mesh* path rather than the throw, so the two inputs that genuinely exercise the catch
+    are the self-intersecting pair and the degenerate one.
+
+    TetGen also writes to the process's stdout on that path — `Exception: All vertices are (nearly)
+    collinear (Tol = 1e-08).` — despite the `Q` (quiet) switch. The message reaching Kotlin is the
+    wrapper's; the line in your terminal is TetGen's.
+
+!!! warning "A refused surface leaves two files in your working directory"
+    Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
+    `tetgen-tmpfile_skipped.face` in the **process's current working directory**, holding the facets
+    it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
+    session that directory is wherever the server was launched from.
+
+    They are TetGen's own debugging aid: the pair from a failed Boolean is a Medit-readable dump of
+    exactly which facets tangled. Delete them when you are done with them.
+
+## Installing it
+
+TetGen is **optional** and is not vendored. A clone of Field builds, tests and runs without it, and
+`TetgenTest` skips cleanly when it is absent.
+
+```diffstatic {data-lang=bash}
+python3 tools/build_tetgen_native.py      # or: ./gradlew buildTetgenNative
+```
+
+That downloads a pinned, checksummed TetGen 1.6.0 tarball from the Weierstrass Institute — the first
+run needs the network, after which it is cached under `build/field-tetgen/downloads` — and compiles
+it straight into the wrapper. There is nothing to `find_package`: TetGen is two source files with no
+dependencies, which is why there is a C++ wrapper here at all and why it is only 320 lines.
+
+```diffstatic {data-lang=kotlin}
+import afield.tetgen.*
+
+TetgenLibrary.isAvailable       // cheap enough to branch on in a box
+TetgenLibrary.describe()        // "TetGen wrapper at /…/libfield_tetgen_jvm.dylib (TetGen 1.6.0)"
+```
+
+`-Dafield.tetgen.library=<path>` or `AFIELD_TETGEN_LIBRARY` point it at a build of your own.
+Unlike Manifold there is no package to suggest instead: TetGen has no Homebrew formula and no
+distribution package worth linking.
+
+**Licensing.** TetGen is AGPL-3 or a commercial licence, and that is why most projects cannot use
+it. Field is AGPL-3, so the first applies and nothing further is needed. Kratos itself gates TetGen
+behind `USE_TETGEN_NONFREE_TPL` because *Kratos* is BSD, and its published wheels contain MMG and no
+TetGen.
+
+Two things in the build are required and neither is negotiable:
+
+- **`predicates.cxx` is compiled at `-O0`.** Upstream's own makefile says so. Shewchuk's exact
+  predicates depend on their arithmetic not being reassociated or kept at extended precision in a
+  register; built optimised they return wrong signs on nearly-degenerate input. That does not crash
+  — it silently produces an invalid tetrahedralization.
+- **`TETLIBRARY` is defined**, which is what turns `exit()` into a throwable. See the warning above.
+
+The C ABI passes results through out-parameters rather than a struct, so the Kotlin side never has
+to reproduce this compiler's field offsets and tail padding. Getting that wrong reads plausible
+garbage rather than failing, which is the same class of mistake as everything else on this page.
+
+## Measurements
+
+The sweeps behind the advice above, all on the bracket from [The first mesh](#the-first-mesh) unless
+a section says otherwise.
+
+??? aside "Where the numbers on this page come from"
+    They were produced in this repository on an Apple M-series laptop, natively, with no container,
+    except the beam deflections under [Into Kratos](#into-kratos), which come from the solver
+    container. `dev_docs/TETGEN.md` has the mesher comparison that chose TetGen, including a sweep of
+    `StructuralMechanicsApplication` for an immersed element.
+
+### The `quality` bound
 
 TetGen's own default bound is `1.414`; `Tetgen.tetrahedralize` defaults to `1.2`. Swept on the same
 bracket at `targetEdgeLength = 5.0`:
@@ -250,10 +435,7 @@ What tightening does buy is the *bulk* of the tail. The first percentile improve
     a slab welded to a ball. On this bracket it removes nothing and costs 20%. The difference is
     the geometry: the default is a starting point, so sweep it on your own part.
 
-## Sizing
-
-`targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
-takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
+### Element size
 
 <div class="field-data-table" markdown>
 
@@ -267,18 +449,10 @@ takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tet
 
 </div>
 
-Asking for 8 mm elements on a part 80 mm across gets you
-almost exactly what asking for nothing gets you, because **the input surface sets a floor that
-`targetEdgeLength` cannot lift**. TetGen conforms to the triangles it is given, and this bracket's
-618 triangles are already about 10 mm across; the quality refinement then subdivides from there. A
-coarse request is silently ignored, and there is no warning, so check `cellCount` rather than
-assuming the number you passed did something.
-
-Downwards it behaves: 2 mm is 4.5× the elements of 5 mm and 3.8× the time. Cost is roughly linear in
-element count at 11–14 µs per element, which is the number to plan with — a body-fitted structural
-solve of 36,000 elements spends about half a second meshing and several seconds solving, so
-re-meshing on every geometry edit is the right design and no part of `afield.tetgen` tries to update
-a mesh in place.
+An 8 mm request on a part 80 mm across gets almost exactly what no request gets. Downwards, 2 mm
+is 4.5× the elements of 5 mm and 3.8× the time, roughly linear in element count at 11–14 µs per
+element. A body-fitted structural solve of 36,000 elements spends about half a second meshing and
+several seconds solving.
 
 These are costs to plan with rather than a benchmark: the same configuration comes out at 430 ms in
 the `quality` table above and 510 ms here.
@@ -312,7 +486,28 @@ the `quality` table above and 510 ms here.
     this reason, and the cutaway prints the surface digest so a mismatch is diagnosable rather than
     mysterious.
 
-## The sharp edge
+### `preserveSurface` on a Boolean result
+
+`preserveSurface = true` is TetGen's `-Y`: forbid Steiner points on the boundary, so the output
+surface is the input surface, triangle for triangle. It is off by default and should stay off unless
+you have measured your own case. On the bracket at `targetEdgeLength = 3.0`:
+
+<div class="field-data-table" markdown>
+
+| Configuration | nodes | elements | worst radius ratio | slivers |
+|---|---|---|---|---|
+| `preserveSurface = false` | 14,011 | 66,489 | 0.0362 | 4 |
+| `preserveSurface = true` | 306 | 509 | **0.00001** | **285** |
+
+</div>
+
+With `-Y`, 56% of the elements are slivers and the worst is degenerate to five decimal
+places. `-Y` refuses to add the boundary points that refinement needs, and on a surface a Boolean
+produced — with the long thin triangles a cylinder-through-a-block leaves — there is nowhere else for
+the refinement to go. The size request goes with it: 509 elements when you asked for something 130
+times finer.
+
+### The sharp edge
 
 TetGen conforms to the surface it is given, so a corner in the input stays a corner in the output.
 That is the whole reason to prefer it to a level set, and it shows up two ways: against an exact
@@ -501,191 +696,13 @@ and `4` are exactly representable in float32 and a 48-segment cylinder's vertice
 need better than 1 part in `10⁹` on a curved body, the bridge is where to spend the effort, not the
 mesher.
 
-## Input surfaces
-
-Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
-
-<div class="field-data-table" markdown>
-
-| surface | outcome |
-|---|---|
-| a closed cube (control) | 213 elements, volume `1.000000` |
-| **five faces of a cube** | `TetgenException: TetGen failed (status 2): TetGen returned an empty mesh` |
-| one face of a cube | `TetgenException: ... (status 1): a closed surface needs at least 4 vertices and 4 triangles` |
-| **two interpenetrating cubes** | `TetgenException: ... (status 2): TetGen aborted with code 3; the surface is probably not closed, self-intersects, or has duplicate vertices` |
-| **a zero-volume "solid"** | `TetgenException: ... (status 2): TetGen aborted with code 10; ...` |
-| an inside-out cube | *accepted*: 210 elements, volume `1.000000` |
-| a cube with one face duplicated | *accepted*: 228 elements, volume `1.000000` |
-| a cube with two coincident corners | *accepted*: 145 elements, volume `0.666667` |
-
-</div>
-
-The three acceptances are all correct answers.
-
-**TetGen does not care which way your surface is wound.** Its input is a piecewise-linear complex,
-which is unoriented — a set of facets, not an oriented boundary. So an inside-out cube meshes the
-cube. [Manifold behaves differently on the same input](manifold.md): an inwardly-wound closed
-surface is a legal manifold there with a *negative* volume, and the next Boolean computes the
-complement of what you meant. If you are pushing a repaired scan through both,
-`TriMesh.diagnose()` reporting `INVERTED_ORIENTATION` matters to the Manifold half and not to this
-one.
-
-The coincident-corner cube is not a failure either: collapsing one corner of a unit cube onto its
-neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. This is the
-shape the mistake takes in practice: a mesh off disk with an unwelded or over-welded seam produces a
-plausible solid of the wrong size, and nothing in this path will tell you. Compare `mesh.volume()`
-against `Solid.volume` before you trust a result.
-
-??? aside "The fatal path"
-    Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
-    normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
-    wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
-    `field_tetgen.cpp` catches it: letting a C++ exception unwind through FFM's downcall frames
-    aborts the VM. `TetgenTest.anOpenSurfaceIsRefusedWithoutTakingTheProcessDown` guards that the
-    process survives — though note that on this build the five-faced cube it uses comes back through
-    the *empty mesh* path rather than the throw, so the two inputs that genuinely exercise the catch
-    are the self-intersecting pair and the degenerate one.
-
-    TetGen also writes to the process's stdout on that path — `Exception: All vertices are (nearly)
-    collinear (Tol = 1e-08).` — despite the `Q` (quiet) switch. The message reaching Kotlin is the
-    wrapper's; the line in your terminal is TetGen's.
-
-!!! warning "A refused surface leaves two files in your working directory"
-    Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
-    `tetgen-tmpfile_skipped.face` in the **process's current working directory**, holding the facets
-    it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
-    session that directory is wherever the server was launched from.
-
-    They are TetGen's own debugging aid: the pair from a failed Boolean is a Medit-readable dump of
-    exactly which facets tangled. Delete them when you are done with them.
-
-### `preserveSurface` on a Boolean result
-
-`preserveSurface = true` is TetGen's `-Y`: forbid Steiner points on the boundary, so the output
-surface is the input surface, triangle for triangle. It is off by default and should stay off unless
-you have measured your own case. On the bracket at `targetEdgeLength = 3.0`:
-
-<div class="field-data-table" markdown>
-
-| Configuration | nodes | elements | worst radius ratio | slivers |
-|---|---|---|---|---|
-| `preserveSurface = false` | 14,011 | 66,489 | 0.0362 | 4 |
-| `preserveSurface = true` | 306 | 509 | **0.00001** | **285** |
-
-</div>
-
-With `-Y`, 56% of the elements are slivers and the worst is degenerate to five decimal
-places. `-Y` refuses to add the boundary points that refinement needs, and on a surface a Boolean
-produced — with the long thin triangles a cylinder-through-a-block leaves — there is nowhere else for
-the refinement to go. The size request goes with it: 509 elements when you asked for something 130
-times finer.
-
-## Into Kratos
-
-`structural.bodyFitted` is what this feeds. It runs a small-displacement element on the supplied mesh
-with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is the
-protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat `positions`/`cells`
-layout matches the wire format, so nothing is reshaped in between. The mesh
-picks the element: four nodes per cell gets `SmallDisplacementElement3D4N`, ten gets
-`SmallDisplacementElement3D10N`. There is no parameter, so there is nothing for the two ends to
-disagree about.
-
-That matters, because the 4-node tetrahedron is a **constant-strain** element. Its four corners
-carry a linear displacement field, so strain is one value for the whole element and cannot vary
-inside it. Bending is precisely the case where strain has to vary across a section: tension on one
-face, compression on the other. An element that cannot represent that resists it instead. It
-**locks**, and is far too stiff, converging on the right answer from below and slowly.
-
-Refining is not a way out of it. On a cantilever under self-weight, the 4-node element reaches 62% of
-the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-node element is within
-5% at *thirty*. So if you are bending anything, pass `order = 2` and mesh coarsely, rather than
-passing `order = 1` and refining. `optional/kratos/VERIFICATION.md` has the per-mesh numbers, the
-axial-extension control, and why landing just under 100% is right.
-
-### Asking for 10-node elements
-
-`order = 2` tetrahedralizes exactly as before and then promotes the result.
-
-```diffstatic {data-lang=kotlin}
-val linear = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0)
-val quadratic = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0, order = 2)
-// equivalently, from a mesh already in hand: linear.quadratic()
-
-linear.nodeCount        // 8279
-quadratic.nodeCount     // 57495 — 6.94x, one new node per distinct edge
-quadratic.cellCount     // 36475, the same tetrahedra
-quadratic.nodesPerCell  // 10
-quadratic.volume()      // 76958.90896392865 — linear.volume() to the last bit
-quadratic.corners()     // the 4-node view back, sharing the same node array
-```
-
-The shape does not change. The six new nodes sit at the exact midpoints of straight edges, so the
-region, the boundary, the volume and both quality measures come out the same numbers; what changes
-is the interpolation inside an element. `qualities()`, `boundary()`, `filtered()` and `toTriMesh()`
-read a cell's first four indices and are unaffected.
+### Promoting to 10 nodes
 
 The promotion is cheap and the elements are not. On the bracket at `targetEdgeLength = 5.0` it costs
 71 ms against the mesh's 466 ms, and at 3.0, 73 ms against 782 ms. It is one pass over the edges,
 not a re-mesh. Seven times the nodes is seven times the unknowns, though, and that is downstream: on
 the 864-element beam Kratos takes 1.05 s at order 2 against 0.20 s at order 1, for 99.8% against
 69.5%.
-
-??? aside "TetGen's `-o2` has a use-after-free"
-    TetGen 1.6.0's `highorder()` `delete[]`s the `highordertable` holding every element's extra-node
-    pointers before it returns, and `outelements()` then dereferences them. Driven from the command
-    line it usually survives; driven through `tetgenio` it does not, because `outelements()`
-    allocates the output node array first and the allocator hands back the block just freed — so
-    TetGen reads its own coordinates as pointers. `tools/tetgen_o2_use_after_free.py` pins that
-    outside the JVM: the same cube built twice from the same TetGen source, SIGSEGV as shipped and
-    229 nodes with that one `delete[]` commented out.
-
-    `TetMesh.quadratic()` does the promotion on this side instead, which also means the midside
-    nodes are emitted in Kratos's `Tetrahedra3D10` order by construction rather than recovered from
-    TetGen's internal edge tables. That ordering is checked geometrically at both ends, because a
-    mis-ordered quadratic element does not fail — it assembles, it solves, and it returns a
-    plausible displacement field that is wrong.
-
-## Installing it
-
-TetGen is **optional** and is not vendored. A clone of Field builds, tests and runs without it, and
-`TetgenTest` skips cleanly when it is absent.
-
-```diffstatic {data-lang=bash}
-python3 tools/build_tetgen_native.py      # or: ./gradlew buildTetgenNative
-```
-
-That downloads a pinned, checksummed TetGen 1.6.0 tarball from the Weierstrass Institute — the first
-run needs the network, after which it is cached under `build/field-tetgen/downloads` — and compiles
-it straight into the wrapper. There is nothing to `find_package`: TetGen is two source files with no
-dependencies, which is why there is a C++ wrapper here at all and why it is only 320 lines.
-
-```diffstatic {data-lang=kotlin}
-import afield.tetgen.*
-
-TetgenLibrary.isAvailable       // cheap enough to branch on in a box
-TetgenLibrary.describe()        // "TetGen wrapper at /…/libfield_tetgen_jvm.dylib (TetGen 1.6.0)"
-```
-
-`-Dafield.tetgen.library=<path>` or `AFIELD_TETGEN_LIBRARY` point it at a build of your own.
-Unlike Manifold there is no package to suggest instead: TetGen has no Homebrew formula and no
-distribution package worth linking.
-
-**Licensing.** TetGen is AGPL-3 or a commercial licence, and that is why most projects cannot use
-it. Field is AGPL-3, so the first applies and nothing further is needed. Kratos itself gates TetGen
-behind `USE_TETGEN_NONFREE_TPL` because *Kratos* is BSD, and its published wheels contain MMG and no
-TetGen.
-
-Two things in the build are required and neither is negotiable:
-
-- **`predicates.cxx` is compiled at `-O0`.** Upstream's own makefile says so. Shewchuk's exact
-  predicates depend on their arithmetic not being reassociated or kept at extended precision in a
-  register; built optimised they return wrong signs on nearly-degenerate input. That does not crash
-  — it silently produces an invalid tetrahedralization.
-- **`TETLIBRARY` is defined**, which is what turns `exit()` into a throwable. See the warning above.
-
-The C ABI passes results through out-parameters rather than a struct, so the Kotlin side never has
-to reproduce this compiler's field offsets and tail padding. Getting that wrong reads plausible
-garbage rather than failing, which is the same class of mistake as everything else on this page.
 
 ## See also
 

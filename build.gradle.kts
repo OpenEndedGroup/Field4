@@ -1319,6 +1319,20 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // itself non-reproducible. See dev_docs/HERMETIC_COMPLETION_INPUTS.md.
     maxHeapSize = "4g"
 
+    // AI4's per-turn tool-I/O log, its tool-evidence store and the request ledger all default to
+    // `~/.afield/logs/`, where `tools/ai_tool_usage.py`, the tool-use improvement monitor and every
+    // usage count read them as real sessions. Bridge fixtures were writing there on every run:
+    // on 2026-10-06, 1,015 of 3,835 tool-I/O files were `conv_test`, and all 120 Anthropic ones
+    // were `claude-test` (so the logs showed Anthropic sessions where no real one had ever run),
+    // and the one improvement dry run on record reviewed twelve fixtures and nothing else.
+    // Pointing them under build/ here means no test can forget to turn them off, and the tests
+    // that read the log still have one. Relative, so this checkout's absolute path stays out of
+    // the task's inputs (see `SmileNativeLibraryPath`); the worker's working directory is the
+    // project. Set before the `afield.` forwarding below, so an explicit `-D…` still wins.
+    systemProperty("afield.ai4.toolIoLog.path", "build/test-ai-logs/ai4_tool_io")
+    systemProperty("afield.ai4.toolEvidence.path", "build/test-ai-logs/ai4_tool_io/evidence")
+    systemProperty("afield.ai.usageLog.path", "build/test-ai-logs/ai_usage")
+
     // A test worker is a fresh JVM and does not inherit the build's system properties, so the
     // `-Dafield.…=write` switches our characterization tests document for regenerating their
     // goldens never actually reached them. Forward that one namespace and nothing else: it keeps
@@ -1346,7 +1360,7 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     from({ smileOpenBlasRuntime.map { zipTree(it) } }) {
         include(
             "**/libopenblas.so.0", "**/libopenblas*.dylib", "**/libopenblas.dll",
-            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack.dll",
+            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack*.dll",
         )
         eachFile { path = name }
         includeEmptyDirs = false
@@ -1356,7 +1370,9 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
         val directory = smileNativeDirectory.get().asFile.toPath()
         fun alias(prefix: String, target: String) {
             val source = Files.list(directory).use { files ->
-                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow()
+                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow {
+                    GradleException("Missing $prefix native library in $directory for $bytedecoPlatformClassifier")
+                }
             }
             val destination = directory.resolve(target)
             if (source != destination) Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING)
@@ -1378,11 +1394,21 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     }
 }
 
+// java.library.path goes through an argument provider rather than systemProperty(): a system
+// property is a task input by value, so the absolute path of this checkout's native directory put
+// every JavaExec and Test task's cache key out of reach of every other worktree. The provider
+// declares the directory by content instead.
+class SmileNativeLibraryPath(
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NONE) val directory: Provider<Directory>,
+) : CommandLineArgumentProvider {
+    override fun asArguments() = listOf("-Djava.library.path=${directory.get().asFile.absolutePath}")
+}
+
 fun org.gradle.process.JavaForkOptions.useSmileNative() {
     val nativePath = smileNativeDirectory.get().asFile.absolutePath
     systemProperty("smile.lib.lapack", "openblas")
     systemProperty("smile.lib.arpack", "arpack")
-    systemProperty("java.library.path", nativePath)
+    jvmArgumentProviders.add(SmileNativeLibraryPath(smileNativeDirectory))
     val pathVariable = when {
         osName.startsWith("Win") -> "PATH"
         osName.startsWith("Mac") || osName.startsWith("Darwin") -> "DYLD_LIBRARY_PATH"
@@ -1689,10 +1715,16 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // Gradle honours and the guard cannot see. It fails in the safe direction (a spurious "undeclared"
     // rather than a spurious pass) and it cost a commit to find, so match the idiom: every other
     // fileTree in this block is single-argument too.
+    //
+    // `.patch`/`.diff` are here for `PersonalBoundaryTest` too, though they are not box code: a patch
+    // quotes the body of the files it changes, so it can carry private source outright, and agents
+    // leave them under `dev_docs/agents/`. A diff arriving there must not inherit a previous verdict.
     inputs.files(fileTree("dev_docs") {
         include("**/*.kt")
         include("**/*.edn")
         include("**/*.yaml")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedDevDocsBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -1700,12 +1732,16 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         include("**/*.kt")
         include("**/*.edn")
         include("**/*.yaml")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedPublishedBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.files(fileTree("templates") {
         include("**/*.kt")
         include("**/*.edn")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedTemplateBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -2020,12 +2056,28 @@ tasks.register<JavaExec>("checkSourcePartition") {
 // chips when they are absent. checkSourcePages is the guard that matters: it parses the fences back
 // out of the emitted markdown and asserts each is verbatim source at the line it claims, which is the
 // only property that makes a numbered fence honest.
+//
+// Declared inputs and output make it up-to-date when nothing it reads has changed, and cacheable, so a
+// fresh worktree on an already-built commit takes the pages from the shared build cache instead of
+// rendering all of them. It reads every .kt under src/ (a citation is resolved by basename anywhere
+// there) and the citations in public/docs; build_zensical_docs.py copies build/source-pages into the
+// docs tree rather than pointing this task at the tree it wipes on every build.
 tasks.register<JavaExec>("generateSourcePages") {
     group = "documentation"
     description = "Renders the reference packages and every cited source file as docs pages into build/source-pages."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.SourcePageGenerator")
+    val outDir = layout.buildDirectory.dir("source-pages")
+    inputs.files(fileTree("src") { include("**/*.kt") })
+        .withPropertyName("kotlinSources").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree("public/docs") { include("**/*.md") })
+        .withPropertyName("docsProse").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(outDir).withPropertyName("pages")
+    outputs.cacheIf { true }
+    doFirst { outDir.get().asFile.deleteRecursively() }
+    // No output argument: the generator defaults to <repo>/build/source-pages, and an absolute path
+    // here would be an input that differs per worktree, so no worktree could hit another's cache entry.
 }
 
 tasks.register<JavaExec>("checkSourcePages") {
@@ -2061,6 +2113,38 @@ tasks.register<JavaExec>("checkAgentTranscripts") {
     // KotlinInterface2 be constructed at all.
     jvmArgs("-XX:+UnlockExperimentalVMOptions")
     jvmArgs(requiredRunJvmArgs())
+}
+
+// Box code as published has to compile, and has to avoid the idioms agents keep copying from it
+// (dev_docs/agents/BOX_CODE_REVISION_PASS.md). Both read AFIELD_GUARD_CHANGED_PATHS_FILE, which
+// tools/check_staged_generated_artifacts.py writes, so a landing checks only what it changed; run
+// by hand with neither, they cover the whole corpus (the compile takes as long as the smoke sweep).
+tasks.register<JavaExec>("checkBoxCodeCompiles") {
+    group = "verification"
+    description = "Compiles, without evaluating, every box of the changed agent transcripts (all of them when no change list is given)."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeCompileGuard")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("formatBoxCode") {
+    group = "formatting"
+    description = "Formats box code in transcripts (or the given files) with the editor's formatter, in place; --check only reports."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<Exec>("checkBoxIdioms") {
+    group = "verification"
+    description = "Flags redundant renderer lookups, bindPushConstant calls and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_box_idioms.py")
 }
 
 // The *other* half of the same artifact, and the half nothing checked until 2026-08-06:
@@ -3449,6 +3533,9 @@ tasks.register<Exec>("buildLearnedShaders") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// Native preparation scripts use the platform Python command, like the source launcher.
+val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
 //
 // Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —
@@ -3474,7 +3561,7 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     outputs.dir(layout.buildDirectory.dir("field-tetgen/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3561,7 +3648,7 @@ val fetchDocsDirtSamples = tasks.register("fetchDocsDirtSamples") {
     outputs.upToDateWhen { false }
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath) +
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath) +
             if (gradle.startParameter.isOffline) listOf("--check") else emptyList()
         val result = providers.exec {
             commandLine(command)
@@ -3598,7 +3685,7 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
     outputs.dir(layout.buildDirectory.dir("field-libpd/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3634,7 +3721,7 @@ val buildCsoundNative = tasks.register("buildCsoundNative") {
     outputs.dir(layout.buildDirectory.dir("field-csound/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true

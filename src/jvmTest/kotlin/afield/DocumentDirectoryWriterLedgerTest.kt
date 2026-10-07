@@ -148,9 +148,9 @@ class DocumentDirectoryWriterLedgerTest {
         private fun exempt(writes: Int, why: String) = DocumentDirectoryWriterLedgerTest.Entry(writes, why)
 
         /**
-         * Every jvmMain file that writes to a document-derived path, as of 2026-09-23.
+         * Every jvmMain file that writes to a document-derived path, as of 2026-10-07.
          *
-         * Nineteen files: seven gated, twelve not. The twelve are **not** all bugs — most write
+         * Twenty-three files: nine gated, fourteen not. The fourteen are **not** all bugs — most write
          * somewhere a read-only session never reaches. The ones that are genuinely reachable are
          * marked `REACHABLE`, and they are the backlog this test exists to keep visible rather than
          * a claim that tonight fixed them. They were surveyed by an audit of 693 raw write-primitive
@@ -170,6 +170,9 @@ class DocumentDirectoryWriterLedgerTest {
             // `require`s to be outside the live document. So nothing here writes into a document
             // directory; the file matches because this ledger is deliberately file-level.
             "src/jvmMain/kotlin/afield/ai/core/DocumentSourceTools.kt" to GATED,
+            // A lens defaults to <doc>/lenses; the tool refuses that destination for a read-only
+            // owner box, while allowing an explicit export directory outside the document.
+            "src/jvmMain/kotlin/afield/chatlog/ChatlogTools.kt" to GATED,
             "src/jvmMain/kotlin/afield/history.kt" to GATED,
             "src/jvmMain/kotlin/afield/server/fileproxy.kt" to GATED,
             // Reachable: the Guides panel's save and the AI4 create/patch/append tools both write
@@ -230,8 +233,8 @@ class DocumentDirectoryWriterLedgerTest {
                 "Capture evidence under AFIELD_AI4_CAPTURE_DIR or ~/.afield/logs, not a document directory."
             ),
             "src/jvmMain/kotlin/afield/ai/SemanticRetrievalService.kt" to exempt(
-                2,
-                "Lucene index and model cache under cacheRoot, not a document directory."
+                3,
+                "Lucene index, model cache and config.json under cacheRoot, not a document directory."
             ),
             "src/jvmMain/kotlin/afield/execution.kt" to exempt(
                 2,

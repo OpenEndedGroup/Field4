@@ -71,7 +71,7 @@ class InstructionFragmentsTest {
             val legacy = legacyBuildDynamicInstructions(mode, lang, prompt, "Unresolved reference: foo", 7, ctx)
             // Deliberate difference 2 (2026-10-02): the tool catalogue (deferred and extension tools) is new.
             var joined = buildInstructionFragments(mode, lang, prompt, "Unresolved reference: foo", 7, ctx)
-                .filter { it.source !in setOf("tools.catalogue", "tools.progress", "tools.house") }.joinToString("") { it.text }
+                .filter { it.source !in setOf("tools.catalogue", "tools.progress", "tools.house", "fences.catalogue") }.joinToString("") { it.text }
             // The one deliberate difference (2026-10-02): a chat turn no longer repeats the request inside its
             // instructions, because chatGeneral's message ends with it anyway. Put it back and nothing else differs.
             if (mode == InstructionMode.Chat) {

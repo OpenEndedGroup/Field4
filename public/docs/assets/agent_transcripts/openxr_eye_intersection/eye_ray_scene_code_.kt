@@ -1,4 +1,3 @@
-import afield.four.Renderer
 import afield.four.modules.*
 import afield.four.targets.BinocularGazeIntersection
 import afield.stdlib.linalg.Matrix4f
@@ -7,7 +6,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.delay
 
-val renderer: Renderer = fromContext()
 val xr = renderer.openXRHmdTarget
 if (xr != null) {
     check(xr.hasEyeViews) { "OpenXR views are not ready; check the headset/runtime, then re-launch this box" }

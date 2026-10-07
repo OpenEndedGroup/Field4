@@ -805,6 +805,45 @@ pre code {
     opacity: 1;
 }
 
+.ai-chat-window .ai-chat-fence-source-toggle {
+    position: absolute;
+    top: 4px;
+    right: 38px;
+    z-index: 10;
+    padding: 4px 7px;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 3px;
+    background: var(--field-surface);
+    color: var(--field-fg);
+    font: 11px "iosevka", monospace;
+    cursor: pointer;
+}
+
+.ai-chat-fence-preview {
+    min-height: 50px;
+    padding: 30px 10px 10px;
+    overflow-x: auto;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 5px;
+    background: var(--field-surface);
+    color: var(--field-fg);
+    font: 11px "iosevka", monospace;
+}
+
+.ai-chat-fence-preview svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: auto;
+}
+
+.ai-chat-fence-error {
+    min-height: 0;
+    padding: 8px 10px;
+    color: #e9a2a2;
+    white-space: pre-wrap;
+}
+
 .ai-chat-window {
     /* Rhymes with the history panel: a black shell, an editor-grey well for
        the input, cyan for Field's own voice and orange for yours. */
@@ -812,6 +851,9 @@ pre code {
     --ai-chat-ai-rule: var(--field-accent-muted);
     --ai-chat-you-fg: color-mix(in srgb, rgb(var(--field-warning-rgb)) 70%, rgb(var(--field-white-rgb)));
     --ai-chat-you-rule: rgba(var(--field-warning-rgb), 0.4);
+    /* A lens's third voice: a summary of several turns of both speakers. */
+    --ai-chat-summary-fg: var(--field-fg-muted);
+    --ai-chat-summary-rule: var(--field-border-medium);
     background: var(--field-surface);
     display: flex;
     flex-direction: column;
@@ -822,7 +864,8 @@ pre code {
 }
 
 .ai-chat-messages {
-    flex: 1 1 auto;
+    /* The transcript scrolls in its share; its content length must not squeeze sibling panels. */
+    flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
     margin-left: 5px;
@@ -1027,6 +1070,196 @@ pre code {
     opacity: 0.8;
 }
 
+/* A round: the tool activity between two pieces of text, folded to one status-row line
+   ("7 tool calls · 3.4 s · 1 failed · 2 notes"). Opened, it shows the activity as it always
+   rendered, under the same rule as the AI's own turns. */
+.ai-chat-round {
+    margin: 2px 6px;
+    color: var(--ai-chat-ai-fg, var(--field-fg-muted));
+    font: 10px/1.5 var(--field-font);
+}
+
+.ai-chat-round > summary {
+    cursor: pointer;
+    list-style-position: inside;
+}
+
+.ai-chat-round-line {
+    opacity: 0.75;
+}
+
+.ai-chat-round-sep {
+    opacity: 0.5;
+}
+
+.ai-chat-round-failed {
+    color: #e9a2a2;
+}
+
+/* The families that change the work or the machine read a step brighter than the rest of the line. */
+.ai-chat-round-family[data-family="notes"],
+.ai-chat-round-family[data-family="recipes"],
+.ai-chat-round-family[data-family="design"] {
+    color: var(--field-fg-strong);
+}
+
+.ai-chat-round-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 4px;
+    padding-left: 4px;
+    border-left: 2px solid var(--ai-chat-ai-rule, var(--field-border-medium));
+}
+
+.ai-chat-round-body > .ai-chat-progress,
+.ai-chat-round-body > .ai-chat-status-row {
+    margin-left: 2px;
+}
+
+/* The lens viewer (chatLens.js): a lens beside the chat it summarizes, in the chat's own type and
+   colours, with a band from each lens block to the stretch it stands for. The root also carries
+   .ai-chat-window, which supplies the shell and the --ai-chat-* colours. */
+.chat-lens {
+    border-radius: 8px;
+    font-family: var(--field-font);
+}
+
+.chat-lens-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    padding: 6px 10px 4px;
+    color: var(--ai-chat-ai-fg);
+    font-size: 11px;
+}
+
+.chat-lens-title {
+    color: var(--field-fg-strong);
+    font-size: 13px;
+}
+
+.chat-lens-meta {
+    opacity: 0.7;
+}
+
+.chat-lens-tools {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+}
+
+.chat-lens-follow {
+    opacity: 0.8;
+    cursor: pointer;
+}
+
+.chat-lens-save {
+    font: inherit;
+    font-size: 10px;
+    padding: 0 6px;
+    border: 1px solid var(--field-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ai-chat-ai-fg);
+    cursor: pointer;
+}
+
+/* One label per column: which level of the chain it is, and what wrote it. */
+.chat-lens-labels {
+    display: grid;
+    padding: 0 6px 4px;
+    color: var(--ai-chat-ai-fg);
+    font-size: 10px;
+    opacity: 0.75;
+    border-bottom: 1px solid var(--field-border);
+}
+
+.chat-lens-col-name {
+    color: var(--field-fg-strong);
+}
+
+.chat-lens-brief {
+    flex-basis: 100%;
+    font-style: italic;
+    opacity: 0.65;
+}
+
+.chat-lens-body {
+    flex: 1 1 0;
+    min-height: 0;
+    display: grid;
+    /* chatLens.js sets the columns: one per level of the chain, a gutter between each pair. */
+    grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1.25fr);
+}
+
+.chat-lens-col {
+    margin: 0;
+    padding: 0 6px;
+}
+
+.chat-lens-gutter {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.chat-lens-band {
+    fill: color-mix(in srgb, var(--ai-chat-ai-fg) 16%, transparent);
+    stroke: color-mix(in srgb, var(--ai-chat-ai-fg) 45%, transparent);
+    stroke-width: 0.75;
+    transition: fill 120ms;
+}
+
+.chat-lens-band.active {
+    fill: color-mix(in srgb, var(--ai-chat-ai-fg) 24%, transparent);
+    stroke: var(--ai-chat-ai-fg);
+}
+
+/* A band takes the colour of the voice it comes from: amber from the user's words, grey from a summary. */
+.chat-lens-band.voice-you {
+    fill: color-mix(in srgb, var(--ai-chat-you-fg) 16%, transparent);
+    stroke: color-mix(in srgb, var(--ai-chat-you-fg) 45%, transparent);
+}
+
+.chat-lens-band.voice-you.active {
+    fill: color-mix(in srgb, var(--ai-chat-you-fg) 26%, transparent);
+    stroke: var(--ai-chat-you-fg);
+}
+
+.chat-lens-band.voice-summary {
+    fill: color-mix(in srgb, var(--ai-chat-summary-fg) 14%, transparent);
+    stroke: color-mix(in srgb, var(--ai-chat-summary-fg) 45%, transparent);
+}
+
+.chat-lens-band.voice-summary.active {
+    fill: color-mix(in srgb, var(--ai-chat-summary-fg) 26%, transparent);
+    stroke: var(--ai-chat-summary-fg);
+}
+
+.chat-lens-lens [data-ai-sources] {
+    cursor: pointer;
+}
+
+.chat-lens .chat-lens-active {
+    outline: 1px solid color-mix(in srgb, var(--ai-chat-ai-fg) 55%, transparent);
+    outline-offset: 1px;
+    border-radius: 4px;
+}
+
+/* What the lens leaves out reads dimmer, so the chat column shows the filter as well as the chat. */
+.chat-lens-middle .chat-lens-uncited,
+.chat-lens-source .chat-lens-uncited {
+    opacity: 0.38;
+}
+
+.chat-lens-error {
+    padding: 12px;
+    color: #e9a2a2;
+}
+
 .ai-chat-turn.ai {
     align-self: flex-start;
     text-align: left;
@@ -1042,6 +1275,18 @@ pre code {
     border-right: 2px solid var(--ai-chat-you-rule, var(--field-border));
     color: var(--ai-chat-you-fg, var(--field-fg));
     font-style: italic;
+}
+
+/* A summary speaks for both: grey, with both speakers' rules. */
+.ai-chat-turn.summary {
+    border-left: 2px solid var(--ai-chat-summary-rule, var(--field-border));
+    border-right: 2px solid var(--ai-chat-summary-rule, var(--field-border));
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
+}
+
+.ai-chat-turn.summary .ai-chat-markdown {
+    text-align: left;
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
 }
 
 /* The conversation itself reads larger than the chat's chrome (progress, status, actions). */
@@ -1560,6 +1805,22 @@ body {
    Excalidraw's own CSS loads after this file, hence the blanket rule and !important. */
 .field-drawing-mirror .excalidraw-container > :not(canvas):not(.excalidraw__canvas-wrapper):not(.SVGLayer):not(.excalidraw-textEditorContainer) {
     display: none !important;
+}
+
+/* A stretch of divider between two panes that do not scroll together across it (one is unlinked)
+   is dashed: this overlay lies on the black bar and paints its gaps in the canvas's own grey. */
+.field-pane-dash {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.field-pane-dash-v {
+    background: repeating-linear-gradient(180deg, transparent 0 7px, rgb(24, 24, 24) 7px 12px);
+}
+
+.field-pane-dash-h {
+    background: repeating-linear-gradient(90deg, transparent 0 7px, rgb(24, 24, 24) 7px 12px);
 }
 
 /* Divider handles: an invisible strip over the pane border that lights up on hover. */
@@ -4347,6 +4608,12 @@ kbd {
     margin-right: 3px;
 }
 
+/* The block caret sits on top of the text it covers, so while it blinks on it took the mousedown
+   meant for a clickable decoration under it (a flipbox): let clicks through to the text. */
+.monaco-editor .cursors-layer .cursor {
+    pointer-events: none;
+}
+
 .coverMarker {
     font-size: 0 !important;
 }
@@ -5442,3 +5709,41 @@ body.mode-editor-only .field-toast {
 .layer-name.is-active { color: rgb(var(--field-accent-rgb)); }
 .field-panel button.layer-eye.is-on { opacity: 1; color: #d8d8d8; }
 .layer-footer { justify-content: flex-end; padding-top: 4px; }
+
+/* Saved history stays separate from the transcript and never selects the live document state. */
+.state-tree-toolbar, .state-tree-browser { font:13px/1.4 Iosevka, monospace; color:#d8d8d8; background:#000; }
+.state-tree-toolbar { display:flex; align-items:center; gap:12px; padding:6px 10px; flex:0 0 auto; }
+.state-tree-caption { color:#8a8a8a; font-size:12px; }
+.state-tree-browser { display:flex; flex-direction:column; flex:0 1 430px; min-height:180px; max-height:55%; overflow:hidden; padding:10px; box-sizing:border-box; }
+.state-tree-controls, .state-tree-status { flex:0 0 auto; }
+.state-tree-toolbar[hidden], .state-tree-browser[hidden] { display:none; }
+.state-tree-controls, .state-tree-actions, .state-tree-paging { display:flex; gap:6px; flex-wrap:wrap; }
+.state-tree-toolbar button, .state-tree-browser button, .state-tree-browser select { font:inherit; color:#d8d8d8; background:#242424; border:0; border-radius:8px; padding:7px 10px; cursor:pointer; text-transform:none; letter-spacing:normal; box-shadow:none; }
+.state-tree-controls select { flex:1; min-width:100px; width:180px; appearance:none; padding:7px 34px 7px 12px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%238a8a8a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; color-scheme:dark; }
+.state-tree-browser button:disabled { opacity:.4; cursor:default; }
+.state-tree-browser button:focus-visible, .state-tree-toolbar button:focus-visible, .state-tree-browser select:focus { outline:none; box-shadow:none; color:rgb(var(--field-accent-rgb)); background-color:#303030; }
+.state-tree-toolbar button:hover, .state-tree-browser button:not(:disabled):hover { color:rgb(var(--field-accent-rgb)); background-color:#303030; }
+.state-tree-toolbar button[aria-expanded="true"] { color:rgb(var(--field-accent-rgb)); }
+.state-tree-status { color:#8a8a8a; margin:8px 0; font-size:12px; white-space:pre-wrap; }
+.state-tree-body { position:relative; display:flex; flex:1 1 auto; min-height:80px; gap:12px; height:275px; padding:8px 8px 44px; box-sizing:border-box; background:#242424; border-radius:10px; }
+.state-tree-graph, .state-tree-inspector { min-width:0; overflow:auto; background:transparent; border:0; }
+.state-tree-graph { flex:1 1 0; }
+.state-tree-inspector { flex:0 1 42%; max-width:280px; padding:4px; display:flex; flex-direction:column; align-items:flex-end; overflow:hidden; margin-left:auto; text-align:right; }
+.state-tree-inspector > :not(.state-tree-detail) { flex:0 0 auto; }
+.state-tree-detail:empty { display:none; }
+.state-tree-pinned { color:#8a8a8a; font-size:11px; overflow-wrap:anywhere; margin:0 0 8px; }
+.state-tree-pinned { margin-top:8px; }
+.state-tree-actions { justify-content:flex-end; gap:4px; }
+.state-tree-actions button { background:#181818; font-size:11px; padding:4px 7px; border-radius:6px; }
+.state-tree-detail { flex:1 1 auto; min-height:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.4 Iosevka, monospace; color:#aaa; user-select:text; margin:10px 0 0; width:100%; }
+.state-tree-rows { position:relative; }
+.state-tree-rows svg { z-index:1; position:absolute; top:0; left:0; pointer-events:none; }
+.state-tree-rows path { stroke:#666; stroke-width:1; fill:none; }
+.state-tree-rows circle { stroke:#aaa; fill:#242424; }
+.state-tree-rows circle.is-current { fill:rgb(var(--field-accent-rgb)); stroke:rgb(var(--field-accent-rgb)); stroke-width:2; }
+.state-tree-browser .state-tree-node { display:block; height:43px; width:100%; text-align:left; border:0; border-radius:6px; background:transparent; padding-top:4px; padding-bottom:4px; }
+.state-tree-node-title { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.state-tree-node small { display:block; color:#8a8a8a; font-size:10px; }
+.state-tree-browser .state-tree-node[aria-pressed="true"] { background:#303030; color:rgb(var(--field-accent-rgb)); }
+.state-tree-paging { position:absolute; right:8px; bottom:8px; gap:4px; }
+.state-tree-paging button { background:#1f1f1f; padding:4px 9px; font-size:12px; }

@@ -5,6 +5,7 @@ import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 import com.microsoft.playwright.Route
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -172,5 +173,116 @@ class ScreenshotOutputReadinessTest {
 
     @Test fun noneIsAnIntentionalEmptyCapture() = withPage("", outputArea = false) {
         assertBoth(it, true, expectOutputs = ExpectedOutputs.NONE)
+    }
+
+    // ---- a page that never answers ---------------------------------------------------------
+    //
+    // `Page.evaluate` has no timeout, and one Playwright thread serves every capture in every
+    // document. On the house host (2026-10-06) one prep script awaited a promise that never settled
+    // and held that thread for 50 minutes. Each of these must come back inside the prep deadline
+    // plus its margins, naming what it was waiting for. The bound is the property, not a speed.
+
+    private val realOutput = "<div class='disclosure-content' style='width:300px;height:200px'>real output</div>"
+
+    /** Fails inside the script's own hard deadline, so before the driver's wall clock would. */
+    private fun assertStalls(page: Page, waitingFor: String, prepMs: Int) {
+        val limit = prepMs + SCREENSHOT_PREP_HARD_MARGIN_MS + SCREENSHOT_PREP_DRIVER_MARGIN_MS
+        for (capture in listOf<() -> String>(
+            { requestBoxScreenshot(page, BoxScreenshotRequest("subject", openOutputs = true), prepMs).also { assertFalse(it.success) }.message },
+            { requestWindowScreenshot(page, WindowScreenshotRequest(uid = "subject", openOutputs = true), prepMs).also { assertFalse(it.success) }.message }
+        )) {
+            val started = System.nanoTime()
+            val message = capture()
+            val elapsedMs = (System.nanoTime() - started) / 1_000_000
+            assertTrue(elapsedMs < limit, "took $elapsedMs ms against a $limit ms limit: $message")
+            assertTrue(message.startsWith(SCREENSHOT_PREP_STALLED), message)
+            assertTrue(message.contains(waitingFor), message)
+        }
+    }
+
+    @Test fun prepareHookThatNeverResolvesFailsWithinTheDeadline() = withPage(
+        realOutput,
+        """window.fieldBackdoorPrepareBoxScreenshot = () => new Promise(() => {});
+           window.fieldBackdoorPrepareWindowScreenshot = () => new Promise(() => {});"""
+    ) { page ->
+        // The hook is the first await, so a short prep deadline is enough to reach it.
+        assertStalls(page, "fieldBackdoorPrepare", prepMs = 700)
+        // The page is still usable: a hook that answers again is captured normally.
+        page.evaluate("""() => {
+            const ok = request => JSON.stringify({uid: request.uid, success: true});
+            window.fieldBackdoorPrepareBoxScreenshot = ok;
+            window.fieldBackdoorPrepareWindowScreenshot = ok;
+        }""")
+        assertBoth(page, true)
+    }
+
+    @Test fun pageThatRendersNoFramesFailsWithinTheDeadline() = withPage(
+        realOutput, "window.requestAnimationFrame = () => 0;"
+    ) {
+        // The first frame wait comes after readiness and settling, which a loaded host may be slow
+        // to reach; the prep deadline leaves it room, as the success fixtures above do.
+        assertStalls(it, "an animation frame", prepMs = 3_000)
+    }
+
+    @Test fun pageThatCannotRunTimersIsStoppedByTheDriver() = withPage(
+        realOutput,
+        """window.fieldBackdoorPrepareBoxScreenshot = () => new Promise(() => {});
+           window.fieldBackdoorPrepareWindowScreenshot = () => new Promise(() => {});
+           window.setTimeout = () => 0;"""
+    ) { page ->
+        // The script's own deadlines are timers, so here only the driver's wall clock can end it.
+        val prepMs = 700
+        val wallClock = prepMs + SCREENSHOT_PREP_HARD_MARGIN_MS + SCREENSHOT_PREP_DRIVER_MARGIN_MS
+        for (capture in listOf<() -> Any>(
+            { requestBoxScreenshot(page, BoxScreenshotRequest("subject", openOutputs = true), prepMs) },
+            { requestWindowScreenshot(page, WindowScreenshotRequest(uid = "subject", openOutputs = true), prepMs) }
+        )) {
+            val started = System.nanoTime()
+            val failure = assertFailsWith<IllegalStateException> { capture() }
+            val elapsedMs = (System.nanoTime() - started) / 1_000_000
+            assertTrue(elapsedMs < wallClock + 10_000L, "took $elapsedMs ms: ${failure.message}")
+            assertTrue(failure.message!!.contains("did not answer within $wallClock ms"), failure.message)
+        }
+    }
+
+    // ---- the docs video path ----------------------------------------------------------------
+    //
+    // The video recorder waits for two painted frames after clearing a box's presentation and
+    // before every movie frame, the latter with the Field runloop parked as well. Each wait used to
+    // be a bare double-RAF evaluate, the same shape as the one that held the Playwright thread for
+    // 50 minutes.
+
+    @Test fun videoPaintWaitAnswersOnARenderingPage() = withPage(realOutput) { page ->
+        // A loaded host may be slow to schedule Chromium; the timeout leaves it room.
+        awaitPaintedFrames(page, "video paint", timeoutMs = 5_000)
+    }
+
+    @Test fun videoPaintWaitFailsOnAPageThatRendersNoFrames() = withPage(
+        realOutput, "window.requestAnimationFrame = () => 0;"
+    ) { page ->
+        val timeoutMs = 700
+        val started = System.nanoTime()
+        val failure = assertFailsWith<IllegalStateException> { awaitPaintedFrames(page, "video paint", timeoutMs) }
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        // The page's own timer answers, before the driver's wall clock would.
+        assertTrue(elapsedMs < timeoutMs + SCREENSHOT_PREP_DRIVER_MARGIN_MS, "took $elapsedMs ms: ${failure.message}")
+        assertTrue(
+            failure.message!!.contains("video paint: the page rendered no frame within $timeoutMs ms"),
+            failure.message
+        )
+        // The page still answers.
+        assertTrue(page.evaluate("() => document.querySelector('.box') !== null") == true)
+    }
+
+    @Test fun videoPaintWaitOnAPageThatCannotRunTimersIsStoppedByTheDriver() = withPage(
+        realOutput, "window.requestAnimationFrame = () => 0; window.setTimeout = () => 0;"
+    ) { page ->
+        val timeoutMs = 700
+        val wallClock = timeoutMs + SCREENSHOT_PREP_DRIVER_MARGIN_MS
+        val started = System.nanoTime()
+        val failure = assertFailsWith<IllegalStateException> { awaitPaintedFrames(page, "video paint", timeoutMs) }
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        assertTrue(elapsedMs < wallClock + 10_000L, "took $elapsedMs ms: ${failure.message}")
+        assertTrue(failure.message!!.contains("video paint did not answer within $wallClock ms"), failure.message)
     }
 }

@@ -553,8 +553,9 @@ showMeshGrid(
 ## Trying it yourself
 
 Every runnable example above is a box: paste it into Field, change a resolution, a smoothing
-parameter or an SDF expression, and run it again. The same ground is also covered by live
-boxes in an [agent transcript](agent_transcripts.md) you can replay into a fresh Field.
+parameter or an SDF expression, and run it again. To start from boxes that already run, open
+**mesh_geometry_examples** from Starting points on the welcome screen, or
+[open it here](offline.html?file=assets/agent_transcripts/mesh_geometry_examples/metadata.edn).
 
 ??? aside "Where the pictures come from"
     The images under the runnable examples are each box's own output, drawn by the Three.js viewer

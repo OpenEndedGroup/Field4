@@ -2,13 +2,11 @@ import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowser
 import afield.four.browser.PuppetBrowserUvInput
 import afield.four.browser.PuppetBrowserWindowInput
-import afield.four.modules.fromContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.concurrent.CompletableFuture
 
-val renderer: Renderer = fromContext()
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 val browser = FieldUiBrowserTexture(
     renderer = renderer,

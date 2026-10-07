@@ -435,6 +435,49 @@ existing `mountDrawingLayer` surface was enough.
     be API additions, not fixes. The public page's limits say `viewport` describes the
     bottom-right pane.
 
+**Up to two dividers per axis, unlinked panes, narrow bands** (2026-10-05). Marc asked for
+3-up layouts and an independent corner. His decisions: palette commands only, no more than two
+dividers per axis, dashed lines for stretches of divider between panes that do not share an axis,
+and a flat grey (not the vignetted background) where a middle band ends inside its pane.
+
+- **Model** (`canvasCamera.kt`).
+  - `dividersX/Y` (screen fractions) and `linesX/Y` (world lines) are lists of up to
+    `MAX_DIVIDERS`. Column c's band runs from line c-1 to line c, unbounded at the window edges.
+  - Each translation is clamped to its band: the far line first, then the near line, so the near
+    line wins when the band is narrower than the pane.
+  - A middle band is created exactly as wide as its pane, so it only scrolls once the pane is
+    narrowed or zoomed in.
+  - Unlinked panes keep their own translation in `ownX/ownY`, keyed by (col, row). `pane.tx/ty`
+    read it, `setTranslation` writes it, and `constrain` re-zooms and clamps it like a column.
+- **Commands.** Split Canvas Here / Columns Here / Rows Here add dividers (`addDivider`; refused
+  past two, too close to an edge or another divider, or over too narrow a band). Removing a
+  divider merges its two columns into the later one's camera.
+  - Unlink Pane / Unlink Pane Horizontally / Unlink Pane Vertically / Relink Pane act on the pane
+    under the pointer.
+  - The grip still makes a fresh 1+1 split.
+- **Palette thumbnails** (`canvasSplitPreview.kt`). Each split action has `docJs` calling
+  `window.canvasSplitPreview(id)`, an SVG of the window after the command: new dividers and the
+  target pane in cyan, edges that change dashedness in cyan dashes, the boxes where they are, and
+  the pointer as a circle. A refused command says why.
+- **Look.**
+  - Dashes are `.field-pane-dash` overlays per stretch, between two panes, painting
+    canvas-grey gaps over the black bar.
+  - The grey end is the shader's `u_band` test (flat `rgb(52,52,52)`, returned before the
+    vignette and dots), and the drawing-layer host is clipped by `pane.emptyEnds()` there.
+- **Saving.** One divider still saves as numbers (`sx`, `wx`), so old documents load unchanged;
+  two save as lists. Unlinked panes save as `free: [{c, r, x, y}]`. Bookmarks add `paneOwnX/Y`, and
+  their columns and rows come from `columnTranslations/rowTranslations`, no longer from panes.
+- **Regression `canvas-split-3up`** checks:
+  - three columns in their bands, and a third divider refused;
+  - the middle column scrolling alone and stopping at its band;
+  - a 120 px grey end, read back from the background canvas as `52,52,52`;
+  - a 3x2 split whose unlinked corner gets dashes on exactly `h0@0,v0@0`, scrolls alone, and is
+    left behind by its row;
+  - the saved `free` list, the palette thumbnail's refusal text, relinking, and unsplitting.
+- **Negative controls:**
+  - hiding the dashes fails with `dashes on exactly the corner pane's two inner edges: h0@0`;
+  - disabling the band test fails with `flat grey past the band: 19,19,19`.
+
 ## 7. Persistence
 
 Add a root property `panes` holding a JSON string:

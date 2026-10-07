@@ -37,6 +37,7 @@ import afield.server.DocsAccessPolicy
 import afield.server.docsFlagEnabled
 import afield.server.isSameSiteRequest
 import afield.server.installDocumentGuideRoutes
+import afield.chatlog.installChatlogRoutes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
@@ -2518,6 +2519,17 @@ class Server {
                 Handled.yes
             })
 
+            handlers["live-output-iframe-ready"] = mutableSetOf({ _, _ ->
+                LiveOutputIframeBridge.ready(thisSession.get())
+                Handled.yes
+            })
+            handlers["live-output-iframe-reply"] = mutableSetOf({ message, _ ->
+                LiveOutputIframeBridge.reply(
+                    thisSession.get(), Json.decodeFromJsonElement<LiveOutputIframeReply>(message.payload!!)
+                )
+                Handled.yes
+            })
+
             handlers["set-string"] = mutableSetOf({ message, reply ->
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
@@ -3254,6 +3266,7 @@ class Server {
             })
 
             registerButtonUpdateHandler() // afield/ButtonControlHandler.kt — see its KDoc
+            registerArrayControlUpdateHandler() // afield/visualizers.kt
             handlers["fline-click"] = mutableSetOf({ message, reply ->
                 val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
                 lprintln("debug,fline", "Received FLine click: ${click.callbackId}")
@@ -3732,6 +3745,9 @@ class Server {
                         // parsed; routing it through the gzip buffer would coalesce those flushes
                         // and defeat the point of streaming, so leave it uncompressed.
                         excludeContentType(ContentType.parse("application/x-ndjson"))
+                        // Three.js geometry buffers: float data barely compresses, and gzip would cost a
+                        // core for as long as a large scene takes to stream.
+                        excludeContentType(ContentType.parse(afield.graphics.THREE_BUFFERS_CONTENT_TYPE))
                     }
 
                     install(WebSockets) {
@@ -3772,6 +3788,7 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installChatlogRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
 
@@ -5063,6 +5080,7 @@ class Server {
                             } finally {
                                 orderedControls.cancel()
                                 controlConsumer.cancel()
+                                LiveOutputIframeBridge.gone(ts)
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
                                 afield.graphics.detachThreeGlobalListener(ts)
@@ -5162,6 +5180,24 @@ class Server {
                                 val bytes = afield.graphics.threeGeometryReviewImage(uid, hash)
                                 if (bytes == null) call.respond(HttpStatusCode.NotFound)
                                 else call.respondBytes(bytes, ContentType.Image.PNG)
+                            }
+                        }
+                        route("/three-buffers") {
+                            get {
+                                // The arrays a `three/geometry` description refers to, written from the
+                                // payload as they stream. A superseded generation is gone: the viewer
+                                // has been sent the description that replaced it. The trust is the
+                                // websocket's that sent the description — remote native clients allowed,
+                                // cross-site browser reads refused by installFieldApiSameSiteGuard.
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val generation = call.request.queryParameters["generation"] ?: ""
+                                val buffers = afield.graphics.threeGeometryBuffers(uid, generation)
+                                if (buffers == null) call.respond(HttpStatusCode.NotFound, "No current geometry for that view and generation")
+                                else {
+                                    call.response.header(HttpHeaders.CacheControl, "private, max-age=3600, immutable")
+                                    call.respondOutputStream(ContentType.parse(afield.graphics.THREE_BUFFERS_CONTENT_TYPE),
+                                        HttpStatusCode.OK, buffers.bytes) { buffers.writeTo(this) }
+                                }
                             }
                         }
                         route("/three-review") {
@@ -5784,6 +5820,18 @@ internal const val SEC_FETCH_MODE_HEADER = "Sec-Fetch-Mode"
 private val fieldApiSelfGuardedReadPrefixes = listOf("/api/docs-annotations", "/api/docs-improvement/pass")
 
 /**
+ * Annotation writes have their own machine and site policy, including an explicit cross-site
+ * opt-in. Defer only the routes that actually install that policy; a new or lookalike API path
+ * must still meet the application-wide guard until it has its own route-level protection.
+ */
+internal fun fieldApiWriteNeedsSameSite(method: HttpMethod, path: String): Boolean = when (method) {
+    HttpMethod.Post -> path != "/api/docs-annotations"
+    HttpMethod.Put -> !Regex("^/api/docs-annotations/[^/]+/resolve$").matches(path)
+    HttpMethod.Delete -> !Regex("^/api/docs-annotations/[^/]+$").matches(path)
+    else -> true
+}
+
+/**
  * Whether a *read* should be held to the same-site rule.
  *
  * The exposure this closes is a page you have open **reading** Field's answer: `anyHost()` in
@@ -5878,6 +5926,8 @@ internal fun Application.installFieldApiSameSiteGuard() {
         // cannot leak or that guard themselves — see [fieldApiReadNeedsSameSite].
         if (call.request.httpMethod == HttpMethod.Get || call.request.httpMethod == HttpMethod.Head) {
             if (!fieldApiReadNeedsSameSite(call.request.headers[SEC_FETCH_MODE_HEADER], path)) return@intercept
+        } else if (!fieldApiWriteNeedsSameSite(call.request.httpMethod, path)) {
+            return@intercept
         }
         if (isSameSiteRequest(
                 call.request.headers[SEC_FETCH_SITE_HEADER],

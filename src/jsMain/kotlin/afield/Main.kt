@@ -2238,8 +2238,7 @@ private fun applyViewportTranslation(
     val previousZoom = mainZoom
     val zoomChanged = zoom != previousZoom
     CanvasCamera.zoom = zoom
-    if (pane.col < CanvasCamera.x.size) CanvasCamera.x[pane.col] = nextX
-    if (pane.row < CanvasCamera.y.size) CanvasCamera.y[pane.row] = nextY
+    CanvasCamera.setTranslation(pane, nextX, nextY)
     CanvasCamera.constrain(pane, previousZoom)
     CanvasCamera.applyTransforms()
     syncInitialPlaceholderLayerTransform()
@@ -2341,36 +2340,75 @@ private fun registerCanvasZoomActions() {
     snapping.detail = "Snap boxes to each other while dragging and resizing, as Caps Lock does"
     snapping.run = { boxSnappingSystem.toggleFromCommand() }
     builtin.push(snapping)
+    // Each split command's palette preview is a live thumbnail of what it will do (canvasSplitPreview.kt).
+    val splitDocs = mutableMapOf<String, Pair<String, String>>()
+    window.asDynamic().canvasSplitPreview = { id: String ->
+        splitDocs[id]?.let { (label, detail) -> CanvasSplitPreview.html(id, label, detail) } ?: ""
+    }
     fun splitAction(id: String, label: String, detail: String, run: () -> Unit) {
         val action: dynamic = js("({})")
         action.id = id
         action.label = label
         action.detail = detail
+        action.docJs = "window.canvasSplitPreview('$id')"
         action.run = run
+        splitDocs[id] = label to detail
         builtin.push(action)
     }
-    // The pointer is where the divider goes; from the palette that is where it was before opening it.
+    // The pointer is where the divider goes, and the pane it is over is the one a pane command
+    // acts on; from the palette that is where it was before opening it.
     fun pointer(): Pair<Double, Double> {
         val view = CanvasCamera.main.rect
         val px = CanvasCamera.lastPointerX.takeIf { !it.isNaN() } ?: (view.x + view.w * 0.3)
         val py = CanvasCamera.lastPointerY.takeIf { !it.isNaN() } ?: (view.y + view.h * 0.3)
         return px to py
     }
-    splitAction("split-canvas-here", "Split Canvas Here",
-        "Split the canvas into four panes at the pointer. Panes in a row scroll up and down together, panes in a column side to side together") {
+    fun addDividers(vertical: Boolean, horizontal: Boolean) {
         val (px, py) = pointer()
-        CanvasCamera.splitAt(px, py)
+        val problems = listOfNotNull(
+            if (vertical) CanvasCamera.addDivider(true, px) else null,
+            if (horizontal) CanvasCamera.addDivider(false, py) else null
+        )
+        problems.firstOrNull()?.let { notify(it, "command") }
+    }
+    fun paneCommand(run: (CanvasPane) -> Unit) {
+        if (!CanvasCamera.isSplit) {
+            notify("The canvas is not split", "command")
+            return
+        }
+        val (px, py) = pointer()
+        run(CanvasCamera.paneAt(px, py))
+    }
+    splitAction("split-canvas-here", "Split Canvas Here",
+        "Add a column divider and a row divider at the pointer. Panes in a row scroll up and down together, panes in a column side to side together") {
+        addDividers(vertical = true, horizontal = true)
     }
     splitAction("split-canvas-columns-here", "Split Canvas Columns Here",
-        "Split the canvas into a left and a right pane at the pointer; they scroll up and down together") {
-        CanvasCamera.splitAt(pointer().first, null)
+        "Add a column divider at the pointer (up to two); panes side by side scroll up and down together") {
+        addDividers(vertical = true, horizontal = false)
     }
     splitAction("split-canvas-rows-here", "Split Canvas Rows Here",
-        "Split the canvas into a top and a bottom pane at the pointer; they scroll side to side together") {
-        CanvasCamera.splitAt(null, pointer().second)
+        "Add a row divider at the pointer (up to two); panes one above the other scroll side to side together") {
+        addDividers(vertical = false, horizontal = true)
     }
     splitAction("remove-canvas-split", "Remove Canvas Split", "Return the canvas to a single pane; every box stays where it is") {
         CanvasCamera.splitAt(null, null)
+    }
+    splitAction("unlink-pane", "Unlink Pane",
+        "The pane under the pointer scrolls on its own, in both directions; its dividers turn dashed") {
+        paneCommand { CanvasCamera.unlinkPane(it, horizontally = true, vertically = true) }
+    }
+    splitAction("unlink-pane-horizontally", "Unlink Pane Horizontally",
+        "The pane under the pointer scrolls side to side on its own instead of with its column") {
+        paneCommand { CanvasCamera.unlinkPane(it, horizontally = true, vertically = false) }
+    }
+    splitAction("unlink-pane-vertically", "Unlink Pane Vertically",
+        "The pane under the pointer scrolls up and down on its own instead of with its row") {
+        paneCommand { CanvasCamera.unlinkPane(it, horizontally = false, vertically = true) }
+    }
+    splitAction("relink-pane", "Relink Pane",
+        "The pane under the pointer scrolls with its row and column again, jumping to where they are") {
+        paneCommand { CanvasCamera.relinkPane(it) }
     }
     allActions.builtin = builtin
     updateActions()
@@ -2379,6 +2417,14 @@ private fun registerCanvasZoomActions() {
     window.asDynamic().resetCanvasZoom = ::resetCanvasZoom
     window.asDynamic().canvasZoom = { mainZoom }
     window.asDynamic().splitCanvasAt = { cx: Double?, cy: Double? -> CanvasCamera.splitAt(cx, cy) }
+    // For tests: what the palette commands do, at an explicit position or pane.
+    window.asDynamic().addCanvasDivider = { vertical: Boolean, client: Double -> CanvasCamera.addDivider(vertical, client) }
+    window.asDynamic().unlinkCanvasPane = { col: Int, row: Int, h: Boolean, v: Boolean ->
+        CanvasCamera.panes.firstOrNull { it.col == col && it.row == row }?.let { CanvasCamera.unlinkPane(it, h, v) }
+    }
+    window.asDynamic().relinkCanvasPane = { col: Int, row: Int ->
+        CanvasCamera.panes.firstOrNull { it.col == col && it.row == row }?.let { CanvasCamera.relinkPane(it) }
+    }
     window.asDynamic().canvasPanesState = { CanvasCamera.state() }
     CanvasCamera.onCameraLayoutChanged = {
         applyViewportTranslation(mainTranslation[0], mainTranslation[1])
@@ -3381,9 +3427,12 @@ private fun renderWebGLBackground() {
     val renderer = window.asDynamic().__fieldRenderWebglBackground
     if (renderer == null || renderer == js("undefined")) return
     // Split, each pane draws its own grid and vignette through its own camera.
+    // Each with its world band, so the shader paints a middle band's far end flat grey.
+    fun finite(v: Double) = if (v.isFinite()) v else if (v > 0) 1e9 else -1e9
     val panes = if (!CanvasCamera.isSplit) null else CanvasCamera.panes.map { pane ->
         val r = pane.rect
-        arrayOf(r.x, r.y, r.w, r.h, pane.tx, pane.ty)
+        val band = pane.band().map(::finite)
+        arrayOf(r.x, r.y, r.w, r.h, pane.tx, pane.ty, band[0], band[1], band[2], band[3])
     }.toTypedArray()
     renderer(mainTranslation[0], mainTranslation[1], dotAlphaSmall, dotAlphaLarge, axisAlpha, mainZoom, panes)
 }
@@ -6491,6 +6540,25 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("state-tree-reveal") { message, reply ->
+        val req = Json.decodeFromJsonElement<StateTreeReveal>(message.payload!!)
+        fun done(success: Boolean, text: String) {
+            message.replyTo?.let { reply(Message(it).payload(StateTreeRevealResult(success, req.uid, text))) }
+        }
+        val open = window.asDynamic().openAiStateBrowser
+        if (open == null) done(false, "State browser frontend is unavailable")
+        else {
+            val promise = open(req.uid, req.source, req.node, req.offset) as kotlin.js.Promise<Boolean>
+            promise.then({ shown ->
+                if (!shown) done(false, "State browser could not resolve the requested history/state")
+                else navigateDocumentBox(DocumentBoxNavigation(req.uid, surface = "output", channel = "ai-chat")) {
+                    done(it.success, if (it.success) "Saved state revealed in the state browser. Active state unchanged." else it.message)
+                }
+            }, { error -> done(false, error.message ?: "State browser failed") })
+        }
+        Handled.yes
+    }
+
     handlers.put("navigate-document-box") { message, reply ->
         val req = Json.decodeFromJsonElement<DocumentBoxNavigation>(message.payload!!)
         navigateDocumentBox(req) { result ->
@@ -6733,6 +6801,7 @@ suspend fun main() {
             )
         )
     )
+    installLiveOutputIframeClient()
     initializeClient()
 
     // Fresh tab opened by a drag-drop "open as new document" action? Replay the
@@ -7248,7 +7317,7 @@ suspend fun main() {
 
         // Review links navigate outputs. Selecting their source on pointer-down
         // would open Monaco before the link's click handler can run.
-        if (insideOutputArea && originalTarget?.closest("a[data-review-view][data-review-note]") != null) return@on
+        if (insideOutputArea && originalTarget.closest("a[data-review-view][data-review-note]") != null) return@on
 
         // If the click originates from a disclosure header (output area UI),
         // don't intercept — let the disclosure handle its own alt-click removal.

@@ -19,6 +19,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         AgentToolExtensions.applyTo(tools)
         registerDocumentGuideTools(tools)
         registerDocumentSourceTools(tools)
+        registerStateTools(tools)
         afield.ai.agent.registerFieldGraphTools(tools)
         // One tool whose argument is a program over all the others; see ToolProgramTools.kt.
         afield.ai.core.program.registerToolProgramTools(tools)
@@ -243,9 +244,14 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                 ?: throw IllegalStateException("Checklist not available for this request.")
         }
 
+        tools.register(WorkspaceSearchRequest::class.java, { it.workspaceSearch != null }) { ctx, req ->
+            ctx.workspaceSearch!!.invoke(req)
+        }
+
         // Optional extra tool
         tools.register(WorkspaceSymbolSearch::class.java, { ctx -> ctx.workspaceSymbolSearch != null }) { ctx, req ->
             ctx.workspaceSymbolSearch?.invoke(req)
                 ?: throw IllegalStateException("WorkspaceSymbolSearch not available for this request.")
         }
 }
+

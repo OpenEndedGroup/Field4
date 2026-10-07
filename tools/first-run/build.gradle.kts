@@ -4,8 +4,19 @@ plugins {
 }
 repositories { mavenCentral() }
 kotlin { jvmToolchain(17) }
+// Reuse Server.kt's actual wordmark, without bringing Field or its compiler/native dependencies
+// into this independent application. Only this dependency-free source file joins the setup code.
+kotlin.sourceSets.getByName("main").kotlin.apply {
+    srcDir("../../src/jvmMain/kotlin/afield/internal")
+    include("afield/setup/**", "asciiWelcome.kt")
+}
 application { mainClass.set("afield.setup.FirstRunKt") }
-dependencies { testImplementation(kotlin("test-junit5")); testRuntimeOnly("org.junit.platform:junit-platform-launcher") }
+dependencies {
+    implementation("org.jline:jline-reader:3.30.6")
+    implementation("org.jline:jline-terminal-jansi:3.30.6")
+    testImplementation(kotlin("test-junit5"))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
 tasks.test { useJUnitPlatform() }
 
 // This independent build uses the wrapper's JDK 17. It never configures Field's build or needs LFS.

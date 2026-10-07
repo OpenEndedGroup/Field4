@@ -13,10 +13,15 @@ data class MouseEvent(
     val scroll: Vec2 = Vec2(),
     val buttonsDown: Set<String> = emptySet(),
     val button: String? = null,
-    val type: Type
+    val type: Type,
+    /** The window's size, in the same units as [pos]. */
+    val windowSize: Vec2 = Vec2(1f, 1f),
 ) {
     enum class Type { MOVE, DOWN, UP, DRAG, SCROLL }
     fun isDown(name: String) = buttonsDown.contains(name)
+
+    /** [pos] as a fraction of the window: (0, 0) at its top-left corner, (1, 1) at its bottom-right. */
+    val uv: Vec2 get() = Vec2(pos.x / windowSize.x, pos.y / windowSize.y)
 }
 
 class MouseEvents(
@@ -24,6 +29,9 @@ class MouseEvents(
     val name: String = "__mouseevents__"
 ) {
     companion object {
+        /** What `onDrag(name)` without a button listens to. */
+        private val ANY_DRAG_BUTTONS = setOf("left", "right", "middle")
+
         val namesToGLFW = mutableMapOf<String, Int>()
         val GLFWToNames = mutableMapOf<Int, String>()
 
@@ -55,6 +63,7 @@ class MouseEvents(
 
     private val move = mutableMapOf<String, (MouseEvent) -> Boolean>()
     private val drag = mutableMapOf<String, (MouseEvent) -> Boolean>()
+    private val buttonDrag = mutableMapOf<String, MutableMap<String, (MouseEvent) -> Boolean>>()
     private val scroll = mutableMapOf<String, (MouseEvent) -> Boolean>()
 
     // Transient per-press onUp callbacks created by down-handlers
@@ -82,7 +91,16 @@ class MouseEvents(
     }
 
     fun onMove(name: String, callback: (MouseEvent) -> Boolean) { move[name] = callback }
+    /**
+     * Calls [callback] whenever the mouse moves with any of the left, right or middle buttons down.
+     * Return false to remove it. Needs no `onDown` beside it.
+     */
     fun onDrag(name: String, callback: (MouseEvent) -> Boolean) { drag[name] = callback }
+
+    /** Calls [callback] whenever the mouse moves with [button] down. Return false to remove it. */
+    fun onDrag(button: String, name: String, callback: (MouseEvent) -> Boolean) {
+        buttonDrag.computeIfAbsent(button) { mutableMapOf() }[name] = callback
+    }
     fun onScroll(name: String, callback: (MouseEvent) -> Boolean) { scroll[name] = callback }
 
     private val wasDown = mutableSetOf<String>()
@@ -100,7 +118,11 @@ class MouseEvents(
 
                 val scrollDelta = renderer.window.consumeScrollDelta()
 
-                val buttonsRequested: Set<String> = (down.keys + up.keys).toSet()
+                // Only the buttons some handler names are polled. A drag handler counts: it used to
+                // fire only when an onDown or onUp for the same button happened to be registered.
+                val buttonsRequested: Set<String> =
+                    (down.keys + up.keys + buttonDrag.keys + (if (drag.isNotEmpty()) ANY_DRAG_BUTTONS else emptySet())).toSet()
+                val size = Vec2(renderer.window.width.toFloat(), renderer.window.height.toFloat())
                 val nowDown = mutableSetOf<String>()
 
                 buttonsRequested.forEach { bName ->
@@ -116,21 +138,29 @@ class MouseEvents(
 
                 if (delta.x != 0f || delta.y != 0f) {
                     if (move.isNotEmpty()) {
-                        val ev = MouseEvent(pos, delta, Vec2(), buttonsDownSnapshot, null, MouseEvent.Type.MOVE)
+                        val ev = MouseEvent(pos, delta, Vec2(), buttonsDownSnapshot, null, MouseEvent.Type.MOVE, size)
                         move.values.retainAll { it(ev) }
                     }
                 }
 
-                if ((delta.x != 0f || delta.y != 0f) && nowDown.isNotEmpty() && drag.isNotEmpty()) {
-                    val ev = MouseEvent(pos, delta, Vec2(), buttonsDownSnapshot, null, MouseEvent.Type.DRAG)
-                    drag.values.retainAll { it(ev) }
+                if ((delta.x != 0f || delta.y != 0f) && nowDown.isNotEmpty()) {
+                    if (drag.isNotEmpty()) {
+                        val ev = MouseEvent(pos, delta, Vec2(), buttonsDownSnapshot, null, MouseEvent.Type.DRAG, size)
+                        drag.values.retainAll { it(ev) }
+                    }
+                    nowDown.forEach { bName ->
+                        buttonDrag[bName]?.let { map ->
+                            val ev = MouseEvent(pos, delta, Vec2(), buttonsDownSnapshot, bName, MouseEvent.Type.DRAG, size)
+                            map.values.retainAll { it(ev) }
+                        }
+                    }
                 }
 
                 // DOWN: fire; collect UntilUp; decide handler retention
                 newDown.forEach { bName ->
                     down[bName]?.let { map ->
                         val toKeep = mutableListOf<Pair<String, (MouseEvent) -> DownResult>>()
-                        val ev = MouseEvent(pos, Vec2(), Vec2(), buttonsDownSnapshot, bName, MouseEvent.Type.DOWN)
+                        val ev = MouseEvent(pos, Vec2(), Vec2(), buttonsDownSnapshot, bName, MouseEvent.Type.DOWN, size)
                         map.forEach { (k, cb) ->
                             when (val r = cb(ev)) {
                                 DownResult.Keep -> toKeep += k to cb
@@ -172,7 +202,7 @@ class MouseEvents(
                 // UP: first fire transient per-press callbacks, then regular UP handlers
                 if (newUp.isNotEmpty()) {
                     newUp.forEach { bName ->
-                        val ev = MouseEvent(pos, Vec2(), Vec2(), buttonsDownSnapshot, bName, MouseEvent.Type.UP)
+                        val ev = MouseEvent(pos, Vec2(), Vec2(), buttonsDownSnapshot, bName, MouseEvent.Type.UP, size)
                         pendingGenerators.remove(bName) // remaining gens driven above with input=false
                         pendingUp.remove(bName)?.forEach { it(ev) }
                         up[bName]?.let { map ->
@@ -183,7 +213,7 @@ class MouseEvents(
 
                 if (scrollDelta.x != 0f || scrollDelta.y != 0f) {
                     if (scroll.isNotEmpty()) {
-                        val ev = MouseEvent(pos, Vec2(), scrollDelta, buttonsDownSnapshot, null, MouseEvent.Type.SCROLL)
+                        val ev = MouseEvent(pos, Vec2(), scrollDelta, buttonsDownSnapshot, null, MouseEvent.Type.SCROLL, size)
                         scroll.values.retainAll { it(ev) }
                     }
                 }

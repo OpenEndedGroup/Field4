@@ -132,17 +132,40 @@ incorrectly answered that tools were still unavailable. The forced-final request
 had appended a developer **input item** saying to stop tools. That item remained
 in the response chain. This was an integration failure, not a new rate limit.
 
-The forced-final instruction now uses the request-scoped `instructions` field,
+The forced-final instruction then moved to the request-scoped `instructions` field,
 with `tool_choice=none` only on that request. Normal initial and follow-up requests
 use `auto` and explicitly scope earlier budget stops to their original turn.
-Current permissions and read-only restrictions still apply. The stateless path
-also retains aborted-call outputs and the final answer, so its next request does
-not contain dangling function calls.
+Current permissions and read-only restrictions still apply.
+
+That was not enough. On house-machine-11 (2026-10-05, logs
+`2026-10-05T223843-895990Z-40e31391`, `…232004-064455Z-657ccb20`, `…232309-836376Z-15a80b0d`
+in `~/.afield/logs/ai4_tool_io`) the forced-final request, sent with `instructions`, also
+compacted the conversation (`compactionItems: 1`; the next turn's input was 55k tokens,
+down from 100k). The next two turns chained onto that response, were offered every tool
+with `auto`, and answered "tool execution is still disabled here" with no calls. The first
+of them carried the reset note in its input. Whatever the server keeps of a response made
+under a stop, it is not request-scoped. The `instructions` field also cost the cache:
+100,750 of that request's 100,823 input tokens were uncached.
+
+So nothing chains onto the forced-final response now. `previousResponseId` stays on the
+response that made the pending calls, and the thread records a `CappedTurnContinuation`
+holding the pending call ids and the forced answer's text. The next turn opens with a
+"not run: the turn's tool budget ran out" output for each pending call, then the forced
+answer as plain assistant text, then its prompt with the reset note. Its context therefore
+never held the stop. The forced-final request's stop is back to an input developer message,
+which keeps the cached prefix because that branch is never continued. The stateless path
+works the same way: the forced request adds nothing to local history, and the next turn
+appends the continuation. The continuation is cleared only after the next turn's first
+request succeeds. A thread rebuilt from the saved transcript (after a restart, rewind or
+failed turn) starts a fresh conversation and never had the stop, so it needs no flag.
 
 Local SDK protocol tests exercise a capped turn, serialize/restore its state, and
 execute a tool on the next turn for both direct OpenAI and OpenRouter. They verify
-that the aborted call never runs and the stop instruction is absent from retained
-input items. The combined bridge and build-state test run passed 26 tests. The
+that the aborted call never runs, that the next turn continues from the response before
+the forced final (whose fixture carries a compaction item and reasoning, neither of
+which reaches the next turn), that the continuation is sent once and again after a
+failed first request, and that the stop instruction is absent from later input
+(`AstraBridgeContractTest`). The combined bridge and build-state test run passed 26 tests. The
 private workflow retains separate live continuation evidence; protocol fixtures
 alone do not establish model behavior.
 
@@ -154,9 +177,11 @@ budgets or prove arbitrary long-conversation quality. A separate slow tool was
 subsequently found doing quadratic mesh bookkeeping on the UI loop. Model wait
 time and local tool execution time need distinct diagnostics.
 
-This follows the Responses API's distinction between saved input items and
-[request-scoped instructions](https://developers.openai.com/api/docs/guides/migrate-to-responses#3-update-multi-turn-conversations),
-which are not inherited through `previous_response_id`.
+The Responses API documents
+[request-scoped instructions](https://developers.openai.com/api/docs/guides/migrate-to-responses#3-update-multi-turn-conversations)
+as not inherited through `previous_response_id`. The 2026-10-05 trace shows that the
+response made under them still carries their effect forward, which is why the next turn
+now branches around that response instead of relying on the scoping.
 
 ## Official guidance
 

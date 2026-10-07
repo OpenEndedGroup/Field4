@@ -16,6 +16,9 @@ command palette. Field opens the `ai-chat` output area for that box. The chat
 receives the box's current code and can use the Field tools made available by
 the server to inspect or propose edits to box properties and related source.
 
+To speak a prompt instead of typing it, hold Right Option (Right Ctrl on
+Windows and Linux): see [Talking to AI4](voice_input.md).
+
 ![an AI Chat output area opened beneath a box named Texture. The reader's question, right-aligned in italics, is "how does Camera work in this code?"; under a GPT-5.2 label the answer runs as headed prose with copyable code blocks, quoting the box's own three lines back, then the push-constant block from the vertex shader, then the opening of `Camera.kt` with its file path named](assets/screenshot_47.png)
 
 The conversation belongs to the box. Field saves it with the document, including model
@@ -39,6 +42,75 @@ step it is on, between one tool call and the next, so you can correct or redirec
 a long task without waiting for it to finish. Once read, the message moves to the
 point in the reply where the model saw it. If the reply finishes first, the queued
 message is sent as your next message; several queued messages go together.
+
+### Browsing saved states
+
+When a document registers a `stateTree` provider or an extension uses `branchState`,
+**States** appears at the top of AI4 chat to browse its histories and saved conversation
+branches. Saved extension snapshots also keep the browser available after reopening.
+Ordinary chat history alone does not show this control. Select a node to inspect it.
+The current position has a cyan circle and a **current** label; selecting another node only browses it.
+
+**Reference in chat** adds a compact title and exact identity to your draft. AI4
+retrieves the saved contents with `StateReadRequest` only when needed. To discuss two states, choose **Keep for comparison**, select another,
+and choose **Discuss differences**. Your existing draft is preserved and nothing is
+sent automatically. The open tree updates as saved states appear, preserving your selection
+and draft. Refresh also reads the saved histories again. Long histories have
+Older/Newer pages; an edge whose parent is outside the page is labelled.
+
+Conversation nodes show their recorded extension snapshot identities. They do not
+claim to be complete document backups. Providers explain their own coverage, such
+as a retained undo chain or checked source revisions. This browser does not restore
+states or merge them.
+
+AI4 and external agents share four tools:
+
+| Tool | Behaviour |
+| --- | --- |
+| `StateListRequest` | List histories, search names/IDs, page through node metadata, and discover `canFork`. No state bodies are included. |
+| `StateReadRequest` | Read by exact ID or unique exact name within a history. Large states have bounded character pages; pass the returned `revision` on subsequent pages. |
+| `StateShowRequest` | Reveal the history and selected state in the human browser. Success requires frontend acknowledgement. This shows ancestry and saved text, not reconstructed geometry. |
+| `StateForkRequest` | Create a named saved child within this document, leaving the active state unchanged. Only available for providers reporting `canFork`. |
+
+For example, ask AI4 to “list saved states”, “read Courtyard alternative”, or
+“show that state in the browser”. History labels and state names must be unique;
+ambiguous names require the exact IDs returned by the list tool. References from
+the browser already carry those IDs. No operation silently chooses among duplicates.
+
+Conversation forks are saved empty children that inherit the transcript, memory
+and registered snapshots. Continue one through the existing `/branches` and
+`/branch <number>` commands, which retain the existing restoration/conflict rules.
+A `SourceStudy` fork copies the saved source into a named child revision without
+compilation or changes to live source or `HEAD`. Creating a branch does not activate
+it. These are provider-specific histories, not complete document forks.
+
+A document can expose an existing history without adopting a new persistence format:
+
+```diffstatic {data-lang=kotlin}
+import afield.*
+import afield.ai.core.*
+
+// Connect these callbacks to your existing saved-state store.
+stateTree("design", "Design", read = {
+    StateTreeSnapshot(
+        nodes = listOf(StateTreeNode("saved-1", title = "Initial design")),
+        current = "saved-1",
+        note = "Saved authored states")
+}, inspect = { id ->
+    require(id == "saved-1")
+    "Width: 6000 mm"
+})
+```
+
+The callbacks must only read saved data: no compilation, restoration or builds.
+Node IDs must remain stable and unique; `parents` contains explicit ancestry.
+For an existing `SourceStudy`, use `stateTree("recipe", "Recipe", myStudy)`.
+This reads saved revision metadata and verifies source hashes without re-running
+admission. It also supports named saved forks. A custom provider remains read-only
+unless it supplies a `fork = { parentId, name -> ... }` callback that returns a new
+saved child ID without activation or restoration. Histories that prune old states
+must establish durable branch storage before offering that callback. Registration
+belongs to the box's run and is replaced when re-run.
 
 ### Going back
 
@@ -68,6 +140,9 @@ with the newest request only.
 You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
+
+A chat is saved with its box, rewound turns included. [Reading saved AI4 chats](ai4_chat_archive.md)
+shows how to read one back as a tree and have AI4 write a shorter version of it beside the original.
 
 ![two boxes on the canvas, window joined to Texture by a cyan cable, with the Texture box's AI Chat area open below them. The question is "what do you see in this image?", and above it sits the pasted attachment itself: a screenshot of these same two boxes. The answer describes a dark node-based canvas with a smaller node labelled window and a larger one labelled Texture, a curved cable between them, and a panel labelled AI Chat. An empty input reading "Ask about this box..." is at the bottom](assets/screenshot_53.png)
 

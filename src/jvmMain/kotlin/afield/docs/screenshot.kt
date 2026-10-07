@@ -31,6 +31,30 @@ private const val SCREENSHOT_PREP_TIMEOUT_MS = 12_000
 private const val SCREENSHOT_POLL_INTERVAL_MS = 60
 
 /**
+ * How long past `prepTimeoutMs` one await in a preparation script may hold it.
+ *
+ * The prep loops stop *retrying* at `prepTimeoutMs`, but a single await can outlive that: the
+ * prepare hook can return a promise that never settles, and an animation frame never arrives on a
+ * page that is not rendering (headless, GPU-starved, or busy with a heavy WebGL scene). Every such
+ * await, and the script as a whole, is raced against `prepTimeoutMs` plus this margin, so the answer
+ * is a failure naming what was pending rather than a promise that never settles.
+ */
+internal const val SCREENSHOT_PREP_HARD_MARGIN_MS = 2_000
+
+/**
+ * How long past the script's own hard deadline the Playwright driver waits before giving up on it,
+ * for a page that cannot run the script's timers at all. See [evaluateWithin].
+ */
+internal const val SCREENSHOT_PREP_DRIVER_MARGIN_MS = 3_000
+
+/**
+ * Opens the message of a preparation that ran out its hard deadline. That is a fault of the page,
+ * not of the box's content, so a caller holding the page ([afield.ai.agent.BoxOutputCapture]) replaces
+ * it instead of asking the same page again.
+ */
+internal const val SCREENSHOT_PREP_STALLED = "screenshot prep stalled"
+
+/**
  * How long to wait for a box's output layout to STOP MOVING before measuring and shooting.
  *
  * `wait=` in a fence is an author's guess at how long content takes to appear, and a guess that is
@@ -479,17 +503,91 @@ private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf
     "includeNotifications" to includeNotifications
 )
 
-internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTimeoutMs: Int = SCREENSHOT_PREP_TIMEOUT_MS): BoxScreenshotResponse {
-    val raw = page.evaluate(
-        """
-        async (request) => {
+/**
+ * [Page.evaluate] of an async [script], with a wall clock the page cannot hold open.
+ *
+ * `Page.evaluate` has no timeout, and every capture is marshalled onto the one "afield-playwright"
+ * thread. On 2026-10-06 (house host, port 9835) a single box-prep evaluate on an AI4 capture page
+ * held that thread for about 50 minutes, and every capture tool in every document waited behind it
+ * until chrome-headless-shell was killed. Issued as `waitForFunction`, the call carries a timeout the
+ * driver enforces whatever the page is doing: the wrapper returns a promise, which is truthy, so the
+ * function runs once and the call answers with what that promise resolves to. (Where `evaluate`
+ * fails when a navigation destroys the page's context, this runs the function again in the new one.)
+ */
+internal fun evaluateWithin(page: Page, script: String, arg: Any?, timeoutMs: Int, what: String): Any? {
+    val handle = try {
+        page.waitForFunction(
+            "(arg) => Promise.resolve(($script)(arg))", arg,
+            Page.WaitForFunctionOptions().setTimeout(timeoutMs.toDouble())
+        )
+    } catch (e: com.microsoft.playwright.TimeoutError) {
+        throw IllegalStateException(
+            "$what did not answer within $timeoutMs ms; the page is not responding", e
+        )
+    }
+    return try {
+        handle.jsonValue()
+    } finally {
+        runCatching { handle.dispose() }
+    }
+}
+
+/**
+ * The deadlines shared by the box and window preparation scripts: `deadline` ends retrying, and
+ * `hardDeadline` ([SCREENSHOT_PREP_HARD_MARGIN_MS] later) ends any single await. `bounded` races one
+ * await on the page's own machinery against it, `finishBy` races the whole script, and both answer a
+ * [SCREENSHOT_PREP_STALLED] failure that names what was pending.
+ */
+private fun prepDeadlinesJs(prepTimeoutMs: Int, kind: String, noUid: String): String = """
+          const startedAt = Date.now();
+          const deadline = startedAt + $prepTimeoutMs;
+          const hardDeadline = deadline + $SCREENSHOT_PREP_HARD_MARGIN_MS;
+          const untilHardDeadline = () => Math.max(0, hardDeadline - Date.now());
+          let lastMessage = "Timed out waiting for $kind screenshot prep";
+          let pending = null;
+          const expired = {};
           const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-          const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+          const bounded = (what, value) => new Promise((resolve, reject) => {
+            pending = what;
+            const timer = setTimeout(() => reject(expired), untilHardDeadline());
+            Promise.resolve(value).then(
+              (result) => { clearTimeout(timer); pending = null; resolve(result); },
+              (error) => { clearTimeout(timer); pending = null; reject(error); }
+            );
+          });
+          const nextFrame = () => bounded(
+            "an animation frame (the page is not rendering)",
+            new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+          );
           const settle = async (frames) => {
             for (let index = 0; index < frames; index += 1) {
               await nextFrame();
             }
           };
+          const stalled = (request) => JSON.stringify({
+            uid: request && request.uid ? request.uid : $noUid,
+            success: false,
+            message: `$SCREENSHOT_PREP_STALLED: $kind prep gave up after ${'$'}{Date.now() - startedAt} ms` +
+              (pending ? ` waiting for ${'$'}{pending}` : "") + `; last check: ${'$'}{lastMessage}`
+          });
+          const finishBy = (request, work) => new Promise((resolve, reject) => {
+            const timer = setTimeout(() => resolve(stalled(request)), untilHardDeadline());
+            work().then(
+              (result) => { clearTimeout(timer); resolve(result); },
+              (error) => { clearTimeout(timer); error === expired ? resolve(stalled(request)) : reject(error); }
+            );
+          });
+"""
+
+private fun prepWallClockMs(prepTimeoutMs: Int) =
+    prepTimeoutMs + SCREENSHOT_PREP_HARD_MARGIN_MS + SCREENSHOT_PREP_DRIVER_MARGIN_MS
+
+internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTimeoutMs: Int = SCREENSHOT_PREP_TIMEOUT_MS): BoxScreenshotResponse {
+    val raw = evaluateWithin(
+        page,
+        """
+        async (request) => {
+${prepDeadlinesJs(prepTimeoutMs, "box", "\"\"")}
           const findBox = (uid) => {
             const boxes = Array.from((document.body && document.body.getElementsByClassName("box")) || []);
             return boxes.find((element) => {
@@ -718,142 +816,139 @@ internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTim
             }
             return !visibleStatusTexts(outputArea).some(blockedStatusText);
           };
-          const deadline = Date.now() + ${prepTimeoutMs};
-          let lastMessage = "Timed out waiting for box screenshot prep";
-          while (Date.now() < deadline) {
-            if (!pageReady()) {
-              lastMessage = "Field page is not connected yet";
-              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-              continue;
-            }
-            const box = findBox(request.uid);
-            if (!box) {
-              lastMessage = `box ${'$'}{request.uid} not found; page=${'$'}{pageDebug()}`;
-              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-              continue;
-            }
-            // What the fence declared this capture's output to be. A panel must be revealed and
-            // must hold settled content; inline output lives beside the code and has no panel to
-            // wait for, so demanding one could never be satisfied; "none" asserts emptiness.
-            const expects = request.expectOutputs || "panel";
-            // A panel capture is held to panel content; an inline one only to a panel that exists
-            // being un-stuck, plus its own geometry settling; "none" asserts there is nothing.
-            const panelKind = expects === "panel";
-            const readyFn = panelKind ? outputsReady : outputsNotBlocked;
-            const signatureFn = panelKind ? contentSignature : boxSignature;
-            const laidOutFn = panelKind ? contentLaidOut : (() => true);
-            if (request.openOutputs && expects !== "none") {
-              // Reveal before testing geometry: opening disclosures is part of preparation, and
-              // waiting on their still-collapsed layout first can never establish readiness.
-              await Promise.resolve(window.fieldBackdoorPrepareBoxScreenshot(request));
-              // READINESS IS A PRECONDITION, NOT A GRACE PERIOD. This used to wait
-              // SCREENSHOT_OUTPUT_GRACE_MS and then shoot regardless, so a correct "still loading"
-              // signal could not stop a capture -- which is how the recorded-audio figure published
-              // with a "loading waveform" badge sitting in the corner of the picture. An unready box
-              // now drops back to the outer prep loop, which retries until SCREENSHOT_PREP_TIMEOUT_MS
-              // and then FAILS naming what blocked it. A capture that cannot be taken correctly is
-              // worth more as an error than as a blurred asset nobody re-checks.
-              const notReadyBox = findBox(request.uid);
-              if (notReadyBox && !readyFn(notReadyBox)) {
-                const area = notReadyBox.querySelector(".outputArea");
-                const blocking = area ? [...visibleStatusTexts(area).filter(blockedStatusText),
-                  ...Array.from(area.querySelectorAll("iframe")).map(iframeBlocker).filter(Boolean)] : [];
-                lastMessage = blocking.length
-                  ? "output not ready: " + blocking.join(" | ")
-                  : "output not ready (an iframe has not navigated or finished loading)";
+          return finishBy(request, async () => {
+            while (Date.now() < deadline) {
+              if (!pageReady()) {
+                lastMessage = "Field page is not connected yet";
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 continue;
               }
-              // Ready is not the same as settled. Wait for the GEOMETRY to stop changing before
-              // anything is measured or shot, so the clip is computed from finished layout rather
-              // than from a container still growing under it.
-              const stableDeadline = Math.min(deadline, Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS});
-              let previousSignature = null;
-              let stableSamples = 0;
-              while (Date.now() < stableDeadline) {
-                if (!pageReady()) {
-                  break;
+              const box = findBox(request.uid);
+              if (!box) {
+                lastMessage = `box ${'$'}{request.uid} not found; page=${'$'}{pageDebug()}`;
+                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                continue;
+              }
+              // What the fence declared this capture's output to be. A panel must be revealed and
+              // must hold settled content; inline output lives beside the code and has no panel to
+              // wait for, so demanding one could never be satisfied; "none" asserts emptiness.
+              const expects = request.expectOutputs || "panel";
+              // A panel capture is held to panel content; an inline one only to a panel that exists
+              // being un-stuck, plus its own geometry settling; "none" asserts there is nothing.
+              const panelKind = expects === "panel";
+              const readyFn = panelKind ? outputsReady : outputsNotBlocked;
+              const signatureFn = panelKind ? contentSignature : boxSignature;
+              const laidOutFn = panelKind ? contentLaidOut : (() => true);
+              if (request.openOutputs && expects !== "none") {
+                // Reveal before testing geometry: opening disclosures is part of preparation, and
+                // waiting on their still-collapsed layout first can never establish readiness.
+                await bounded("window.fieldBackdoorPrepareBoxScreenshot", window.fieldBackdoorPrepareBoxScreenshot(request));
+                // READINESS IS A PRECONDITION, NOT A GRACE PERIOD. This used to wait
+                // SCREENSHOT_OUTPUT_GRACE_MS and then shoot regardless, so a correct "still loading"
+                // signal could not stop a capture -- which is how the recorded-audio figure published
+                // with a "loading waveform" badge sitting in the corner of the picture. An unready box
+                // now drops back to the outer prep loop, which retries until SCREENSHOT_PREP_TIMEOUT_MS
+                // and then FAILS naming what blocked it. A capture that cannot be taken correctly is
+                // worth more as an error than as a blurred asset nobody re-checks.
+                const notReadyBox = findBox(request.uid);
+                if (notReadyBox && !readyFn(notReadyBox)) {
+                  const area = notReadyBox.querySelector(".outputArea");
+                  const blocking = area ? [...visibleStatusTexts(area).filter(blockedStatusText),
+                    ...Array.from(area.querySelectorAll("iframe")).map(iframeBlocker).filter(Boolean)] : [];
+                  lastMessage = blocking.length
+                    ? "output not ready: " + blocking.join(" | ")
+                    : "output not ready (an iframe has not navigated or finished loading)";
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                  continue;
                 }
-                const currentBox = findBox(request.uid);
-                if (!currentBox) {
-                  break;
-                }
-                const signature = signatureFn(currentBox);
-                if (readyFn(currentBox) && laidOutFn(currentBox) && signature !== null && signature === previousSignature) {
-                  stableSamples += 1;
-                  if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
+                // Ready is not the same as settled. Wait for the GEOMETRY to stop changing before
+                // anything is measured or shot, so the clip is computed from finished layout rather
+                // than from a container still growing under it.
+                const stableDeadline = Math.min(deadline, Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS});
+                let previousSignature = null;
+                let stableSamples = 0;
+                while (Date.now() < stableDeadline) {
+                  if (!pageReady()) {
                     break;
                   }
-                } else {
-                  stableSamples = 0;
+                  const currentBox = findBox(request.uid);
+                  if (!currentBox) {
+                    break;
+                  }
+                  const signature = signatureFn(currentBox);
+                  if (readyFn(currentBox) && laidOutFn(currentBox) && signature !== null && signature === previousSignature) {
+                    stableSamples += 1;
+                    if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
+                      break;
+                    }
+                  } else {
+                    stableSamples = 0;
+                  }
+                  previousSignature = signature;
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 }
-                previousSignature = signature;
-                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                if (stableSamples < ${SCREENSHOT_STABLE_SAMPLES}) {
+                  lastMessage = "output has no visible content or its layout did not settle; attach the browser before running the box, or use --no-open-outputs for an intentional handle-only capture";
+                  continue;
+                }
               }
-              if (stableSamples < ${SCREENSHOT_STABLE_SAMPLES}) {
-                lastMessage = "output has no visible content or its layout did not settle; attach the browser before running the box, or use --no-open-outputs for an intentional handle-only capture";
+              await settle(request.openOutputs ? 3 : 1);
+              const fn = window.fieldBackdoorPrepareBoxScreenshot;
+              if (typeof fn !== "function") {
+                lastMessage = "fieldBackdoorPrepareBoxScreenshot not ready";
+                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 continue;
               }
-            }
-            await settle(request.openOutputs ? 3 : 1);
-            const fn = window.fieldBackdoorPrepareBoxScreenshot;
-            if (typeof fn !== "function") {
-              lastMessage = "fieldBackdoorPrepareBoxScreenshot not ready";
+              const prepared = await bounded("window.fieldBackdoorPrepareBoxScreenshot", fn(request));
+              const decoded = decode(prepared);
+              if (decoded && decoded.success) {
+                await settle(request.openOutputs ? 2 : 1);
+                if (!pageReady()) {
+                  lastMessage = "Field page disconnected during screenshot prep";
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                  continue;
+                }
+                return JSON.stringify(decoded);
+              }
+              const message = decoded && typeof decoded.message === "string"
+                ? decoded.message
+                : "Box screenshot preparation failed";
+              lastMessage = message;
+              const transient = message.includes("not found") ||
+                message.includes("no geometry") ||
+                message.includes("invalid clip");
+              if (!transient) {
+                return typeof prepared === "string"
+                  ? prepared
+                  : JSON.stringify({
+                      uid: request && request.uid ? request.uid : "",
+                      success: false,
+                      message
+                    });
+              }
               await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-              continue;
             }
-            const prepared = await Promise.resolve(fn(request));
-            const decoded = decode(prepared);
-            if (decoded && decoded.success) {
-              await settle(request.openOutputs ? 2 : 1);
-              if (!pageReady()) {
-                lastMessage = "Field page disconnected during screenshot prep";
-                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-                continue;
-              }
-              return JSON.stringify(decoded);
-            }
-            const message = decoded && typeof decoded.message === "string"
-              ? decoded.message
-              : "Box screenshot preparation failed";
-            lastMessage = message;
-            const transient = message.includes("not found") ||
-              message.includes("no geometry") ||
-              message.includes("invalid clip");
-            if (!transient) {
-              return typeof prepared === "string"
-                ? prepared
-                : JSON.stringify({
-                    uid: request && request.uid ? request.uid : "",
-                    success: false,
-                    message
-                  });
-            }
-            await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-          }
-          return JSON.stringify({
-            uid: request && request.uid ? request.uid : "",
-            success: false,
-            message: lastMessage
+            return JSON.stringify({
+              uid: request && request.uid ? request.uid : "",
+              success: false,
+              message: lastMessage
+            });
           });
         }
         """.trimIndent(),
-        req.toPlaywrightArg()
+        req.toPlaywrightArg(),
+        prepWallClockMs(prepTimeoutMs),
+        "box screenshot prep"
     ) as? String ?: error("Box screenshot preparation returned a non-string payload")
     return Json.decodeFromString(raw)
 }
 
 internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, prepTimeoutMs: Int = SCREENSHOT_PREP_TIMEOUT_MS): WindowScreenshotResponse {
-    val raw = page.evaluate(
+    val raw = evaluateWithin(
+        page,
         """
         async (request) => {
-          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-          const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-          const settle = async (frames) => {
-            for (let index = 0; index < frames; index += 1) {
-              await nextFrame();
-            }
-          };
+${prepDeadlinesJs(prepTimeoutMs, "window", "null")}
           const findBox = (uid) => {
             const boxes = Array.from((document.body && document.body.getElementsByClassName("box")) || []);
             return boxes.find((element) => {
@@ -1086,113 +1181,115 @@ internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, p
               message: "showEditor requires a target box"
             });
           }
-          const deadline = Date.now() + ${prepTimeoutMs};
-          let lastMessage = "Timed out waiting for window screenshot prep";
-          while (Date.now() < deadline) {
-            if (!pageReady()) {
-              lastMessage = "Field page is not connected yet";
-              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-              continue;
-            }
-            if (request.uid) {
-              const box = findBox(request.uid);
-              if (!box) {
-                lastMessage = `box ${'$'}{request.uid} not found; page=${'$'}{pageDebug()}`;
+          return finishBy(request, async () => {
+            while (Date.now() < deadline) {
+              if (!pageReady()) {
+                lastMessage = "Field page is not connected yet";
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 continue;
               }
-              const expects = request.expectOutputs || "panel";
-              const panelKind = expects === "panel";
-              const readyFn = panelKind ? outputsReady : outputsNotBlocked;
-              const signatureFn = panelKind ? contentSignature : boxSignature;
-              const laidOutFn = panelKind ? contentLaidOut : (() => true);
-              if (request.openOutputs && expects !== "none") {
-                await Promise.resolve(window.fieldBackdoorPrepareWindowScreenshot(request));
-                const currentBox = findBox(request.uid);
-                if (!currentBox || !readyFn(currentBox)) {
-                  const area = currentBox?.querySelector(".outputArea");
-                  const blocking = area ? Array.from(area.querySelectorAll("iframe")).map(iframeBlocker).filter(Boolean) : [];
-                  lastMessage = blocking.length ? "output not ready: " + blocking.join(" | ")
-                    : "output not ready (missing, busy, or an iframe has not finished loading)";
+              if (request.uid) {
+                const box = findBox(request.uid);
+                if (!box) {
+                  lastMessage = `box ${'$'}{request.uid} not found; page=${'$'}{pageDebug()}`;
                   await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                   continue;
                 }
-                // Ready is not settled -- see the box path. Wait for geometry to stop moving.
-                const stableDeadline = Math.min(deadline, Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS});
-                let previousSignature = null;
-                let stableSamples = 0;
-                while (Date.now() < stableDeadline) {
-                  if (!pageReady()) {
-                    break;
-                  }
+                const expects = request.expectOutputs || "panel";
+                const panelKind = expects === "panel";
+                const readyFn = panelKind ? outputsReady : outputsNotBlocked;
+                const signatureFn = panelKind ? contentSignature : boxSignature;
+                const laidOutFn = panelKind ? contentLaidOut : (() => true);
+                if (request.openOutputs && expects !== "none") {
+                  await bounded("window.fieldBackdoorPrepareWindowScreenshot", window.fieldBackdoorPrepareWindowScreenshot(request));
                   const currentBox = findBox(request.uid);
-                  if (!currentBox) {
-                    break;
+                  if (!currentBox || !readyFn(currentBox)) {
+                    const area = currentBox?.querySelector(".outputArea");
+                    const blocking = area ? Array.from(area.querySelectorAll("iframe")).map(iframeBlocker).filter(Boolean) : [];
+                    lastMessage = blocking.length ? "output not ready: " + blocking.join(" | ")
+                      : "output not ready (missing, busy, or an iframe has not finished loading)";
+                    await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                    continue;
                   }
-                  const signature = signatureFn(currentBox);
-                  if (readyFn(currentBox) && laidOutFn(currentBox) && signature !== null && signature === previousSignature) {
-                    stableSamples += 1;
-                    if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
+                  // Ready is not settled -- see the box path. Wait for geometry to stop moving.
+                  const stableDeadline = Math.min(deadline, Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS});
+                  let previousSignature = null;
+                  let stableSamples = 0;
+                  while (Date.now() < stableDeadline) {
+                    if (!pageReady()) {
                       break;
                     }
-                  } else {
-                    stableSamples = 0;
+                    const currentBox = findBox(request.uid);
+                    if (!currentBox) {
+                      break;
+                    }
+                    const signature = signatureFn(currentBox);
+                    if (readyFn(currentBox) && laidOutFn(currentBox) && signature !== null && signature === previousSignature) {
+                      stableSamples += 1;
+                      if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
+                        break;
+                      }
+                    } else {
+                      stableSamples = 0;
+                    }
+                    previousSignature = signature;
+                    await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                   }
-                  previousSignature = signature;
-                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-                }
-                if (stableSamples < ${SCREENSHOT_STABLE_SAMPLES}) {
-                  lastMessage = "output has no visible content or its layout did not settle; attach the browser before running the box, or omit --open-outputs for an editor-only capture";
-                  continue;
+                  if (stableSamples < ${SCREENSHOT_STABLE_SAMPLES}) {
+                    lastMessage = "output has no visible content or its layout did not settle; attach the browser before running the box, or omit --open-outputs for an editor-only capture";
+                    continue;
+                  }
                 }
               }
-            }
-            await settle(request.openOutputs || request.showEditor ? 5 : 1);
-            const fn = window.fieldBackdoorPrepareWindowScreenshot;
-            if (typeof fn !== "function") {
-              lastMessage = "fieldBackdoorPrepareWindowScreenshot not ready";
-              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-              continue;
-            }
-            const prepared = await Promise.resolve(fn(request));
-            const decoded = decode(prepared);
-            if (decoded && decoded.success) {
-              await settle(request.openOutputs || request.showEditor ? 3 : 1);
-              if (!pageReady()) {
-                lastMessage = "Field page disconnected during screenshot prep";
+              await settle(request.openOutputs || request.showEditor ? 5 : 1);
+              const fn = window.fieldBackdoorPrepareWindowScreenshot;
+              if (typeof fn !== "function") {
+                lastMessage = "fieldBackdoorPrepareWindowScreenshot not ready";
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 continue;
               }
-              return prepared;
+              const prepared = await bounded("window.fieldBackdoorPrepareWindowScreenshot", fn(request));
+              const decoded = decode(prepared);
+              if (decoded && decoded.success) {
+                await settle(request.openOutputs || request.showEditor ? 3 : 1);
+                if (!pageReady()) {
+                  lastMessage = "Field page disconnected during screenshot prep";
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                  continue;
+                }
+                return prepared;
+              }
+              const message = decoded && typeof decoded.message === "string"
+                ? decoded.message
+                : "Window screenshot preparation failed";
+              lastMessage = message;
+              const transient = message.includes("not found") ||
+                message.includes("not visible") ||
+                message.includes("not synced yet") ||
+                message.includes("no geometry") ||
+                message.includes("invalid clip");
+              if (!transient) {
+                return typeof prepared === "string"
+                  ? prepared
+                  : JSON.stringify({
+                      uid: request && request.uid ? request.uid : null,
+                      success: false,
+                      message
+                    });
+              }
+              await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
             }
-            const message = decoded && typeof decoded.message === "string"
-              ? decoded.message
-              : "Window screenshot preparation failed";
-            lastMessage = message;
-            const transient = message.includes("not found") ||
-              message.includes("not visible") ||
-              message.includes("not synced yet") ||
-              message.includes("no geometry") ||
-              message.includes("invalid clip");
-            if (!transient) {
-              return typeof prepared === "string"
-                ? prepared
-                : JSON.stringify({
-                    uid: request && request.uid ? request.uid : null,
-                    success: false,
-                    message
-                  });
-            }
-            await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
-          }
-          return JSON.stringify({
-            uid: request && request.uid ? request.uid : null,
-            success: false,
-            message: lastMessage
+            return JSON.stringify({
+              uid: request && request.uid ? request.uid : null,
+              success: false,
+              message: lastMessage
+            });
           });
         }
         """.trimIndent(),
-        req.toPlaywrightArg()
+        req.toPlaywrightArg(),
+        prepWallClockMs(prepTimeoutMs),
+        "window screenshot prep"
     ) as? String ?: error("Window screenshot preparation returned a non-string payload")
     return Json.decodeFromString(raw)
 }
@@ -1973,8 +2070,43 @@ private suspend fun clearVideoPresentation(
             }""".trimIndent(),
             mapOf("uid" to uid, "clearOutputContents" to clearOutputContents)
         )
-        page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+        awaitPaintedFrames(page, "docs video: painting the cleared presentation of box $uid")
     }
+}
+
+/**
+ * How long a docs video capture waits for the page to paint before failing the capture.
+ *
+ * Generous for a heavy WebGL scene, whose frame can take seconds, but finite: the frame loop of
+ * [recordFrameSynchronousToMp4] holds both the Field runloop and the one "afield-playwright" thread
+ * while it waits.
+ */
+private const val VIDEO_PAINT_TIMEOUT_MS = 15_000
+
+/**
+ * Wait until the page has painted the state already in its DOM: two animation frames, since the
+ * first callback runs before that frame's paint and the second after it.
+ *
+ * requestAnimationFrame never fires on a page that is not rendering, and a bare `page.evaluate` of
+ * that wait has no timeout (see [evaluateWithin]). Here the page's own timer gives up after
+ * [timeoutMs], and the driver's wall clock [SCREENSHOT_PREP_DRIVER_MARGIN_MS] later gives up on a
+ * page that cannot run timers either. Both throw, naming [what].
+ */
+internal fun awaitPaintedFrames(page: Page, what: String, timeoutMs: Int = VIDEO_PAINT_TIMEOUT_MS) {
+    val painted = evaluateWithin(
+        page,
+        """(timeoutMs) => new Promise((resolve) => {
+            const timer = setTimeout(() => resolve(false), timeoutMs);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                clearTimeout(timer);
+                resolve(true);
+            }));
+        })""",
+        timeoutMs,
+        timeoutMs + SCREENSHOT_PREP_DRIVER_MARGIN_MS,
+        what
+    )
+    check(painted == true) { "$what: the page rendered no frame within $timeoutMs ms" }
 }
 
 /**
@@ -2394,8 +2526,8 @@ private suspend fun recordFrameSynchronousToMp4(
                         // `send(set-output)` is asynchronous. Without this barrier, frame N can
                         // contain output N in one run and output N-1 in another even though the
                         // simulation itself is identical. The browser ACK is scheduled only after
-                        // its output handler has mutated the DOM; two RAFs below then guarantee a
-                        // paint of that acknowledged state.
+                        // its output handler has mutated the DOM; awaitPaintedFrames below then
+                        // guarantees a paint of that acknowledged state.
                         withTimeout(10_000) {
                             while (!info.outputsDelivered()) delay(1)
                         }
@@ -2404,7 +2536,7 @@ private suspend fun recordFrameSynchronousToMp4(
                         }
                         // Let websocket output and layout reach a painted browser frame while
                         // Field itself remains parked at this exact runloop boundary.
-                        page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+                        awaitPaintedFrames(page, "docs video: painting frame ${frames.size + 1} of $targetFrames")
                         if (trimEditorToContent) {
                             editorContentBottom(page)?.let { if (it > contentBottom) contentBottom = it }
                         }
@@ -2624,6 +2756,38 @@ class DocsUiDriver internal constructor(
             } finally {
                 modifiers.reversed().forEach { page.keyboard().up(it) }
             }
+        }
+    }
+
+    /** Double-click the real mouse at ([x], [y]) in CSS px: adding a key in the keyframe editor, say. */
+    fun doubleClickAt(x: Double, y: Double) {
+        runBlocking(playwrightDispatcher) { pageProvider().mouse().dblclick(x, y) }
+    }
+
+    /**
+     * Scroll the real wheel by ([dx], [dy]) at ([x], [y]) in CSS px, with the [modifiers] held:
+     * `"Control"` for a pinch-style zoom, say.
+     */
+    fun wheel(x: Double, y: Double, dx: Double, dy: Double, vararg modifiers: String) {
+        runBlocking(playwrightDispatcher) {
+            val page = pageProvider()
+            page.mouse().move(x, y)
+            modifiers.forEach { page.keyboard().down(it) }
+            try {
+                page.mouse().wheel(dx, dy)
+            } finally {
+                modifiers.reversed().forEach { page.keyboard().up(it) }
+            }
+        }
+    }
+
+    /** Right-click the real mouse at ([x], [y]) in CSS px, to open a context menu. */
+    fun rightClickAt(x: Double, y: Double) {
+        runBlocking(playwrightDispatcher) {
+            pageProvider().mouse().click(
+                x, y,
+                com.microsoft.playwright.Mouse.ClickOptions().setButton(com.microsoft.playwright.options.MouseButton.RIGHT)
+            )
         }
     }
 

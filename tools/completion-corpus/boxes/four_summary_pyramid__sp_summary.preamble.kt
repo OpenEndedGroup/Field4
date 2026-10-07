@@ -1,10 +1,11 @@
 import afield.four.Renderer
 import afield.four.util.Window
+import afield.four.fabricated.StandardRenderer
 var Box.summary by Inheritance<afield.four.fabricated.FabricateBuiltChain>() /**/
 val Once.summary by Onceing<afield.four.fabricated.FabricateBuiltChain>() /**/
 val Why.summary by Whying() /**/
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /*from:sp_bundle*/ /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /*from:sp_bundle*/ /**/
+var Box.bundle by Inheritance<StandardRenderer.Bundle>() /*from:sp_bundle*/ /**/
+val Once.bundle by Onceing<StandardRenderer.Bundle>() /*from:sp_bundle*/ /**/
 val Why.bundle by Whying() /*from:sp_bundle*/ /**/
 var Box.window by Inheritance<Window>() /*from:sp_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:sp_renderer*/ /**/

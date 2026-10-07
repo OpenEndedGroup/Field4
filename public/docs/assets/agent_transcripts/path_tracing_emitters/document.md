@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. path tracing renderer
@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="pt_emitters" index="1" -->
 
 ```edn [field-box id="pt_emitters" role="properties"]
-{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 180.0 380.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 55 "characters" 2755 "sha256" "78358aa84940ec00c93413f36d88fa00cb745da8072b34a75cf0d84d64d258aa"}]}
+{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 180.0 380.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 53 "characters" 2677 "sha256" "595a8711ed424dcb264ac617006457d39d96c812757c9325231318a0a55e52de"}]}
 ```
 
 ```kotlin [field-property box="pt_emitters" name="code" path="pt_emitters_code_.kt"]
@@ -39,12 +39,10 @@ import afield.four.fabricated.PathTraceEnvironment
 import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 // Two lamps in the dark and nothing else: the case BSDF sampling alone cannot find.

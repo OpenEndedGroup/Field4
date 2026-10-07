@@ -76,23 +76,23 @@ property that makes a page like this checkable by a person at all.
 
 | family | count | how | what it selects |
 | --- | --- | --- | --- |
-| `tools/check_*.py` | 11 | `ls -1 tools/check_*.py` | standalone checker scripts |
-| `tools/test_*.py` | 68 | `ls -1 tools/test_*.py` | unittest suites, all of them in `check` via `checkPythonTools` |
-| `*Guard*.kt` + `*ContractTest.kt` | 29 | `find src -name '*Guard*.kt' -o -name '*ContractTest.kt'` | a **half-corpus by construction** — see the paragraph under this table |
-| Gradle `check…` JavaExec guards | 10 | `grep -o 'tasks.register<JavaExec>("check[A-Za-z]*' build.gradle.kts` | the guards `check` reaches by spawning a JVM main |
+| `tools/check_*.py` | 12 | `ls -1 tools/check_*.py` | standalone checker scripts |
+| `tools/test_*.py` | 70 | `ls -1 tools/test_*.py` | unittest suites, all of them in `check` via `checkPythonTools` |
+| `*Guard*.kt` + `*ContractTest.kt` | 31 | `find src -name '*Guard*.kt' -o -name '*ContractTest.kt'` | a **half-corpus by construction** — see the paragraph under this table |
+| Gradle `check…` JavaExec guards | 11 | `grep -o 'tasks.register<JavaExec>("check[A-Za-z]*' build.gradle.kts` | the guards `check` reaches by spawning a JVM main |
 
 ### The corpora those guards are stated over
 
 | family | count | how | what it selects |
 | --- | --- | --- | --- |
-| transcripts, top level | 189 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
-| transcripts, recursive | 209 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
+| transcripts, top level | 193 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
+| transcripts, recursive | 217 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
 | demo directories | 49 | `git ls-files dev_docs/agents/demos/ \| cut -d/ -f4 \| sort -u` | the COMMITTED demo directories, which is what a ledger can be stated over. `ls -1d` was the derivation until 2026-09-25, and it counts anything on disk — so an ignored scratch folder under `demos/` read as an undeclared demo and failed this guard in a working tree while the committed corpus was correct. held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them (`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a saved document, so the loadable-document population is one smaller and is what `AgentDemoRegistrationTest.demoDocuments` filters to |
 | demos shipping a `build.yaml` | 10 | `git ls-files 'dev_docs/agents/demos/*/build.yaml'` | the population `test_demo_build_scripts.py` diffs against its `_code_.kt` sidecars |
-| entries on `public/docs/agent_transcripts.md` | 189 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
-| materialized starting-point bundles | 183 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
+| entries on `public/docs/agent_transcripts.md` | 193 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
+| materialized starting-point bundles | 187 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
 
-The two transcript counts are both right and they are not the same measurement: 209 = 189 + 20 under `docs_capture/`. If you quote one of them, say which.
+The two transcript counts are both right and they are not the same measurement: 217 = 193 + 24 under `docs_capture/`. If you quote one of them, say which.
 
 <!-- guard-corpora: generated end -->
 

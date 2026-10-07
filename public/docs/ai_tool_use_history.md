@@ -61,3 +61,6 @@ tool-I/O JSONL log and has its own storage and retention behavior.
 See [Semantic retrieval](semantic_index.md) for how local workspace and source
 indexes differ from both histories, and [AI documentation polish](ai_doc_polish.md)
 for the separate generated-completion-doc workflow.
+
+To read whole saved chats rather than single tool calls, and to have AI4 summarize them, see
+[Reading Saved AI4 Chats](ai4_chat_archive.md).

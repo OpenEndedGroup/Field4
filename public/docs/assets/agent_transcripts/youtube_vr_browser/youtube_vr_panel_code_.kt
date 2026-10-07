@@ -2,10 +2,8 @@ import afield.four.Target
 import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowserVrPanel
 import afield.four.browser.PuppetBrowserWindowInput
-import afield.four.modules.fromContext
 import afield.four.targets.SideBySideStereoTarget
 
-val renderer: Renderer = fromContext()
 // prop declarations are lifted into Field's preamble before ordinary imports are applied.
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 

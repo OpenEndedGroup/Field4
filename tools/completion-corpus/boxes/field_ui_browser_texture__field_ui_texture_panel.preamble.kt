@@ -5,6 +5,7 @@ import arrow.core.right
 import arrow.core.left
 import afield.four.modules.*
 import afield.four.buffers.*
+import afield.four.browser.PuppetBrowser
 var Box.browserControl by Inheritance<afield.four.browser.PuppetBrowser>() /**/
 val Once.browserControl by Onceing<afield.four.browser.PuppetBrowser>() /**/
 val Why.browserControl by Whying() /**/

@@ -55,7 +55,9 @@ To split it:
   go. Let go near the top edge for a left and a right pane only, or near the left edge for a top and
   a bottom pane only.
 - Or use **Split Canvas Here**, **Split Canvas Columns Here** or **Split Canvas Rows Here** in the
-  command palette, which put the dividers where the pointer was.
+  command palette, which add a divider (or one of each) where the pointer was. Run them again on a
+  split canvas for more panes: up to three across and three down. The palette's preview for each of
+  them is a small picture of what the canvas will look like, with the new dividers in cyan.
 
 Splitting changes nothing on screen until you scroll. Then panes in the same row scroll up and down
 together, panes in the same column scroll side to side together, and zooming zooms every pane.
@@ -64,9 +66,13 @@ Each pane shows its own part of the document, on its side of the dividers: a box
 that holds its top-left corner. Drag a box across a divider and it moves into the other pane, staying
 where you let go of it.
 
+A pane in the middle of three shows the strip of the document between its two dividers. If you
+widen the pane past the end of that strip, the rest of it is plain grey, with no dots: there is
+nothing more of the document for that pane to show.
+
 - **Drag a divider** to move it. The boxes beside it move with it.
 - **Drag a divider to the edge of the window**, or double-click it, to remove it.
-- **Remove Canvas Split** in the command palette removes both. Every box stays where it is.
+- **Remove Canvas Split** in the command palette removes them all. Every box stays where it is.
 
 Connections between boxes in different panes are drawn straight across the dividers, and follow
 the boxes as the panes scroll. Here `keys 4` is selected, so its connections show: its parents are
@@ -113,6 +119,66 @@ there follows the pointer into the others.
 
 The split is saved with the document. A bookmark saved while the canvas is split restores the split
 and where each pane was scrolled to.
+
+### Unlinking a pane
+
+**Unlink Pane**, **Unlink Pane Horizontally** and **Unlink Pane Vertically** in the command
+palette let the pane under the pointer scroll on its own, in both directions or just one, instead of
+with its row or column: a corner of notes that stays where you left it, say, or a column of labels
+you scroll through separately. The stretches of divider between an unlinked pane and the panes it
+no longer moves with turn dashed. **Relink Pane** puts it back in step with its row and column.
+
+Here the instrument labels are unlinked vertically from the palette (its preview shows the divider
+beside them turning dashed), so the body scrolls down without them, and then they scroll on their
+own. **Relink Pane** brings them back into line with the body:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" video="assets/moving_around_the_canvas/unlink_pane.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/split_canvas.yaml" padding="0" wait="0" timeout="300" hide-toasts=true embed=true hidden=true name="unlink-pane" alt="A sequencer-like document split into four panes by a black cross, bar headings along the top and instrument labels down the left. With the pointer over the labels, the command palette opens and Unlink Pane Vertically is typed; its preview is a thumbnail of the split with the divider beside the labels drawn as cyan dashes. After Enter that divider turns dashed. The body scrolls down while the labels stay put, then the labels scroll on their own. The palette opens again for Relink Pane, and the labels jump back into line with their rows, the divider solid again."}
+// Split at the corner between the labels and the headings, the way a reader does: drag the grip.
+ui.moveMouse(6.0, 6.0)
+ui.mouseDown()
+ui.moveMouse(196.0, 114.0, 14)
+ui.mouseUp()
+ui.pause(400)
+val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
+check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
+
+fun scrollPane(index: Int, dx: Double, dy: Double) {
+    ui.eval("""
+      const pane = document.querySelectorAll(".field-pane")[$index];
+      const r = pane.getBoundingClientRect();
+      pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
+      return true;
+    """)
+}
+fun palette(command: String) {
+    // The pane under the pointer is the one a pane command acts on: the labels, bottom left.
+    ui.moveMouse(90.0, 400.0, 8)
+    ui.pause(300)
+    ui.press("F1")
+    ui.waitForSelector(".afield-palette-shell", 8000.0)
+    ui.pause(400)
+    ui.typeSlowly(command, 70)
+    ui.pause(1600)
+    ui.press("Enter")
+    ui.pause(900)
+}
+
+palette("unlink pane vertically")
+val free = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").toString()
+check("true" in free) { "the labels pane was not unlinked: " + free }
+// The body scrolls down; the labels stay where they are.
+ui.moveMouse(700.0, 420.0, 6)
+repeat(30) { scrollPane(3, 0.0, 6.0); ui.pause(30) }
+ui.pause(900)
+// The labels scroll on their own.
+repeat(24) { scrollPane(2, 0.0, 5.0); ui.pause(30) }
+ui.pause(900)
+
+palette("relink pane")
+val linked = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").toString()
+check("false" in linked) { "the labels pane was not relinked: " + linked }
+ui.pause(1500)
+```
 
 ## Stepping between boxes
 
