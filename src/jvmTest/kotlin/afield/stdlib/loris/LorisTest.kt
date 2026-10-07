@@ -12,7 +12,8 @@ class LorisTest {
     private fun model() = LorisModel(48000, 48000, listOf(LorisPartial(73, 0, listOf(point(.1), point(.9)))))
 
     /** Exercise the documented futures in every environment, without downloading a native worker. */
-    @Test fun asynchronousWavAnalysisAndSynthesisCompleteOrReportMissingWorker() {
+    @Test
+    fun asynchronousWavAnalysisAndSynthesisCompleteOrReportMissingWorker() {
         val folder = Files.createTempDirectory("field-loris-async-test-")
         try {
             val rate = 48000
@@ -108,7 +109,8 @@ class LorisTest {
     }
 
     /** No download/build in normal tests. Build explicitly to activate these real native checks. */
-    @Test fun optionalNativeToneReconstructsCachesAndTransforms() {
+    @Test
+    fun optionalNativeToneReconstructsCachesAndTransforms() {
         if (!LorisNative.isAvailable) { println("Loris optional native test: not built; no download"); return }
         val folder = Files.createTempDirectory("field-loris-test-")
         try {
