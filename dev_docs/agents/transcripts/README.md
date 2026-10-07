@@ -348,6 +348,11 @@ directions.
 
 ## Growth Rules
 
+`loris_partial_explorer.yaml` contains complete async analysis/edit/resynthesis boxes and a
+two-resolution comparison. It needs the opt-in `./gradlew buildLorisNative` executable, uses
+committed public-domain film dialogue, and requires neither an audio device nor the ML server.
+CI compiles its boxes without building/downloading Loris; native validation is separate.
+
 Keep examples small and agent-useful:
 
 - prefer stable ids over generated ids;

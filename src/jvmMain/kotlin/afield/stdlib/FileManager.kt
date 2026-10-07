@@ -337,6 +337,7 @@ object FileManager {
             Paths.get(FileManager::class.java.protectionDomain.codeSource.location.toURI())
         }.getOrNull()
         location?.let(::bundledSlugExecutable)?.let { addFile("field-slug", it) }
+        location?.let(::bundledDocsDirectory)?.let { add("docs", it) }
     }
 
     /**
@@ -602,6 +603,17 @@ internal fun bundledSlugExecutable(codeLocation: Path): Path? {
     while (root != null) {
         val helper = root.resolve("native/field-slug")
         if (Files.isRegularFile(helper.resolve("build.sh"))) return helper.resolve("build/field-slug")
+        root = root.parent
+    }
+    return null
+}
+
+/** Bundled documentation root, located from the loaded classes/JAR rather than the caller's cwd. */
+internal fun bundledDocsDirectory(codeLocation: Path): Path? {
+    var root: Path? = codeLocation.toAbsolutePath().normalize()
+    while (root != null) {
+        val docs = root.resolve("public/docs")
+        if (Files.isRegularFile(docs.resolve("index.md")) && Files.isDirectory(docs.resolve("assets"))) return docs
         root = root.parent
     }
     return null

@@ -21,12 +21,35 @@ from build_zensical_docs import (  # noqa: E402
     csound_library_path,
     jep_python_candidates,
     resolve_jep_python,
+    loris_executable_path,
 )
 
 FENCE = (
     '```diffstatic_runner {data-lang=kotlin screenshot="assets/p/kkc.png" '
     'wait="6.0" capture="box" requires="ceres"}\n:::static\nval x = 1\n```\n'
 )
+
+
+class LorisPrerequisiteTests(unittest.TestCase):
+    def test_loris_is_optional_and_has_an_explicit_build_command(self):
+        resolve, command = NATIVE_PREREQUISITES["loris"]
+        self.assertIs(resolve, loris_executable_path)
+        self.assertEqual(command, "./gradlew buildLorisNative")
+
+    def test_override_and_default_match_kotlin_discovery(self):
+        with patch.dict(os.environ, {"AFIELD_LORIS_EXECUTABLE": "/custom/field_loris"}):
+            self.assertEqual(loris_executable_path(Path("/repo")), Path("/custom/field_loris"))
+        with patch.dict(os.environ, {"AFIELD_LORIS_EXECUTABLE": ""}):
+            self.assertEqual(loris_executable_path(Path("/repo")).parent, Path("/repo/build/field-loris/build"))
+
+    def test_multiconfiguration_release_executable_is_found(self):
+        with TemporaryDirectory() as tmp, patch.dict(os.environ, {"AFIELD_LORIS_EXECUTABLE": ""}):
+            root = Path(tmp)
+            name = "field_loris.exe" if sys.platform == "win32" else "field_loris"
+            binary = root / "build/field-loris/build/Release" / name
+            binary.parent.mkdir(parents=True)
+            binary.touch()
+            self.assertEqual(loris_executable_path(root), binary)
 
 
 class PythonPrerequisiteTests(unittest.TestCase):

@@ -3577,6 +3577,25 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Explicit opt-in: no ordinary build, check or Field startup downloads/builds Loris.
+tasks.register("buildLorisNative") {
+    group = "build"
+    description = "Builds the optional pinned Loris analysis/resynthesis worker (CMake + C++17)."
+    inputs.dir("native/field-loris")
+    inputs.file("tools/build_loris_native.py")
+    inputs.file("tools/native_download_cache.py")
+    outputs.dir(layout.buildDirectory.dir("field-loris/build"))
+    doLast {
+        val result = providers.exec {
+            commandLine(nativeBuildPython, "tools/build_loris_native.py")
+            isIgnoreExitValue = true
+        }
+        if (result.result.get().exitValue != 0) throw GradleException(
+            result.standardOutput.asText.get() + result.standardError.asText.get())
+        logger.lifecycle(result.standardOutput.asText.get().trim())
+    }
+}
+
 // Build native/field-paint: claude-paint's `paint` crate (a bristle-brush oil-paint simulation)
 // behind a flat C ABI, for afield.paint.PaintCanvas.
 //
