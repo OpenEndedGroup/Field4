@@ -137,6 +137,10 @@ the `tools/land.py wait <id>` that `enqueue` prints as a background command (exi
 bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
 happened to every attempt to land it. To push, `enqueue --push` (pushes `main` once that item lands);
 to bring in work from `origin`, `tools/land.py sync [--push]` lands `origin/main` through the queue.
+`uv run python tools/land.py doc` adds a documentation build at that point in the queue: earlier
+landings finish first, then the lander refreshes `public/field4/` in the checkout holding `main`
+using existing captures, before later landings proceed. Use the printed `status`/`wait` id to see
+whether that build finished; a doc failure reports its own error and does not undo a landing.
 Never `git pull` or push `main` by hand.
 The hooks only report which guards a commit affects, so commits take seconds; do not use
 `--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
