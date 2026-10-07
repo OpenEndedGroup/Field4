@@ -381,6 +381,21 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
         self.assertEqual(self.states(), {"awake": "landed"})
         self.assertEqual(record.read_text().split(), ["-i", "-w", "alive"])
 
+    def test_mine_and_status_survive_a_branchless_doc_item(self) -> None:
+        # `land.py doc` items have no branch or sha; mine crashed with KeyError: 'branch' on one.
+        wt = self.branch_with("xi", "BREAKS")
+        self.land(wt, "enqueue")
+        self.run_lander()
+        queue = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue"
+        (queue / "landed" / "20991231-000000-doc.json").write_text(json.dumps(
+            {"id": "20991231-000000-doc", "kind": "doc", "checkout": str(self.primary), "by": "t",
+             "enqueued": "2099-12-31T00:00:00+00:00", "finished": "2099-12-31T00:00:01+00:00", "seq": 1}))
+        mine = self.land(wt, "mine")
+        self.assertNotIn("Traceback", mine.stderr, mine.stderr)
+        self.assertEqual(mine.returncode, 1)
+        status = self.land(self.primary, "status", "--plain")
+        self.assertNotIn("Traceback", status.stderr, status.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

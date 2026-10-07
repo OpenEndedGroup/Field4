@@ -313,8 +313,11 @@ def _typical(queue: Path, gradle: bool) -> float | None:
 
 def _superseded_by(queue: Path, item: dict) -> dict | None:
     """A later landing of the same branch, which makes this bounce history rather than news."""
+    # Doc builds (`land.py doc`) are queue items with no branch; they never supersede anything.
+    if _is_doc(item) or not item.get("branch"):
+        return None
     later = [other for other in _items(queue, LANDED)
-             if other["branch"] == item["branch"] and other.get("finished", "") > item.get("finished", "")]
+             if other.get("branch") == item["branch"] and other.get("finished", "") > item.get("finished", "")]
     return later[0] if later else None
 
 
