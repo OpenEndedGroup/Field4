@@ -164,10 +164,11 @@ internal fun Box.requireWritableChatLensDir(destination: File) {
     }
 }
 
+private val prettyJson = Json { prettyPrint = true }
+
 /** Finds chats under [roots], keeps each tree until its files change, and keeps lenses under [lensDir]. */
 class ChatlogStore(val roots: List<File>, val lensDir: File) {
     private val cache = HashMap<String, Pair<Long, ChatTree>>()
-    private val lensJson = Json { prettyPrint = true }
 
     private fun chats(): List<Pair<String, ChatArchive.StoredChat>> {
         val all = roots.flatMap { root ->
@@ -266,7 +267,7 @@ class ChatlogStore(val roots: List<File>, val lensDir: File) {
         val dir = dirFor(id).apply { mkdirs() }
         val md = File(dir, "${safe(name)}.md")
         md.writeText(markdown.trimEnd() + "\n")
-        File(dir, "$name.json").writeText(lensJson.encodeToString(buildJsonObject {
+        File(dir, "$name.json").writeText(prettyJson.encodeToString(buildJsonObject {
             put("chat", id)
             put("name", name)
             put("brief", brief)
