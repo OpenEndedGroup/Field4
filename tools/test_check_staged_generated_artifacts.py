@@ -94,6 +94,19 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             ],
         )
 
+    def test_new_demo_selects_its_registration_and_drift_guards(self) -> None:
+        self.assertEqual(
+            task_names(["dev_docs/agents/demos/new_demo/metadata.edn"]),
+            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools", "citationGates"],
+        )
+        self.assertEqual(
+            task_names(["dev_docs/agents/demos/new_demo/build.yaml"]),
+            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools", "citationGates"],
+        )
+
+    def test_unrelated_agent_document_does_not_select_demo_guards(self) -> None:
+        self.assertEqual(task_names(["dev_docs/agents/notes.md"]), ["citationGates"])
+
     def test_a_lesson_sidecar_selects_the_idiom_check_and_the_boundary_gate(self) -> None:
         # citationGates for PersonalBoundaryTest: a loose `<uid>_code_.kt` sidecar is committed box
         # code, and the canonical_graphics bundle is where a private import once shipped.
@@ -243,11 +256,11 @@ class PrivateBoundarySelectionTests(unittest.TestCase):
             "dev_docs/agents/demos/house_audit/changes.diff",
         ):
             with self.subTest(path=path):
-                self.assertEqual(task_names([path]), ["citationGates"])
+                self.assertIn("citationGates", task_names([path]))
 
     def test_an_unscanned_extension_under_dev_docs_still_selects_nothing(self) -> None:
         # The widening is the guard's population, not "everything under dev_docs".
-        self.assertEqual(task_names(["dev_docs/agents/demos/house_audit/window.png"]), [])
+        self.assertEqual(task_names(["dev_docs/agents/artifacts/house_audit/window.png"]), [])
 
     def test_the_private_tree_itself_is_not_an_input(self) -> None:
         # It is gitignored and the guard excludes it; selecting on it would be meaningless.
