@@ -228,7 +228,7 @@ A dragged key snaps to the grid, to the playhead, halfway between its neighbours
 
 ## Simplifying and smoothing a take
 
-A curve baked from a recording, such as a take from a [gesture pad](visualizers.md#recording-a-gesture) or numbers logged from a sensor, has a key for every frame: too many to edit by hand, and every tremor of the hand is in them. Right-click empty graph, and the curve's menu has two sliders for this:
+A curve baked from a recording, such as a take from a [gesture pad](#from-a-performed-gesture) or numbers logged from a sensor, can have a key for every frame: too many to edit by hand, and every tremor of the hand is in them. Right-click empty graph, and the curve's menu has two sliders for this:
 
 - **Simplify** removes every key it can while the curve stays close to where it was. Drag right to allow it to move further; the readout counts the keys left. The keys that stay become continuous beziers, with handles along the curve's slope, so a few keys still make the same smooth shape.
 - **Smooth** averages each key's value with its neighbours' across a stretch of time, given in the readout, so jitter goes and the shape stays. The first and last keys don't move, and no key moves in time.
@@ -322,16 +322,14 @@ ui.mouseUp()
 ui.pause(1500)
 ```
 
-From code, `simplify(tolerance)` and `smooth(width)` do the same to the whole curve. `tolerance` is how far the curve may move, in its own units, and `width` is the stretch of time each key is averaged over, the standard deviation of a Gaussian. A box that bakes a take can tidy it straight away:
+From code, `simplify(tolerance)` and `smooth(width)` do the same to the whole curve. `tolerance` is how far the curve may move, in its own units, and `width` is the stretch of time each key is averaged over, the standard deviation of a Gaussian:
 
 ```diffstatic {data-lang=kotlin}
-// pad is a gesture(...) pad with a take. Bake its x into keys, one every 60th of a second; at() loops,
-// so the last key falls just before the take's end.
-val steps = (pad.duration * 60).toInt()
-x.setKeys((0 until steps).map { i -> Keyframe(i / 60.0, pad.at(i / 60.0)!!.x.toDouble(), "linear") })
-x.smooth(0.05)      // over about a twentieth of a second
-x.simplify(0.01)    // within 0.01 of the smoothed take, everywhere
+take.smooth(0.05)      // over about a twentieth of a second
+take.simplify(0.01)    // within 0.01 of the smoothed curve, everywhere
 ```
+
+A take from a gesture pad bakes into two lanes whose keys share their times. Smoothing a lane leaves its times alone, but simplifying the lanes one at a time does not. To thin out a take, smooth it and bake it again, as in [A shaky take](#a-shaky-take).
 
 ## Key types
 
@@ -700,6 +698,71 @@ For a two-second figure eight drawn by hand, 240 samples:
 </div>
 
 `setTake(x, y)` samples the two curves 60 times a second (`samplesPerSecond` changes it), always including every key's time, and that becomes the pad's take: the trail redraws and the take is saved with the box, as if you had recorded it. Bezier keys come back as a smooth run of short lines, within a fraction of a thousandth of the curve. `toKeyframes(tolerance)` gives the two lists of keys without touching any editor, and `samples` gives the take itself, in the form `gesture(initialTake = ...)` accepts.
+
+### A shaky take
+
+The tolerance keeps what you performed, tremor and all. The same figure eight drawn by a shakier hand bakes to 146 keys of its 240 samples, most of them following the shake. To keep the movement and lose the tremor, smooth the take before you bake it: bake every sample, smooth both lanes, send them back to the pad, and bake again. The second bake needs 29 keys, and both lanes still have their keys at the same times. Using **Simplify** on each lane separately would give each lane different key times.
+
+```diffstatic {data-lang=kotlin}
+fun smoothTake() {
+    val (sx, sy) = bakeGesture(pad, tolerance = 0.0, channel = "lanes")   // every sample, as keys
+    sx.smooth(0.04)                                                       // over 40 ms
+    sy.smooth(0.04)
+    pad.setTake(sx, sy)                                                   // the smoothed take, on the pad
+    bakeGesture(pad, tolerance = 0.02, channel = "lanes")                 // and back, as a few keys
+}
+
+controlGroup("gesture") {
+    pad = gesture("take", initialTake = eight) { p = it }
+    button("smooth take") { if (it) smoothTake() }
+}
+```
+
+Here it is in the [starting point](#start-from-a-working-document)'s box, given a shakier take, with the lanes above the pad. Pressing **smooth take** thins out both lanes and redraws the pad's trail without the shake:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="600x1110" clip="0,0,600,1110" hide-toasts=true video="assets/keyframe_editor/smooth_take.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/gesture_smooth_take.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="gesture-smooth-take" alt="Two keyframe lanes, lanes/x and lanes/y, packed with keys that follow a shaky sine in x and a shaky double wave in y, above a gesture pad whose trail is a figure eight with a ragged, trembling outline. Playheads sweep both lanes while a dot travels the eight. The hold button beside smooth take is pressed: both lanes thin out to a few smooth keys along the same waves, and the pad's trail redraws as a clean figure eight"}
+ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
+// Both lanes showing their keys, and the page no longer moving.
+val ready = """
+  const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
+  return frames.length === 2 && frames.every(f => f.contentDocument && f.contentDocument.querySelectorAll('.kf-keyframe').length > 20) ? 'yes' : '';
+""".trimIndent()
+var tries = 0
+while (ui.eval(ready).toString().trim('"') != "yes" && tries++ < 80) ui.pause(250)
+// The hold button in the row labelled smooth take, in page coordinates, once it has stopped moving.
+val button = """
+  const b = Array.from(document.querySelectorAll('button')).find(b => {
+    let row = b.parentElement;
+    for (let k = 0; k < 3 && row; k++, row = row.parentElement) if ((row.textContent || '').toLowerCase().indexOf('smooth take') >= 0 && row.querySelectorAll('button').length === 1) return true;
+    return false;
+  });
+  if (!b) return '';
+  const r = b.getBoundingClientRect();
+  return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
+""".trimIndent()
+var at = ""
+tries = 0
+while (tries++ < 40) {
+    val now = ui.eval(button).toString().trim('"')
+    if (now.isNotEmpty() && now == at) break
+    at = now
+    ui.pause(200)
+}
+val (bx, by) = at.split(",").map { it.toDouble() }
+
+// Keep the main page producing frames. The recorder only gets a new one when this page paints, and
+// the lanes repaint inside their own frames, so without this the video holds a stale picture while
+// the playheads go on moving underneath. One pixel, all but transparent.
+ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
+ui.pause(1800)
+ui.moveMouse(bx, by, 16)
+ui.pause(300)
+// Pressed from the keyboard, as a focused button takes Space: a click would also select the box and
+// open its code over the panels.
+ui.eval(button.replace("if (!b) return '';", "if (!b) return ''; b.focus();"))
+ui.press("Space")
+ui.pause(3200)
+```
 
 ## Start from a working document
 
