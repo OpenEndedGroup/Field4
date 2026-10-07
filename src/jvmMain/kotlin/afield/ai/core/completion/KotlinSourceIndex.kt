@@ -357,13 +357,6 @@ object KotlinSourceIndex {
         val visibility: String = "public"
     )
     private data class ClassContext(val name: String, val depth: Int)
-
-    /** A class header runs on to the next line when a line of it ends this way. */
-    private val CLASS_HEADER_CONTINUES_AFTER = Regex("""([,:(<]|\bwhere|\bby)$""")
-
-    /** A line continues the class header above it when it starts this way. */
-    private val CLASS_HEADER_CONTINUES_BEFORE = Regex("""^([{,:)>]|where\b|by\b)""")
-
     private data class PendingClass(
         val name: String,
         val lineNumber: Int,
@@ -381,6 +374,9 @@ object KotlinSourceIndex {
 
     /** `fun` followed by the `interface` keyword — a SAM declaration, not a function. */
     private val FUN_INTERFACE = Regex("""^interface\b""")
+
+    /** A line opening an `init` block, which can never continue a class header. */
+    private val INIT_BLOCK = Regex("""^\s*init\s*\{""")
 
     /**
      * The name part of a property declaration's text, with any delegate or initialiser removed.
@@ -419,38 +415,11 @@ object KotlinSourceIndex {
         var pendingClass: PendingClass? = null
         var pendingCategory: String? = null
 
-        // The end of the last line of code, its `//` comment cut off, for the header-expiry test below.
-        var previousCodeLineEnd = ""
-
         val lines = text.split("\n")
         lines.forEachIndexed { index, rawLine ->
             val lineNumber = index + 1
             val depthAtStart = state.depth
             val currentClass = classStack.lastOrNull()
-            val trimmed = rawLine.trim()
-            val isCodeLine = !state.inBlockComment && !state.inString && !state.inRawString &&
-                trimmed.isNotEmpty() && !trimmed.startsWith("//") && !trimmed.startsWith("/*")
-
-            // A class whose header has ended without a brace declares no body — `class Marker`,
-            // `data class Point(val x: Int, val y: Int)`. Kept pending, it gives its name to the next
-            // brace in the file whatever that brace belongs to: `four/device/CommandBuffer.kt` has an
-            // `init {}` block under a bodyless `data class SecondaryInheritance(…)`, and the block's
-            // locals were reported as that class's members. The "a new declaration appeared" reset
-            // below cannot catch it, because `init` is not a declaration the recogniser knows. So a
-            // code line that neither continues the header (`{`, `: Base`, `, Other`, `where …`) nor
-            // follows a line left open (`,`, `:`, `(`, `<`, `by`, `where`) ends it.
-            val pendingHeader = pendingClass
-            if (isCodeLine &&
-                pendingHeader != null &&
-                pendingHeader.lineNumber != lineNumber &&
-                pendingHeader.headerParenDepth == 0 &&
-                !CLASS_HEADER_CONTINUES_BEFORE.containsMatchIn(trimmed) &&
-                !CLASS_HEADER_CONTINUES_AFTER.containsMatchIn(previousCodeLineEnd)
-            ) {
-                pendingClass = null
-            }
-            if (isCodeLine) previousCodeLineEnd = trimmed.substringBefore("//").trimEnd()
-
             val canParse = !state.inBlockComment &&
                 !state.inRawString &&
                 !state.inString &&
@@ -467,6 +436,17 @@ object KotlinSourceIndex {
                     def != null
                 ) {
                     // A new declaration appeared before the pending class body opened.
+                    pendingClass = null
+                }
+                if (pendingClass != null &&
+                    pendingClass.lineNumber != lineNumber &&
+                    pendingClass.headerParenDepth == 0 &&
+                    INIT_BLOCK.containsMatchIn(rawLine)
+                ) {
+                    // `data class Foo(…)` with no body, then the enclosing class's `init {`: that
+                    // brace is not Foo's body, and taking it for one attributed the init block's
+                    // locals to Foo (CommandBuffer.SecondaryInheritance, JoltPhysicsWorld.SurfaceQuery,
+                    // StudyBuilds.Manifest). No class header continues with `init`.
                     pendingClass = null
                 }
                 def?.let { parsed ->

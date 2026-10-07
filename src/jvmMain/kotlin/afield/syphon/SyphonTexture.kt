@@ -90,7 +90,7 @@ class SyphonTexture internal constructor(
         var linearMemory = 0L
         var locked = false
         var host: IOSurfaceHostBuffer? = null
-        lateinit var view: ImageView
+        var view: ImageView? = null
         var vkImage = 0L
         var layout = VK_IMAGE_LAYOUT_UNDEFINED
 
@@ -197,7 +197,7 @@ class SyphonTexture internal constructor(
         }
 
         fun release() {
-            if (this::view.isInitialized) view.cleanup()
+            view?.cleanup()
             image?.cleanup()
             host?.close()
             if (linearImage != 0L) vkDestroyImage(device.vkDevice, linearImage, null)

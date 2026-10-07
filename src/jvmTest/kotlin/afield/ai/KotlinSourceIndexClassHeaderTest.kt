@@ -30,8 +30,8 @@ class KotlinSourceIndexClassHeaderTest {
         // SecondaryInheritance(…)` sits above an `init {}` block. The pending class took the `init`
         // brace for its body, and `vkDevice` was indexed as `CommandBuffer.SecondaryInheritance.vkDevice`.
         // `init` is not a declaration the recogniser knows, so the "a new declaration appeared"
-        // reset never fired. This failed on main until the header-expiry check in
-        // `parseTopLevelDefinitions`.
+        // reset never fired. This failed on main until `595bd42eb` taught the index that a line
+        // opening `init {` ends a pending header.
         val source = """
             class CommandBuffer(pool: Pool) {
                 data class SecondaryInheritance(

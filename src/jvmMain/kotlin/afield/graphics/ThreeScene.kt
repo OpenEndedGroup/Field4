@@ -537,3 +537,72 @@ fun TriMesh.toThreeDrawable(
         pickable = pickable || callbackId.isNotEmpty() || hoverColor != null,
     )
 }
+
+/**
+ * The edges of this mesh worth drawing: open boundaries and creases, not the diagonals that triangulate
+ * a flat face. An edge is kept when it bounds one triangle (or more than two), when a triangle beside it
+ * is degenerate, or when its two triangles meet at more than [angleDegrees]. Returns vertex pairs.
+ *
+ * Vertices are welded by position first, so a triangle soup gets the same edges as the indexed mesh.
+ * With [explode] they are welded by position *and* offset, so two parts that touch keep their own
+ * outlines and come apart cleanly in a [ThreeSceneBuilder.shot]'s explode.
+ *
+ * The rule is the one [solidParts] draws its panel outlines by, restated for Float positions: its
+ * coplanarity test runs at double precision, and here it would keep the diagonal of every flat Float
+ * quad, so this one asks for an angle instead.
+ */
+fun TriMesh.outlineEdges(angleDegrees: Double = 1.0, explode: FloatArray? = null): List<Pair<Int, Int>> {
+    require(explode == null || explode.size == vertexCount * 3) { "explode needs 3 floats per vertex (${vertexCount * 3}), got ${explode?.size}" }
+    val scale = positions.maxOfOrNull { kotlin.math.abs(it) }?.toDouble()?.coerceAtLeast(1.0) ?: 1.0
+    val q = scale * 1e-6
+    data class Weld(val x: Long, val y: Long, val z: Long, val ex: Long, val ey: Long, val ez: Long)
+    val canonical = HashMap<Weld, Int>()
+    val weld = IntArray(vertexCount) { v ->
+        fun r(a: FloatArray?, i: Int) = if (a == null) 0L else Math.round(a[v * 3 + i] / q)
+        canonical.getOrPut(Weld(r(positions, 0), r(positions, 1), r(positions, 2), r(explode, 0), r(explode, 1), r(explode, 2))) { v }
+    }
+    val normals = Array(triangleCount) { t ->
+        fun p(c: Int, i: Int) = positions[indices[3 * t + c] * 3 + i].toDouble()
+        val ux = p(1, 0) - p(0, 0); val uy = p(1, 1) - p(0, 1); val uz = p(1, 2) - p(0, 2)
+        val wx = p(2, 0) - p(0, 0); val wy = p(2, 1) - p(0, 1); val wz = p(2, 2) - p(0, 2)
+        val nx = uy * wz - uz * wy; val ny = uz * wx - ux * wz; val nz = ux * wy - uy * wx
+        val l = kotlin.math.sqrt(nx * nx + ny * ny + nz * nz)
+        if (l > 1e-30 && l.isFinite()) doubleArrayOf(nx / l, ny / l, nz / l) else null
+    }
+    val incident = LinkedHashMap<Long, MutableList<Int>>()
+    for (t in 0 until triangleCount) for (e in 0..2) {
+        val a = weld[indices[3 * t + e]]; val b = weld[indices[3 * t + (e + 1) % 3]]
+        if (a == b) continue
+        incident.getOrPut(minOf(a, b).toLong() shl 32 or maxOf(a, b).toLong()) { ArrayList(2) } += t
+    }
+    val cosLimit = kotlin.math.cos(Math.toRadians(angleDegrees))
+    return incident.filter { (_, ts) ->
+        if (ts.size != 2) return@filter true
+        val na = normals[ts[0]] ?: return@filter true; val nb = normals[ts[1]] ?: return@filter true
+        na[0] * nb[0] + na[1] * nb[1] + na[2] * nb[2] < cosLimit
+    }.keys.map { (it ushr 32).toInt() to (it and 0xffffffffL).toInt() }
+}
+
+/**
+ * [outlineEdges] as a `lines` drawable in [color] (`[r, g, b]`), drawn over the mesh's own surface (which
+ * the viewer pushes back a touch, so they do not z-fight). With [explode] each line end carries its
+ * vertex's offset, so the outline moves with its part.
+ */
+fun TriMesh.toThreeEdgeDrawable(
+    color: FloatArray = floatArrayOf(.08f, .1f, .12f),
+    angleDegrees: Double = 1.0,
+    panel: Int = 0,
+    group: Int = -1,
+    id: String = "",
+    explode: FloatArray? = null,
+): ThreeDrawable {
+    require(color.size == 3 && color.all { it.isFinite() && it in 0f..1f }) { "edge colour needs three values in 0..1" }
+    val edges = outlineEdges(angleDegrees, explode)
+    val ends = edges.flatMap { listOf(it.first, it.second) }
+    fun gather(source: FloatArray) = FloatArray(ends.size * 3) { source[ends[it / 3] * 3 + it % 3] }
+    val attributes = mapOf(
+        "position" to ThreeAttribute(itemSize = 3, array = gather(positions)),
+        "color" to ThreeAttribute(itemSize = 3, array = FloatArray(ends.size * 3) { color[it % 3] }),
+    ) + (explode?.let { mapOf("explode" to ThreeAttribute(itemSize = 3, array = gather(it))) } ?: emptyMap())
+    return ThreeDrawable(ThreeGeometryData(attributes), ThreeDrawStyle.lines, panel = panel, group = group, id = id)
+}

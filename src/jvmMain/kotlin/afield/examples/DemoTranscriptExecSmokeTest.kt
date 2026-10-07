@@ -745,7 +745,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- KOTLINJS: build the graph, then compile each kotlinjs box body Kotlin -> JS for real ----
 
-    private fun runKotlinJsDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runKotlinJsDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val ops = loadOps(yaml)
         val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
@@ -828,7 +828,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- EXECUTE: run the whole transcript through the real runner and assert no error output ----
 
-    private fun runExecuteDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runExecuteDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val macrosDir = File(document, "macros").also { it.mkdirs() }
         File(macrosDir, "$name.yaml").writeText(yaml.readText())
@@ -922,6 +922,16 @@ object DemoTranscriptExecSmokeTest {
             val codeLanguage = target.getPropertyRaw("code_language")?.toString()?.trim().orEmpty()
             if (codeLanguage.isNotEmpty() && !codeLanguage.equals("kotlin", ignoreCase = true)) {
                 println("[compile]   $id: code_language=$codeLanguage, not Kotlin — skipped")
+                continue
+            }
+            // The other way a box becomes a guest one: its parent is a language root
+            // (`mainLanguage: python`, as fieldcv_webcam's cv_python is), and the child carries no
+            // `code_language` of its own.
+            val rootLanguage = target.parents.firstNotNullOfOrNull { p ->
+                p.getPropertyRaw("mainLanguage")?.toString()?.trim()?.takeIf { it.isNotEmpty() && !it.equals("kotlin", ignoreCase = true) }
+            }
+            if (rootLanguage != null) {
+                println("[compile]   $id: child of a mainLanguage=$rootLanguage root, not Kotlin — skipped")
                 continue
             }
             val diags = compileBoxOnly(target)

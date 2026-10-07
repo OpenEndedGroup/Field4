@@ -1,5 +1,8 @@
 package afield.ai.core
 
+import afield.Runloop
+import afield.app
+import afield.home
 import afield.Box
 import afield.SessionInformation
 import afield.ai.SemanticRetrievalQueryRequest
@@ -153,6 +156,7 @@ internal object Ai4BackdoorTools {
             listKotlinContextVariables = runtimeTools.listKotlinContextVariables,
             codeUseQuery = runtimeTools.codeUseQuery,
             workspaceSymbolSearch = runtimeTools.workspaceSymbolSearch,
+            workspaceSearch = workspaceSearchForDocument(docPath),
             listMacros = listMacros,
             readMacro = readMacro,
             writeMacro = writeMacro,
@@ -227,5 +231,16 @@ internal fun resolveBackdoorFileRef(sessionInfo: SessionInformation, docName: St
             if (byName != null) FileRef(docName, byName.id, defaultProperty)
             else FileRef(docName, trimmed, defaultProperty)
         }
+    }
+}
+
+/** Both chat and backdoor use the attached document and the configured roots, never cwd fallback. */
+internal fun workspaceSearchForDocument(documentPath: String): (WorkspaceSearchRequest) -> WorkspaceSearchResult {
+    val search = WorkspaceSearch(WorkspaceSearchRoots(
+        File(documentPath).toPath(), File(home).toPath(), File(app, "src").toPath()
+    ))
+    return { request ->
+        check(!Runloop.isMainThread) { "Workspace search reads disk; call it off the Field Runloop." }
+        search.search(request)
     }
 }

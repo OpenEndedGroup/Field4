@@ -413,8 +413,8 @@ class FieldApiCorsExposureTest {
         )
         val found = sortedMapOf<String, String>()
 
-        File(repositoryRoot(), "src/jvmMain/kotlin/afield").walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
+        // Field's own server only: a file in KotlinRouteScan.SEPARATE_SERVERS serves its own port.
+        KotlinRouteScan.serverKotlinFiles(repositoryRoot())
             .forEach { file ->
                 val text = file.readText()
                 declaration.findAll(text).forEach { match ->

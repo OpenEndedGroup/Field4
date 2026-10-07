@@ -64,7 +64,14 @@ object ChatLogViews {
     }
 
     private fun StringBuilder.section(nodes: List<ChatNode>, families: AiChatToolFamilies) {
+        var chat: String? = null
         for (node in nodes) {
+            // A series runs several chats end to end: say where each begins.
+            if (node.chat != null && node.chat != chat) {
+                chat = node.chat
+                appendLine()
+                appendLine("# ${node.chat}")
+            }
             for (group in groups(node.blocks)) {
                 val first = group.first()
                 when {
@@ -73,10 +80,10 @@ object ChatLogViews {
                         appendLine("## ${first.turn?.let { "Turn $it" } ?: "Request"} · ${first.address} · finished ${at(node.ts)}")
                         first.text.lines().forEach { appendLine("> $it") }
                     }
-                    first.role == "ai" -> {
+                    first.role == "ai" || first.role == "summary" -> {
                         val images = first.images.map { it.image.caption ?: it.image.alt }
                         val text = oneLine(first.text.replace(Regex("""(?m)^_[^\n]*_$"""), ""), 180)
-                        append("- ${first.address} reply: $text")
+                        append("- ${first.address} ${if (first.role == "ai") "reply" else "summary"}: $text")
                         if (images.isNotEmpty()) append(" [${images.size} image${if (images.size > 1) "s" else ""}: ${images.joinToString("; ") { oneLine(it, 120) }}]")
                         appendLine()
                     }
@@ -166,19 +173,30 @@ object ChatLogViews {
         }
     }
 
-    /** A lens's problems: citations that do not resolve. Empty when every block's sources exist and run forward. */
+    private val strayMarker = Regex("""(?m)^<<(source|at):[^\n]*>>\s*$""")
+
+    /**
+     * A lens's problems. Every block must cite what it stands for with a `<<source:…>>` line directly under its
+     * `<<you>>`/`<<ai>>`/`<<summary>>` line, and every citation must resolve to a stretch of the chat. A source
+     * line anywhere else (above the marker, at the end of the block before) is refused, because it would cite
+     * nothing and show as text.
+     */
     fun lensProblems(tree: ChatTree, lens: String): List<String> {
         val problems = mutableListOf<String>()
+        val text = lens.replace("\r\n", "\n").trim()
+        if (text.isNotEmpty() && !Regex("^<<(you|ai|summary)>>").containsMatchIn(text))
+            problems += "the lens must begin with a <<you>>, <<ai>> or <<summary>> line; each block's <<source:…>> line goes directly under it, not above it"
         val blocks = parseAiChatBlocks(lens)
         if (blocks.isEmpty()) problems += "the lens is empty"
         blocks.forEachIndexed { i, b ->
+            if (b.sources.isEmpty()) problems += "block $i (${b.role}: \"${oneLine(b.content, 60)}\") cites nothing: put a <<source:first..last>> line directly under its <<${b.role}>> line"
+            if (strayMarker.containsMatchIn(b.content)) problems += "block $i has a <<source:…>> line inside its text; source lines go directly under a block's <<${b.role}>> line, never above the next block's"
             for (s in b.sources) {
                 val (a, z) = if (".." in s) s.substringBefore("..") to s.substringAfter("..") else s to s
                 if (tree.span(a, z) == null) problems += "block $i cites `$s`, which is not a stretch of this chat"
             }
         }
-        if (blocks.none { it.sources.isNotEmpty() }) problems += "no block cites its source with a <<source:…>> line"
-        return problems
+        return problems.distinct()
     }
 
     /** How much of the chat a lens covers, and how much shorter it is than what it cites. */
@@ -200,5 +218,24 @@ object ChatLogViews {
             "citedChars" to citedChars,
             "compression" to if (lensChars == 0) 0.0 else Math.round(citedChars * 10.0 / lensChars) / 10.0,
         )
+    }
+
+    private val blobRef = Regex("""ai4img:([0-9a-f]{16}\.[a-z0-9.+-]+)""")
+
+    /** [markdown] with every `ai4img:` reference replaced by the URL [url] gives its blob name (`<sha>.<ext>`). */
+    fun withImageUrls(markdown: String, url: (String) -> String): String = blobRef.replace(markdown) { url(it.groupValues[1]) }
+
+    /**
+     * [blocks] as chat markup again, each with an `<<at:address>>` line, so the chat panel's renderer draws
+     * them as the panel would and tags every block with where it came from (the lens viewer's line ends).
+     */
+    fun addressedTranscript(blocks: List<ChatBlockEntry>): String = buildString {
+        for (b in blocks) {
+            append("<<").append(b.role).append(">>\n")
+            b.model?.let { append(it.marker()) }
+            append("<<at:").append(b.address).append(">>\n")
+            if (b.sources.isNotEmpty()) append("<<source:").append(b.sources.joinToString(", ")).append(">>\n")
+            append(b.text.trim()).append("\n")
+        }
     }
 }
