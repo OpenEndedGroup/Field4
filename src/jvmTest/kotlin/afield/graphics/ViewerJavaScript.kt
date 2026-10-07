@@ -279,6 +279,13 @@ $region
             "tessellateCoplanarGroups",
         ),
         "cubic-sampling" to listOf("EDGE_SAMPLES", "cubicPoint", "sampleCubic"),
+        "wire-payload" to listOf(
+            "WIRE_BASE64_ALPHABET",
+            "wireBase64BytesPortable",
+            "unpackWirePayload",
+            "partAppearancePayload",
+            "receiveWireMessage",
+        ),
         "fline-hit-picking" to listOf(
             "FLINE_PICK_CUBIC_SAMPLES",
             "flinePickSegmentAt",
