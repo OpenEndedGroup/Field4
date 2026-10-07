@@ -1715,10 +1715,16 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // Gradle honours and the guard cannot see. It fails in the safe direction (a spurious "undeclared"
     // rather than a spurious pass) and it cost a commit to find, so match the idiom: every other
     // fileTree in this block is single-argument too.
+    //
+    // `.patch`/`.diff` are here for `PersonalBoundaryTest` too, though they are not box code: a patch
+    // quotes the body of the files it changes, so it can carry private source outright, and agents
+    // leave them under `dev_docs/agents/`. A diff arriving there must not inherit a previous verdict.
     inputs.files(fileTree("dev_docs") {
         include("**/*.kt")
         include("**/*.edn")
         include("**/*.yaml")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedDevDocsBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -1726,12 +1732,16 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         include("**/*.kt")
         include("**/*.edn")
         include("**/*.yaml")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedPublishedBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.files(fileTree("templates") {
         include("**/*.kt")
         include("**/*.edn")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedTemplateBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)

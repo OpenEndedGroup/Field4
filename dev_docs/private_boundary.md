@@ -41,12 +41,15 @@ Three costs, in the order they matter:
 
 ## The assertions
 
-Six `@Test` methods, in `src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt`. Three of them are
-the rule, two keep the ledger honest, and one does not run outside the author's machine.
+Eight `@Test` methods, in `src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt`. Assertions 1, 2
+and 7 are the rule, 8 proves the diff handling on a fixture, 3 is the population they reason over, 4
+and 5 keep the ledger honest, and 6 does not run outside the author's machine. They are numbered in
+the order they were written; 7 belongs beside 1, being the same inverted allowlist asked of a
+`package` line instead of an `import` line.
 
 ### 1. Import direction, and why the allowlist is inverted
 
-`PersonalBoundaryTest.kt:239#no committed file imports a package outside the public roots`.
+`PersonalBoundaryTest.kt:322#no committed file imports a package outside the public roots`.
 
 The obvious rule is "do not import `drowning`, `euclid`, `organic`, `splat`". It needs a list of
 private package names that their author renames without telling anybody, and that cannot be derived
@@ -55,7 +58,7 @@ stale is the failure this repository has recorded most often.
 
 So the rule is inverted. Every one of Field's own packages is under `afield.`, so a **single-segment**
 import root is by construction either a third-party library or private work.
-`PersonalBoundaryTest.kt:117#private val PUBLIC_IMPORT_ROOTS` lists what is *permitted*. It fails
+`PersonalBoundaryTest.kt:141#private val PUBLIC_IMPORT_ROOTS` lists what is *permitted*. It fails
 closed: a private package invented tomorrow is caught with nobody updating anything.
 
 Measured over the corpus on this branch, replicating the guard's own regex and roots:
@@ -86,7 +89,7 @@ disagree. Pinned because this number has already been wrong once in the place a 
 it, and nothing was checking either statement of it. Adding a genuine new public dependency will now
 turn this page red until the sentence moves with the code, which is the point.
 
-The regex is `PersonalBoundaryTest.kt:186#private val IMPORT_RE`, and its alternation
+The regex is `PersonalBoundaryTest.kt:213#private val IMPORT_RE`, and its alternation
 `(?:^|\\n|")` is the interesting part. In a Kotlin raw string `\\n` is a literal backslash followed
 by `n`, so the middle branch matches an **escaped** newline in the file's *text*. That is what
 catches an import inside an `#afield/file-inline` string in a `metadata.edn`, where the whole box
@@ -109,7 +112,7 @@ rewording rather than by exempting the file.
 
 ### 2. Citation depth
 
-`PersonalBoundaryTest.kt:273#no committed file cites a path inside the private tree`.
+`PersonalBoundaryTest.kt:349#no committed file cites a path inside the private tree`.
 
 Naming the root is legal. Reaching inside it is not. `git grep -l "src/personal"` returns **40**
 tracked files, **26** of them under `src/`, and they are all mechanism: Field offers
@@ -119,8 +122,8 @@ Two of them name it in order to *exclude* it, both as an `EXCLUDED_ROOTS` list �
 `src/jvmMain/kotlin/afield/docs/SourcePartitionGuard.kt:70#private val EXCLUDED_ROOTS`. Depth is the
 discriminator: a root reference survives the directory being absent, a path inside it does not.
 
-`PersonalBoundaryTest.kt:189#private val DEEP_PERSONAL_RE` is the root plus **two** more segments.
-`PersonalBoundaryTest.kt:136#private val ALLOWED_PERSONAL_REFERENCES` holds eight strings that are
+`PersonalBoundaryTest.kt:231#private val DEEP_PERSONAL_RE` is the root plus **two** more segments.
+`PersonalBoundaryTest.kt:163#private val ALLOWED_PERSONAL_REFERENCES` holds eight strings that are
 excused if the regex does produce them.
 
 Seven of those eight are dead weight, and two are provably unreachable. The regex requires two path
@@ -145,10 +148,10 @@ are inert saves the next reader from concluding that the tree cites `src/persona
 
 ### 3. The population floor
 
-`PersonalBoundaryTest.kt:221#the corpus this guard reasons about is really there`.
+`PersonalBoundaryTest.kt:300#the corpus this guard reasons about is really there`.
 
 Assertions 1 and 2 both report an *absence*, and an absence over an empty corpus is free.
-`PersonalBoundaryTest.kt:184#private const val MIN_SCANNED_FILES` is 2000 and stops that. It also
+`PersonalBoundaryTest.kt:211#private const val MIN_SCANNED_FILES` is 2000 and stops that. It also
 catches a `SCAN_ROOTS` entry that has been renamed out from under the guard, which is the same
 failure arriving quietly instead of loudly.
 
@@ -169,15 +172,15 @@ trees.
 
 ### 4 and 5. The ledger, in both directions
 
-`PersonalBoundaryTest.kt:161#private val GRANDFATHERED` is the debt list: path, and why it is here.
+`PersonalBoundaryTest.kt:188#private val GRANDFATHERED` is the debt list: path, and why it is here.
 It lives nowhere else. There is no JSON, no Markdown, no issue tracker row.
 
 Its contract is two-sided, and the second side is the half most debt lists omit:
 
-- `PersonalBoundaryTest.kt:326#the grandfathered ledger does not grow quietly` holds it at
-  `PersonalBoundaryTest.kt:178#private const val MAX_GRANDFATHERED`, currently **0**. It may shrink
+- `PersonalBoundaryTest.kt:483#the grandfathered ledger does not grow quietly` holds it at
+  `PersonalBoundaryTest.kt:205#private const val MAX_GRANDFATHERED`, currently **0**. It may shrink
   without ceremony. Growing it means editing a constant, in a commit somebody will read.
-- `PersonalBoundaryTest.kt:308#grandfathered entries are still real` fails if an entry is *no longer*
+- `PersonalBoundaryTest.kt:377#grandfathered entries are still real` fails if an entry is *no longer*
   a violation. Fix a leak, leave the excuse behind, and the build goes red. Without this a ledger
   becomes a description of a tree that no longer exists, and the next reader believes a leak is still
   there.
@@ -187,7 +190,7 @@ named exactly those nine as stale.
 
 ### 6. The collision check, which does not run here
 
-`PersonalBoundaryTest.kt:346#no private package name collides with a permitted public root`.
+`PersonalBoundaryTest.kt:503#no private package name collides with a permitted public root`.
 
 Assertion 1 is only as good as the claim that no private package shares a name with something
 `PUBLIC_IMPORT_ROOTS` permits. If a private package were called `field`, then `import field.*` in a
@@ -226,32 +229,93 @@ would make `import field.*` legal in any committed file, silently, and the only 
 so is assertion 6 on the one machine that can run it. That is why running it by hand is worth the
 five minutes rather than reading "expected off-machine" and moving on.
 
+### 7. Package declaration, the other half of assertion 1
+
+`PersonalBoundaryTest.kt:402#no committed file declares a package outside the public roots`.
+
+Assertion 1 catches a committed file that **depends** on private work. It cannot catch a committed
+file that **is** private work: quoted private source, or a source file sitting in a private package,
+may import nothing but `afield.*`. This asks the same question of the `package` line, over the same
+`PersonalBoundaryTest.kt:141#private val PUBLIC_IMPORT_ROOTS`, so it needs no list of private package
+names either.
+
+The regex, `PersonalBoundaryTest.kt:225#private val PACKAGE_RE`, is anchored at **both** ends where
+`IMPORT_RE` is anchored only at the start. That is what makes it usable over `.md`: the corpus's prose
+says things like "package still lists only its sub-packages", and a rule that stopped at the
+identifier would report it. The trailing lookahead also declines the `"` the leading alternation
+carries, so quoted two-word phrases do not match either. The cost is that a `package` line which is
+the *last* line of an `#afield/file-inline` string is invisible, and no real program ends on that
+line.
+
+It found three files on the day it was ported to this tree (2026-10-07):
+
+- `src/jvmTest/kotlin/afield/graphics/FLineBuilderSyntaxTest.kt`, a committed test of the terser
+  `FLine` construction surface. Every import in it was `afield.*` or `kotlin.*`; its package, and the
+  directory it sat in, were one of the nineteen private ones. No other assertion could see it, because
+  its imports were clean and it cited no path. It moved to `afield.graphics`, which made its
+  `FLine` import redundant. Nothing referenced the old fully-qualified name.
+- Two test fixtures, a Kotlin source held in a raw string with the placeholder package `fixture`, in
+  `GeneratedCompletionDocSweepTest.kt` and `KotlinSourcePartitionTest.kt`. Not private, but not a
+  public root either, and neither test reads the package name; both now say `afield.fixture`. That
+  was preferred to adding `fixture` to `PUBLIC_IMPORT_ROOTS`, which would also have made
+  `import fixture.*` legal everywhere.
+
+All three were fixed rather than grandfathered: `MAX_GRANDFATHERED` is 0.
+
+### 8. The diff surface, proved on a fixture
+
+`PersonalBoundaryTest.kt:436#a diff cannot hide private code behind its line markers`.
+
+`PersonalBoundaryTest.kt:114#private val SCAN_EXTENSIONS` now carries `patch` and `diff`. A patch
+carries the **body** of the files it changes, so where a `.kt` beside it can name a private package,
+a patch can quote the private source outright, and agents leave patches in evidence directories under
+`dev_docs/agents/`. Before this, the guard did not open them at all.
+
+Two things hide a diff from rules written for source:
+
+- **Its headers**, which name the paths it touches. Assertion 2 reads those as they are, because
+  `DEEP_PERSONAL_RE` is unanchored.
+- **Its payload**, which wears a one-character prefix. Every other rule anchors at a line start, so
+  `+import <private>.*` and `+package <private>` match nothing.
+  `PersonalBoundaryTest.kt:238#private fun undiffed` strips that one character per line.
+
+`PersonalBoundaryTest.kt:248#private fun scannableText` appends the de-marked copy rather than
+substituting it, so nothing the raw text would have matched can be lost to the transformation.
+
+The corpus rarely holds a diff — three tracked ones under `dev_docs` today, all clean — so the
+absences assertions 1, 2 and 7 report over diffs are nearly free. Assertion 8 therefore builds a
+synthetic unified diff and checks both directions: the raw text hides the private import and package
+behind their `+` markers, and `undiffed` uncovers both. Checking only the second half would let a
+regression that stopped de-marking pass. The fixture is assembled from fragments (`"pack" + "age"`)
+because the test file is itself in the corpus, and a literal package line, import, or deep private
+path in it would be a violation of that file.
+
 ## What the guard's subject is when the private tree is absent
 
 `src/personal/` is untracked, so **no worktree and no fresh clone has it**. This one does not, and
 neither will CI.
 
 The guard is unaffected, and this is the important thing to understand about it: its subject is the
-**committed tree**, not the private tree. `PersonalBoundaryTest.kt:92#private val SCAN_ROOTS` names
+**committed tree**, not the private tree. `PersonalBoundaryTest.kt:104#private val SCAN_ROOTS` names
 `src/commonMain`, `src/jvmMain`, `src/jvmTest`, `src/jsMain`, `dev_docs`, `public/docs` and
-`templates`, and `src/personal` is not among them. Assertions 1, 2 and 3 look for references *out
-of* the committed tree and find them, or do not, regardless of whether the destination exists.
-Assertions 4 and 5 read a Kotlin constant. Only assertion 6 needs the directory, and it prints and
-returns.
+`templates`, and `src/personal` is not among them. Assertions 1, 2, 3 and 7 look for references
+*out of* the committed tree and find them, or do not, regardless of whether the destination exists.
+Assertions 4 and 5 read a Kotlin constant, and 8 reads a string it builds itself. Only assertion 6
+needs the directory, and it prints and returns.
 
 That means the rule is enforceable everywhere and its safety net is enforceable in one place. Say
 this out loud when reasoning about the guard, because the intuitive reading — "a guard about
-`src/personal` cannot mean much where `src/personal` is absent" — is wrong for five of the six
+`src/personal` cannot mean much where `src/personal` is absent" — is wrong for seven of the eight
 assertions and right for the sixth.
 
 ## The population is not the same in two checkouts
 
-`scanned()` at `PersonalBoundaryTest.kt:203#if (!dir.isDirectory) emptyList() else dir.walkTopDown()`
+`scanned()` at `PersonalBoundaryTest.kt:282#if (!dir.isDirectory) emptyList() else dir.walkTopDown()`
 walks the **filesystem**. It does not consult the git index. Two consequences, and the second is a
 trap.
 
 First, `.gitignore` is honoured only where the guard hard-codes it.
-`PersonalBoundaryTest.kt:210#.filterNot { (rel, _) -> rel.startsWith(PERSONAL_ROOT) }` excludes the
+`PersonalBoundaryTest.kt:289#.filterNot { (rel, _) -> rel.startsWith(PERSONAL_ROOT) }` excludes the
 private tree by path. Every other ignore rule is invisible to it.
 
 Second, and measured over the same commit in two checkouts:
@@ -292,7 +356,7 @@ checkouts of the same commit.**
 
 ## When it runs
 
-`PersonalBoundaryTest` is in `citationGates`, declared at `build.gradle.kts:1419#"afield.docs.PersonalBoundaryTest"`,
+`PersonalBoundaryTest` is in `citationGates`, declared at `build.gradle.kts:1617#"afield.docs.PersonalBoundaryTest"`,
 and excluded from the broad `jvmTest` task. That is not about speed. `citationGates` is the only task
 that declares Markdown and the three box-code forms as **inputs**, so it is the only one that cannot
 go `UP-TO-DATE` after an edit that touches no Kotlin. A guard that can pass stale is worse than no
@@ -305,11 +369,22 @@ three ways and a leak through any one of them is equally broken for a reader:
 - an `#afield/file-inline` string inside `metadata.edn`,
 - a fence on a published page.
 
-`PersonalBoundaryTest.kt:102#private val SCAN_EXTENSIONS` is therefore `kt, kts, md, edn, yaml`, with
-`yaml` covering operation transcripts, which carry box programs as literal text.
+`PersonalBoundaryTest.kt:114#private val SCAN_EXTENSIONS` is therefore `kt, kts, md, edn, yaml`, with
+`yaml` covering operation transcripts, which carry box programs as literal text, plus `patch` and
+`diff` for assertion 8. The `citationGates` block in `build.gradle.kts` declares all of them as inputs
+for the three box-code trees, so a diff arriving under `dev_docs/agents/` invalidates the task.
 
-At commit time the pre-commit hook runs Gradle, so a staged `.kt` costs a couple of minutes. At
-`check` time `citationGates` runs as a dependency. To run only this class:
+Whether a change runs this guard at all is decided by `tools/check_staged_generated_artifacts.py`:
+the pre-commit hook reports what it selects, and the lander runs what it selects for the branch being
+landed. Its `citationGates` selection used to reach `src/jvmMain/**.kt`, `public/docs/**.md` and the
+files the citation registries name, so a branch that changed only `dev_docs/agents/**` — the agent
+evidence directory this guard exists for — or only a template's `metadata.edn` selected nothing that
+reads it. `check_staged_generated_artifacts.py#def _personal_boundary_corpus` now reads `SCAN_ROOTS`
+and `SCAN_EXTENSIONS` out of this class and selects `citationGates` for any path inside them, so
+widening the corpus here widens the trigger with it. An unreadable declaration raises rather than
+falling back to a copy, as the codebase-reference selection does.
+
+At `check` time `citationGates` runs as a dependency. To run only this class:
 
 ```console
 $ ./gradlew --no-daemon citationGates --tests '*PersonalBoundary*'
@@ -360,9 +435,38 @@ references, not relevance.
 
 ## What the failures actually look like
 
-Three of the six assertions were made to fire on purpose while this page was being written, and
-reverted afterwards. The commit that introduced the guard demonstrated assertion 1 by planting an
-import; these are the other ones, so the failure paths that had never been executed now have been.
+Several assertions have been made to fire on purpose and reverted afterwards. The commit that
+introduced the guard demonstrated assertion 1 by planting an import; the sections below record the
+others.
+
+### Assertions 1, 2 and 7 off one planted patch, and 8 off a disabled de-marker
+
+Two synthetic files under `dev_docs/agents/`, against a package that exists nowhere: a ten-line
+`.patch` whose header names a file under the private root and whose added lines declare and import
+that package, and a `.kt` declaring the package while importing only `afield.graphics.FLine`.
+
+```text
+PersonalBoundaryTest > no committed file declares a package outside the public roots FAILED
+PersonalBoundaryTest > no committed file imports a package outside the public roots FAILED
+PersonalBoundaryTest > no committed file cites a path inside the private tree FAILED
+8 tests completed, 3 failed
+```
+
+The package assertion named both files, the import assertion only the patch (the `.kt`'s imports were
+clean), and the citation assertion the patch's header. Then, with the plants still present,
+`undiffed` was made to return its input unchanged:
+
+```text
+no committed file declares a package outside the public roots   → the .kt only
+no committed file cites a path inside the private tree           → the patch header only
+a diff cannot hide private code behind its line markers
+    de-marking no longer exposes an import on an added line expected:<[...]> but was:<[]>
+8 tests completed, 3 failed
+```
+
+Without de-marking, the import assertion went green over a patch that imports a private package, and
+the package assertion stopped seeing the patch at all; the fixture assertion is what failed. (The
+planted name is elided above for the reason given under assertion 2 below.)
 
 ### Assertion 2, planted
 
@@ -388,7 +492,7 @@ BUILD FAILED in 9s
 One elision, and it is the guard's doing rather than an editorial choice. The real message ends that
 line with a package name, and reproducing it here would re-plant the violation in the page that
 documents it. **A guarded document cannot quote this guard's failure message verbatim.**
-`PersonalBoundaryTest.kt:276#for (m in DEEP_PERSONAL_RE.findAll(text))` runs over raw file text, so a
+`PersonalBoundaryTest.kt:267#DEEP_PERSONAL_RE.findAll(text)` runs over raw file text, so a
 fenced code block is not exempt and neither is an HTML comment. That is a small, permanent
 consequence of enforcing a rule with a literal string match, and it is the reason the block above is
 the only thing on this page that is not exact.
@@ -470,7 +574,7 @@ Stated so that a green run is not read as more than it is.
 - **A private path written without its prefix.** `DEEP_PERSONAL_RE` keys on the literal string
   `src/personal/`. A path relative to the private source root does not carry it and is invisible.
   There is a live instance, and it is inside another guard:
-  `src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt:124#Scanning it made` explains why it
+  `src/jvmMain/kotlin/afield/docs/KDocAttachmentGuard.kt:123#Scanning it made` explains why it
   excludes the private tree by reciting three files it found there, as `kiwi/MapType.kt`,
   `organic/fakeDivs.kt` and `pattern/polyheadra.kt`. Three private paths, in a tracked file, past a
   green guard. Harmless here, because the point of the passage is that those files could not be
@@ -486,6 +590,12 @@ Stated so that a green run is not read as more than it is.
   tree is Kotlin, so a Python-shaped hole cannot hide it.
 - **Renames.** The guard checks references out of the committed tree, not that the private tree still
   contains what a comment says it does.
+- **A diff under another extension, or inside a fence.** Only `.patch` and `.diff` are de-marked. A
+  patch saved as `.txt`, a `.rej`, or a diff pasted into a fenced block on a Markdown page keeps its
+  `+` prefixes, so a private import or package on an *added* line is invisible; the header and any
+  unprefixed context line are still read. De-marking `.md` outright was not done, because a Markdown
+  list item is a line starting with `-`, and stripping it turns prose like "- import foo.bar in the
+  box" into a match.
 
 ## Related
 

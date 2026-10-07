@@ -14,9 +14,9 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**. It is not a level, and it is not a logger name. It is a
 comma-separated list of *tags*, and every consumer downstream selects on those tags. There
-are **1016**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **1018**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
-**237**<!--count:logChannelStrings--> distinct channel strings between them, so the
+**238**<!--count:logChannelStrings--> distinct channel strings between them, so the
 vocabulary is already large and the channel strings are not easily renamed.
 
 By convention the first tag is a severity, drawn from six the console knows how to colour

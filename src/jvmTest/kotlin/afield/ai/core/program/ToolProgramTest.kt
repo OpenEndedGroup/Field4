@@ -200,7 +200,7 @@ class ToolProgramTest {
         assertEquals("big failure", aiToolMapper.readTree(whole.text)["message"].asText())
         val io = nestedToolIoEvents(1, "c", result).last().second
         assertEquals(nested.evidence, io["evidence"])
-        assertTrue(nestedTraceMarkdown(result)!!.contains(nested.evidence!!))
+        assertTrue(nestedTraceMarkdown(result)!!.contains(nested.evidence))
     }
 
     @Test

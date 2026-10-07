@@ -88,6 +88,8 @@ mutation; it is a different one.
 | --- | --- | --- |
 | `GET /api/agent-worktrees` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
+| `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
+| `GET /api/chatlog/lens` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/code-use/failures` | `Server.kt` | none |
 | `GET /api/code-use/launches` | `Server.kt` | none |
 | `GET /api/code-use/snippets` | `Server.kt` | none |

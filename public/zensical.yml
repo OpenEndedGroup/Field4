@@ -191,6 +191,7 @@ nav:
       # was a one-page "Lighting" group of its own; the only other lighting page is a chain.
       - "Driving Lights: Art-Net and sACN": dmx_lighting.md
       - "MQTT: sensors, devices and brokers": mqtt.md
+      - "OSCQuery: controls other tools can find": oscquery.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md

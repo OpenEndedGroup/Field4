@@ -241,11 +241,7 @@ the entire frame is a `vec4 tint` in the shader's uniform block, and the only th
 that uniform is a keyframe.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
-
-val renderer: Renderer = fromContext()
 
 var m = Mesh()
 var module = moduleHere()
@@ -318,11 +314,7 @@ Each frame is a separate native Vulkan window capture. `t` is the only differenc
 runs, and everything that moves is a uniform a keyframe wrote.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t00.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true name="keyframer-strip-t00" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
-
-val renderer: Renderer = fromContext()
 
 var m = Mesh()
 var module = moduleHere()
@@ -372,11 +364,8 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t33.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t33" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
 
-val renderer: Renderer = fromContext()
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -411,11 +400,8 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t66.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t66" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
 
-val renderer: Renderer = fromContext()
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -450,11 +436,8 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t10.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t10" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
 
-val renderer: Renderer = fromContext()
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m

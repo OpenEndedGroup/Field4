@@ -37,6 +37,7 @@ import afield.server.DocsAccessPolicy
 import afield.server.docsFlagEnabled
 import afield.server.isSameSiteRequest
 import afield.server.installDocumentGuideRoutes
+import afield.chatlog.installChatlogRoutes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
@@ -3784,6 +3785,7 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installChatlogRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
 
