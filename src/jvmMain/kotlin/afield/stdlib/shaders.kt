@@ -2720,7 +2720,7 @@ private fun stackAutoErrorLine(box: Box, source: String, message: String?): Int?
         ?.let { Regex("""(?:error|warning):\s*(\d+):\d+:""", RegexOption.IGNORE_CASE).find(it) }
         ?.groupValues?.getOrNull(1)?.toIntOrNull()
         ?: return null
-    val code = box.code.takeIf { it.isNotEmpty() } ?: return null
+    val code = box.code?.takeIf { it.isNotEmpty() } ?: return null
     // Match the source VERBATIM first. StackSL counts lines from the start of the string it was
     // handed, and a `"""` literal usually begins with a newline, so its line 1 is the empty remainder
     // of the assignment's own line. Trimming that newline away here would shift every marker up by

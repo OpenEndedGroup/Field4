@@ -1,6 +1,7 @@
 package afield.chatlog
 
 import afield.Box
+import afield.ReadOnlyDocuments
 import afield.ai.core.aiTool
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -40,6 +41,7 @@ private const val CHAT_PARAM = "chat name from chatlog.list; <chat>#<lens> for a
 
 fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
     val store = ChatlogStore(roots.toList(), lensDir ?: File(inside.filename, "lenses"))
+    val owner = this
     ChatLensViewer.register(inside.filename, store)
 
     aiTool("chatlog.list") {
@@ -132,6 +134,7 @@ fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
             val problems = ChatLogViews.lensProblems(tree, markdown())
             if (problems.isNotEmpty()) return@action toolError(problems)
             val stats = ChatLogViews.lensStats(tree, markdown())
+            owner.requireWritableChatLensDir(store.lensDir)
             val file = store.writeLens(chat(), name(), markdown(), brief(), stats)
             "Saved ${file.name}: ${stats["blocks"]} blocks citing ${stats["citedBlocks"]} of ${stats["chatBlocks"]} chat blocks, " +
                 "${stats["compression"]}× shorter than what it cites."
@@ -152,9 +155,19 @@ fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
     }
 }
 
+/** A read-only document may export a lens elsewhere, but must not write one back into itself. */
+internal fun Box.requireWritableChatLensDir(destination: File) {
+    val document = File(inside.filename).canonicalFile.toPath()
+    if (destination.canonicalFile.toPath().startsWith(document) && ReadOnlyDocuments.blocksWritesFrom(this)) {
+        ReadOnlyDocuments.refuseWrite("chat-lens", destination.path)
+        throw IllegalStateException("This document is read-only")
+    }
+}
+
 /** Finds chats under [roots], keeps each tree until its files change, and keeps lenses under [lensDir]. */
 class ChatlogStore(val roots: List<File>, val lensDir: File) {
     private val cache = HashMap<String, Pair<Long, ChatTree>>()
+    private val lensJson = Json { prettyPrint = true }
 
     private fun chats(): List<Pair<String, ChatArchive.StoredChat>> {
         val all = roots.flatMap { root ->
@@ -253,7 +266,7 @@ class ChatlogStore(val roots: List<File>, val lensDir: File) {
         val dir = dirFor(id).apply { mkdirs() }
         val md = File(dir, "${safe(name)}.md")
         md.writeText(markdown.trimEnd() + "\n")
-        File(dir, "$name.json").writeText(Json { prettyPrint = true }.encodeToString(buildJsonObject {
+        File(dir, "$name.json").writeText(lensJson.encodeToString(buildJsonObject {
             put("chat", id)
             put("name", name)
             put("brief", brief)

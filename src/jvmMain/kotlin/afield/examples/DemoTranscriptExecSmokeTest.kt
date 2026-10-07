@@ -964,7 +964,7 @@ object DemoTranscriptExecSmokeTest {
             // Then substitute the `__line__` sentinel the print macros emit — standardExecutionPractice
             // (the real path) does this between applyMacros and eval; skipping it leaves an unresolved
             // `__line__` reference. The exact number is irrelevant to compilation.
-            val expanded = box.ki.applyMacros(box, box.code)
+            val expanded = box.ki.applyMacros(box, requireNotNull(box.code) { "${box.name} has no Kotlin code to compile" })
                 .split("\n")
                 .mapIndexed { i, line -> line.replace("__line__", "$i") }
                 .joinToString("\n")
