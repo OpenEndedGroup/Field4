@@ -363,6 +363,9 @@ object KotlinSourceIndex {
         var headerParenDepth: Int = 0
     )
 
+    /** A line opening an `init` block, which ends any class header still waiting for its body. */
+    private val INIT_BLOCK = Regex("^\\s*init\\s*(\\{|$)")
+
     private val modifierTokens = setOf(
         "public", "private", "internal", "protected",
         "open", "final", "abstract", "sealed", "data", "enum", "annotation", "value",
@@ -433,6 +436,16 @@ object KotlinSourceIndex {
                     def != null
                 ) {
                     // A new declaration appeared before the pending class body opened.
+                    pendingClass = null
+                }
+                if (pendingClass != null &&
+                    pendingClass.lineNumber != lineNumber &&
+                    pendingClass.headerParenDepth == 0 &&
+                    INIT_BLOCK.containsMatchIn(rawLine)
+                ) {
+                    // `data class Foo(…)` with no body, then the enclosing class's `init {`. An init
+                    // block cannot be part of a class header, so the class above had no body; taking
+                    // this brace for it published the init block's locals as members of `Foo`.
                     pendingClass = null
                 }
                 def?.let { parsed ->
