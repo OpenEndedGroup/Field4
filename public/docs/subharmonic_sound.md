@@ -9,9 +9,8 @@ Field has three of these trackers in [`Subharmonic.kt`](https://github.com/OpenE
 This page runs them on a synth bassline, on a kick drum and a pluck from the
 [Dirt-Samples](sound.md#getting-real-drums-in-your-own-box) library, and on fourteen seconds of
 dialogue from *Night of the Living Dead* (George A. Romero, 1968), which is in the public domain.
-Every clip is rendered from the code shown next to it. For more than an octave below,
-[a tracked voice bank](#one-input-many-voices) can replace the sound's spectrum with harmonics,
-fractional ratios or a mixture of both.
+For more than one tone under the input, [a tracked voice bank](#one-input-many-voices) at the end
+of the page replaces the sound's spectrum with harmonics, fractional ratios or a mixture of both.
 
 ---
 
@@ -230,161 +229,6 @@ each other a little over once a second, and you hear that as a slow beating. Swa
 by ±0.07 at 3 Hz makes the bass wobble without the bass itself changing at all. The last section
 uses `voices` instead of `division`: each `SubVoice` is its own oscillator with its own gain, all
 driven by one tracked frequency.
-
----
-
-## One input, many voices
-
-`TrackedPhaseBank` turns the same pitch analysis into a family of tones. A voice's `ratio`
-multiplies the tracked frequency: `0.5` is the octave below, `1.0` is the tracked pitch, `1.5`
-is a fifth above, and `2.0` is the octave above. Each voice keeps its own phase, so fractional
-ratios keep moving smoothly when the tracker's phase wraps or the ratio changes.
-
-A `TrackedPhaseAnalysis` listens once; its `synthesize` method gives a bank access to every
-sample's analysis. Start with a lowpassed bass and eight harmonics, with progressively less
-level in the higher ones:
-
-```diffstatic {data-lang=kotlin}
-val bass = subBassline()
-val analysis = TrackedPhaseAnalysis(bass.lowpass(150f), QuadPhaseTracker())
-val bank = TrackedPhaseBank(voices = TrackedPhaseBank.harmonics(8) { n -> 0.5 / n })
-val colored = analysis.synthesize(bank)
-audio { bass * 0.2f + colored }
-```
-
-The bank follows the input's level by default. Its sine voices fade between 85% and 98% of
-Nyquist, the highest representable frequency, so increasing the harmonic count does not fold
-high partials back down into the sound. This fade uses each voice's actual phase velocity,
-including its tracking corrections.
-
-### Hear a harmonic bank on recorded plucks
-
-A richer monophonic input can use `HarmonicPhaseTracker`, which listens to several partials
-instead of requiring the lowpass to isolate the fundamental. This example uses the same
-recorded `arpy` melody as above. The first four seconds are dry; the next four replace it
-with eight tracked harmonics.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/phase-harmonics-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-phase-harmonics"}
-:::static
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
-val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
-val plucks = SamplesSignal(subSequence(8.0, hits))
-val tracker = HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0)
-val analysis = TrackedPhaseAnalysis(plucks, tracker)
-val bank = TrackedPhaseBank(voices = TrackedPhaseBank.harmonics(8) { n -> 0.5 / n })
-val colored = analysis.synthesize(bank)
-val out = plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f)
-:::fold render eight seconds and show the changing spectrum
-showSpectrogram(doughRenderMono(out, seconds = 8f), maxHz = 2000.0,
-    channel = "main", title = "Recorded plucks, then eight tracked harmonics")
-:::endfold
-```
-
-![Recorded plucks followed by their harmonic-bank replacement](assets/subharmonic_sound/phase-harmonics-spectrum.png)
-
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-harmonics.wav" audio-spec="phase-harmonics" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-harmonics-audio"}
-// Listen to the graph above.
-```
-
-### Undertones and overtones together
-
-Replace the eight harmonics with `rationalLattice()` to mix ratios `1/2`, `2/3`, `3/4`, `1`,
-`4/3`, `3/2` and `2`. The next clip again starts with four seconds of the dry plucks, then
-plays this bank. The notes now have tones both above and below their tracked pitch.
-
-```diffstatic {data-lang=kotlin}
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
-val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
-val plucks = SamplesSignal(subSequence(8.0, hits))
-val analysis = TrackedPhaseAnalysis(plucks,
-    HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0))
-val bank = TrackedPhaseBank(voices = TrackedPhaseBank.rationalLattice())
-val colored = analysis.synthesize(bank)
-audio { plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f) }
-```
-
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-lattice.wav" audio-spec="phase-lattice" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-lattice-audio"}
-// The pluck graph above, with rationalLattice() in place of harmonics(8).
-```
-
-Use `ratios(0.5 to 0.4, 1.0 to 0.3, 1.5 to 0.2)` to set your own ratio/gain pairs.
-`PhaseVoice` also accepts irrational or negative ratios; negative ratios run its phase backwards.
-`phaseOffset` rotates a voice's waveform in radians. Updating `ratio` preserves its accumulated
-phase; changing `phaseOffset` or `gain` abruptly can still click.
-
-The voice's `lock` controls how closely its motion follows the tracker's phase corrections:
-
-| `lock` | voice motion |
-| --- | --- |
-| `0.0` | stable tracked frequency, like the existing subharmonic oscillator |
-| `1.0` | the tracker's full phase advance, including its corrections |
-| between 0 and 1 | a blend of the two |
-
-This is a velocity blend, not a promise of absolute phase alignment with the original waveform.
-The existing `SubharmonicQuadPLL` keeps its previous behavior and also exposes `state`,
-`trackedPhase`, `phaseAdvance` and `confidence`.
-
-### Share the analysis
-
-Several banks can listen to the same analysis in a signal graph. Give each bank its own voices;
-the analysis runs once per block and retains the state of each sample for both outputs:
-
-```diffstatic {data-lang=kotlin}
-val analysis = TrackedPhaseAnalysis(subBassline().lowpass(150f), QuadPhaseTracker())
-val low = analysis.synthesize(TrackedPhaseBank(voices = TrackedPhaseBank.ratios(0.5 to 0.5)))
-val high = analysis.synthesize(TrackedPhaseBank(voices = TrackedPhaseBank.harmonics(6) { n -> 0.2 / n }))
-audio { StereoSignal(low, high) }
-```
-
-Outside a graph, call `tracker.process(sample)` once, then pass the returned state to each
-bank's `render(state)`. To route individual voices, use `renderVoices(state, outputArray)`;
-the caller supplies a `DoubleArray` with one slot per voice, and both the slots and the
-returned sum include the bank's level following and `outputGain`. Each render call advances
-the bank, so use either the summed or the separate-output method for a given sample.
-
-The returned state is reused, with phase in radians, `phaseAdvance` and `omega` in radians per
-sample, and `hz` in hertz. Copy values when keeping history. Trackers and banks advance on the
-audio thread; visualizers can read published observations but must not process the live graph
-again to obtain them.
-
-### Tracking a missing fundamental
-
-`HarmonicPhaseTracker` combines the phase velocities of up to twelve harmonic channels by
-default. Dividing each partial's phase advance by its harmonic number lets arbitrary timbral
-phase offsets cancel out. A robust combination rejects disagreeing channels. A coarser
-periodicity search helps it acquire a new note and escape octave errors.
-
-For example, partials at 220, 330 and 550 Hz repeat at 110 Hz even when there is no 110 Hz
-component. This sample-by-sample example gives that sound a new 55 Hz undertone:
-
-```diffstatic {data-lang=kotlin}
-val tracker = HarmonicPhaseTracker(initialHz = 70.0)
-val bank = TrackedPhaseBank(tracker, TrackedPhaseBank.ratios(0.5 to 0.7))
-val output = FloatArray(96_000) { n ->
-    val t = n / 48_000.0
-    val input = 0.7 * kotlin.math.sin(2 * kotlin.math.PI * 220 * t + 0.31) +
-        0.48 * kotlin.math.sin(2 * kotlin.math.PI * 330 * t - 0.77) +
-        0.31 * kotlin.math.sin(2 * kotlin.math.PI * 550 * t + 1.13)
-    bank.process(input.toFloat())
-}
-```
-
-Set `minHz..maxHz` to the expected fundamental range. `initialHz` seeds the search;
-`captureHz` controls the fine channels' bandwidth. Acquisition needs a window of input,
-so very short attacks can finish before the pitch settles. `state.confidence` combines
-harmonic coverage and agreement, `harmonicity` estimates the fraction of power explained by
-the channels, and `activePartials` counts usable channels. These are tracking diagnostics,
-not probabilities. Its level follower is RMS-based; the quadrature tracker's level is an
-analytic-signal amplitude, so swapping trackers can change the output level.
-
-This remains a model of one periodic sound. Two independent notes, noise and strongly
-inharmonic bells need a different analysis. An exactly even-only spectrum such as 220,
-440 and 660 Hz really repeats at 220 Hz: the tracker cannot infer an intended 110 Hz note
-from that signal alone.
-
-A voice can supply a `PhaseRenderer { phase -> ... }` to replace its sine with a periodic
-function. That function must handle its own band-limiting: the bank's Nyquist fade cannot
-remove the extra harmonics of a sharp waveform or a strong phase warp.
 
 ---
 
@@ -627,6 +471,161 @@ lowpasses if your voice sits higher.
 The saturation step matters most. It works as automatic gain control, and it helps every tracker,
 not just this one. With the same preprocessing, even the plain PLL, which could not follow the raw
 voice at all, agrees with YIN on more than half the voiced frames.
+
+---
+
+## One input, many voices
+
+`TrackedPhaseBank` turns the same pitch analysis into a family of tones. A voice's `ratio`
+multiplies the tracked frequency: `0.5` is the octave below, `1.0` is the tracked pitch, `1.5`
+is a fifth above, and `2.0` is the octave above. Each voice keeps its own phase, so fractional
+ratios keep moving smoothly when the tracker's phase wraps or the ratio changes.
+
+A `TrackedPhaseAnalysis` listens once; its `synthesize` method gives a bank access to every
+sample's analysis. Start with a lowpassed bass and eight harmonics, with progressively less
+level in the higher ones:
+
+```diffstatic {data-lang=kotlin}
+val bass = subBassline()
+val analysis = TrackedPhaseAnalysis(bass.lowpass(150f), QuadPhaseTracker())
+val bank = TrackedPhaseBank(voices = TrackedPhaseBank.harmonics(8) { n -> 0.5 / n })
+val colored = analysis.synthesize(bank)
+audio { bass * 0.2f + colored }
+```
+
+The bank follows the input's level by default. Its sine voices fade between 85% and 98% of
+Nyquist, the highest representable frequency, so increasing the harmonic count does not fold
+high partials back down into the sound. This fade uses each voice's actual phase velocity,
+including its tracking corrections.
+
+### Hear a harmonic bank on recorded plucks
+
+A richer monophonic input can use `HarmonicPhaseTracker`, which listens to several partials
+instead of requiring the lowpass to isolate the fundamental. This example uses the
+`arpy` melody from [Rebuilding the bass of a sample](#rebuilding-the-bass-of-a-sample). The first four seconds are dry; the next four replace it
+with eight tracked harmonics.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/phase-harmonics-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-phase-harmonics"}
+:::static
+val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
+val plucks = SamplesSignal(subSequence(8.0, hits))
+val tracker = HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0)
+val analysis = TrackedPhaseAnalysis(plucks, tracker)
+val bank = TrackedPhaseBank(voices = TrackedPhaseBank.harmonics(8) { n -> 0.5 / n })
+val colored = analysis.synthesize(bank)
+val out = plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f)
+:::fold render eight seconds and show the changing spectrum
+showSpectrogram(doughRenderMono(out, seconds = 8f), maxHz = 2000.0,
+    channel = "main", title = "Recorded plucks, then eight tracked harmonics")
+:::endfold
+```
+
+![Recorded plucks followed by their harmonic-bank replacement](assets/subharmonic_sound/phase-harmonics-spectrum.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-harmonics.wav" audio-spec="phase-harmonics" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-harmonics-audio"}
+// Listen to the graph above.
+```
+
+### Undertones and overtones together
+
+Replace the eight harmonics with `rationalLattice()` to mix ratios `1/2`, `2/3`, `3/4`, `1`,
+`4/3`, `3/2` and `2`. The next clip again starts with four seconds of the dry plucks, then
+plays this bank. The notes now have tones both above and below their tracked pitch.
+
+```diffstatic {data-lang=kotlin}
+val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
+val plucks = SamplesSignal(subSequence(8.0, hits))
+val analysis = TrackedPhaseAnalysis(plucks,
+    HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0))
+val bank = TrackedPhaseBank(voices = TrackedPhaseBank.rationalLattice())
+val colored = analysis.synthesize(bank)
+audio { plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f) }
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-lattice.wav" audio-spec="phase-lattice" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-lattice-audio"}
+// The pluck graph above, with rationalLattice() in place of harmonics(8).
+```
+
+Use `ratios(0.5 to 0.4, 1.0 to 0.3, 1.5 to 0.2)` to set your own ratio/gain pairs.
+`PhaseVoice` also accepts irrational or negative ratios; negative ratios run its phase backwards.
+`phaseOffset` rotates a voice's waveform in radians. Updating `ratio` preserves its accumulated
+phase; changing `phaseOffset` or `gain` abruptly can still click.
+
+The voice's `lock` controls how closely its motion follows the tracker's phase corrections:
+
+| `lock` | voice motion |
+| --- | --- |
+| `0.0` | the smoothed tracked frequency, as `Subharmonic` uses |
+| `1.0` | the tracker's full phase advance, including its corrections |
+| between 0 and 1 | a blend of the two |
+
+`lock` blends speeds only, so a voice at `1.0` still need not line up in phase with the original
+waveform. `SubharmonicQuadPLL` exposes the same `state`, `trackedPhase`, `phaseAdvance` and
+`confidence` readings.
+
+### Share the analysis
+
+Several banks can listen to the same analysis in a signal graph. Give each bank its own voices;
+the analysis runs once per block and retains the state of each sample for both outputs:
+
+```diffstatic {data-lang=kotlin}
+val analysis = TrackedPhaseAnalysis(subBassline().lowpass(150f), QuadPhaseTracker())
+val low = analysis.synthesize(TrackedPhaseBank(voices = TrackedPhaseBank.ratios(0.5 to 0.5)))
+val high = analysis.synthesize(TrackedPhaseBank(voices = TrackedPhaseBank.harmonics(6) { n -> 0.2 / n }))
+audio { StereoSignal(low, high) }
+```
+
+Outside a graph, call `tracker.process(sample)` once, then pass the returned state to each
+bank's `render(state)`. To route individual voices, use `renderVoices(state, outputArray)`;
+the caller supplies a `DoubleArray` with one slot per voice, and both the slots and the
+returned sum include the bank's level following and `outputGain`. Each render call advances
+the bank, so use either the summed or the separate-output method for a given sample.
+
+The returned state is reused, with phase in radians, `phaseAdvance` and `omega` in radians per
+sample, and `hz` in hertz. Copy values when keeping history. Trackers and banks advance on the
+audio thread; visualizers can read published observations but must not process the live graph
+again to obtain them.
+
+### Tracking a missing fundamental
+
+`HarmonicPhaseTracker` combines the phase velocities of up to twelve harmonic channels by
+default. Dividing each partial's phase advance by its harmonic number lets arbitrary timbral
+phase offsets cancel out. A robust combination rejects disagreeing channels. A coarser
+periodicity search helps it acquire a new note and escape octave errors.
+
+For example, partials at 220, 330 and 550 Hz repeat at 110 Hz even when there is no 110 Hz
+component. This sample-by-sample example gives that sound a new 55 Hz undertone:
+
+```diffstatic {data-lang=kotlin}
+val tracker = HarmonicPhaseTracker(initialHz = 70.0)
+val bank = TrackedPhaseBank(tracker, TrackedPhaseBank.ratios(0.5 to 0.7))
+val output = FloatArray(96_000) { n ->
+    val t = n / 48_000.0
+    val input = 0.7 * kotlin.math.sin(2 * kotlin.math.PI * 220 * t + 0.31) +
+        0.48 * kotlin.math.sin(2 * kotlin.math.PI * 330 * t - 0.77) +
+        0.31 * kotlin.math.sin(2 * kotlin.math.PI * 550 * t + 1.13)
+    bank.process(input.toFloat())
+}
+```
+
+Set `minHz..maxHz` to the expected fundamental range. `initialHz` seeds the search;
+`captureHz` controls the fine channels' bandwidth. Acquisition needs a window of input,
+so very short attacks can finish before the pitch settles. `state.confidence` combines
+harmonic coverage and agreement, `harmonicity` estimates the fraction of power explained by
+the channels, and `activePartials` counts usable channels. Treat them as rough guides to how
+well tracking is going; they are not probabilities. Its level follower is RMS-based; the quadrature tracker's level is an
+analytic-signal amplitude, so swapping trackers can change the output level.
+
+The tracker assumes one periodic sound. Two independent notes, noise and strongly
+inharmonic bells need a different analysis. An exactly even-only spectrum such as 220,
+440 and 660 Hz really repeats at 220 Hz: the tracker cannot infer an intended 110 Hz note
+from that signal alone.
+
+A voice can supply a `PhaseRenderer { phase -> ... }` to replace its sine with a periodic
+function. That function must handle its own band-limiting: the bank's Nyquist fade cannot
+remove the extra harmonics of a sharp waveform or a strong phase warp.
 
 ---
 
