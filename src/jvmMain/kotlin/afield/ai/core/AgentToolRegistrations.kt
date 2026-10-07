@@ -244,9 +244,14 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                 ?: throw IllegalStateException("Checklist not available for this request.")
         }
 
+        tools.register(WorkspaceSearchRequest::class.java, { it.workspaceSearch != null }) { ctx, req ->
+            ctx.workspaceSearch!!.invoke(req)
+        }
+
         // Optional extra tool
         tools.register(WorkspaceSymbolSearch::class.java, { ctx -> ctx.workspaceSymbolSearch != null }) { ctx, req ->
             ctx.workspaceSymbolSearch?.invoke(req)
                 ?: throw IllegalStateException("WorkspaceSymbolSearch not available for this request.")
         }
 }
+
