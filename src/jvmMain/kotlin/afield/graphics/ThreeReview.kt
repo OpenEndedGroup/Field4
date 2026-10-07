@@ -3,6 +3,7 @@ package afield.graphics
 import afield.Box
 import afield.METAROOT_ID
 import afield.SavingContext
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.*
 import java.security.MessageDigest
 import java.time.Instant
@@ -13,6 +14,7 @@ import java.util.UUID
  * Canonical solids retain their double-boundary identity; geometry displayed alongside them also
  * contributes. A moving ordinary point must invalidate a note even if every solid stays unchanged.
  */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 internal fun threeReviewRevision(payload: ThreeGeometryPayload): String {
     val canonicalDigest = payload.inspector?.artifactDigest
     val geometryPayload = if (canonicalDigest == null) payload else {
@@ -24,19 +26,196 @@ internal fun threeReviewRevision(payload: ThreeGeometryPayload): String {
     if (canonicalDigest != null && geometryPayload.lines == null && geometryPayload.fills == null &&
         geometryPayload.points == null && geometryPayload.drawables.isEmpty() &&
         geometryPayload.interactive.isEmpty() && geometryPayload.scene == null) return canonicalDigest
-    val json = Json { encodeDefaults = true }
-    val geometry = buildJsonObject {
-        if (canonicalDigest != null) put("canonicalDigest", canonicalDigest)
-        for ((key, value) in json.encodeToJsonElement(geometryPayload).jsonObject) {
-            if (key in setOf("lines", "fills", "points", "drawables", "interactive", "scene")) put(key, value)
+    val digest = MessageDigest.getInstance("SHA-256")
+    val text = RevisionText(digest)
+    text.open(canonicalDigest?.let { "\"canonicalDigest\":" + Json.encodeToString(String.serializer(), it) })
+    revisionJson.encodeToStream(ThreeGeometryPayload.serializer(), geometryPayload, text)
+    text.finish()
+    return digest.digest().joinToString("") { "%02x".format(it) }
+}
+
+private val revisionJson = Json { encodeDefaults = true }
+
+/** The payload keys a revision covers, and the keys it ignores at every depth. */
+private val REVISION_KEYS = setOf("lines", "fills", "points", "drawables", "interactive", "scene")
+private val REVISION_IGNORED = setOf("callbackId", "sessionId", "hoverColor", "style", "label")
+
+/**
+ * The text a revision hashes, fed to [digest] as kotlinx writes the payload, never held whole.
+ *
+ * The revision is a SHA-256 of one JSON string: an object holding `canonicalDigest` (for solids), then
+ * the payload's [REVISION_KEYS], with [REVISION_IGNORED] dropped from every object at every depth.
+ * Until 2026-10-07 that string was built as it reads — the payload as a `JsonElement` tree, a second
+ * filtered tree, then `toString()` — on every [ThreeGeometryViewState.update], on the runloop: two
+ * trees and a string the size of the geometry, for a slider that republishes thirty times a second.
+ *
+ * This writes the same bytes without the trees or the string. kotlinx's streaming encoder formats
+ * every value exactly as `JsonElement.toString()` does — shortest `Float.toString`, the same string
+ * quoting, compact separators, keys in declaration order — so this only has to re-emit its output
+ * with the ignored members removed and the commas mended. The revisions are therefore the ones every
+ * stored note already carries; `ThreeReviewRevisionStreamTest` holds the two implementations together.
+ *
+ * A push parser, because kotlinx writes into an [OutputStream]: one byte at a time through a small
+ * state machine, with a mute while a dropped member's value goes past.
+ */
+private class RevisionText(private val digest: MessageDigest) : java.io.OutputStream() {
+    private val out = ByteArray(1 shl 16)
+    private var used = 0
+
+    /** One open object or array; [emitted] says whether a comma is due before the next member. */
+    private class Frame(val isObject: Boolean, val outer: Boolean, var emitted: Boolean)
+    private val stack = ArrayList<Frame>()
+    private var outerEmitted = false
+
+    private enum class Mode { VALUE, VALUE_OR_CLOSE, KEY_OR_CLOSE, KEY_START, KEY, COLON, STRING, BARE, AFTER, DONE }
+    private var mode = Mode.VALUE
+    private var escaped = false
+    private val key = java.io.ByteArrayOutputStream()
+
+    /** While set nothing is written: a dropped member's value is going past. [mutedAt] is its object's depth. */
+    private var muted = false
+    private var mutedAt = -1
+
+    private fun emit(b: Int) {
+        if (muted) return
+        if (used == out.size) flush()
+        out[used++] = b.toByte()
+    }
+
+    private fun emit(text: String) = text.encodeToByteArray().forEach { emit(it.toInt()) }
+
+    override fun flush() {
+        digest.update(out, 0, used)
+        used = 0
+    }
+
+    /** `{`, and the member that goes before the payload's own (`canonicalDigest`), if any. */
+    fun open(first: String?) {
+        emit('{'.code)
+        if (first != null) {
+            emit(first)
+            outerEmitted = true
         }
     }
-    fun stable(value: JsonElement): JsonElement = when (value) {
-        is JsonObject -> JsonObject(value.filterKeys { it !in setOf("callbackId", "sessionId", "hoverColor", "style", "label") }.mapValues { stable(it.value) })
-        is JsonArray -> JsonArray(value.map(::stable))
-        else -> value
+
+    /** `}`, once the payload's own object has ended, and the last bytes to the digest. */
+    fun finish() {
+        check(mode == Mode.DONE && stack.isEmpty()) { "revision text: the payload ended part-way through a value" }
+        emit('}'.code)
+        flush()
     }
-    return MessageDigest.getInstance("SHA-256").digest(stable(geometry).toString().toByteArray()).joinToString("") { "%02x".format(it) }
+
+    override fun write(b: Int) = accept(b and 0xff)
+
+    override fun write(b: ByteArray, off: Int, len: Int) {
+        for (i in off until off + len) accept(b[i].toInt() and 0xff)
+    }
+
+    private fun top() = stack.last()
+
+    private fun valueDone() {
+        if (muted && stack.size == mutedAt) muted = false
+        mode = if (stack.isEmpty()) Mode.DONE else Mode.AFTER
+    }
+
+    private fun push(isObject: Boolean) {
+        val outer = stack.isEmpty()
+        if (!outer) emit(if (isObject) '{'.code else '['.code)
+        stack += Frame(isObject, outer, outer && outerEmitted)
+        mode = if (isObject) Mode.KEY_OR_CLOSE else Mode.VALUE_OR_CLOSE
+    }
+
+    private fun pop() {
+        val frame = stack.removeAt(stack.size - 1)
+        if (!frame.outer) emit(if (frame.isObject) '}'.code else ']'.code)
+        valueDone()
+    }
+
+    /** A value starts: in an array, that is where the comma goes. */
+    private fun beginValue() {
+        val frame = stack.lastOrNull() ?: return
+        if (frame.isObject || muted) return
+        if (frame.emitted) emit(','.code)
+        frame.emitted = true
+    }
+
+    private fun keyDone() {
+        if (muted) return
+        val name = key.toString(Charsets.UTF_8)
+        val frame = top()
+        val keep = name !in REVISION_IGNORED && (!frame.outer || name in REVISION_KEYS)
+        if (!keep) {
+            muted = true
+            mutedAt = stack.size
+            return
+        }
+        if (frame.emitted) emit(','.code)
+        frame.emitted = true
+        emit('"'.code)
+        key.toByteArray().forEach { emit(it.toInt()) }
+        emit('"'.code)
+        emit(':'.code)
+    }
+
+    private fun whitespace(b: Int) = b == ' '.code || b == '\n'.code || b == '\r'.code || b == '\t'.code
+
+    private fun accept(b: Int) {
+        var again = true
+        while (again) {
+            again = false
+            when (mode) {
+                Mode.VALUE -> if (!whitespace(b)) {
+                    beginValue()
+                    when (b) {
+                        '{'.code -> push(true)
+                        '['.code -> push(false)
+                        '"'.code -> { emit(b); escaped = false; mode = Mode.STRING }
+                        else -> { emit(b); mode = Mode.BARE }
+                    }
+                }
+                Mode.VALUE_OR_CLOSE -> if (!whitespace(b)) {
+                    if (b == ']'.code) pop() else { mode = Mode.VALUE; again = true }
+                }
+                Mode.KEY_OR_CLOSE -> if (!whitespace(b)) {
+                    if (b == '}'.code) pop() else { mode = Mode.KEY_START; again = true }
+                }
+                Mode.KEY_START -> if (!whitespace(b)) {
+                    check(b == '"'.code) { "revision text: expected a key, found '${b.toChar()}'" }
+                    key.reset()
+                    escaped = false
+                    mode = Mode.KEY
+                }
+                Mode.KEY -> when {
+                    escaped -> { key.write(b); escaped = false }
+                    b == '\\'.code -> { key.write(b); escaped = true }
+                    b == '"'.code -> { keyDone(); mode = Mode.COLON }
+                    else -> key.write(b)
+                }
+                Mode.COLON -> if (!whitespace(b)) {
+                    check(b == ':'.code) { "revision text: expected ':', found '${b.toChar()}'" }
+                    mode = Mode.VALUE
+                }
+                Mode.STRING -> {
+                    emit(b)
+                    when {
+                        escaped -> escaped = false
+                        b == '\\'.code -> escaped = true
+                        b == '"'.code -> valueDone()
+                    }
+                }
+                Mode.BARE -> if (b == ','.code || b == '}'.code || b == ']'.code || whitespace(b)) {
+                    valueDone()
+                    again = true
+                } else emit(b)
+                Mode.AFTER -> if (!whitespace(b)) when (b) {
+                    ','.code -> mode = if (top().isObject) Mode.KEY_START else Mode.VALUE
+                    '}'.code, ']'.code -> pop()
+                    else -> error("revision text: unexpected '${b.toChar()}' after a value")
+                }
+                Mode.DONE -> check(whitespace(b)) { "revision text: '${b.toChar()}' after the payload" }
+            }
+        }
+    }
 }
 
 /** Browser-to-Field review inbox. Notes are stored on the source box and survive document saves.
