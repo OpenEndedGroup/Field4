@@ -339,6 +339,122 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `an accessor stays inside its property when an annotation sits above it`() {
+        // `@Synchronized` over `get() = values.size` is an annotated accessor, not the start of
+        // something new, though a line of nothing but annotations reads like a declaration's prefix.
+        // Here the property is followed by a plain `fun` rather than an annotated sibling.
+        val source = """
+            class Series {
+                val size: Int
+                    @Synchronized
+                    get() = values.size
+
+                val head: Int
+                    @Synchronized get() = values.first()
+
+                fun clear() {
+                }
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(
+            lineOf(source, "get() = values.size"),
+            declaration(partition, "size").endLine,
+            "the annotated accessor belongs to the property above it",
+        )
+        assertEquals(
+            lineOf(source, "@Synchronized get()"),
+            declaration(partition, "head").endLine,
+            "…and so does one written on a single line",
+        )
+        assertEquals(emptyList(), strandedCode(partition), "nothing is left unattributed")
+    }
+
+    @Test
+    fun `a brace-less if used as an expression body keeps its branches`() {
+        // The condition's own `)` leaves the brackets level, so `if (…)` on its own reads as a
+        // finished declaration; `createLlmBridge` in `LlmBridge.kt` stranded thirteen lines this way.
+        // The else branch here wraps over several lines and ends on a chained call.
+        val source = """
+            fun createBridge(model: String): Bridge =
+                if (provider() == "anthropic")
+                    AnthropicBridge(model = model)
+                else
+                    OpenAiBridge(
+                        Codex(
+                            model = model,
+                        )
+                    ).tagged()
+
+            interface Bridge
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(
+            lineOf(source, ").tagged()"),
+            declaration(partition, "createBridge").endLine,
+            "both branches belong to the function",
+        )
+        assertEquals(emptyList(), strandedCode(partition), "nothing is left unattributed")
+    }
+
+    @Test
+    fun `a bare soft keyword can be a wrapped expression body`() {
+        // `value` is a modifier — of a value class — so a line holding only `value` reads like a
+        // declaration's prefix. With a sibling function below, the chain must still end where it ends
+        // and not run on into the next declaration.
+        val source = """
+            private fun escapeHtml(value: String): String =
+                value
+                    .replace("&", "&amp;")
+                    .replace("<", "&lt;")
+
+            private fun next(): Int = 1
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(
+            lineOf(source, "&lt;"),
+            declaration(partition, "escapeHtml").endLine,
+            "the chain below the bare `value` belongs to the function",
+        )
+        assertEquals(
+            lineOf(source, "private fun next"),
+            declaration(partition, "next").startLine,
+            "and the sibling keeps its own start",
+        )
+    }
+
+    @Test
+    fun `a file annotation whose arguments wrap is still a header`() {
+        // ktfmt's `Parser.kt` opens with `@file:OptIn(` over three lines; the header run must carry
+        // the continuation lines rather than leave them behind.
+        val source = """
+            @file:OptIn(
+                org.jetbrains.kotlin.config.CompilerConfiguration.Internals::class,
+                org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi::class
+            )
+
+            package com.example
+
+            import java.io.File
+
+            fun read(file: File): Int = file.length().toInt()
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        val header = partition.spans.single { it.kind == KotlinSourcePartition.Kind.HEADER }
+        assertEquals(lineOf(source, "@file:OptIn("), header.startLine, "the header starts at the annotation")
+        assertEquals(lineOf(source, "import java.io.File"), header.endLine, "…and runs through the imports")
+        assertEquals(emptyList(), strandedCode(partition), "nothing is left unattributed")
+    }
+
+    @Test
     fun `a declaration starts at its annotation, nested argument lists and all`() {
         // `@Deprecated("Use position", ReplaceWith("position.x.toDouble()"))` defeated a regex that
         // stopped at the first `)`, so the line did not read as annotations-only and the declaration
@@ -386,13 +502,13 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
-    fun `a wrapped annotation is stepped over however many lines its argument runs to`() {
+    fun `a wrapped annotation longer than twelve lines is stepped over`() {
         // `@JsonClassDescription(` … `)` above `RunToolProgramRequest` in ToolProgramTools.kt: a tool
-        // description that grew to thirteen `+`-joined lines and so one past a fixed bound on how far
-        // the scan would look for the closing bracket. Past the bound the scan gave up, and all
-        // thirteen lines came out as unattributed filler. The escaped quotes and the brackets inside
-        // the strings are here because the live instance has them; they were never the cause, since
-        // string content is masked before brackets are counted.
+        // description that grew to thirteen `+`-joined lines, one past the old twelve-line bound on how
+        // far the scan looked for the closing bracket, and all of it came out as unattributed filler.
+        // This one closes 22 lines past its opener, inside MAX_ANNOTATION_WRAP. The escaped quotes and
+        // brackets inside the strings mirror the live instance; string content is masked before
+        // brackets are counted, so they were never the cause.
         val continuation = (1..20).joinToString("\n") { n ->
             "    \"line $n calls tools[\\\"rectsl.run\\\"]({...}) (or not) \" +"
         }
@@ -637,7 +753,7 @@ class KotlinSourcePartitionTest {
                 First::class,
                 Second::class
             )
-            package fixture
+            package afield.fixture
             fun choose(flag: Boolean) =
                 if (
                     flag && check("parentheses ) ( in a string")

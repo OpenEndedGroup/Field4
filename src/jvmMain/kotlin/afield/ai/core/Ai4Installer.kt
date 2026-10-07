@@ -1537,6 +1537,8 @@ fun installAi4() {
             EditFileResponse(true, "Updated ${req.file}")
         }
 
+        val workspaceSearch = workspaceSearchForDocument(docPath)
+
         val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = workspaceSymbolSearch@{ req ->
             val query = req.query.trim()
             if (query.isEmpty()) return@workspaceSymbolSearch WorkspaceSymbolSearchResult(emptyList())
@@ -2000,6 +2002,7 @@ fun installAi4() {
                             fieldGraph = replyGraph,
                             inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -2037,6 +2040,7 @@ fun installAi4() {
                             fieldGraph = chatGraph,
                             inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
@@ -2089,6 +2093,7 @@ fun installAi4() {
                             fieldGraph = replyGraph,
                             inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -2125,6 +2130,7 @@ fun installAi4() {
                             fieldGraph = replyGraph,
                             inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -2161,6 +2167,7 @@ fun installAi4() {
                             fieldGraph = replyGraph,
                             inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -2655,3 +2662,4 @@ private fun formatMarkdown(text: String): String {
         .replace("\n", "<br/>")
     return result
 }
+

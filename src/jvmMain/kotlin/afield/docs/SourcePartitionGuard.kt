@@ -99,14 +99,13 @@ object SourcePartitionGuard {
      * bodies, and a wrapped file annotation. Recognizing these takes the census to one line (the
      * standalone enum separator in SoundRenderPathDocs), without relaxing any tiling/index checks.
      *
-     * On 2026-10-07 the `@JsonClassDescription` above `RunToolProgramRequest` grew to thirteen lines,
-     * one past the fixed bound `multiLineAnnotationEnd` then had on how far it would look for the
-     * closing bracket, and all thirteen came back as filler. The bound is gone: the scan now runs to
-     * the bracket's balance point however far away it is.
+     * On 2026-10-07 the census was 14: `8f8e3c23b` grew `RunToolProgramRequest`'s
+     * `@JsonClassDescription` to close 13 lines past its opener, past `MAX_ANNOTATION_WRAP` (now 24),
+     * and `decorations.kt` carried an `@OptIn` above its KDoc (moved below it). That took it to 0.
      *
      * Lower it whenever the scanner learns a shape; raise it only with a reason.
      */
-    private const val MAX_FILLER_CODE_LINES = 1
+    private const val MAX_FILLER_CODE_LINES = 0
 
     /**
      * The ratchet on declarations [KotlinSourceIndex] reports from *inside a function body*.
@@ -118,12 +117,12 @@ object SourcePartitionGuard {
      * `public/docs/reference/index.md` went 9095 → 9122, of which the single departure was
      * `jsonparsing.kt`'s local `helperBlock`, the one this note used to name.
      *
-     * The last of them were a different bug, and not one about braces: a `data class Foo(…)` with no
-     * body stayed "pending" until a `{` arrived, so a later `init {` in the enclosing class was taken
-     * for its body and the locals inside it were attributed to `Foo` —
-     * `CommandBuffer.SecondaryInheritance`, `JoltPhysicsWorld.SurfaceQuery`, and on 2026-10-07 a
-     * third, `StudyBuilds.Manifest`, which pushed the guard one over. An `init` line now ends a
-     * pending class header, which took the count to 0.
+     * The 2 that remain are a different bug, and not one about braces: a `data class Foo(…)` with no
+     * body stays "pending" until a `{` arrives, so a later `init {` in the enclosing class is taken
+     * for its body and the locals inside it are attributed to `Foo`. Both live cases —
+     * `CommandBuffer.SecondaryInheritance` and `JoltPhysicsWorld.SurfaceQuery` — were that shape,
+     * and `12547f4d9` added a third (`StudyBuilds.Manifest`). On 2026-10-07 the index learned that a
+     * line opening `init {` ends any pending header, which took the count to 0.
      */
     private const val MAX_INDEX_OVER_REPORTS = 0
 

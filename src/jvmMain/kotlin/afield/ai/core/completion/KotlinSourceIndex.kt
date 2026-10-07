@@ -363,9 +363,6 @@ object KotlinSourceIndex {
         var headerParenDepth: Int = 0
     )
 
-    /** A line opening an `init` block, which ends any class header still waiting for its body. */
-    private val INIT_BLOCK = Regex("^\\s*init\\s*(\\{|$)")
-
     private val modifierTokens = setOf(
         "public", "private", "internal", "protected",
         "open", "final", "abstract", "sealed", "data", "enum", "annotation", "value",
@@ -377,6 +374,9 @@ object KotlinSourceIndex {
 
     /** `fun` followed by the `interface` keyword — a SAM declaration, not a function. */
     private val FUN_INTERFACE = Regex("""^interface\b""")
+
+    /** A line opening an `init` block, which can never continue a class header. */
+    private val INIT_BLOCK = Regex("""^\s*init\s*\{""")
 
     /**
      * The name part of a property declaration's text, with any delegate or initialiser removed.
@@ -443,9 +443,10 @@ object KotlinSourceIndex {
                     pendingClass.headerParenDepth == 0 &&
                     INIT_BLOCK.containsMatchIn(rawLine)
                 ) {
-                    // `data class Foo(…)` with no body, then the enclosing class's `init {`. An init
-                    // block cannot be part of a class header, so the class above had no body; taking
-                    // this brace for it published the init block's locals as members of `Foo`.
+                    // `data class Foo(…)` with no body, then the enclosing class's `init {`: that
+                    // brace is not Foo's body, and taking it for one attributed the init block's
+                    // locals to Foo (CommandBuffer.SecondaryInheritance, JoltPhysicsWorld.SurfaceQuery,
+                    // StudyBuilds.Manifest). No class header continues with `init`.
                     pendingClass = null
                 }
                 def?.let { parsed ->

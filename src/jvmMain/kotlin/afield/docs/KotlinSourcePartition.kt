@@ -732,13 +732,11 @@ object KotlinSourcePartition {
             val close = if (open.first == '(') ')' else ']'
             var depth = open.second
             var line = index + 1
-            // No bound on the number of lines. The brackets are counted on masked text, so string
-            // content cannot move the balance point, and an argument list that never balances before
-            // [hi] returns null and stays FILLER — nothing is swallowed. A fixed bound (twelve lines)
-            // used to stand here and only ever failed real annotations: the
-            // `@JsonClassDescription` above `RunToolProgramRequest` grew to thirteen lines and its
-            // whole paragraph came out unattributed.
-            while (line < hi) {
+            // A bound, so a line that never balances cannot swallow the rest of the file while looking
+            // like one declaration. The longest wrapped annotation in the repository closes 13 lines past
+            // its opener (RunToolProgramRequest's @JsonClassDescription, since 8f8e3c23b).
+            val last = minOf(hi, index + 1 + MAX_ANNOTATION_WRAP)
+            while (line < last) {
                 val text = masked.code[line]
                 for (character in text) {
                     if (character == open.first) depth++ else if (character == close) depth--
@@ -1032,6 +1030,9 @@ object KotlinSourcePartition {
         }
         return rest
     }
+
+    /** How many lines past its opener a wrapped annotation may close on. See [Builder.multiLineAnnotationEnd]. */
+    private const val MAX_ANNOTATION_WRAP = 24
 
     /**
      * How many annotation/modifier-only lines [Builder.continuesPastPrefixRun] will look past.

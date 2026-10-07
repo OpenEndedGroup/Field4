@@ -195,7 +195,7 @@ fun FLine.sweptFrames(samples: Int = 400, up: Vec3? = Vec3(0f, 0f, 1f)): SweptFr
     }
     fun rotated(i: Int, extra: Double): DoubleArray {
         val a = twist[i] + extra
-        return add(scale(u[i]!!, cos(a)), scale(w[i]!!, sin(a)))
+        return add(scale(u[i]!!, cos(a)), scale(w[i], sin(a)))
     }
 
     // Starting angle from the shape: the start-weighted curvature vector, measured in the frame.

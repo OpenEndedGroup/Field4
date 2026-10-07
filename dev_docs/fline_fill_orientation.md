@@ -100,12 +100,25 @@ measures both halves, including the counterfactual.)
 
 ## Blast radius, and why nobody saw it
 
-`FLine.tessellate` has exactly two production call sites:
+`FLine.tessellate` has **3**<!--count:flineTessellateCallSites--> call sites in `src/jvmMain`, and
+the last of them is not what the rest of this section is about:
 
 | | |
 |---|---|
-| `graphics/StandardDrawing.kt:134#f.tessellate(samplesPerCubic)` | inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
-| `ThreeJsViewer.kt:1125#f.tessellate(samplesPerCubic)` | inside `appendFilledMesh` (`ThreeJsViewer.kt:1114#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:575#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
+| `graphics/StandardDrawing.kt:134#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
+| `ThreeJsViewer.kt:1255#f.tessellate(samplesPerCubic)` | **geometry.** Inside `appendFilledMesh` (`ThreeJsViewer.kt:1244#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:690#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
+| `ThreeJsViewer.kt:1051#line.tessellate(samples)` | **a count, not geometry.** Inside `buildThreeGeometryPayload` (`ThreeJsViewer.kt:844#internal fun buildThreeGeometryPayload`), in the `editable` branch, where the client re-triangulates and this side only wants the number for `meta.triangles`: the callback is `_, indices` and keeps `indices.size / 3`. The vertices are discarded, so no triangle it makes reaches anything that could draw it the wrong way round. |
+
+The page used to say "exactly two production call sites" over a two-row table while `src/jvmMain`
+held all three; the triangle-count call runs every time a box is drawn with `editable = true`. The
+conclusion held anyway, but for a reason the sentence never gave: that call keeps no vertices.
+
+The exclusion is narrower than "it only counts things" makes it sound. A triangle *count* is
+invariant under winding, so none of the three orientation defects above could move it — but it is
+**not** invariant under which rings become holes in which, and `e4b309379` changed that too, in the
+ring sanitiser. So this call site is out of scope for *this* page's defect and in scope for the
+neighbouring one, which is why the number it reports has a test of its own
+(`ThreeJsEditableFillParityTest.kt:73#bothModesReportTheSameTriangleCountForAMultiPlaneHoledLine`).
 
 Not on this path at all: SVG export (`graphics/someSkiko.kt:753#stroke="none" fill=` writes
 `<path fill=…>`), the 2D Skia canvas (`graphics/someSkiko.kt:375#f.filled) PaintMode.FILL`, a filled
