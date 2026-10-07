@@ -198,9 +198,11 @@ class StippleTransport private constructor(private val data: StippleTransportDat
     }
 
     companion object {
+        private val lenientJson = Json { ignoreUnknownKeys = true }
+
         /** Parses a portable model without requiring a filesystem path. */
         fun fromJson(json: String): StippleTransport =
-            StippleTransport(Json { ignoreUnknownKeys = true }.decodeFromString<StippleTransportData>(json))
+            StippleTransport(lenientJson.decodeFromString<StippleTransportData>(json))
     }
 }
 
