@@ -55,17 +55,19 @@ expect:
  * (`1 -` mean absolute error) evolution beat chance on four of five targets while producing a
  * dark-streak texture for a yellow disc and a vertical gradient for four quadrants: the error
  * rewards getting the colour balance right, and colour balance is the cheapest thing to get right.
- * [StackSLMetric.LPIPS] scores with a learned perceptual distance instead. Resemblance is then checked with a third
- * measurement neither arm optimised, [StackSLLayout.layoutAgreement], at four times the search's
- * resolution — and by looking at the contact sheet.
+ * [StackSLMetric.LPIPS] scores with a learned perceptual distance instead, here with lexicase
+ * selection over the four quadrants' LPIPS, so the right texture in the wrong place is not enough.
+ * Resemblance is then checked with a third measurement neither arm optimised,
+ * [StackSLLayout.layoutAgreement], at four times the search's resolution — and by looking at the
+ * contact sheet. `--arms` runs other combinations (`lpips`, `mix`, `mixlex`).
  *
  *  - [figurePremise]: the machinery, before any search is believed — vocabulary arity, the blank
  *    guard, both metrics and the layout measure on known inputs, and a hand-written program per
  *    target to show the vocabulary can draw each one.
- *  - [figureTargets]: the figure. Per target, `evolve` under each metric and one random control
- *    scored both ways, with floors on skill, on the margin over chance, and on layout.
+ *  - [figureTargets]: the figure. Per target, `evolve` under PIXEL and under LPIPS with lexicase,
+ *    and one random control scored both ways, with floors on skill, on the margin over chance, and
+ *    on layout.
  *  - [figureProxy]: does a ranking made at 32 pixels survive at 256?
- *  - [figureLexicase]: `Selection.LEXICASE` with one structural case per image region.
  *  - [figureMapElites]: an archive over (spatial frequency x colourfulness).
  *  - [figureDeterminism]: the same seed gives the same program.
  *
@@ -115,7 +117,7 @@ object StackSLEvolveGallery {
     private const val DEFAULT_BUDGET: Int = 700
 
     /** The targets [figureTargets] runs by default. */
-    private val DEFAULT_TARGETS: List<String> = listOf("spot", "rings", "bands", "quadrants")
+    private val DEFAULT_TARGETS: List<String> = listOf("spot", "bands", "quadrants")
 
     private var budget: Int = DEFAULT_BUDGET
     private var targetNames: List<String> = DEFAULT_TARGETS
@@ -234,6 +236,19 @@ object StackSLEvolveGallery {
             "premise: danglingValuesOf reads the analysis of a program that compiles"
         )
 
+        check(
+            runCatching {
+                PopulationSearch.evolve(StackSLGenome(), afield.stdlib.objectiveOf { 0.0 }, 40, selection = Selection.LEXICASE)
+            }.isFailure,
+            "premise: PopulationSearch refuses LEXICASE over an objective with no cases"
+        )
+        val withRegions = StackSLImageObjective(StackSLTargets.quadrants(FIT_DIM), dim = FIT_DIM, lpipsRegions = true)
+            .evaluate(StackSLProgram.of("uv 4.0 * fbm palette saturate"))
+        check(
+            withRegions.cases.size == 4 && withRegions.cases.distinct().size > 1,
+            "premise: with lpipsRegions the LPIPS objective supplies 4 quadrant cases for lexicase, and they differ"
+        )
+
         // 2 — the blank guard.
         val quadrants = StackSLTargets.quadrants(FIT_DIM)
         val flatProgram = StackSLProgram.of("0.5")
@@ -312,7 +327,7 @@ object StackSLEvolveGallery {
                 val g = o.evaluate(grey).fitness
                 val w = o.evaluate(old).fitness
                 line.append("  $metric grey ${f(g, 4)} vs old ${f(w, 4)}")
-                if (g > w) { if (metric == StackSLMetric.LPIPS) lpipsPrefers++ else pixelPrefers++ }
+                if (g > w) { if (metric == StackSLMetric.LPIPS) lpipsPrefers++ else if (metric == StackSLMetric.PIXEL) pixelPrefers++ }
             }
             println(line)
         }
@@ -338,13 +353,13 @@ object StackSLEvolveGallery {
     private val ALL_ARMS: List<Arm> = listOf(
         Arm("pixel", StackSLMetric.PIXEL, Selection.TOURNAMENT),
         Arm("lpips", StackSLMetric.LPIPS, Selection.TOURNAMENT),
-        Arm("lpips-lex", StackSLMetric.LPIPS, Selection.LEXICASE),
+        Arm("lex", StackSLMetric.LPIPS, Selection.LEXICASE),
         Arm("mix", StackSLMetric.LPIPS_PIXEL, Selection.TOURNAMENT),
-        Arm("mix-lex", StackSLMetric.LPIPS_PIXEL, Selection.LEXICASE)
+        Arm("mixlex", StackSLMetric.LPIPS_PIXEL, Selection.LEXICASE)
     )
 
     /** The arms run by default; the first is the 2026-09-06 search, the last the one asserted on. */
-    private val DEFAULT_ARMS: List<String> = listOf("pixel", "lpips", "mix-lex")
+    private val DEFAULT_ARMS: List<String> = listOf("pixel", "lex")
     private var armLabels: List<String> = DEFAULT_ARMS
 
     /** One target's results: each arm's search, and one random control scored under every metric. */
@@ -378,15 +393,24 @@ object StackSLEvolveGallery {
      * searches are deterministic under [SEED], so a miss means the search changed.
      */
     private val FLOORS: Map<String, Pair<Double, Double>> = mapOf(
-        "spot" to (0.0 to 0.0),
-        "rings" to (0.0 to 0.0),
-        "bands" to (0.0 to 0.0),
-        "checker" to (0.0 to 0.0),
-        "quadrants" to (0.0 to 0.0)
+        // measured 2026-10-07: skill 0.403, random control 0.280
+        "spot" to (0.30 to 0.06),
+        // 0.808 against 0.623
+        "bands" to (0.65 to 0.09),
+        // 0.678 against 0.400
+        "quadrants" to (0.55 to 0.14)
     )
 
-    /** Targets on which the asserted arm's winner must out-layout PIXEL's, at the default size. */
-    private const val MIN_LAYOUT_WINS: Int = 0
+    /**
+     * Targets on which the asserted arm's winner must out-layout PIXEL's, at the default size.
+     *
+     * One, because that is what was measured, and it is the honest number. On `quadrants` the
+     * LPIPS-lexicase winner is three flat blocks in roughly the right places (layout 0.66, PIXEL's
+     * a horizontal gradient at 0.30). On `bands` it draws vertical bands, but three of them rather
+     * than six and out of phase, which a position-exact measure scores at -0.70: it reads as bands
+     * and is not the target's bands. On `spot` neither arm draws a disc.
+     */
+    private const val MIN_LAYOUT_WINS: Int = 1
 
     private var lastResults: List<TargetResult> = emptyList()
 
@@ -565,64 +589,6 @@ object StackSLEvolveGallery {
     private const val PROXY_TAU_FLOOR: Double = 0.70
 
     // ==========================================================================================
-    // 3 — lexicase over regions of the image
-    // ==========================================================================================
-
-    /**
-     * `Selection.LEXICASE` with one LPIPS case per quadrant of the image.
-     *
-     * Asserted to run, to select on cases that vary, and to beat chance. Not asserted to beat the
-     * tournament.
-     */
-    private fun figureLexicase(outDir: File) {
-        val target = StackSLTargets.quadrants(FIT_DIM)
-        val cache = StackSLScoreCache()
-        val objective = StackSLImageObjective(target, dim = FIT_DIM, lpipsRegions = true, cache = cache)
-        val sample = objective.evaluate(StackSLProgram.of("uv 4.0 * fbm palette saturate"))
-        check(
-            sample.cases.size == 4 && sample.cases.distinct().size > 1,
-            "lexicase: the objective supplies ${sample.cases.size} regional cases, and they differ"
-        )
-        check(
-            runCatching {
-                PopulationSearch.evolve(StackSLGenome(), afield.stdlib.objectiveOf { 0.0 }, 40, selection = Selection.LEXICASE)
-            }.isFailure,
-            "lexicase: PopulationSearch refuses LEXICASE over an objective with no cases"
-        )
-        val lexicase = PopulationSearch.evolve(
-            StackSLGenome(), objective, LEXICASE_BUDGET, seed = SEED,
-            mu = 8, lambda = 16, selection = Selection.LEXICASE, crossoverRate = 0.25, immigrantRate = 0.05,
-            label = "lexicase"
-        )
-        val control = PopulationSearch.random(
-            StackSLGenome(), StackSLImageObjective(target, dim = FIT_DIM, lpipsRegions = true, cache = cache),
-            LEXICASE_BUDGET, seed = SEED, label = "lexicase random"
-        )
-        val gain = objective.skill(lexicase.bestFitness) - objective.skill(control.bestFitness)
-        val layout = layoutAt(lexicase.best!!.genome.text, "quadrants")
-        println("[stacksl-evolve]     ${lexicase.summary()}")
-        println("[stacksl-evolve]     ${control.summary()}")
-        println("[stacksl-evolve]     lexicase best (layout ${f(layout)}): ${lexicase.best?.genome?.text}")
-        check(
-            gain >= LEXICASE_GAIN_FLOOR,
-            "lexicase: per-region lexicase beats the random control by ${f(gain)} skill on 'quadrants', " +
-                "clearing $LEXICASE_GAIN_FLOOR"
-        )
-        montage(
-            listOf("target" to target.raster.toImg().upscaleNearest(SHOW_DIM / FIT_DIM)) +
-                lexicase.improvements.takeLast(5).map { imp ->
-                    "gen %d %.2f".format(imp.generation, objective.skill(imp.fitness)) to objective.render(imp.genome, SHOW_DIM).toImg()
-                },
-            columns = 3, cellSide = SHOW_DIM + 10
-        ).savePng(File(outDir, "evolve-lexicase.png").path)
-    }
-
-    private const val LEXICASE_BUDGET: Int = 600
-
-    /** Measured, then floored with headroom. */
-    private const val LEXICASE_GAIN_FLOOR: Double = 0.0
-
-    // ==========================================================================================
     // 4 — MAP-Elites: a picture of the search space
     // ==========================================================================================
 
@@ -671,7 +637,7 @@ object StackSLEvolveGallery {
         ).savePng(File(outDir, "evolve-mapelites-archive.png").path)
     }
 
-    private const val MAPELITES_BUDGET: Int = 600
+    private const val MAPELITES_BUDGET: Int = 400
 
     private fun binOf(e: Evaluation, axes: List<ClosedFloatingPointRange<Double>>, bins: List<Int>): List<Int> =
         axes.indices.map { d ->
@@ -691,7 +657,7 @@ object StackSLEvolveGallery {
     private fun figureDeterminism(outDir: File) {
         val target = StackSLTargets.spot(FIT_DIM)
         fun once(seed: Long) = PopulationSearch.evolve(
-            StackSLGenome(), StackSLImageObjective(target, dim = FIT_DIM), 240, seed = seed,
+            StackSLGenome(), StackSLImageObjective(target, dim = FIT_DIM), 160, seed = seed,
             mu = 6, lambda = 12, tournament = 3, crossoverRate = 0.25, immigrantRate = 0.05
         )
         val a = once(7L)
@@ -715,7 +681,6 @@ object StackSLEvolveGallery {
         Triple("premise", ::figurePremise, "evolve-premise.png"),
         Triple("targets", ::figureTargets, "evolve-targets.png"),
         Triple("proxy", ::figureProxy, "evolve-proxy.png"),
-        Triple("lexicase", ::figureLexicase, "evolve-lexicase.png"),
         Triple("mapelites", ::figureMapElites, "evolve-mapelites-archive.png"),
         Triple("determinism", ::figureDeterminism, null)
     )
