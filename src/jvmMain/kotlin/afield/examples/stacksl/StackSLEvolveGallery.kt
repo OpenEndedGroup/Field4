@@ -13,10 +13,9 @@ import afield.stdlib.StackSLGenome
 import afield.stdlib.StackSLImageObjective
 import afield.stdlib.StackSLMetric
 import afield.stdlib.StackSLPalette
-import afield.stdlib.StackSLPlane
 import afield.stdlib.StackSLProgram
 import afield.stdlib.StackSLScoreCache
-import afield.stdlib.StackSLStructure
+import afield.stdlib.StackSLLayout
 import afield.stdlib.StackSLTarget
 import afield.stdlib.StackSLTargets
 import afield.stdlib.StackSLWordKind
@@ -56,8 +55,8 @@ expect:
  * (`1 -` mean absolute error) evolution beat chance on four of five targets while producing a
  * dark-streak texture for a yellow disc and a vertical gradient for four quadrants: the error
  * rewards getting the colour balance right, and colour balance is the cheapest thing to get right.
- * [StackSLMetric.STRUCTURE] adds multi-scale SSIM. Resemblance is then checked with a third
- * measurement neither arm optimised, [StackSLStructure.layoutAgreement], at four times the search's
+ * [StackSLMetric.LPIPS] scores with a learned perceptual distance instead. Resemblance is then checked with a third
+ * measurement neither arm optimised, [StackSLLayout.layoutAgreement], at four times the search's
  * resolution — and by looking at the contact sheet.
  *
  *  - [figurePremise]: the machinery, before any search is believed — vocabulary arity, the blank
@@ -125,7 +124,8 @@ object StackSLEvolveGallery {
     private const val DEFAULT_SUPERSAMPLE: Int = 1
     private var supersample: Int = DEFAULT_SUPERSAMPLE
     private val atDefaults: Boolean
-        get() = budget == DEFAULT_BUDGET && targetNames == DEFAULT_TARGETS && supersample == DEFAULT_SUPERSAMPLE
+        get() = budget == DEFAULT_BUDGET && targetNames == DEFAULT_TARGETS && supersample == DEFAULT_SUPERSAMPLE &&
+            armLabels == DEFAULT_ARMS
 
     /** One seed for every search in this file. */
     private const val SEED: Long = 11L
@@ -180,7 +180,7 @@ object StackSLEvolveGallery {
 
     /** Layout agreement of [program] against [name]'s target, both at [SHOW_DIM]. */
     private fun layoutAt(program: String, name: String, dim: Int = SHOW_DIM): Double =
-        StackSLStructure.layoutAgreement(StackSLCpu.renderStill(program, dim = dim), target(name, dim).raster)
+        StackSLLayout.layoutAgreement(StackSLCpu.renderStill(program, dim = dim), target(name, dim).raster)
 
     // ==========================================================================================
     // 0 — premise
@@ -192,11 +192,11 @@ object StackSLEvolveGallery {
      *  1. Every vocabulary word compiles with the arity the generator models (`palette` the one
      *     documented exception), and a straight-line program cannot be arity-invalid.
      *  2. The blank guard refuses a flat render and a flat target.
-     *  3. SSIM and the layout measure behave on inputs whose answer is known: a target against
+     *  3. LPIPS and the layout measure behave on inputs whose answer is known: a target against
      *     itself, against a flat fill, against its own negative.
      *  4. Each target has a hand-written program that draws it ([ORACLES]).
      *  5. The metric question, on fixed programs: does a program that draws the target's layout in
-     *     grey outrank the 2026-09-06 PIXEL winner? Asserted for STRUCTURE, reported for PIXEL —
+     *     grey outrank the 2026-09-06 PIXEL winner? Asserted for LPIPS, reported for PIXEL —
      *     which, measured, also ranks them the right way round. PIXEL's failure is in the landscape
      *     it gives the search, not in how it orders these two pictures.
      */
@@ -255,24 +255,25 @@ object StackSLEvolveGallery {
             "premise: a constant-colour target is refused outright"
         )
 
-        // 3 — SSIM and layout on known inputs.
+        // 3 — LPIPS and layout on known inputs.
         val names = StackSLTargets.all(2).map { it.name }
         for (name in names) {
             val t = target(name, FIT_DIM)
             check(t.structure.spread >= 0.15, "premise: target '$name' is structured (${t.structure})")
-            val planes = StackSLPlane.rgb(t.raster).map { it.pyramid(StackSLImageObjective.STRUCTURE_LEVELS) }
-            val self = StackSLStructure.multiScale(planes, planes)
-            val flatPlanes = StackSLPlane.rgb(t.flatRaster()).map { it.pyramid(StackSLImageObjective.STRUCTURE_LEVELS) }
-            val flat = StackSLStructure.multiScale(flatPlanes, planes)
+            val o = StackSLImageObjective(t, dim = FIT_DIM, metric = StackSLMetric.LPIPS)
+            val self = o.scores(t.raster).lpipsFitness
             val negative = CpuRaster(FIT_DIM, FIT_DIM, FloatArray(FIT_DIM * FIT_DIM * 4) { if (it % 4 == 3) 1f else 1f - t.raster.rgba[it] })
+            // The negative is reported, not asserted: LPIPS compares normalised features, and a
+            // picture's negative has nearly the same edges. Measured 0.98 for rings, 0.43 for
+            // quadrants. Colour is the PIXEL term's job, which is why layoutAgreement checks it.
             check(
-                kotlin.math.abs(self - 1.0) < 1e-9 && flat < 0.35,
-                "premise/$name: SSIM is 1 against itself (${f(self, 6)}) and low against a flat fill " +
-                    "of its own mean colour (${f(flat)})"
+                self == 1.0 && o.flatFloor < 0.5,
+                "premise/$name: under LPIPS the target scores exactly 1 against itself (${f(self)}) and a flat " +
+                    "fill of its mean colour ${f(o.flatFloor)}; its own negative scores ${f(o.scores(negative).lpipsFitness)}"
             )
-            val layoutSelf = StackSLStructure.layoutAgreement(t.raster, t.raster)
-            val layoutFlat = StackSLStructure.layoutAgreement(t.flatRaster(), t.raster)
-            val layoutNegative = StackSLStructure.layoutAgreement(negative, t.raster)
+            val layoutSelf = StackSLLayout.layoutAgreement(t.raster, t.raster)
+            val layoutFlat = StackSLLayout.layoutAgreement(t.flatRaster(), t.raster)
+            val layoutNegative = StackSLLayout.layoutAgreement(negative, t.raster)
             check(
                 layoutSelf == 1.0 && layoutFlat == 0.0 && layoutNegative < 0.0,
                 "premise/$name: layout agreement is 1 against itself, 0 for a flat fill, negative " +
@@ -297,7 +298,7 @@ object StackSLEvolveGallery {
         // 5 — the metric question on fixed programs. Only the targets whose two colours differ in
         // luma: drawn in grey, checker's magenta and teal (0.05 apart in luma) are one colour, and
         // quadrants' red is nearer its dark corner than its own colour.
-        var structurePrefers = 0
+        var lpipsPrefers = 0
         var pixelPrefers = 0
         val greyable = listOf("spot", "rings", "bands")
         for (name in greyable) {
@@ -311,16 +312,16 @@ object StackSLEvolveGallery {
                 val g = o.evaluate(grey).fitness
                 val w = o.evaluate(old).fitness
                 line.append("  $metric grey ${f(g, 4)} vs old ${f(w, 4)}")
-                if (g > w) { if (metric == StackSLMetric.STRUCTURE) structurePrefers++ else pixelPrefers++ }
+                if (g > w) { if (metric == StackSLMetric.LPIPS) lpipsPrefers++ else pixelPrefers++ }
             }
             println(line)
         }
         println("[stacksl-evolve]     the grey layout outranks the old winner on $pixelPrefers/${greyable.size} " +
-            "targets under PIXEL and $structurePrefers/${greyable.size} under STRUCTURE")
+            "targets under PIXEL and $lpipsPrefers/${greyable.size} under LPIPS")
         check(
-            structurePrefers == greyable.size,
-            "premise: under STRUCTURE, the target's layout drawn in grey outranks the 2026-09-06 PIXEL " +
-                "winner on all of ${greyable.joinToString()} ($structurePrefers)"
+            lpipsPrefers == greyable.size,
+            "premise: under LPIPS, the target's layout drawn in grey outranks the 2026-09-06 PIXEL " +
+                "winner on all of ${greyable.joinToString()} ($lpipsPrefers)"
         )
 
         montage(panels, columns = 4, cellSide = SHOW_DIM + 10).savePng(File(outDir, "evolve-premise.png").path)
@@ -330,15 +331,28 @@ object StackSLEvolveGallery {
     // 1 — the figure: both metrics, against chance, on several targets
     // ==========================================================================================
 
-    /** One target's four results: evolve under each metric, the control's best under each. */
+    /** One way of searching: a metric and a selection scheme. */
+    private class Arm(val label: String, val metric: StackSLMetric, val selection: Selection)
+
+    /** Every arm [figureTargets] knows; `--arms` picks some by label. */
+    private val ALL_ARMS: List<Arm> = listOf(
+        Arm("pixel", StackSLMetric.PIXEL, Selection.TOURNAMENT),
+        Arm("lpips", StackSLMetric.LPIPS, Selection.TOURNAMENT),
+        Arm("lpips-lex", StackSLMetric.LPIPS, Selection.LEXICASE),
+        Arm("mix", StackSLMetric.LPIPS_PIXEL, Selection.TOURNAMENT),
+        Arm("mix-lex", StackSLMetric.LPIPS_PIXEL, Selection.LEXICASE)
+    )
+
+    /** The arms run by default; the first is the 2026-09-06 search, the last the one asserted on. */
+    private val DEFAULT_ARMS: List<String> = listOf("pixel", "lpips", "mix-lex")
+    private var armLabels: List<String> = DEFAULT_ARMS
+
+    /** One target's results: each arm's search, and one random control scored under every metric. */
     private class TargetResult(
         val target: StackSLTarget,
-        val pixel: SearchRun<StackSLProgram>,
-        val structure: SearchRun<StackSLProgram>,
-        val randomPixel: SearchRun<StackSLProgram>,
-        val randomStructure: SearchRun<StackSLProgram>,
-        val pixelObjective: StackSLImageObjective,
-        val structureObjective: StackSLImageObjective,
+        val runs: Map<String, SearchRun<StackSLProgram>>,
+        val randoms: Map<StackSLMetric, SearchRun<StackSLProgram>>,
+        val objectives: Map<StackSLMetric, StackSLImageObjective>,
         val renders: Int,
         val seconds: Double
     ) {
@@ -347,7 +361,7 @@ object StackSLEvolveGallery {
         fun layout(run: SearchRun<StackSLProgram>): Double {
             val g = run.best?.genome ?: return 0.0
             if (run.bestFitness <= StackSLImageObjective.INVALID_SCORE) return 0.0
-            return StackSLStructure.layoutAgreement(StackSLCpu.renderStill(g.text, dim = SHOW_DIM), StackSLTargetsAt.show(name))
+            return StackSLLayout.layoutAgreement(StackSLCpu.renderStill(g.text, dim = SHOW_DIM), StackSLTargetsAt.show(name))
         }
     }
 
@@ -358,12 +372,12 @@ object StackSLEvolveGallery {
     }
 
     /**
-     * Per-target floors at the default size, `name to (minStructureSkill, minGainOverControl)`, in
-     * [StackSLImageObjective.skill] units under STRUCTURE: 0 is a flat fill of the target's mean
-     * colour, 1 is exact. Measured, then floored with headroom; the searches are deterministic
-     * under [SEED], so a miss means the search changed, not that it was unlucky.
+     * Per-target floors at the default size for the asserted arm, `name to (minSkill,
+     * minGainOverControl)`, in [StackSLImageObjective.skill] units under that arm's metric: 0 is a
+     * flat fill of the target's mean colour, 1 is exact. Measured, then floored with headroom; the
+     * searches are deterministic under [SEED], so a miss means the search changed.
      */
-    private val STRUCTURE_FLOORS: Map<String, Pair<Double, Double>> = mapOf(
+    private val FLOORS: Map<String, Pair<Double, Double>> = mapOf(
         "spot" to (0.0 to 0.0),
         "rings" to (0.0 to 0.0),
         "bands" to (0.0 to 0.0),
@@ -371,94 +385,95 @@ object StackSLEvolveGallery {
         "quadrants" to (0.0 to 0.0)
     )
 
-    /** Targets on which STRUCTURE's winner must out-layout PIXEL's, at the default size. */
+    /** Targets on which the asserted arm's winner must out-layout PIXEL's, at the default size. */
     private const val MIN_LAYOUT_WINS: Int = 0
 
     private var lastResults: List<TargetResult> = emptyList()
 
     private fun figureTargets(outDir: File) {
-        val results = runTargets(targetNames, budget)
+        val arms = armLabels.map { label -> ALL_ARMS.firstOrNull { it.label == label } ?: error("no arm '$label'") }
+        val asserted = arms.last()
+        val results = runTargets(targetNames, budget, arms)
         lastResults = results
-        var structureWon = 0
-        var pixelWon = 0
+        var won = 0
         var layoutWins = 0
         val panels = ArrayList<Pair<String, Img>>()
         for (r in results) {
-            val sObj = r.structureObjective
-            val pObj = r.pixelObjective
-            val sSkill = sObj.skill(r.structure.bestFitness)
-            val sControl = sObj.skill(r.randomStructure.bestFitness)
-            val pSkill = pObj.skill(r.pixel.bestFitness)
-            val pControl = pObj.skill(r.randomPixel.bestFitness)
-            val lPixel = r.layout(r.pixel)
-            val lStructure = r.layout(r.structure)
-            val lRandom = r.layout(r.randomStructure)
-            val lRandomPixel = r.layout(r.randomPixel)
-            println(
-                "[stacksl-evolve]     %-9s STRUCTURE skill %+.3f (random %+.3f)  PIXEL skill %+.3f (random %+.3f)  "
-                    .format(r.name, sSkill, sControl, pSkill, pControl) +
-                    "layout: structure %.2f, pixel %.2f, random %.2f / %.2f  %d renders %.0fs"
-                        .format(lStructure, lPixel, lRandom, lRandomPixel, r.renders, r.seconds)
-            )
-            println("[stacksl-evolve]       structure best: ${r.structure.best?.genome?.text}")
-            println("[stacksl-evolve]       pixel best:     ${r.pixel.best?.genome?.text}")
-            if (sSkill > sControl) structureWon++
-            if (pSkill > pControl) pixelWon++
-            if (lStructure > lPixel) layoutWins++
+            val line = StringBuilder("[stacksl-evolve]     %-9s".format(r.name))
+            for (arm in arms) {
+                val run = r.runs.getValue(arm.label)
+                val o = r.objectives.getValue(arm.metric)
+                line.append("  %s skill %+.3f (random %+.3f) layout %.2f".format(
+                    arm.label, o.skill(run.bestFitness), o.skill(r.randoms.getValue(arm.metric).bestFitness), r.layout(run)
+                ))
+            }
+            val randomShown = r.randoms.getValue(asserted.metric)
+            line.append("  random layout %.2f  %d renders %.0fs".format(r.layout(randomShown), r.renders, r.seconds))
+            println(line)
+            for (arm in arms) println("[stacksl-evolve]       %-10s %s".format(arm.label, r.runs.getValue(arm.label).best?.genome?.text))
 
-            STRUCTURE_FLOORS[r.name]?.let { (minSkill, minGain) ->
-                floor(sSkill >= minSkill, "targets/${r.name}: STRUCTURE skill ${f(sSkill)} clears its $minSkill floor")
+            val run = r.runs.getValue(asserted.label)
+            val o = r.objectives.getValue(asserted.metric)
+            val skill = o.skill(run.bestFitness)
+            val control = o.skill(randomShown.bestFitness)
+            if (skill > control) won++
+            val layout = r.layout(run)
+            if (layout > r.layout(r.runs.getValue(arms.first().label))) layoutWins++
+            FLOORS[r.name]?.let { (minSkill, minGain) ->
+                floor(skill >= minSkill, "targets/${r.name}: ${asserted.label} skill ${f(skill)} clears its $minSkill floor")
                 floor(
-                    sSkill - sControl >= minGain,
-                    "targets/${r.name}: STRUCTURE evolve beats its random control by ${f(sSkill - sControl)} " +
-                        "skill, clearing the $minGain floor (control ${f(sControl)})"
+                    skill - control >= minGain,
+                    "targets/${r.name}: ${asserted.label} beats its random control by ${f(skill - control)} skill, " +
+                        "clearing the $minGain floor (control ${f(control)})"
                 )
             }
-            check(r.structure.recombined > 0, "targets/${r.name}: crossover ran (${r.structure.recombined} children)")
+            check(run.recombined > 0, "targets/${r.name}: crossover ran (${run.recombined} children)")
             check(
-                r.structure.proposals > r.structure.evaluations,
-                "targets/${r.name}: signature memoisation served ${r.structure.proposals - r.structure.evaluations} " +
-                    "repeat proposal(s) at no cost to the budget"
+                run.proposals > run.evaluations,
+                "targets/${r.name}: signature memoisation served ${run.proposals - run.evaluations} repeat proposal(s) at no cost"
             )
-            val shown = StackSLCpu.renderStill(r.structure.best!!.genome.text, dim = SHOW_DIM)
+            val shown = StackSLCpu.renderStill(run.best!!.genome.text, dim = SHOW_DIM)
             val shownStructure = RasterStructure.of(shown)
             check(
                 shownStructure.spread >= StackSLImageObjective.MIN_SPREAD,
-                "targets/${r.name}: the STRUCTURE winner is still a picture at ${SHOW_DIM}px ($shownStructure)"
+                "targets/${r.name}: the ${asserted.label} winner is still a picture at ${SHOW_DIM}px ($shownStructure)"
             )
             panels += r.name to r.target.raster.toImg().upscaleNearest(SHOW_DIM / FIT_DIM)
-            panels += "pixel %.2f".format(lPixel) to StackSLCpu.renderStill(r.pixel.best!!.genome.text, dim = SHOW_DIM).toImg()
-            panels += "struct %.2f".format(lStructure) to shown.toImg()
-            panels += "random %.2f".format(lRandom) to
-                StackSLCpu.renderStill(r.randomStructure.best!!.genome.text, dim = SHOW_DIM).toImg()
+            for (arm in arms) {
+                val armRun = r.runs.getValue(arm.label)
+                panels += "%s %.2f".format(arm.label, r.layout(armRun)) to
+                    StackSLCpu.renderStill(armRun.best!!.genome.text, dim = SHOW_DIM).toImg()
+            }
+            panels += "rnd %.2f".format(r.layout(randomShown)) to
+                StackSLCpu.renderStill(randomShown.best!!.genome.text, dim = SHOW_DIM).toImg()
         }
         println(
-            "[stacksl-evolve]     STRUCTURE beat its control on $structureWon/${results.size}, PIXEL on " +
-                "$pixelWon/${results.size}; STRUCTURE out-layouts PIXEL on $layoutWins/${results.size}"
+            "[stacksl-evolve]     ${asserted.label} beat its control on $won/${results.size}; " +
+                "out-layouts ${arms.first().label} on $layoutWins/${results.size}"
         )
         floor(
-            structureWon == results.size,
-            "targets: STRUCTURE evolve beats the random control on $structureWon of ${results.size} " +
-                "targets at equal budget ($budget each), same seed, same genome"
+            won == results.size,
+            "targets: ${asserted.label} beats the random control on $won of ${results.size} targets at equal " +
+                "budget ($budget each), same seed, same genome"
         )
         floor(
             layoutWins >= MIN_LAYOUT_WINS,
-            "targets: STRUCTURE's winner puts light and dark where the target does better than PIXEL's " +
+            "targets: ${asserted.label}'s winner has the target's layout more nearly than ${arms.first().label}'s " +
                 "on $layoutWins of ${results.size} targets (at least $MIN_LAYOUT_WINS)"
         )
-        montage(panels, columns = 4, cellSide = SHOW_DIM + 24).savePng(File(outDir, "evolve-targets.png").path)
+        montage(panels, columns = arms.size + 2, cellSide = SHOW_DIM + 32).savePng(File(outDir, "evolve-targets.png").path)
     }
 
     /**
-     * Every target's four arms, one thread per target, serial inside each render.
+     * Every target's arms, one thread per target, serial inside each render.
      *
-     * Per target: `evolve` under PIXEL, `evolve` under STRUCTURE, then `random` scored under each.
-     * All four share one [StackSLScoreCache], and every render is scored both ways, so the second
-     * random arm — the same draws under the same seed — costs no renders at all. Concurrent across
-     * targets for wall-clock, and bit-reproducible, because each search draws from its own seeded
-     * `Random` and nothing it reads is shared across targets.
+     * Per target: each arm's `evolve`, then one `random` draw scored under every metric the arms
+     * use. All of them share one [StackSLScoreCache], and every render is scored under every
+     * metric, so the random control's extra metrics — the same draws under the same seed — cost no
+     * renders at all. Concurrent across targets for wall-clock, and bit-reproducible, because each
+     * search draws from its own seeded `Random` and nothing it reads is shared across targets.
      */
-    private fun runTargets(names: List<String>, budget: Int): List<TargetResult> {
+    private fun runTargets(names: List<String>, budget: Int, arms: List<Arm>): List<TargetResult> {
         val pool = Executors.newFixedThreadPool(minOf(names.size, Runtime.getRuntime().availableProcessors()))
         try {
             return names.map { name ->
@@ -466,24 +481,21 @@ object StackSLEvolveGallery {
                     val started = System.nanoTime()
                     val t = target(name, FIT_DIM)
                     val cache = StackSLScoreCache()
-                    fun objective(metric: StackSLMetric) =
-                        StackSLImageObjective(
-                            t, dim = FIT_DIM, parallel = false, metric = metric, cache = cache, supersample = supersample
+                    // Regions always on, so every arm can share one cache whatever it selects by.
+                    fun objective(metric: StackSLMetric) = StackSLImageObjective(
+                        t, dim = FIT_DIM, parallel = false, metric = metric, cache = cache, supersample = supersample,
+                        lpipsRegions = true
+                    )
+                    val runs = arms.associate { arm ->
+                        arm.label to PopulationSearch.evolve(
+                            StackSLGenome(), objective(arm.metric), budget, seed = SEED,
+                            mu = 8, lambda = 16, tournament = 3, selection = arm.selection,
+                            crossoverRate = 0.25, immigrantRate = 0.05, label = "$name ${arm.label}"
                         )
-                    fun evolve(metric: StackSLMetric) = PopulationSearch.evolve(
-                        StackSLGenome(), objective(metric), budget, seed = SEED,
-                        mu = 8, lambda = 16, tournament = 3, crossoverRate = 0.25, immigrantRate = 0.05,
-                        label = "$name $metric"
-                    )
-                    val pixel = evolve(StackSLMetric.PIXEL)
-                    val structure = evolve(StackSLMetric.STRUCTURE)
-                    val randomPixel = PopulationSearch.random(StackSLGenome(), objective(StackSLMetric.PIXEL), budget, seed = SEED)
-                    val randomStructure = PopulationSearch.random(StackSLGenome(), objective(StackSLMetric.STRUCTURE), budget, seed = SEED)
-                    TargetResult(
-                        t, pixel, structure, randomPixel, randomStructure,
-                        objective(StackSLMetric.PIXEL), objective(StackSLMetric.STRUCTURE),
-                        cache.size, (System.nanoTime() - started) / 1e9
-                    )
+                    }
+                    val metrics = arms.map { it.metric }.distinct()
+                    val randoms = metrics.associateWith { PopulationSearch.random(StackSLGenome(), objective(it), budget, seed = SEED) }
+                    TargetResult(t, runs, randoms, metrics.associateWith { objective(it) }, cache.size, (System.nanoTime() - started) / 1e9)
                 }
             }.map { it.get() }
         } finally {
@@ -499,7 +511,7 @@ object StackSLEvolveGallery {
     /**
      * Does a ranking made at 32 pixels survive being re-scored at 256?
      *
-     * Takes the final population and record holders of a STRUCTURE search on `quadrants` (the one
+     * Takes the final population and record holders of a LPIPS search on `quadrants` (the one
      * [figureTargets] already ran, when it ran) and scores them again against the same target
      * generated at [PROXY_DIM]. Kendall's tau over concordant and discordant pairs, because the
      * question is whether the order survives, not whether the scores are equal.
@@ -511,7 +523,7 @@ object StackSLEvolveGallery {
         val small = StackSLTargets.quadrants(FIT_DIM)
         val big = StackSLTargets.quadrants(PROXY_DIM)
         val objective = StackSLImageObjective(small, dim = FIT_DIM)
-        val run = lastResults.firstOrNull { it.name == "quadrants" }?.structure ?: PopulationSearch.evolve(
+        val run = lastResults.firstOrNull { it.name == "quadrants" }?.runs?.values?.lastOrNull() ?: PopulationSearch.evolve(
             StackSLGenome(), objective, 600, seed = SEED,
             mu = 8, lambda = 16, tournament = 3, crossoverRate = 0.25, immigrantRate = 0.05, label = "proxy"
         )
@@ -557,7 +569,7 @@ object StackSLEvolveGallery {
     // ==========================================================================================
 
     /**
-     * `Selection.LEXICASE` with one STRUCTURE case per region of a 4x4 grid.
+     * `Selection.LEXICASE` with one LPIPS case per quadrant of the image.
      *
      * Asserted to run, to select on cases that vary, and to beat chance. Not asserted to beat the
      * tournament.
@@ -565,10 +577,10 @@ object StackSLEvolveGallery {
     private fun figureLexicase(outDir: File) {
         val target = StackSLTargets.quadrants(FIT_DIM)
         val cache = StackSLScoreCache()
-        val objective = StackSLImageObjective(target, dim = FIT_DIM, caseGrid = 4, cache = cache)
+        val objective = StackSLImageObjective(target, dim = FIT_DIM, lpipsRegions = true, cache = cache)
         val sample = objective.evaluate(StackSLProgram.of("uv 4.0 * fbm palette saturate"))
         check(
-            sample.cases.size == 16 && sample.cases.distinct().size > 1,
+            sample.cases.size == 4 && sample.cases.distinct().size > 1,
             "lexicase: the objective supplies ${sample.cases.size} regional cases, and they differ"
         )
         check(
@@ -583,7 +595,7 @@ object StackSLEvolveGallery {
             label = "lexicase"
         )
         val control = PopulationSearch.random(
-            StackSLGenome(), StackSLImageObjective(target, dim = FIT_DIM, caseGrid = 4, cache = cache),
+            StackSLGenome(), StackSLImageObjective(target, dim = FIT_DIM, lpipsRegions = true, cache = cache),
             LEXICASE_BUDGET, seed = SEED, label = "lexicase random"
         )
         val gain = objective.skill(lexicase.bestFitness) - objective.skill(control.bestFitness)
@@ -629,7 +641,7 @@ object StackSLEvolveGallery {
         val bins = listOf(6, 6)
         val axes = listOf(0.0..1.0, 0.0..1.0)
         val archive = PopulationSearch.mapElites(genome, objective, MAPELITES_BUDGET, axes, bins, seed = SEED, initial = 60)
-        // Shift fitness so an elite always adds a positive amount: STRUCTURE can be negative.
+        // Shift fitness so an elite always adds a positive amount: LPIPS can be negative.
         fun qd(values: Collection<Double>) = values.sumOf { it - StackSLImageObjective.INVALID_SCORE }
         val controlElites = HashMap<List<Int>, Double>()
         val controlObjective = StackSLImageObjective(target, dim = FIT_DIM, cache = cache)
@@ -719,6 +731,7 @@ object StackSLEvolveGallery {
                 "--only" -> { only = args.getOrNull(i + 1)?.split(',')?.map { it.trim() }?.toSet(); i++ }
                 "--budget" -> { budget = args.getOrNull(i + 1)?.toIntOrNull() ?: DEFAULT_BUDGET; i++ }
                 "--supersample" -> { supersample = args.getOrNull(i + 1)?.toIntOrNull() ?: DEFAULT_SUPERSAMPLE; i++ }
+                "--arms" -> { armLabels = args.getOrNull(i + 1)?.split(',')?.map { it.trim() } ?: DEFAULT_ARMS; i++ }
                 "--targets" -> { targetNames = args.getOrNull(i + 1)?.split(',')?.map { it.trim() } ?: DEFAULT_TARGETS; i++ }
                 else -> if (outPath == null && !args[i].startsWith("--")) outPath = args[i]
             }
@@ -730,7 +743,7 @@ object StackSLEvolveGallery {
         println("[stacksl-evolve] output -> ${outDir.absolutePath}")
         println(
             "[stacksl-evolve] fitness ${FIT_DIM}x$FIT_DIM, presentation ${SHOW_DIM}x$SHOW_DIM, $budget evaluations " +
-                "per arm on ${targetNames.joinToString(",")}, supersample $supersample, seed $SEED, ${StackSLPalette.DEFAULT.words.size} words (" +
+                "per arm on ${targetNames.joinToString(",")}, arms ${armLabels.joinToString(",")}, supersample $supersample, seed $SEED, ${StackSLPalette.DEFAULT.words.size} words (" +
                 StackSLWordKind.entries.joinToString(" ") { k -> "$k=${StackSLPalette.DEFAULT.words.count { it.kind == k }}" } +
                 ")" + if (atDefaults) "" else " — NOT the default size, floors reported but not asserted"
         )
