@@ -61,6 +61,18 @@ import kotlin.test.assertEquals
  * is what makes the inverted form practical. The remainder after cleanup is **zero**: see
  * [GRANDFATHERED] for what the twelve entries were and how each was retired.
  *
+ * ### Three rules over one allowlist, and the bytes they read
+ *
+ * The same inverted allowlist answers three questions about a committed file: what it **imports**
+ * (a dependency on private work), what it **declares** as its own package (private work in a tracked
+ * location), and what paths it **cites** (evidence a reader cannot open). The second exists because
+ * the first cannot see a file whose imports are all `afield.*` while its package is private — which
+ * is what `FLineBuilderSyntaxTest` was until it moved to `afield.graphics`.
+ *
+ * A diff is scanned too ([DIFF_EXTENSIONS]). A patch quotes the body of what it changes, so it is the
+ * most complete leak available, and its `+`/`-` line markers hide that body from rules anchored at a
+ * line start; [undiffed] removes them.
+ *
  * ### The grandfathered set is a debt list, and it is bidirectional
  *
  * [GRANDFATHERED] records the violations that existed when the boundary was first enforced, so this
@@ -99,7 +111,19 @@ class PersonalBoundaryTest {
             "templates",
         )
 
-        private val SCAN_EXTENSIONS = setOf("kt", "kts", "md", "edn", "yaml")
+        private val SCAN_EXTENSIONS = setOf("kt", "kts", "md", "edn", "yaml", "patch", "diff")
+
+        /**
+         * The subset of [SCAN_EXTENSIONS] holding code that is *quoted* rather than written, and which
+         * is therefore also read through [undiffed].
+         *
+         * A patch carries the **body** of the files it changes: where a `.kt` beside it can name a
+         * private package, a patch quotes the private source. Agents leave them in evidence
+         * directories under `dev_docs/agents/`. Its headers name the paths it touches, which the
+         * citation rule reads as they are. Its payload wears a one-character prefix, and every other
+         * rule here anchors on a line start, so a `+`-prefixed import or package line matches nothing.
+         */
+        private val DIFF_EXTENSIONS = setOf("patch", "diff")
 
         /**
          * Single-segment package roots a committed file may import.
@@ -188,8 +212,60 @@ class PersonalBoundaryTest {
 
         private val IMPORT_RE = Regex("""(?:^|\\n|")\s*import\s+([a-z][A-Za-z0-9_]*)\.""", RegexOption.MULTILINE)
 
+        /**
+         * A Kotlin `package` declaration, which is how quoted private *source* announces itself.
+         *
+         * Anchored at *both* ends, unlike [IMPORT_RE], which is what makes it usable over `.md`: prose
+         * in this repository says "package still lists only its sub-packages" and "package in that
+         * environment", and a rule that stopped at the identifier would report both. The trailing
+         * lookahead omits the `"` the leading alternation carries, because with it quoted two-word
+         * phrases in test sources match as well. The cost is a `package` line that is the *last* line
+         * of an `#afield/file-inline` string, which no real program has.
+         */
+        private val PACKAGE_RE = Regex(
+            """(?:^|\\n|")[ \t]*package[ \t]+([a-z][A-Za-z0-9_]*)(?:\.[A-Za-z0-9_]+)*[ \t]*;?[ \t]*(?=$|\\n)""",
+            RegexOption.MULTILINE,
+        )
+
         /** A path reaching *inside* the private tree: the root plus at least one more segment. */
         private val DEEP_PERSONAL_RE = Regex("""src/personal/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+""")
+
+        /**
+         * A diff's payload with its line markers removed: one leading `+`, `-`, `<` or `>` per line.
+         * A leading space is already absorbed by the rules' own whitespace. Headers survive well
+         * enough: `--- a/x` becomes `-- a/x`, and [DEEP_PERSONAL_RE] is unanchored.
+         */
+        private fun undiffed(text: String): String =
+            text.lineSequence().joinToString("\n") { line ->
+                if (line.isNotEmpty() && line[0] in "+-<>") line.substring(1) else line
+            }
+
+        /**
+         * What the rules read: the file, plus — for a diff — its de-marked payload. The union rather
+         * than a replacement, so no shape the raw text would have matched can be lost to the
+         * transformation.
+         */
+        private fun scannableText(file: File): String {
+            val text = file.readText()
+            return if (file.extension in DIFF_EXTENSIONS) text + "\n" + undiffed(text) else text
+        }
+
+        /**
+         * The three rules as functions over text, so the corpus assertions and the fixture assertion
+         * run the same code. A mechanism exercised only by the population it happens to have is
+         * untested whenever that population is empty, which is the diff surface's usual state.
+         */
+        private fun offendingImports(text: String): Set<String> =
+            IMPORT_RE.findAll(text).map { it.groupValues[1] }.filterNot { it in PUBLIC_IMPORT_ROOTS }.toSet()
+
+        /** Package declarations in [text] whose root [PUBLIC_IMPORT_ROOTS] does not permit. */
+        private fun offendingPackages(text: String): Set<String> =
+            PACKAGE_RE.findAll(text).map { it.groupValues[1] }.filterNot { it in PUBLIC_IMPORT_ROOTS }.toSet()
+
+        /** Paths in [text] reaching inside the private tree that [ALLOWED_PERSONAL_REFERENCES] does not excuse. */
+        private fun offendingCitations(text: String): Set<String> =
+            DEEP_PERSONAL_RE.findAll(text).map { it.value.trimEnd('.', '-', '/') }
+                .filterNot { it in ALLOWED_PERSONAL_REFERENCES }.toSet()
 
         private fun repoRoot(): File {
             var dir = File(System.getProperty("user.dir")).absoluteFile
@@ -207,7 +283,7 @@ class PersonalBoundaryTest {
                     .filter { it.isFile && it.extension in SCAN_EXTENSIONS }
                     .map { file ->
                         val rel = repo.toPath().relativize(file.toPath()).toString().replace('\\', '/')
-                        rel to file.readText()
+                        rel to scannableText(file)
                     }
                     .toList()
             }.filterNot { (rel, _) -> rel.startsWith(PERSONAL_ROOT) }
@@ -224,6 +300,10 @@ class PersonalBoundaryTest {
     fun `the corpus this guard reasons about is really there`() {
         val files = scanned()
         println("PersonalBoundaryTest: scanned ${files.size} committed files across ${SCAN_ROOTS.size} roots")
+        // Reported, not floored: a clean checkout usually holds no diff at all. What keeps the diff
+        // surface from being an untested absence is the fixture assertion at the bottom of this class.
+        val diffs = files.count { (rel, _) -> rel.substringAfterLast('.') in DIFF_EXTENSIONS }
+        println("PersonalBoundaryTest: $diffs of them diff-shaped (no floor; see the fixture assertion)")
         assertTrue(
             files.size >= MIN_SCANNED_FILES,
             "scanned only ${files.size} files, floor $MIN_SCANNED_FILES — a SCAN_ROOTS entry has moved, " +
@@ -240,15 +320,8 @@ class PersonalBoundaryTest {
      */
     @Test
     fun `no committed file imports a package outside the public roots`() {
-        val offenders = mutableMapOf<String, MutableSet<String>>()
-        for ((rel, text) in scanned()) {
-            for (m in IMPORT_RE.findAll(text)) {
-                val root = m.groupValues[1]
-                if (root !in PUBLIC_IMPORT_ROOTS) {
-                    offenders.getOrPut(rel) { mutableSetOf() } += root
-                }
-            }
-        }
+        val offenders = scanned().associate { (rel, text) -> rel to offendingImports(text) }
+            .filterValues { it.isNotEmpty() }
         val unexcused = offenders.filterKeys { it !in GRANDFATHERED }
         assertTrue(
             unexcused.isEmpty(),
@@ -274,15 +347,8 @@ class PersonalBoundaryTest {
      */
     @Test
     fun `no committed file cites a path inside the private tree`() {
-        val offenders = mutableMapOf<String, MutableSet<String>>()
-        for ((rel, text) in scanned()) {
-            for (m in DEEP_PERSONAL_RE.findAll(text)) {
-                val cited = m.value.trimEnd('.', '-', '/')
-                if (cited !in ALLOWED_PERSONAL_REFERENCES) {
-                    offenders.getOrPut(rel) { mutableSetOf() } += cited
-                }
-            }
-        }
+        val offenders = scanned().associate { (rel, text) -> rel to offendingCitations(text) }
+            .filterValues { it.isNotEmpty() }
         val unexcused = offenders.filterKeys { it !in GRANDFATHERED }
         assertTrue(
             unexcused.isEmpty(),
@@ -312,15 +378,103 @@ class PersonalBoundaryTest {
         val files = scanned().toMap()
         val stale = GRANDFATHERED.keys.filter { path ->
             val text = files[path] ?: return@filter true
-            val importsPrivate = IMPORT_RE.findAll(text).any { it.groupValues[1] !in PUBLIC_IMPORT_ROOTS }
-            val citesPrivate = DEEP_PERSONAL_RE.findAll(text)
-                .any { it.value.trimEnd('.', '-', '/') !in ALLOWED_PERSONAL_REFERENCES }
-            !importsPrivate && !citesPrivate
+            offendingImports(text).isEmpty() &&
+                offendingPackages(text).isEmpty() &&
+                offendingCitations(text).isEmpty()
         }
         assertTrue(
             stale.isEmpty(),
             "GRANDFATHERED excuses violations that no longer exist — delete these entries:\n" +
                 stale.sorted().joinToString("\n") { "  $it" },
+        )
+    }
+
+    /**
+     * No committed file may **declare** a package that is not a known public root.
+     *
+     * The mirror of the import assertion, catching what that one structurally cannot: an import says
+     * a file *depends* on private work, a package declaration says it *is* private work. Quoted private
+     * source carries its own `package` line, and may import nothing outside `afield.*`, in which case
+     * every other assertion here passes over the complete text of a private file. The regex, and why
+     * prose does not trip it, is at [PACKAGE_RE].
+     */
+    @Test
+    fun `no committed file declares a package outside the public roots`() {
+        val offenders = scanned().associate { (rel, text) -> rel to offendingPackages(text) }
+            .filterValues { it.isNotEmpty() }
+        val unexcused = offenders.filterKeys { it !in GRANDFATHERED }
+        assertTrue(
+            unexcused.isEmpty(),
+            buildString {
+                appendLine("committed files declare packages outside PUBLIC_IMPORT_ROOTS:")
+                unexcused.toSortedMap().forEach { (path, roots) ->
+                    appendLine("  $path → ${roots.sorted().joinToString(", ")}")
+                }
+                appendLine()
+                appendLine("A file in a private package is private work in a tracked location, whichever")
+                appendLine("direction its imports point. If this is a source file, move it under afield. and")
+                appendLine("rename its package to match. If it is a patch or a quotation of private source,")
+                appendLine("the code does not belong in a committed file: state the finding against afield.*")
+                appendLine("and leave the private source where it is.")
+            },
+        )
+    }
+
+    /**
+     * The diff surface, proved on a synthetic patch rather than on the corpus, which usually holds no
+     * diff at all — so every absence the corpus assertions report over diffs is otherwise free.
+     *
+     * Asserted in **both** directions: the raw text hides the private import and package behind their
+     * `+` markers, and [undiffed] uncovers both. Asserting only the second half would let a regression
+     * that stopped de-marking pass.
+     *
+     * The fixture is assembled from fragments because this file is itself in the corpus `scanned()`
+     * walks: a literal package declaration, import, or deep private path here would be a violation of
+     * this file.
+     */
+    @Test
+    fun `a diff cannot hide private code behind its line markers`() {
+        val pkg = "pack" + "age"
+        val imp = "imp" + "ort"
+        // Not on PUBLIC_IMPORT_ROOTS, and names nothing on anybody's disk.
+        val leaf = "parlour"
+        val inside = PERSONAL_ROOT + "kotlin/$leaf/Rooms.kt"
+        val patch = listOf(
+            "dif" + "f --git a/$inside b/$inside",
+            "--- a/$inside",
+            "+++ b/$inside",
+            "@@ -1,3 +1,4 @@",
+            "+$pkg $leaf",
+            "+$imp $leaf.geometry.Wall",
+            "-$imp afield.graphics.FLine",
+            "+val w = Wall()",
+        ).joinToString("\n")
+
+        assertTrue(
+            DIFF_EXTENSIONS.all { it in SCAN_EXTENSIONS },
+            "DIFF_EXTENSIONS names $DIFF_EXTENSIONS, which SCAN_EXTENSIONS does not scan",
+        )
+        assertEquals(
+            emptySet(), offendingImports(patch),
+            "the raw patch already reports its private import, so the fixture no longer shows why " +
+                "de-marking is needed",
+        )
+        assertEquals(
+            emptySet(), offendingPackages(patch),
+            "the raw patch already reports its private package, so the fixture no longer shows why " +
+                "de-marking is needed",
+        )
+        assertEquals(
+            setOf(leaf), offendingImports(undiffed(patch)),
+            "de-marking no longer exposes an import on an added line",
+        )
+        assertEquals(
+            setOf(leaf), offendingPackages(undiffed(patch)),
+            "de-marking no longer exposes a package declaration on an added line",
+        )
+        assertEquals(
+            setOf(PERSONAL_ROOT + "kotlin/$leaf"), offendingCitations(patch),
+            "a diff header naming a file inside the private tree is no longer reported as a citation",
         )
     }
 
