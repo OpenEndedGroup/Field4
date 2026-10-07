@@ -87,10 +87,11 @@ class StackSLEvolutionTest {
     }
 
     @Test
-    fun `the watchmaker is never shown the held-out layout check`() {
+    fun `the watchmaker is never shown the held-out layout check or the target's name`() {
         val e = evolution().step(1)
         val text = StackSLWatchmakerPrompt.round(e.request())
         assertTrue("layout" !in text.lowercase() && "kappa" !in text.lowercase(), text)
+        assertTrue("spot" !in text.lowercase(), "the target's name says what to draw: $text")
     }
 
     @Test

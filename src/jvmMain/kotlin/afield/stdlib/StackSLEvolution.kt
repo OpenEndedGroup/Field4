@@ -289,7 +289,7 @@ class StackSLEvolution(
             val columns = StackSLProposals.tokenColumns(program.text)
             val chosen = if (literals == null) wires.map { it.index } else {
                 val wanted = literals.mapNotNull { columns.getOrNull(it) }.toSet()
-                wires.filter { (it.column ?: -1) in wanted || ((it.column ?: -1) - 1) in wanted }.map { it.index }
+                wires.filter { it.column in wanted }.map { it.index }
             }
             require(chosen.isNotEmpty()) { "no literal to move" + if (literals != null) " at token(s) $literals" else "" }
             StackSLFit.fit(
@@ -341,7 +341,7 @@ class StackSLEvolution(
     fun askWatchmaker(proposals: Int = settings.proposals, parents: Int = settings.parents): List<StackSLProposalOutcome> {
         val model = watchmaker ?: throw IllegalStateException("no watchmaker: set evolution.watchmaker first")
         ensureStartedQuietly()
-        val leaders = ranked.take(parents)
+        val leaders = distinctLeaders(parents)
         val reply = timed("watchmaker") { model.propose(request(leaders, proposals)) }
         return absorb(reply, leaders)
     }
@@ -357,12 +357,12 @@ class StackSLEvolution(
                     .onFailure { notes += "gen $generation: watchmaker failed: ${(it.cause ?: it).message}" }
             }
         }
-        if (pending != null) return
+        if (pending != null || lastAsked == generation) return
         val due = (s.watchmakerEvery > 0 && generation % s.watchmakerEvery == 0) ||
             (s.watchmakerOnStall > 0 && sinceImprovement >= s.watchmakerOnStall && generation - lastAsked >= s.watchmakerOnStall)
         if (!due) return
         lastAsked = generation
-        val leaders = ranked.take(s.parents)
+        val leaders = distinctLeaders(s.parents)
         val request = timed("watchmaker") { request(leaders, s.proposals) }
         pendingFor = leaders
         pending = asker.submit<StackSLProposalReply> { model.propose(request) }
@@ -385,8 +385,27 @@ class StackSLEvolution(
         return outcomes
     }
 
+    /**
+     * The best [n] programs that score differently, for the watchmaker to see.
+     *
+     * Not simply the top [n]: a converged island's top four are one program and its neutral
+     * variants at an identical score, which is one picture shown four times. The first live rounds
+     * on `rings` did exactly that.
+     */
+    fun distinctLeaders(n: Int): List<Individual<StackSLProgram>> {
+        val all = ranked
+        val picked = ArrayList<Individual<StackSLProgram>>()
+        val scores = HashSet<Long>()
+        for (ind in all) {
+            if (picked.size >= n) break
+            if (scores.add(Math.round(ind.fitness * 1e4))) picked += ind
+        }
+        for (ind in all) if (picked.size < n && ind !in picked) picked += ind
+        return picked
+    }
+
     /** What the watchmaker is shown. Public so a person can read exactly what a model would see. */
-    fun request(leaders: List<Individual<StackSLProgram>> = ranked.take(settings.parents), proposals: Int = settings.proposals): StackSLProposalRequest {
+    fun request(leaders: List<Individual<StackSLProgram>> = distinctLeaders(settings.parents), proposals: Int = settings.proposals): StackSLProposalRequest {
         ensureStartedQuietly()
         val t = target
         val st = stage
@@ -429,10 +448,10 @@ class StackSLEvolution(
         return montage(panels, columns = min(panels.size, 4), cellSide = side + 8)
     }
 
-    /** What the watchmaker sees: the target and [programs] at 64 px, labelled `target`, `#1`, `#2`... */
+    /** What the watchmaker sees: the target and [programs] at 64 px, labelled `T`, `#1`, `#2`... */
     fun thumbnailSheet(programs: List<StackSLProgram>, side: Int = THUMBNAIL): Img {
         val panels = ArrayList<Pair<String, Img>>()
-        panels += "target" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width)).let {
+        panels += "T" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width)).let {
             if (it.width == side) it else it.resize(side, side)
         }
         programs.forEachIndexed { i, p ->

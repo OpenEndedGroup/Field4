@@ -34,7 +34,8 @@ import kotlin.math.roundToInt
  *    program, its score and its per-region scores; the target's colours as numbers; and what
  *    happened to the last round's proposals. That is a few hundred words and one picture.
  *  - **Never:** [StackSLLayout.layoutAgreement], the held-out check. A watchmaker shown the referee's
- *    score is being trained by the referee.
+ *    score is being trained by the referee. Nor the target's name: the built-in ones (`spot`,
+ *    `rings`) say what to draw, and the first live round, told `spot`, drew a disc at once.
  *
  * ### What comes back
  *
@@ -160,6 +161,15 @@ object StackSLWatchmakerPrompt {
             .joinToString("").trim()
     }
 
+    /** The guide's section(s) mentioning [word] in backticks, or the section titles when [word] is blank. */
+    fun lookup(word: String): String {
+        val sections = guide.split(Regex("(?m)^(?=## )"))
+        val w = word.trim()
+        if (w.isEmpty()) return "Sections: " + sections.map { it.lineSequence().first().removePrefix("## ") }.joinToString(", ")
+        val hits = sections.filter { it.contains("`$w`") || it.lineSequence().first().contains(w, ignoreCase = true) }
+        return hits.joinToString("\n").ifBlank { "No section mentions `$w`." }.take(6000)
+    }
+
     /** Everything that is the same on every call. */
     val stable: String by lazy {
         """
@@ -208,7 +218,9 @@ object StackSLWatchmakerPrompt {
 
     /** One round's request. */
     fun round(r: StackSLProposalRequest): String = buildString {
-        appendLine("Target: '${r.targetName}', the first picture (labelled target). Its colours: ${r.targetColours}.")
+        // Not the target's name: `spot` or `rings` would tell the model what to draw, and a search
+        // that is told the answer is not being measured. It gets the picture and its colours.
+        appendLine("The target is the first picture (labelled T). Its colours: ${r.targetColours}.")
         appendLine("Metric: ${r.metric}. Generation ${r.generation}; the best has not improved for ${r.stalled} generation(s).")
         if (r.caseLabels.isNotEmpty()) appendLine("Region scores, in order: ${r.caseLabels.joinToString(" ")}.")
         appendLine()
