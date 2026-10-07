@@ -57,7 +57,6 @@ Thirteen saves of a three-box document, into a temp directory, driven by the rea
 ```diffstatic {data-lang=text}
 after three saves of a three-box document:
   AGENTS.md
-  README.md
   alpha_code_.kt
   beta_code_.kt
   beta_fragment_.glsl
@@ -92,7 +91,7 @@ uv run --project . --group backdoor python tools/run_field_tests.py --id example
 which is what produced the two blocks above:
 `src/jvmMain/kotlin/afield/examples/DocumentOnDiskSmokeTest.kt:35#object DocumentOnDiskSmokeTest`.
 
-Two things in that listing are not about backups. `AGENTS.md` and `README.md` are seeded into any
+Two things in that listing are not about backups. `AGENTS.md` is seeded into any
 new document directory from `templates/` by
 `src/jvmMain/kotlin/afield/saving.kt:1682#private fun ensureAgentGuides(workspaceDir: String)`, once,
 without overwriting a file you have edited. And there is no `operations.yaml` or `transcript.edn`
