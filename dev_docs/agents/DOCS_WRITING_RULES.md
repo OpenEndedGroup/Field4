@@ -65,7 +65,11 @@ This file is about what goes on a page and how it reads.
    pitched page whose own analysis listens back to its render (YIN pitch tracking on
    `chain_drawn_score.md`, `chain_drawn_morph.md`) may keep a plain synth voice such as
    `patVoice`, because the analysis needs a clean, detached, single-pitch signal (Marc,
-   2026-10-03).
+   2026-10-03). A page that says its output cannot be captured ("realtime only", "needs
+   hardware") has that claim checked against the build tasks and tests: if one already produces
+   the output, publish it through the runner; if the claim is wrong, fix the page or the code
+   rather than leave the gap (Marc, 2026-10-07; `pat_spatial.md` said this while
+   `./gradlew headTrackedDemo` wrote a WAV).
 
 ## Where things live
 
