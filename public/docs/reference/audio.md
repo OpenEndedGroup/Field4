@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-20 source file(s), 916 public symbol(s), 313 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+23 source file(s), 955 public symbol(s), 326 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2164,6 +2164,133 @@ row count, the embedding row count and the manifest's `num_chunks` / `embedding_
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">tsne3dPoints</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/essentiaAnalysis/#L465) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">subclipAt</span><span class="p">(</span><span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sound2VecAudioSubclip</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/essentiaAnalysis/#L468) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">subclipsOverlapping</span><span class="p">(</span><span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">endSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Sound2VecAudioSubclip</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/essentiaAnalysis/#L471) |  |
+
+## Loris.kt { #loris-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/loris/Loris.kt` — [read the source](source/jvmMain/afield/stdlib/loris/Loris/)
+
+**Used in:** [Loris: partial tracks and resynthesis](../loris.md)
+
+### LorisOptions { #loris-kt-lorisoptions }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LorisOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">resolutionHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">windowWidthHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">80.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">hopSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.005</span><span class="p">,</span> <span class="k">val</span> <span class="n">frequencyDriftHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">amplitudeFloorDb</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">-</span><span class="mf">60.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">minimumFrequencyHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L14)
+
+Loris's independent resolution, window and tracking controls, expressed in Hz/seconds/dB.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">resolutionHz</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">windowWidthHz</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hopSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">frequencyDriftHz</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">amplitudeFloorDb</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minimumFrequencyHz</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### LorisBreakpoint { #loris-kt-lorisbreakpoint }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LorisBreakpoint</span><span class="p">(</span><span class="k">val</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">frequencyHz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">amplitude</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">phaseRadians</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">bandwidth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L30)
+
+Irregular native timestamp; bandwidth is a noise-energy parameter, not confidence. Phase is radians.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">frequencyHz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">amplitude</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">phaseRadians</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">bandwidth</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### LorisPartial { #loris-kt-lorispartial }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LorisPartial</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LorisBreakpoint</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L43)
+
+ID identifies this analysis track; label is Loris's optional channel label, usually zero.
+
+### LorisModel { #loris-kt-lorismodel }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LorisModel</span><span class="p">(</span><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">frameCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">partials</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LorisPartial</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L51)
+
+Programmable partial trajectories. Native timestamps and phase are retained without frame pooling.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L52) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">transformed</span><span class="p">(</span><span class="n">timeScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">frequencyScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">bandwidthScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LorisModel</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L61) | Transform envelopes; audition phase/transient behavior rather than assuming exact preservation. |
+
+### LorisProvenance { #loris-kt-lorisprovenance }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LorisProvenance</span><span class="p">(</span><span class="k">val</span> <span class="n">requestHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">executableSha256</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">upstreamRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">operation</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">LorisOptions</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">cacheHit</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L74)
+
+Identity includes exact binary request and executable bytes; results survive subsequent box evaluation.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">upstreamRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">operation</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">LorisOptions</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">cacheHit</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code> |  |
+
+### LorisResult { #loris-kt-lorisresult }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LorisResult</span><span class="p">(</span><span class="k">val</span> <span class="n">model</span><span class="p">:</span> <span class="nc">LorisModel</span><span class="p">,</span> <span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">provenance</span><span class="p">:</span> <span class="nc">LorisProvenance</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L78)
+
+Samples remain at the input rate; no normalization, clipping or resampling is applied.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">peak</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L79) |  |
+
+### LorisNative { #loris-kt-lorisnative }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">LorisNative</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L83)
+
+Lazy optional executable discovery; ordinary Field startup/build/tests never require Loris.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">REVISION</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L84) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">executable</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L86) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L91) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L92) |  |
+
+### LorisClient { #loris-kt-lorisclient }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">LorisClient</span><span class="p">(</span><span class="k">val</span> <span class="n">cacheDirectory</span><span class="p">:</span> <span class="nc">Path</span> <span class="o">=</span> <span class="nc">Path</span><span class="p">.</span><span class="nf">of</span><span class="p">(</span><span class="s">&quot;build/field-loris/cache&quot;</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">timeoutSeconds</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">180</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L97)
+
+Offline process boundary with durable binary caching and a bounded timeout; call async from a box.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">timeoutSeconds</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">analyzeAsync</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">LorisOptions</span> <span class="o">=</span> <span class="nc">LorisOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">onProgress</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">LorisResult</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L101) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">analyzeWavAsync</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">LorisOptions</span> <span class="o">=</span> <span class="nc">LorisOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">onProgress</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">LorisResult</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L108) | WAV convenience uses the existing Field loader's explicit LEFT-channel policy. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">analyze</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">LorisOptions</span> <span class="o">=</span> <span class="nc">LorisOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">onProgress</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">LorisResult</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L122) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">synthesizeAsync</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">LorisModel</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">LorisResult</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L134) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">synthesize</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">LorisModel</span><span class="p">)</span><span class="p">:</span> <span class="nc">LorisResult</span></code>](source/jvmMain/afield/stdlib/loris/Loris/#L137) |  |
+
+## LorisDocs.kt { #lorisdocs-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/loris/LorisDocs.kt` — [read the source](source/jvmMain/afield/stdlib/loris/LorisDocs/)
+
+### LorisDocs { #lorisdocs-kt-lorisdocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">LorisDocs</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L14)
+
+Reproducible real-audio documentation fixture; never substitutes synthetic tracks for Loris.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">sourcePath</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L15) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">folder</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L16) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">options</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L17) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">LorisResult</span><span class="p">,</span> <span class="nc">LorisResult</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L21) | Analyze committed public-domain film dialogue; render the unedited and transformed models. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">comparisonHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L43) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">transformedHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L54) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">whirlpoolHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L58) |  |
+
+## LorisStudy.kt { #lorisstudy-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/loris/LorisStudy.kt` — [read the source](source/jvmMain/afield/stdlib/loris/LorisStudy/)
+
+### Top-level functions { #lorisstudy-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">LorisModel</span><span class="p">.</span><span class="nf">spectralWhirlpool</span><span class="p">(</span><span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">LorisModel</span></code>](source/jvmMain/afield/stdlib/loris/LorisStudy/#L10) | Example gesture: smooth local ±18-semitone sweeps, 12 Hz amplitude shutters and noisy peaks. |
 
 ## osc.kt { #osc-kt }
 

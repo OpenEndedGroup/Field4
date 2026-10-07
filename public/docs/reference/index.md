@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**16406 public symbols across 470 source files**, 9715 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**16456 public symbols across 474 source files**, 9731 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -21,10 +21,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 11 | 635 | 432 (68%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 610 | 404 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 19 | 570 | 492 (86%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 20 | 581 | 495 (85%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 40 | 1424 | 676 (47%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 37 | 1240 | 672 (54%) | Musical time, as a value. |
-| [Audio](audio.md) | 20 | 916 | 313 (34%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 23 | 955 | 326 (34%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 105 | 2852 | 1267 (44%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 27 | 381 | 266 (69%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -255,6 +255,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [LineNotes.kt](workspace.md#linenotes-kt) | Workspace | 9 | 9 |  |  |
 | [LineNoteTools.kt](workspace.md#linenotetools-kt) | Workspace | 11 | 5 |  |  |
 | [LiveStudy.kt](workspace.md#livestudy-kt) | Workspace | 54 | 23 |  | [Studies](../studies.md) |
+| [Loris.kt](audio.md#loris-kt) | Audio | 30 | 10 |  | [Loris: partial tracks and resynthesis](../loris.md) |
+| [LorisDocs.kt](audio.md#lorisdocs-kt) | Audio | 8 | 2 |  |  |
+| [LorisStudy.kt](audio.md#lorisstudy-kt) | Audio | 1 | 1 |  |  |
+| [LorisVisualizer.kt](visualization.md#lorisvisualizer-kt) | Visualization | 11 | 3 |  | [Loris: partial tracks and resynthesis](../loris.md) |
 | [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | [Marf.kt](patterns.md#marf-kt) | Patterns | 110 | 67 | Function generation over the pattern language: stored material, a trajectory that reads it, and the timing of that traversal, kept as three separate patterns. | [A pattern as a function generator](../marf.md) |
 | [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
