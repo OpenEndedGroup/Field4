@@ -129,7 +129,7 @@ suspend fun exportToDocumentation(
             mainDocument += "\n${preamble.trim()}\n"
         }
         var index = 0
-        val ff = format(it.first, it.first.code, baseDirectory + "/" + subDirectory) {
+        val ff = format(it.first, it.first.code.orEmpty(), baseDirectory + "/" + subDirectory) {
             val p = Path(baseDirectory) / Path(subDirectory) / Path("../assets")
             p.createDirectories()
             p.absolutePathString() + "/o_${(index++).toString().padStart(4, '0')}_${abs(docName.hashCode())}_"

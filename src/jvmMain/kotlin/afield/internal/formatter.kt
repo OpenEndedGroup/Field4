@@ -64,7 +64,7 @@ fun joinAssignmentBreaks(code: String): String {
         if (!closes || body.any { "\"\"\"" in it } || "\"\"\"" in next) { i++; continue }
         val joined = head.trimEnd() + " " + next.trim()
         val dedented = body.map { if (it.isBlank()) it else it.removePrefix("    ") }
-        val closing = lines[end!!].removePrefix("    ")
+        val closing = lines[end].removePrefix("    ")
         val replacement = listOf(joined) + dedented + closing
         for (k in i..end) lines.removeAt(i)
         lines.addAll(i, replacement)

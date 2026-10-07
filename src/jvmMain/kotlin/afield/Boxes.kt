@@ -307,7 +307,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
     var viewport by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
     var name by Delegation<String>(defaultValue = { "" }, hook = ::onNameChange)
-    var code by Delegation<String>()
+    /** No `code` property on an untouched box is distinct from an explicitly empty script. */
+    var code by Delegation<String?>()
     var customization by Delegation<String>()
 
     /** This receiver as an explicit [Box] value, useful where the implicit box context is hidden. */
@@ -802,10 +803,14 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             }
 
             actionTable["-format-kotlin"] = { boxes ->
+                var formatted = 0
                 boxes.forEach {
-                    it.code = formatKotlinCode(it.code)
+                    it.code?.let { source ->
+                        it.code = formatKotlinCode(source)
+                        formatted++
+                    }
                 }
-                notify("Formatted 'code' as Kotlin on ${boxes.size}")
+                notify("Formatted 'code' as Kotlin on $formatted box${if (formatted == 1) "" else "es"}")
             }
 
             actionTable["-delete-box"] = { boxes ->

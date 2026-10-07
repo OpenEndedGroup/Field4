@@ -208,7 +208,7 @@ fun Box.macro_ai(args: List<String>, containingFunction: ContainingFunction?): I
     val atticContext = stripAiGenMetadata(cleanedAttic).trim()
 
     // Get preview-expanded code with this ai() macro skipped and the containing function removed
-    val rawCode = this.code
+    val rawCode = this.code.orEmpty()
     val codeWithoutFunction = removeFunctionByName(rawCode, funcName)
     val expandedCode = try {
         this.ki.applyMacros(this, codeWithoutFunction, skipMacros = setOf("ai"), previewOnly = true)
@@ -480,7 +480,7 @@ fun Box.resolvePatternRewriteAi(req: PatternRewrite.AiRequest) {
     if (PatternRewrite.atticHasAiBlock(attic, req.key)) return   // cache hit — no model call
 
     val generated = try {
-        val thread = AiMacroBridge.getOrCreateThread(this.id, this.code)
+        val thread = AiMacroBridge.getOrCreateThread(this.id, this.code.orEmpty())
         val ctx = ToolExecutionContext(listDefinitions = { ListDefinitionsResult(definitions = emptyList()) })
         val prompt = buildString {
             appendLine(req.prompt)

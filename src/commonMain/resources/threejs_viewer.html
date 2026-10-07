@@ -1130,9 +1130,14 @@ function typedArrayCtor(type) {
     return Float32Array;
 }
 
+/**
+ * Always a copy. A description's arrays are typed views of its buffer response, and handing one to a
+ * BufferAttribute uncopied would let the explode, which writes positions in place, rewrite the message
+ * the viewer keeps (`wireState.base`) to redraw after a style change.
+ */
 function typedArrayFromSpec(spec, fallbackType = 'Float32Array') {
     const Ctor = typedArrayCtor(spec?.type || fallbackType);
-    return spec?.array instanceof Ctor ? spec.array : new Ctor(spec?.array || []);
+    return new Ctor(spec?.array || []);
 }
 
 function makeDynamicAttribute(spec, fallbackType = 'Float32Array') {
@@ -1661,10 +1666,7 @@ function interactiveSlotOptions(kind, hoverColor) {
                 alpha: { itemSize: 1, fill: 1 }
             },
             makeMaterial: () => makeInteractiveLineMaterial(hoverColor),
-            configureObject: (object, material) => {
-                object.userData.interactiveMat = material;
-                if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
-            },
+            configureObject: (object, material) => { object.userData.interactiveMat = material; },
             afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
         };
     }
@@ -3357,7 +3359,14 @@ function addPayloadDrawables(list) {
             },
             // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
             // hovering solid has to carry it exactly as an interactive FLine fill does.
-            configureObject: (object, material) => { object.userData.interactiveMat = material; }
+            //
+            // A part's own x-ray opacity (ThreePartAppearance.xrayOpacity) belongs here too. It sat in the
+            // interactive-lines options from 2026-10-04 to 10-07, where `d` is not defined: every
+            // clickable stroked FLine threw on build, and no part's x-ray opacity was ever applied.
+            configureObject: (object, material) => {
+                object.userData.interactiveMat = material;
+                if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
+            }
         });
         if (!slot) return;
 
@@ -5699,6 +5708,215 @@ function applyPickThresholds(bounds) {
 // `const raycaster`. `null` bounds is the legacy pair, exactly.
 applyPickThresholds(null);
 
+// [viewer-region wire-payload] BEGIN
+// What arrives on the websocket, made into what the rest of the viewer reads. `ThreeWire.kt` is the
+// other half.
+//
+//  * A `three/geometry` message is a description: every numeric array in it is `{array: [], buffer: i}`,
+//    and `buffers` says where entry `i` is in one binary response from `/three-buffers`. Binding turns
+//    each into a typed view of that response — no parsing, and no copy. A solid's exact topology
+//    (`inspector.parts`) becomes plain arrays instead, as JSON used to give it.
+//  * Part styles arrive beside the geometry (`partAppearance`) and in `three/appearance` messages, and
+//    are applied here exactly as `applyPartAppearance` (ThreePartAppearance.kt) applies them.
+//
+// Both replaced sending the whole scene as JSON, which on 2026-10-07 froze a house host for twenty
+// minutes over a style change to 224 panels. Pure — no DOM, no THREE, no fetch — so
+// `ThreeGeometryWireTest` runs it on the server's own messages and bytes.
+const WIRE_BUFFER_TYPES = { Float32Array, Float64Array, Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array };
+
+/**
+ * Point a description's references at [buffer], an ArrayBuffer holding its `/three-buffers` response.
+ * Mutates and returns the payload; a payload without `buffers` is returned as it is.
+ */
+function bindWireBuffers(payload, buffer) {
+    const table = payload && payload.buffers;
+    if (!table) return payload;
+    if (!buffer || buffer.byteLength !== table.bytes) {
+        throw new Error(`geometry buffers are ${buffer ? buffer.byteLength : 0} bytes; the description says ${table.bytes}`);
+    }
+    const view = (i) => {
+        const entry = table.entries[i];
+        const Ctor = entry && WIRE_BUFFER_TYPES[entry.type];
+        if (!Ctor) throw new Error(`geometry buffer ${i} has no known type`);
+        return new Ctor(buffer, entry.offset, entry.count);
+    };
+    const bind = (geometry) => {
+        if (!geometry) return;
+        Object.values(geometry.attributes || {}).forEach((spec) => {
+            if (!spec || !Number.isInteger(spec.buffer)) return;
+            spec.array = view(spec.buffer);
+            delete spec.buffer;
+        });
+        const index = geometry.index;
+        if (index && Number.isInteger(index.buffer)) {
+            index.array = view(index.buffer);
+            delete index.buffer;
+        }
+    };
+    bind(payload.lines);
+    bind(payload.fills);
+    bind(payload.points);
+    (payload.interactive || []).forEach((obj) => { bind(obj.lines); bind(obj.fills); bind(obj.points); });
+    (payload.drawables || []).forEach((d) => bind(d && d.geometry));
+    // Plain arrays, not typed views: the feature code slices and compares these doubles, and puts pieces
+    // of them in records that go back to Field as JSON.
+    Object.values((payload.inspector && payload.inspector.parts) || {}).forEach((part) => {
+        const refs = part && part.buffers;
+        if (!refs) return;
+        ['positions', 'indices', 'faces'].forEach((key) => {
+            if (Number.isInteger(refs[key])) part[key] = Array.from(view(refs[key]));
+        });
+        if (Number.isInteger(refs.edges)) {
+            const flat = view(refs.edges);
+            const edges = new Array(flat.length >> 1);
+            for (let k = 0; k < edges.length; k += 1) edges[k] = [flat[2 * k], flat[2 * k + 1]];
+            part.edges = edges;
+        }
+        delete part.buffers;
+    });
+    delete payload.buffers;
+    return payload;
+}
+
+/** [parts] applied to a payload's drawables: `applyPartAppearance` in ThreePartAppearance.kt, line for line. */
+function partAppearancePayload(payload, parts) {
+    const styles = parts || {};
+    if (!payload || !Array.isArray(payload.drawables) || !payload.drawables.length || !Object.keys(styles).length) return payload;
+    return {...payload, drawables: payload.drawables.map((d) => {
+        const style = d && Object.prototype.hasOwnProperty.call(styles, d.id) ? styles[d.id] : null;
+        const position = style && d.geometry && d.geometry.attributes ? d.geometry.attributes.position : null;
+        if (!position || !position.array) return d;
+        const color = new Float32Array(Math.floor(position.array.length / 3) * 3);
+        for (let i = 0; i < color.length; i += 3) {
+            color[i] = style.color[0];
+            color[i + 1] = style.color[1];
+            color[i + 2] = style.color[2];
+        }
+        return {
+            ...d,
+            geometry: {...d.geometry, attributes: {...d.geometry.attributes,
+                color: {itemSize: 3, array: color, type: 'Float32Array', normalized: false}}},
+            style: {...(d.style || {}), unlit: !!style.unlit,
+                xrayOpacity: Number.isFinite(style.xrayOpacity) ? style.xrayOpacity : null}
+        };
+    })};
+}
+
+/**
+ * The wire state after one message, and the payload to draw (`null` for nothing to draw).
+ *
+ * `base` is the last geometry message, bound, and what is drawn is always `base` with `parts` applied,
+ * so one style change never compounds onto the colours another wrote. A `three/appearance` message
+ * merges into `parts`, or replaces them; one for a revision this view is not showing is stale and
+ * dropped, because the next geometry message brings the current styles with it. One flagged
+ * `beforeGeometry` is a replay's: it is held for the geometry message that follows it.
+ */
+function receiveWireMessage(state, message) {
+    const current = state || {base: null, parts: {}, nextParts: null};
+    if (!message) return {state: current, draw: null};
+    if (message.type === 'three/appearance') {
+        const revision = message.revision ?? null;
+        const incoming = {...(message.parts || {})};
+        if (message.beforeGeometry) return {state: {...current, nextParts: {revision, parts: incoming}}, draw: null};
+        if (!current.base || revision !== (current.base.revision ?? null)) return {state: current, draw: null};
+        const parts = message.replace ? incoming : {...current.parts, ...incoming};
+        return {state: {...current, parts}, draw: partAppearancePayload(current.base, parts)};
+    }
+    if (message.type !== 'three/geometry') return {state: current, draw: null};
+    const next = current.nextParts;
+    const parts = next && next.revision === (message.revision ?? null) ? next.parts : {...(message.partAppearance || {})};
+    return {state: {base: message, parts, nextParts: null}, draw: partAppearancePayload(message, parts)};
+}
+
+/** A geometry message that will never be drawn — superseded before its buffers came — takes its replay styles with it. */
+function wireAbandon(state) {
+    return state ? {...state, nextParts: null} : state;
+}
+
+/**
+ * Drop what a later geometry message makes moot: everything queued before the last one, except the
+ * flagged styles sent immediately ahead of it, which are its own. A slider that republishes geometry
+ * thirty times a second must cost one buffer fetch, not thirty in a row.
+ */
+function wireCompactQueue(state, queue) {
+    let last = -1;
+    for (let i = queue.length - 1; i >= 0; i -= 1) {
+        if (queue[i] && queue[i].type === 'three/geometry') { last = i; break; }
+    }
+    if (last <= 0) return {state, queue};
+    const own = queue[last - 1].type === 'three/appearance' && queue[last - 1].beforeGeometry;
+    const from = own ? last - 1 : last;
+    const dropped = queue.slice(0, from);
+    const abandoned = dropped.some((m) => m && m.type === 'three/geometry');
+    return {state: abandoned ? wireAbandon(state) : state, queue: queue.slice(from)};
+}
+// [viewer-region wire-payload] END
+
+let wireState = null;
+
+/** Messages waiting to be drawn, in order, and the buffer fetch in flight. */
+const wireInbox = { queue: [], busy: false, fetching: null };
+
+function wireBufferUrl(message) {
+    // The server the websocket goes to, which is the page's own unless `ws` / `wsHost` say otherwise.
+    const ws = new URL(buildWsUrl());
+    const origin = `${ws.protocol === 'wss:' ? 'https:' : 'http:'}//${ws.host}`;
+    return `${origin}/three-buffers?` + new URLSearchParams({uid: message.uid, generation: message.buffers.generation});
+}
+
+function wireFailed(error) {
+    captureState.error = 'Geometry: ' + String(error?.message || error);
+    const status = document.getElementById('glb-status');
+    status.classList.add('is-error');
+    status.textContent = captureState.error;
+}
+
+function wireReceive(message) {
+    // A newer geometry message makes the fetch in flight moot.
+    if (message.type === 'three/geometry' && wireInbox.fetching) wireInbox.fetching.abort();
+    wireInbox.queue.push(message);
+    wirePump();
+}
+
+/** One message at a time, in order; a description waits for its buffers before anything after it is drawn. */
+async function wirePump() {
+    if (wireInbox.busy) return;
+    wireInbox.busy = true;
+    try {
+        while (wireInbox.queue.length) {
+            ({state: wireState, queue: wireInbox.queue} = wireCompactQueue(wireState, wireInbox.queue));
+            const message = wireInbox.queue.shift();
+            try {
+                if (message.type === 'three/geometry' && message.buffers) {
+                    const controller = new AbortController();
+                    wireInbox.fetching = controller;
+                    let bytes = null;
+                    try {
+                        const response = await fetch(wireBufferUrl(message), {signal: controller.signal});
+                        // 404: superseded, and the description that replaced it is on its way.
+                        if (response.ok) bytes = await response.arrayBuffer();
+                        else if (response.status !== 404) throw new Error(`geometry buffers: HTTP ${response.status}`);
+                    } catch (error) {
+                        if (!controller.signal.aborted) wireFailed(error);
+                    } finally {
+                        wireInbox.fetching = null;
+                    }
+                    if (!bytes) { wireState = wireAbandon(wireState); continue; }
+                    bindWireBuffers(message, bytes);
+                }
+                const received = receiveWireMessage(wireState, message);
+                wireState = received.state;
+                if (received.draw) applyGeometry(received.draw);
+            } catch (error) {
+                console.error('three viewer: could not apply a message', error);
+                wireFailed(error);
+            }
+        }
+    } finally {
+        wireInbox.busy = false;
+    }
+}
+
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;
     captureState = {ready:false, error:null, revision:payload.revision || payload.inspector?.artifactDigest || null};
@@ -5798,12 +6016,13 @@ function sendMessage(payload) {
 function connectWs() {
     const ws = new WebSocket(buildWsUrl());
     wsState.ws = ws;
-    ws.addEventListener('open', () => sendMessage({ type: 'hello' }));
+    // `buffers`: this viewer fetches geometry buffers over HTTP. A hello without it is sent plain JSON.
+    ws.addEventListener('open', () => sendMessage({ type: 'hello', buffers: 1 }));
     ws.addEventListener('message', (event) => {
         let message = null;
         try { message = JSON.parse(event.data); } catch (_) { return; }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
-        applyGeometry(message);
+        wireReceive(message);
     });
     ws.addEventListener('close', () => {
         if(featureSaving){featureSaving=false;featureHud();featureMessage('Connection lost while saving. Check the inbox before retrying.',true);}

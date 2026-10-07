@@ -7317,7 +7317,7 @@ suspend fun main() {
 
         // Review links navigate outputs. Selecting their source on pointer-down
         // would open Monaco before the link's click handler can run.
-        if (insideOutputArea && originalTarget?.closest("a[data-review-view][data-review-note]") != null) return@on
+        if (insideOutputArea && originalTarget.closest("a[data-review-view][data-review-note]") != null) return@on
 
         // If the click originates from a disclosure header (output area UI),
         // don't intercept — let the disclosure handle its own alt-click removal.

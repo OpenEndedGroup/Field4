@@ -1,6 +1,7 @@
 package afield.four.modules
 
 import afield.Box
+import afield.stdlib.MeshRenderer
 import afield.stdlib.MeshView
 import afield.stdlib.TriMesh
 import afield.stdlib.TriMeshBuilder
@@ -34,7 +35,7 @@ import java.io.File
  * [meshFromAnyFile], plus a [Box.showMesh] overload that takes a [File].
  *
  * ```kotlin
- * showMesh(File("/path/to/thing.glb"))                     // straight to pixels
+ * showMesh(File("/path/to/thing.glb"))                     // straight to the orbitable viewer
  * val m = meshFromAnyFile("/path/to/scan.ply")             // or keep the mesh and compute with it
  * println(m.summary())
  * ```
@@ -260,13 +261,23 @@ fun meshFromAnyFile(path: String): TriMesh {
  * showMesh("/path/to/thing.glb")
  * ```
  *
- * Every format [meshFromAnyFile] handles, through the same CPU z-buffer renderer
- * [afield.stdlib.showMesh] uses: perspective, back-face culling, two-light lambert, depth-tested
- * wireframe, and the mesh's measurements printed beside the picture. `MeshView.distance` is measured
- * in bounding-sphere radii, so a model in millimetres and a model in metres both frame correctly with
- * no scaling on your part.
+ * Every format [meshFromAnyFile] handles, drawn the way [afield.stdlib.showMesh] draws a mesh: by
+ * default in the Three.js viewer, shaded and wireframed, which you can turn with the mouse, with the
+ * mesh's measurements underneath. It is the viewer FLines are drawn in too, so a loaded model and its
+ * annotations can share a scene. `MeshView.distance` is measured in bounding-sphere radii, so a model
+ * in millimetres and a model in metres both frame correctly with no scaling on your part.
+ *
+ * For a static picture from a fixed camera instead, with deterministic pixels and no WebGL, pass
+ * [MeshRenderer.CPU]:
+ *
+ * ```kotlin
+ * showMesh("/path/to/thing.glb", renderer = MeshRenderer.CPU)
+ * ```
  *
  * @param title defaults to the file's name, so a grid of these labels itself.
+ * @param renderer [MeshRenderer.GPU], the orbitable viewer, or [MeshRenderer.CPU], the static figure.
+ * @param height iframe height in pixels. Ignored by [MeshRenderer.CPU], which takes its size from
+ * [view]'s `width` and `height` instead.
  */
 fun Box.showMesh(
     path: String,
@@ -274,13 +285,15 @@ fun Box.showMesh(
     view: MeshView = MeshView(),
     caption: String? = null,
     title: String? = File(path).name,
+    renderer: MeshRenderer = MeshRenderer.GPU,
+    height: Int = 430,
 ) {
-    showMesh(meshFromAnyFile(path), channel, view, caption, title)
+    showMesh(meshFromAnyFile(path), channel, view, caption, title, renderer, height)
 }
 
 /**
- * [showMesh] from a [File] rather than a path string. `java.io` is not in a box's default imports, so
- * inside a box the [String] overload is usually the one you want.
+ * [showMesh] from a [File] rather than a path string, with the same [renderer] choice. `java.io` is
+ * not in a box's default imports, so inside a box the [String] overload is usually the one you want.
  */
 fun Box.showMesh(
     file: File,
@@ -288,6 +301,8 @@ fun Box.showMesh(
     view: MeshView = MeshView(),
     caption: String? = null,
     title: String? = file.name,
+    renderer: MeshRenderer = MeshRenderer.GPU,
+    height: Int = 430,
 ) {
-    showMesh(meshFromAnyFile(file.path), channel, view, caption, title)
+    showMesh(meshFromAnyFile(file.path), channel, view, caption, title, renderer, height)
 }

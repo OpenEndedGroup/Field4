@@ -22,6 +22,16 @@ import kotlin.system.exitProcess
  * width ceiling — and everything was green. [AuditResult] therefore reports the two populations
  * separately and [main] prints both, so "no violations" can never be read off a corpus of zero.
  *
+ * ### A demo's transcript and its document must agree
+ *
+ * A demo directory can hold a `build.yaml` OperationTranscript beside its `metadata.edn`, and the
+ * transcript is what *rebuilds* the document. Those transcripts are a third population, parsed like
+ * the corpus, and each `create` must name a box the document carries at the geometry it carries
+ * ([checkDemoReplayAgreement]). Agreement is what keeps a replay from writing roomy authoring frames
+ * back over a compacted document, and it is also why those frames are not held to the ceiling a second
+ * time: an agreeing frame *is* the document's frame, which is audited (and grandfathered) once, under
+ * its `metadata.edn` key.
+ *
  * The ceiling was `520 x 120` until 2026-09-13, when the whole corpus grew by `+100 w` / `+50 h`: the
  * compaction that brought these boxes down to `200 x 50` had overshot, leaving labels cramped. Growing
  * the boxes without growing the ceiling would have turned every name-widened box into a violation, so
@@ -65,7 +75,8 @@ object AgentTranscriptLayoutGuard {
         }
         println(
             "AgentTranscriptLayoutGuard ok — population: ${result.transcripts} transcript(s) under $CORPUS_REL " +
-                "+ ${result.demos} demo document(s) under $DEMOS_REL, ${result.frames} create frame(s), " +
+                "+ ${result.demos} demo document(s) and ${result.demoTranscripts} demo transcript(s) under " +
+                "$DEMOS_REL, ${result.frames} create frame(s), " +
                 "${result.largeFrames} reviewed large frame(s)"
         )
     }
@@ -85,6 +96,8 @@ object AgentTranscriptLayoutGuard {
         val frames: Int,
         val largeFrames: Int,
         val problems: List<String>,
+        /** Demo `build.yaml` transcripts, the population [checkDemoReplayAgreement] holds to its document. */
+        val demoTranscripts: Int = 0,
     )
 
     fun audit(repo: File): AuditResult {
@@ -110,7 +123,17 @@ object AgentTranscriptLayoutGuard {
             ?.sortedBy { it.name }
             .orEmpty()
         val demoFrames = demoDocuments.flatMap { parseDemoFrames(it, problems) }
-        val frames = files.flatMap { parseFrames(corpus, it, problems) } + demoFrames
+        val demoTranscripts = demosDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.mapNotNull { dir -> File(dir, "build.yaml").takeIf { it.isFile } }
+            ?.sortedBy { it.parentFile.name }
+            .orEmpty()
+        val demoTranscriptFrames = demoTranscripts.flatMap {
+            parseFrames("${it.parentFile.name}/${it.name}", it, problems)
+        }
+        checkDemoReplayAgreement(demoFrames, demoTranscriptFrames, problems)
+        val frames = files.flatMap { parseFrames(it.relativeTo(corpus).invariantSeparatorsPath, it, problems) } +
+            demoFrames + demoTranscriptFrames
         val byKey = frames.groupBy { it.key }
         byKey.filterValues { it.size > 1 }.forEach { (key, duplicates) ->
             problems.add("$key identifies ${duplicates.size} create frames; box ids must be unique within a transcript")
@@ -133,7 +156,11 @@ object AgentTranscriptLayoutGuard {
         }
 
         val exceptions = parseExceptions(File(repo, EXCEPTIONS_REL), problems)
-        val large = frames.filter { it.isLarge }
+        // Demo transcript frames are left out here on purpose: one that agrees with its document is
+        // that document's frame, already held to the ceiling under its `metadata.edn` key, and one that
+        // disagrees has already been reported by checkDemoReplayAgreement.
+        val demoTranscriptKeys = demoTranscriptFrames.mapTo(HashSet()) { it.key }
+        val large = frames.filter { it.isLarge && it.key !in demoTranscriptKeys }
         for (frame in large) {
             if (frame.key !in exceptions) {
                 problems.add(
@@ -152,11 +179,12 @@ object AgentTranscriptLayoutGuard {
             }
         }
 
-        return AuditResult(files.size, demoDocuments.size, frames.size, large.size, problems.sorted())
+        return AuditResult(
+            files.size, demoDocuments.size, frames.size, large.size, problems.sorted(), demoTranscripts.size,
+        )
     }
 
-    private fun parseFrames(corpus: File, file: File, problems: MutableList<String>): List<Frame> {
-        val relative = file.relativeTo(corpus).invariantSeparatorsPath
+    private fun parseFrames(relative: String, file: File, problems: MutableList<String>): List<Frame> {
         val loaded = runCatching { Yaml().load<Any?>(file.readText()) }.getOrElse { error ->
             problems.add("$relative: invalid YAML: ${error.message}")
             return emptyList()
@@ -206,6 +234,52 @@ object AgentTranscriptLayoutGuard {
         }
         return result
     }
+
+    /**
+     * A demo's `build.yaml` must create each box at the geometry its `metadata.edn` carries.
+     *
+     * The two files are one artifact seen twice: the transcript rebuilds the document. Auditing only
+     * the document let a transcript keep the roomy authoring boilerplate indefinitely and pass every
+     * gate, until somebody replayed it and wrote `700 x 470` back over a box compacted to 86 tall.
+     * Requiring agreement makes a replay idempotent, and catches the drift in the commit that
+     * introduces it rather than at the replay. A box the transcript creates and the document lacks is
+     * reported too; the reverse is allowed, since a document can carry boxes added by hand after the
+     * transcript ran.
+     */
+    private fun checkDemoReplayAgreement(
+        documentFrames: List<Frame>,
+        transcriptFrames: List<Frame>,
+        problems: MutableList<String>,
+    ) {
+        val documents = documentFrames.associateBy { it.key }
+        for (frame in transcriptFrames) {
+            val demo = frame.key.substringBefore('/')
+            val box = frame.key.substringAfterLast('#')
+            val document = documents["$demo/metadata.edn#$box"]
+            if (document == null) {
+                problems.add(
+                    "${frame.source}: creates a box '$box' that $demo/metadata.edn does not carry; a demo's " +
+                        "transcript and the document it rebuilds must describe the same boxes"
+                )
+                continue
+            }
+            if (!sameFrame(frame, document)) {
+                problems.add(
+                    "${frame.source}: create frame ${describe(frame)} does not match ${describe(document)} in " +
+                        "$demo/metadata.edn; replaying this transcript would write its geometry over the " +
+                        "committed document. Copy the document's frame into create.frame."
+                )
+            }
+        }
+    }
+
+    private const val FRAME_EPSILON = 0.01
+
+    private fun sameFrame(a: Frame, b: Frame): Boolean =
+        listOf(a.x - b.x, a.y - b.y, a.width - b.width, a.height - b.height)
+            .all { it.isFinite() && kotlin.math.abs(it) < FRAME_EPSILON }
+
+    private fun describe(frame: Frame): String = "${frame.width} x ${frame.height} at (${frame.x}, ${frame.y})"
 
     private fun parseExceptions(file: File, problems: MutableList<String>): Map<String, String> {
         if (!file.isFile) {

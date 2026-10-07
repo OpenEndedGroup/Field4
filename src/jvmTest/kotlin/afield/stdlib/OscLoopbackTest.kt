@@ -101,8 +101,14 @@ class OscLoopbackTest {
             while (lambdaRuns.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(2)
             assertEquals(1, lambdaRuns.size, "the handler lambda runs when the message arrives, untouched by tick()")
             assertTrue(steps.isEmpty(), "the generator body waits for a service pass")
-            server.tick()
-            // The first service pass starts the generator AND resumes it once.
+            // The handler records lambdaRuns before enqueue() adds its generator. Under load a
+            // tick here can beat that enqueue, so service until the generator actually starts.
+            val startDeadline = System.currentTimeMillis() + 3_000
+            while (steps.isEmpty() && System.currentTimeMillis() < startDeadline) {
+                server.tick()
+                if (steps.isEmpty()) Thread.sleep(2)
+            }
+            // The service pass that starts the generator also resumes it once.
             assertEquals(listOf("start", "resumed with the same message"), steps.toList())
             server.tick()
             assertEquals("done", steps.last())

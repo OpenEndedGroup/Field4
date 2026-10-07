@@ -201,7 +201,7 @@ class MqttBroker(
         sessions.values.forEach { s ->
             // A client with overlapping filters gets one copy at the highest granted QoS (§3.3.5).
             var best: QoS? = null
-            s.subscriptions.forEach { (f, q) -> if (MqttTopic.matches(f, p.topic) && (best == null || q.value > best!!.value)) best = q }
+            s.subscriptions.forEach { (f, q) -> if (MqttTopic.matches(f, p.topic) && (best == null || q.value > best.value)) best = q }
             best?.let { s.deliver(p, it, false) }
         }
     }

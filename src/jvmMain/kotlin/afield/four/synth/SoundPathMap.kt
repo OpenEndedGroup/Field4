@@ -36,7 +36,7 @@ expect:
  * repeats character for character. Two paths that both implement it compose for free; a path that
  * does not implement it composes with nothing. [SonicPi] is the only one outside it, for a reason no
  * wrapper reaches: it is a different process, and no sample ever enters this one. What the seam buys
- * is clearest in the two newest arrivals. Behind [FaustVoiceBank] are an event scheduler, a voice
+ * is clear in two earlier arrivals. Behind [FaustVoiceBank] are an event scheduler, a voice
  * allocator and N WebAssembly instances in one GraalVM context, and reaching the speakers, the
  * visualisers, the Link output and the box lifecycle cost it the five lines of [FaustPolyNode].
  * [PatSynthBank] is the pattern voice arriving the same way: a scheduler in front of the voice that
@@ -168,7 +168,7 @@ object SoundPathMap {
     }
 
     /**
-     * The map. Seven sample sources, five ways out, four ways in.
+     * The map. Ten sample sources, five ways out, four ways in.
      *
      * Ordered the way a person reads it: the things that make sound, then the things that carry it
      * away, then the things that feed it. Every `page = null` is a real gap and is named as one on
@@ -255,6 +255,19 @@ object SoundPathMap {
             file = "src/jvmMain/kotlin/afield/pd/PdInstance.kt",
             entryPoint = "class PdNode",
             page = "public/docs/pure_data.md",
+        ),
+
+        SoundPath(
+            id = "csound",
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
+            needs = "libcsound, built with ./gradlew buildCsoundNative or installed separately",
+            channels = "stereo",
+            what = "a Csound orchestra and score, compiled from a box or Kotlin. CsoundNode pulls " +
+                "its blocks through Field's audio engine; CsoundInstance.renderOffline writes " +
+                "the same performance to a buffer without an audio device",
+            file = "src/jvmMain/kotlin/afield/csound/CsoundInstance.kt",
+            entryPoint = "class CsoundNode",
+            page = "public/docs/csound.md",
         ),
 
         SoundPath(
@@ -431,11 +444,11 @@ object SoundPathMap {
     // ── the ratchets: counts, pinned near the measurement ──────────────────────────────────
 
     /**
-     * How many distinct ways there are to make samples. **Nine**, replacing a bolded "two".
+     * How many distinct ways there are to make samples. **Ten**, replacing a bolded "two".
      *
-     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other seven are the
+     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other eight are the
      * `Signal` graph, Faust as an effect, Faust as a polyphonic instrument, a Pure Data patch, the
-     * dough wasm engine, [patSpatial] and Sonic Pi. Four of the nine are pattern voices, which is the number
+     * dough wasm engine, [patSpatial], Sonic Pi and Csound. Four of the ten are pattern voices, which is the number
      * `sound.md` counts; this one counts routes, so it is always the larger.
      *
      * It went from seven to eight on 2026-09-16, and that arrival is the failure this file's
@@ -447,8 +460,10 @@ object SoundPathMap {
      * Nine on 2026-09-28: `pure-data`, a libpd instance per launch, reached through `PdNode`. It was
      * declared in the change that added it, because the `seam-stereo-node` marker would not let the
      * change pass without it.
+     * Ten after Csound arrived: its CsoundNode joins the same seam, and its orchestra/score can
+     * also render offline. This was caught by the marker before the map declared the route.
      */
-    const val SOURCE_COUNT = 9
+    const val SOURCE_COUNT = 10
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -457,7 +472,7 @@ object SoundPathMap {
     const val INPUT_COUNT = 4
 
     /**
-     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Twelve of eighteen.
+     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Thirteen of nineteen.
      *
      * A floor here is the assertion that matters most: the seam is the reason Faust cost no new
      * plumbing, and if a later change adds a path *beside* it rather than *on* it, this number
@@ -475,8 +490,9 @@ object SoundPathMap {
      * a path is that it can fill a block when asked, not that it can do so faster than wall clock.
      *
      * Twelve since 2026-09-28, for the most ordinary reason of all: `pure-data` arrived on it.
+     * Thirteen with Csound's StereoNode, which pulls libcsound's performance from the audio thread.
      */
-    const val SEAM_COUNT = 12
+    const val SEAM_COUNT = 13
 
     // ── derivation from the code ───────────────────────────────────────────────────────────
 
@@ -547,6 +563,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/DrawnMorphDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/FnSoundDocs.kt" to "signal-graph",
+                "src/jvmMain/kotlin/afield/four/synth/SubharmonicSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
@@ -569,6 +586,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/DirtRender.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPattern.kt" to "faust",
+                "src/jvmMain/kotlin/afield/four/synth/CsoundBox.kt" to "box-output-player",
             ),
         ),
         Marker(
@@ -595,6 +613,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/PatSynth.kt" to "pat-stand-in",
                 // PdNode, the audio thread's end of a libpd instance.
                 "src/jvmMain/kotlin/afield/pd/PdInstance.kt" to "pure-data",
+                "src/jvmMain/kotlin/afield/csound/CsoundInstance.kt" to "csound",
                 // PatSpatialBank and PatSpatialLaunch, the audio thread's end of the spatial ring.
                 "src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt" to "pat-spatial",
                 // Not a node of the path: the control patch that smoke registers *beside* the

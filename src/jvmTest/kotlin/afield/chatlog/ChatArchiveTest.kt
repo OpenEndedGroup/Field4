@@ -2,6 +2,9 @@ package afield.chatlog
 
 import afield.AiChatBlock
 import afield.AiChatRound
+import afield.Box
+import afield.ReadOnlyDocuments
+import afield.SessionInformation
 import afield.images
 import afield.parseAiChatBlocks
 import afield.programCalls
@@ -17,6 +20,34 @@ import kotlin.test.*
  * text the session tree has not recorded yet.
  */
 class ChatArchiveTest {
+
+    @Test fun aReadOnlyDocumentCannotWriteLensesIntoItselfButCanExportElsewhere() {
+        val temp = Files.createTempDirectory("chat-lens-read-only-").toFile()
+        try {
+            val document = File(temp, "document").apply { mkdirs() }
+            val root = Box("root")
+            val info = SessionInformation(filename = document.absolutePath, documentName = document.name, root = root, readOnly = true)
+            root.inside = info
+
+            val destination = File(document, "lenses")
+            assertTrue(info.readOnly)
+            assertTrue(root.isInsideInitialized())
+            assertTrue(ReadOnlyDocuments.blocksWritesFrom(root))
+            assertTrue(destination.canonicalFile.toPath().startsWith(document.canonicalFile.toPath()))
+            val failure = assertFailsWith<IllegalStateException> {
+                root.requireWritableChatLensDir(destination)
+            }
+            assertTrue(failure.message.orEmpty().contains("read-only"))
+            assertFalse(destination.exists(), "refusing the lens must not create a directory")
+
+            root.requireWritableChatLensDir(File(temp, "exported-lenses"))
+            val writableRoot = Box("writable")
+            writableRoot.inside = SessionInformation(filename = document.absolutePath, documentName = document.name, root = writableRoot, readOnly = false)
+            writableRoot.requireWritableChatLensDir(destination)
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
 
     @Test fun theParserSplitsBlocksAndReadsTheModelMarker() {
         val blocks = parseAiChatBlocks(

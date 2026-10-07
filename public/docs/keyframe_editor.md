@@ -669,6 +669,38 @@ ui.pause(1500)
 
 Each editor shows in its own output panel, named after it. To keep separate sets in one box, give each set a channel: `keyframes("motion", "x")` and `keyframes("motion", "y")` show as `motion/x` and `motion/y`, and share a time axis with each other but not with the box's other editors.
 
+## From a performed gesture
+
+A [gesture pad](visualizers.md#recording-a-gesture) records a movement as you perform it; the editor is where you shape one by hand. `bakeGesture` turns a take into a pair of lanes you can edit, and `setTake` sends edited lanes back to the pad:
+
+```diffstatic {data-lang=kotlin}
+lateinit var pad: GestureHandle
+controlGroup("gesture") { pad = gesture("take") { } }   // shift-drag on the pad to record
+
+val (x, y) = bakeGesture(pad, tolerance = 0.02)   // the take, as editable x and y lanes
+println(pad.fit(x, y))                            // GestureFit(keys=28 of 240 samples, max=0.0185, ...)
+
+pad.setTake(x, y)                                 // later: the edited lanes, replayed through the pad
+```
+
+A recorded take has hundreds of samples, far too many keys to edit. `bakeGesture` keeps only the samples it needs so that neither lane is ever more than `tolerance` (in pad units) from what you performed, at any moment. The keys are `linear`, and both lanes have keys at the same times, so Cmd-dragging across a moment selects it in both. The lanes run from 0 to the end of the take, so they loop as the take did. Baking replaces whatever keys the lanes held. The lanes are `x` and `y` unless you name them with `xName` and `yName`, and `channel` groups them as it does for `keyframes(...)`.
+
+For a two-second figure eight drawn by hand, 240 samples:
+
+<div class="field-data-table" markdown>
+
+| tolerance | keys | largest difference | mean difference |
+| --- | --- | --- | --- |
+| 0.005 | 77 | 0.0050 | 0.0017 |
+| 0.01 | 35 | 0.0096 | 0.0031 |
+| 0.02 | 28 | 0.0185 | 0.0049 |
+| 0.05 | 16 | 0.0338 | 0.0162 |
+| 0.1 | 14 | 0.0980 | 0.0251 |
+
+</div>
+
+`setTake(x, y)` samples the two curves 60 times a second (`samplesPerSecond` changes it), always including every key's time, and that becomes the pad's take: the trail redraws and the take is saved with the box, as if you had recorded it. Bezier keys come back as a smooth run of short lines, within a fraction of a thousandth of the curve. `toKeyframes(tolerance)` gives the two lists of keys without touching any editor, and `samples` gives the take itself, in the form `gesture(initialTake = ...)` accepts.
+
 ## Start from a working document
 
 Open **keyframe_editor** from Starting points on the welcome screen, or [open it here](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn). It has four boxes from this page: `brightness`, the curve and meter (launch it to play), `shape`, the five key types, `smoothed`, the curve with a smoothed overlay that follows your edits, and `custom types`, an overshoot, a wobble and some chaos written with `interpolant(...)`. Its entry in [Agent transcripts](agent_transcripts.md#keyframe_editor) lists what each box does.
