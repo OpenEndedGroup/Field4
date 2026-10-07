@@ -549,6 +549,264 @@ class RasterStructure(
     }
 }
 
+/**
+ * One channel of a raster as a plain `width x height` plane: what the structural comparisons read.
+ */
+class StackSLPlane(val width: Int, val height: Int, val values: DoubleArray) {
+
+    init {
+        require(values.size == width * height) { "a ${width}x$height plane needs ${width * height} values, got ${values.size}" }
+    }
+
+    /** A 2x2 box downsample, the plane equivalent of [StackSLImageObjective.halve]. */
+    fun halve(): StackSLPlane {
+        val w = width / 2
+        val h = height / 2
+        require(w >= 1 && h >= 1) { "cannot halve a ${width}x$height plane" }
+        val out = DoubleArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = 2 * y * width + 2 * x
+            out[y * w + x] = (values[i] + values[i + 1] + values[i + width] + values[i + width + 1]) * 0.25
+        }
+        return StackSLPlane(w, h, out)
+    }
+
+    /** [levels] planes, this one first, each half the size of the last; never below 4x4. */
+    fun pyramid(levels: Int): List<StackSLPlane> {
+        val out = arrayListOf(this)
+        while (out.size < levels && out.last().width >= 8 && out.last().height >= 8) out += out.last().halve()
+        return out
+    }
+
+    companion object {
+        /** Channel [channel] (0 red, 1 green, 2 blue) of [raster]. */
+        fun of(raster: CpuRaster, channel: Int): StackSLPlane {
+            require(channel in 0..2) { "channel must be 0, 1 or 2, got $channel" }
+            val n = raster.width * raster.height
+            return StackSLPlane(raster.width, raster.height, DoubleArray(n) { raster.rgba[it * 4 + channel].toDouble() })
+        }
+
+        /** The three colour channels of [raster], red first. */
+        fun rgb(raster: CpuRaster): List<StackSLPlane> = (0..2).map { of(raster, it) }
+    }
+}
+
+/**
+ * Structural similarity (SSIM) between two images, and a layout measure to check it with.
+ *
+ * SSIM compares two images window by window on three things at once: mean brightness, contrast,
+ * and the *correlation* of the two windows' variations about their means. The third term is the
+ * one a mean absolute error does not have. A dark image with diagonal streaks and a dark image
+ * with a bright disc in the middle can sit at the same absolute error from a disc target; their
+ * correlation with it is nothing like the same.
+ *
+ * SSIM is computed per colour channel and averaged, not on luma alone. The `checker` target's two
+ * colours, magenta and teal, are 0.05 apart in luma and 0.85 apart in red: a luma SSIM barely sees
+ * that pattern, because the contrast it has to correlate is smaller than the stabilising constant.
+ *
+ * The window is a Gaussian of sigma [SIGMA] pixels, truncated at [RADIUS] and renormalised at the
+ * border, and the stabilising constants are the standard `(0.01)^2` and `(0.03)^2` for values in
+ * `0..1`. [multiScale] averages the mean SSIM over a pyramid, so the coarse levels reward getting
+ * the layout right before the edges are sharp.
+ */
+object StackSLStructure {
+
+    /** Gaussian window sigma, in pixels of whichever level is being compared. */
+    const val SIGMA: Double = 1.5
+
+    /** Window half-width: 2 sigma, a 7x7 window rather than a photograph-sized 11x11. */
+    const val RADIUS: Int = 3
+
+    /** Luminance stabiliser, `(0.01)^2`. */
+    const val C1: Double = 1e-4
+
+    /** Contrast-and-structure stabiliser, `(0.03)^2`. */
+    const val C2: Double = 9e-4
+
+    private val kernel: DoubleArray = DoubleArray(2 * RADIUS + 1) { i ->
+        val d = (i - RADIUS).toDouble()
+        kotlin.math.exp(-d * d / (2 * SIGMA * SIGMA))
+    }
+
+    /** Separable Gaussian blur, renormalised where the window runs off the edge. */
+    fun blur(values: DoubleArray, width: Int, height: Int): DoubleArray {
+        val tmp = DoubleArray(values.size)
+        for (y in 0 until height) for (x in 0 until width) {
+            var s = 0.0
+            var w = 0.0
+            for (k in -RADIUS..RADIUS) {
+                val xx = x + k
+                if (xx < 0 || xx >= width) continue
+                val kw = kernel[k + RADIUS]
+                s += kw * values[y * width + xx]
+                w += kw
+            }
+            tmp[y * width + x] = s / w
+        }
+        val out = DoubleArray(values.size)
+        for (y in 0 until height) for (x in 0 until width) {
+            var s = 0.0
+            var w = 0.0
+            for (k in -RADIUS..RADIUS) {
+                val yy = y + k
+                if (yy < 0 || yy >= height) continue
+                val kw = kernel[k + RADIUS]
+                s += kw * tmp[yy * width + x]
+                w += kw
+            }
+            out[y * width + x] = s / w
+        }
+        return out
+    }
+
+    /** The per-pixel SSIM map of [a] against [b], each value in `-1..1`. */
+    fun ssimMap(a: StackSLPlane, b: StackSLPlane): DoubleArray {
+        require(a.width == b.width && a.height == b.height) {
+            "cannot compare ${a.width}x${a.height} against ${b.width}x${b.height}"
+        }
+        val w = a.width
+        val h = a.height
+        val x = a.values
+        val y = b.values
+        val n = x.size
+        val muX = blur(x, w, h)
+        val muY = blur(y, w, h)
+        val xx = blur(DoubleArray(n) { x[it] * x[it] }, w, h)
+        val yy = blur(DoubleArray(n) { y[it] * y[it] }, w, h)
+        val xy = blur(DoubleArray(n) { x[it] * y[it] }, w, h)
+        return DoubleArray(n) { i ->
+            val mx = muX[i]
+            val my = muY[i]
+            val vx = max(0.0, xx[i] - mx * mx)
+            val vy = max(0.0, yy[i] - my * my)
+            val cxy = xy[i] - mx * my
+            ((2 * mx * my + C1) * (2 * cxy + C2)) / ((mx * mx + my * my + C1) * (vx + vy + C2))
+        }
+    }
+
+    /** Mean SSIM of [a] against [b]. */
+    fun ssim(a: StackSLPlane, b: StackSLPlane): Double = ssimMap(a, b).average()
+
+    /**
+     * Mean SSIM over the colour channels and over the levels of two pyramids.
+     *
+     * Each list holds one pyramid per channel, as [StackSLPlane.pyramid] builds them; the outer
+     * lists must match in length and so must each pair of pyramids.
+     */
+    fun multiScale(a: List<List<StackSLPlane>>, b: List<List<StackSLPlane>>): Double {
+        require(a.size == b.size && a.isNotEmpty()) { "channel counts differ: ${a.size} against ${b.size}" }
+        var sum = 0.0
+        var n = 0
+        for (c in a.indices) {
+            require(a[c].size == b[c].size) { "pyramids differ in depth: ${a[c].size} against ${b[c].size}" }
+            for (l in a[c].indices) { sum += ssim(a[c][l], b[c][l]); n++ }
+        }
+        return sum / n
+    }
+
+    /**
+     * Would someone looking at [candidate] see [target]'s layout? Cohen's kappa: `1` exact, `0` no
+     * better than chance, negative for the target's negative.
+     *
+     * A check on a search, not part of its fitness, and a different kind of measurement from SSIM:
+     * it classifies rather than correlates. When the target is drawn in at most [PALETTE_LIMIT]
+     * colours (every built-in target is), each candidate pixel is labelled with the target colour
+     * it is **nearest** in RGB, and kappa compares those labels with the target's own. So a white
+     * disc on black counts as the yellow disc on navy it imitates, while faint texture in the
+     * background colour counts as background, however well it happens to correlate with the disc.
+     * A rank-based version of this measure was tried first and credited exactly that: the
+     * 2026-09-06 "dark streaks" answer for `spot` scored 0.65 because its streaks were very slightly
+     * brighter in the middle.
+     *
+     * For a target with more colours than that (a photograph), pixels are instead placed along the
+     * target's principal colour axis and cut into four equal-population bands, the target's and the
+     * candidate's at the same cut points.
+     */
+    fun layoutAgreement(candidate: CpuRaster, target: CpuRaster): Double {
+        require(candidate.width == target.width && candidate.height == target.height) {
+            "cannot compare ${candidate.width}x${candidate.height} against ${target.width}x${target.height}"
+        }
+        val n = target.width * target.height
+        val keyOf = { r: CpuRaster, i: Int ->
+            (Math.round(r.rgba[i * 4] * 255f) shl 16) or (Math.round(r.rgba[i * 4 + 1] * 255f) shl 8) or
+                Math.round(r.rgba[i * 4 + 2] * 255f)
+        }
+        val palette = (0 until n).map { keyOf(target, it) }.distinct()
+        val targetLabel = IntArray(n)
+        val candidateLabel = IntArray(n)
+        val k: Int
+        if (palette.size <= PALETTE_LIMIT) {
+            k = palette.size
+            val index = palette.withIndex().associate { it.value to it.index }
+            val colours = palette.map { doubleArrayOf((it shr 16 and 255) / 255.0, (it shr 8 and 255) / 255.0, (it and 255) / 255.0) }
+            for (i in 0 until n) {
+                targetLabel[i] = index.getValue(keyOf(target, i))
+                var best = 0
+                var bestD = Double.MAX_VALUE
+                for ((l, c) in colours.withIndex()) {
+                    val dr = candidate.rgba[i * 4] - c[0]
+                    val dg = candidate.rgba[i * 4 + 1] - c[1]
+                    val db = candidate.rgba[i * 4 + 2] - c[2]
+                    val d = dr * dr + dg * dg + db * db
+                    if (d < bestD) { bestD = d; best = l }
+                }
+                candidateLabel[i] = best
+            }
+        } else {
+            k = 4
+            val axis = principalAxis(target)
+            val t = project(target, axis)
+            val c = project(candidate, axis)
+            val cuts = t.sorted().let { sorted -> (1 until k).map { sorted[it * n / k] } }
+            for (i in 0 until n) {
+                targetLabel[i] = cuts.count { t[i] >= it }
+                candidateLabel[i] = cuts.count { c[i] >= it }
+            }
+        }
+        val targetCount = IntArray(k)
+        val candidateCount = IntArray(k)
+        var agree = 0
+        for (i in 0 until n) {
+            targetCount[targetLabel[i]]++
+            candidateCount[candidateLabel[i]]++
+            if (targetLabel[i] == candidateLabel[i]) agree++
+        }
+        val chance = (0 until k).sumOf { targetCount[it].toDouble() * candidateCount[it] } / (n.toDouble() * n)
+        return if (chance >= 1.0) 0.0 else (agree.toDouble() / n - chance) / (1.0 - chance)
+    }
+
+    /** Most colours a target may have for [layoutAgreement] to label by nearest colour. */
+    const val PALETTE_LIMIT: Int = 8
+
+    /** The unit RGB direction of greatest variance over [raster], by power iteration. */
+    fun principalAxis(raster: CpuRaster): DoubleArray {
+        val n = raster.width * raster.height
+        val mean = DoubleArray(3)
+        for (i in 0 until n) for (ch in 0 until 3) mean[ch] += raster.rgba[i * 4 + ch]
+        for (ch in 0 until 3) mean[ch] /= n
+        val cov = Array(3) { DoubleArray(3) }
+        for (i in 0 until n) for (a in 0 until 3) for (b in 0 until 3) {
+            cov[a][b] += (raster.rgba[i * 4 + a] - mean[a]) * (raster.rgba[i * 4 + b] - mean[b])
+        }
+        // Start from luma's direction, so a grey target's axis is (1,1,1)/sqrt(3) with its sign.
+        var v = doubleArrayOf(0.2126, 0.7152, 0.0722)
+        repeat(64) {
+            val w = DoubleArray(3) { a -> (0 until 3).sumOf { b -> cov[a][b] * v[b] } }
+            val norm = sqrt(w.sumOf { it * it })
+            if (norm < 1e-12) return doubleArrayOf(0.2126, 0.7152, 0.0722)
+            v = DoubleArray(3) { w[it] / norm }
+        }
+        // Orient it so that "higher" still means "brighter".
+        if (v[0] * 0.2126 + v[1] * 0.7152 + v[2] * 0.0722 < 0) v = DoubleArray(3) { -v[it] }
+        return v
+    }
+
+    private fun project(raster: CpuRaster, axis: DoubleArray): DoubleArray =
+        DoubleArray(raster.width * raster.height) { i ->
+            axis[0] * raster.rgba[i * 4] + axis[1] * raster.rgba[i * 4 + 1] + axis[2] * raster.rgba[i * 4 + 2]
+        }
+}
+
 /** A named target image a search is aimed at. */
 class StackSLTarget(val name: String, val raster: CpuRaster) {
     /** The target's own structure — measured, so a blank target can be refused. */
@@ -585,6 +843,24 @@ class StackSLTarget(val name: String, val raster: CpuRaster) {
     }
 
     override fun toString(): String = "$name (${raster.width}x${raster.height}, $structure)"
+
+    companion object {
+        /**
+         * A target from any picture: area-averaged down to [dim] square, grey expanded to RGB.
+         *
+         * Row 0 of [img] is its top row, as a PNG's is. A non-square picture is squashed, not
+         * cropped; crop it first if the aspect matters.
+         */
+        fun of(name: String, img: Img, dim: Int = DEFAULT_FITNESS_DIM): StackSLTarget {
+            val small = img.resize(dim, dim).toRGB()
+            val data = FloatArray(dim * dim * 4)
+            for (p in 0 until dim * dim) {
+                for (c in 0 until 3) data[p * 4 + c] = small.data[p * 3 + c].coerceIn(0f, 1f)
+                data[p * 4 + 3] = 1f
+            }
+            return StackSLTarget(name, CpuRaster(dim, dim, data))
+        }
+    }
 }
 
 /**
@@ -681,6 +957,99 @@ object StackSLTargets {
 // 3 — the objective
 // ==============================================================================================
 
+/** What [StackSLImageObjective] counts as "close to the target". */
+enum class StackSLMetric {
+    /**
+     * `1 -` mean absolute RGB error (optionally over a pyramid). Rewards getting each pixel's
+     * colour right on average, which a search satisfies first by matching the target's overall
+     * colour balance: against a disc that is mostly background, "mostly background colour, with
+     * texture anywhere" scores well whether or not there is a disc.
+     */
+    PIXEL,
+
+    /**
+     * Half multi-scale SSIM on luma ([StackSLStructure]), half `1 -` mean absolute RGB error.
+     * The SSIM half scores where the light and dark *are*, at three scales; the colour half keeps
+     * the hues honest. This is the default.
+     */
+    STRUCTURE
+}
+
+/**
+ * One render's scores under both metrics, so one render can serve several objectives.
+ *
+ * @property valid `false` for a render the blank guard refused or a program that threw; every
+ *   score is then [StackSLImageObjective.INVALID_SCORE].
+ */
+class StackSLScores(
+    val valid: Boolean,
+    val pixelFitness: Double,
+    val pixelCases: DoubleArray,
+    val structureFitness: Double,
+    val structureCases: DoubleArray,
+    val behaviour: DoubleArray
+) {
+    /** The scalar fitness under [metric]. */
+    fun fitness(metric: StackSLMetric): Double = when (metric) {
+        StackSLMetric.PIXEL -> pixelFitness
+        StackSLMetric.STRUCTURE -> structureFitness
+    }
+
+    /** The search-facing [Evaluation] under [metric]. */
+    fun evaluation(metric: StackSLMetric): Evaluation = when (metric) {
+        StackSLMetric.PIXEL -> Evaluation(pixelFitness, pixelCases, behaviour)
+        StackSLMetric.STRUCTURE -> Evaluation(structureFitness, structureCases, behaviour)
+    }
+
+    companion object {
+        /** A render the blank guard refused; its behaviour is still reported for MAP-Elites. */
+        fun blank(caseGrid: Int, behaviour: DoubleArray): StackSLScores {
+            val floor = StackSLImageObjective.INVALID_SCORE
+            return StackSLScores(
+                false, floor, DoubleArray(caseGrid * caseGrid) { floor },
+                floor, DoubleArray(caseGrid * caseGrid) { floor }, behaviour
+            )
+        }
+
+        /** A program that threw instead of rendering. */
+        fun crashed(caseGrid: Int): StackSLScores = blank(caseGrid, doubleArrayOf(0.0, 0.0))
+    }
+}
+
+/**
+ * Program text to [StackSLScores], for objectives that share one target.
+ *
+ * Thread-safe, so targets can be searched concurrently; but one cache serves one target at one
+ * resolution, render time, pyramid depth and case grid, and the first objective to use it fixes
+ * all five. A second objective that disagrees is refused rather than handed another target's
+ * scores.
+ */
+class StackSLScoreCache {
+    private val scores = java.util.concurrent.ConcurrentHashMap<String, StackSLScores>()
+    private val hitCount = java.util.concurrent.atomic.AtomicInteger()
+    private var owner: String? = null
+
+    /** Evaluations served from the cache rather than the interpreter. */
+    val hits: Int get() = hitCount.get()
+
+    /** Distinct programs scored. */
+    val size: Int get() = scores.size
+
+    @Synchronized
+    internal fun claim(target: StackSLTarget, dim: Int, time: Float, pyramidLevels: Int, caseGrid: Int) {
+        val key = "${target.name}#${System.identityHashCode(target)} @$dim t=$time pyramid=$pyramidLevels cases=$caseGrid"
+        val current = owner
+        require(current == null || current == key) { "this cache belongs to $current, not $key" }
+        owner = key
+    }
+
+    internal fun get(text: String): StackSLScores? = scores[text]?.also { hitCount.incrementAndGet() }
+
+    internal fun put(text: String, s: StackSLScores) {
+        scores[text] = s
+    }
+}
+
 /**
  * Score a StackSL program by rendering it and comparing it to [target].
  *
@@ -738,10 +1107,21 @@ class StackSLImageObjective(
     val dim: Int = target.raster.width,
     val time: Float = 1.75f,
     val caseGrid: Int = 4,
-    /** Scales the error is averaged over; 1 is a plain full-resolution mean. See the class KDoc. */
+    /** Scales the [StackSLMetric.PIXEL] error is averaged over; 1 is a plain full-resolution mean. */
     val pyramidLevels: Int = DEFAULT_PYRAMID_LEVELS,
     /** `false` renders each candidate on one thread — see [evolveStackSLTowards] for when to. */
-    val parallel: Boolean = true
+    val parallel: Boolean = true,
+    /** What "close to the target" means. See [StackSLMetric]. */
+    val metric: StackSLMetric = StackSLMetric.STRUCTURE,
+    /**
+     * Scores already computed for this target, keyed by program text, shared between objectives.
+     *
+     * Every evaluation computes *both* metrics from its one render (the comparison is microseconds,
+     * the render tens of milliseconds) and stores them here. So a random control scored under both
+     * metrics, or two arms that happen to draw the same program, pay for the render once. A cache
+     * belongs to one target, one resolution and one [time]; [StackSLScoreCache] checks.
+     */
+    val cache: StackSLScoreCache? = null
 ) : Objective<StackSLProgram> {
 
     init {
@@ -757,8 +1137,13 @@ class StackSLImageObjective(
         }
     }
 
-    /** The target's pyramid, built once. Level 0 is the target itself. */
+    /** The target's pyramids, built once. Level 0 is the target itself. */
     private val targetPyramid: List<CpuRaster> = pyramidOf(target.raster, pyramidLevels)
+    private val targetPlanes: List<List<StackSLPlane>> = StackSLPlane.rgb(target.raster).map { it.pyramid(STRUCTURE_LEVELS) }
+
+    init {
+        cache?.claim(target, dim, time, pyramidLevels, caseGrid)
+    }
 
     /**
      * What a flat fill of the target's own mean colour would score — the trivial answer's fitness.
@@ -768,7 +1153,8 @@ class StackSLImageObjective(
      * reference point, not a competitor, and that is exactly what makes it a good one — it is the
      * score a search gets for understanding nothing about where the target's structure is.
      */
-    val flatFloor: Double = 1.0 - pyramidError(target.flatRaster(), targetPyramid)
+    val flatFloor: Double =
+        scoresAgainst(target.flatRaster(), target.raster, targetPyramid, targetPlanes, allowFlat = true).fitness(metric)
 
     /**
      * A fitness rescaled so 0 is the flat answer and 1 is pixel-exact.
@@ -793,22 +1179,18 @@ class StackSLImageObjective(
 
     override fun evaluate(genome: StackSLProgram): Evaluation {
         considered++
-        val raster = try {
-            StackSLCpu.renderStill(genome.text, dim = dim, time = time, parallel = parallel)
-        } catch (t: Throwable) {
-            invalid++
-            return rejected()
+        val s = cache?.get(genome.text) ?: run {
+            val raster = try {
+                StackSLCpu.renderStill(genome.text, dim = dim, time = time, parallel = parallel)
+            } catch (t: Throwable) {
+                null
+            }
+            val computed = if (raster == null) StackSLScores.crashed(caseGrid) else scores(raster)
+            cache?.put(genome.text, computed)
+            computed
         }
-        val structure = RasterStructure.of(raster)
-        if (structure.spread < MIN_SPREAD || structure.distinctColours < MIN_DISTINCT_COLOURS) {
-            invalid++
-            return rejected(structure)
-        }
-        return Evaluation(
-            fitness = 1.0 - pyramidError(raster, targetPyramid),
-            cases = regionCases(raster),
-            behaviour = doubleArrayOf(structure.spatialFrequency, structure.colourfulness)
-        )
+        if (!s.valid) invalid++
+        return s.evaluation(metric)
     }
 
     /** Render [genome] at [dim] — the same call `evaluate` makes, for a caller that wants the pixels. */
@@ -823,27 +1205,55 @@ class StackSLImageObjective(
      */
     fun scoreAt(genome: StackSLProgram, other: StackSLTarget): Double {
         val raster = render(genome, other.raster.width)
-        val structure = RasterStructure.of(raster)
-        if (structure.spread < MIN_SPREAD || structure.distinctColours < MIN_DISTINCT_COLOURS) return INVALID_SCORE
-        return 1.0 - pyramidError(raster, pyramidOf(other.raster, pyramidLevels))
+        return scoresAgainst(raster, other.raster, pyramidOf(other.raster, pyramidLevels),
+            StackSLPlane.rgb(other.raster).map { it.pyramid(STRUCTURE_LEVELS) }).fitness(metric)
     }
 
-    private fun rejected(structure: RasterStructure? = null): Evaluation = Evaluation(
-        fitness = INVALID_SCORE,
-        cases = DoubleArray(caseGrid * caseGrid) { INVALID_SCORE },
-        behaviour = doubleArrayOf(structure?.spatialFrequency ?: 0.0, structure?.colourfulness ?: 0.0)
-    )
+    /** Both metrics' scores for a raster already rendered at [dim]. */
+    fun scores(raster: CpuRaster): StackSLScores = scoresAgainst(raster, target.raster, targetPyramid, targetPlanes)
 
-    private fun regionCases(raster: CpuRaster): DoubleArray {
-        val out = DoubleArray(caseGrid * caseGrid)
-        for (ry in 0 until caseGrid) for (rx in 0 until caseGrid) {
-            val x0 = rx * dim / caseGrid
-            val y0 = ry * dim / caseGrid
-            val x1 = (rx + 1) * dim / caseGrid
-            val y1 = (ry + 1) * dim / caseGrid
-            out[ry * caseGrid + rx] = 1.0 - meanAbsoluteError(raster, target.raster, x0, y0, x1, y1)
+    private fun scoresAgainst(
+        raster: CpuRaster,
+        want: CpuRaster,
+        wantPyramid: List<CpuRaster>,
+        wantPlanes: List<List<StackSLPlane>>,
+        allowFlat: Boolean = false
+    ): StackSLScores {
+        val structure = RasterStructure.of(raster)
+        val behaviour = doubleArrayOf(structure.spatialFrequency, structure.colourfulness)
+        val flat = structure.spread < MIN_SPREAD || structure.distinctColours < MIN_DISTINCT_COLOURS
+        // allowFlat is for the flat-fill reference alone: the one flat raster that must get a
+        // number rather than the blank guard's floor, because [skill] is measured from it.
+        if (flat && !allowFlat) return StackSLScores.blank(caseGrid, behaviour)
+
+        val size = raster.width
+        // ssim[channel][level] is that channel's SSIM map at that pyramid level.
+        val ssim = StackSLPlane.rgb(raster).mapIndexed { c, plane ->
+            val levels = plane.pyramid(wantPlanes[c].size)
+            levels.indices.map { StackSLStructure.ssimMap(levels[it], wantPlanes[c][it]) }
         }
-        return out
+        val meanSsim = ssim.sumOf { channel -> channel.sumOf { it.average() } } / ssim.sumOf { it.size }
+        // The full-resolution map, averaged over channels, is what the regional cases read.
+        val fullSsim = DoubleArray(size * size) { i -> (ssim[0][0][i] + ssim[1][0][i] + ssim[2][0][i]) / 3.0 }
+        val pixelFitness = 1.0 - pyramidError(raster, wantPyramid)
+        val colourFit = 1.0 - meanAbsoluteError(raster, want, 0, 0, size, size)
+        val structureFitness = STRUCTURE_WEIGHT * meanSsim + (1.0 - STRUCTURE_WEIGHT) * colourFit
+
+        val pixelCases = DoubleArray(caseGrid * caseGrid)
+        val structureCases = DoubleArray(caseGrid * caseGrid)
+        for (ry in 0 until caseGrid) for (rx in 0 until caseGrid) {
+            val x0 = rx * size / caseGrid
+            val y0 = ry * size / caseGrid
+            val x1 = (rx + 1) * size / caseGrid
+            val y1 = (ry + 1) * size / caseGrid
+            val regionFit = 1.0 - meanAbsoluteError(raster, want, x0, y0, x1, y1)
+            var ssimSum = 0.0
+            for (y in y0 until y1) for (x in x0 until x1) ssimSum += fullSsim[y * size + x]
+            val regionSsim = ssimSum / max(1, (x1 - x0) * (y1 - y0))
+            pixelCases[ry * caseGrid + rx] = regionFit
+            structureCases[ry * caseGrid + rx] = STRUCTURE_WEIGHT * regionSsim + (1.0 - STRUCTURE_WEIGHT) * regionFit
+        }
+        return StackSLScores(true, pixelFitness, pixelCases, structureFitness, structureCases, behaviour)
     }
 
     companion object {
@@ -865,8 +1275,17 @@ class StackSLImageObjective(
          */
         const val MIN_SPREAD: Double = 0.02
 
-        /** Fewer distinct 8-bit colours than this is a flat fill or a two-level dither, not an image. */
-        const val MIN_DISTINCT_COLOURS: Int = 4
+        /**
+         * Fewer distinct 8-bit colours than this is a flat fill.
+         *
+         * Two, not more. This was 4 until 2026-10-07, on the theory that two colours is "a dither,
+         * not an image" — which refused every hard-edged two-colour picture, including four of the
+         * five targets themselves and the shortest programs that draw them (`p length 0.28
+         * threshold` renders exactly two colours). The search could approach a target only through
+         * programs that were *not* its exact answer. [MIN_SPREAD] is what tells a picture from a
+         * flat fill; this only stops a single colour slipping under it.
+         */
+        const val MIN_DISTINCT_COLOURS: Int = 2
 
         /**
          * Scales the default error averages over — **one**, i.e. a plain full-resolution mean.
@@ -884,6 +1303,12 @@ class StackSLImageObjective(
          * quarter of the metric's weight on a single number.
          */
         const val PYRAMID_LEVELS_MEASURED: Int = 3
+
+        /** Pyramid depth of [StackSLMetric.STRUCTURE]'s SSIM: 32, 16 and 8 pixels at the default size. */
+        const val STRUCTURE_LEVELS: Int = 3
+
+        /** Share of [StackSLMetric.STRUCTURE] that is SSIM; the rest is `1 -` mean absolute error. */
+        const val STRUCTURE_WEIGHT: Double = 0.5
 
         /**
          * [levels] box-filtered halvings of [raster], level 0 being [raster] itself.
@@ -1000,12 +1425,43 @@ class StackSLEvolveRun(
      */
     val skillRatio: Double get() = if (controlSkill <= 0.0) Double.NaN else evolvedSkill / controlSkill
 
+    /**
+     * [StackSLStructure.layoutAgreement] of the evolved program against the target, at the
+     * search's own resolution: does it put light and dark where the target does? Not what either
+     * arm optimised, which is why it is worth reporting beside their fitness.
+     */
+    val evolvedLayout: Double by lazy { layoutOf(evolved) }
+
+    /** The control's [evolvedLayout]. */
+    val controlLayout: Double by lazy { layoutOf(control) }
+
+    private fun layoutOf(run: SearchRun<StackSLProgram>): Double {
+        val g = run.best?.genome ?: return 0.0
+        if (run.bestFitness <= StackSLImageObjective.INVALID_SCORE) return 0.0
+        return StackSLStructure.layoutAgreement(objective.render(g), objective.target.raster)
+    }
+
+    /**
+     * Target, evolved best and the control's best side by side at [side] pixels, for `showImg`.
+     *
+     * The target is enlarged pixel by pixel; both programs are re-rendered at [side], so
+     * what you see is the program, not an enlarged thumbnail of what the search scored.
+     */
+    fun contactSheet(side: Int = 160): Img {
+        val panels = ArrayList<Pair<String, Img>>()
+        panels += "target ${target.name}" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))
+        evolved.best?.genome?.let { panels += "evolved %.2f".format(evolvedSkill) to objective.render(it, side).toImg() }
+        control.best?.genome?.let { panels += "random %.2f".format(controlSkill) to objective.render(it, side).toImg() }
+        return montage(panels, columns = panels.size, cellSide = side + 10)
+    }
+
     fun summary(): String = buildString {
         append("%-10s evolved %.4f (skill %+.3f)  random %.4f (skill %+.3f)".format(
             target.name, evolved.bestFitness, evolvedSkill, control.bestFitness, controlSkill
         ))
         append("  margin %+.4f".format(margin))
         if (!skillRatio.isNaN()) append("  ratio %.2fx".format(skillRatio))
+        append("  layout %.2f vs %.2f".format(evolvedLayout, controlLayout))
         append("  invalid %.1f%%".format(invalidRate * 100))
         append("  dangling %d".format(danglingValues))
         append("  %.1fs".format((evolved.millis + control.millis) / 1000.0))
@@ -1042,11 +1498,16 @@ fun evolveStackSLTowards(
     immigrantRate: Double = 0.05,
     pyramidLevels: Int = StackSLImageObjective.DEFAULT_PYRAMID_LEVELS,
     parallel: Boolean = true,
+    metric: StackSLMetric = StackSLMetric.STRUCTURE,
+    cache: StackSLScoreCache? = StackSLScoreCache(),
     label: String = "stacksl ${target.name}"
 ): StackSLEvolveRun {
     require(budget >= 1) { "budget must be >= 1, got $budget" }
-    val evolvedObjective = StackSLImageObjective(target, dim = dim, pyramidLevels = pyramidLevels, parallel = parallel)
-    val controlObjective = StackSLImageObjective(target, dim = dim, pyramidLevels = pyramidLevels, parallel = parallel)
+    fun objective() = StackSLImageObjective(
+        target, dim = dim, pyramidLevels = pyramidLevels, parallel = parallel, metric = metric, cache = cache
+    )
+    val evolvedObjective = objective()
+    val controlObjective = objective()
     val evolved = PopulationSearch.evolve(
         ops = genome,
         objective = evolvedObjective,
