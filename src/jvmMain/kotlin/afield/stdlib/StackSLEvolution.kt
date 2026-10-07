@@ -24,7 +24,8 @@ import kotlin.random.Random
  *
  *  - **wider:** several [islands] evolving apart, with the best few migrating round a ring every
  *    [StackSLEvolveSettings.migrateEvery] generations, and a larger µ and λ;
- *  - **deeper:** programs up to [StackSLGenome.maxTokens] long (32 here, against 24);
+ *  - **deeper:** programs up to [StackSLGenome.maxTokens] long (48 here, against 24), and
+ *    proposals may carry `: name … ;` definitions, checked for balance before they cost a render;
  *  - **a schedule** ([StackSLStage]): the resolution, the metric and the LPIPS region grid can change
  *    as the search goes, coarse and cheap first, native 64 px LPIPS later. The population is
  *    re-scored when a stage begins, since a score from another stage is not comparable;
@@ -124,7 +125,7 @@ class StackSLEvolution(
     private val asker = Executors.newSingleThreadExecutor { r -> Thread(r, "stacksl-watchmaker").apply { isDaemon = true } }
 
     /** The genome the blind operators use: the default vocabulary at [StackSLEvolveSettings.maxTokens]. */
-    val genome: StackSLGenome get() = StackSLGenome(maxTokens = settings.maxTokens)
+    val genome: StackSLGenome get() = StackSLGenome(maxTokens = settings.maxTokens, maxRandomTokens = min(32, settings.maxTokens))
 
     /** The stage the next generation runs under. */
     val stage: StackSLStage get() = settings.stageAt(generation)
@@ -423,8 +424,35 @@ class StackSLEvolution(
             proposals = proposals,
             maxTokens = settings.maxTokens,
             lastRound = lastRound,
-            sheetPng = sheet.toPngBytes()
+            sheetPng = sheet.toPngBytes(),
+            preview = if (settings.watchmakerRevise) ::preview else null
         )
+    }
+
+    /**
+     * What [programs] draw, for the watchmaker's second pass: each at 64 px beside the target, with
+     * whether the search would refuse it and why. Thumbnails, not fitness renders: not in [renders].
+     */
+    fun preview(programs: List<String>): StackSLPreview {
+        val panels = ArrayList<Pair<String, Img>>()
+        panels += "T" to target.raster.toImg().upscaleNearest(max(1, THUMBNAIL / target.raster.width)).let {
+            if (it.width == THUMBNAIL) it else it.resize(THUMBNAIL, THUMBNAIL)
+        }
+        val status = programs.mapIndexed { i, text ->
+            val problem = StackSLProposals.check(text, settings.maxTokens)
+            val raster = if (problem != null) null else runCatching {
+                StackSLCpu.renderStill(StackSLProposals.program(text).text, dim = THUMBNAIL, time = time, parallel = parallel)
+            }.getOrNull()
+            panels += "P${i + 1}" to (raster?.toImg() ?: Img(THUMBNAIL, THUMBNAIL, 3, FloatArray(THUMBNAIL * THUMBNAIL * 3)))
+            when {
+                problem != null -> "refused: $problem"
+                raster == null -> "refused: it throws when rendered"
+                RasterStructure.of(raster).let { it.spread < StackSLImageObjective.MIN_SPREAD || it.distinctColours < StackSLImageObjective.MIN_DISTINCT_COLOURS } ->
+                    "flat: one colour, which the search refuses"
+                else -> "draws the picture shown"
+            }
+        }
+        return StackSLPreview(montage(panels, columns = min(panels.size, 5), cellSide = THUMBNAIL + 4, gap = 6).toPngBytes(), status)
     }
 
     private fun caseLabels(st: StackSLStage): List<String> {
@@ -720,7 +748,8 @@ data class StackSLEvolveSettings(
     val tournament: Int = 3,
     val crossoverRate: Double = 0.25,
     val immigrantRate: Double = 0.05,
-    val maxTokens: Int = 32,
+    /** Longest program, in words, definitions included; proposals over it are refused, never cut. */
+    val maxTokens: Int = 48,
     /** The schedule. The last stage runs for ever, whatever its [StackSLStage.generations] says. */
     val stages: List<StackSLStage> = listOf(StackSLStage()),
     /** Every this many generations, a round of Adam on the leader's literals; 0 never. */
@@ -731,6 +760,8 @@ data class StackSLEvolveSettings(
     val watchmakerEvery: Int = 0,
     /** A watchmaker round once the leader has not improved for this many generations; 0 never. */
     val watchmakerOnStall: Int = 0,
+    /** Show the watchmaker what its programs draw and take its corrections (a second call per round). */
+    val watchmakerRevise: Boolean = true,
     /** Wait for the watchmaker's reply before the next generation (else it lands when it lands). */
     val watchmakerWait: Boolean = true,
     /** Programs asked of the watchmaker per round. */
@@ -760,7 +791,7 @@ data class StackSLEvolveSettings(
 
     companion object {
         /**
-         * Wider and deeper than [evolveStackSLTowards]: three islands of 12, programs up to 32 words,
+         * Wider and deeper than [evolveStackSLTowards]: three islands of 12, programs up to 48 words,
          * a coarse 16 px pixel-error stage, then LPIPS on the quadrants, then LPIPS on ninths.
          */
         fun wide(): StackSLEvolveSettings = StackSLEvolveSettings(

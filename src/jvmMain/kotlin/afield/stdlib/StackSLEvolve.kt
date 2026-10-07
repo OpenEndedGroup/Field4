@@ -330,12 +330,15 @@ class StackSLPalette(
 class StackSLGenome(
     val palette: StackSLPalette = StackSLPalette.DEFAULT,
     val minTokens: Int = 3,
-    val maxTokens: Int = 24
+    val maxTokens: Int = 24,
+    /** Longest program [random] draws; [maxTokens] still bounds what mutation may grow to. */
+    val maxRandomTokens: Int = maxTokens
 ) : GenomeOps<StackSLProgram> {
 
     init {
         require(minTokens >= 1) { "minTokens must be >= 1, got $minTokens" }
         require(maxTokens >= minTokens) { "need maxTokens >= minTokens, got $maxTokens < $minTokens" }
+        require(maxRandomTokens in minTokens..maxTokens) { "need minTokens <= maxRandomTokens <= maxTokens, got $maxRandomTokens" }
     }
 
     /**
@@ -347,7 +350,7 @@ class StackSLGenome(
      * `rgb`, and why this search has no cold-start problem.
      */
     override fun random(rng: Random): StackSLProgram {
-        val n = minTokens + rng.nextInt(maxTokens - minTokens + 1)
+        val n = minTokens + rng.nextInt(maxRandomTokens - minTokens + 1)
         val out = ArrayList<String>(n)
         var depth = 1
         repeat(n) {

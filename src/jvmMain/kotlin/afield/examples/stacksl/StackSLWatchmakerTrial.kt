@@ -26,9 +26,11 @@ import java.io.File
  *
  * Arms: `baseline` ([evolveStackSLTowards] with lexicase, the 2026-10-07 search), `random` (its
  * control), `wide` ([StackSLEvolveSettings.wide]), `fit` (wide, plus a gradient step on the leader
- * every 4 generations) and `watchmaker` (wide, plus a model round every 8 generations and on a
- * 4-generation stall). The last calls the configured AI provider and costs money; leave it out with
- * `--arms baseline,random,wide,fit`.
+ * every 4 generations), `watchmaker` (wide, plus a model round every 8 generations and on a
+ * 4-generation stall, one pass), `revise` (the same with the second pass, where the model sees
+ * what its programs draw), `frequent` (revise, every 4 generations and on a 2-generation stall) and
+ * `all` (frequent plus fit). The model arms call the configured AI provider and cost money; leave
+ * them out with `--arms baseline,random,wide,fit`.
  *
  * Not a FIELD_TEST: it is a measurement, run by hand through the backdoor's `run-jvm-main`:
  * `--budget 1200 --targets spot,bands --arms ... --out DIR`.
@@ -88,15 +90,17 @@ object StackSLWatchmakerTrial {
                 if ("baseline" in arms) judge("baseline", run.best, run.evolved.evaluations, s * run.evolved.millis / (run.evolved.millis + run.control.millis))
                 if ("random" in arms) judge("random", run.control.best?.genome, run.control.evaluations, s * run.control.millis / (run.evolved.millis + run.control.millis))
             }
-            for (arm in listOf("wide", "fit", "watchmaker", "all").filter { it in arms }) {
+            for (arm in listOf("wide", "fit", "watchmaker", "revise", "frequent", "all").filter { it in arms }) {
                 val settings = when (arm) {
                     "fit" -> StackSLEvolveSettings.wide().copy(fitEvery = 4)
-                    "watchmaker" -> StackSLEvolveSettings.wide().copy(watchmakerEvery = 8, watchmakerOnStall = 4)
-                    "all" -> StackSLEvolveSettings.wide().copy(fitEvery = 4, watchmakerEvery = 8, watchmakerOnStall = 4)
+                    "watchmaker" -> StackSLEvolveSettings.wide().copy(watchmakerEvery = 8, watchmakerOnStall = 4, watchmakerRevise = false)
+                    "revise" -> StackSLEvolveSettings.wide().copy(watchmakerEvery = 8, watchmakerOnStall = 4)
+                    "frequent" -> StackSLEvolveSettings.wide().copy(watchmakerEvery = 4, watchmakerOnStall = 2)
+                    "all" -> StackSLEvolveSettings.wide().copy(fitEvery = 4, watchmakerEvery = 4, watchmakerOnStall = 2)
                     else -> StackSLEvolveSettings.wide()
                 }
                 val e = StackSLEvolution(t32, settings, seed)
-                if (arm == "watchmaker" || arm == "all") {
+                if (arm in setOf("watchmaker", "revise", "frequent", "all")) {
                     // Every round's prompt, picture and raw reply, numbered, so the exchange can be read afterwards.
                     val model = StackSLWatchmaker()
                     var round = 0

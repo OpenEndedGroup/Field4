@@ -68,7 +68,7 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
 
         tool("evolve.propose") {
             describe("Put programs of your own into the population. Each is checked, rendered and scored like any candidate, and kept " +
-                "only if it scores well enough. Straight-line StackSL, one program per string, no definitions and no texture words.")
+                "only if it scores well enough. One line of StackSL per string; definitions allowed, texture words not.")
             effects(ToolEffect.CONTROL_RUNTIME)
             val programs by param<List<String>>("StackSL programs")
             action {
@@ -228,7 +228,8 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             |(evolve.step), add programs of your own (evolve.propose), ask the cheap model for a round of edits (evolve.watchmaker),
             |take a gradient step on a leader's numbers (evolve.fit), change the metric, resolution and population
             |(evolve.configure), and breed with populations from earlier states or other branches (evolve.states,
-            |evolve.crossbreed). Programs are straight-line: no ':' definitions, no '?' reads, no sample/prev/gather. Look words up
+            |evolve.crossbreed). Programs are one line; `: name ... ;` definitions are allowed if each called one consumes one value
+            |and leaves one (open with >v, not =v); no '?' reads, no sample/prev/gather. Look words up
             |with evolve.guide. The population belongs to the conversation: rewinding the chat rewinds it, so be bold.
             """.trimMargin()
         }

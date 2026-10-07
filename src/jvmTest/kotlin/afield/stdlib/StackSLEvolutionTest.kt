@@ -67,7 +67,7 @@ class StackSLEvolutionTest {
         e.watchmaker = StackSLProposer { request ->
             seen = request
             StackSLProposalReply(
-                listOf(StackSLProposal(null, disc, "a disc"), StackSLProposal(1, "uv : bad ;", "broken")),
+                listOf(StackSLProposal(null, disc, "a disc"), StackSLProposal(1, ": fbm3 >v <v ; p fbm3", "shadows a built-in")),
                 StackSLModelUsage("scripted", 1, 100, 80, 20, 5)
             )
         }
@@ -83,7 +83,7 @@ class StackSLEvolutionTest {
         val refused = e.snapshot().lastRound.single { it.program.contains(":") }
         assertNotNull(refused.problem)
         // The next round is told what the last one did.
-        assertTrue(StackSLWatchmakerPrompt.round(e.request()).contains("definitions are not allowed"))
+        assertTrue(StackSLWatchmakerPrompt.round(e.request()).contains(refused.problem!!))
     }
 
     @Test
@@ -92,6 +92,17 @@ class StackSLEvolutionTest {
         val text = StackSLWatchmakerPrompt.round(e.request())
         assertTrue("layout" !in text.lowercase() && "kappa" !in text.lowercase(), text)
         assertTrue("spot" !in text.lowercase(), "the target's name says what to draw: $text")
+    }
+
+    @Test
+    fun `a balanced definition is offered and an unbalanced one is refused with the reason`() {
+        assertNull(StackSLProposals.check(": ring >v <v 18 * sin abs ; p length ring", 48))
+        val unbalanced = StackSLProposals.check(": ring =v <v 18 * sin abs ; p length ring", 48)
+        assertNotNull(unbalanced, "a copy-opened definition leaves two values and must be refused")
+        val e = evolution().step(1)
+        val kept = e.inject(listOf("[1,0.82,0.25] [0.03,0.04,0.12] : disc >v <v length 0.28 threshold ; p disc mix")).single()
+        assertNull(kept.problem)
+        assertTrue(e.layoutOf(StackSLProgram.of(kept.program)) > 0.9)
     }
 
     @Test

@@ -60,8 +60,18 @@ data class StackSLProposalRequest(
     val maxTokens: Int,
     val lastRound: List<StackSLProposalOutcome>,
     /** The target and the parents, numbered as in [parents]: [StackSLEvolution.thumbnailSheet]. */
-    val sheetPng: ByteArray
+    val sheetPng: ByteArray,
+    /**
+     * What a list of programs draws, for the model to check its own proposals against before they
+     * are scored: [StackSLProposer]s that do a second pass call it. `null` for no second pass.
+     */
+    val preview: ((List<String>) -> StackSLPreview)? = null
 ) {
+    val sheetDataUrl: String get() = "data:image/png;base64," + Base64.getEncoder().encodeToString(sheetPng)
+}
+
+/** What some programs draw: the target and each program at 64 px, `P1`, `P2`..., and one status line per program. */
+class StackSLPreview(val sheetPng: ByteArray, val status: List<String>) {
     val sheetDataUrl: String get() = "data:image/png;base64," + Base64.getEncoder().encodeToString(sheetPng)
 }
 
@@ -133,32 +143,53 @@ class StackSLWatchmaker(
 
     override fun propose(request: StackSLProposalRequest): StackSLProposalReply {
         val t0 = System.currentTimeMillis()
-        val prompt = StackSLWatchmakerPrompt.round(request)
-        val result = runCatching {
-            val state = bridge.startThread(fileKey = "stacksl:watchmaker", fileText = "", instructions = StackSLWatchmakerPrompt.stable)
-            bridge.send(state, prompt, maxOutputTokens = maxOutputTokens, maxToolRounds = 0, imageDataUrls = listOf(request.sheetDataUrl))
+        val state = runCatching {
+            bridge.startThread(fileKey = "stacksl:watchmaker", fileText = "", instructions = StackSLWatchmakerPrompt.stable)
+        }.getOrElse { e ->
+            return StackSLProposalReply(emptyList(), StackSLModelUsage(model, 1, millis = System.currentTimeMillis() - t0), "the model call failed: ${e.message ?: e}")
         }
-        val elapsed = System.currentTimeMillis() - t0
-        val sent = result.getOrElse { e ->
-            return StackSLProposalReply(emptyList(), StackSLModelUsage(model, 1, millis = elapsed), "the model call failed: ${e.message ?: e}")
+        var usage = StackSLModelUsage(model)
+        fun ask(prompt: String, image: String): String? {
+            val started = System.currentTimeMillis()
+            val sent = runCatching {
+                bridge.send(state, prompt, maxOutputTokens = maxOutputTokens, maxToolRounds = 0, imageDataUrls = listOf(image))
+            }.getOrNull()
+            usage += StackSLModelUsage(model, 1, sent?.inputTokens ?: 0, sent?.cacheReadTokens ?: 0, sent?.outputTokens ?: 0,
+                System.currentTimeMillis() - started)
+            return sent?.text
         }
-        val usage = StackSLModelUsage(model, 1, sent.inputTokens ?: 0, sent.cacheReadTokens ?: 0, sent.outputTokens ?: 0, elapsed)
-        val (proposals, unread) = StackSLWatchmakerPrompt.parse(sent.text, request.parents.size)
+        val first = ask(StackSLWatchmakerPrompt.round(request), request.sheetDataUrl)
+            ?: return StackSLProposalReply(emptyList(), usage, "the model call failed")
+        val (drafts, unread) = StackSLWatchmakerPrompt.parse(first, request.parents.size)
+        var proposals = drafts.take(request.proposals)
+        var raw = first
+        // The second pass: the model sees what its programs draw, in the same thread (so the guide is
+        // still a cached prefix), and corrects them. Its first drafts are offered too, unless the
+        // second pass repeats them.
+        val preview = request.preview
+        if (preview != null && proposals.isNotEmpty()) {
+            val shown = preview(proposals.map { it.program })
+            val second = ask(StackSLWatchmakerPrompt.revision(request, proposals, shown), shown.sheetDataUrl)
+            if (second != null) {
+                val (revised, _) = StackSLWatchmakerPrompt.parse(second, request.parents.size)
+                proposals = (revised.take(request.proposals) + proposals).distinctBy { StackSLProposals.program(it.program).text }
+                raw = "$first\n---- revision ----\n$second"
+            }
+        }
         val problem = if (unread.isEmpty()) null else "${unread.size} line(s) not in the form `parent | program | why`"
-        return StackSLProposalReply(proposals.take(request.proposals), usage, problem, sent.text)
+        return StackSLProposalReply(proposals, usage, problem, raw)
     }
 }
 
 /** The watchmaker's prompt: [stable] once and cached, [round] per call, and [parse] for the reply. */
 object StackSLWatchmakerPrompt {
 
-    /** The words guide sections a straight-line program can use. Definitions are out; so is the header. */
+    /** The words guide, less its generated header and the section on word references. */
     private val guide: String by lazy {
         val text = StackSLWatchmakerPrompt::class.java.getResourceAsStream("/afield/stacksl/study/stacksl_words.md")
             ?.bufferedReader()?.readText().orEmpty()
         val sections = text.split(Regex("(?m)^(?=## )"))
-        sections.drop(1).filterNot { it.startsWith("## Definitions") || it.startsWith("## Word references") }
-            .joinToString("").trim()
+        sections.drop(1).filterNot { it.startsWith("## Word references") }.joinToString("").trim()
     }
 
     /** The guide's section(s) mentioning [word] in backticks, or the section titles when [word] is blank. */
@@ -188,9 +219,12 @@ object StackSLWatchmakerPrompt {
         |- A flat or nearly flat picture is refused and scores nothing.
         |
         |The program:
-        |- Straight-line StackSL on one line: words separated by single spaces, at most the stated number of words.
-        |- No definitions (no ':' or ';'), no '?' host reads, no comments, and no texture words (sample, sample-abs,
-        |  gather, prev, blur): there is no previous frame. Vector literals have no spaces inside: [0.9,0.1,0.1].
+        |- StackSL on one line: words separated by single spaces, at most the stated number of words in all.
+        |- Definitions are allowed and are the way to repeat a piece of work: `: name >v <v 4 * fract ;` then use `name`.
+        |  A definition that is called must consume exactly one value and leave exactly one: open it with >v (move), not
+        |  =v (copy). One that does not is refused, and so is one named after a built-in word. Put definitions first.
+        |- No '?' host reads, no comments, and no texture words (sample, sample-abs, gather, prev, blur): there is no
+        |  previous frame. Vector literals have no spaces inside: [0.9,0.1,0.1].
         |- A word that finds too few values on the stack is given defaults silently, so keep the arity right: count.
         |- To draw two colours split by a shape: colourA colourB mask mix, where mask is 0..1 (mix takes a b amount).
         |  Shapes come from distances and edges: p length is the distance from the centre; x edge threshold, lo hi x
@@ -248,6 +282,19 @@ object StackSLWatchmakerPrompt {
         append("Propose ${r.proposals} programs of at most ${r.maxTokens} words each.")
     }
 
+    /** The second pass: what each draft draws, and a request for the corrected list. */
+    fun revision(r: StackSLProposalRequest, drafts: List<StackSLProposal>, shown: StackSLPreview): String = buildString {
+        appendLine("This picture shows the target (T) and what each of your programs draws (P1, P2... in the order you wrote them):")
+        drafts.forEachIndexed { i, p ->
+            appendLine("P${i + 1}  ${shown.status.getOrElse(i) { "" }}")
+            appendLine("    ${p.program}")
+        }
+        appendLine()
+        appendLine("Compare each with what you meant and with the target. Fix the ones that do not draw what you intended")
+        appendLine("(a flat picture usually means a mask that is always 0 or always 1: check each word's stack effect), keep")
+        append("or refine the ones that work, and reply with ${r.proposals} programs in the same form. Parent numbers still refer to #1, #2...")
+    }
+
     private val line = Regex("""^\s*#?\s*(\d+|new)\s*[|:]\s*(.+?)\s*(?:\|\s*(.*))?$""", RegexOption.IGNORE_CASE)
 
     /** The proposals in a reply, and the non-blank lines that were not proposals. */
@@ -285,12 +332,18 @@ object StackSLProposals {
         val p = program(text)
         if (p.size == 0) return "empty"
         if (p.size > maxTokens) return "${p.size} words, over the limit of $maxTokens"
-        p.tokens.firstOrNull { it == ":" || it == ";" }?.let { return "definitions are not allowed" }
         p.tokens.firstOrNull { it.startsWith("?") }?.let { return "'$it' reads the host, which a still render does not have" }
         p.tokens.firstOrNull { it in refusedWords }?.let { return "'$it' reads a texture, and there is no previous frame" }
         val compiled = runCatching { StackSLCompiler.compile(p.text, StackSLCpu.stackAutoOptions("program")) }
             .getOrElse { return "does not compile: ${it.message}" }
         compiled.diagnostics.firstOrNull { it.severity == StackSLSeverity.ERROR }?.let { return "does not compile: ${it.message}" }
+        // A called definition whose stack effect is not one-in-one-out is pruned silently and every
+        // later word reads the wrong operand: the report is what says so.
+        if (p.tokens.contains(":")) {
+            val report = runCatching { stackAutoShaderReport(p.text, "program") }.getOrElse { return "does not compile: ${it.message}" }
+            if (!report.compiled) return "does not compile: ${report.errors.firstOrNull() ?: "unknown error"}"
+            report.problems.firstOrNull()?.let { return it }
+        }
         return null
     }
 
