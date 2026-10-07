@@ -17,9 +17,20 @@ fun bake() {
     println("baked: ${pad.fit(bx, by)}")
 }
 
+// Takes the tremor out of the take: every sample as keys, smoothed over 40 ms, played back
+// through the pad, then baked again, so both lanes still have their keys at the same times.
+fun smoothTake() {
+    val (sx, sy) = bakeGesture(pad, tolerance = 0.0, channel = "lanes")
+    sx.smooth(0.04)
+    sy.smooth(0.04)
+    pad.setTake(sx, sy)
+    bake()
+}
+
 controlGroup("gesture") {
     pad = gesture("take", initialTake = eight) { p = it }
     button("bake take") { if (it) bake() }
+    button("smooth take") { if (it) smoothTake() }
     button("replay lanes") { if (it) { pad.setTake(x, y); println("pad now plays the lanes: ${pad.samples.size} samples") } }
 }
 displayOpen("gesture")
