@@ -1249,7 +1249,7 @@ cycles, so this only matters if you call `events(...)` with a partial arc by han
 
 `src/jvmMain/kotlin/afield/four/synth/PatAlgebra.kt` — [read the source](source/jvmMain/afield/four/synth/PatAlgebra/)
 
-**Used in:** [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md), [A pattern as a function generator](../marf.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md)
+**Used in:** [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md), [A pattern as a function generator](../marf.md), [OSCQuery: controls other tools can find](../oscquery.md)
 
 ### Top-level functions { #patalgebra-kt-functions }
 
