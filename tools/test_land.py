@@ -32,6 +32,19 @@ if pathlib.Path("BREAKS").exists() or (pathlib.Path("PAIR_A").exists() and pathl
     sys.exit(1)
 '''
 
+DOC_STUB = '''
+import pathlib, sys
+root = pathlib.Path.cwd().parent
+record = root / "DOC_RUNS"
+line = f"{pathlib.Path('seed.txt').read_text().strip()}:{pathlib.Path('alpha.txt').exists()}:{pathlib.Path('beta.txt').exists()}\\n"
+record.write_text((record.read_text() if record.exists() else "") + line)
+if pathlib.Path("DOCS_BREAKS").exists():
+    print("docs build failed deliberately", file=sys.stderr)
+    sys.exit(1)
+pathlib.Path("public/field4/keyframe_editor").mkdir(parents=True, exist_ok=True)
+pathlib.Path("public/field4/keyframe_editor/index.html").write_text("built docs")
+'''
+
 
 class LandQueueTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -53,6 +66,7 @@ class LandQueueTest(unittest.TestCase):
         self.git(self.primary, "config", "merge.field-generated.driver", "true")
         (self.primary / "tools").mkdir()
         (self.primary / "tools/merge_regen.py").write_text(STUB)
+        (self.primary / "tools/build_zensical_docs.py").write_text(DOC_STUB)
         (self.primary / "seed.txt").write_text("seed\n")
         self.git(self.primary, "add", "-A")
         self.git(self.primary, "commit", "-q", "-m", "seed")
@@ -85,6 +99,43 @@ class LandQueueTest(unittest.TestCase):
         subjects = self.git(self.primary, "log", "--format=%s", "main").splitlines()
         self.assertEqual(subjects[:2], ["Land beta (test-agent)", "Land alpha (test-agent)"])
         self.assertTrue((self.primary / "beta.txt").exists(), "primary's checkout was not fast-forwarded")
+
+    def test_doc_item_separates_landing_batches_and_builds_the_main_checkout(self) -> None:
+        self.assertEqual(self.land(self.branch_with("alpha", "alpha.txt"), "enqueue").returncode, 0)
+        request = self.land(self.primary, "doc")
+        self.assertEqual(request.returncode, 0, request.stdout + request.stderr)
+        doc_id = request.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        self.assertEqual(self.land(self.branch_with("beta", "beta.txt"), "enqueue").returncode, 0)
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((Path(self._tmp.name) / "DOC_RUNS").read_text(), "seed:True:False\n")
+        self.assertEqual((self.primary / "public/field4/keyframe_editor/index.html").read_text(), "built docs")
+        self.assertEqual(self.guard_calls(), 2, "the docs item must split the branch batches")
+        self.assertIn("built", self.land(self.primary, "status", doc_id).stdout)
+        self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 0)
+
+    def test_failed_doc_item_reports_failure_and_does_not_bounce_later_branch(self) -> None:
+        (self.primary / "DOCS_BREAKS").write_text("yes\n")
+        request = self.land(self.primary, "doc")
+        doc_id = request.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        self.land(self.branch_with("beta", "beta.txt"), "enqueue")
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 1)
+        self.assertIn("docs build failed deliberately", self.land(self.primary, "status", doc_id).stdout)
+        self.assertIn("Land beta", self.git(self.primary, "log", "-1", "--format=%s", "main"))
+
+    def test_doc_item_waits_for_an_earlier_blocked_landing(self) -> None:
+        wt = self.branch_with("alpha", "alpha.txt")
+        (wt / "seed.txt").write_text("alpha changed seed\n")
+        self.git(wt, "commit", "-qam", "edit seed")
+        (self.primary / "seed.txt").write_text("uncommitted\n")
+        self.land(wt, "enqueue")
+        self.land(self.primary, "doc")
+        self.land(self.branch_with("beta", "beta.txt"), "enqueue")
+        self.run_lander()
+        self.assertFalse((Path(self._tmp.name) / "DOC_RUNS").exists())
+        self.assertEqual(self.states()["beta"], "pending")
 
     def test_a_failing_landing_bounces_and_leaves_main_alone(self) -> None:
         before = self.git(self.primary, "rev-parse", "main")
@@ -214,8 +265,9 @@ class LandQueueTest(unittest.TestCase):
 
     def states(self) -> dict[str, str]:
         queue = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue"
-        return {json.loads(f.read_text())["branch"]: state
-                for state in ("pending", "landed", "bounced") for f in (queue / state).glob("*.json")}
+        return {item["branch"]: state
+                for state in ("pending", "landed", "bounced") for f in (queue / state).glob("*.json")
+                if (item := json.loads(f.read_text())).get("branch")}
 
     def test_a_batch_shares_one_guard_and_keeps_one_commit_per_branch(self) -> None:
         names = ["b1", "b2", "b3", "b4", "b5"]

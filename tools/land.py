@@ -6,6 +6,7 @@
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
+    uv run python tools/land.py doc                               # build the local docs when its turn arrives
     uv run python tools/land.py huh [--context]                   # ask claude -p what the queue is doing
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
@@ -31,6 +32,11 @@ What the lander does with each round:
 5. On any failure it bounces the item: the reason and the log path go in `status`, and `main` is
    untouched. Fix the branch, commit, and enqueue again.
 
+`doc` is a queue barrier: preceding landings finish before it builds `public/field4/` in the
+checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
+and reports its own failure without undoing a landing. The running lander must be restarted after
+changes to this script are landed, because Python does not reload it while running.
+
 The queue is plain JSON files in the clone's common git dir (`field-land-queue/`), so every worktree
 of the clone sees the same queue. The commit is pinned at enqueue time: later commits on the branch
 are not landed until it is enqueued again.
@@ -53,6 +59,7 @@ import time
 from pathlib import Path
 
 PENDING, LANDED, BOUNCED = "pending", "landed", "bounced"
+DOC = "doc"
 POLL_SECONDS = 15
 # The lander's worktree sits on this branch rather than a detached HEAD, because a clean, merged,
 # detached worktree is exactly what tools/reap_merged_worktrees.py removes; it protects this name.
@@ -114,6 +121,10 @@ def _move(queue: Path, item: dict, to_state: str) -> None:
     (queue / to_state / f"{item['id']}.json").write_text(json.dumps(item, indent=2) + "\n")
 
 
+def _is_doc(item: dict) -> bool:
+    return item.get("kind") == DOC
+
+
 # ---------------------------------------------------------------------------- enqueue / status / wait
 
 
@@ -146,7 +157,7 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     for item in _items(queue, PENDING):
         # An item the lander has started stays: removing its file mid-landing hid it from status
         # while it landed anyway. The new commit queues behind it instead.
-        if item["branch"] == branch and not item.get("started"):
+        if item.get("branch") == branch and not item.get("started"):
             # A re-enqueue replaces the older request: the newest commit is the one meant. It keeps
             # the older one's place in line, and says whose it was, since two agents can enqueue
             # the same branch and one would otherwise silently undo the other.
@@ -184,12 +195,43 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doc(args: argparse.Namespace) -> int:
+    """Queue one HTML build in the checkout whose `main` Field normally serves."""
+    here = Path.cwd()
+    primary = _primary(here)
+    holder = _main_holder(primary)
+    if holder is None:
+        print("land: doc needs a checkout with main checked out", file=sys.stderr)
+        return 2
+    queue = _queue_dir(here)
+    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    item = {
+        "id": f"{stamp}-doc",
+        "kind": DOC,
+        "checkout": str(holder.resolve()),
+        "by": os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}",
+        "enqueued": _now(),
+        "seq": time.time_ns(),
+    }
+    base, n = item["id"], 1
+    while _find(queue, item["id"]):
+        n += 1
+        item["id"] = f"{base}-{n}"
+    _move(queue, item, PENDING)
+    print(f"land: queued docs build {item['id']} for {holder}; {len(_items(queue, PENDING)) - 1} ahead of it.")
+    print(f"Progress: uv run python tools/land.py status {item['id']}")
+    print(f"Outcome: uv run python tools/land.py wait {item['id']}")
+    return 0
+
+
 _SUBJECTS: dict[str, str] = {}
 
 
 def _subject(item: dict) -> str:
     """The first line of the branch tip's commit message: a branch name like
     claude/distracted-mccarthy-deeb34 says nothing about what is landing."""
+    if _is_doc(item):
+        return "Build the local documentation site"
     sha = item["sha"]
     if sha not in _SUBJECTS:
         result = subprocess.run(["git", "log", "-1", "--format=%s", sha], stdout=subprocess.PIPE,
@@ -235,12 +277,16 @@ def _log_lines(item: dict) -> list[str]:
 
 
 def _ran_gradle(item: dict) -> bool:
+    if _is_doc(item):
+        return False
     return any(line.startswith("> Task :") for line in _log_lines(item))
 
 
 def _phase(item: dict) -> tuple[str, str]:
     """(what the landing is doing, the last thing it printed), read from its log."""
     lines = _log_lines(item)
+    if _is_doc(item):
+        return "building local docs", (lines[-1][:160] if lines else "")
     if not lines:
         return "starting", ""
     steps = [line for line in lines if line.startswith("merge_regen:")]
@@ -261,7 +307,7 @@ def _phase(item: dict) -> tuple[str, str]:
 
 def _typical(queue: Path, gradle: bool) -> float | None:
     """Median duration of recent landings of the same kind (with or without a Gradle guard)."""
-    took = [t for item in _items(queue, LANDED)[-20:] if _ran_gradle(item) == gradle and (t := _took(item)) is not None]
+    took = [t for item in _items(queue, LANDED)[-20:] if not _is_doc(item) and _ran_gradle(item) == gradle and (t := _took(item)) is not None]
     return sorted(took)[len(took) // 2] if took else None
 
 
@@ -273,6 +319,17 @@ def _superseded_by(queue: Path, item: dict) -> dict | None:
 
 
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
+    if _is_doc(item):
+        head = f"{item['id']}  docs for {item['checkout']}  by {item['by']}"
+        lines = [f"{'building' if state == PENDING and item.get('started') else 'queued' if state == PENDING else 'built' if state == LANDED else 'failed':8} {head}"]
+        if state == PENDING and item.get("started"):
+            lines.append(f"         building for {_span(_since(item['started']))}; log: {item.get('log', '')}")
+        elif state == LANDED:
+            lines.append(f"         main {item.get('built_from', '')[:9]}, {_span(_since(item.get('finished')))} ago")
+        elif state == BOUNCED:
+            lines.append(f"         {_span(_since(item.get('finished')))} ago: {item.get('reason', '?')}")
+            lines.append(f"         log: {item.get('log', '')}")
+        return "\n".join(lines)
     head = f"{item['id']}  {item['sha'][:9]}  by {item['by']}"
     lines = [f"{state:8} {head}"]
     if _subject(item):
@@ -519,6 +576,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
     rule = lambda title: print(st.dim("\u2500\u2500 ") + st.bold(title) + " " + st.dim("\u2500" * max(width - len(title) - 4, 0)))
 
     def who(item: dict) -> str:
+        if _is_doc(item):
+            return f"{st.magenta('docs')}  {st.dim(item['checkout'])}  {st.dim(g['user'] + ' ' + item['by'])}"
         line = f"{st.magenta(g['branch'] + ' ' + item['branch'])}  {st.dim(item['sha'][:9])}  {st.dim(g['user'] + ' ' + item['by'])}"
         subject = _subject(item)
         # The tip's commit subject, on its own line: the branch name rarely says what is landing.
@@ -610,6 +669,12 @@ def _pretty_status(queue: Path, recent: int) -> None:
                 print(f"  {st.cyan(g['push'] + ' pushed')}  {what}  {st.dim(ago + ' ago')}")
             continue
         took = _took(item)
+        if _is_doc(item):
+            label = st.green(g['ok'] + ' built') if state == LANDED else st.red(g['bounce'] + ' docs failed')
+            print(f"  {label}  {who(item)}  {st.dim(ago + ' ago')}")
+            if state == BOUNCED:
+                print(f"    {st.red(str(item.get('reason', '?'))[: width - 6])}")
+            continue
         if state == LANDED and _is_pull(item):
             origin_note = "from origin \u00b7 " + g["main"] + " " + item.get("landed_as", "")[:9]
             print(f"  {st.cyan(g['pull'] + ' pulled')}  {who(item)}  {st.dim(origin_note)}"
@@ -701,7 +766,8 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"\nqueued ({len(waiting)}), in landing order:")
         for n, item in enumerate(waiting, 1):
             estimate = f", starts in about {_span(ahead)}" if typical else ""
-            print(f"  {n}. {item['id']}  {item['sha'][:9]}  by {item['by']}  waiting {_span(_since(item.get('enqueued')))}{estimate}")
+            detail = f"docs for {item['checkout']}" if _is_doc(item) else item['sha'][:9]
+            print(f"  {n}. {item['id']}  {detail}  by {item['by']}  waiting {_span(_since(item.get('enqueued')))}{estimate}")
             if item.get("blocked"):
                 b = item["blocked"]
                 print(f"     BLOCKED {_span(_since(b.get('since')))} by uncommitted edits in {b.get('where')}: " + ", ".join(b.get("files", [])))
@@ -729,7 +795,7 @@ def cmd_mine(args: argparse.Namespace) -> int:
     branch = args.branch or _git(here, "branch", "--show-current")
     queue = _queue_dir(here)
     attempts = sorted(
-        ((state, item) for state in (PENDING, LANDED, BOUNCED) for item in _items(queue, state) if item["branch"] == branch),
+        ((state, item) for state in (PENDING, LANDED, BOUNCED) for item in _items(queue, state) if item.get("branch") == branch),
         key=lambda pair: pair[1]["id"], reverse=True,
     )
     if not attempts:
@@ -1043,7 +1109,7 @@ def _events(queue: Path, kind: str) -> list[dict]:
 
 def _is_pull(item: dict) -> bool:
     """A sync item: origin's main, landed through the queue."""
-    return item["branch"].startswith("sync/origin")
+    return not _is_doc(item) and item["branch"].startswith("sync/origin")
 
 
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
@@ -1206,6 +1272,37 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
     return "green"
 
 
+def _run_doc(item: dict, primary: Path, queue: Path) -> None:
+    """Build the served checkout after earlier queue items, without changing Git history."""
+    checkout = Path(item["checkout"])
+    log = queue / "logs" / f"{item['id']}.log"
+    item.update(started=_now(), log=str(log))
+    _move(queue, item, PENDING)
+    holder = _main_holder(primary)
+    if holder is None or holder.resolve() != checkout.resolve():
+        item.update(reason="the checkout holding main changed; queue a new doc item for the current checkout", finished=_now())
+        _move(queue, item, BOUNCED)
+        return
+    script = checkout / "tools" / "build_zensical_docs.py"
+    if not script.is_file():
+        item.update(reason=f"docs builder missing in {checkout}", finished=_now())
+        _move(queue, item, BOUNCED)
+        return
+    item["built_from"] = _git(checkout, "rev-parse", "HEAD")
+    _move(queue, item, PENDING)
+    env = {**os.environ, "FIELD_DOCS_RUNNER_MODE": "never", "PYTHONUNBUFFERED": "1"}
+    with log.open("w") as out:
+        out.write(f"land: building local docs in {checkout} from main {item['built_from'][:9]}\n")
+        out.flush()
+        code = _run_watched([sys.executable, str(script)], checkout, env, log, out)
+    if code == 0:
+        item["finished"] = _now()
+        _move(queue, item, LANDED)
+    else:
+        item.update(reason=(f"docs build went silent for {WATCHDOG_MINUTES:.0f} min" if code is None else _first_error(log)), finished=_now())
+        _move(queue, item, BOUNCED)
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     here = Path.cwd()
     primary = _primary(here)
@@ -1229,8 +1326,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         limit, bisecting, suspects = args.batch, None, set()
         while True:
             pending = _items(queue, PENDING)
+            # A docs item is an exact boundary. Later landings cannot pass it, and it cannot
+            # pass an earlier landing that is waiting on edits in main's checkout.
+            doc_index = next((n for n, item in enumerate(pending) if _is_doc(item)), None)
+            before_doc = pending[:doc_index] if doc_index is not None else pending
             ready = []
-            for item in pending:
+            for item in before_doc:
                 blocking = _blocking_edits(primary, item)
                 if blocking:
                     if item.get("blocked", {}).get("files") != blocking:
@@ -1243,9 +1344,8 @@ def cmd_run(args: argparse.Namespace) -> int:
                     ready.append(item)
                 else:
                     ready.append(item)
-            pending = ready
-            if pending:
-                batch = pending[:limit]
+            if ready:
+                batch = ready[:limit]
                 wt = _lander_worktree(primary, args.worktree)  # re-created if something removed it
                 print(f"land: {_now()} landing {len(batch)}: " + ", ".join(i["branch"] for i in batch), flush=True)
                 result = _land_batch(batch, primary, wt, queue, bisecting)
@@ -1267,9 +1367,16 @@ def cmd_run(args: argparse.Namespace) -> int:
                     state, done = _find(queue, item["id"]) or ("?", item)
                     print(_describe(state, done, queue), flush=True)
                 continue
+            if doc_index == 0:
+                item = pending[0]
+                print(f"land: {_now()} building docs in {item['checkout']}", flush=True)
+                _run_doc(item, primary, queue)
+                state, done = _find(queue, item["id"]) or ("?", item)
+                print(_describe(state, done, queue), flush=True)
+                continue
             if args.once and not _items(queue, PENDING):
                 return 0
-            if args.once and not ready:
+            if args.once:
                 print("land: everything left is blocked by uncommitted edits in main's checkout; exiting", flush=True)
                 return 0
             time.sleep(POLL_SECONDS)
@@ -1286,6 +1393,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--push", action="store_true", help="push main to origin once this lands (only if it lands)")
     p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")
     p.set_defaults(func=cmd_enqueue)
+    p = sub.add_parser("doc", help="queue a local docs build after preceding landings")
+    p.set_defaults(func=cmd_doc)
     p = sub.add_parser("status", help="show the queue, or one item (exit 0 landed, 1 bounced, 3 pending)")
     p.add_argument("id", nargs="?")
     p.add_argument("--recent", type=int, default=5)
