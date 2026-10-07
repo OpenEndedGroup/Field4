@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-19 source file(s), 570 public symbol(s), 492 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+20 source file(s), 581 public symbol(s), 495 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1029,6 +1029,46 @@ A λ-calculus front end for `interactionnets.kt`: a [`Term`](visualization.md#la
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">normalise</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="nc">Term</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nc">ActivationOrder</span> <span class="o">=</span> <span class="nc">ActivationOrder</span><span class="p">.</span><span class="nc">FIRST&#95;FOUND</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">relaxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Run</span></code>](source/jvmMain/afield/stdlib/lambdaterms/#L772) | Compile `term`, reduce it over `Lambda.rules` until nothing fires, and read the answer back. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">normalise</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nc">ActivationOrder</span> <span class="o">=</span> <span class="nc">ActivationOrder</span><span class="p">.</span><span class="nc">FIRST&#95;FOUND</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">relaxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Run</span></code>](source/jvmMain/afield/stdlib/lambdaterms/#L785) | `normalise`, on source text. The one-liner this file's overview opens with. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">corpus</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/lambdaterms/#L805) | The named closed terms this front end is checked against, as source text: Church numerals with `succ`, `add`, `mul` and `pred`, Church booleans with `if`, the combinators `S`, `K` and `I`, terms whose reduction duplicates a redex so that sharing has something to do, and terms that erase an argument entirely. |
+
+## LorisVisualizer.kt { #lorisvisualizer-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/loris/LorisVisualizer.kt` — [read the source](source/jvmMain/afield/stdlib/loris/LorisVisualizer/)
+
+**Used in:** [Loris: partial tracks and resynthesis](../loris.md)
+
+### Top-level functions { #lorisvisualizer-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">LorisModel</span><span class="p">.</span><span class="nf">visualizationHtml</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">LorisViewOptions</span> <span class="o">=</span> <span class="nc">LorisViewOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/LorisVisualizer/#L33) | Actual irregular trajectories, with shared waveform time-window, cursor and click-to-seek events. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">LorisResult</span><span class="p">.</span><span class="nf">visualizationHtml</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">LorisViewOptions</span> <span class="o">=</span> <span class="nc">LorisViewOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/LorisVisualizer/#L79) | Adds a real reconstruction player to the synchronized partial map. PCM data itself is unchanged. |
+
+### LorisFrequencyAxis { #lorisvisualizer-kt-lorisfrequencyaxis }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">LorisFrequencyAxis</span></code>](source/jvmMain/afield/stdlib/loris/LorisVisualizer/#L10)
+
+Constants: `CENTS`, `ERB`, `HZ`.
+
+### LorisTrackSelection { #lorisvisualizer-kt-loristrackselection }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">LorisTrackSelection</span></code>](source/jvmMain/afield/stdlib/loris/LorisVisualizer/#L11)
+
+Constants: `BAND_BALANCED`, `STRONGEST`.
+
+### LorisViewOptions { #lorisvisualizer-kt-lorisviewoptions }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LorisViewOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">380</span><span class="p">,</span> <span class="k">val</span> <span class="n">minimumHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">maximumHz</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">axis</span><span class="p">:</span> <span class="nc">LorisFrequencyAxis</span> <span class="o">=</span> <span class="nc">LorisFrequencyAxis</span><span class="p">.</span><span class="nc">ERB</span><span class="p">,</span> <span class="k">val</span> <span class="n">selection</span><span class="p">:</span> <span class="nc">LorisTrackSelection</span> <span class="o">=</span> <span class="nc">LorisTrackSelection</span><span class="p">.</span><span class="nc">BAND&#95;BALANCED</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxPartials</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">320</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointsPerPartial</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1500</span><span class="p">,</span> <span class="k">val</span> <span class="n">syncGroup</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Loris partial trajectories&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/loris/LorisVisualizer/#L14)
+
+Display limits affect drawing only, never the stored native model or resynthesis.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minimumHz</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">axis</span><span class="p">:</span> <span class="nc">LorisFrequencyAxis</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">selection</span><span class="p">:</span> <span class="nc">LorisTrackSelection</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxPartials</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">syncGroup</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## Colormaps.kt { #colormaps-kt }
 

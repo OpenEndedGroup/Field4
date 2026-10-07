@@ -1,0 +1,157 @@
+name: loris_partial_explorer
+description: >
+  Real offline Loris analysis, irregular partial trajectories, synchronized source/reconstruction
+  audition, programmable selection and resynthesis, and independent time/frequency-resolution passes.
+operations:
+  - create:
+      box: loris_source_and_partials
+      name: 1 · source, analyze, partials and reconstruction
+      frame: { x: 40.0, y: 40.0, w: 480.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.loris.LorisClient
+          import afield.stdlib.loris.LorisNative
+          import afield.stdlib.loris.LorisOptions
+          import afield.stdlib.loris.LorisViewOptions
+          import afield.stdlib.loris.visualizationHtml
+          import afield.stdlib.AudioVisualizer
+          import afield.stdlib.AudioVisualizerOptions
+          import afield.four.audio.WavFloatArrayLoader
+          import afield.stdlib.path
+
+          val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+          val sync = "loris-source-study"
+          val client = LorisClient()
+          display("worker", LorisNative.describe())
+          client.analyzeWavAsync(path,
+              options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+                  frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+              onProgress = { display("status", it) },
+          ).thenAccept { analyzed ->
+              val wav = WavFloatArrayLoader.loadWavToFloatArray(path.toString())
+              val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate,
+                  AudioVisualizerOptions(width = 1000, waveformHeight = 95, syncGroup = sync), label = "Source")
+              display("source and reconstruction", source + analyzed.visualizationHtml(
+                  LorisViewOptions(height = 400, syncGroup = sync)))
+              display("provenance", analyzed.provenance)
+          }.exceptionally { error ->
+              display("error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
+  - create:
+      box: loris_edit_partials
+      name: 2 · select tracks, remove noise, lower frequencies
+      frame: { x: 1120.0, y: 40.0, w: 480.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.loris.LorisClient
+          import afield.stdlib.loris.LorisOptions
+          import afield.stdlib.loris.LorisFrequencyAxis
+          import afield.stdlib.loris.LorisViewOptions
+          import afield.stdlib.loris.visualizationHtml
+          import afield.stdlib.path
+
+          val client = LorisClient()
+          val minimumTrackSeconds = 0.03
+          val frequencyScale = 0.75
+          val bandwidthScale = 0.0
+          client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+              options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+                  frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+              onProgress = { display("status", it) },
+          ).thenCompose { analyzed ->
+              val selected = analyzed.model.copy(partials = analyzed.model.partials.filter {
+                  it.points.last().timeSeconds - it.points.first().timeSeconds >= minimumTrackSeconds
+              })
+              display("status", "Resynthesizing ${selected.partials.size} selected tracks…")
+              client.synthesizeAsync(selected.transformed(frequencyScale = frequencyScale,
+                  bandwidthScale = bandwidthScale, gain = 0.8))
+          }.thenAccept { result ->
+              display("changed partials and sound", result.visualizationHtml(LorisViewOptions(
+                  axis = LorisFrequencyAxis.ERB,
+                  syncGroup = "loris-edited-study")))
+              display("provenance", result.provenance)
+          }.exceptionally { error ->
+              display("error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
+  - create:
+      box: loris_two_resolutions
+      name: 3 · independent fine-time and fine-frequency passes
+      frame: { x: 40.0, y: 2200.0, w: 480.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.loris.LorisClient
+          import afield.stdlib.loris.LorisOptions
+          import afield.stdlib.loris.LorisViewOptions
+          import afield.stdlib.loris.visualizationHtml
+          import afield.stdlib.path
+          import java.util.concurrent.CompletableFuture
+
+          val client = LorisClient()
+          val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+          val passes = listOf(
+              "fine time" to LorisOptions(resolutionHz = 80.0, windowWidthHz = 160.0, hopSeconds = .003),
+              "fine frequency" to LorisOptions(resolutionHz = 20.0, windowWidthHz = 40.0, hopSeconds = .005),
+          ).map { (name, settings) ->
+              client.analyzeWavAsync(path, durationSeconds = 6.0, options = settings,
+                  onProgress = { display("$name status", it) },
+              ).thenAccept { result ->
+                  display(name, result.visualizationHtml(LorisViewOptions(label = name,
+                      height = 280, syncGroup = "loris-resolution-comparison")))
+                  display("$name provenance", result.provenance)
+              }
+          }
+          CompletableFuture.allOf(*passes.toTypedArray()).exceptionally { error ->
+              display("error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
+  - create:
+      box: loris_spectral_whirlpool
+      name: 4 · a spectral whirlpool in seconds 6–9
+      frame: { x: 1120.0, y: 2200.0, w: 480.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.stdlib.loris.LorisClient
+          import afield.stdlib.loris.LorisOptions
+          import afield.stdlib.loris.LorisViewOptions
+          import afield.stdlib.loris.visualizationHtml
+          import afield.stdlib.path
+          import kotlin.math.PI
+          import kotlin.math.pow
+          import kotlin.math.sin
+
+          val client = LorisClient()
+          val chunkStart = 6.0
+          val chunkDuration = 3.0
+          client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+              options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+                  frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+              onProgress = { display("status", it) },
+          ).thenCompose { analyzed ->
+              val model = analyzed.model
+              val changed = model.copy(partials = model.partials.map { partial ->
+                  partial.copy(points = partial.points.map { point ->
+                      val u = (point.timeSeconds - chunkStart) / chunkDuration
+                      if (u <= 0.0 || u >= 1.0) point else {
+                          val envelope = sin(PI * u).pow(2)
+                          val octaves = 1.5 * envelope * sin(2 * PI * 4 * u)
+                          val shutter = .25 + .75 * (.5 + .5 * sin(2 * PI * 12 * chunkDuration * u))
+                          point.copy(
+                              frequencyHz = (point.frequencyHz * 2.0.pow(octaves)).coerceAtMost(model.sampleRate * .49),
+                              amplitude = point.amplitude * (1 - envelope + envelope * shutter),
+                              bandwidth = point.bandwidth * (1 - envelope) + .85 * envelope,
+                          )
+                      }
+                  })
+              })
+              display("status", "Resynthesizing the whirlpool…")
+              client.synthesizeAsync(changed)
+          }.thenAccept { edited ->
+              display("edited tracks and sound", edited.visualizationHtml(
+                  LorisViewOptions(height = 400, syncGroup = "my-whirlpool")))
+              display("provenance", edited.provenance)
+          }.exceptionally { error ->
+              display("error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
