@@ -14,6 +14,9 @@ the transcript that showed each pattern is in brackets. New proposals go under *
   `stdlib/StandardDrawing.kt`. `circle` was added 2026-10-07. [keyframer_worked_example, frames_lifecycle]
 - **Mouse drags:** `mouse.onDrag("left", name) { ev -> ... }` needs no `onDown` beside it, and
   `ev.uv` is the position as a fraction of the window (both 2026-10-07). [four_simulation_chain]
+- **Meshes inside the module block:** `renderer += moduleHere { +Mesh("my mesh") { set(3, 3) { ... } } }`
+  (2026-10-07; `Parameters.Mesh` and `unaryPlus`, attached after the module is built). The
+  triangle starting point uses it. [afield_four_traditional_triangle]
 - **Labels from names:** `showMeshGrid(cube, ball)` labels its panels "cube" and "ball". Any function
   annotated `@LabelsArgumentsFromSource` gets the same rewrite (`macros/LabelledArguments.kt`).
 - **Reading a structure by name:** `structure["radius"]` (`Structure.get`) returns the binding
@@ -39,10 +42,6 @@ the transcript that showed each pattern is in brackets. New proposals go under *
 - `StatsDependence.all(x, y)` with `caption()`, `permutationNull(x, y, reps, seed) { a, b -> ... }`,
   `RollingPearson(w)`. [statistics_examples]
 - `markdownAppend("channel", line)`, with a maximum size that trims the earliest lines. [frames_lifecycle]
-- `renderer += moduleHere { +Mesh("my mesh") { ... } }`, by a `unaryPlus` on the receiver of
-  `moduleHere`'s lambda (today the pipeline parameters). The macro walker visits nested calls,
-  so `renderer += moduleHere { }` should already expand; prove it with a live GPU run.
-  [afield_four_traditional_triangle]
 - **Bug, fixed 2026-10-07:** `prop<>` dropped the box's own imports, forcing
   `prop<afield.four.fabricated.StandardRenderer.Bundle>`; six transcripts now use the short name.
   [four_simulation_chain]

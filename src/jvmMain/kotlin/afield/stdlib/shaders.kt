@@ -4885,7 +4885,8 @@ fun insertForShader(
  * descendant of the box that owns the window, or `fromContext()` finds nothing.
  */
 fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer {
-    return _moduleHere(parameters(renderer = fromContext(), p))
+    val parameters = parameters(renderer = fromContext(), p)
+    return _moduleHere(parameters).also { attachDeclaredMeshes(it, parameters) }
 }
 
 /**
