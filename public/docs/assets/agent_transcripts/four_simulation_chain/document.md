@@ -37,33 +37,19 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-`prop<StandardRenderer.Bundle>(bundle)` under an
-`import afield.four.fabricated.StandardRenderer` fails with
-`Unresolved reference 'StandardRenderer'` reported against the *import* line, while
-every other reference in the box resolves through it normally.
+`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 
 ```edn [field-box id="sim_bundle" role="properties"]
-{"id" "sim_bundle" "index" 1 "name" "bundle" "parents" ["root" "sim_renderer"] "children" ["sim_fluid" "sim_distance"] "properties" {"children" #{#afield/box "sim_fluid" #afield/box "sim_distance"} "parents" #{#afield/box "root" #afield/box "sim_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_bundle_code_.kt" "lines" 38 "characters" 1473 "sha256" "52df073a7925428c012c33a47f6d04bb17c9c6baaedebfc4e2c14e19284109b8"}]}
+{"id" "sim_bundle" "index" 1 "name" "bundle" "parents" ["root" "sim_renderer"] "children" ["sim_fluid" "sim_distance"] "properties" {"children" #{#afield/box "sim_fluid" #afield/box "sim_distance"} "parents" #{#afield/box "root" #afield/box "sim_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_bundle_code_.kt" "lines" 30 "characters" 1024 "sha256" "3fb5a414b20d4f23e6ac43ff5f4ba906a11da6e4a98eb8bc223dbd1e8efb4bba"}]}
 ```
 
 ```kotlin [field-property box="sim_bundle" name="code" path="sim_bundle_code_.kt"]
-/*
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-`prop<StandardRenderer.Bundle>(bundle)` under an
-`import afield.four.fabricated.StandardRenderer` fails with
-`Unresolved reference 'StandardRenderer'` reported against the *import* line, while
-every other reference in the box resolves through it normally.
-*/
+// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
 import afield.stdlib.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 /*
 `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
@@ -215,14 +201,13 @@ println("distance field: ${sdf.names().size} passes, output ${sdf.output.width} 
 <!-- field-box id="sim_fluid" index="3" -->
 
 ```edn [field-box id="sim_fluid" role="properties"]
-{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 100 "characters" 4171 "sha256" "36ea8afddfb4b31c7b4a184669cea5624a224ad2c6d34bf82216b6ea008e61c1"}]}
+{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 93 "characters" 3684 "sha256" "3e0ac6a81ef94724b25d1500591da4001006176e881d86db37e37293b078188f"}]}
 ```
 
 ```kotlin [field-property box="sim_fluid" name="code" path="sim_fluid_code_.kt"]
 import afield.four.fabricated.FabricatePassChain
 import afield.four.fabricated.FabricatePassLibrary
 import afield.four.fabricated.addPassChain
-import afield.four.util.DownResult
 import afield.four.util.MouseEvent
 import afield.four.util.MouseEvents
 
@@ -295,19 +280,13 @@ fluid["splatRadius"] = 0.04f
 
 /*
 Handlers are held by name, so re-running replaces them rather than stacking a second
-copy — no `once` needed here either.
-
-The `onDown` is not optional even though it does nothing: MouseEvents only polls the
-buttons some handler has *asked* about (`buttonsRequested = down.keys + up.keys`), and
-`onDrag` only fires while a button is down, so without it no drag ever arrives and the
-fluid sits there looking broken. And both lambdas name their parameter type because
-`onDown`/`onUp` are overloaded on `() -> Boolean` and a `(MouseEvent) -> ...` form, and a
-bare `{ true }` is ambiguous — everywhere, not just in a box.
+copy — no `once` needed here either. `onUp` names its parameter type because it is
+overloaded on `() -> Boolean` and a `(MouseEvent) -> Boolean` form, and a bare `{ true }`
+is ambiguous.
 */
 val mouse = MouseEvents(renderer)
-mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
-mouse.onDrag("fluid-paint") { ev ->
-    paintAt = vec(ev.pos.x / renderer.window.width, ev.pos.y / renderer.window.height)
+mouse.onDrag("left", "fluid-paint") { ev ->
+    paintAt = ev.uv // 0..1 across the window
     paintPush = vec(ev.delta.x * dragGain, ev.delta.y * dragGain)
     paintMass = 0.05f
     true // returning false *removes* the handler

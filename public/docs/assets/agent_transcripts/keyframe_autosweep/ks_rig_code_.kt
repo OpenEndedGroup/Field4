@@ -12,9 +12,7 @@ import afield.stdlib.path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
-// Fully qualified, because `prop<>` rewrites this box's code and the rewrite does not
-// carry the snippet's own imports.
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 prop<afield.stdlib.KeyframeScope>(keys)
 
 val r: Renderer = fromContext()

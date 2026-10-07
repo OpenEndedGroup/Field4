@@ -8,13 +8,7 @@ val stopAfter = 6.0
 var nextDraw = 0.0
 
 fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
-    (0..28).forEach { i ->
-        val a = i / 28.0 * 2.0 * kotlin.math.PI
-        val px = cx + r * kotlin.math.cos(a)
-        val py = cy + r * kotlin.math.sin(a)
-        if (i == 0) moveTo(px, py) else lineTo(px, py)
-    }
-    close()
+    circle(cx, cy, r)
     color = rgba
     filled = true
     stroked = false

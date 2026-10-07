@@ -24,7 +24,7 @@ class SoundPathMapGuardTest {
     /**
      * The headline numbers, pinned.
      *
-     * `sound_paths.md` prints "**Seven things in Field make samples**" in bold in its first sentence.
+     * `sound_paths.md` prints "**Ten things in Field make samples**" in bold in its first sentence.
      * A number in bold prose with nothing holding it is exactly the drift this whole branch exists
      * to fix, so it is held here as well as in the smoke.
      */
@@ -87,7 +87,7 @@ class SoundPathMapGuardTest {
     /**
      * Every path a `page` claims is a page that exists, and every path with no page is a real gap.
      *
-     * The `null`s are the finding, so they are pinned: five of the eighteen paths have no published
+     * The `null`s are the finding, so they are pinned: five of the nineteen paths have no published
      * page, `audio-patch-seam` — the seam the whole realtime stack is built on — among them.
      *
      * Five, not six, after `pat-spatial` arrived: it was declared and documented in the same change,

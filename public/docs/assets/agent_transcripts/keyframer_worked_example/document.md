@@ -326,7 +326,7 @@ SCREW MOTION, and between two cameras looking at the same subject it is a very d
 move from lerping the two positions. Draw both and the argument makes itself.
 
 ```edn [field-box id="keyframe_camera" role="properties"]
-{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 124 "characters" 4555 "sha256" "1aa399f21bbb5f2003380ceb8fc028f42fbed02fd2a52a210284fdebe031bb4b"}]}
+{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 119 "characters" 4336 "sha256" "e6777c8c5e70652320e2526764e02abd05f686ab1558b2f6f83a899aff6be106"}]}
 ```
 
 ```kotlin [field-property box="keyframe_camera" name="code" path="keyframe_camera_code_.kt"]
@@ -392,12 +392,7 @@ val sightLerp = fline {
 }
 // The subject: a small circle at the origin.
 val subject = fline {
-    val r = 14.0
-    for (i in 0..48) {
-        val ang = i / 48.0 * Math.PI * 2.0
-        if (i == 0) moveTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
-        else lineTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
-    }
+    circle(0, 0, 14)
     color = vec(0.95, 0.95, 0.95, 0.9)
     thickness = 2.0
 }

@@ -36,23 +36,19 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-argument is fully qualified because `prop<>`'s code rewrite does not carry the
-snippet's own imports.
+`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 
 ```edn [field-box id="mq_bundle" role="properties"]
-{"id" "mq_bundle" "index" 1 "name" "bundle" "parents" ["root" "mq_renderer"] "children" ["mq_tree"] "properties" {"children" #{#afield/box "mq_tree"} "parents" #{#afield/box "root" #afield/box "mq_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_bundle_code_.kt" "lines" 24 "characters" 776 "sha256" "2d5058fd1a57df1f01640e657aed4994824d5f2e62d3a63b5d47200834903189"}]}
+{"id" "mq_bundle" "index" 1 "name" "bundle" "parents" ["root" "mq_renderer"] "children" ["mq_tree"] "properties" {"children" #{#afield/box "mq_tree"} "parents" #{#afield/box "root" #afield/box "mq_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_bundle_code_.kt" "lines" 22 "characters" 645 "sha256" "09efcf08c714202821f7ee27adecd872f35cdb6e26f0ad7dbad4b96bb688f362"}]}
 ```
 
 ```kotlin [field-property box="mq_bundle" name="code" path="mq_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-// argument is fully qualified because `prop<>`'s code rewrite does not carry the
-// snippet's own imports.
+// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
 import afield.stdlib.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 once.bundle {
     val b = StandardRenderer.build(

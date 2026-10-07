@@ -95,7 +95,7 @@ An animate { } with no end condition. It runs until you press stop, or until you
 re-run this box. The running indicator on the box stays lit the whole time.
 
 ```edn [field-box id="frames_lifecycle_forever" role="properties"]
-{"id" "frames_lifecycle_forever" "index" 1 "name" "1 · runs until you stop it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · runs until you stop it" "_tombstone" false "frame" #afield/rect [60.0 60.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_forever_code_.kt" "lines" 74 "characters" 2162 "sha256" "9b760ea61b09b548792c4492c1dd4d0446de0e0661b547f92d4cbe9fb8f89c0e"}]}
+{"id" "frames_lifecycle_forever" "index" 1 "name" "1 · runs until you stop it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · runs until you stop it" "_tombstone" false "frame" #afield/rect [60.0 60.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_forever_code_.kt" "lines" 68 "characters" 1946 "sha256" "50f818e6294762b194bd2da1fa494aee726224c81d798d4bfc8ed8e92955d1d9"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_forever" name="code" path="frames_lifecycle_forever_code_.kt"]
@@ -112,13 +112,7 @@ val trailStep = 0.06
 var nextDraw = 0.0
 
 fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
-    (0..28).forEach { i ->
-        val a = i / 28.0 * 2.0 * kotlin.math.PI
-        val px = cx + r * kotlin.math.cos(a)
-        val py = cy + r * kotlin.math.sin(a)
-        if (i == 0) moveTo(px, py) else lineTo(px, py)
-    }
-    close()
+    circle(cx, cy, r)
     color = rgba
     filled = true
     stroked = false
@@ -276,7 +270,7 @@ the disc travels, the bar fills, and then everything freezes and turns red. Noth
 after that is the animation — it is the last frame the .end { } block painted.
 
 ```edn [field-box id="frames_lifecycle_stops" role="properties"]
-{"id" "frames_lifecycle_stops" "index" 3 "name" "2 · stops itself after six seconds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · stops itself after six seconds" "_tombstone" false "frame" #afield/rect [700.0 60.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_stops_code_.kt" "lines" 97 "characters" 2895 "sha256" "c14f3ae4b17a1a465222571e26662603db3465d627ce372b8074c13d14582593"}]}
+{"id" "frames_lifecycle_stops" "index" 3 "name" "2 · stops itself after six seconds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · stops itself after six seconds" "_tombstone" false "frame" #afield/rect [700.0 60.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_stops_code_.kt" "lines" 91 "characters" 2679 "sha256" "ef60cfd03479ae5ea45a0e6e4e2b8859a26370d4a0ab27abc53237eaaa146c06"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_stops" name="code" path="frames_lifecycle_stops_code_.kt"]
@@ -290,13 +284,7 @@ val stopAfter = 6.0
 var nextDraw = 0.0
 
 fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
-    (0..28).forEach { i ->
-        val a = i / 28.0 * 2.0 * kotlin.math.PI
-        val px = cx + r * kotlin.math.cos(a)
-        val py = cy + r * kotlin.math.sin(a)
-        if (i == 0) moveTo(px, py) else lineTo(px, py)
-    }
-    close()
+    circle(cx, cy, r)
     color = rgba
     filled = true
     stroked = false

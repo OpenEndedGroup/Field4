@@ -4,10 +4,18 @@ import afield.stdlib.__m
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** [flipbox]: runs while ticked, and each evaluation unticks it. */
 class FlipboxTest {
+    @Test
+    fun aBoxWithoutCodeKeepsThePropertyAbsentWhenRead() {
+        val box = Box("flipbox-no-code")
+        assertNull(box.code)
+        assertNull(box.getPropertyRaw("code"), "reading absent code must not write an empty property")
+    }
+
     @Test
     fun aTickedFlipboxRunsOnceThenStaysUnticked() {
         val box = Box("flipbox-true")

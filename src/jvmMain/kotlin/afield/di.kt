@@ -24,6 +24,12 @@ const val returnValueRegistration = "returnValueRegistration" // register handle
 @Retention(AnnotationRetention.RUNTIME)
 annotation class RunsAt(val value: String, val priority: Int = 0)
 
+/**
+ * Names of the functions annotated `@LabelsArgumentsFromSource`, filled by the same scan as
+ * [fieldSourceCache] and read when macros are registered (`afield.macros.registerLabelledArgumentMacros`).
+ */
+val labelledArgumentFunctions: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
 val fieldSourceCache: Map<String, List<Pair<Int, Method>>> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val v = ConcurrentHashMap<String, MutableList<Pair<Int, Method>>>()
     ClassGraph().enableClassInfo().enableAnnotationInfo().enableMethodInfo().enableMemoryMapping()
@@ -34,6 +40,9 @@ val fieldSourceCache: Map<String, List<Pair<Int, Method>>> by lazy(LazyThreadSaf
             for (cz in scanResult.allStandardClasses) {
                 cz.methodInfo.forEach { methodInfo ->
                     methodInfo.annotationInfo.forEach { annotationInfo ->
+                        if (annotationInfo.name == "afield.macros.LabelsArgumentsFromSource") {
+                            labelledArgumentFunctions.add(methodInfo.name)
+                        }
                         if (annotationInfo.name == "afield.RunsAt") {
                             val method = methodInfo.loadClassAndGetMethod()
                             val time = annotationInfo.parameterValues.get("value").value.toString()

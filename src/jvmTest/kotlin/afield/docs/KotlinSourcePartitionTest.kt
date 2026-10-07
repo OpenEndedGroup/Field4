@@ -502,6 +502,30 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `a wrapped annotation longer than twelve lines is stepped over`() {
+        // `@JsonClassDescription(` … `)` above `RunToolProgramRequest` in ToolProgramTools.kt: a tool
+        // description that grew to thirteen `+`-joined lines, one past the old twelve-line bound on how
+        // far the scan looked for the closing bracket, and all of it came out as unattributed filler.
+        // This one closes 22 lines past its opener, inside MAX_ANNOTATION_WRAP. The escaped quotes and
+        // brackets inside the strings mirror the live instance; string content is masked before
+        // brackets are counted, so they were never the cause.
+        val continuation = (1..20).joinToString("\n") { n ->
+            "    \"line $n calls tools[\\\"rectsl.run\\\"]({...}) (or not) \" +"
+        }
+        val source = "@JsonClassDescription(\n$continuation\n    \"the end.\"\n)\n" +
+            "@afield.ai.core.AgentToolMeta(\"program\", effects = [])\n" +
+            "data class RunToolProgramRequest(\n    val program: String = \"\",\n)"
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        val declared = declaration(partition, "RunToolProgramRequest")
+        assertEquals(lineOf(source, "@JsonClassDescription("), declared.startLine, "the span starts at the wrapped annotation")
+        assertEquals(lineOf(source, "data class"), declared.declarationLine, "the signature does not")
+        assertEquals(emptyList(), strandedCode(partition), "no line of the annotation is left unattributed")
+    }
+
+    @Test
     fun `an open bracket that is not an annotation does not swallow the declaration`() {
         // The refusal that makes the case above safe. `@JvmStatic fun of(` also ends with a bracket
         // open, and stepping over its balance point would step over the whole signature and lose the

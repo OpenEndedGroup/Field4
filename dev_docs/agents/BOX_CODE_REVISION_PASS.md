@@ -47,6 +47,10 @@ fragment, and see the result soon? In particular:
   the `loop` advances, why a cleanup is owned by the run), and nothing on a line that already
   says it.
 
+Read `BOX_CODE_HELPER_IDEAS.md` first: its **Already in Field** section lists helpers to use
+in place of hand-written loops (`breakNext()`, `data(...)`, `FLine.rect`, `structure[name]`,
+generated push-constant properties), and its **Declined** section lists proposals not to make again.
+
 The pass should also bring back ideas, as notes rather than edits, for **helpers and
 conventions that remove typing**: a pattern that appears in many boxes and could be one call,
 a preamble declaration that would make a lookup disappear, a default that would delete a line

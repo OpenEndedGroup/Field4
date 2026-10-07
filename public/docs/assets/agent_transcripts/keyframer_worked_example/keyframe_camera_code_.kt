@@ -60,12 +60,7 @@ val sightLerp = fline {
 }
 // The subject: a small circle at the origin.
 val subject = fline {
-    val r = 14.0
-    for (i in 0..48) {
-        val ang = i / 48.0 * Math.PI * 2.0
-        if (i == 0) moveTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
-        else lineTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
-    }
+    circle(0, 0, 14)
     color = vec(0.95, 0.95, 0.95, 0.9)
     thickness = 2.0
 }

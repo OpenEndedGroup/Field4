@@ -1,5 +1,6 @@
 import afield.four.Renderer
 import afield.four.util.Window
+import afield.four.physics.ShaderBoids
 var Box.written by Inheritance<afield.four.physics.ShaderBoids>() /**/
 val Once.written by Onceing<afield.four.physics.ShaderBoids>() /**/
 val Why.written by Whying() /**/
