@@ -194,4 +194,64 @@ class KeyframeEvaluatorTest {
             }
         }
     }
+
+    // A recorded take: four seconds at 60 keys a second, a slow wave with a little jitter on it.
+    private fun take(): KeyframeEvaluator {
+        var seed = 1L
+        fun jitter(): Double { seed = (seed * 16807) % 2147483647; return seed / 2147483647.0 - 0.5 }
+        return KeyframeEvaluator("[]").apply {
+            setKeys((0..240).map { i ->
+                val t = i / 60.0
+                Keyframe(t, 0.5 + 0.35 * kotlin.math.sin(t * 2.1) + 0.1 * kotlin.math.sin(t * 7) + 0.01 * jitter(), "linear")
+            })
+        }
+    }
+
+    @Test
+    fun simplifyKeepsTheCurveWithinTheTolerance() {
+        val k = take()
+        val before = (0..4000).map { k.evaluateValueAt(it / 1000.0) }
+        k.simplify(0.01)
+        val after = (0..4000).map { k.evaluateValueAt(it / 1000.0) }
+        val worst = before.zip(after).maxOf { (a, b) -> abs(a - b) }
+        // The planner measures the error at the keys and eight times between each: a hair over is fine.
+        assertTrue(worst <= 0.0105, "the simplified curve strays $worst from the take")
+        assertTrue(k.getKeyframeCount() < 60, "241 keys should simplify to far fewer, got ${k.getKeyframeCount()}")
+        near(before.first(), after.first())
+        near(before.last(), after.last())
+        assertTrue(k.getKeyframeTypes().all { it == "bezierContinuous" })
+    }
+
+    @Test
+    fun simplifyLeavesLockedAndHoldKeysAsTheyAre() {
+        val k = take()
+        val keys = k.getKeyframes().toMutableList()
+        keys[100] = keys[100].copy(locked = true)
+        keys[150] = keys[150].copy(type = "hold")
+        k.setKeys(keys)
+        k.simplify(0.05)
+        val left = k.getKeyframes()
+        assertTrue(left.any { it.time == keys[100].time && it.locked && it.type == "linear" })
+        assertTrue(left.any { it.time == keys[150].time && it.type == "hold" })
+        // And the key the hold jumps to stays, so the jump happens where it did.
+        assertTrue(left.any { it.time == keys[151].time })
+    }
+
+    @Test
+    fun smoothRemovesJitterAndKeepsTheEnds() {
+        val k = take()
+        val first = k.getKeyframes().first()
+        val last = k.getKeyframes().last()
+        fun roughness() = k.getKeyframeValues().zipWithNext().zipWithNext().sumOf { (a, b) -> abs(b.second - 2 * a.second + a.first) }
+        val rough = roughness()
+        k.smooth(0.05)
+        assertTrue(roughness() < rough * 0.3, "smoothing should take most of the jitter out: ${roughness()} from $rough")
+        assertEquals(first, k.getKeyframes().first())
+        assertEquals(last, k.getKeyframes().last())
+        assertEquals(241, k.getKeyframeCount())
+        // A straight line is left exactly where it is, ends included.
+        val line = KeyframeEvaluator("[]").apply { setKeys((0..20).map { Keyframe(it * 0.1, 0.3 + it * 0.02, "linear") }) }
+        line.smooth(0.3)
+        line.getKeyframes().forEachIndexed { i, kf -> near(0.3 + i * 0.02, kf.value, 1e-9) }
+    }
 }

@@ -599,12 +599,20 @@ const KF_MENU_CSS = `
 .kfm-ease-type svg { width: 16px; height: 14px; }
 .kfm-ease-type:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
 .kfm-ease-type.is-active { color: #6ae3ff; border-color: #6ae3ff; }
+.kfm-tool { display: grid; grid-template-columns: 64px 1fr 92px; align-items: center; gap: 8px; padding: 3px 6px; }
+.kfm-tool input[type="range"] { width: 100%; margin: 0; accent-color: #6ae3ff; }
+.kfm-tool .kfm-hint { text-align: right; white-space: nowrap; }
 .kfm-type:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
 .kfm-type.is-active { color: #6ae3ff; border-color: #6ae3ff; }
 `;
 
 function injectMenuStyles(doc) {
-        if (doc.getElementById("kf-menu-style")) return;
+        const existing = doc.getElementById("kf-menu-style");
+        if (existing) {
+                // A host page that showed an older editor keeps its stylesheet; bring it up to date.
+                if (existing.textContent !== KF_MENU_CSS) existing.textContent = KF_MENU_CSS;
+                return;
+        }
         const style = doc.createElement("style");
         style.id = "kf-menu-style";
         style.textContent = KF_MENU_CSS;
@@ -810,6 +818,225 @@ function computeMonotoneSlopes(prev, next) {
                 m0: alpha * delta / span,
                 m1: beta * delta / span,
         };
+}
+
+// Simplify and smooth. Both work on a run of keys in time order and leave the rest of the curve alone.
+
+// The finest tolerance the Simplify slider asks for, as a fraction of the keys' value range.
+const SIMPLIFY_FINEST = 0.0005;
+
+/** The value of a curve sampled as {time, value} (sorted by time) at [time], read off linearly. */
+function sampledValueAt(samples, time) {
+        if (!samples.length) return 0;
+        if (time <= samples[0].time) return samples[0].value;
+        const last = samples[samples.length - 1];
+        if (time >= last.time) return last.value;
+        let lo = 0;
+        let hi = samples.length - 1;
+        while (hi - lo > 1) {
+                const mid = (lo + hi) >> 1;
+                if (samples[mid].time <= time) lo = mid; else hi = mid;
+        }
+        const a = samples[lo];
+        const b = samples[hi];
+        const span = b.time - a.time;
+        return span > EPSILON ? a.value + ((b.value - a.value) * (time - a.time)) / span : b.value;
+}
+
+/** The first index in [samples] (sorted by time) whose time is at least [time]. */
+function firstSampleAtOrAfter(samples, time) {
+        let lo = 0;
+        let hi = samples.length;
+        while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (samples[mid].time < time) lo = mid + 1; else hi = mid;
+        }
+        return lo;
+}
+
+/**
+ * Plans simplifying [run]: which keys can go, and what the ones that stay become. Keys go back in
+ * one at a time, each where the simplified curve is furthest from [reference] (the curve as it is,
+ * sampled), until it is everywhere within a floor; `at(tolerance)` is then the shortest prefix of
+ * that order within [tolerance]. A key that stays becomes a continuous bezier whose handles follow
+ * the original curve's slope there, so a dense take turns into a few smooth keys.
+ *
+ * keep[i]: the key stays. asIs[i]: it stays exactly as it is (type, handles), as locked, hold and
+ * custom keys do. kindOf(type) is "hold", "custom", "linear" or "bezier"; modeOf(type) its handle
+ * mode. before/after: the curve carries on either side of the run. floor: the smallest tolerance
+ * that will be asked for, as a fraction of the run's value range; planning stops there.
+ */
+function planSimplify(run, { keep, asIs, kindOf, modeOf, reference, before, after, floor: floorFraction = 1e-4 }) {
+        const n = run.length;
+        const kept = keep.slice();
+        kept[0] = true;
+        kept[n - 1] = true;
+        const initial = kept.slice();
+        const lo = firstSampleAtOrAfter(reference, run[0].time);
+        const hi = firstSampleAtOrAfter(reference, run[n - 1].time + EPSILON);
+        const ref = reference.slice(lo, hi);
+        let vMin = Infinity;
+        let vMax = -Infinity;
+        ref.forEach((s) => { vMin = Math.min(vMin, s.value); vMax = Math.max(vMax, s.value); });
+        const valueRange = Number.isFinite(vMax - vMin) ? vMax - vMin : 0;
+        const floor = Math.max(valueRange * floorFraction, 1e-9);
+
+        const prevKept = (i) => { for (let j = i - 1; j >= 0; j -= 1) if (kept[j]) return j; return -1; };
+        const nextKept = (i) => { for (let j = i + 1; j < n; j += 1) if (kept[j]) return j; return -1; };
+
+        // The key at i as it would be with its kept neighbours either side.
+        const shape = (i) => {
+                const kf = run[i];
+                if (asIs[i]) return kf;
+                const a = prevKept(i);
+                const b = nextKept(i);
+                const spans = [a >= 0 ? kf.time - run[a].time : 0, b >= 0 ? run[b].time - kf.time : 0].filter((s) => s > EPSILON);
+                if (!spans.length) return kf;
+                const near = Math.min(...spans);
+                const w = near * 0.25;
+                const t0 = i > 0 || before ? kf.time - w : kf.time;
+                const t1 = i < n - 1 || after ? kf.time + w : kf.time;
+                const m = t1 - t0 > EPSILON ? (sampledValueAt(reference, t1) - sampledValueAt(reference, t0)) / (t1 - t0) : 0;
+                const L = near / 3;
+                const handleIn = { time: -L, value: -m * L };
+                const handleOut = { time: L, value: m * L };
+                if (i === n - 1 && after) {
+                        // The last key's type shapes the curve after the run, so it keeps it; only the
+                        // handle into it follows the run (both, where they are tied together).
+                        const mode = modeOf(kf.type);
+                        if (mode === HANDLE_MODES.FLAT) return kf;
+                        if (mode === HANDLE_MODES.CONTINUOUS) return { ...kf, handles: { in: handleIn, out: handleOut } };
+                        return { ...kf, handles: { in: handleIn, out: { ...(kf.handles?.out || { time: 0, value: 0 }) } } };
+                }
+                return { ...kf, type: "bezierContinuous", handles: { in: handleIn, out: handleOut } };
+        };
+
+        // How far the segment leaving kept key a is from the original curve, and where it is furthest.
+        const measure = (a) => {
+                const b = nextKept(a);
+                const A = shape(a);
+                const B = shape(b);
+                const kind = kindOf(A.type);
+                let poly;
+                if (kind === "custom") return { b, err: 0, at: A.time };
+                if (kind === "hold") poly = [{ time: A.time, value: A.value }, { time: B.time, value: A.value }];
+                else if (kind === "linear") poly = [{ time: A.time, value: A.value }, { time: B.time, value: B.value }];
+                else {
+                        const controls = buildRationalControls(A, B);
+                        poly = [{ time: A.time, value: A.value }];
+                        for (let s = 1; s <= 48; s += 1) {
+                                const p = rationalBezierPoint(controls, s / 48);
+                                if (p.x > poly[poly.length - 1].time) poly.push({ time: p.x, value: p.y });
+                        }
+                }
+                let err = 0;
+                let at = A.time;
+                const start = firstSampleAtOrAfter(ref, A.time + EPSILON);
+                for (let k = start; k < ref.length && ref[k].time < B.time - EPSILON; k += 1) {
+                        const d = Math.abs(sampledValueAt(poly, ref[k].time) - ref[k].value);
+                        if (d > err) { err = d; at = ref[k].time; }
+                }
+                return { b, err, at };
+        };
+
+        const segments = new Map();
+        for (let i = 0; i < n - 1; i += 1) if (kept[i]) segments.set(i, measure(i));
+        // The segment to split next, and the furthest the curve is from the original anywhere.
+        const survey = () => {
+                let found = null;
+                let error = 0;
+                segments.forEach((seg, a) => {
+                        error = Math.max(error, seg.err);
+                        if (!seg.stuck && (!found || seg.err > found.seg.err)) found = { a, seg };
+                });
+                return { found, error };
+        };
+
+        const order = [];
+        let current = survey();
+        const errors = [current.error];
+        for (;;) {
+                const next = current.found;
+                if (!next || next.seg.err <= floor) break;
+                const { a, seg } = next;
+                let j = -1;
+                for (let i = a + 1; i < seg.b; i += 1) {
+                        if (!kept[i] && (j < 0 || Math.abs(run[i].time - seg.at) < Math.abs(run[j].time - seg.at))) j = i;
+                }
+                if (j < 0) { seg.stuck = true; current = survey(); continue; }
+                kept[j] = true;
+                order.push(j);
+                // j changes the spans, so the handles, of the keys either side: re-measure what touches them.
+                [prevKept(a), a, j, seg.b].forEach((s) => { if (s >= 0 && s < n - 1) segments.set(s, measure(s)); });
+                current = survey();
+                errors.push(current.error);
+        }
+
+        const build = (count) => {
+                for (let i = 0; i < n; i += 1) kept[i] = initial[i];
+                for (let k = 0; k < count; k += 1) kept[order[k]] = true;
+                const keys = [];
+                for (let i = 0; i < n; i += 1) if (kept[i]) keys.push(shape(i));
+                return keys;
+        };
+
+        return {
+                size: n,
+                valueRange,
+                /** The fewest keys within [tolerance] (in the curve's units) of the curve as it was. */
+                at(tolerance) {
+                        let count = errors.findIndex((e) => e <= tolerance);
+                        if (count < 0) return { keys: run.slice(), error: 0 };
+                        return { keys: build(count), error: errors[count] };
+                },
+        };
+}
+
+/**
+ * The values of [run] smoothed by a Gaussian in time of standard deviation [width]. Keys where
+ * movable[i] is false keep their value; so do the two ends, and the curve is reflected through them
+ * so that a key near an end is not pulled toward the middle.
+ */
+function smoothRunValues(run, movable, width) {
+        const n = run.length;
+        const values = run.map((kf) => kf.value);
+        if (n < 3 || !(width > EPSILON)) return values;
+        const times = run.map((kf) => kf.time);
+        // Each key stands for the time around it, so uneven spacing does not tilt the average; an end
+        // stands for its reflection's side too.
+        const weightOf = times.map((t, i) => Math.max(
+            i === 0 ? times[1] - times[0] : i === n - 1 ? times[n - 1] - times[n - 2] : (times[i + 1] - times[i - 1]) / 2,
+            EPSILON));
+        const t0 = times[0];
+        const v0 = values[0];
+        const tn = times[n - 1];
+        const vn = values[n - 1];
+        const reach = width * 3;
+        // The Gaussian, lowered to reach zero at [reach], so a key just inside or outside it on one side
+        // and not the other does not tip the average.
+        const edge = Math.exp(-4.5);
+        const out = values.slice();
+        for (let i = 1; i < n - 1; i += 1) {
+                if (!movable[i]) continue;
+                const ti = times[i];
+                let sum = 0;
+                let total = 0;
+                const add = (t, v, w) => {
+                        const d = t - ti;
+                        if (Math.abs(d) > reach) return;
+                        const g = w * (Math.exp(-(d * d) / (2 * width * width)) - edge);
+                        sum += g * v;
+                        total += g;
+                };
+                for (let j = firstSampleAtOrAfter(run, ti - reach); j < n && times[j] <= ti + reach; j += 1) {
+                        add(times[j], values[j], weightOf[j]);
+                }
+                // The images of the keys reflected through each end, within reach of this key.
+                for (let j = 1; j < n && times[j] - t0 <= reach - (ti - t0); j += 1) add(2 * t0 - times[j], 2 * v0 - values[j], weightOf[j]);
+                for (let j = n - 2; j >= 0 && tn - times[j] <= reach - (tn - ti); j -= 1) add(2 * tn - times[j], 2 * vn - values[j], weightOf[j]);
+                if (total > 0) out[i] = sum / total;
+        }
+        return out;
 }
 
 export class KeyframeEditor {
@@ -1337,6 +1564,86 @@ export class KeyframeEditor {
                 this.paste(keys[0].time + span + this.timeNudgeStep() * 0.5);
         }
 
+        // Simplify and smooth: the selected keys when there are three or more, otherwise the whole curve.
+
+        /** The run of keys a tidy-up works on: from the first to the last of [ids], or every key. */
+        tidyScope(ids = null) {
+                const ordered = this.getOrderedKeyframes();
+                const whole = !(ids && ids.length >= 3);
+                const wanted = new Set(whole ? ordered.map((kf) => kf.id) : ids);
+                const chosen = new Set(ordered.filter((kf) => wanted.has(kf.id)).map((kf) => kf.id));
+                const first = ordered.findIndex((kf) => chosen.has(kf.id));
+                let last = -1;
+                ordered.forEach((kf, i) => { if (chosen.has(kf.id)) last = i; });
+                if (first < 0 || last - first < 2) return null;
+                return { ordered, first, last, chosen, whole };
+        }
+
+        _kindOf(type) {
+                if (type === "hold") return "hold";
+                if (this.options.types[type]?.custom) return "custom";
+                return this.getHandleModeForType(type) ? "bezier" : "linear";
+        }
+
+        /** Plans simplifying [scope]; see planSimplify. */
+        planSimplify(scope) {
+                const { ordered, first, last, chosen } = scope;
+                const run = ordered.slice(first, last + 1).map((kf) => ({ ...kf, handles: this.createHandlePayload(kf.handles) }));
+                const special = (kf) => kf.locked || ["hold", "custom"].includes(this._kindOf(kf.type));
+                // Locked, hold and custom keys stay as they are, and so do keys inside the run that were
+                // not chosen; the key a hold or a custom segment arrives at stays too, reshaped.
+                const asIs = run.map((kf, i) => special(kf) || (i > 0 && i < run.length - 1 && !chosen.has(kf.id)));
+                const keep = run.map((kf, i) => asIs[i] || (i > 0 && ["hold", "custom"].includes(this._kindOf(run[i - 1].type))));
+                return planSimplify(run, {
+                        keep,
+                        asIs,
+                        kindOf: (type) => this._kindOf(type),
+                        modeOf: (type) => this.getHandleModeForType(type),
+                        reference: this.sampleCurve({ stepsPerSegment: 8 }),
+                        before: first > 0,
+                        after: last < ordered.length - 1,
+                        floor: SIMPLIFY_FINEST,
+                });
+        }
+
+        /** The keys of [scope] smoothed over [width] (in time); see smoothRunValues. */
+        smoothedRun(scope, width) {
+                const { ordered, first, last, chosen } = scope;
+                const run = ordered.slice(first, last + 1);
+                const values = smoothRunValues(run, run.map((kf) => chosen.has(kf.id) && !kf.locked), width);
+                return run.map((kf, i) => ({ ...kf, value: values[i] }));
+        }
+
+        /** Replaces the keys of [scope] with [keys]: drawn only, unless [commit]. */
+        replaceRun(scope, keys, { commit = false, coalesce = null } = {}) {
+                const { ordered, first, last } = scope;
+                const replaced = keys.map((kf) => this.prepareKeyframe({ ...kf, handles: this.createHandlePayload(kf.handles) }));
+                this.keyframes = [...ordered.slice(0, first), ...replaced, ...ordered.slice(last + 1)];
+                const present = new Set(this.keyframes.map((kf) => kf.id));
+                const selection = this.state.selectedIds.filter((id) => present.has(id));
+                this.setSelection(selection, selection[selection.length - 1] ?? null, { render: false });
+                if (!commit) { this.render(); return; }
+                if (coalesce) this._coalesce = this._coalesce?.key === coalesce ? { key: coalesce, at: performance.now() } : this._coalesce;
+                this.refresh({ coalesce });
+        }
+
+        /**
+         * Simplifies the keys of [ids] (or the whole curve) to the fewest that stay within [tolerance],
+         * in the curve's own units, of the curve as it is. One undo step.
+         */
+        simplifyKeys(tolerance, ids = null) {
+                const scope = this.tidyScope(ids);
+                if (!scope) return;
+                this.replaceRun(scope, this.planSimplify(scope).at(tolerance).keys, { commit: true });
+        }
+
+        /** Smooths the values of [ids] (or the whole curve) over [width], in time. One undo step. */
+        smoothKeys(width, ids = null) {
+                const scope = this.tidyScope(ids);
+                if (!scope) return;
+                this.replaceRun(scope, this.smoothedRun(scope, width), { commit: true });
+        }
+
         // The menu itself.
 
         showContextMenu(event, id, options = {}) {
@@ -1377,6 +1684,68 @@ export class KeyframeEditor {
                         el.addEventListener("click", () => { close(); action(); });
                         menu.appendChild(el);
                         return el;
+                };
+                const sectionTitle = (title) => {
+                        const el = doc.createElement("div");
+                        el.className = "kfm-section";
+                        el.textContent = title;
+                        menu.appendChild(el);
+                };
+
+                // Items whose state an edit made from inside the menu changes (Undo, Redo).
+                const live = [];
+
+                // Simplify and Smooth, as sliders: dragging shows the result, letting go keeps it, and
+                // everything done with them while this menu is open is one undo step.
+                const tidy = (ids) => {
+                        const probe = this.tidyScope(ids);
+                        if (!probe) return;
+                        divider();
+                        sectionTitle(probe.whole ? `Whole curve · ${probe.chosen.size} keys` : `${probe.chosen.size} selected keys`);
+                        const session = `tidy-${(this._tidySessions = (this._tidySessions ?? 0) + 1)}`;
+                        const tools = [];
+                        let pending = null;
+                        const tool = (label, idle, apply) => {
+                                const row = doc.createElement("label");
+                                row.className = "kfm-tool";
+                                row.innerHTML = `<span></span><input type="range" min="0" max="1000" value="0"><span class="kfm-hint"></span>`;
+                                const [name, input, readout] = row.children;
+                                name.textContent = label;
+                                readout.textContent = idle;
+                                // The keys as they were when this slider was first moved: it always works
+                                // from them, so dragging back to the left undoes what it did.
+                                let origin = null;
+                                const state = { reset() { origin = null; input.value = "0"; readout.textContent = idle; } };
+                                input.addEventListener("input", () => {
+                                        if (!origin) origin = this.tidyScope(ids);
+                                        if (!origin) return;
+                                        const amount = Number(input.value) / 1000;
+                                        const result = amount > 0 ? apply(origin, amount) : { keys: origin.ordered.slice(origin.first, origin.last + 1), text: idle };
+                                        readout.textContent = result.text;
+                                        this.replaceRun(origin, result.keys);
+                                        const scope = origin;
+                                        pending = () => {
+                                                this.replaceRun(scope, result.keys, { commit: true, coalesce: session });
+                                                tools.forEach((other) => { if (other !== state) other.reset(); });
+                                                live.forEach((update) => update());
+                                        };
+                                });
+                                input.addEventListener("change", () => { pending?.(); pending = null; });
+                                input.addEventListener("keydown", (e) => { if (e.key !== "Escape") e.stopPropagation(); });
+                                menu.appendChild(row);
+                                tools.push(state);
+                        };
+                        tool("Simplify", `${probe.chosen.size} keys`, (scope, amount) => {
+                                scope.plan ??= this.planSimplify(scope);
+                                const { keys } = scope.plan.at(scope.plan.valueRange * SIMPLIFY_FINEST * Math.pow(400, amount));
+                                return { keys, text: `${scope.plan.size} → ${keys.length} keys` };
+                        });
+                        tool("Smooth", "off", (scope, amount) => {
+                                const span = scope.ordered[scope.last].time - scope.ordered[scope.first].time;
+                                const width = span * 0.002 * Math.pow(100, amount);
+                                return { keys: this.smoothedRun(scope, width), text: `over ${Number(width.toPrecision(2))}` };
+                        });
+                        this._menuCleanup.push(() => { pending?.(); pending = null; });
                 };
 
                 if (context.kind === "key") {
@@ -1440,12 +1809,6 @@ export class KeyframeEditor {
                                 b.addEventListener("click", () => { close(); this.setKeyframeTypeBatch(ids, type); });
                                 return b;
                         };
-                        const section = (title) => {
-                                const el = doc.createElement("div");
-                                el.className = "kfm-section";
-                                el.textContent = title;
-                                menu.appendChild(el);
-                        };
                         const entries = Object.entries(this.options.types);
                         const basic = doc.createElement("div");
                         basic.className = "kfm-types";
@@ -1460,7 +1823,7 @@ export class KeyframeEditor {
                                 groups.get(meta.group).push([type, meta]);
                         });
                         groups.forEach((members, title) => {
-                                section(title);
+                                sectionTitle(title);
                                 if (members.every(([, m]) => m.family)) {
                                         // A table: one family per row, its in / out / in-out across.
                                         const table = doc.createElement("div");
@@ -1486,6 +1849,8 @@ export class KeyframeEditor {
                                 }
                         });
 
+                        if (ids.length >= 3) tidy(ids);
+
                         divider();
                         item("Copy", shortcut("C"), () => this.copySelection());
                         item("Cut", shortcut("X"), () => this.cutSelection());
@@ -1500,12 +1865,14 @@ export class KeyframeEditor {
                         item("Add key here", "double-click", () => this.addKeyframe(point));
                         item("Paste here", shortcut("V"), () => this.paste(point.time), { disabled: !this.clipboardKeyframes() });
                         item("Select all", shortcut("A"), () => this.setSelection(this.keyframes.map((kf) => kf.id), null), { disabled: !this.keyframes.length });
+                        tidy(this.state.selectedIds.length >= 3 ? [...this.state.selectedIds] : null);
                         divider();
-                        item("Undo", shortcut("Z"), () => this.undo(), { disabled: !this.canUndo() });
-                        item("Redo", shortcut("Z", true), () => this.redo(), { disabled: !this.canRedo() });
+                        const undo = item("Undo", shortcut("Z"), () => this.undo(), { disabled: !this.canUndo() });
+                        const redo = item("Redo", shortcut("Z", true), () => this.redo(), { disabled: !this.canRedo() });
+                        live.push(() => { undo.disabled = !this.canUndo(); redo.disabled = !this.canRedo(); });
                 }
                 divider();
-                item("Fit the curve", "", () => this.resetView());
+                item("Frame curve", "", () => this.resetView());
 
                 // Place it at the pointer, in the host page's coordinates, kept on screen.
                 let x = event.clientX;

@@ -1,0 +1,31 @@
+name: keyframe_tidy_take
+description: >
+  The take example from `public/docs/keyframe_editor.md` (a curve with a key every 60th of a
+  second, as a baked gesture has), launched, for the video of the curve menu's Smooth and
+  Simplify sliders.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: kf_take
+      name: take
+      frame: { x: 40.0, y: 30.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          // Four seconds of a wobbling hand, a key every 60th of a second.
+          val rnd = java.util.Random(4)
+          val take = keyframes(name = "take", keys = (0..240).map { i ->
+              val t = i / 60.0
+              Keyframe(t, 0.5 + 0.35 * sin(t * 2.1) + 0.1 * sin(t * 7) + 0.04 * (rnd.nextDouble() - 0.5), "linear")
+          })
+
+          val start = System.nanoTime()
+          loop {
+              take.setTime(((System.nanoTime() - start) / 1e9) % 4.0)
+          }
+  - launch: { box: kf_take }
+  # Before the recording starts: time for a cold compile and the editor to receive its keys.
+  - wait:
+      millis: 12000
