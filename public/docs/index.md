@@ -6,9 +6,14 @@ _Field·4_ works on MacOS, Windows and Linux, supports a high performance [Vulka
 
 The primary programming language for this version of Field is [Kotlin](https://kotlinlang.org/) for desktop, which we've gone to some effort to bend into a language that is both a joy to experiment in and fast enough to make real things with. Kotlin, together with Vulkan [GLSL](https://www.khronos.org/opengl/wiki/OpenGL_Shading_Language), is the primary combination of languages used day to day in Field. In addition, there are early-stage bindings for [Clojure](https://clojure.org/) (as a JVM language), [Python](python.md) (via the [JEP project](https://github.com/ninia/jep)), and JavaScript that executes remotely in-browser or on mobile for [Three.js](https://threejs.org/)-based [WebXR](https://immersive-web.github.io/webxr/).
 
-_Field·4_ has and will continue to have enthusiastic support for AI-forward coding practices, offering documentation-, source-code-, current-document-, code- and line-based chat, as well as an increasingly comprehensive set of tools for agents to use to interact with Field. It currently supports "bring your own key" OpenAI integration. The [agent transcript gallery](agent_transcripts.md) shows what that tooling makes: documents agents built from a blank canvas, each one openable in Field.
+_Field·4_ has and will continue to have enthusiastic support for AI-forward coding practices, offering documentation-, source-code-, current-document-, code- and line-based chat, as well as an increasingly comprehensive set of tools for agents to use to interact with Field. It currently supports "bring your own key" OpenAI integration. The [agent transcript gallery](agent_transcripts.md) shows what that tooling makes: documents agents built from a blank canvas, each one openable in Field. [Long way round](chains.md) walks through projects that connect several of Field's tools, from geometry and simulation to rendered images.
 
 ## Starting places
+
+See [the first drawing](first_steps.md), then open **Start here: a moving drawing** on Welcome.
+Change a number, launch, inspect, stop and reopen your saved copy. It needs no GPU driver or AI key.
+Field's code is AGPL-3.0-or-later; [your code, AI and local history](privacy.md) explains the
+local services and optional external providers.
 
 If you aren't reading this documentation inside *Field·4* itself, then you'll want to read the [Installation instructions](installation.md) or perhaps [take a tour](funFeatures.md).
 

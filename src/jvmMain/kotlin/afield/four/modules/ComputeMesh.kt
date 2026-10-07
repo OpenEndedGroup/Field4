@@ -323,7 +323,9 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
 
     lateinit var inside: ComputeModulePointer
 
+    /** Named sequence hooks advanced once per compute call, before push constants and dispatch. */
     var update = afield.four.util.MapOfSequences<String>()
+    /** Push-constant values and bindings written to the buffer before each dispatch. */
     var push = Structure()
 
     var x = 1

@@ -1,0 +1,15 @@
+[project]
+name = "field-particle-tracker"
+version = "0.1.0"
+description = "Optional bidirectional RAFT video particles for Field"
+requires-python = ">=3.10,<3.13"
+dependencies = ["torch==2.6.0", "torchvision==0.21.0", "numpy==2.2.6"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
+torchvision = [{ index = "pytorch-cu124", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true

@@ -1,7 +1,8 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
-
-layout(std430, buffer_reference) buffer Positions { vec4 pos[]; };
+layout(std430, buffer_reference) buffer Positions {
+    vec4 pos[];
+};
 
 layout(location = 0) out vec2 tc;
 layout(location = 1) out float ring;
@@ -15,6 +16,7 @@ const vec3[6] part = {
     vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
     vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
 };
+
 
 void main() {
     vec4 particle = pc.inData.pos[gl_VertexIndex / 6];

@@ -10,6 +10,7 @@ import afield.macros.stripPreambleSupplierTag
 import afield.macros.withPreambleSupplierTag
 import afield.stdlib.Inheritance
 import afield.stdlib.InheritanceFromContext
+import afield.stdlib.normalizePreambleText
 import java.lang.reflect.Proxy
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -568,6 +569,28 @@ class ContextResolutionCharacterizationTest {
         a.setPropertyRaw("preamble", exportLine)
         b.setPropertyRaw("preamble", exportLine)
         assertTrue(gatherPreambleUpwardsReport(child).conflicts.isEmpty())
+    }
+
+    /**
+     * 2026-10-04: a box that declares the `prop` its parent declares (`path_tracer_instrument`'s
+     * `pt_plot` and `pt_tracer` both write `prop<PathTracingRenderer>(tracer)`) gets one declaration
+     * once the preamble is normalized, as before 2026-09-29. Tagging made the inherited copy differ from
+     * the box's own by its `from:` comment alone, `normalizePreambleText` kept both, and the completion
+     * sidecar, which compiles the preamble as one file, reported REDECLARATION for each.
+     */
+    @Test
+    fun anOwnDeclarationAndTheSameOneInheritedNormalizeToOneLine() {
+        val s = session("pre-own-and-inherited")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        parent.connect(child)
+        parent.setPropertyRaw("preamble", exportLine)
+        child.setPropertyRaw("preamble", exportLine)
+
+        val gathered = gatherPreambleUpwards(child)
+        assertTrue(withPreambleSupplierTag(exportLine, "parent") in gathered, gathered)
+        val normalized = normalizePreambleText(gathered)
+        assertEquals(1, normalized.lines().count { stripPreambleSupplierTag(it) == exportLine }, normalized)
     }
 
     /**

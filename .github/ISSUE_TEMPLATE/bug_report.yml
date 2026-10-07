@@ -1,0 +1,44 @@
+name: Bug report
+description: A startup problem or something that behaves incorrectly in Field.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for trying Field. Include the first useful error, not only BUILD FAILED. Remove API keys and private code or paths before sharing logs."
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture
+      placeholder: "Ubuntu 24.04 x86-64 / Windows 11 x64 / macOS 15 arm64"
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Field commit
+      description: "Run git rev-parse --short HEAD in the checkout."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+      description: "Include the launch command, desktop or server-only mode, and whether this was your first launch."
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected and actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant startup or runtime errors
+      description: "Paste the first concrete error and surrounding lines. Review logs for secrets and private content."
+      render: text
+  - type: input
+    id: hardware
+    attributes:
+      label: RAM and GPU (especially for build or native graphics failures)

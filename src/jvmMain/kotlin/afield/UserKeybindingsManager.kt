@@ -23,8 +23,11 @@ import kotlin.time.Duration.Companion.milliseconds
  * client falls back to a command's own default for anything the file does not mention.
  */
 object UserKeybindingsManager {
+    // `AFIELD_KEYBINDINGS_FILE` is set by automated servers (`automation_server_environment`), whose
+    // test clients register invented commands that would otherwise be appended to the user's file.
     private fun defaultBindingsFile(): File =
-        File(File(System.getProperty("user.home"), ".afield"), "keybindings.yaml")
+        System.getenv("AFIELD_KEYBINDINGS_FILE")?.takeIf { it.isNotBlank() }?.let(::File)
+            ?: File(File(System.getProperty("user.home"), ".afield"), "keybindings.yaml")
 
     /**
      * The file being watched. Normally `~/.afield/keybindings.yaml`; [watchFile] points it elsewhere.
@@ -323,10 +326,13 @@ bindings:
                 for ((rawKey, rawValue) in map) {
                     val id = rawKey?.toString()?.trim().orEmpty()
                     if (id.isEmpty()) continue
+                    val specs = specsFor(id, rawValue, problems)
                     // An unrecognized id is usually a typo, but it can also be a command that simply
                     // isn't registered at this moment (the selection-dependent ones). Say so and pass
-                    // it through anyway — dropping it would silently ignore a binding that works.
-                    if (known.isNotEmpty() && id !in known) {
+                    // it through anyway — dropping it would silently ignore a binding that works. An
+                    // empty entry binds nothing, and Field writes one for every command it has ever
+                    // seen, contextual ones included, so only a real shortcut is worth a warning.
+                    if (known.isNotEmpty() && id !in known && !specs.isNullOrEmpty()) {
                         lprintln(
                             "warn,user-keybindings",
                             "keybindings.yaml mentions '$id', which is not a command Field currently " +
@@ -335,7 +341,7 @@ bindings:
                     }
                     // null means "the user asked for something and none of it was usable" — leave the
                     // id out of the map entirely so the default applies. See [specsFor].
-                    specsFor(id, rawValue, problems)?.let { bindings[id] = it }
+                    specs?.let { bindings[id] = it }
                 }
             }
         }

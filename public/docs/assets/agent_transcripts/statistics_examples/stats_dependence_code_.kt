@@ -33,18 +33,23 @@ val panels = cases.map { (label, y) ->
         color = vec(0.48, 0.85, 1.0, 0.8),
         pointSize = 1.1,
     )
-    val caption = "r=${"%.3f".format(r)} rho=${"%.3f".format(rho)} tau=${"%.3f".format(tau)}" +
-        " xi=${"%.3f".format(xi)} dCor=${"%.3f".format(dcor)} MIC~=${"%.3f".format(mic)}"
+    val caption =
+        "r=${"%.3f".format(r)} rho=${"%.3f".format(rho)} tau=${"%.3f".format(tau)}" +
+            " xi=${"%.3f".format(xi)} dCor=${"%.3f".format(dcor)} MIC~=${"%.3f".format(mic)}"
     "$label\n$caption" to cloud
 }
 
 val parabola = cases[2].second
-println("xi is asymmetric on purpose: xi(x, x^2)=${"%.3f".format(StatsDependence.xi(x, parabola))} " +
-    "but xi(x^2, x)=${"%.3f".format(StatsDependence.xi(parabola, x))} — x is NOT a function of x^2.")
-println("dCor is 1 only for a STRAIGHT line, not for any perfect relationship: " +
-    "dCor(x, 3x+1)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { 3.0 * x[it] + 1.0 }))}, " +
-    "dCor(x, -2x+5)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { -2.0 * x[it] + 5.0 }))}, " +
-    "but dCor on the parabola is only ${"%.3f".format(StatsDependence.distanceCorrelation(x, parabola))}.")
+println(
+    "xi is asymmetric on purpose: xi(x, x^2)=${"%.3f".format(StatsDependence.xi(x, parabola))} " +
+        "but xi(x^2, x)=${"%.3f".format(StatsDependence.xi(parabola, x))} — x is NOT a function of x^2.",
+)
+println(
+    "dCor is 1 only for a STRAIGHT line, not for any perfect relationship: " +
+        "dCor(x, 3x+1)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { 3.0 * x[it] + 1.0 }))}, " +
+        "dCor(x, -2x+5)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { -2.0 * x[it] + 5.0 }))}, " +
+        "but dCor on the parabola is only ${"%.3f".format(StatsDependence.distanceCorrelation(x, parabola))}.",
+)
 
 // There are no p-values anywhere in this family, and dCor under independence is biased
 // well above zero. So measure the null: break the pairing, keep both marginals.
@@ -64,12 +69,16 @@ for (rep in 0 until reps) {
 }
 val sortedD = nullDcor.sortedArray()
 val sortedXi = nullXi.sortedArray()
-println("growing-spread case: observed dCor=${"%.4f".format(observedDcor)} against a null of " +
-    "mean ${"%.4f".format(sortedD.average())}, 95th pct ${"%.4f".format(sortedD[(reps * 0.95).toInt()])}, " +
-    "max ${"%.4f".format(sortedD.last())} — re-pairings reaching it: ${sortedD.count { it >= observedDcor }}/$reps")
-println("                     observed xi  =${"%.4f".format(observedXi)} against a null 95th pct of " +
-    "${"%.4f".format(sortedXi[(reps * 0.95).toInt()])} — re-pairings reaching it: " +
-    "${sortedXi.count { it >= observedXi }}/$reps. xi correctly declines to call this functional.")
+println(
+    "growing-spread case: observed dCor=${"%.4f".format(observedDcor)} against a null of " +
+        "mean ${"%.4f".format(sortedD.average())}, 95th pct ${"%.4f".format(sortedD[(reps * 0.95).toInt()])}, " +
+        "max ${"%.4f".format(sortedD.last())} — re-pairings reaching it: ${sortedD.count { it >= observedDcor }}/$reps",
+)
+println(
+    "                     observed xi  =${"%.4f".format(observedXi)} against a null 95th pct of " +
+        "${"%.4f".format(sortedXi[(reps * 0.95).toInt()])} — re-pairings reaching it: " +
+        "${sortedXi.count { it >= observedXi }}/$reps. xi correctly declines to call this functional.",
+)
 
 // Two columns rather than three: showPlaneGrid's grid columns are `max-content`, so a long
 // caption widens the card past `cellWidth` instead of wrapping inside it.

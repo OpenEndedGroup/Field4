@@ -49,6 +49,7 @@ object BoxOutputLog {
         val channel: String = "",
         val property: String = "",
         val line: Int = 0,
+        val document: String = "",
         val atMillis: Long = System.currentTimeMillis(),
         /** For `verdict` entries: whether setup completed. */
         val success: Boolean? = null,
@@ -79,7 +80,7 @@ object BoxOutputLog {
     }
 
     private fun noteDropped(entry: Entry) {
-        droppedUpTo[entry.uid] = maxOf(droppedUpTo[entry.uid] ?: 0L, entry.seq)
+        droppedUpTo[key(entry.uid,entry.document)] = maxOf(droppedUpTo[key(entry.uid,entry.document)] ?: 0L, entry.seq)
     }
 
     /** The current sequence number; everything recorded afterwards has a larger [Entry.seq]. */
@@ -93,12 +94,14 @@ object BoxOutputLog {
         property: String = "",
         line: Int = 0,
         success: Boolean? = null,
+        document: String = "",
     ) {
         if (uid.isBlank()) return
         val clipped = if (text.length <= maxTextChars) text else text.take(maxTextChars) + "…"
         synchronized(lock) {
-            val entry = Entry(sequence.incrementAndGet(), uid, kind, clipped, channel, property, line, success = success)
-            val deque = byBox.getOrPut(uid) { ArrayDeque() }
+            val entry = Entry(sequence.incrementAndGet(), uid, kind, clipped, channel, property, line, document=document, success = success)
+            val storageKey=key(uid,document)
+            val deque = byBox.getOrPut(storageKey) { ArrayDeque() }
             if (kind == "display") {
                 val it = deque.iterator()
                 while (it.hasNext()) {
@@ -125,19 +128,25 @@ object BoxOutputLog {
     }
 
     /** Entries for [uid] with `seq > marker`, oldest first. */
-    fun since(uid: String, marker: Long, limit: Int = maxEntriesPerBox): Page = synchronized(lock) {
-        val deque = byBox[uid] ?: return@synchronized Page(emptyList(), mark(), false)
+    private fun key(uid: String, document: String) = if(document.isBlank()) uid else document+"\u0000"+uid
+
+    fun since(box: Box, marker: Long, limit: Int = maxEntriesPerBox) = since(box.id,marker,limit,outputDocument(box))
+
+    fun since(uid: String, marker: Long, limit: Int = maxEntriesPerBox, document: String = ""): Page = synchronized(lock) {
+        val storageKey=key(uid,document)
+        val deque = byBox[storageKey] ?: return@synchronized Page(emptyList(), mark(), false)
         val all = deque.filter { it.seq > marker }
         // Something this reader had not yet seen was dropped by a bound (per-box or global).
-        val dropped = (droppedUpTo[uid] ?: 0L) > marker
+        val dropped = (droppedUpTo[storageKey] ?: 0L) > marker
         val page = if (all.size <= limit) all else all.takeLast(limit)
         Page(page, page.lastOrNull()?.seq ?: marker, dropped || all.size > limit)
     }
 
     /** Forget a box's history (tests, and a deleted box). */
-    fun clear(uid: String) = synchronized(lock) {
-        byBox.remove(uid)?.let { removed -> totalChars -= removed.sumOf { it.text.length.toLong() } }
-        droppedUpTo.remove(uid)
+    fun clear(uid: String, document: String = "") = synchronized(lock) {
+        val storageKey=key(uid,document)
+        byBox.remove(storageKey)?.let { removed -> totalChars -= removed.sumOf { it.text.length.toLong() } }
+        droppedUpTo.remove(storageKey)
         Unit
     }
 
@@ -146,7 +155,7 @@ object BoxOutputLog {
 
     // ---- taps ---------------------------------------------------------------------------------
 
-    internal fun observeOutput(output: Output) {
+    internal fun observeOutput(output: Output, document: String = "") {
         val kind = when (output.kind) {
             "error", "err" -> "err"
             "normal", "" -> "out"
@@ -156,23 +165,23 @@ object BoxOutputLog {
         // (`12px`, `1.4`) that would pollute any check or reader looking for the printed values.
         val text = if (kind == "err" || output.html.trimStart().startsWith("<")) htmlToText(output.html) else output.html
         if (text.isBlank()) return
-        record(output.uid, kind, text.trimEnd('\n'), property = output.property, line = output.line)
+        record(output.uid, kind, text.trimEnd('\n'), property = output.property, line = output.line, document=document)
     }
 
-    internal fun observeBroadcast(message: Message) {
+    internal fun observeBroadcast(message: Message, document: String = "") {
         if (message.name != "set-output") return
         val payload = message.payload as? kotlinx.serialization.json.JsonObject ?: return
         fun s(k: String) = (payload[k] as? kotlinx.serialization.json.JsonPrimitive)?.content.orEmpty()
         if (s("property") != "outputarea") return
-        record(s("uid"), "display", s("value"), channel = s("channel").ifBlank { "output" })
+        record(s("uid"), "display", s("value"), channel = s("channel").ifBlank { "output" }, document=document)
     }
 
-    internal fun observeVerdict(report: ExecutionReport) {
+    internal fun observeVerdict(report: ExecutionReport, document: String = "") {
         record(
             report.uid, "verdict",
             if (report.success) "${report.mode}: ${report.stage}" else "${report.mode}: failed\n${report.error}",
             property = report.property,
-            success = report.success
+            success = report.success, document=document
         )
     }
 

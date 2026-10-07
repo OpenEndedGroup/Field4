@@ -3502,6 +3502,112 @@ return result;
 """
 
 
+# Completion in a Kotlin/JS box: a child of a `mainLanguage = kotlinjs` box, the way the RemoteAR
+# starting point is built (dev_docs/agents/transcripts/remotear_start.yaml). Its completion is a
+# different path from a JVM box's: KotlinJsExecution.complete asks the AA sidecar with the analysis
+# classpath narrowed to the Kotlin stdlib and `jsTarget` set, retrying while the sidecar builds that
+# stdlib-only session.
+#
+# `p.sp` is the box's own type, which only resolves if the box's code reached the backend. `words.s` is
+# what tells this path from a JVM box's: on a List, the JVM path offers `stream`/`spliterator`, and the
+# Kotlin/JS path must not, because the head the code runs in has no JVM.
+COMPLETION_KOTLINJS_SNIPPET = """\
+data class Particle(val x: Double, val y: Double) {
+    fun speed() = 0.0
+}
+val p = Particle(1.0, 2.0)
+p.sp
+val words = listOf("a", "b")
+words.s
+"""
+
+# The completion handler runs on the Netty event-loop thread that serves this page's websocket, and the
+# server dispatches every message on that socket from that one thread. So while a completion is in
+# flight, this pings a handler that does no work of its own on the same socket and records the slowest
+# round trip. A handler that blocks the thread (up to four sidecar round trips and three 300 ms retry
+# sleeps on a cold session) holds every ping back with it; a blocked loop also starves the websocket's
+# keepalive pongs, and that is what the backdoor reports as "1011 keepalive ping timeout".
+COMPLETION_KOTLINJS_MAX_PING_MS = 500
+
+COMPLETION_KOTLINJS_JS = COMPLETION_SUGGEST_PRELUDE + r"""
+const MAX_PING_MS = __MAX_PING_MS__;
+const languageDeadline = Date.now() + 10000;
+while (Date.now() < languageDeadline && model.getLanguageId() !== "kotlinjs") {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+if (model.getLanguageId() !== "kotlinjs") {
+  return { ok: false, reason: `editor language is ${model.getLanguageId()}, not kotlinjs: the box never became a Kotlin/JS box` };
+}
+
+const { sendWithReply } = await import("./afield.mjs");
+let pingSeq = 0;
+const ping = () => new Promise((resolve) => {
+  const started = performance.now();
+  const timer = setTimeout(() => resolve(Infinity), 15000);
+  sendWithReply("get-all-layers", {}, `kotlinjs-completion-ping-${pingSeq++}`, () => {
+    clearTimeout(timer);
+    resolve(performance.now() - started);
+    return "remove";
+  });
+});
+
+// What the server answered, not what the popup made of it: rpc items only.
+const rpcNames = () => (controller.rawItems || [])
+  .filter((item) => item.source === "rpc")
+  .map((item) => nameOf(item.insertText || item.label));
+
+// open() sends the "complete" request before it first awaits, so every ping here queues behind it.
+const pings = [];
+const completeWhilePinging = async (needle) => {
+  let settled = false;
+  const completion = completeAtEndOf(needle).then((probe) => { settled = true; return probe; });
+  while (!settled) pings.push(await ping());
+  const probe = await completion;
+  return { line: probe.line, loaded: probe.loaded, rpc: rpcNames() };
+};
+
+// The sidecar builds the stdlib-only session on first use and answers empty until then, so poll.
+const deadline = Date.now() + 90000;
+let own = null;
+let attempts = 0;
+while (Date.now() < deadline) {
+  attempts += 1;
+  own = await completeWhilePinging("p.sp");
+  if (own.rpc.includes("speed")) break;
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+const list = await completeWhilePinging("words.s");
+const maxPingMs = Math.round(Math.max(0, ...pings));
+const result = { ok: false, attempts, pingCount: pings.length, maxPingMs, own, list };
+
+if (!own.loaded || !list.loaded) {
+  result.reason = "completion never settled (baseItemsLoaded stayed false): the reply never came";
+  return result;
+}
+if (maxPingMs > MAX_PING_MS) {
+  result.reason = `a no-op round trip on the same socket took ${maxPingMs} ms during a Kotlin/JS ` +
+    `completion (limit ${MAX_PING_MS} ms): the completion handler is holding the websocket's event loop`;
+  return result;
+}
+if (!own.rpc.includes("speed")) {
+  result.reason = `the box's own type never completed after ${attempts} attempts (is the sidecar serving?): ` +
+    `rpc offered [${own.rpc.join(", ")}]`;
+  return result;
+}
+if (!list.rpc.includes("size")) {
+  result.reason = `List completion came back without size: rpc offered [${list.rpc.join(", ")}]`;
+  return result;
+}
+const jvmOnly = list.rpc.filter((name) => name === "stream" || name === "spliterator");
+if (jvmOnly.length) {
+  result.reason = `List completion offered JVM-only members [${jvmOnly.join(", ")}]: this was not the Kotlin/JS path`;
+  return result;
+}
+result.ok = true;
+return result;
+""".replace("__MAX_PING_MS__", str(COMPLETION_KOTLINJS_MAX_PING_MS))
+
+
 # The live counterpart to the headless popup cover (afield.FieldSuggestPresentationTest, wired into
 # `check`; see dev_docs/completion_popup_cover.md). That one stages fieldSuggest.js under node against
 # a canned server reply; this one asks the real editor, over a real payload, in a real browser — the
@@ -3577,6 +3683,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "completion_unresolved_snippet": write_generated_file("completion-unresolved.kt", COMPLETION_UNRESOLVED_SNIPPET),
         "completion_own_import_js": write_generated_file("completion-own-import.js", COMPLETION_OWN_IMPORT_JS),
         "completion_unresolved_js": write_generated_file("completion-unresolved.js", COMPLETION_UNRESOLVED_JS),
+        "completion_kotlinjs_snippet": write_generated_file("completion-kotlinjs.kt", COMPLETION_KOTLINJS_SNIPPET),
+        "completion_kotlinjs_js": write_generated_file("completion-kotlinjs.js", COMPLETION_KOTLINJS_JS),
         "completion_category_headers_snippet": write_generated_file(
             "completion-category-headers.kt", COMPLETION_CATEGORY_HEADERS_SNIPPET
         ),
@@ -3706,6 +3814,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name XrayRegression",
                 shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-xray.kt")]),
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-xray.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-camera-link",
+            description="Opt-in camera links align model space across origins, axes and units while leaving display and notes independent.",
+            commands=[
+                "new-box --name LinkedCameraRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-camera-link.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-camera-link.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-mixed-review",
+            description="Moving ordinary geometry beside canonical parts invalidates notes while preserving the view.",
+            commands=[
+                "new-box --name MixedReviewRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
@@ -3844,6 +3972,37 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="state-tree-browser",
+            description="Browse real AI4 branches and provider states; reference two states without sending, navigating or losing the draft.",
+            commands=[
+                "new-box --name StateHistoryRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="ai-chat-resize",
+            description="Chat retains manual size, draft and reading position through streamed text and images, reopen and canvas zoom.",
+            commands=[
+                "new-box --name ChatResizeRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-resize.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-resize.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="chat-lens",
+            description="The lens viewer draws a lens beside its chat with bands to the stretches it cites; a band into a folded round ends on the round's line, uncited blocks dim, pictures load from the chat's blobs.",
+            commands=[
+                "new-box --name ChatLensRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/chat-lens.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/chat-lens.js"), "--timeout", pw_timeout]),
+            ],
+            # screenshot-box measures the output area, which the viewer overflows; the window shows it.
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="viewer-panel-sizing",
             description="An embedded viewer panel reaches the size the viewer declares, instead of opening at the DEFAULT_W/DEFAULT_H constants. See dev_docs/OUTPUT_PANEL_SIZING.md.",
             commands=[
@@ -3851,6 +4010,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["viewer_panel_sizing_snippet"]), "--timeout", timeout_text]),
                 "sleep 2.0",
                 shell_join(["page-eval", "--body", "--file", str(files["viewer_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="output-panel-shrink",
+            description="An auto-sized output panel follows its content down as well as up in height and width, sizes a capped scroller by its cap, measures width at a fresh panel's width so wrapped text does not creep, holds still while content alternates, ignores canvas zoom and stays within the window; a hand-sized panel keeps its size.",
+            commands=[
+                "new-box --name OutputPanelShrinkRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="study-build-failure-view",
+            description="A failed StudyBuild card's \"Show where it fails\" opens the closed output panel of the box its failure names, without changing the selection or opening that box's code, and says so beside the link when the box is not in the document.",
+            commands=[
+                "new-box --name StudyBuildFailureViewRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/study-build-failure-view.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/study-build-failure-view.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
@@ -4106,6 +4285,36 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot="macro run guide_capture",
         ),
         UiRegression(
+            id="ai-chat-fence-renderers",
+            description="AI4 chat renders registered fences, loads Mermaid, and keeps source visible when a diagram fails.",
+            document=f"ui-regression-chat-fences-{int(time.time())}",
+            commands=[
+                "new-box --name FenceRenderers --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-fence-renderers.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "FenceRenderers", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="ai-chat-scroll",
+            description="The AI chat keeps a reader's place through re-renders of a transcript full of inline images, parked mid-history or at the bottom.",
+            document=f"ui-regression-chat-scroll-{int(time.time())}",
+            commands=[
+                "new-box --name ChatScroll --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-scroll.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "ChatScroll", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="ai-chat-rounds",
+            description="A run of tool activity folds to one round line (calls, time, failures, families) that stays open once opened and shows a running turn's live status.",
+            document=f"ui-regression-chat-rounds-{int(time.time())}",
+            commands=[
+                "new-box --name ChatRounds --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-rounds.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "ChatRounds", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="simulation-clock",
             description="Ordinary editor launch/stop/relaunch owns simulation children; frame budgets share the profiling brush.",
             document=f"ui-regression-simulation-{int(time.time())}",
@@ -4114,6 +4323,74 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["set", "@last", "code", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.kt")]),
                 "editor-open @last --property code",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-camera",
+            description="Wheel pan, middle-drag pan and pinch zoom move the boxes, the connection overlay and the drawing layer through one camera.",
+            document=f"ui-regression-canvas-camera-{int(time.time())}",
+            commands=[
+                "new-box --name CameraAlpha --alias camera_alpha --x 200 --y 160",
+                "new-box --name CameraBeta --alias camera_beta --x 520 --y 320",
+                "connect @camera_alpha @camera_beta",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-camera.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split",
+            description="A 2x2 canvas split keeps boxes in their quadrant's pane, links scroll by row and column, clamps each pane to its quadrant, draws connections between panes where the boxes are seen, persists and bookmarks, moves and removes dividers by their handles, splits from the corner grip, and unsplits cleanly.",
+            document=f"ui-regression-canvas-split-{int(time.time())}",
+            commands=[
+                "new-box --name SplitA --alias split_a --x 100 --y 100",
+                "new-box --name SplitB --x 500 --y 100",
+                "new-box --name SplitC --x 100 --y 400",
+                "new-box --name SplitD --alias split_d --x 500 --y 400",
+                "new-box --name SplitFar --x 4000 --y 3500",
+                "connect @split_a @split_d",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split-3up",
+            description="Two dividers per axis and unlinked panes: three columns in their own bands, a third divider refused, a middle band's flat-grey end, a 3x2 split with a dashed, independently scrolling corner, the palette thumbnail, and a clean unsplit.",
+            document=f"ui-regression-canvas-split-3up-{int(time.time())}",
+            commands=[
+                "new-box --name TriQ0 --x 100 --y 60",
+                "new-box --name TriQ1 --x 700 --y 60",
+                "new-box --name TriQ2 --x 1300 --y 60",
+                "new-box --name TriP0 --x 100 --y 300",
+                "new-box --name TriP1 --x 700 --y 300",
+                "new-box --name TriP2 --x 1300 --y 300",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-3up.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split-drawing",
+            description="On a split canvas the drawing layer has one Excalidraw per pane following that pane's camera; a mark drawn in a side pane lands under the pointer, reaches every mount and the server, and survives unsplitting.",
+            document=f"ui-regression-canvas-split-drawing-{int(time.time())}",
+            commands=[
+                "new-box --name DrawA --x 100 --y 100",
+                "new-box --name DrawD --x 500 --y 400",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drawing.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split-drag",
+            description="On a split canvas, a box dragged across a divider is not clipped mid-drag and lands where it was dropped, in the other pane's camera.",
+            document=f"ui-regression-canvas-split-drag-{int(time.time())}",
+            commands=[
+                "new-box --name DragA --alias drag_a --x 100 --y 200",
+                "new-box --name DragFar --x 600 --y 200",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-setup.js"), "--timeout", pw_timeout]),
+                "drag-box @drag_a --dx 360 --dy 40 --hold",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-mid.js"), "--timeout", pw_timeout]),
+                "mouse-up",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-check.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
@@ -4265,6 +4542,23 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["completion_unresolved_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="completion-kotlinjs-box",
+            description="A Kotlin/JS box completes its own types and stdlib-without-the-JVM, and the websocket stays responsive while it does.",
+            commands=[
+                "new-box --name KotlinJsCompletionHost --alias kotlinjs_host --x 40 --y 40",
+                "set @kotlinjs_host mainLanguage kotlinjs",
+                "new-box --name KotlinJsCompletionRegression --alias kotlinjs_box --x 80 --y 200",
+                # The connection is what makes the child a Kotlin/JS box (applyRuntimeToggle).
+                "connect @kotlinjs_host @kotlinjs_box",
+                shell_join(["set", "@kotlinjs_box", "code", "--file", str(files["completion_kotlinjs_snippet"])]),
+                "sleep 1.0",
+                "editor-open @kotlinjs_box --property code",
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["completion_kotlinjs_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@kotlinjs_box", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
         ),
     ]
 

@@ -716,16 +716,17 @@ class ProseNumeralContractTest {
             key = "logSinkImplementations",
             page = "public/docs/logging.md",
             what = "`LogSink` implementations in the tree",
-            // 8 on 2026-09-07, and the whole population, so the floor and the count coincide —
-            // the DATAFRAME_PLUGIN precedent. The page names all eight in a sentence and then
-            // says "adding a ninth from a box takes one line", so a ninth in *source* means that
+            // 8 on 2026-09-07; 7 on 2026-10-04, when the completion-doc polish CLI and its sink were
+            // retired. The whole population, so the floor and the count coincide — the
+            // DATAFRAME_PLUGIN precedent. The page names all seven in a sentence and then
+            // says "adding an eighth from a box takes one line", so an eighth in *source* means that
             // sentence needs rereading rather than renumbering.
             //
             // Counted by the one method the interface has rather than by a supertype list,
             // because `NotifyLog`'s `: LogSink` sits on its own line after a multi-line
             // constructor and a line-oriented supertype regex misses it. Every implementation
             // must override this exact signature, so the override is the reliable witness.
-            floor = 8,
+            floor = 7,
             landmarks = setOf(
                 "src/jvmMain/kotlin/afield/ai/core/Logging.kt#0",
                 "src/jvmMain/kotlin/afield/server/logstream.kt#0",
@@ -772,6 +773,28 @@ class ProseNumeralContractTest {
             // unsatisfiable case its KDoc describes, met here for the first time by punctuation
             // rather than by a space.
             membersQuotedVerbatim = true,
+        ),
+        // ------------------------------------------------------------------------------------
+        // dev_docs/fline_fill_orientation.md — the blast radius of the winding defects.
+        // ------------------------------------------------------------------------------------
+        DerivedCountGuard.Derivation(
+            key = "flineTessellateCallSites",
+            page = "dev_docs/fline_fill_orientation.md",
+            what = "calls to `FLine.tessellate` in `src/jvmMain`, by enclosing declaration",
+            // Three on 2026-10-07, and the whole population, so the floor and the count coincide —
+            // the same trade as `valuePrinterInterfaceKeys`. The page's blast-radius argument turns
+            // on this number: a fourth call site means the argument wants rereading rather than
+            // renumbering, and that direction is caught by the marker (3 != 4) rather than here.
+            floor = 3,
+            // All three. The page prints a table of exactly this population, so a landmark set
+            // smaller than the population would leave a row that could be deleted from both the
+            // code and the page with the guard still green.
+            landmarks = setOf("trianglesOut", "buildThreeGeometryPayload", "appendFilledMesh"),
+            derive = { r -> tessellateCallSites(r) },
+            // The half that matters here. The page once said "exactly two production call sites"
+            // over a two-row table while `src/jvmMain` held three; the count alone would be
+            // satisfied by any three rows.
+            membersNamedOnPage = true,
         ),
     )
 
@@ -1223,6 +1246,59 @@ class ProseNumeralContractTest {
                 .mapIndexed { i, m -> LogCallSite(rel, i, m.groupValues[1]) }
                 .toList()
         }
+    }
+
+    /**
+     * Every call to `FLine.tessellate` under [REGISTRATION_ROOTS], named by the declaration that
+     * encloses it.
+     *
+     * The member is the enclosing function's name rather than `File.kt:line` or the file. Line
+     * numbers are what [DerivedCountGuard] refuses to let a page pin, and [DerivedCountGuard.codeSpanWords]
+     * tokenises a code span into identifiers, so a numeral in an id could never match. A file-keyed
+     * population is quietly weaker: two of the three calls live in `ThreeJsViewer.kt`, so deleting
+     * either of its rows from the page would leave the other naming the same token. The enclosing
+     * declaration is distinct for all three, is how the page refers to them, and its distinctness is
+     * [require]d below rather than assumed.
+     *
+     * Excluded: `PlanarTessellation.tessellate`, a different function of the same name that
+     * `FLine.tessellate` delegates to, written with its explicit receiver at both of its call sites;
+     * the declaration `fun tessellate`, which has no receiver dot; and comment lines, because KDoc in
+     * `src/jvmMain` discusses `FLine.tessellate` and prose about a call is not a call. `src/jvmTest` is
+     * outside [REGISTRATION_ROOTS] on purpose: its calls are tests of the population, not members.
+     */
+    private fun tessellateCallSites(r: File): Set<String> {
+        val call = Regex("""\.tessellate\s*\(""")
+        val decl = Regex("""^(\s*)[\w\s]*?\bfun\s+(?:<[^>]*>\s*)?(?:[A-Za-z_][A-Za-z0-9_.]*\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+        val sites = mutableListOf<String>()
+        val owners = mutableListOf<String>()
+        DerivedCountGuard.kotlinSourcesUnder(r, *REGISTRATION_ROOTS).forEach { f ->
+            val lines = f.readLines()
+            lines.forEachIndexed { i, raw ->
+                val code = raw.substringBefore("//")
+                val trimmed = code.trimStart()
+                if (trimmed.startsWith("*") || trimmed.startsWith("/")) return@forEachIndexed
+                if (!call.containsMatchIn(code)) return@forEachIndexed
+                if ("PlanarTessellation.tessellate" in code) return@forEachIndexed
+                val indent = code.length - trimmed.length
+                val owner = (i - 1 downTo 0).firstNotNullOfOrNull { j ->
+                    decl.find(lines[j])?.takeIf { it.groupValues[1].length < indent }?.groupValues?.get(2)
+                }
+                requireNotNull(owner) {
+                    "no enclosing declaration found above ${f.name}:${i + 1} — this is a broken " +
+                        "scrape, not a deletion: fix count:flineTessellateCallSites before the page"
+                }
+                sites += "${f.name}:${i + 1}"
+                owners += owner
+            }
+        }
+        val distinct = owners.toSortedSet()
+        require(distinct.size == sites.size) {
+            "count:flineTessellateCallSites found ${sites.size} call(s) at $sites but only " +
+                "${distinct.size} distinct enclosing declaration(s) $distinct — two calls now share " +
+                "a declaration, so the page could list fewer rows than the number it states. Key the " +
+                "population on something distinct before touching dev_docs/fline_fill_orientation.md."
+        }
+        return distinct
     }
 
     private val registrationCache = HashMap<String, List<Registration>>()

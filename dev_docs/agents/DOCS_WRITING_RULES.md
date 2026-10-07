@@ -16,7 +16,9 @@ This file is about what goes on a page and how it reads.
    `??? aside` at most, or in `dev_docs/`, or nowhere. The test: would someone who does not care
    how the page was made want to read it? ("Stop talking to Marc and start talking to our users.")
 2. **No lab-notebook voice.** Do not narrate an investigation and report findings as you make them.
-   Say how the thing works and how to use it.
+   Say how the thing works and how to use it. The same goes for a "missing features" section: it
+   says what is and is not supported, and what to use instead. Effort estimates ("a weekend of
+   Kotlin"), roadmap guesses and who has not built what yet belong in `dev_docs/`.
 3. **Lead with the common case.** Open on what people actually type (`loop {}`, then `forever {}`,
    with `frames {}` as the building block under both), and move mechanism, edge cases and clever
    variants to an internals section at the bottom.

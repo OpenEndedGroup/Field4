@@ -8,6 +8,8 @@ import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * A task run *as an AI4 chat turn* (`AgentTaskRequest.chatBox`, which `askFieldAgent` always sets):
@@ -20,6 +22,34 @@ import kotlin.test.assertTrue
  * jvmTest, with no handler installed, is always.
  */
 class AgentTaskPanelTest {
+    @Test
+    fun livePanelCarriesTheRequestedBudgetAndReportsExhaustion() {
+        val (info, tools) = document()
+        val asker = tools.newBox(NewBoxRequest("Budget"))
+        val box = info.boxes[asker.uid]!!
+        val old = afield.handlers["ai-assist"]
+        afield.handlers["ai-assist"] = mutableSetOf({ message, _ ->
+            assertEquals("64", message.payload!!.jsonObject.getValue("maxToolRounds").jsonPrimitive.content)
+            AiBoxConversation.running(box, true)
+            assertEquals(-1, AiBoxConversation.turnRounds(box))
+            assertEquals(false, AiBoxConversation.turnCapped(box))
+            AiBoxConversation.write(box, "<<you>>\nFinish the retained build\n<<ai>>\nWork is still pending.\n")
+            AiBoxConversation.completed(box, 64, true)
+            AiBoxConversation.running(box, false)
+            afield.Handled.yes
+        })
+        try {
+            val result = run(info, AgentTaskRequest(goal = "Finish the retained build", mode = "live", chatBox = "Budget",
+                maxToolRounds = 100, checks = listOf(AgentCheck("box-exists", box = "Budget"))))
+            assertEquals(64, result.maxToolRounds)
+            assertEquals(64, result.rounds)
+            assertTrue(result.hitToolRoundCap)
+            assertEquals("budget-exhausted", result.verdict, "An easy check must not mask an interrupted workflow")
+        } finally {
+            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+        }
+    }
+
     private val table = mapOf(InFieldAgentEvals.PRIMES_CODE to InFieldAgentHarnessTest.Fake(out = listOf("[2, 3, 5, 7, 11, 13, 17, 19, 23, 29]")))
 
     private fun document(): Pair<SessionInformation, FieldGraphTools> {
@@ -73,6 +103,125 @@ class AgentTaskPanelTest {
         assertTrue(result.error.contains("already has an AI turn running"))
         val history = AiBoxConversation.read(info.boxes[busy.uid]!!)
         assertTrue("Agent task not started" in history && "already has an AI turn running" in history)
+    }
+
+    @Test
+    fun anInterruptedTurnUsesTheNormalChatRecoveryBeforeStarting() {
+        val (info, tools) = document()
+        val asker = tools.newBox(NewBoxRequest("Interrupted"))
+        val box = info.boxes[asker.uid]!!
+        AiBoxConversation.write(box, "<<you>>\nearlier\n<<progress-open>>\nPartial work\n")
+        AiBoxConversation.running(box, true)
+        val old = afield.handlers["ai-chat-history"]
+        var historyReads = 0
+        afield.handlers["ai-chat-history"] = mutableSetOf({ message, _ ->
+            assertEquals(info, afield.thisSessionInfo.get())
+            assertEquals(box.id, message.payload!!.jsonObject.getValue("uid").jsonPrimitive.content)
+            historyReads++
+            AiBoxConversation.recoverInterrupted(box)
+            afield.Handled.yes
+        })
+        try {
+            val result = run(info, AgentTaskRequest(goal = "continue", mode = "scripted",
+                script = InFieldAgentEvals.steps("Recovered"), chatBox = "Interrupted"))
+            assertEquals(1, historyReads)
+            assertEquals("unchecked", result.verdict, result.error)
+            val history = AiBoxConversation.read(box)
+            assertTrue("Partial work" in history && "Previous AI turn was interrupted" in history)
+            assertTrue("<<you>>\ncontinue" in history && "Recovered" in history)
+        } finally {
+            if (old == null) afield.handlers.remove("ai-chat-history") else afield.handlers["ai-chat-history"] = old
+        }
+    }
+
+    @Test
+    fun anObservationTimeoutLeavesTheLiveTurnAndTranscriptIntact() {
+        val (info, tools) = document()
+        val asker = tools.newBox(NewBoxRequest("Slow"))
+        val box = info.boxes[asker.uid]!!
+        val history = "<<you>>\nEarlier\n<<ai>>\nEarlier answer\n"
+        AiBoxConversation.write(box, history)
+        val old = afield.handlers["ai-assist"]
+        val oldLimit = AgentTaskRunner.panelTurnLimitMs
+        afield.handlers["ai-assist"] = mutableSetOf({ _, _ ->
+            AiBoxConversation.write(box, history + "<<you>>\nLong analysis\n<<progress-open>>\nWorking\n")
+            AiBoxConversation.running(box, true)
+            afield.Handled.yes
+        })
+        AgentTaskRunner.panelTurnLimitMs = 1
+        try {
+            val result = run(info, AgentTaskRequest(goal = "Long analysis", mode = "live", chatBox = "Slow",
+                checks = listOf(AgentCheck("box-exists", box = "Does not exist yet"))))
+            assertEquals("running", result.verdict)
+            assertEquals(asker.uid, result.chatBox)
+            assertEquals("", result.error)
+            assertEquals("", result.finalText, "a pending turn has no final answer")
+            assertTrue(result.checks.isEmpty(), "completion checks must wait for completion")
+            assertEquals(true, box.getPropertyRaw(AiBoxConversation.RUNNING_PROPERTY))
+            assertEquals(history + "<<you>>\nLong analysis\n<<progress-open>>\nWorking\n", AiBoxConversation.read(box))
+        } finally {
+            AgentTaskRunner.panelTurnLimitMs = oldLimit
+            AiBoxConversation.running(box, false)
+            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+        }
+    }
+
+    @Test
+    fun aProviderFailureIsAnErrorWithoutRepeatingTheUserTurnOrCheckingPartialWork() {
+        val (info, tools) = document()
+        val asker = tools.newBox(NewBoxRequest("Failed"))
+        val box = info.boxes[asker.uid]!!
+        val old = afield.handlers["ai-assist"]
+        val message = "AI general failed: provider token rate limit"
+        afield.handlers["ai-assist"] = mutableSetOf({ _, _ ->
+            // Even a turn that finishes during dispatch started, unlike a refused request.
+            AiBoxConversation.running(box, true)
+            AiBoxConversation.write(box, "<<you>>\nInspect retained job\n<<ai>>\nPartial diagnosis\n")
+            AiBoxConversation.failed(box, message)
+            AiBoxConversation.running(box, false)
+            afield.Handled.yes
+        })
+        try {
+            val result = run(info, AgentTaskRequest(goal = "Inspect retained job", mode = "live", chatBox = "Failed",
+                checks = listOf(AgentCheck("box-exists", box = "Failed"))))
+            assertEquals("error", result.verdict)
+            assertEquals(message, result.error)
+            assertEquals("Partial diagnosis", result.finalText)
+            assertTrue(result.checks.isEmpty(), "A real provider failure is not passed by already-existing output")
+            val history = AiBoxConversation.read(box)
+            assertEquals(1, Regex("<<you>>").findAll(history).count())
+            assertTrue("No checks — ERROR" in history)
+            assertTrue("Agent task not started" !in history)
+        } finally {
+            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+        }
+    }
+
+    @Test
+    fun aQuickSuccessfulTurnClearsOldFailureAndDoesNotParseFailureWordsFromProse() {
+        val (info, tools) = document()
+        val asker = tools.newBox(NewBoxRequest("Recovered"))
+        val box = info.boxes[asker.uid]!!
+        AiBoxConversation.running(box, true)
+        AiBoxConversation.failed(box, "Earlier failure")
+        AiBoxConversation.running(box, false)
+        val old = afield.handlers["ai-assist"]
+        afield.handlers["ai-assist"] = mutableSetOf({ _, _ ->
+            AiBoxConversation.running(box, true)
+            AiBoxConversation.write(box, "<<you>>\nRead the job\n<<ai>>\nThe old log says AI general failed; the saved job completed.\n")
+            AiBoxConversation.running(box, false)
+            afield.Handled.yes
+        })
+        try {
+            val result = run(info, AgentTaskRequest(goal = "Read the job", mode = "live", chatBox = "Recovered",
+                checks = listOf(AgentCheck("box-exists", box = "Recovered"))))
+            assertEquals("pass", result.verdict, result.error)
+            assertEquals("", result.error)
+            assertEquals(1, result.checks.size)
+            assertTrue("old log says AI general failed" in result.finalText)
+        } finally {
+            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+        }
     }
 
     @Test

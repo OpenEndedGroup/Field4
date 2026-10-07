@@ -142,10 +142,21 @@ internal class KotlinRouteScan(private val source: String) {
         val ALL_METHOD_HANDLER = Regex("""^[ \t]*handle[ \t]*\{""", RegexOption.MULTILINE)
         val BODYLESS_VERB = Regex("""^[ \t]*(get|post|put|delete|patch)[ \t]*\{""", RegexOption.MULTILINE)
 
+        /**
+         * Files that start a server of their own, on their own port, whose routes are not part of
+         * Field's HTTP surface. Each is named with the reason; a file is never excluded by pattern.
+         */
+        val SEPARATE_SERVERS = mapOf(
+            // The OSCQuery bridge's own embedded Netty server: the spec's tree at `{path...}` and its
+            // LISTEN websocket at `/`, served on the port the bridge advertises over DNS-SD.
+            "afield/oscquery/OscQueryServer.kt" to "OSCQuery bridge, its own embedded server",
+        )
+
         /** Every `.kt` file the two censuses read, in a stable order. */
         fun serverKotlinFiles(root: File): List<File> =
             File(root, "src/jvmMain/kotlin/afield").walkTopDown()
                 .filter { it.isFile && it.extension == "kt" }
+                .filter { f -> SEPARATE_SERVERS.keys.none { f.invariantSeparatorsPath.endsWith("/$it") } }
                 .sortedBy { it.path }
                 .toList()
 
@@ -270,6 +281,17 @@ internal class KotlinRouteScan(private val source: String) {
  * the failure named the file both times.
  */
 class KotlinRouteScanTest {
+
+    /** An excluded file must exist and must start a server of its own, or the exclusion is hiding Field routes. */
+    @Test
+    fun everySeparateServerExistsAndStartsItsOwnServer() {
+        KotlinRouteScan.SEPARATE_SERVERS.keys.forEach { path ->
+            val file = File(repositoryRoot(), "src/jvmMain/kotlin/$path")
+            assertTrue(file.isFile, "SEPARATE_SERVERS names $path, which does not exist")
+            assertTrue("embeddedServer(" in KotlinRouteScan.sanitize(file.readText()),
+                "SEPARATE_SERVERS names $path, which does not start an embeddedServer of its own")
+        }
+    }
 
     /**
      * Every file in the census input is brace-balanced after sanitising, with no underflow.

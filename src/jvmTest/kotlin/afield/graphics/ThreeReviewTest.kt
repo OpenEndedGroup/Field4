@@ -5,6 +5,58 @@ import kotlinx.serialization.json.*
 import kotlin.test.*
 
 class ThreeReviewTest {
+    private fun finding(run: String = "build-1", kind: String = "error") = GeometryFinding(
+        "connected-material/part", kind, "Cuts", run, "Connectivity check",
+        "The part contains detached material. Fabrication is held.",
+        "Inspect the highlighted component; an agent can investigate the cutter.").json()
+
+    @Test fun findingsReuseTheirThreadWithoutAcknowledgingItAndBecomeStaleAfterEdits() {
+        val box = Box("source")
+        val inbox = ThreeReviewInbox("view").also { it.owner=box; it.update("r1") }
+        val record = JsonObject(note("r1") + ("finding" to finding()))
+        inbox.receive(note("r1", "Human selection"), false)
+        val selection = inbox.snapshot()["selection"]
+        val first = inbox.receive(record, true)
+        val second = inbox.receive(record, true)
+        assertEquals(first["id"], second["id"])
+        assertEquals(true, second["existing"]?.jsonPrimitive?.boolean)
+        assertEquals(1, inbox.snapshot()["openCount"]!!.jsonPrimitive.int)
+        assertEquals(selection, inbox.snapshot()["selection"])
+        assertFailsWith<IllegalArgumentException> {
+            inbox.receive(JsonObject(record + ("text" to JsonPrimitive("Different evidence"))), true)
+        }
+        inbox.update("r2")
+        val stale = inbox.snapshot()["notes"]!!.jsonArray.single().jsonObject
+        assertTrue(stale["stale"]!!.jsonPrimitive.boolean)
+        assertEquals("open", stale["status"]!!.jsonPrimitive.content)
+        assertEquals(finding(), stale["finding"])
+        inbox.receive(JsonObject(note("r2") + ("finding" to finding("build-2"))), true)
+        val reopened = ThreeReviewInbox("view").also { it.owner=box; it.update("r2") }
+        assertEquals(listOf(true, false), reopened.snapshot()["notes"]!!.jsonArray.map { it.jsonObject["stale"]!!.jsonPrimitive.boolean })
+    }
+
+    @Test fun malformedFindingsCannotEnterInboxAndClosingDiscussionDoesNotAlterEvidence() {
+        val box = Box("source")
+        val inbox = ThreeReviewInbox("view").also { it.owner=box; it.update("r") }
+        for (bad in listOf(JsonPrimitive("error"), JsonObject(finding() + ("kind" to JsonPrimitive("accepted"))),
+            JsonObject(finding() - "prompt"))) {
+            assertFailsWith<IllegalArgumentException> { inbox.receive(JsonObject(note("r") + ("finding" to bad)), true) }
+        }
+        assertEquals(0, inbox.snapshot()["openCount"]!!.jsonPrimitive.int)
+        val id = inbox.receive(JsonObject(note("r") + ("finding" to finding(kind="warning"))), true)["id"]!!
+        inbox.updateNote(buildJsonObject {
+            put("id", id); put("status", "resolved"); put("summary", "Discussion complete; rebuild still needed")
+            put("actor", "Viewer user"); put("checkedRevision", "r"); put("expectedVersion", 0)
+        })
+        val saved = inbox.snapshot(true)["notes"]!!.jsonArray.single().jsonObject
+        assertEquals(finding(kind="warning"), saved["finding"])
+        assertEquals(note("r")["selection"], saved["selection"])
+        assertEquals(note("r")["text"], saved["text"])
+        val replay = inbox.receive(JsonObject(note("r") + ("finding" to finding(kind="warning"))), true)
+        assertEquals(id, replay["id"])
+        assertEquals(0, inbox.snapshot()["openCount"]!!.jsonPrimitive.int)
+    }
+
     private fun note(revision: String, text: String = "Thin feature") = buildJsonObject {
         put("viewId", "view"); put("artifactDigest", revision); put("text", text)
         val feature = buildJsonObject {
@@ -35,6 +87,53 @@ class ThreeReviewTest {
         val p = ThreeGeometryPayload(uid="view", points=ThreeGeometryData(mapOf("position" to ThreeAttribute(3,floatArrayOf(1f,2f,3f)))))
         assertEquals(threeReviewRevision(p), threeReviewRevision(p.copy(autoFrame=false,frameHeight=800)))
         assertNotEquals(threeReviewRevision(p), threeReviewRevision(p.copy(points=ThreeGeometryData(mapOf("position" to ThreeAttribute(3,floatArrayOf(1f,2f,4f)))))))
+    }
+    private fun mixedView(height: Float): ThreeGeometryPayload {
+        val positions = floatArrayOf(0f, 0f, 0f, 10f, 0f, 0f, 0f, 10f, 0f)
+        val topology = ThreePartTopology(positions.map(Float::toDouble).toDoubleArray(),
+            intArrayOf(0,1,2), listOf(listOf(0,1),listOf(1,2),listOf(0,2)), intArrayOf(0))
+        return ThreeGeometryPayload(uid="view", inspector=ThreeInspector(
+            artifactDigest="fixed-double-boundary", parts=mapOf("panel" to topology)),
+            drawables=listOf(ThreeDrawable(ThreeGeometryData(mapOf("position" to ThreeAttribute(3,positions))),
+                ThreeDrawStyle("surface"),id="panel")),
+            interactive=listOf(ThreeInteractiveObject(callbackId="first-callback",lineIndex=0,
+                points=ThreeGeometryData(mapOf("position" to ThreeAttribute(3,floatArrayOf(1f,height,1f)))))))
+    }
+    @Test fun movingAnOrdinaryPointBesideCanonicalSolidsInvalidatesItsSavedNote() {
+        val first = mixedView(2f)
+        val changed = mixedView(3f)
+        assertEquals(first.inspector!!.artifactDigest, changed.inspector!!.artifactDigest)
+        val before = threeReviewRevision(first)
+        val after = threeReviewRevision(changed)
+        assertNotEquals(before, after)
+        val inbox = ThreeReviewInbox("view").also { it.owner=Box("source"); it.update(before) }
+        inbox.receive(note(before),true)
+        inbox.receive(note(before),false)
+        inbox.update(after)
+        assertEquals(JsonNull,inbox.snapshot()["selection"])
+        assertEquals(1,inbox.snapshot().getValue("openCount").jsonPrimitive.int)
+        assertFailsWith<IllegalArgumentException> { inbox.receive(note(before),true) }
+    }
+    @Test fun mixedRevisionRetainsCanonicalPrecisionAndIgnoresDisplayReframing() {
+        val first=mixedView(2f)
+        val pure=first.copy(interactive=emptyList())
+        assertEquals("fixed-double-boundary",threeReviewRevision(pure))
+        val displayShift=pure.copy(drawables=pure.drawables.map { it.copy(
+            geometry=ThreeGeometryData(mapOf("position" to ThreeAttribute(3,floatArrayOf(999f,999f,999f))))) })
+        assertEquals(threeReviewRevision(pure),threeReviewRevision(displayShift))
+        assertNotEquals(threeReviewRevision(pure),threeReviewRevision(first))
+        assertNotEquals(threeReviewRevision(first),threeReviewRevision(first.copy(inspector=first.inspector!!.copy(artifactDigest="different-double-boundary"))))
+        assertEquals(threeReviewRevision(first),threeReviewRevision(first.copy(frameHeight=900,autoFrame=false,
+            interactive=first.interactive.map { it.copy(callbackId="new-callback",label="renamed",hoverColor=floatArrayOf(1f,0f,0f,1f)) })))
+    }
+    @Test fun allNonCanonicalGeometryContributesBesideCanonicalSolids() {
+        val first=mixedView(2f).copy(interactive=emptyList())
+        fun point(h:Float)=ThreeGeometryData(mapOf("position" to ThreeAttribute(3,floatArrayOf(1f,h,1f))))
+        assertNotEquals(threeReviewRevision(first.copy(points=point(1f))),threeReviewRevision(first.copy(points=point(2f))))
+        assertNotEquals(threeReviewRevision(first.copy(lines=point(1f))),threeReviewRevision(first.copy(lines=point(2f))))
+        val a=first.copy(drawables=first.drawables+ThreeDrawable(point(1f),ThreeDrawStyle("points"),id="extra"))
+        val b=first.copy(drawables=first.drawables+ThreeDrawable(point(2f),ThreeDrawStyle("points"),id="extra"))
+        assertNotEquals(threeReviewRevision(a),threeReviewRevision(b))
     }
     @Test fun malformedReferenceDoesNotMutateInbox() {
         val inbox=ThreeReviewInbox("view").also { it.update("r") }

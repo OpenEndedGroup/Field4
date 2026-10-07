@@ -1,9 +1,5 @@
 # Paint and pencil from FLines
 
-*The classes on this page are `PaintCanvas`, `PaintBrush`, `Pencil`, `Tubes` and their enums in
-`afield.paint`, and each carries its own KDoc. The document that ships as an openable starting point
-is [paint_canvas](agent_transcripts.md#paint_canvas).*
-
 `PaintCanvas` turns any [FLine](fline_examples.md) into a brushstroke of simulated oil paint, a
 pencil line, hatching, a stippled area or a hand-drawn outline. The
 simulation is the `paint` crate from
@@ -11,7 +7,9 @@ simulation is the `paint` crate from
 a brush as individual bristles that carry paint and run out. Paint mixes on the canvas like pigment,
 so blue into yellow makes green. Each stroke stays wet, stiffening and drying over simulated minutes.
 Field calls it through a small native library, which you build once (see
-[Building the library](#building-the-library)).
+[Building the library](#building-the-library)). The examples below are also in the
+[paint_canvas](agent_transcripts.md#paint_canvas) starting point, and the classes they use
+(`PaintCanvas`, `PaintBrush`, `Pencil`, `Tubes`, in `afield.paint`) each have their own KDoc.
 
 Here is a canvas, a brush and three strokes. The brush is loaded before the first stroke and again
 before the second. The third stroke is a zigzag with no reload, so the brush runs dry along it.
@@ -373,7 +371,9 @@ away with `close()` (both are `AutoCloseable`, so `use { }` works).
 ## Building the library
 
 The simulation is Rust. Field calls it through a small wrapper library in `native/field-paint`,
-which is not part of the normal build. With `cargo` installed, build it once:
+which is not part of the normal build. Install a current stable Rust toolchain (`cargo` and
+`rustc`); older distribution packages may be too old for this crate. `--setup` checks their
+versions before preparing paint. Build it once:
 
 ```diffstatic {data-lang=bash}
 ./gradlew buildPaintNative
@@ -385,6 +385,7 @@ without restarting. To use a copy somewhere else, set `AFIELD_PAINT_LIBRARY` or
 `-Dafield.paint.library` to its path. `PaintCanvas.isAvailable` says whether Field can find it, and
 `PaintLibrary.describe()` says where it looked.
 
-See also: [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md), and
+See also: [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
 [Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
-layer with the pen's pressure.
+layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
+canvas.

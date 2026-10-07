@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. 0 - a window and a renderer, which gpu_skin needs
@@ -352,7 +352,7 @@ println("At time 0 and 2 the tube is straight; the extreme is at time 1.")
 <!-- field-box id="gpu_skin" index="5" -->
 
 ```edn [field-box id="gpu_skin" role="properties"]
-{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 71 "characters" 3462 "sha256" "c9a99cc156372dbb50677daaff60bed6f82ad220cdfe1136e00bd0a310f5b19b"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 70 "characters" 3423 "sha256" "cc908420d24afff4bd2035be60954f94c0621610d0d1102a9289494c40705939"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="gpu_skin" name="code" path="gpu_skin_code_.kt"]
@@ -376,7 +376,6 @@ val poseTime = 1.0f
 // `prop<Renderer>(renderer)` macro a hand-built renderer box uses -- so the bare name does not
 // resolve and fromContext() finds it by type instead. In a document with your own renderer box as
 // the parent, `renderer` resolves directly and this line is redundant but harmless.
-val renderer: Renderer = fromContext()
 
 var (module, models) = gltfModelHere(RiggedFixture.locate())
 
@@ -527,7 +526,7 @@ void main()
 <!-- field-box id="twist_compare" index="6" -->
 
 ```edn [field-box id="twist_compare" role="properties"]
-{"id" "twist_compare" "index" 6 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 62 "characters" 3230 "sha256" "15bb056e5b5fb0b1c4c3916999d3247e820ec57ee5a979b3593f99be952b2df0"} {"name" "fragment" "language" "glsl" "path" "twist_compare_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "twist_compare_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "twist_compare" "index" 6 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 61 "characters" 3191 "sha256" "09621204b38f4efa40886c55bb597af94a64a524ff81ff3c08674d6538ef452d"} {"name" "fragment" "language" "glsl" "path" "twist_compare_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "twist_compare_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="twist_compare" name="code" path="twist_compare_code_.kt"]
@@ -556,7 +555,6 @@ val twistTime = 1.0f
 // applyToMesh time, so both tubes show whichever pose was written LAST. Measured 2026-09-19 -- with
 // lbs-then-dqs both rendered round, and with lbs-then-lbs both rendered pinched, while the printed
 // numbers stayed correct. A two-mesh comparison here would be a figure that lies.
-val renderer: Renderer = fromContext()
 
 var (module, models) = gltfModelHere(RiggedFixture.locate())
 var m = Mesh()

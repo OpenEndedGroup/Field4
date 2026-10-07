@@ -20,7 +20,7 @@ start from there.
 
 ## Ending in light
 
-Four of the chains end in the GPU path tracer, and they all start somewhere a renderer would not
+Five of the chains end in the GPU path tracer, and they all start somewhere a renderer would not
 expect.
 
 <div class="grid cards" markdown>
@@ -48,11 +48,13 @@ expect.
     animation's distance field as a third axis and the animation becomes a sculpture whose
     cross-sections are its frames.
 
-</div>
+-   ![A blue limb pinched by twisting, in front of an undeformed gold limb](assets/chain_skinned_volume/twist.png)
 
-[A Twisted Limb, Weighed and Traced](chain_skinned_volume.md) belongs here too. Linear blend
-skinning squeezes a twisted joint into a candy wrapper, and this page weighs how much of the
-limb is lost by turning the posed mesh into a solid and measuring its volume.
+    **[A Twisted Limb, Weighed and Traced](chain_skinned_volume.md).** Linear blend skinning
+    squeezes a twisted joint into a candy wrapper. Turn the posed mesh into a solid to measure
+    how much of the limb is lost.
+
+</div>
 
 ## Ending in sound
 
@@ -76,21 +78,41 @@ limb is lost by turning the posed mesh into a solid and measuring its volume.
     layer, read as time across and pitch up, then played and analysed again so you can put
     what you hear next to what you drew.
 
-</div>
+-   ![Agent and reducible-pair counts over twenty-six interaction-net reactions](assets/chain_lambda_sound/one_reduction.png)
 
-[A λ-Term You Can Hear](chain_lambda_sound.md) turns the order in which an interaction net
-fires its reactions into a rhythm, so changing the scheduler is something you can hear.
-[A Drawn Morph, Heard](chain_drawn_morph.md) pairs the points of two strokes and plays the
-morph between them as pitch. [A Function, Played and Read Back](chain_fn_sound_roundtrip.md)
-plays a function, detects its pitch and onsets in the recording, and draws both on one timeline
-next to the function's certified range.
+    **[A λ-Term You Can Hear](chain_lambda_sound.md).** The order in which an interaction net
+    fires its reactions becomes a rhythm, so changing the scheduler is something you can hear.
+
+-   ![Two drawn strokes and the curves interpolated between them](assets/chain_drawn_morph/morph.png)
+
+    **[A Drawn Morph, Heard](chain_drawn_morph.md).** Pair the points of two strokes and play
+    the morph between them as pitch.
+
+-   ![A function beside the pitch and onsets recovered from its recording](assets/chain_fn_sound_roundtrip/roundtrip.png)
+
+    **[A Function, Played and Read Back](chain_fn_sound_roundtrip.md).** Play a function,
+    detect its pitch and onsets in the recording, and draw both on one timeline next to the
+    function's certified range.
+
+</div>
 
 ## Ending in an object
 
-[A Polytope, Canonicalised and Sliced](chain_ceres_manifold_contours.md) makes a Conway
-polytope canonical with a Ceres solve and slices it into the layers a 3D printer would print.
-[A Photograph, Closed and Mounted](chain_photo_to_solid.md) runs a depth model on one still
-photograph and closes the result into a solid plaque. No depth camera is involved.
-[A RectSL Scene on a Light Rig](chain_scene_to_light.md) ends on an LED rig instead. It sends
-a scene over sACN, receives it back, and checks that what came back matches the pixels the rig
-was sent.
+<div class="grid cards" markdown>
+
+-   ![Forty-eight extruded layers of canonical gC, coloured by height](assets/chain_ceres_manifold_contours/stack.png)
+
+    **[A Polytope, Canonicalised and Sliced](chain_ceres_manifold_contours.md).** Make a Conway
+    polytope canonical with a Ceres solve and slice it into the layers a 3D printer would print.
+
+-   ![A relief plaque and its frame rendered with the path tracer](assets/chain_photo_to_solid/mounted_path_trace.png)
+
+    **[A Photograph, Closed and Mounted](chain_photo_to_solid.md).** Run a depth model on one
+    still photograph and close the result into a solid plaque. No depth camera is involved.
+
+-   ![A RectSL scene, the LED rig it drives and the matching received light values](assets/chain_scene_to_light/chain.png)
+
+    **[A RectSL Scene on a Light Rig](chain_scene_to_light.md).** Send a scene over sACN,
+    receive it back, and check that what came back matches the pixels the rig was sent.
+
+</div>

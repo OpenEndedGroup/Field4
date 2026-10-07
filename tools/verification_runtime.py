@@ -99,6 +99,38 @@ def automation_workspace(repo_root: Path) -> Path:
     return repo_root.resolve() / "build" / "field-automation-workspace"
 
 
+def automation_log_environment(repo_root: Path) -> dict[str, str]:
+    """Checkout-local homes for the usage logs a Field JVM otherwise appends under ``~/.afield/logs``.
+
+    Those directories are read as the user's own usage: the completion log by completion ranking
+    and ground-truth work, tool I/O and its evidence by ``tools/ai_tool_usage.py`` and the tool-use
+    improvement monitor. Until 2026-10-06 every automated server wrote into them as well. 1,188 of
+    2,132 completion records came from scratch sessions such as the UI suite's
+    ``CompletionOwnImportRegression``, and 192 of the 974 tool-I/O sessions since 2026-09-20 were
+    docs-runner or scratch turns.
+
+    The code-use database (``AFIELD_CODE_USE_PATH``, ``CodeUseTelemetryService``) moves too. Its
+    AI4 tools and ``/api/code-use`` routes query it machine-wide and filter by document only after
+    taking the newest rows, so agent runs crowded out the user's own: on 2026-10-06, 424,607 of its
+    465,786 snippets came from managed servers, scratch sessions and the jvm-main tests they spawn
+    (which inherit this environment), and 32 of its newest 500 failures came from a user document.
+    An agent's history-mining queries (line callers, hot symbols, peer callers) therefore start from
+    this checkout's own runs; ``--attach-existing`` still reaches the user's history.
+
+    The request ledger (``AFIELD_AI_USAGE_LOG_PATH``) stays in ``~/.afield/logs``: an agent's AI
+    call costs real money on the same key, ``tools/ai_usage.py`` accounts for that spend across the
+    machine, and each record already names its checkout and port.
+    """
+    root = repo_root.resolve() / "build" / "field-automation-logs"
+    return {
+        "AFIELD_COMPLETION_INTERACTION_LOG_PATH": str(root / "completion_interactions"),
+        "AFIELD_AI4_TOOL_IO_LOG_PATH": str(root / "ai4_tool_io"),
+        "AFIELD_AI4_TOOL_EVIDENCE_PATH": str(root / "ai4_tool_io" / "evidence"),
+        "AFIELD_AI4_CAPTURE_DIR": str(root / "ai4_box_captures"),
+        "AFIELD_CODE_USE_PATH": str(root / "code-use" / "field-code-use.sqlite"),
+    }
+
+
 def automation_server_environment(
     port: int,
     *,
@@ -106,10 +138,17 @@ def automation_server_environment(
     extra: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Environment for an automated Field server without preference side effects."""
+    repo_root = Path(__file__).resolve().parent.parent
     environment = dict(os.environ if base is None else base)
     environment.update({
         "PORT": str(port),
         "AFIELD_SKIP_WORKSPACE_PERSIST": "1",
+        # Test clients register throwaway commands (the chord regression's `cmd+k`), and the server
+        # appends every command it sees to the keybindings file; keep that off ~/.afield.
+        "AFIELD_KEYBINDINGS_FILE": str(repo_root / "build" / "field-automation-keybindings.yaml"),
+        # Set over the inherited environment, not under it: an exported path in the agent's shell
+        # is usually the one the user's own Field writes to.
+        **automation_log_environment(repo_root),
     })
     if extra is not None:
         environment.update(extra)

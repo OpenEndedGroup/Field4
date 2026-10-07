@@ -1,11 +1,9 @@
 import afield.four.Target
 import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowserKaleidoscope
-import afield.four.modules.fromContext
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-val renderer: Renderer = fromContext()
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(

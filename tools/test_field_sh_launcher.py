@@ -78,6 +78,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -106,6 +107,9 @@ COVERED_OPTIONS = {
     "--document=*",
     "--read-only",
     "--offline",
+    "--server-only",
+    "--check-install",
+    "--setup",
     "-*",
     "*",
 }
@@ -164,6 +168,15 @@ class FieldShSandbox:
         # reaches WORKSPACE_RELAUNCH_ARGS when one of the four X11 emulators it looks for is on
         # PATH, and none of them exists on macOS — so the cases that want the direct fallback
         # get PATH as it is, and the one that wants the re-exec passes terminal_on_path=True.
+        self.command_bin = root / "commands"
+        self.command_bin.mkdir(parents=True)
+        for name in ("sh", "bash", "zsh", "dash", "ksh", "head", "grep", "tr", "sed",
+                     "basename", "dirname", "cat", "mkdir", "awk", "uname", "curl", "tar",
+                     "gzip", "sha256sum", "shasum", "g++", "cmake", "make", "xcrun", "ldd", "stty",
+                     "cksum", "nohup", "sleep", "ls", "rm", "mv", "python3"):
+            executable = shutil.which(name)
+            if executable:
+                (self.command_bin / name).symlink_to(executable)
         self.terminal_bin = root / "fake-terminal"
         self.terminal_argv_file = root / "terminal-argv.txt"
         self.relaunch_output_file = root / "relaunch-output.txt"
@@ -238,11 +251,12 @@ class FieldShSandbox:
         terminal_on_path: bool = False,
         extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess:
-        path = os.environ.get("PATH", "/usr/bin:/bin")
+        path = str(self.command_bin)
         if terminal_on_path:
             path = f"{self.terminal_bin}{os.pathsep}{path}"
         environment = {
             "PATH": path,
+            "DISPLAY": ":test",
             "HOME": str(self.home),
             "AFIELD_SKIP_BUILD": "1",
             "AFIELD_SKIP_TOOLCHAIN_PROVISION": "1",
@@ -303,6 +317,57 @@ class FieldShLauncherTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         cls.sandbox_root.cleanup()
+
+    def test_server_only_does_not_reach_the_backend_as_an_argument(self) -> None:
+        for name, shell in _resolved_shells().items():
+            with self.subTest(shell=name):
+                result = self.sandbox.run(shell, "--server-only", str(self.sandbox.workspace))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.sandbox.backend_argv(), ["--workspace", str(self.sandbox.workspace)])
+
+    def test_terminal_relaunch_preserves_quoted_paths_and_backend_values(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="field-quoted-launch-") as temporary:
+            sandbox = FieldShSandbox(Path(temporary) / "a'b space")
+            value = "a value with 'quotes' and $(this-must-not-execute)"
+            result = sandbox.run(_resolved_shells()["sh"], str(sandbox.workspace), "--label", value,
+                                 no_terminal=False, terminal_on_path=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(sandbox.backend_argv(), ["--label", value, "--workspace", str(sandbox.workspace)],
+                             sandbox.relaunch_output())
+
+    def test_check_install_never_builds_or_starts_the_backend(self) -> None:
+        result = self.sandbox.run(_resolved_shells()["sh"], "--check-install", "--server-only")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("stub gradlew", result.stdout)
+        self.assertFalse(self.sandbox.argv_file.exists())
+
+    def test_missing_compiler_is_reported_before_downloads(self) -> None:
+        compiler = self.sandbox.command_bin / "g++"
+        if not compiler.exists() or sys.platform != "linux":
+            self.skipTest("Linux native bridge preflight")
+        saved = compiler.readlink()
+        compiler.unlink()
+        try:
+            result = self.sandbox.run(_resolved_shells()["sh"], "--check-install")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("g++", result.stderr)
+            self.assertNotIn("stub gradlew", result.stdout)
+        finally:
+            compiler.symlink_to(saved)
+
+    def test_lfs_pointer_is_rejected_before_downloads(self) -> None:
+        attrs = self.sandbox.checkout / ".gitattributes"
+        pointer = self.sandbox.checkout / "missing.jar"
+        attrs.write_text("missing.jar filter=lfs diff=lfs merge=lfs -text\n")
+        pointer.write_text("version https://git-lfs.github.com/spec/v1\noid sha256:123\nsize 456\n")
+        try:
+            result = self.sandbox.run(_resolved_shells()["sh"], "--check-install")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("git lfs pull", result.stderr)
+            self.assertNotIn("stub gradlew", result.stdout)
+        finally:
+            attrs.unlink()
+            pointer.unlink()
 
     # --- premises -------------------------------------------------------------------------------
     #
@@ -807,7 +872,7 @@ class FieldShLauncherTests(unittest.TestCase):
         for shell_name, shell in _resolved_shells().items():
             with self.subTest(shell=shell_name):
                 result = sandbox.run(shell, str(sandbox.workspace), extra_env=env)
-                self.assertIn("stub gradlew jvmJar dumpFieldLaunch", result.stdout)
+                self.assertIn("stub gradlew jvmJar dumpFieldLaunch", result.stdout, result.stderr)
                 self.assertNotIn("offline", result.stderr)
 
     def test_offline_survives_the_terminal_relaunch(self) -> None:

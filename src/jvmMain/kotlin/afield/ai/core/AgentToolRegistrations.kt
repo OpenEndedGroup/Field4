@@ -1,6 +1,8 @@
 package afield.ai.core
 
 import afield.ai.RelatedContextDiscovery
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Registers the full IDE agent tool set (attachments, Kotlin tools, macros, CodeUse,
@@ -17,7 +19,40 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         AgentToolExtensions.applyTo(tools)
         registerDocumentGuideTools(tools)
         registerDocumentSourceTools(tools)
+        registerStateTools(tools)
         afield.ai.agent.registerFieldGraphTools(tools)
+        // One tool whose argument is a program over all the others; see ToolProgramTools.kt.
+        afield.ai.core.program.registerToolProgramTools(tools)
+
+        // The loader for DEFERRED tools (ToolMeta.kt): their names are in the catalogue, their schemas
+        // arrive only when asked for, and then stay for the conversation.
+        tools.register(DescribeToolsRequest::class.java, { ctx -> ctx.promoted != null && tools.deferredUnder(ctx).isNotEmpty() }) { ctx, req ->
+            val loadable = tools.describe(ctx, ToolFace.PROGRAM).mapNotNull { it as? kotlinx.serialization.json.JsonObject }
+                .filter { d ->
+                    val name = d["name"]?.jsonPrimitive?.contentOrNull ?: return@filter false
+                    tools.metaOf(ctx, name)?.exposure.let { it == ToolExposure.DEFERRED || it == ToolExposure.PROGRAM }
+                }
+            fun nameOf(d: kotlinx.serialization.json.JsonObject) = d["name"]!!.jsonPrimitive.content
+            val asked = req.names.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+            val chosen = loadable.filter { d ->
+                val name = nameOf(d)
+                (req.namespace.isNotBlank() && tools.metaOf(ctx, name)?.namespace == req.namespace.trim()) ||
+                    name in asked || "${name.removeSuffix("Request")}" in asked
+            }
+            if (chosen.isEmpty()) {
+                DescribeToolsResult(false, "Nothing matched namespace='${req.namespace}' names=${req.names}. " +
+                    "Loadable: " + loadable.joinToString { nameOf(it) }, emptyList())
+            } else {
+                ctx.promoted?.addAll(chosen.map(::nameOf))
+                DescribeToolsResult(true, "Loaded ${chosen.size} tool(s); call them as ordinary tools from now on.", chosen.map { d ->
+                    val meta = tools.metaOf(ctx, nameOf(d)) ?: ToolMeta.DEFAULT
+                    DescribedTool(nameOf(d), meta.namespace, d["description"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                        meta.effects.map { it.name }.sorted(), d["inputSchema"].toString())
+                })
+            }
+        }
+        afield.ai.agent.registerGeometryReviewTools(tools)
+        afield.ai.agent.registerStudyBuildTools(tools)
 
 
         // Commentary: handler can be a no-op acknowledgement; we extract text from call args anyway.
@@ -45,7 +80,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                     normalizedCandidate.endsWith("/$normalizedRequested")
                 }
 
-            if (hit != null) {
+            val resolved = if (hit != null) {
                 val related = RelatedContextDiscovery.forPath(hit.fileName)
                 AttachmentResponse(
                     file = hit.fileName,
@@ -60,6 +95,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                         "No attachment or resolvable file named '$requested'. Call ListAttachments first."
                     )
             }
+            resolved.excerpt(req)
         }
 
         // Kotlin-only tools (only work if provider is supplied in ctx)
@@ -208,9 +244,14 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                 ?: throw IllegalStateException("Checklist not available for this request.")
         }
 
+        tools.register(WorkspaceSearchRequest::class.java, { it.workspaceSearch != null }) { ctx, req ->
+            ctx.workspaceSearch!!.invoke(req)
+        }
+
         // Optional extra tool
         tools.register(WorkspaceSymbolSearch::class.java, { ctx -> ctx.workspaceSymbolSearch != null }) { ctx, req ->
             ctx.workspaceSymbolSearch?.invoke(req)
                 ?: throw IllegalStateException("WorkspaceSymbolSearch not available for this request.")
         }
 }
+

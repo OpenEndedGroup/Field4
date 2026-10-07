@@ -2,9 +2,13 @@ package afield
 
 import kotlinx.coroutines.Job
 import java.lang.reflect.Proxy
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -127,6 +131,130 @@ class BoxRetireAndReplaceKiTest {
         assertFalse(box.hasSomethingToStop())
         assertEquals(1, engine.disposeCount, "the engine goes last")
         assertNull(box.liveKi)
+    }
+
+    /** A `box.ki` build held open on another thread, the way a cold `makeKI` holds the lazy for about a second. */
+    private class HeldBuild(box: Box) {
+        val started = CountDownLatch(1)
+        val finish = CountDownLatch(1)
+        val built = FakeEngine()
+        val reasons = mutableListOf<String>()
+        @Volatile
+        var superseded: () -> Boolean = { error("no build started") }
+
+        init {
+            box.kiBuilder = { _, reason, isSuperseded ->
+                reasons += reason
+                superseded = isSuperseded
+                started.countDown()
+                check(finish.await(10, TimeUnit.SECONDS)) { "the test never let the build finish" }
+                built.engine
+            }
+        }
+    }
+
+    /**
+     * The 2026-10-04 defect: a document's last client left while `agent-create-box` was still building
+     * the new box's engine, and the retire skipped the box because its lazy was not initialized yet.
+     * The engine was stored once built, outlived the box, and its stdlib bootstrap still ran. The
+     * retire runs on a pool thread with a timeout because it happens on a Ktor IO thread, which must
+     * not wait out an engine build either.
+     */
+    @Test
+    fun retiringABoxWhoseEngineIsStillBeingBuiltDisposesThatEngine() {
+        val box = Box("retire-mid-build")
+        val build = HeldBuild(box)
+        val pool = Executors.newCachedThreadPool()
+        try {
+            val reader = pool.submit<KotlinScriptEngine> { box.ki }
+            assertTrue(build.started.await(5, TimeUnit.SECONDS))
+            assertFalse(build.superseded(), "nothing has retired the box yet")
+
+            pool.submit { retireBoxes(listOf(box), "test") }.get(5, TimeUnit.SECONDS)
+            assertTrue(build.superseded(), "makeKI's bootstrap now sees the retire and skips")
+            assertEquals(0, build.built.disposeCount, "the build has not returned yet")
+
+            build.finish.countDown()
+            assertSame(build.built.engine, reader.get(5, TimeUnit.SECONDS), "the caller that asked still gets that engine")
+            assertEquals(1, build.built.disposeCount, "disposed exactly once, by the thread that built it")
+            assertNull(box.liveKi, "and never stored")
+
+            val next = FakeEngine()
+            box.kiBuilder = { _, reason, _ -> build.reasons += reason; next.engine }
+            assertSame(next.engine, box.ki, "a later read builds a fresh engine")
+            assertEquals(0, next.disposeCount)
+            assertEquals(listOf("box.ki lazy initialization", "box.ki re-initialization after disposeKi"), build.reasons)
+        } finally {
+            build.finish.countDown()
+            pool.shutdownNow()
+        }
+    }
+
+    /**
+     * The other half of the same incident: `agent-create-box` builds the engine through [box], which
+     * used to do it inside `boxes.computeIfAbsent`, so the box was not in its session until the build
+     * returned and `SessionInformation.cleanup()` found nothing to retire. Measured on a fresh Field:
+     * the cleanup ran mid-build with an empty box list, and the engine outlived its document.
+     */
+    @Test
+    fun aSessionCleanedUpWhileBoxBuildsAnEngineRetiresThatBoxAndDisposesTheEngine() {
+        val root = Box("cleanup-mid-build-root")
+        val info = SessionInformation(filename = "<cleanup-mid-build>", documentName = "cleanup-mid-build", root = root, ephemeral = true)
+        root.inside = info
+        info.loading = false
+        val started = CountDownLatch(1)
+        val finish = CountDownLatch(1)
+        val built = FakeEngine()
+        var superseded: () -> Boolean = { error("no build started") }
+        val previous = Box.newBoxKiBuilder
+        Box.newBoxKiBuilder = { _, _, isSuperseded ->
+            superseded = isSuperseded
+            started.countDown()
+            check(finish.await(10, TimeUnit.SECONDS)) { "the test never let the build finish" }
+            built.engine
+        }
+        val pool = Executors.newCachedThreadPool()
+        try {
+            val creating = pool.submit<Box> { box("mid-build", createIfMissing = true, initIfCreated = true, root = info) }
+            assertTrue(started.await(5, TimeUnit.SECONDS))
+            assertNotNull(info.boxes["mid-build"], "the box is in its session while its engine is built")
+
+            pool.submit { info.cleanup() }.get(5, TimeUnit.SECONDS)
+            assertTrue(superseded(), "the cleanup retired the box, so its bootstrap will skip")
+
+            finish.countDown()
+            val made = creating.get(5, TimeUnit.SECONDS)
+            assertEquals(1, built.disposeCount, "the engine the build returned is disposed")
+            assertNull(made.liveKi)
+        } finally {
+            Box.newBoxKiBuilder = previous
+            finish.countDown()
+            pool.shutdownNow()
+        }
+    }
+
+    /** The reset action's `replaceKi(makeKI(...))` racing a lazy build: the installed engine wins, the built one is released. */
+    @Test
+    fun replaceKiDuringALazyBuildDisposesTheEngineThatBuildReturns() {
+        val box = Box("replace-mid-build")
+        val build = HeldBuild(box)
+        val replacement = FakeEngine()
+        val pool = Executors.newCachedThreadPool()
+        try {
+            val reader = pool.submit<KotlinScriptEngine> { box.ki }
+            assertTrue(build.started.await(5, TimeUnit.SECONDS))
+
+            pool.submit { box.replaceKi(replacement.engine) }.get(5, TimeUnit.SECONDS)
+            build.finish.countDown()
+
+            assertSame(replacement.engine, reader.get(5, TimeUnit.SECONDS), "the reader gets the installed engine")
+            assertSame(replacement.engine, box.ki)
+            assertEquals(1, build.built.disposeCount, "the engine the lazy built is released, not leaked")
+            assertEquals(0, replacement.disposeCount)
+        } finally {
+            build.finish.countDown()
+            pool.shutdownNow()
+        }
     }
 
     @Test

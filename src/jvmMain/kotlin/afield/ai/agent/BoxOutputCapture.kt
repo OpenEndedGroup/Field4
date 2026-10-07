@@ -2,6 +2,7 @@ package afield.ai.agent
 
 import afield.BoxScreenshotRequest
 import afield.ExpectedOutputs
+import afield.SCREENSHOT_PREP_STALLED
 import afield.SessionInformation
 import afield.buildPlaywrightDocumentUrl
 import afield.ensureSharedPlaywrightBrowser
@@ -9,6 +10,8 @@ import afield.logger.lprintln
 import afield.playwrightDispatcher
 import afield.playwrightSessionReadyScript
 import afield.requestBoxScreenshot
+import afield.ai.core.aiToolMapper
+import com.fasterxml.jackson.core.type.TypeReference
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserContext
 import com.microsoft.playwright.Page
@@ -42,6 +45,7 @@ data class BoxOutputShot(
     val image: BufferedImage? = null,
     val path: String = "",
     val channels: List<String> = emptyList(),
+    val viewerStates: List<Map<String, Any?>> = emptyList(),
 ) {
     companion object {
         fun failed(message: String, channels: List<String> = emptyList()) = BoxOutputShot(false, message, channels = channels)
@@ -207,7 +211,10 @@ internal fun jpegDataUrl(image: BufferedImage, maxSide: Int = 1200, quality: Flo
  *    alive for ever;
  *  - after [IDLE_RELEASE_MS] without a capture, **unless** it is the only client of an ephemeral
  *    document: detaching the last client of a scratch document retires it (cleanupDetachedSession), and
- *    a headless task can easily spend two minutes between looks. Those are released by their owner.
+ *    a headless task can easily spend two minutes between looks. Those are released by their owner;
+ *  - by [capture]'s retry, when a capture on it fails outright, including a prep that stalled or that
+ *    the Playwright driver timed out ([afield.evaluateWithin]). All of the capture pages and the
+ *    backdoor share one Playwright thread, so a page that cannot answer must not be asked again.
  *
  * A late panel is not a problem: a page that attaches after a box ran asks for `replay-output-areas`
  * and gets every retained panel (OutputAreaReplay), so "run first, look later" works.
@@ -263,7 +270,8 @@ object BoxOutputCapture {
             val first = runCatching { captureOnce(info, uid, channels) }
             first.getOrElse { failure ->
                 // A browser reset elsewhere (the global page's recovery closes the shared browser) kills
-                // this context too. Drop it and try once more on a fresh one.
+                // this context too, and a page that stalled in prep stays stalled. Drop it and try once
+                // more on a fresh one.
                 lprintln("warning,ai4", "box output capture failed for $uid (${failure.message}); retrying on a fresh page")
                 dropHeld(info.filename)
                 runCatching { captureOnce(info, uid, channels) }.getOrElse {
@@ -336,19 +344,46 @@ object BoxOutputCapture {
             uid = uid, padding = 12.0, panIntoView = true, hideMonaco = true, openOutputs = true,
             preserveSelection = true, includeNotifications = false, expectOutputs = ExpectedOutputs.PANEL
         ))
+        // A stalled page will stall again; throwing sends capture() to drop it and retry on a fresh one.
+        check(!prep.message.startsWith(SCREENSHOT_PREP_STALLED)) { prep.message }
         val clip = prep.clip
         if (!prep.success || clip == null) {
             return BoxOutputShot.failed(prep.message.ifBlank { "the page could not frame the box's output" }, channels)
         }
+        val views = captureViewerStates(page, uid)
         val bytes = page.screenshot(Page.ScreenshotOptions().setClip(Clip(clip.x, clip.y, clip.w, clip.h)).setTimeout(15_000.0))
+        check(captureViewerStates(page, uid) == views) { "Viewer state changed during capture; capture again after it settles" }
         held[info.filename]?.lastUsed = System.currentTimeMillis()
         val image = ImageIO.read(bytes.inputStream())
             ?: return BoxOutputShot.failed("the screenshot did not decode", channels)
         val path = runCatching { keep(bytes, info, uid) }.getOrElse {
             lprintln("warning,ai4", "could not keep box capture: ${it.message}"); ""
         }
-        return BoxOutputShot(true, "captured", image, path, channels)
+        return BoxOutputShot(true, "captured in an independent browser", image, path, channels,
+            aiToolMapper.readValue(views, object : TypeReference<List<Map<String, Any?>>>() {}))
     }
+
+    // These are the capture browser's states, not a guess about the human's camera or Parts choices.
+    private fun captureViewerStates(page: Page, uid: String): String = page.evaluate("""
+        uid => {
+            const box = [...document.getElementsByClassName('box')].find(e =>
+                (e.uid || e.getAttribute('uid') || e.getAttribute('data-uid')) === uid);
+            const views = [];
+            for (const frame of box?.querySelectorAll('.outputArea iframe') || []) {
+                let w;
+                try { w = frame.contentWindow; if (!w.FieldInspector) continue; }
+                catch (e) { if (e.name === 'SecurityError') continue; throw e; }
+                const ready = w.FieldViewer?.captureStatus?.();
+                if (ready && !ready.ready) throw new Error(ready.error || 'Viewer is still preparing');
+                const snapshot = w.FieldInspector.snapshot();
+                const keys = ['artifactDigest','renderOrigin','camera','target','hidden','explode','xray',
+                    'xrayOpacity','sectionEnabled','sectionNormal','sectionFraction','selection','tools'];
+                views.push({viewId:new URL(w.location.href).searchParams.get('uid'),
+                    state:Object.fromEntries(keys.filter(k => k in snapshot).map(k => [k,snapshot[k]]))});
+            }
+            return JSON.stringify(views);
+        }
+    """.trimIndent(), uid) as String
 
     private val stamp = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss-SSS").withZone(ZoneOffset.UTC)
 

@@ -1,6 +1,7 @@
 /** Opt-in tools for a viewer. Applications own their tools; the viewer owns their lifecycle. */
 export function createViewerTools({host, context, requestRender}) {
     const tools = new Map();
+    const failures = new Map();
     let refreshing = false;
     const clone = value => {
         const json = JSON.stringify(value, (_, v) => {
@@ -12,26 +13,26 @@ export function createViewerTools({host, context, requestRender}) {
         return JSON.parse(json);
     };
     function snapshot() {
-        return Object.fromEntries([...tools].filter(([, t]) => t.tool.snapshot).map(([id, t]) => [id, clone(t.tool.snapshot())]));
+        return Object.fromEntries([...tools].filter(([, t]) => t.initialized && t.tool.snapshot).map(([id, t]) => [id, clone(t.tool.snapshot())]));
     }
     function validate(states = {}) {
         if (!states || typeof states !== 'object' || Array.isArray(states)) throw new Error('Invalid viewer tool states');
         for (const [id, state] of Object.entries(states)) {
             const entry = tools.get(id);
-            if (!entry?.tool.restore) throw new Error('This view needs the tool: ' + id);
+            if (!entry?.initialized || !entry.tool.restore) throw new Error('This view needs the ready tool: ' + id);
             entry.tool.validate(clone(state));
         }
     }
     function restore(states = {}) {
         validate(states);
         // An older view has no tool state: reset active tools to their registration state.
-        for (const [id, entry] of tools) if (entry.tool.restore)
+        for (const [id, entry] of tools) if (entry.initialized && entry.tool.restore)
             entry.tool.restore(clone(Object.hasOwn(states, id) ? states[id] : entry.initial));
     }
     function refresh() {
         if (refreshing) return;
         refreshing = true;
-        try { for (const entry of tools.values()) entry.tool.refresh?.(); }
+        try { for (const entry of tools.values()) if (entry.initialized) entry.tool.refresh?.(); }
         finally { refreshing = false; }
     }
     function register(tool) {
@@ -41,20 +42,44 @@ export function createViewerTools({host, context, requestRender}) {
             throw new Error('Stateful tools need snapshot, validate and restore');
         const element = document.createElement('div'); element.className = 'hud-group viewer-tool';
         element.dataset.tool = tool.id; host.appendChild(element);
-        const ctx = context(element), entry = {tool, initial: null};
+        const ctx = context(element), entry = {tool, initial: null, initialized: false, ready: null};
+        failures.delete(tool.id);
         let disposed = false;
         function dispose() {
+            failures.delete(tool.id);
             if (disposed) return;
             disposed = true;
             try { tool.dispose?.(); }
             finally { tools.delete(tool.id); ctx.release(); element.remove(); requestRender(); }
         }
-        try {
-            tool.mount?.(Object.freeze({...ctx, element, requestRender}));
+        function finishMount() {
+            if (disposed) return;
             if (stateful) { entry.initial = clone(tool.snapshot()); tool.validate(entry.initial); }
-            tools.set(tool.id, entry); tool.refresh?.(); requestRender();
+            entry.initialized = true;
+            tool.refresh?.(); requestRender();
+        }
+        try {
+            tools.set(tool.id, entry);
+            const mounted = tool.mount?.(Object.freeze({...ctx, element, requestRender}));
+            if (mounted && typeof mounted.then === 'function') {
+                entry.ready = Promise.resolve(mounted).then(finishMount).catch(error => {
+                    if (disposed) return;
+                    dispose(); failures.set(tool.id, String(error?.message || error)); throw error;
+                });
+                // Direct registration returns its disposer synchronously. ready() and load() still
+                // receive the rejection, without an unhandled promise if nobody is capturing.
+                entry.ready.catch(() => {});
+            } else { finishMount(); entry.ready = Promise.resolve(); }
             return dispose;
         } catch (error) { dispose(); throw error; }
+    }
+    function status() {
+        return {pending: [...tools].filter(([, t]) => !t.initialized).map(([id]) => id),
+            error: [...failures].map(([id, message]) => id + ': ' + message).join('; ') || null};
+    }
+    async function ready() {
+        await Promise.all([...tools.values()].map(entry => entry.ready));
+        if (failures.size) throw new Error(status().error);
     }
     const installed = new Map();
     let previousPaths = '', synchronization = Promise.resolve();
@@ -66,6 +91,7 @@ export function createViewerTools({host, context, requestRender}) {
         synchronization = synchronization.catch(() => {}).then(async () => {
             for (const [path, dispose] of installed) if (!paths.includes(path)) { dispose(); installed.delete(path); }
             for (const path of paths) if (!installed.has(path)) installed.set(path, await load(path));
+            await ready();
         });
         return synchronization;
     }
@@ -76,7 +102,9 @@ export function createViewerTools({host, context, requestRender}) {
             throw new Error('Viewer tools must be served from the same origin');
         const module = await import(url.href);
         if (typeof module.default !== 'function') throw new Error('Viewer tool module must export a default factory');
-        return register(module.default());
+        const tool = module.default(), dispose = register(tool);
+        await tools.get(tool.id).ready;
+        return dispose;
     }
-    return Object.freeze({register, load, sync, snapshot, validate, restore, refresh, ids: () => [...tools.keys()]});
+    return Object.freeze({register, load, sync, ready, status, snapshot, validate, restore, refresh, ids: () => [...tools.keys()]});
 }

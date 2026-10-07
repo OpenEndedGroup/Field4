@@ -283,6 +283,7 @@ private fun renderMarkdown(markdown: String?): String {
             val langAttr = if (safeLang.isNotEmpty()) " data-lang=\"$safeLang\"" else ""
             html.append("<div class=\"ai-chat-code-block\"")
             html.append(langAttr)
+            if (index < blocks.lastIndex) html.append(" data-fence-closed=\"true\"")
             html.append(">")
             html.append("<div class=\"ai-chat-copy-wrap\"><button class=\"ai-chat-copy\" type=\"button\" aria-label=\"Copy\" title=\"Copy\"></button></div>")
             html.append("<pre><code")
@@ -299,77 +300,7 @@ private fun renderMarkdown(markdown: String?): String {
     return html.toString()
 }
 
-private data class ChatTurn(val role: String, val content: String, val model: AiChatModelIdentity? = null)
-
-private fun parseChatHistory(history: String?): List<ChatTurn> {
-    val text = (history ?: "").replace("\r\n", "\n")
-    val tokens = mutableListOf<String>()
-    var idx = 0
-    while (idx < text.length) {
-        val markers = listOf(
-            "<<you>>",
-            "<<ai>>",
-            "<<progress>>",
-            "<<progress-open>>"
-        )
-        val hits = markers.mapNotNull { marker ->
-            val at = text.indexOf(marker, idx)
-            if (at == -1) null else at to marker
-        }
-        val hit = hits.minByOrNull { it.first }
-        val next = hit?.first ?: -1
-        val marker = hit?.second
-        if (next == -1) {
-            tokens.add(text.substring(idx))
-            break
-        }
-        if (next > idx) tokens.add(text.substring(idx, next))
-        tokens.add(marker!!)
-        idx = next + marker.length
-    }
-
-    val turns = mutableListOf<ChatTurn>()
-    var currentRole: String? = null
-    val buffer = StringBuilder()
-
-    fun flush() {
-        val role = currentRole ?: return
-        val content = buffer.toString().trim()
-        if (content.isNotEmpty()) {
-            val (model, body) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
-            turns.add(ChatTurn(role, body, model))
-        }
-        buffer.clear()
-    }
-
-    for (token in tokens) {
-        when (token) {
-            "<<you>>" -> {
-                flush()
-                currentRole = "you"
-            }
-            "<<ai>>" -> {
-                flush()
-                currentRole = "ai"
-            }
-            "<<progress>>" -> {
-                flush()
-                currentRole = "progress"
-            }
-            "<<progress-open>>" -> {
-                flush()
-                currentRole = "progress-open"
-            }
-            else -> buffer.append(token)
-        }
-    }
-
-    flush()
-    if (turns.isEmpty() && text.trim().isNotEmpty()) {
-        turns.add(ChatTurn("ai", text.trim()))
-    }
-    return turns
-}
+// The transcript parser is shared with the chat archive: parseAiChatBlocks (commonMain, aiChatBlocks.kt).
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
@@ -377,47 +308,126 @@ fun aiChatMarkdownToHtml(markdown: String?): String {
     return "<div class=\"ai-chat-markdown\">" + renderMarkdown(markdown) + "</div>"
 }
 
+private var toolFamilies: AiChatToolFamilies? = null
+
+/**
+ * Install the tool-family table (`ai4-chat-tool-families.json`) that round summaries count by family. Until it
+ * is installed a round's summary gives calls, time and failures only.
+ */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun aiChatSetToolFamilies(json: String) {
+    toolFamilies = AiChatToolFamilies.parse(json)
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun aiChatHistoryToHtml(history: String?): String {
-    val turns = parseChatHistory(history)
+    val turns = parseAiChatBlocks(history)
     if (turns.isEmpty()) return ""
     val html = StringBuilder()
+    // The server's session tree numbers user turns the same way (AiSessionTree.userTurns); the text goes with
+    // the ordinal so a rewind from a stale panel is refused rather than applied to the wrong turn.
+    var userOrdinal = 0
+    // Rounds are numbered in transcript order, so a round keeps its number as the chat grows and the panel can
+    // carry its open/closed state across re-renders (outputareas2.js, renderChatMessages).
+    var roundOrdinal = 0
+    var i = 0
+    while (i < turns.size) {
+        val turn = turns[i]
+        if (turn.isProgress) {
+            val end = (i until turns.size).firstOrNull { !turns[it].isProgress } ?: turns.size
+            val run = turns.subList(i, end)
+            html.append(if (AiChatRound.folds(run)) renderRound(run, roundOrdinal++) else renderProgressRun(run))
+            i = end
+            continue
+        }
+        i++
+        if (turn.role == "queued") {
+            // Sent while the turn runs (AiTurnInbox on the server): not part of the conversation until the
+            // agent reads it, so it has no ordinal and no rewind/edit.
+            html.append("<div class=\"ai-chat-turn you queued\">" +
+                "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
+                aiChatMarkdownToHtml(turn.content) + "</div>")
+        } else {
+            val badge = if (turn.role == "ai" || turn.role == "summary") {
+                // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
+                val lens = turn.model == null && turn.sources.isNotEmpty()
+                val label = turn.model?.label() ?: if (lens) "Lens" else "Model not recorded"
+                val title = turn.model?.description()
+                    ?: if (lens) "Written as a lens over a longer chat; it stands for ${turn.sources.joinToString(", ")}."
+                    else "This older chat entry did not record its provider or model."
+                "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
+            } else ""
+            val turnAttrs = if (turn.role == "you") {
+                " data-ai-turn=\"${userOrdinal++}\" data-ai-text=\"${escapeHtml(turn.content)}\""
+            } else ""
+            val actions = if (turn.role == "you") {
+                "<span class=\"ai-chat-turn-actions\">" +
+                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"edit\" title=\"Edit this message and send it again (the rest is kept as a branch)\">edit</button>" +
+                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"rewind\" title=\"Rewind to before this message (the rest is kept as a branch)\">rewind</button>" +
+                    "</span>"
+            } else ""
+            // A lens block's citations, for the viewer that draws a line from it to the chat it summarizes.
+            val sourceAttr = if (turn.sources.isNotEmpty()) " data-ai-sources=\"${escapeHtml(turn.sources.joinToString(","))}\"" else ""
+            html.append("<div class=\"ai-chat-turn ${turn.role}\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + aiChatMarkdownToHtml(turn.content) + actions + "</div>")
+        }
+    }
+    return "<div class=\"ai-chat-thread\">$html</div>"
+}
+
+/**
+ * Progress blocks as they render on their own: a run of title-only blocks shares one status row, anything with
+ * a body is its own collapsible block.
+ */
+private fun renderProgressRun(run: List<AiChatBlock>): String {
+    val html = StringBuilder()
     var statusRowOpen = false
-    for (turn in turns) {
-        val progress = turn.role.startsWith("progress")
-        val lines = turn.content.lines()
-        val title = lines.firstOrNull()?.trim().orEmpty()
-        val body = lines.drop(1).joinToString("\n").trim()
-        val statusOnly = progress && (body.isBlank() || body == title)
-        if (statusOnly) {
+    for (turn in run) {
+        if (turn.isStatusOnly) {
             if (!statusRowOpen) {
                 html.append("<div class=\"ai-chat-status-row\" aria-label=\"AI activity\">")
                 statusRowOpen = true
             }
-            html.append("<span class=\"ai-chat-status\">${escapeHtml(title.ifBlank { "AI activity" })}</span>")
+            html.append("<span class=\"ai-chat-status\"${addressAttr(turn)}>${shimmerIfLive(turn, escapeHtml(turn.title.ifBlank { "AI activity" }))}</span>")
             continue
         }
         if (statusRowOpen) {
             html.append("</div>")
             statusRowOpen = false
         }
-        if (progress) {
-            html.append(renderProgressTurn(turn))
-        } else {
-            val badge = if (turn.role == "ai") {
-                val label = turn.model?.label() ?: "Model not recorded"
-                val title = turn.model?.description() ?: "This older chat entry did not record its provider or model."
-                "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
-            } else ""
-            html.append("<div class=\"ai-chat-turn ${turn.role}\">" + badge + aiChatMarkdownToHtml(turn.content) + "</div>")
-        }
+        html.append(renderProgressTurn(turn))
     }
     if (statusRowOpen) html.append("</div>")
-    return "<div class=\"ai-chat-thread\">$html</div>"
+    return html.toString()
 }
 
-private fun renderProgressTurn(turn: ChatTurn): String {
+/**
+ * A run of tool activity between two pieces of text, folded to one line: how many calls, how long they took,
+ * how many failed, and the families worth naming (notes, recipe calls, edits, build steps, looks). The run's
+ * own rendering is inside. While the turn runs, the live item's title follows the summary, shimmering, so
+ * the round can stay closed and still show what is happening. [AiChatRound] (commonMain) does the counting,
+ * so the chat archive describes a round in the same words.
+ */
+private fun renderRound(run: List<AiChatBlock>, ordinal: Int): String {
+    val round = AiChatRound(run, toolFamilies)
+    val parts = mutableListOf(round.callsText())
+    if (round.ms > 0) parts += formatAiChatDuration(round.ms)
+    if (round.failed > 0) parts += "<span class=\"ai-chat-round-failed\">${round.failedText()}</span>"
+    for ((family, n) in round.families) {
+        parts += "<span class=\"ai-chat-round-family\" data-family=\"${escapeHtml(family.name)}\" title=\"${escapeHtml(family.label)}\">" +
+            "${escapeHtml(round.familyText(family, n))}</span>"
+    }
+    val liveHtml = round.live?.let { " <span class=\"ai-chat-round-live\">— ${shimmerIfLive(it, escapeHtml(it.title.ifBlank { "AI activity" }))}</span>" }.orEmpty()
+    val failedAttr = if (round.failed > 0) " data-failed=\"${round.failed}\"" else ""
+    val span = run.first().address?.let { " data-ai-from=\"${escapeHtml(it)}\" data-ai-to=\"${escapeHtml(run.last().address ?: it)}\"" }.orEmpty()
+    return "<details class=\"ai-chat-round\" data-ai-round=\"$ordinal\"$failedAttr$span>" +
+        "<summary><span class=\"ai-chat-round-line\">${parts.joinToString("<span class=\"ai-chat-round-sep\"> · </span>")}</span>$liveHtml</summary>" +
+        "<div class=\"ai-chat-round-body\">${renderProgressRun(run)}</div>" +
+        "</details>"
+}
+
+private fun renderProgressTurn(turn: AiChatBlock): String {
     val lines = turn.content.lines()
     val title = lines.firstOrNull()?.trim()?.ifBlank { null } ?: "AI activity"
     val body = lines.drop(1).joinToString("\n").trim().ifBlank { turn.content }
@@ -432,8 +442,17 @@ private fun renderProgressTurn(turn: ChatTurn): String {
     val kind = if (isEdit) " data-kind=\"edit\"" else ""
     val summaryTitle = if (isEdit) "Edit" else title
     val fileHtml = if (file.isNotBlank()) "<span class=\"ai-chat-progress-file\">${escapeHtml(file)}</span>" else ""
-    return "<details class=\"ai-chat-progress\"$kind$open>" +
-        "<summary><span>${escapeHtml(summaryTitle)}</span>$fileHtml</summary>" +
+    return "<details class=\"ai-chat-progress\"$kind$open${addressAttr(turn)}>" +
+        "<summary><span>${shimmerIfLive(turn, escapeHtml(summaryTitle))}</span>$fileHtml</summary>" +
         aiChatMarkdownToHtml(body) +
         "</details>"
 }
+
+/** Where a block sits in the chat it came from (`<<at:…>>`), for the lens viewer's lines; nothing for an ordinary chat. */
+private fun addressAttr(block: AiChatBlock): String =
+    block.address?.let { " data-ai-address=\"${escapeHtml(it)}\"" }.orEmpty()
+
+// `<<progress-open>>` is the newest activity of a turn still running with nothing streamed after it
+// (AiLiveConversation.render); the final render and an interrupted-turn recovery both demote it.
+private fun shimmerIfLive(turn: AiChatBlock, html: String): String =
+    if (turn.role == "progress-open") "<span class=\"ai-chat-shimmer\">$html</span>" else html

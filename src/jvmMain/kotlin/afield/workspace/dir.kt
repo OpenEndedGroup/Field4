@@ -147,36 +147,21 @@ data class RuntimeInfo(
     val runloopSchedulingStatus: RunloopSchedulingStatus = RunloopSchedulingStatus()
 )
 
+/**
+ * The KDoc completion drafted for undocumented declarations, as the welcome page shows it. The drafts
+ * are worked by the docs revision pass (`tools/docs_notes.py import-drafts`, then a pass on
+ * /docs-pass.html), not by a tool of their own.
+ */
 @Serializable
-data class CompletionDocPolishCacheSummary(
+data class CompletionDocDraftSummary(
     val cachePath: String = "",
     val exists: Boolean = false,
-    val pendingDocCount: Int = 0,
-    val pendingSourceFileCount: Int = 0,
-    val sizeBytes: Long = 0,
-    val lastModifiedEpochMs: Long = 0,
+    /** Drafts for declarations under src/ (any source set, src/personal included). */
+    val draftCount: Int = 0,
+    val fileCount: Int = 0,
+    /** Drafts for declarations outside src/ (dependency jars): never imported. */
+    val outsideCount: Int = 0,
     val message: String = ""
-)
-
-@Serializable
-data class CompletionDocPolishStatus(
-    val cache: CompletionDocPolishCacheSummary = CompletionDocPolishCacheSummary(),
-    val running: Boolean = false,
-    val status: String = "idle",
-    val runId: String = "",
-    val taskName: String = "",
-    val dryRun: Boolean = false,
-    val startedAtEpochMs: Long = 0,
-    val finishedAtEpochMs: Long = 0,
-    val exitCode: Int? = null,
-    val message: String = "",
-    val logPath: String = "",
-    val logTail: String = ""
-)
-
-@Serializable
-data class CompletionDocPolishRunRequest(
-    val dryRun: Boolean = false
 )
 
 @Serializable
@@ -287,7 +272,7 @@ data class WelcomeDocsResponse(
         configPath = "",
         message = "not loaded"
     ),
-    val completionDocPolish: CompletionDocPolishStatus = CompletionDocPolishStatus(),
+    val completionDocDrafts: CompletionDocDraftSummary = CompletionDocDraftSummary(),
     val aiToolUseImprovement: AiToolUseImprovementStatus = AiToolUseImprovementStatus(),
     val codeUse: CodeUseSummary = CodeUseSummary(
         enabled = false,
@@ -928,12 +913,24 @@ fun templatesStartingPointsDir(): File? {
     return null
 }
 
+/** Personal templates use the ordinary welcome/copy path and never need to enter a source checkout.
+ * Bundled names take precedence so search, preview and copy always resolve the same document. */
+internal fun documentTemplateRoots(): List<File> = listOfNotNull(
+    templatesStartingPointsDir(),
+    File(System.getProperty("user.dir"), "src/personal/templates").takeIf { it.isDirectory },
+    File(System.getProperty("afield.personalTemplates.dir")
+        ?: File(System.getProperty("user.home"), ".afield/templates").path).takeIf { it.isDirectory }
+).distinctBy { it.canonicalPath }
+
+internal fun documentTemplateCandidates(): List<WelcomeDirCandidate> = documentTemplateRoots()
+    .flatMap { welcomeDirCandidates(it.absolutePath, emptyList()) }
+    .distinctBy { it.filename }
+
 /** Welcome cards for the bundled document templates, tagged `kind = "template"`. Empty when none. */
 fun templateStartingPoints(): List<WelcomeEntry> {
-    val dir = templatesStartingPointsDir() ?: return emptyList()
     val now = System.currentTimeMillis()
     val savingContext = SavingContext()
-    return welcomeDirCandidates(dir.absolutePath, emptyList())
+    return documentTemplateCandidates()
         .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
         .map { it.copy(kind = "template") }
 }
@@ -946,15 +943,15 @@ fun searchTemplateStartingPoints(
     maxScanMillis: Long = 3_000L,
     cancellationCheck: () -> Unit = {}
 ): WorkspaceSearchResponse {
-    val dir = templatesStartingPointsDir()
-        ?: return WorkspaceSearchResponse(rawQuery.trim(), emptyList(), 0, 0, false)
-    val response = searchWorkspace(
-        base = dir.absolutePath,
+    val candidates = documentTemplateCandidates()
+    val response = searchWorkspaceIncludingDocuments(
+        base = null,
         rawQuery = rawQuery,
         maxDocuments = maxDocuments,
         maxMatchesPerDocument = maxMatchesPerDocument,
         maxScanMillis = maxScanMillis,
-        cancellationCheck = cancellationCheck
+        cancellationCheck = cancellationCheck,
+        additionalDocuments = candidates.map { it.dir }
     )
     return response.copy(documents = response.documents.map { it.copy(kind = "template") })
 }
@@ -1235,7 +1232,7 @@ fun searchWorkspace(
 }
 
 private fun searchWorkspaceIncludingDocuments(
-    base: String,
+    base: String?,
     rawQuery: String,
     maxDocuments: Int,
     maxMatchesPerDocument: Int,
@@ -1254,8 +1251,8 @@ private fun searchWorkspaceIncludingDocuments(
         )
     }
 
-    val baseDir = File(base)
-    if (!baseDir.exists() || !baseDir.isDirectory) {
+    val baseDir = base?.let { File(it) }
+    if (baseDir != null && (!baseDir.exists() || !baseDir.isDirectory)) {
         return WorkspaceSearchResponse(
             query = query,
             documents = emptyList(),
@@ -1286,7 +1283,7 @@ private fun searchWorkspaceIncludingDocuments(
         }
     }
 
-    val directories = (baseDir.listFiles()?.filter { it.isDirectory && it.name != PROJECTS_DIR }.orEmpty() +
+    val directories = (baseDir?.listFiles()?.filter { it.isDirectory && it.name != PROJECTS_DIR }.orEmpty() +
         additionalDocuments).distinctBy { it.canonicalPath }.sortedByDescending {
         max(
             File(it, SavingContext.METADATA_EDN).lastModified(),
@@ -1362,7 +1359,7 @@ private fun searchWorkspaceIncludingDocuments(
         }
     }
 
-    for (project in listWorkspaceProjects(base)) {
+    for (project in base?.let { listWorkspaceProjects(it) }.orEmpty()) {
         checkSearchActive()
         if (results.size >= options.maxDocuments) {
             truncated = true
@@ -1568,7 +1565,7 @@ fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumen
     val cleanName = validateWorkspaceDocumentName(name)
     // The graphics curriculum is explicitly registered; other docs assets are not opening roots.
     // Remaining starting points live in the transcript and template roots.
-    val roots = listOfNotNull(startingPointsDir(), templatesStartingPointsDir())
+    val roots = listOfNotNull(startingPointsDir()) + documentTemplateRoots()
     if (roots.isEmpty()) throw IllegalArgumentException("no starting points are available")
     val sourceDir = canonicalGraphicsStartingPoint()?.takeIf { it.name == cleanName }
         ?: roots.asSequence()

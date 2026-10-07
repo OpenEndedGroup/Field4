@@ -155,8 +155,6 @@ class SourceBackedBlock<out T>(
     override fun toString(): String = "SourceBackedBlock(boxId=$boxId, source=${source.take(80).replace('\n', ' ')})"
 }
 
-fun <T> sourceBlock(block: () -> T): SourceBackedBlock<T> =
-    SourceBackedBlock(Box.context.get()?.id ?: "", "", block)
 
 fun <T> sourceBackedBlock(boxId: String, source: String): SourceBackedBlock<T> =
     SourceBackedBlock(boxId, source)

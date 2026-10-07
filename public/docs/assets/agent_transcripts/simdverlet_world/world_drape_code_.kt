@@ -1,11 +1,13 @@
 import afield.four.physics.*
 import afield.stdlib.vec
 
-// A cloth, and something for it to land on.
-//
-// Convention first, because it decides every sign below: the plane view has y growing DOWN
-// the screen, so gravity is POSITIVE, the sheet starts at y = 0 and the sphere is below it
-// at y = 2.
+/*
+A cloth, and something for it to land on.
+
+Convention first, because it decides every sign below: the plane view has y growing DOWN
+the screen, so gravity is POSITIVE, the sheet starts at y = 0 and the sphere is below it
+at y = 2.
+*/
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 val cloth = sim.addCloth(
     width = 22,
@@ -19,17 +21,21 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 
-// The world. A collider is a POST-SOLVE POSITION PROJECTION, not a penalty force. The
-// constraint solve is force-based -- all `iterations` corrections land in one accumulator
-// -- so a cloth spring of stiffness k acts at k*iterations while a bulk force runs once.
-// A penalty collider is therefore sixteen times too soft at the setting below, and
-// stiffening it by sixteen puts it past the explicit-integration limit: nothing in a 256x
-// sweep of penalty stiffness got within two orders of magnitude of the projection.
-// dev_docs/physics/SIMDVERLET_5_WORLD.md has the sweep.
+/*
+The world. A collider is a POST-SOLVE POSITION PROJECTION, not a penalty force. The
+constraint solve is force-based -- all `iterations` corrections land in one accumulator
+-- so a cloth spring of stiffness k acts at k*iterations while a bulk force runs once.
+A penalty collider would be sixteen times too soft at 16 iterations, and stiffening it by
+sixteen puts it past the explicit-integration limit. dev_docs/physics/SIMDVERLET_5_WORLD.md
+has the measurements.
+*/
 val world = sim.addColliders(
     // friction is Coulomb, bounded by mu * penetration. Turn it down to 0f and watch the
     // sheet slide off the shoulder of the sphere instead of gripping it.
-    SphereCollider(0f, 2f, 0f, radius = 1.05f).also { it.friction = 0.75f; it.margin = 0.02f },
+    SphereCollider(0f, 2f, 0f, radius = 1.05f).also {
+        it.friction = 0.75f
+        it.margin = 0.02f
+    },
     // A floor at y = 4.4, with the legal side ABOVE it: y grows down, so the normal is -y
     // and the offset is -4.4.
     PlaneCollider(0f, -1f, 0f, offset = -4.4f).also { it.friction = 0.9f },

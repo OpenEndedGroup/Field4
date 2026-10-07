@@ -14,10 +14,9 @@ it is not the step sequencer. It is the way the 248 keeps four things on separat
 
 Here all four are ordinary [patterns](pattern_language.md). `slow`, `rev`, `every`, `euclid`,
 `degradeBy` and `struct` already work on all four, so this layer adds almost no operators of its
-own. The figures below are drawn by
-[`MarfGallery`](reference/patterns.md#marfgallery-kt), which samples each reader through the same
-public surface you would: one boundary line per stage, one pulse per triggering stage, one polyline
-point per sample.
+own. In the figures below, a dashed line marks each stage boundary and the polyline is the
+reader's output, sampled through the same calls you would use
+([`MarfGallery`](reference/patterns.md#marfgallery-kt) draws them).
 
 ---
 
@@ -104,9 +103,9 @@ The bank is the same object in all three lanes; only the trajectory over it diff
 `fields = MarfFieldClock.STAGES` is what makes "holds each address for three **stages**" exactly
 true. The bank's own durations are uneven, so under a `CYCLES` reading each address would be latched
 at whatever wall-clock instant a stage happened to start at, and the readers would not walk the bank
-one slot at a time at all. `AUTO`, the default, picks `STEPS` for these addresses, which walks them
-one slot per stage as well; `STAGES` is named here because it is the reading this figure was drawn
-under.
+one slot at a time at all. The default, `AUTO`, picks `STEPS` for these addresses, which also walks
+them one slot per stage. [Which clock the fields are read in](#which-clock-the-fields-are-read-in)
+explains the three readings.
 
 ---
 
@@ -295,10 +294,9 @@ ordinary sample-and-hold.
 
 ## Which clock the fields are read in
 
-A field is a pattern, and there are two different things a pattern can mean here — a **sequence of
-steps** or a **voltage you sample**, meaning a value that exists at every instant, the way a
-modular synthesizer's control voltage does — so the layer has to decide which you meant. `MarfFieldClock`
-is that decision.
+A field is a pattern, and a pattern can mean two different things here: a **sequence of steps**,
+or a **value you sample**, one that exists at every instant the way a modular synthesizer's control
+voltage does. `MarfFieldClock` says which you meant.
 
 ![the same two fields under both readings: a stepped address collapses under CYCLES, and a saw freezes under STEPS](assets/marf/marf-field-clocks.svg)
 
@@ -319,7 +317,7 @@ written. The bottom pair is `saw()` with quarter-cycle stages: under `CYCLES` it
 through the bank, and under `STEPS` it reads `0 0 0 0` — **stuck**, because one sample per cycle of
 something that repeats every cycle is a single number.
 
-Neither reading is right for both. That is why the default is not a reading.
+Neither reading suits both patterns, so the default, `AUTO`, chooses per reader.
 
 ??? note "Why the two pairs use different stage lengths"
     What `CYCLES` gives you depends on how long a stage is *relative to the pattern's own steps*.
@@ -330,24 +328,24 @@ Neither reading is right for both. That is why the default is not a reading.
 
 ### `AUTO`, the default
 
-`AUTO` is not itself a reading — a reader resolves it at construction and
-reports the answer in `fieldClock`, so nothing downstream ever sees `AUTO`. It asks one question of
-the **leading** field — `value` for `marf(...)`, `address` for `bank.read(...)`: *does this pattern
-have a discrete event at all?*
+A reader resolves `AUTO` when it is built and reports the answer in `fieldClock`, so nothing
+downstream ever sees `AUTO`. It asks one question of the **leading** field (`value` for `marf(...)`,
+`address` for `bank.read(...)`): *does this pattern have a discrete event at all?*
 
 * **Yes** → `STEPS`. `"<0 3> 1"`, `"0 1 2 3"`, `struct(euclid(5, 8), …)` and `"0 ~ .8 ~"` are
   written as sequences, so they are read as the sequences they are, one step per stage.
 * **No** → `CYCLES`. `saw()`, `sine()` and anything else built from `signalOf` answer a query with
   one analog event spanning it, so there are no steps to walk. Walking one anyway samples it once
-  per cycle, and a cycle-periodic signal sampled once per cycle is a **constant** — `saw()` as an
+  per cycle, and a cycle-periodic signal sampled once per cycle is a **constant**: `saw()` as an
   address would sit still.
 
-Two different uses of one parameter, in other words: a field is a *sequence* when you write steps
-and a *voltage* when you write a signal, and which you meant is legible from what you typed. State
-a clock explicitly whenever you want the other reading of the same pattern.
+So a field is a sequence when you write steps and a sampled value when you write a signal. Name a
+clock explicitly whenever you want the other reading of the same pattern.
 
-`CYCLES` reads each field at the stage's wall-clock instant. This is the control-voltage
-reading and the hardware's one. Every pattern means something in it: `"0 .7 .2 1"` is four values
+The three readings in detail:
+
+`CYCLES` reads each field at the instant the stage starts. This is the control-voltage reading,
+and the one the hardware uses. Every pattern means something in it: `"0 .7 .2 1"` is four values
 across the bar and `sine()` is a sweep across it. When the durations happen to sum to a cycle the
 reader locks to the bar and the fields line up with their own steps.
 
@@ -362,25 +360,25 @@ the two-entry `0 3`. Each field walks its own grid, so an address with two steps
 duration with one still advance a single entry each per stage.
 
 A **rest is a step**, and it holds. `"0 ~ .8 ~"` is four stages reading `0 0 .8 .8`, not two
-reading `0 .8` — which is what makes `struct(euclid(5, 8), …)` on an address mean *how long an
+reading `0 .8`. That is what makes `struct(euclid(5, 8), …)` on an address mean *how long an
 address is held for* rather than a sequence with the gaps squeezed out. The step grid is therefore
 every boundary an event draws in the cycle, its start **and** its end, not just its onsets.
 
-`STEPS` and `STAGES` agree **exactly** whenever a field's events fill their cycle — every `<…>`,
-every `slow(n)`, every signal — so for the patterns the `STAGES` idiom is written in, it is a
-refinement rather than a rival. They part company on a pattern that does *not* fill its cycle:
-`"<0 3> ~"` is `0 0 3 3` under `STEPS`, because the trailing rest is a held stage, and `0 3 0 3`
-under `STAGES`, which reads one instant per cycle and never sees it. Both are pinned in
-`MarfTest`. And "at least one per cycle" is what preserves the `slow(3)` idiom: a field slowed by
+`STEPS` and `STAGES` agree exactly whenever a field's events fill their cycle (every `<…>`, every
+`slow(n)`, every signal), so for the patterns `STAGES` is usually written with, `STEPS` gives the
+same answer. They differ on a pattern that does *not* fill its cycle: `"<0 3> ~"` is `0 0 3 3` under
+`STEPS`, because the trailing rest is a held stage, and `0 3 0 3` under `STAGES`, which reads one
+instant per cycle and never sees it. And "at least one per cycle" is what preserves the `slow(3)` idiom: a field slowed by
 three has an event only every third cycle, and the two cycles in between are held stages, not
 absences.
 
 ### When `AUTO` picks the wrong one
 
-Name the clock. `AUTO` reads the shape of what you typed, and the shape is occasionally not the
-intent — a stepped pattern you want read at each stage's start time, whichever step that lands on
-(`CYCLES`), or a signal you want read one value per cycle, one cycle per stage (`STEPS`). `fields = MarfFieldClock.CYCLES` and `fields = MarfFieldClock.STEPS` always win, and a
-reader will tell you which one it ended up with:
+Name the clock. `AUTO` reads the shape of what you typed, and occasionally that is not what you
+meant: a stepped pattern you want read at each stage's start time, whichever step that lands on
+(`CYCLES`), or a signal you want read one value per cycle, one cycle per stage (`STEPS`).
+`fields = MarfFieldClock.CYCLES` and `fields = MarfFieldClock.STEPS` always win, and a reader tells
+you which clock it ended up with:
 
 ```diffstatic {data-lang=kotlin}
 val r = b.read(pat("<0 3> 1").nums())
@@ -388,15 +386,15 @@ r.fieldClock          // STEPS — AUTO saw discrete events
 b.read(saw()).fieldClock   // CYCLES — AUTO saw none
 ```
 
-The one case worth watching: `AUTO` decides from the **leading** field, so a stepped address with a
+Watch for one case: `AUTO` decides from the **leading** field, so a stepped address with a
 `saw()` duration resolves to `STEPS` and that `saw` is then sampled once per step. One reader
 carries one clock. A field that wants the other reading wants its own reader, with `signal()`
 joining them.
 
 ### What the sequence readings refuse
 
-A field pattern whose structure a sequence clock cannot see is now **rejected where you typed it**,
-by field name, rather than half-read:
+Under `STAGES` or `STEPS`, a field pattern whose structure the clock cannot see is rejected with an
+error that names the field, rather than half-read:
 
 ```diffstatic {data-lang=text}
 reader 'addr': the address pattern puts 2 steps inside cycle 0 (at 0, 1/2), and
@@ -406,15 +404,11 @@ alternation, `<…>`, which is one step a cycle, or ask for the sequence you wro
 with fields = MarfFieldClock.STEPS.
 ```
 
-This is the same argument `marfCurve` makes about a misspelled curve name, at a larger scale: under
-a sequence clock most stepped spellings collapse onto something strictly simpler than what was
-typed, and a silent collapse gives you no way to tell whether the layer disagreed with you or
-ignored you. Every spelling, against all three clocks, is tabulated in
-`dev_docs/MARF_FIELD_CLOCKS.md`.
+The message says what would be lost and offers the two spellings that keep it.
 
 A **stack** is the one case no clock reads. `"<0 3>, 1"` puts two layers on a single instant, a
-field latches to one value per stage, and the second layer is unreachable — so the sequence
-readings refuse that too, and say so rather than naming a mode that would not help. `CYCLES` is
+field latches to one value per stage, and the second layer is unreachable, so the sequence readings
+refuse a stack too. `CYCLES` is
 exempt from both refusals: a field is a control voltage there, and reading one layer of a stack at
 an instant is what the parameter algebra does everywhere else.
 

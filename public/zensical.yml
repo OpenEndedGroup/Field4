@@ -11,6 +11,8 @@ nav:
   # for, and an arc one heading over from it was an arc nobody found.
   - Start Here:
     - Installation: installation.md
+    - Your First Five Minutes: first_steps.md
+    - Your Code, AI and Local History: privacy.md
     - Survival Guide: survivalGuide.md
     - Kotlin Syntax Overview: kotlin_overview.md
     # Above the Tour, not after it: "Where to Go Next" is the arc's exit ramp onto the rest of the
@@ -120,6 +122,8 @@ nav:
       - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
+      # Directly after the interpolants page: that page eases a value from code, this one draws it.
+      - Keyframe Editor: keyframe_editor.md
       # Directly after the interpolants page, which is the other half of the same subject: that
       # page is a value eased once to a target that stays put, this one is springs and a steering
       # model for a target that keeps moving. Filed under Time & Signals rather than beside
@@ -130,7 +134,7 @@ nav:
       - Keyframes: keyframer_examples.md
       # Directly after the keyframes page, because it is that page's collection noun: one saved key
       # is a look, a directory of them is a space, and this is what explores the space overnight.
-      - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
+      - Sweeping Saved Keyframes Overnight: keyframe_autosweep.md
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md
       # One page for both halves of signal processing: timeseries_examples.md (filters and
@@ -149,7 +153,7 @@ nav:
     - Point Sets & Shape:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
       - Flow Matching: flow_matching.md
-      - Stipple Transport & Video: stipple_transport.md
+      - Stipple Transport: stipple_transport.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
       - Paint and Pencil from FLines: paint_canvas.md
@@ -185,6 +189,8 @@ nav:
       # peer, with Field acting as a node — here Art-Net and sACN over UDP to lighting hardware. It
       # was a one-page "Lighting" group of its own; the only other lighting page is a chain.
       - "Driving Lights: Art-Net and sACN": dmx_lighting.md
+      - "MQTT: sensors, devices and brokers": mqtt.md
+      - "OSCQuery: controls other tools can find": oscquery.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md
@@ -284,6 +290,7 @@ nav:
       - Computed Ray Geometry: computed_ray_geometry.md
       - From Modules to Reconstruction: reconstruction_plumbing.md
       - Optical Flow: optical_flow.md
+      - Video Particles: particle_video.md
       - A Learned Shader Function: learned_shader.md
       - GPU Shader Learning: gpu_shader_learning.md
       - Progressive Path Tracing: path_tracing.md
@@ -319,10 +326,14 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - Talking to AI4: voice_input.md
+    - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
+    - Experimenting with AI4: ai4_experiments.md
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a Scene into Existence: rectsl_conversation.md
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
+    - AI4 Paints: ai4_painting.md
     # After the four conversations rather than before them: those pages show a study being worked on,
     # and this one is the layer they share, which reads best once you have seen one.
     - Studies: studies.md
@@ -355,6 +366,7 @@ nav:
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
       - Machine learning: reference/machine-learning.md
+      - Video: reference/video.md
     # Directly under Reference since its hand-written companion, linear_algebra.md, moved to the
     # head of "Drawing From Data": this page is generated (tools/linalg-generator), so it stays.
     - Generated Vector API: linear_algebra_api.md
@@ -402,6 +414,7 @@ nav:
     # you look up after something has already surprised you rather than while composing.
     - What a Capture Can and Cannot Show: capture_limits.md
     - Building & Testing: building_and_testing.md
+    - Landing on main: landing_queue.md
 
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts

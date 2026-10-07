@@ -1,0 +1,32 @@
+name: keyframe_editing
+description: >
+  One box with a keyframe curve, a meter it drives and a loop that plays it, for the editing video
+  on `public/docs/keyframe_editor.md`. Launched, so the playhead runs while the curve is edited.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: kf_edit
+      name: brightness
+      frame: { x: 40.0, y: 30.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          val brightness = keyframes(name = "brightness", defaults = listOf(vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)))
+
+          lateinit var level: MeterHandle
+          controlGroup("level") { level = meter("brightness") }
+          displayOpen("level")
+
+          val start = System.nanoTime()
+          loop {
+              val t = ((System.nanoTime() - start) / 1e9) % 4.0
+              brightness.setTime(t)
+              level.set(brightness.evaluateValueAt(t))
+          }
+  - launch: { box: kf_edit }
+  # Long enough for a cold box compile and the editor to receive its keys: this runs before the
+  # recording starts, and a wait inside the drive would be recorded as a still.
+  - wait:
+      millis: 12000

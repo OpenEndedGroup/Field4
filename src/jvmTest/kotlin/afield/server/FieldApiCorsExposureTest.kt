@@ -183,7 +183,7 @@ class FieldApiCorsExposureTest {
      *
      * ## What the table says, and it is the honest answer to "is Field's API authenticated"
      *
-     * **49 of 56 state-changing routes have no route-specific guard of any kind** — 36 of 40
+     * **48 of 55 state-changing routes have no route-specific guard of any kind** — 36 of 40
      * before the verbless shape was counted — including `POST /api/shutdown-instance`, which
      * a foreign origin was measured stopping the server with, `POST /api/agent-worktrees/delete`,
      * and now `ANY /lazy-value-fragment`, which takes four query parameters straight into
@@ -261,8 +261,8 @@ class FieldApiCorsExposureTest {
         // wholesale update of the map above.
         val unguarded = found.count { it.value == "none" }
         assertEquals(
-            49, unguarded,
-            "The complete census has 49 state-changing routes with no route-specific access control, out " +
+            48, unguarded,
+            "The complete census has 48 state-changing routes with no route-specific access control, out " +
                 "of ${found.size}. If this went down, say so in dev_docs/DOCS_IMPROVEMENT_AGENT.md — it is " +
                 "the headline number in that page. If it went up, you added an unauthenticated write.",
         )
@@ -413,8 +413,8 @@ class FieldApiCorsExposureTest {
         )
         val found = sortedMapOf<String, String>()
 
-        File(repositoryRoot(), "src/jvmMain/kotlin/afield").walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
+        // Field's own server only: a file in KotlinRouteScan.SEPARATE_SERVERS serves its own port.
+        KotlinRouteScan.serverKotlinFiles(repositoryRoot())
             .forEach { file ->
                 val text = file.readText()
                 declaration.findAll(text).forEach { match ->
@@ -527,7 +527,6 @@ class FieldApiCorsExposureTest {
             "POST /api/ai-tool-use-improvement" to "none",
             "POST /api/ai-tool-use-improvement/clear-reviewed" to "none",
             "POST /api/code-use/analyze" to "none",
-            "POST /api/completion-doc-polish" to "none",
             "POST /api/docs-annotations" to "loopback + same-site",
             // /docs-pass.html (docsPass.kt): coding agents with write access to the checkout, plus
             // commit and a fast-forward of main. Loopback + same-site with both annotation hatches forced shut,

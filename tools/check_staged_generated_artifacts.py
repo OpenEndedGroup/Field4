@@ -120,6 +120,19 @@ def _transcript_input(path: str) -> bool:
     )
 
 
+def _box_code_input(path: str) -> bool:
+    # The checker's own definition of its corpus, so the two cannot disagree about a path.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from check_box_idioms import in_corpus
+
+    return in_corpus(path)
+
+
+def _compiled_transcript(path: str) -> bool:
+    # Top-level transcripts only: that is what BoxCodeCompileGuard compiles.
+    return path.startswith("dev_docs/agents/transcripts/") and path.count("/") == 3 and path.endswith(".yaml")
+
+
 def _completion_input(path: str) -> bool:
     return (
         _under(path, "public/docs/assets/agent_transcripts")
@@ -241,15 +254,78 @@ def _citation_input_paths() -> frozenset[str]:
     return frozenset(resolved)
 
 
+_PERSONAL_BOUNDARY_REL = "src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt"
+_SCAN_ROOTS_DECL = re.compile(r"private val SCAN_ROOTS = listOf\((.*?)\n\s*\)", re.DOTALL)
+_SCAN_EXTENSIONS_DECL = re.compile(r"private val SCAN_EXTENSIONS = setOf\((.*?)\)", re.DOTALL)
+
+
+class PersonalBoundaryCorpusUnreadable(RuntimeError):
+    """``SCAN_ROOTS`` / ``SCAN_EXTENSIONS`` could not be read out of ``PersonalBoundaryTest``.
+
+    Raised rather than falling back to a copy, for the reason :class:`ReferenceRootsUnreadable`
+    gives: a silent fallback would keep selecting whatever the copy named on the day the guard moved.
+    """
+
+
+@functools.lru_cache(maxsize=1)
+def _personal_boundary_corpus() -> tuple[tuple[str, ...], frozenset[str]]:
+    """The roots and extensions ``PersonalBoundaryTest`` walks, read out of the guard itself.
+
+    ``citationGates`` runs that guard, and its subject is not the citation corpus: it walks
+    ``src/**``, ``dev_docs/**``, ``public/docs/**`` and ``templates/**`` for a committed file that
+    imports a private package, declares itself into one, or cites a path inside ``src/personal/``.
+    The citation selection below reaches ``src/jvmMain/**.kt``, ``public/docs/**.md`` and the files
+    the citation registries name, so a change staging only ``dev_docs/agents/**`` — an agent's
+    evidence directory, which is where that guard's failure happens — or only a template's
+    ``metadata.edn`` selected no gate that reads it, at commit time or at landing.
+
+    Derived rather than copied: widening ``SCAN_ROOTS`` or ``SCAN_EXTENSIONS`` there widens the
+    trigger here.
+    """
+    repo = Path(__file__).resolve().parents[1]
+    guard = repo / _PERSONAL_BOUNDARY_REL
+    if not guard.is_file():
+        raise PersonalBoundaryCorpusUnreadable(
+            f"{_PERSONAL_BOUNDARY_REL} is missing — the private-boundary guard moved. Point "
+            "_PERSONAL_BOUNDARY_REL at its new home; do not copy its corpus here."
+        )
+    source = guard.read_text()
+    roots_match = _SCAN_ROOTS_DECL.search(source)
+    extensions_match = _SCAN_EXTENSIONS_DECL.search(source)
+    if roots_match is None or extensions_match is None:
+        raise PersonalBoundaryCorpusUnreadable(
+            f"no `private val SCAN_ROOTS = listOf(...)` / `private val SCAN_EXTENSIONS = setOf(...)` "
+            f"in {_PERSONAL_BOUNDARY_REL} — the declarations this predicate reads were renamed or "
+            "reshaped. Update the regexes; do not copy the lists here."
+        )
+    roots = tuple(_KOTLIN_STRING.findall(roots_match.group(1)))
+    extensions = frozenset(_KOTLIN_STRING.findall(extensions_match.group(1)))
+    if not roots or not extensions:
+        raise PersonalBoundaryCorpusUnreadable(
+            f"SCAN_ROOTS or SCAN_EXTENSIONS in {_PERSONAL_BOUNDARY_REL} parsed to an empty list"
+        )
+    return roots, extensions
+
+
+def _personal_boundary_input(path: str) -> bool:
+    """Whether ``path`` is in the population ``PersonalBoundaryTest`` reads."""
+    roots, extensions = _personal_boundary_corpus()
+    if _under(path, "src/personal"):
+        return False
+    return any(_under(path, root) for root in roots) and path.rsplit(".", 1)[-1] in extensions
+
+
 def _citation_input(path: str) -> bool:
     if path in _citation_input_paths():
         return True
-    # Two focused tests intentionally discover their inputs rather than cite a fixed list:
-    # DocsFenceTreatmentTest checks every published Markdown page, while ServerSurfaceLedgerTest
-    # inventories the complete server route/command source surface.
+    # Three tests intentionally discover their inputs rather than cite a fixed list:
+    # DocsFenceTreatmentTest checks every published Markdown page, ServerSurfaceLedgerTest
+    # inventories the complete server route/command source surface, and PersonalBoundaryTest walks
+    # the corpus `_personal_boundary_corpus` reads out of it.
     return (
         (_under(path, "public/docs") and path.endswith(".md"))
         or (_under(path, "src/jvmMain/kotlin/afield") and path.endswith(".kt"))
+        or _personal_boundary_input(path)
     )
 
 
@@ -285,6 +361,8 @@ GUARDS = (
         _completion_input,
         ("tools/completion-corpus/boxes",),
     ),
+    Guard("checkBoxIdioms", "box-code idioms", _box_code_input),
+    Guard("checkBoxCodeCompiles", "box code compiles", _compiled_transcript),
     Guard(
         "citationGates",
         "citation and documentation contracts",
@@ -339,6 +417,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--skip",
+        metavar="TASK,...",
+        default="",
+        help=(
+            "guard tasks not to run because the caller just regenerated their artifacts, which makes "
+            "their drift check true by construction (tools/merge_regen.py passes these)"
+        ),
+    )
+    parser.add_argument(
         "--report",
         action="store_true",
         help=(
@@ -364,7 +451,7 @@ def _report(selected: list[Guard], scope: str) -> int:
     return 0
 
 
-def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
+def _run_merge_check(repo: Path, since: str, report: bool = False, skip: frozenset[str] = frozenset()) -> int:
     """Guard whatever a merge just brought in.
 
     Deliberately advisory. Git ignores a ``post-merge`` hook's exit status, so this cannot and
@@ -377,7 +464,7 @@ def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
         return 0
 
     changed = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMRD", f"{since}..HEAD")
-    selected = guards_for_paths(changed)
+    selected = [guard for guard in guards_for_paths(changed) if guard.task not in skip]
     if not selected:
         return 0
     if report:
@@ -389,7 +476,7 @@ def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
         + f" (changed by {since}..HEAD)"
     )
     command = [str(repo / "gradlew"), "--continue", *(guard.task for guard in selected)]
-    code = subprocess.run(command, cwd=repo).returncode
+    code = _run_with_change_list(command, repo, changed)
     if code != 0:
         tasks = " ".join(guard.task for guard in selected)
         print(
@@ -406,6 +493,23 @@ def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
             file=sys.stderr,
         )
     return code
+
+
+def _run_with_change_list(command: list[str], repo: Path, changed: Iterable[str]) -> int:
+    """Run *command* with AFIELD_GUARD_CHANGED_PATHS_FILE naming the changed paths.
+
+    The box-code guards read it to check only what changed; the other guards ignore it.
+    """
+    import os
+    import tempfile
+
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", prefix="guard-changed-", delete=False) as listing:
+        listing.write("\n".join(changed) + "\n")
+    try:
+        env = {**os.environ, "AFIELD_GUARD_CHANGED_PATHS_FILE": listing.name}
+        return subprocess.run(command, cwd=repo, env=env).returncode
+    finally:
+        os.unlink(listing.name)
 
 
 def _rev_exists(repo: Path, rev: str) -> bool:
@@ -425,7 +529,7 @@ def main(argv: list[str] | None = None) -> int:
     repo = _repo_root()
 
     if args.since:
-        return _run_merge_check(repo, args.since, args.report)
+        return _run_merge_check(repo, args.since, args.report, frozenset(filter(None, args.skip.split(","))))
 
     staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
     selected = list(GUARDS) if args.all else guards_for_paths(staged)
@@ -452,7 +556,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print("generated-artifact guard: " + ", ".join(guard.description for guard in selected))
     command = [str(repo / "gradlew"), "--continue", *(guard.task for guard in selected)]
-    return subprocess.run(command, cwd=repo).returncode
+    if args.all:
+        return subprocess.run(command, cwd=repo).returncode
+    return _run_with_change_list(command, repo, staged)
 
 
 if __name__ == "__main__":

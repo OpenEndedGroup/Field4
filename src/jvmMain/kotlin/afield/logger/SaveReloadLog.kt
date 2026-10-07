@@ -3,12 +3,15 @@ package afield.logger
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
 object SaveReloadLog {
     private val logPath: Path = Paths.get(System.getProperty("user.home"), ".afield", "logs", "save_reload.log")
+    private val rolledPath: Path = logPath.resolveSibling("save_reload.log.1")
+    private const val maxBytes = 50L * 1024 * 1024
     private val lock = Any()
     private val formatter = DateTimeFormatter.ISO_INSTANT
 
@@ -34,6 +37,10 @@ object SaveReloadLog {
         }
         synchronized(lock) {
             Files.createDirectories(logPath.parent)
+            // Roll to save_reload.log.1 past the cap; this file once grew to 2 GB unbounded.
+            if (Files.exists(logPath) && Files.size(logPath) >= maxBytes) {
+                Files.move(logPath, rolledPath, StandardCopyOption.REPLACE_EXISTING)
+            }
             Files.writeString(
                 logPath,
                 line,

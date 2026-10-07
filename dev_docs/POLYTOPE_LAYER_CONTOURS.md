@@ -142,7 +142,10 @@ Only the fill-rule comparison works.
   to snippet top level and passing the series positionally fixes both. Same family as
   `dev_docs`-recorded K2 REPL snippet-declaration defects: the snippet path missing what the `.kts`
   script path has. The same code compiled and ran without complaint as ordinary `jvmMain` Kotlin,
-  which is how it was isolated.
+  which is how it was isolated. *(2026-10-04: the nested-function half was not the snippet path but
+  the Wither plugin's IR pass, which threw on any call, as a statement, to a local function. Fixed in
+  `libs/wither-plugin.jar`; see `dev_docs/k2_repl_provide_delegate.md`, Defect B. The vararg-spread
+  failure was not re-tested.)*
 - **`embed=true` on a `diffstatic_runner` fence already emits the image.** An `![...](...)` line
   after the fence is a second copy of the same asset. The alt text belongs in an `alt="..."` fence
   attribute, and `alt` is not part of the capture digest — changing it re-runs the build with cache

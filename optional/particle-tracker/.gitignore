@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+engine/particle-video
+engine/tests
+*.pvt
+*.pvt.run.json

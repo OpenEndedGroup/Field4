@@ -3,11 +3,9 @@ package afield.four.synth
 
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Subharmonic synthesis: follow the pitch of a roughly monophonic input and generate a new tone
@@ -299,68 +297,29 @@ class SubharmonicQuadPLL(
     releaseTimeSeconds: Double = 0.06,
     val initialHz: Double = 100.0,
 ) : SubharmonicTracker(sampleRate, division) {
-    private val minOmega = twoPi * minHz / sampleRate
-    private val maxOmega = twoPi * maxHz / sampleRate
-    private val wn = twoPi * bandwidthHz / sampleRate
-    private val kp = 2.0 * damping * wn
-    private val ki = wn * wn
-    private val kf = if (acquisitionTimeSeconds > 0.0) 1.0 - smoothing(acquisitionTimeSeconds) else 0.0
-    private val attack = smoothing(attackTimeSeconds)
-    private val release = smoothing(releaseTimeSeconds)
-    private val hilbert = HilbertPair()
+    /** Reusable analysis; [process] advances it once and retains the original sub oscillator. */
+    val phaseTracker = QuadPhaseTracker(sampleRate, minHz, maxHz, bandwidthHz, damping,
+        acquisitionTimeSeconds, gateLevel, attackTimeSeconds, releaseTimeSeconds, initialHz)
 
-    private val lockCoeff = smoothing(0.01)
-
-    private var phase = 0.0
-    private var lastI = 0.0
-    private var lastQ = 0.0
-
-    /** `cos` of the phase error, smoothed over 10 ms: 1 when the loop sits on the input's phase. */
-    private var lock = 0.0
-
-    /** True while the input is above [gateLevel] and the loop is in phase with it. */
-    var locked = false; private set
+    /** The latest analysis, owned and updated by the audio thread. */
+    val state: TrackedPhaseState get() = phaseTracker.state
+    val trackedPhase: Double get() = state.phase
+    val phaseAdvance: Double get() = state.phaseAdvance
+    val confidence: Double get() = state.confidence
+    val locked: Boolean get() = state.locked
 
     init { reset() }
 
     override fun track(x: Double) {
-        hilbert.process(x)
-        val i = hilbert.i; val q = hilbert.q
-        val mag = sqrt(i * i + q * q)
-
-        val target = if (mag > gateLevel) mag else 0.0
-        val c = if (target > envelope) attack else release
-        envelope = c * envelope + (1.0 - c) * target
-
-        val gateOpen = mag > gateLevel
-        if (gateOpen) {
-            val c = cos(phase); val s = sin(phase)
-            val error = (i * c - q * s) / mag             // sin(θ − φ̂)
-            lock = lockCoeff * lock + (1.0 - lockCoeff) * ((q * c + i * s) / mag)   // cos(θ − φ̂), smoothed
-            if (kf > 0.0 && lock < LOCK_THRESHOLD && lastI * lastI + lastQ * lastQ > gateLevel * gateLevel) {
-                // phase of z_n · conj(z_{n-1}), with z = q + j·i
-                val advance = atan2(i * lastQ - q * lastI, q * lastQ + i * lastI)
-                if (advance > 0.0) omega += kf * (advance - omega)
-            }
-            omega = (omega + ki * error).coerceIn(minOmega, maxOmega)
-            phase = wrap(phase + omega + kp * error)
-        } else {
-            phase = wrap(phase + omega)
-        }
-        locked = gateOpen && lock >= LOCK_THRESHOLD
-        lastI = i; lastQ = q
-    }
-
-    private companion object {
-        /** Smoothed `cos(θ − φ̂)` above which the loop counts as in phase and the discriminator rests. */
-        const val LOCK_THRESHOLD = 0.9
+        val s = phaseTracker.process(x.toFloat())
+        omega = s.omega
+        envelope = s.level
     }
 
     override fun reset() {
         super.reset()
-        hilbert.reset()
-        phase = 0.0; lastI = 0.0; lastQ = 0.0; locked = false; lock = 0.0
-        omega = (twoPi * initialHz / sampleRate).coerceIn(minOmega, maxOmega)
+        phaseTracker.reset()
+        omega = state.omega
     }
 }
 

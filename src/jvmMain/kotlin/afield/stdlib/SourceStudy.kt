@@ -170,7 +170,7 @@ class SourceStudy<T>(
         revisions[key]?.let { return it }
         if (key == EMPTY) throw StudyRejection("No checked revision yet; make the first edit against 'empty'.")
         if (!key.matches(REVISION_ID)) throw StudyRejection("Unknown revision '$key'")
-        val sourceFile = File(directory, "$key.$extension")
+        val sourceFile = revisionSourceFile(key)
         if (!sourceFile.isFile) throw StudyRejection("Unknown revision '$key'")
         val source = sourceFile.readText()
         if (key.substringAfter('-') != hash(source).take(12)) throw StudyRejection("Revision source changed on disk: $key")
@@ -182,6 +182,41 @@ class SourceStudy<T>(
     }
 
     private data class Meta(val parent: String?, val description: String, val created: String?)
+
+    // Metadata owns <id>.json. JSON-authored studies need a separate source path;
+    // otherwise an edit appears to work from the in-memory cache but loses its
+    // durable source as soon as the metadata is written.
+    private fun revisionSourceFile(id: String): File =
+        File(directory, if (extension == "json") "$id.source.json" else "$id.$extension")
+
+    /** Read an exact saved source for history inspection without compiling or re-admitting it. */
+    @Synchronized
+    fun savedSource(id: String): String {
+        require(id.matches(REVISION_ID)) { "Unknown revision '$id'" }
+        val source = revisionSourceFile(id).readText()
+        check(id.substringAfter('-') == hash(source).take(12)) { "Revision source changed on disk: $id" }
+        return source
+    }
+
+    /** Create a named saved child without admission, activation, live source changes or moving HEAD. */
+    @Synchronized
+    fun forkSaved(id: String, name: String): String {
+        require(name.isNotBlank() && name.length <= 120 && name.none { it.isISOControl() }) { "Use a branch name of 1–120 printable characters" }
+        val source = savedSource(id)
+        val parentMeta = mapper.readTree(File(directory, "$id.json"))
+        require(allRevisions().none { it.description == name }) { "State name already exists: $name" }
+        val number = allRevisions().maxOfOrNull { it.id.substringBefore('-').removePrefix("r").toLong() }?.plus(1) ?: 1
+        val child = "r$number-${hash(source).take(12)}"
+        val metadata = mapper.createObjectNode().apply {
+            put("id", child); put("parent", id); put("description", name); put("branchName", name)
+            put("created", Instant.now().toString()); put("sourceHash", hash(source))
+            parentMeta.get("facts")?.let { set<com.fasterxml.jackson.databind.JsonNode>("facts", it) }
+        }
+        // Metadata publishes the node only after its source exists. Never alter HEAD or live source.
+        java.nio.file.Files.writeString(revisionSourceFile(child).toPath(), source, java.nio.file.StandardOpenOption.CREATE_NEW)
+        java.nio.file.Files.writeString(File(directory, "$child.json").toPath(), mapper.writeValueAsString(metadata), java.nio.file.StandardOpenOption.CREATE_NEW)
+        return child
+    }
 
     private fun readMeta(id: String): Meta {
         val node = mapper.readTree(File(directory, "$id.json"))
@@ -263,7 +298,7 @@ class SourceStudy<T>(
         val id = "r$number-${hash(source).take(12)}"
         val parent = active.takeUnless { it == EMPTY }
         // The durable candidate is written before publication; an unreferenced file after a conflict is harmless.
-        File(directory, "$id.$extension").writeText(source)
+        revisionSourceFile(id).writeText(source)
         File(directory, "$id.json").writeText(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(linkedMapOf(
             "id" to id, "parent" to parent, "description" to description,
             "created" to Instant.now().toString(), "sourceHash" to hash(source), "facts" to admitted.facts
@@ -314,37 +349,27 @@ object BoxStudies {
      * in this session it sends nothing; this sends the output message itself.
      */
     fun show(box: afield.Box, channel: String, html: String) {
-        @Suppress("UNCHECKED_CAST")
-        val shown = (box.getPropertyRaw(SHOWN, null) as? MutableMap<String, String>)
-            ?: java.util.concurrent.ConcurrentHashMap<String, String>().also { box.properties[SHOWN] = it }
-        shown[channel] = html
-        afield.send(afield.Message("set-output").payload(afield.Set_output(box.id, "outputarea", channel, html)))
-        afield.send(afield.Message("output-control").payload(afield.OutputControl(uid = box.id, action = "open", channel = channel)))
+        // Captures and late pages must see the same output inventory as ordinary display calls.
+        box.output.retainedAreas.put(channel, html)
+        box.output.retainedAreas.control("open", channel)
+        afield.sendBoxOutput(box, afield.Message("set-output").payload(afield.Set_output(box.id, "outputarea", channel, html)))
+        afield.sendBoxOutput(box, afield.Message("output-control").payload(afield.OutputControl(uid = box.id, action = "open", channel = channel)))
     }
-
-    /** Where [show] remembers the last card per channel, so a page that arrives later can be given it. */
-    private const val SHOWN = "_boxStudiesShown"
 
     /** How long a page that has just attached is given to receive its boxes before their cards follow. */
     private const val REPLAY_DELAY_MS = 2500L
 
     /**
-     * Send [session] — a page that has just attached to [document], already open — the last card [show]
-     * put in each channel of each of its boxes. A card is drawn by library code rather than by a run the
-     * page could see, so without this a page that arrives after it (a reload, a second browser, the
-     * automation browser) shows the box with no card at all. The cards follow once the page has had
-     * time to receive the boxes they belong to.
+     * Replay the current output inventory to a newly attached [session] after its boxes arrive.
+     * Library cards and ordinary output share this inventory, including replacements and clears.
+     * The frontend's normal output replay also uses it; neither path resurrects a cleared card.
      */
     @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
     fun replayTo(session: io.ktor.websocket.WebSocketSession, document: afield.SessionInformation) {
         kotlinx.coroutines.GlobalScope.launch {
             kotlinx.coroutines.delay(REPLAY_DELAY_MS)
             document.boxes.values.toList().forEach { box ->
-                @Suppress("UNCHECKED_CAST")
-                (box.getPropertyRaw(SHOWN, null) as? Map<String, String>)?.forEach { (channel, html) ->
-                    afield._send(session, afield.Message("set-output").payload(afield.Set_output(box.id, "outputarea", channel, html)))
-                    afield._send(session, afield.Message("output-control").payload(afield.OutputControl(uid = box.id, action = "open", channel = channel)))
-                }
+                box.output.retainedAreas.snapshot(box.id).forEach { afield._send(session, it) }
             }
         }
     }

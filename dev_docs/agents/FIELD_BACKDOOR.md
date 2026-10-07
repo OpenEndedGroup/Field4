@@ -58,6 +58,27 @@ given. Automated servers also decline to update the interactive
 preference can name a deleted sibling worktree, while scratch state belongs to
 the checkout that launched it.
 
+For the same reason, an automated server writes its completion-interaction log, AI4
+tool I/O, tool evidence and box captures under `build/field-automation-logs/`, not
+`~/.afield/logs/`, where ranking work and `tools/ai_tool_usage.py` would read them as
+the user's own sessions (`automation_log_environment` in
+`tools/verification_runtime.py`, shared by the backdoor, the smoke, docs and UI
+runners, `field_session.py` and `run_desktop_playwright.py`). The AI request ledger
+(`~/.afield/logs/ai_usage/`) stays machine-wide, because agent turns spend real
+tokens on the same key.
+
+Code-use telemetry follows the logs: an automated server, and every `run-jvm-main`
+child it spawns, records into `build/field-automation-logs/code-use/field-code-use.sqlite`
+(`AFIELD_CODE_USE_PATH`), not `~/.afield/code-use/`. The AI4 code-use tools and
+`/api/code-use/*` routes on that server therefore see only this checkout's runs. For
+`failures`, which is what an agent fixing its own error needs, that is the point. The
+history-mining kinds (`line-callers`, `hot-symbols`, `early-document-symbols`, and the
+peer callers in `related-source-for-code` and `semantic-analyze`) start empty in a
+fresh worktree. To ask them about the user's history, attach to the user's Field
+(`--attach-existing`), which queries its own database. Gradle's JavaExec and test JVMs
+(`checkAgentTranscripts` among them) and a Field launched by hand still write to
+`~/.afield/code-use/`.
+
 A Field the backdoor starts is `./gradlew runJvm`, so the first launch from a fresh
 worktree compiles everything (Kotlin JVM + JS, webpack) before the JVM exists. The
 startup wait follows the managed-server log (`ManagedStartupWatch` in
@@ -457,19 +478,32 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 - `--chat-box <box>` (live only) runs the task as that box's real AI4 panel turn (`ai-assist`,
   kind `general`), so the exchange lands in its chat history. The per-call tool log then stays with
   the panel.
+- A live panel turn may outlast the observer's ten-minute wait. Its result then says
+  `verdict: running` with `chatBox` identifying the continuing turn; no completion checks
+  have run. Read that chat's current history/status and retained tool/build results.
+  An observation timeout is not authorization to submit the same work again.
+- A panel provider failure returns `verdict: error`, its failure message and the
+  retained partial reply. Completion checks do not run on that partial work, and
+  no second user turn is appended. A stopped running flag alone is not success.
 - The same tools are in every AI4 chat. `agent-task` is a headless entry into the AI4 chat turn,
   not a separate agent.
 - After the task the backdoor refreshes its snapshot, so later commands can name the boxes the agent
   made.
-- `agent-eval [--mode scripted|live] [--ids primes,wire-two] [--max-rounds N]` runs the twelve-task
-  suite, each task in its own headless scratch document. Live runs are capped at 12 tasks and 32
-  rounds. The same two operations exist over HTTP as `POST /api/agent-task` and
+- `agent-eval [--mode scripted|live] [--ids primes,wire-two] [--max-rounds N]` runs the
+  seventeen-task suite, each task in its own headless scratch document. Live runs are capped at 17
+  tasks and 32 rounds. The same two operations exist over HTTP as `POST /api/agent-task` and
   `POST /api/agent-eval` (loopback, same-site only).
 - `agent-eval --lessons on|off` pins AI4's eval-distilled lessons for every task, `--distil`
   rewrites the lessons file from the run's tool misuse, and `--blind` withholds
   `ViewBoxOutputRequest` (the visual tasks' counterfactual). Over HTTP, `distilFrom: <report.json>`
   re-distils a saved report without running anything. The report carries `misuseCalls`,
   `imagesSeen`, and leak evidence (`documentsBefore`/`documentsAfter`, `capturePagesOpenAfter`).
+- `--programs off` withholds `RunToolProgramRequest` and `--context legacy` puts the instructions
+  back inside the stored message (both on `agent-task` and `agent-eval`: the A/B arms in
+  [`../ai/AI4_PI_LESSONS.md`](../ai/AI4_PI_LESSONS.md)); `agent-task --follow-up "..."` (repeatable)
+  adds user turns to the same conversation. Check kinds `effects-absent:<EFFECT>`,
+  `effects-present:<EFFECT>` and `tool-used:<Name>` read the turn's tool calls, a tool program's
+  nested ones included.
 - Picture checks: `output-picture:B` (a capture of B's output is not blank) and
   `output-colour:B:#rrggbb:0.05` (at least that share of it is that colour), and
   `output-rising:B:#c1,#c2:N` (at least N bars in those colours, rising left to right, the tallest
