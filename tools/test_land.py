@@ -396,6 +396,45 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
         status = self.land(self.primary, "status", "--plain")
         self.assertNotIn("Traceback", status.stderr, status.stderr)
 
+    def _hanging_lander(self) -> subprocess.Popen:
+        self.land(self.branch_with("omicron", "HANGS"), "enqueue")
+        lander = subprocess.Popen([sys.executable, str(LAND), "run", "--worktree", str(self.lander)],
+                                  cwd=self.primary, env=self.env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        record = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue/build.json"
+        for _ in range(200):
+            if record.exists():
+                break
+            time.sleep(0.1)
+        self.assertTrue(record.exists(), "the build never started")
+        return lander, json.loads(record.read_text())["pgid"]
+
+    @staticmethod
+    def _alive(pgid: int) -> bool:
+        try:
+            os.killpg(pgid, 0)
+            return True
+        except OSError:
+            return False
+
+    def test_sigterm_to_the_lander_stops_its_build(self) -> None:
+        lander, pgid = self._hanging_lander()
+        lander.terminate()                       # what launchctl kickstart -k sends
+        lander.wait(timeout=30)
+        for _ in range(100):
+            if not self._alive(pgid):
+                break
+            time.sleep(0.1)
+        self.assertFalse(self._alive(pgid), "the build outlived its lander")
+
+    def test_a_new_lander_stops_a_build_orphaned_by_kill_9(self) -> None:
+        lander, pgid = self._hanging_lander()
+        lander.kill()                            # no chance to clean up
+        lander.wait(timeout=30)
+        self.assertTrue(self._alive(pgid), "precondition: kill -9 leaves the build running")
+        self.env["FIELD_LAND_WATCHDOG_MIN"] = "0.05"  # the re-landed HANGS branch must not take 30 min
+        self.run_lander()                        # the next lander starts...
+        self.assertFalse(self._alive(pgid), "...and must stop the orphan before landing anything")
+
 
 if __name__ == "__main__":
     unittest.main()
