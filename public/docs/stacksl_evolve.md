@@ -16,7 +16,7 @@ print(run.best!!.text)
 showImg(run.contactSheet(), caption = "the target, the evolved program, the random control's best")
 ```
 
-It takes about a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws both programs at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored.
+It takes under a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws both programs at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored.
 
 `run.best!!.text` is the program. It is ordinary StackSL and runs anywhere StackSL runs, including `StackSLCpu.renderStill(text)` and a GPU shader box.
 
@@ -36,7 +36,7 @@ Simple, high-contrast pictures work best: flat shapes, a few colours, structure 
 
 The default score is LPIPS, a learned perceptual distance (`Lpips.distance(a, b)` in [`afield.onnx`](reference/machine-learning.md)): both pictures go through the convolution stages of an image-recognition network, and the differences between their features are weighted by a layer trained on people's judgements of which images look alike. It compares edges, blobs and textures, not pixel values. The first time it runs on a machine Field builds the model, which takes about a minute.
 
-`metric = StackSLMetric.PIXEL` scores by average pixel error instead. Run on the same target with the same budget, the two find very different programs:
+`metric = StackSLMetric.PIXEL` scores by average pixel error instead. Here are both on the bands target, 400 renders each:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl_evolve/bands-metrics.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="900" name="stacksl-evolve-bands-metrics"}
 :::static
@@ -61,7 +61,9 @@ showImg(
 :::endfold
 ```
 
-Average pixel error is satisfied first by getting the target's overall colour balance right, and a search finds that long before it finds the layout. A program that draws mostly the background colour, with any texture at all, scores well against a target that is mostly background. LPIPS gives no credit for that, so the search has to find edges and shapes where the target has them.
+At this seed and budget both searches found stripes. Pixel error's are vertical, too many and in the wrong colours; LPIPS's are diagonal. Neither is the target. Run with seed 11 and 700 renders instead (the smoke test does), pixel error draws a flat grey field and LPIPS three soft vertical bands. One run on one target is an anecdote, which is why the comparison below is across five targets.
+
+What the two scores reward is different, and that shows across targets more than in any one run. Average pixel error is satisfied first by getting the target's overall colour balance right, and a search finds that long before it finds the layout: a program that draws mostly the background colour scores well against a target that is mostly background, whether or not the shape is there. LPIPS gives no credit for colour balance alone.
 
 `selection = Selection.LEXICASE` matters with LPIPS. LPIPS compares features wherever they are in the picture, so on its own it accepts the right texture in the wrong place. Under lexicase each quadrant of the picture is scored separately, and a program is kept when it is the best on some quadrant, so the search has to get each part right. `StackSLMetric.LPIPS_PIXEL` averages the two scores, for when exact colours matter more than shapes.
 
@@ -83,7 +85,21 @@ Every result is reported against the random control at the same budget, because 
 !!! note "Beating the control is not resembling the target"
     "Evolution beat the control" means the evolved program **scores** higher under the metric the search optimised. It does not mean the picture looks like the target. Under average pixel error, evolution beat the control on four of five targets while drawing dark diagonal streaks for a yellow disc and a vertical gradient for four quadrants. Look at the contact sheet before believing a score.
 
-`StackSLEvolveGallery` (the `stacksl.evolve.gallery` smoke test) runs the comparison across several targets and checks resemblance separately, with a measure neither search optimises: each pixel of a render is labelled with the target colour it is nearest, and the labels are compared with the target's own (`StackSLLayout.layoutAgreement`, a Cohen's kappa: 1 is exact, 0 is chance). RESULTS_TABLE
+`StackSLEvolveGallery` (the `stacksl.evolve.gallery` smoke test) runs the comparison across several targets and checks resemblance separately, with a measure neither search optimises: each pixel of a render is labelled with the target colour it is nearest, and the labels are compared with the target's own (`StackSLLayout.layoutAgreement`, a Cohen's kappa: 1 is exact, 0 is chance).
+
+Run at 800 renders per side on all five targets (`--budget 800 --arms pixel,lpips,lex,mix,mixlex`), the two LPIPS searches beat their random controls in their own score on every target, and pixel error beat its control on only two. What the winners look like is another matter:
+
+| target | pixel error | LPIPS | LPIPS, lexicase |
+| --- | --- | --- | --- |
+| `spot`, a yellow disc | a flat dark field | white field with red streaks | a green wedge in one corner |
+| `rings`, concentric rings | a near-black field | closed ring-like contours, off-centre | sparse diagonal lines |
+| `bands`, six vertical bands | a grey field | very fine vertical stripes | three soft vertical bands |
+| `checker`, a 4×4 checkerboard | a flat grey-violet field | magenta with horizontal streaks | a visible grid of cells, in blue and white |
+| `quadrants`, four flat quadrants | a horizontal red-to-green gradient | four flat blocks, three in the right colours | four flat blocks, three in the right colours |
+
+Layout agreement says the same thing more bluntly: 0.30 for pixel error on `quadrants` against 0.64 and 0.65 for the two LPIPS searches, and close to 0 for most of the rest. It is position-exact, so three bands out of phase with the target's six score −0.70 even though they read as bands. No search drew a disc for `spot`.
+
+The smoke test runs a cheaper version of this, three targets and two searches at 700 renders each, and fails if LPIPS with lexicase stops beating its control or stops out-drawing pixel error on `quadrants`.
 
 ??? aside "How the score came to be LPIPS"
     The first version of this search (2026-09-06) scored by average pixel error and produced the dark streaks and gradients described above. A home-made structural score (multi-scale SSIM plus colour error) was tried next, on 2026-10-07: it produced a white disc for the disc target and bands for the bands target, but its winner for the rings target was fine stripes that only looked like rings at 32 pixels. It was replaced with LPIPS rather than tuned. LPIPS is a published, learned metric with a reference implementation that Field's export is checked against (`tools/export_lpips_onnx.py`; agreement 1.2×10⁻⁷).

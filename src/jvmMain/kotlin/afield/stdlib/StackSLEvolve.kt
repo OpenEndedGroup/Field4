@@ -1383,7 +1383,7 @@ class StackSLEvolveRun(
      */
     fun contactSheet(side: Int = 160): Img {
         val panels = ArrayList<Pair<String, Img>>()
-        panels += "target ${target.name}" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))
+        panels += "target" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))
         evolved.best?.genome?.let { panels += "evolved %.2f".format(evolvedSkill) to objective.render(it, side).toImg() }
         control.best?.genome?.let { panels += "random %.2f".format(controlSkill) to objective.render(it, side).toImg() }
         return montage(panels, columns = panels.size, cellSide = side + 10)
