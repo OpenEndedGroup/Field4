@@ -120,6 +120,11 @@ def _transcript_input(path: str) -> bool:
     )
 
 
+def _demo_input(path: str) -> bool:
+    # A new demo has no existing ledger entry to touch, so its own path must select the guards.
+    return _under(path, "dev_docs/agents/demos")
+
+
 def _box_code_input(path: str) -> bool:
     # The checker's own definition of its corpus, so the two cannot disagree about a path.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -292,6 +297,9 @@ GUARDS = (
         ("public/docs/assets/agent_transcripts",),
     ),
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
+    Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
+    Guard("checkAgentDemos", "saved demo consistency", _demo_input),
+    Guard("checkPythonTools", "demo registration and corpus ledgers", _demo_input),
     Guard(
         "checkCompletionCorpusFixtures",
         "completion-corpus fixtures",

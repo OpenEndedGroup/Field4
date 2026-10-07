@@ -83,6 +83,19 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             ["checkAgentTranscripts", "checkAgentTranscriptIndex", "checkBoxIdioms", "checkBoxCodeCompiles"],
         )
 
+    def test_new_demo_selects_its_registration_and_drift_guards(self) -> None:
+        self.assertEqual(
+            task_names(["dev_docs/agents/demos/new_demo/metadata.edn"]),
+            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools"],
+        )
+        self.assertEqual(
+            task_names(["dev_docs/agents/demos/new_demo/build.yaml"]),
+            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools"],
+        )
+
+    def test_unrelated_agent_document_does_not_select_demo_guards(self) -> None:
+        self.assertEqual(task_names(["dev_docs/agents/notes.md"]), [])
+
     def test_a_lesson_sidecar_selects_the_idiom_check_only(self) -> None:
         self.assertEqual(
             task_names(["public/docs/assets/canonical_graphics/abc_code_.kt"]),
