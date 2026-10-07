@@ -168,11 +168,18 @@ enum class ThreeUpAxis { Y, Z }
  * [faces] groups connected coplanar triangles; Boolean provenance edges are not selectable seams.
  */
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class ThreePartTopology(
     val positions: DoubleArray,
     val indices: IntArray,
     val edges: List<List<Int>>,
     val faces: IntArray,
+    /**
+     * Wire only: the four arrays above, sent empty, as base64 of little-endian Float64 (`positions`) and
+     * Int32 (`indices`, `faces`, and `edges` flattened in pairs). Set by `packedForWire` (`ThreeWire.kt`).
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    internal val base64: Map<String, String>? = null,
 )
 
 /** A selection on one exact artifact. Interpolated points locate a pick, not a machining tolerance. */
