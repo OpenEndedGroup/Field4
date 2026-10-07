@@ -208,6 +208,7 @@
   {"doc": "geometry_from_disk", "box": "disk_glb", "codeSha256": "1f67a6896e92af6c", "codeLines": 43, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "geometry_from_disk", "box": "disk_ply", "codeSha256": "4fa9e4034b7a8364", "codeLines": 55, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "geometry_from_disk", "box": "disk_roundtrip", "codeSha256": "355a5387cd777d4a", "codeLines": 52, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "gesture_to_keyframes", "box": "gk_bake", "codeSha256": "bae930bf540904f4", "codeLines": 39, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "gpu_probe_bench", "box": "probe_caught", "codeSha256": "033240e81b46ba8d", "codeLines": 41, "receivers": ["afield.Box"], "preamble": "gpu_probe_bench__probe_caught.preamble.kt"},
   {"doc": "gpu_probe_bench", "box": "probe_chain", "codeSha256": "b61d1e347f78b0d8", "codeLines": 194, "receivers": ["afield.Box"], "preamble": "gpu_probe_bench__probe_chain.preamble.kt"},
   {"doc": "gpu_probe_bench", "box": "probe_hello", "codeSha256": "f90c3a0891ad3016", "codeLines": 50, "receivers": ["afield.Box"], "preamble": "gpu_probe_bench__probe_hello.preamble.kt"},

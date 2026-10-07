@@ -147,6 +147,10 @@ object DemoTranscriptExecSmokeTest {
         // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
         // through the real box path.
         "keyframe_editor",
+        // A gesture take baked into two keyframe lanes: one launched loop that bakes on first run and
+        // plays the pad, its playhead and both lanes, stopped after 90 frames. Pure CPU; what running it
+        // buys is bakeGesture, toKeyframes and setTake through the real box path.
+        "gesture_to_keyframes",
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",
