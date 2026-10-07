@@ -25,6 +25,8 @@ calls = pathlib.Path(__file__).resolve().parents[2] / "REGEN_CALLS"
 calls.write_text(calls.read_text() + "x" if calls.exists() else "x")
 if pathlib.Path("HANGS").exists():
     import time; time.sleep(600)
+if pathlib.Path("SLOW").exists():
+    import time; time.sleep(1.5)
 if pathlib.Path("BREAKS").exists() or (pathlib.Path("PAIR_A").exists() and pathlib.Path("PAIR_B").exists()):
     print("merge_regen: a guard failed on the batch", file=sys.stderr)
     sys.exit(1)
@@ -308,6 +310,24 @@ class LandQueueTest(unittest.TestCase):
         mine = self.land(Path(self._tmp.name) / "wedge", "mine").stdout
         self.assertIn("watchdog", mine)
         self.assertEqual(self.guard_calls(), 2, "one retry, then the bounce")
+
+    def test_a_build_holds_the_machine_awake_until_it_exits(self) -> None:
+        # A stand-in for caffeinate that records how it was asked, and whether the build was still
+        # running then; the real one keeps a laptop from sleeping through a landing.
+        fake = Path(self._tmp.name) / "fake-caffeinate"
+        record = Path(self._tmp.name) / "CAFFEINATE"
+        fake.write_text(f"""#!/bin/sh
+pid="$3"
+if kill -0 "$pid" 2>/dev/null; then alive=alive; else alive=gone; fi
+echo "$1 $2 $alive" > {record}
+while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
+""")
+        fake.chmod(0o755)
+        self.env["FIELD_LAND_CAFFEINATE"] = str(fake)
+        self.land(self.branch_with("awake", "SLOW"), "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"awake": "landed"})
+        self.assertEqual(record.read_text().split(), ["-i", "-w", "alive"])
 
 
 if __name__ == "__main__":
