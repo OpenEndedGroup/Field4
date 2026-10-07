@@ -7,7 +7,7 @@ description: >
   a rerun. Demo for `GestureHandle.toKeyframes` / `Box.bakeGesture` / `GestureHandle.setTake`
   (`src/jvmMain/kotlin/afield/math/gestureKeyframes.kt`, docs in public/docs/keyframe_editor.md).
 
-  Capture-only, so it lives under transcripts/docs_capture/ (no starting-point bundle needed).
+  A welcome-screen starting point: open it, run the box, then edit a lane and press "replay lanes".
 operations:
   - create:
       box: gk_bake
@@ -54,3 +54,7 @@ operations:
                   y.setTime(t)
               }
           }
+  - launch: { box: gk_bake, property: code }
+  - await: { wait: pending }
+  - wait: { frames: 90 }
+  - stop: { box: gk_bake }

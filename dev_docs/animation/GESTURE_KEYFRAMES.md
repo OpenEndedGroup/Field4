@@ -2,7 +2,7 @@
 
 Code: `src/jvmMain/kotlin/afield/math/gestureKeyframes.kt`, `GestureHandle` in `afield/visualizers.kt`.
 Test: `src/jvmTest/kotlin/afield/GestureKeyframesTest.kt`. User docs: `public/docs/keyframe_editor.md#from-a-performed-gesture`.
-Demo: `dev_docs/agents/transcripts/docs_capture/gesture_to_keyframes.yaml` (box `gk_bake`).
+Demo: `dev_docs/agents/transcripts/gesture_to_keyframes.yaml` (box `gk_bake`).
 
 ## Method
 Joint Ramer–Douglas–Peucker over the (t, x, y) samples, error measured at equal time (how a lane is
