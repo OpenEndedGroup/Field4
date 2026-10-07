@@ -86,7 +86,8 @@ class CoroutineProfilingTest {
      * its evaluation in the box's context, so ~6.5 MB of script classloader was charged to the box.
      * The exemption has to survive `Box.withBoxContext`, which re-wraps the work with a box origin.
      */
-    @Test fun exemptFieldWorkInABoxContextIsNotChargedToTheBox() {
+    @Test
+    fun exemptFieldWorkInABoxContextIsNotChargedToTheBox() {
         val origin = owner()
         val framer = Framer()
         CoroutineProfiles.request(origin.document, CoroutineProfileRequest("start", 3.0))
