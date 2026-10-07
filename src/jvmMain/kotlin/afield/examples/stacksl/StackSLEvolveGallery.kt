@@ -120,7 +120,12 @@ object StackSLEvolveGallery {
 
     private var budget: Int = DEFAULT_BUDGET
     private var targetNames: List<String> = DEFAULT_TARGETS
-    private val atDefaults: Boolean get() = budget == DEFAULT_BUDGET && targetNames == DEFAULT_TARGETS
+
+    /** Fitness supersampling for [figureTargets]; see `StackSLImageObjective.supersample`. */
+    private const val DEFAULT_SUPERSAMPLE: Int = 1
+    private var supersample: Int = DEFAULT_SUPERSAMPLE
+    private val atDefaults: Boolean
+        get() = budget == DEFAULT_BUDGET && targetNames == DEFAULT_TARGETS && supersample == DEFAULT_SUPERSAMPLE
 
     /** One seed for every search in this file. */
     private const val SEED: Long = 11L
@@ -441,7 +446,7 @@ object StackSLEvolveGallery {
             "targets: STRUCTURE's winner puts light and dark where the target does better than PIXEL's " +
                 "on $layoutWins of ${results.size} targets (at least $MIN_LAYOUT_WINS)"
         )
-        montage(panels, columns = 4, cellSide = SHOW_DIM + 10).savePng(File(outDir, "evolve-targets.png").path)
+        montage(panels, columns = 4, cellSide = SHOW_DIM + 24).savePng(File(outDir, "evolve-targets.png").path)
     }
 
     /**
@@ -462,7 +467,9 @@ object StackSLEvolveGallery {
                     val t = target(name, FIT_DIM)
                     val cache = StackSLScoreCache()
                     fun objective(metric: StackSLMetric) =
-                        StackSLImageObjective(t, dim = FIT_DIM, parallel = false, metric = metric, cache = cache)
+                        StackSLImageObjective(
+                            t, dim = FIT_DIM, parallel = false, metric = metric, cache = cache, supersample = supersample
+                        )
                     fun evolve(metric: StackSLMetric) = PopulationSearch.evolve(
                         StackSLGenome(), objective(metric), budget, seed = SEED,
                         mu = 8, lambda = 16, tournament = 3, crossoverRate = 0.25, immigrantRate = 0.05,
@@ -711,6 +718,7 @@ object StackSLEvolveGallery {
                 "--out" -> { outPath = args.getOrNull(i + 1); i++ }
                 "--only" -> { only = args.getOrNull(i + 1)?.split(',')?.map { it.trim() }?.toSet(); i++ }
                 "--budget" -> { budget = args.getOrNull(i + 1)?.toIntOrNull() ?: DEFAULT_BUDGET; i++ }
+                "--supersample" -> { supersample = args.getOrNull(i + 1)?.toIntOrNull() ?: DEFAULT_SUPERSAMPLE; i++ }
                 "--targets" -> { targetNames = args.getOrNull(i + 1)?.split(',')?.map { it.trim() } ?: DEFAULT_TARGETS; i++ }
                 else -> if (outPath == null && !args[i].startsWith("--")) outPath = args[i]
             }
@@ -722,7 +730,7 @@ object StackSLEvolveGallery {
         println("[stacksl-evolve] output -> ${outDir.absolutePath}")
         println(
             "[stacksl-evolve] fitness ${FIT_DIM}x$FIT_DIM, presentation ${SHOW_DIM}x$SHOW_DIM, $budget evaluations " +
-                "per arm on ${targetNames.joinToString(",")}, seed $SEED, ${StackSLPalette.DEFAULT.words.size} words (" +
+                "per arm on ${targetNames.joinToString(",")}, supersample $supersample, seed $SEED, ${StackSLPalette.DEFAULT.words.size} words (" +
                 StackSLWordKind.entries.joinToString(" ") { k -> "$k=${StackSLPalette.DEFAULT.words.count { it.kind == k }}" } +
                 ")" + if (atDefaults) "" else " — NOT the default size, floors reported but not asserted"
         )

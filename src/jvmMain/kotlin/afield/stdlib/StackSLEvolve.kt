@@ -64,31 +64,33 @@ import kotlin.random.Random
  *
  * A program that compiles perfectly and renders a flat grey rectangle is the single most likely way
  * a search like this produces a fake result: two blanks agree with each other everywhere, and a
- * plain error metric will happily rank one of them first. Two committed StackSL gallery PNGs were
- * constant-colour for weeks and every percentage measured against them was measuring a blank.
+ * plain error metric will happily rank one of them first. [StackSLImageObjective] therefore scores
+ * a constant-colour render as invalid, inside the fitness function, and refuses a target that is
+ * itself blank.
  *
- * [StackSLImageObjective] therefore scores a **constant-colour render as invalid**
- * ([StackSLImageObjective.INVALID_SCORE]) rather than as a picture, inside the fitness function
- * where the search itself has to obey it — not in the report, where it would only be a caveat. It
- * also refuses to accept a target that is not itself structured, because the guard is worthless if
- * the thing being matched is blank too.
+ * ### Beating chance is not resembling the target
+ *
+ * The first version of this file scored `1 -` mean absolute RGB error, now [StackSLMetric.PIXEL].
+ * Evolution beat the random control on four of five targets under it, and the pictures mostly did
+ * not look like their targets: a yellow disc evolved into dark diagonal streaks, four quadrants
+ * into a vertical gradient. An absolute error is satisfied first by matching the target's overall
+ * colour balance, and the search found that rather than the layout. [StackSLMetric.STRUCTURE], the
+ * default, adds multi-scale SSIM ([StackSLStructure]), which scores where the light and dark are.
+ * [StackSLStructure.layoutAgreement] is the independent check, and
+ * `StackSLEvolveGallery.figureTargets` runs both metrics against each other and asserts on it.
+ * Part of the old failure was a guard, not the metric: see
+ * [StackSLImageObjective.MIN_DISTINCT_COLOURS].
  *
  * ### Cost, so the budget is chosen rather than discovered
  *
- * Measured on a ten-core machine through `StackSLCpu.renderFragment`: **~14 500 pixel-shader
- * invocations per second per core** and ~40 000 per second in aggregate with `parallel = true`, for
- * `uv 4.0 * fbm palette saturate`. That is a factor of about seven below the "roughly 10^5 per
- * second per core" that `dev_docs/STACKSL_CPU_BACKEND.md` and `StackSLCpu.renderStill` used to
- * claim (both now corrected); the *other* half of the same sentence, "512x512 of a five-octave
- * `fbm` is single-digit seconds across ten cores", is right at 6.5 s.
+ * One 32x32 candidate is about 1,000 pixel-shader invocations through `afield.stacksl.cpu`'s
+ * interpreter, which runs 1.3–1.6 x 10^4 a second per core (`dev_docs/STACKSL_CPU_BACKEND.md`):
+ * 30 ms with `parallel = true` on ten cores, 70 ms to 130 ms on one, depending on how many `fbm`
+ * octaves the program has and what else the machine is doing. Compiling and expanding the
+ * template costs 0.35 ms and is noise by comparison. A 600-evaluation search is therefore about
+ * twenty seconds, and the two-arm comparison [evolveStackSLTowards] runs about forty.
  *
- * At [DEFAULT_FITNESS_DIM] that is about 30 ms a candidate, so a 600-evaluation arm is ~20 s and
- * the whole `evolve`-against-`random` comparison for one target is under a minute. Compiling and
- * expanding the template costs 0.35 ms and is noise by comparison, which is why the compiler can be
- * called per candidate without a second thought.
- *
- * [evolveStackSLTowards] is the one-call entry point a box wants; see
- * `public/docs/stacksl_evolve.md`.
+ * [evolveStackSLTowards] is the one-call entry point a box wants; see `public/docs/stacksl_evolve.md`.
  */
 
 // ==============================================================================================
@@ -1020,8 +1022,8 @@ class StackSLScores(
  * Program text to [StackSLScores], for objectives that share one target.
  *
  * Thread-safe, so targets can be searched concurrently; but one cache serves one target at one
- * resolution, render time, pyramid depth and case grid, and the first objective to use it fixes
- * all five. A second objective that disagrees is refused rather than handed another target's
+ * resolution, supersampling, render time, pyramid depth and case grid, and the first objective
+ * to use it fixes all six. A second objective that disagrees is refused rather than handed another target's
  * scores.
  */
 class StackSLScoreCache {
@@ -1036,8 +1038,8 @@ class StackSLScoreCache {
     val size: Int get() = scores.size
 
     @Synchronized
-    internal fun claim(target: StackSLTarget, dim: Int, time: Float, pyramidLevels: Int, caseGrid: Int) {
-        val key = "${target.name}#${System.identityHashCode(target)} @$dim t=$time pyramid=$pyramidLevels cases=$caseGrid"
+    internal fun claim(target: StackSLTarget, dim: Int, time: Float, pyramidLevels: Int, caseGrid: Int, supersample: Int) {
+        val key = "${target.name}#${System.identityHashCode(target)} @$dim x$supersample t=$time pyramid=$pyramidLevels cases=$caseGrid"
         val current = owner
         require(current == null || current == key) { "this cache belongs to $current, not $key" }
         owner = key
@@ -1053,36 +1055,24 @@ class StackSLScoreCache {
 /**
  * Score a StackSL program by rendering it and comparing it to [target].
  *
- * Fitness is `1 - error`, so it is in `0..1`, higher is better, and 1.0 would be a pixel-exact
- * match. `cases` are the full-resolution measure over a [caseGrid] by [caseGrid] tiling of the
- * image, which is what makes [Selection.LEXICASE] mean something here: a program that nails the
- * corner and misses everything else is invisible to a mean and is selected by lexicase whenever
- * that corner's case comes up first. `alife_evolve.kt` already supplies lexicase *cases* — two
- * soups for the CA family — so lexicase-with-cases is not new; **cases that are regions of an
- * image** are.
+ * Fitness is in `0..1` for anything that renders a picture, higher is better, and 1.0 is a
+ * pixel-exact match. What "close" means is [metric]; see [StackSLMetric]. `cases` are the same
+ * measure over a [caseGrid] by [caseGrid] tiling of the image, which is what makes
+ * [Selection.LEXICASE] mean something here: a program that nails one corner and misses everything
+ * else is invisible to a mean and is selected by lexicase whenever that corner's case comes up
+ * first.
  *
- * ### The pyramid option, and the honest report on it
+ * [skill] rescales a fitness so that 0 is a flat fill of the target's mean colour and 1 is exact,
+ * which is the number to read: raw fitness for almost anything mid-toned sits in a band a few
+ * hundredths wide.
  *
- * [pyramidLevels] > 1 makes the error the mean of the absolute RGB error at full resolution, at
- * half, at a quarter and so on — an equally weighted box-filtered pyramid. The reasoning was that a
- * pyramid gives partial credit for getting the coarse layout right before the detail, which is the
- * incremental structure a structural search wants and which a full-resolution mean averages away.
+ * [pyramidLevels] > 1 averages the PIXEL error over a box-filtered pyramid. Measured on 2026-09-06
+ * over four targets at budget 800, three levels against one gave a summed margin over chance of
+ * +0.108 against +0.149: neutral to slightly worse, so the default is one level. The STRUCTURE
+ * metric's SSIM always uses its own three-level pyramid, [STRUCTURE_LEVELS].
  *
- * **It was built for that reason, measured, and turned out to be roughly neutral, so it is not the
- * default.** Over the same four targets, same seeds, budget 800, µ=8: three levels gave a sum of
- * margins of +0.108 against one level's +0.149, winning three of four either way. It helped on the
- * one high-frequency radial target (0.718 against 0.703) and did nothing anywhere else. Kept, and
- * kept measured by `StackSLEvolveGallery.figureMetric`, because a documented alternative that the
- * harness actually compares is worth more than a paragraph claiming it would have helped.
- *
- * The two things that *did* move the result were **tournament size** (3 rather than 2 turned a
- * 2-of-4 result into 3-of-4 with margins four times larger) and **the choice of target** — see
- * [StackSLTargets] for why every target here is high-contrast, and for the smooth one that had to
- * be thrown away.
- *
- * `behaviour` is `[spatialFrequency, colourfulness]`, both already in `0..1`, for
- * [PopulationSearch.mapElites]. Two properties of the *render* rather than of the program, so the
- * archive is a map of what the search can make rather than of how it writes it.
+ * `behaviour` is `[spatialFrequency, colourfulness]` of the render, both in `0..1`, for
+ * [PopulationSearch.mapElites].
  *
  * ### The blank guard
  *
@@ -1121,13 +1111,23 @@ class StackSLImageObjective(
      * metrics, or two arms that happen to draw the same program, pay for the render once. A cache
      * belongs to one target, one resolution and one [time]; [StackSLScoreCache] checks.
      */
-    val cache: StackSLScoreCache? = null
+    val cache: StackSLScoreCache? = null,
+    /**
+     * Render each candidate at this multiple of [dim] and average down: 1 (no supersampling) or a
+     * power of two. Without it a program can score by aliasing: stripes finer than a fitness pixel,
+     * sampled at pixel centres, can land on a pattern that resembles the target at 32 pixels and
+     * nothing at 128. Costs `supersample^2` times the render.
+     */
+    val supersample: Int = 1
 ) : Objective<StackSLProgram> {
 
     init {
         require(dim >= 2) { "fitness resolution must be at least 2, got $dim" }
         require(caseGrid >= 1) { "caseGrid must be >= 1, got $caseGrid" }
         require(pyramidLevels >= 1) { "pyramidLevels must be >= 1, got $pyramidLevels" }
+        require(supersample >= 1 && supersample and (supersample - 1) == 0) {
+            "supersample must be a power of two, got $supersample"
+        }
         require(target.raster.width == dim && target.raster.height == dim) {
             "target '${target.name}' is ${target.raster.width}x${target.raster.height} but fitness runs at ${dim}x$dim"
         }
@@ -1142,7 +1142,7 @@ class StackSLImageObjective(
     private val targetPlanes: List<List<StackSLPlane>> = StackSLPlane.rgb(target.raster).map { it.pyramid(STRUCTURE_LEVELS) }
 
     init {
-        cache?.claim(target, dim, time, pyramidLevels, caseGrid)
+        cache?.claim(target, dim, time, pyramidLevels, caseGrid, supersample)
     }
 
     /**
@@ -1181,7 +1181,7 @@ class StackSLImageObjective(
         considered++
         val s = cache?.get(genome.text) ?: run {
             val raster = try {
-                StackSLCpu.renderStill(genome.text, dim = dim, time = time, parallel = parallel)
+                renderForFitness(genome)
             } catch (t: Throwable) {
                 null
             }
@@ -1196,6 +1196,16 @@ class StackSLImageObjective(
     /** Render [genome] at [dim] — the same call `evaluate` makes, for a caller that wants the pixels. */
     fun render(genome: StackSLProgram, dim: Int = this.dim): CpuRaster =
         StackSLCpu.renderStill(genome.text, dim = dim, time = time, parallel = parallel)
+
+    /**
+     * What [evaluate] scores: [genome] at [dim], rendered at `dim * supersample` and box-filtered
+     * down, so detail finer than a fitness pixel averages out instead of aliasing.
+     */
+    fun renderForFitness(genome: StackSLProgram): CpuRaster {
+        var r = StackSLCpu.renderStill(genome.text, dim = dim * supersample, time = time, parallel = parallel)
+        while (r.width > dim) r = halve(r)
+        return r
+    }
 
     /**
      * Fitness of a program against a target at *that* target's resolution, under the same metric.
@@ -1473,10 +1483,23 @@ class StackSLEvolveRun(
 /**
  * Evolve a StackSL program toward [target], with the random control arm run beside it.
  *
- * The one call a box needs. `parallel = false` on the objective is *not* the default here even
- * though `PopulationSearch` evaluates sequentially: the parallelism is inside one render, across
- * rows, so it composes with a sequential search rather than fighting it, and at 32 rows on ten
- * cores it is worth about 2.5x.
+ * The one call a box needs:
+ *
+ * ```kotlin
+ * val run = evolveStackSLTowards(StackSLTargets.spot(32), budget = 600)
+ * print(run.summary())
+ * showImg(run.contactSheet())
+ * ```
+ *
+ * `parallel = true` (the default) splits each render's rows across cores, which composes with
+ * `PopulationSearch`'s sequential loop and is worth about 2.5x at 32 rows on ten cores. Turn it off
+ * when you run several searches on their own threads.
+ *
+ * @param metric what counts as close; [StackSLMetric.STRUCTURE] unless you are reproducing the
+ *   pixel-error version
+ * @param cache shared by both arms, so a program they both draw is rendered once; pass `null` to
+ *   render every evaluation
+ * @param supersample see [StackSLImageObjective.supersample]
  *
  * @param budget evaluations *per arm*; the evolved and control arms each get this many, so the
  *   comparison is at equal budget by construction rather than by the caller remembering to
@@ -1500,11 +1523,13 @@ fun evolveStackSLTowards(
     parallel: Boolean = true,
     metric: StackSLMetric = StackSLMetric.STRUCTURE,
     cache: StackSLScoreCache? = StackSLScoreCache(),
+    supersample: Int = 1,
     label: String = "stacksl ${target.name}"
 ): StackSLEvolveRun {
     require(budget >= 1) { "budget must be >= 1, got $budget" }
     fun objective() = StackSLImageObjective(
-        target, dim = dim, pyramidLevels = pyramidLevels, parallel = parallel, metric = metric, cache = cache
+        target, dim = dim, pyramidLevels = pyramidLevels, parallel = parallel, metric = metric, cache = cache,
+        supersample = supersample
     )
     val evolvedObjective = objective()
     val controlObjective = objective()
