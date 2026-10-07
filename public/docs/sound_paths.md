@@ -2,7 +2,7 @@
 
 You want to hear something. There is more than one way, and this page maps all of them.
 
-**Nine things in Field make samples. Five things carry samples out of the process. Four bring them
+**Ten things in Field make samples. Five things carry samples out of the process. Four bring them
 in.**
 
 ---
@@ -23,6 +23,8 @@ in.**
   through headphones. [A pattern in space](pat_spatial.md).
 * **"I want to patch it in Pure Data."** → `pure-data`. A patch inline in the box or a `.pd` file,
   once libpd is built. [Pure Data](pure_data.md).
+* **"I want to write an orchestra and score."** → `csound`. Use Csound as a box language or call it
+  from Kotlin; build libcsound once. [Csound](csound.md).
 * **"I want to write music, not DSP."** → `sonic-pi`. [Sonic Pi](sonic_pi.md).
 * **"I want it in a file, or in a docs page."** → the `wav-file` sink. Offline, deterministic.
 * **"I want a player in the box's output."** → the `box-output-player` sink.
@@ -31,7 +33,7 @@ in.**
 
 ---
 
-## The nine that make samples
+## The ten that make samples
 
 | path | what it is | needs | offline? | shares `render`? | page |
 | --- | --- | --- | --- | --- | --- |
@@ -41,11 +43,12 @@ in.**
 | `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
 | `faust-poly` | the same program played as an *instrument*: N instances of one compiled module, allocated to notes by a pattern, each note landing on the sample it was scheduled for. `class FaustVoiceBank` in `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` | nothing — as `faust` | both | **yes** | [Faust](faust.md) |
 | `pure-data` | a Pure Data patch — inline text in the box, or a `.pd` file — in a libpd instance of its own, pulled a block at a time. `class PdNode` in `src/jvmMain/kotlin/afield/pd/PdInstance.kt` | libpd, built once by `./gradlew buildLibpdNative` | both | **yes** | [Pure Data](pure_data.md) |
+| `csound` | a Csound orchestra and score, as a box language or from Kotlin. `class CsoundNode` in `src/jvmMain/kotlin/afield/csound/CsoundInstance.kt` pulls blocks live; `CsoundInstance.renderOffline` renders to a buffer | libcsound, built with `./gradlew buildCsoundNative` or installed separately | both | **yes** | [Csound](csound.md) |
 | `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt`, wrapped onto the shared `render` call by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
 | `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | realtime only | **yes** | [A pattern in space](pat_spatial.md) |
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 
-Four of those nine are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
+Four of those ten are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
 `pat-spatial`. The first two are what [Sound](sound.md) covers, with the fallback behaviour and the
 provenance audit; `faust-poly` is on [Faust](faust.md), because what it needs explaining is the voice
 allocator rather than the pattern; and `pat-spatial` has [a page of its
@@ -53,7 +56,7 @@ own](pat_spatial.md), because what it needs explaining is why a tag in a pattern
 why the synthesis is a thread away from the audio. Read whichever you have picked; this page only
 helps you pick.
 
-Two of the nine are **realtime only**, for unrelated reasons. `pat-spatial` cannot render into a
+Two of the ten are **realtime only**, for unrelated reasons. `pat-spatial` cannot render into a
 buffer because its synthesis runs on its own clock, ahead of whoever consumes it; its own page
 explains [why](pat_spatial.md#why-there-is-no-clip-of-the-output), and why its clips on this site
 are of its *input* rather than of what it sounds like.
@@ -141,7 +144,7 @@ fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext
 
 `AudioPatchSpec.Renderer` declares it, and so does `StereoRenderable`. So does every node in the
 graph: `DirtSamplePlayer`, `FaustNode`, `FaustPolyNode`, `DoughAudioSink`, `PatSynthBank`,
-`PatSpatialBank` and `PdNode`. Every path marked "yes" in the table above shares it, and any of them
+`PatSpatialBank`, `PdNode` and `CsoundNode`. Every path marked "yes" in the table above shares it, and any of them
 can be plugged into any other.
 
 Faust shows what that buys. `class FaustNode` only fills an input buffer and calls `dsp.render`.
@@ -150,7 +153,7 @@ and N WebAssembly instances in one GraalVM context, none of which the engine has
 Because both share `render`, both get the speakers, the engine's visualisers, the Link output and
 the box lifecycle with no adapter.
 
-Of the nine paths that make samples, `sonic-pi` is the only one that does not share `render`, and no
+Of the ten paths that make samples, `sonic-pi` is the only one that does not share `render`, and no
 wrapper can make it: it is a different process, and no sample ever enters this one.
 
 `dough-engine` reaches `render` through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
