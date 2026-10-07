@@ -66,19 +66,13 @@ operations:
       frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-          // itself, so these are needed. The `prop<>` type argument is written out in full on
-          // purpose: `prop<>` rewrites the box's code and the rewrite does not carry the snippet's
-          // own imports, so `prop<StandardRenderer.Bundle>(bundle)` under an
-          // `import afield.four.fabricated.StandardRenderer` fails with
-          // `Unresolved reference 'StandardRenderer'` reported against the *import* line. Every
-          // other reference in the box resolves through the import normally.
+          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
           import afield.four.fabricated.StandardRenderer
           import afield.four.fabricated.applyScenePlan
           import afield.stdlib.linalg.Matrix4f
           import afield.stdlib.linalg.Vector3f
 
-          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+          prop<StandardRenderer.Bundle>(bundle)
 
           val r: Renderer = fromContext()
 
@@ -117,13 +111,12 @@ operations:
       frame: { x: 640.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
+          import afield.four.fabricated.FabricateBuiltChain
           import afield.four.fabricated.FabricatePassLibrary
           import afield.four.fabricated.StandardRenderer
           import afield.four.fabricated.addPassChain
 
-          // Fully qualified for the same reason as the scene box: `prop<>`'s rewrite loses the
-          // snippet's imports.
-          prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+          prop<FabricateBuiltChain>(chain)
 
           val r: Renderer = fromContext()
           val b: StandardRenderer.Bundle = fromContext()

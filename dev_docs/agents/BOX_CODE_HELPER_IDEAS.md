@@ -1,72 +1,66 @@
 # Helper ideas from the box-code revision pass
 
 Each agent in the revision pass (`BOX_CODE_REVISION_PASS.md`) reports patterns a helper,
-convention or default could remove typing for. These are proposals for a human; none is
-implemented. Grouped by theme; the transcript that showed the pattern is in brackets.
+convention or default could remove typing for. Marc decided on the first batch on 2026-10-07;
+the transcript that showed each pattern is in brackets. New proposals go under **Open**.
 
-## Several transcripts asked for the same thing
+## Already in Field: the pass should use them, not propose them
 
-- **FLine from points or a function.** `if (i == 0) moveTo(...) else lineTo(...)` loops are
-  everywhere: `fline.through(points)`, `FLine.parametric(0..120) { t -> vec(...) }`.
+- **FLine from points:** `breakNext()` (the next `lineTo`/`cubicTo` becomes a `moveTo`) and
+  `data("m l+", points)` replace the `if (i == 0) moveTo(...) else lineTo(...)` loops.
   [keyframer_worked_example, mesh_geometry_examples]
-- **FLine shape builders.** Hand-rolled circles (28- and 48-segment loops) and four-`lineTo`
-  rectangles: `circle(cx, cy, r)`, `disc(cx, cy, r, color)`, `rect(x0, y0, x1, y1, filled =)`.
-  [keyframer_worked_example, frames_lifecycle]
-- **Number formatting in templates.** `"%.3f".format(x)` dozens of times per box: `x.f3` or
-  `x.fmt(3)`, or a box-level `printf("...", a, b)`. [statistics_examples, mesh_geometry_examples]
-- **Elapsed time and throttled frames.** Every animated box writes `started` / `nextDraw` /
-  `AnimationClock.nowSeconds() - started` / `var frames = 0; frames++`: an `elapsed` (and
-  `frame`) available inside `frames`/`animate`, and `animate(every = 1.0 / 30) { t -> ... }`.
-  [frames_lifecycle, simdverlet_world]
+- **Rectangles and circles:** `FLine.rect(x, y, w, h)`, the free `rect(x, y, w, h)`, and
+  `FLine.circle(cx, cy, r)` (four cubics; `segments =` for a polygon), all in
+  `stdlib/StandardDrawing.kt`. `circle` was added 2026-10-07. [keyframer_worked_example, frames_lifecycle]
+- **Mouse drags:** `mouse.onDrag("left", name) { ev -> ... }` needs no `onDown` beside it, and
+  `ev.uv` is the position as a fraction of the window (both 2026-10-07). [four_simulation_chain]
+- **Labels from names:** `showMeshGrid(cube, ball)` labels its panels "cube" and "ball". Any function
+  annotated `@LabelsArgumentsFromSource` gets the same rewrite (`macros/LabelledArguments.kt`).
+- **Reading a structure by name:** `structure["radius"]` (`Structure.get`) returns the binding
+  if there is one and the plain value otherwise, which is what `s.bindings["radius"]?.invoke()`
+  writes out by hand. [keyframer_worked_example]
+- **Push constants:** `moduleHere` generates `var Mesh.<name>` (and the compute equivalents) for
+  every push-constant member, so `step.band0 = { ... }` is already the form; numbered members
+  do not need a `bind("band", 4)`. [pattern_particles]
 
-- **Compute dispatch from the shader.** `(N + 63) / 64` and hand-set `x/y/z`: `m.dispatch(N)`
-  reading `local_size_x`. [spin_glass, pattern_particles]
-- **`uint` push members taking an `Int` lambda**, so `{ L.toUInt() }` is `{ L }`.
-  [spin_glass, pattern_particles]
+## Approved
 
-## One transcript each
-
-- `prop<>` drops the box's imports when it rewrites the code, forcing
-  `prop<afield.four.fabricated.StandardRenderer.Bundle>`; keeping them would allow the short name.
-  This is a bug more than a helper. [four_simulation_chain]
-- `MouseEvents(renderer).onDrag(...)` fires only if an empty `onDown` is also registered; and
-  `ev.uv` instead of dividing by the window size. [four_simulation_chain]
-- `addPassChain` attaching and presenting itself, instead of `bundle.attachTo(renderer);
-  bundle.present(renderer = renderer)` closing every chain box; `afield.four.fabricated` as a
-  default import. [four_simulation_chain]
-- `computeBarrier()` instead of `computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }`;
-  `fullscreenTriangle()`; `bindPush(m1, m2) { ... }` for meshes sharing push lambdas. [spin_glass]
-- `step.bind("band", 4) { ... }` for numbered push constants; a frame-time push helper.
-  [pattern_particles]
-- Shared settings: `prop<BoidSettings>(rule)` so trained and written flocks type the weights
-  once; `wanderingPoint(...)` for the driver both flock boxes repeat; `boids.show()`;
+- `x.f3` (and siblings) for `"%.3f".format(x)` in templates. [statistics_examples, mesh_geometry_examples]
+- `frame` available inside `frames { }`. [frames_lifecycle, simdverlet_world]
+- `uint` push members accepting an `Int` lambda: `{ L }` for `{ L.toUInt() }`. [spin_glass, pattern_particles]
+- `computeBarrier()`, `fullscreenTriangle()`, `bindPush(m1, m2) { ... }`. [spin_glass]
+- `prop<BoidSettings>(rule)` shared settings, `wanderingPoint(...)`, `boids.show()`,
   `written.settings { ... }`. [learned_boids]
-- One nested `renderer += moduleHere { +Mesh("my mesh") { ... } }`; `m.set { }` sizing itself
-  from what it appends; `vertices(3) { pos(...); col(...) }` instead of the bare `3 { }`.
-  [afield_four_traditional_triangle]
-
-- `sim.addCloth(22, 22, spacing = 0.22f, plane = XZ, centred = true)` instead of a `position`
-  lambda that repeats the spacing; `pinned = Pins.border` / `Pins.row(0)`. [simdverlet_world]
-- `SphereCollider(..., friction = 0.75f, margin = 0.02f)` constructor parameters instead of
-  `.also { it.friction = ... }`; `rope.end.mass = 24f` instead of
-  `sim.state.invMass!![rope[15]] = 1f / 24f`. [simdverlet_world]
-- A `top` projection for `showPlane` instead of a hand-written top-view mapping. [simdverlet_world]
-- `scope.Key("camera" to pose)` with vararg pairs instead of `mutableMapOf(...)`; a typed
-  `key.get<CameraPose>("camera")` instead of a cast; `CameraPose.lookAt(from)` defaulting the
-  target to the origin. [keyframer_worked_example]
-- `structure[name]` (or `Structure.value(name)`) returning a bound value, instead of
-  `s.bindings[k]?.invoke()`. [keyframer_worked_example]
-- `key.versionFile(path, 0)` instead of hard-coding `look.json.versions/000000.json`.
-  [keyframer_worked_example]
-- `compare("label", measured, analytic)` printing value, reference and relative error.
-  [mesh_geometry_examples]
-- `showMeshGrid(cube, ball, ...)` taking labels from the `val` names; `m.integrate(field)`;
+- A `top` projection for `showPlane`. [simdverlet_world]
+- `scope.Key("camera" to pose)` vararg pairs, `key.get<CameraPose>("camera")`,
+  `CameraPose.lookAt(from)` defaulting to the origin, `key.versionFile(path, 0)`. [keyframer_worked_example]
+- `compare("label", measured, analytic)`, `m.integrate(field)`,
   `randomPoints(48, seed = 31, bounds = ...)`. [mesh_geometry_examples]
-- `StatsDependence.all(x, y)` returning every coefficient with a `caption()`;
-  `permutationNull(x, y, reps, seed) { a, b -> ... }`; a `RollingPearson(w)`.
-  [statistics_examples]
-- `markdownAppend("channel", line)` for an output channel that only accumulates.
-  [frames_lifecycle]
+- `StatsDependence.all(x, y)` with `caption()`, `permutationNull(x, y, reps, seed) { a, b -> ... }`,
+  `RollingPearson(w)`. [statistics_examples]
+- `markdownAppend("channel", line)`, with a maximum size that trims the earliest lines. [frames_lifecycle]
+- `renderer += moduleHere { +Mesh("my mesh") { ... } }`, by a `unaryPlus` on the receiver of
+  `moduleHere`'s lambda (today the pipeline parameters). The macro walker visits nested calls,
+  so `renderer += moduleHere { }` should already expand; prove it with a live GPU run.
+  [afield_four_traditional_triangle]
+- **Bug, fixed 2026-10-07:** `prop<>` dropped the box's own imports, forcing
+  `prop<afield.four.fabricated.StandardRenderer.Bundle>`; six transcripts now use the short name.
+  [four_simulation_chain]
+
+## Declined
+
+- `m.dispatch(N)` reading `local_size_x`: too much magic. [spin_glass, pattern_particles]
+- `addPassChain` attaching and presenting itself; `afield.four.fabricated` as a default import.
+  [four_simulation_chain]
+- `m.set { }` sizing itself from what it appends: boxes barely use vertex attributes now; data
+  lives in SSBOs. [afield_four_traditional_triangle]
+- `sim.addCloth(..., plane = XZ, centred = true)`, `Pins.border`: the explicit `position` and
+  `pinned` lambdas are preferred. [simdverlet_world]
+- `SphereCollider(..., friction =, margin =)` constructor parameters; `rope.end.mass`. [simdverlet_world]
+
+## Open
+
+(none yet)
 
 ## Found along the way (not helpers)
 

@@ -2,6 +2,7 @@
 
 package afield.stdlib
 
+import afield.macros.LabelsArgumentsFromSource
 import afield.Box
 import afield.graphics.FLine
 import afield.graphics.VISION_METAL_VERTEX_FLOATS
@@ -580,8 +581,12 @@ fun Box.showMesh(
  * Several meshes side by side, each rendered and captioned — the fastest way to see a whole pipeline
  * (generated / subdivided / smoothed / decimated) side by side.
  *
+ * Each panel's label can be left off: `showMeshGrid(cube, ball, columns = 3)` labels them "cube" and
+ * "ball" from the source ([LabelsArgumentsFromSource]); `"a torus" to ring` still sets one by hand.
+ *
  * @param columns meshes per row.
  */
+@LabelsArgumentsFromSource
 fun Box.showMeshGrid(
     vararg panels: Pair<String, TriMesh>,
     channel: String = "main",
