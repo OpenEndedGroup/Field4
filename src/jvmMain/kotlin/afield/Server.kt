@@ -3745,6 +3745,9 @@ class Server {
                         // parsed; routing it through the gzip buffer would coalesce those flushes
                         // and defeat the point of streaming, so leave it uncompressed.
                         excludeContentType(ContentType.parse("application/x-ndjson"))
+                        // Three.js geometry buffers: float data barely compresses, and gzip would cost a
+                        // core for as long as a large scene takes to stream.
+                        excludeContentType(ContentType.parse(afield.graphics.THREE_BUFFERS_CONTENT_TYPE))
                     }
 
                     install(WebSockets) {
@@ -5177,6 +5180,24 @@ class Server {
                                 val bytes = afield.graphics.threeGeometryReviewImage(uid, hash)
                                 if (bytes == null) call.respond(HttpStatusCode.NotFound)
                                 else call.respondBytes(bytes, ContentType.Image.PNG)
+                            }
+                        }
+                        route("/three-buffers") {
+                            get {
+                                // The arrays a `three/geometry` description refers to, written from the
+                                // payload as they stream. A superseded generation is gone: the viewer
+                                // has been sent the description that replaced it. The trust is the
+                                // websocket's that sent the description — remote native clients allowed,
+                                // cross-site browser reads refused by installFieldApiSameSiteGuard.
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val generation = call.request.queryParameters["generation"] ?: ""
+                                val buffers = afield.graphics.threeGeometryBuffers(uid, generation)
+                                if (buffers == null) call.respond(HttpStatusCode.NotFound, "No current geometry for that view and generation")
+                                else {
+                                    call.response.header(HttpHeaders.CacheControl, "private, max-age=3600, immutable")
+                                    call.respondOutputStream(ContentType.parse(afield.graphics.THREE_BUFFERS_CONTENT_TYPE),
+                                        HttpStatusCode.OK, buffers.bytes) { buffers.writeTo(this) }
+                                }
                             }
                         }
                         route("/three-review") {
