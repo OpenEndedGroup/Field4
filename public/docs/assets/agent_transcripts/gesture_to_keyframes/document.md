@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gk_bake" index="0" -->
 
 ```edn [field-box id="gk_bake" role="properties"]
-{"id" "gk_bake" "index" 0 "name" "gesture to keyframes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gesture to keyframes" "_tombstone" false "frame" #afield/rect [40.0 30.0 320.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gk_bake_code_.kt" "lines" 39 "characters" 1209 "sha256" "7bf0a82e92cba7655fe2b19ff066dea8d15d7407584927b1d405b8d5207daf37"}]}
+{"id" "gk_bake" "index" 0 "name" "gesture to keyframes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gesture to keyframes" "_tombstone" false "frame" #afield/rect [40.0 30.0 320.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gk_bake_code_.kt" "lines" 50 "characters" 1614 "sha256" "4b9e89be96d80214975108210677c49ed6d441319167d11785020bc07f453c86"}]}
 ```
 
 ```kotlin [field-property box="gk_bake" name="code" path="gk_bake_code_.kt"]
@@ -34,9 +34,20 @@ fun bake() {
     println("baked: ${pad.fit(bx, by)}")
 }
 
+// Takes the tremor out of the take: every sample as keys, smoothed over 40 ms, played back
+// through the pad, then baked again, so both lanes still have their keys at the same times.
+fun smoothTake() {
+    val (sx, sy) = bakeGesture(pad, tolerance = 0.0, channel = "lanes")
+    sx.smooth(0.04)
+    sy.smooth(0.04)
+    pad.setTake(sx, sy)
+    bake()
+}
+
 controlGroup("gesture") {
     pad = gesture("take", initialTake = eight) { p = it }
     button("bake take") { if (it) bake() }
+    button("smooth take") { if (it) smoothTake() }
     button("replay lanes") { if (it) { pad.setTake(x, y); println("pad now plays the lanes: ${pad.samples.size} samples") } }
 }
 displayOpen("gesture")

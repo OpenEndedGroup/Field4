@@ -143,17 +143,20 @@ class KeyframeEvaluator(jsonString: String) {
         if (time <= keys.first().time) return keys.first().value
         if (time >= keys.last().time) return keys.last().value
         val (prev, next) = segmentAt(keys, time)
-        return when (segmentKind(prev.type)) {
-            "hold" -> prev.value
-            "linear" -> {
-                val span = next.time - prev.time
-                if (span < EPSILON) next.value else prev.value + (next.value - prev.value) * (time - prev.time) / span
-            }
-            "custom" -> customValue(prev, next, time)
-            else -> {
-                val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
-                rationalBezierPoint(controls, solveBezierParameter(controls, time)).y
-            }
+        return segmentValue(prev, next, time)
+    }
+
+    // The value at [time] of the segment from [prev] to [next].
+    private fun segmentValue(prev: Keyframe, next: Keyframe, time: Double): Double = when (segmentKind(prev.type)) {
+        "hold" -> prev.value
+        "linear" -> {
+            val span = next.time - prev.time
+            if (span < EPSILON) next.value else prev.value + (next.value - prev.value) * (time - prev.time) / span
+        }
+        "custom" -> customValue(prev, next, time)
+        else -> {
+            val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
+            rationalBezierPoint(controls, solveBezierParameter(controls, time)).y
         }
     }
 
@@ -299,6 +302,28 @@ class KeyframeEvaluator(jsonString: String) {
      * ```
      */
     fun edit(block: MutableList<Keyframe>.() -> Unit) = setKeys(keyframes.toMutableList().apply(block))
+
+    /**
+     * Removes every key it can while the curve stays within [tolerance] of where it is now, in the
+     * curve's own units, so a dense take becomes a few smooth keys. Keys that stay become
+     * `bezierContinuous`, with handles that follow the curve's slope; locked, hold and custom keys
+     * stay as they are. The editor's Simplify slider does the same. See [setKeys].
+     *
+     * ```kotlin
+     * curve.simplify(0.01)   // within 0.01 of the take, everywhere
+     * ```
+     */
+    fun simplify(tolerance: Double) = setKeys(
+        simplifyKeys(keyframes, tolerance, ::segmentKind, ::evaluateValueAt, ::segmentValue)
+    )
+
+    /**
+     * Smooths the keys' values with a Gaussian [width] wide in time (its standard deviation), so the
+     * jitter in a recorded take goes and its shape stays. The first and last keys and locked keys
+     * keep their values, and no key moves in time. The editor's Smooth slider does the same. See
+     * [setKeys].
+     */
+    fun smooth(width: Double) = setKeys(smoothKeys(keyframes, width))
 
     private fun persist() {
         val box = associatedBox ?: return

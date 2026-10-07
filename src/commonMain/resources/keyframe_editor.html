@@ -102,7 +102,7 @@
         // Every editor of one box (or one channel group within it) is on a BroadcastChannel named
         // for that group. Until someone pans or zooms, each frames the time span of all their keys
         // together, which comes out the same in every lane; a pan or zoom in any lane is then
-        // adopted by the others, and Fit the curve returns them all to framing everything.
+        // adopted by the others, and Frame curve returns them all to framing everything.
         const linkGroup = (urlParams.get('group') || '').trim();
         const link = linkGroup && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('kf-link:' + linkGroup) : null;
         const linkState = { manual: false, extents: new Map() };
