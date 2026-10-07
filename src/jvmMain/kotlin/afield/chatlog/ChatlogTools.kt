@@ -1,6 +1,7 @@
 package afield.chatlog
 
 import afield.Box
+import afield.ReadOnlyDocuments
 import afield.ai.core.aiTool
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -40,6 +41,7 @@ private const val CHAT_PARAM = "chat name from chatlog.list; <chat>#<lens> for a
 
 fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
     val store = ChatlogStore(roots.toList(), lensDir ?: File(inside.filename, "lenses"))
+    val owner = this
     ChatLensViewer.register(inside.filename, store)
 
     aiTool("chatlog.list") {
@@ -132,6 +134,7 @@ fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
             val problems = ChatLogViews.lensProblems(tree, markdown())
             if (problems.isNotEmpty()) return@action toolError(problems)
             val stats = ChatLogViews.lensStats(tree, markdown())
+            owner.requireWritableChatLensDir(store.lensDir)
             val file = store.writeLens(chat(), name(), markdown(), brief(), stats)
             "Saved ${file.name}: ${stats["blocks"]} blocks citing ${stats["citedBlocks"]} of ${stats["chatBlocks"]} chat blocks, " +
                 "${stats["compression"]}× shorter than what it cites."
@@ -149,6 +152,15 @@ fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
         describe("List the lenses saved for a chat.")
         val chat by param<String>(CHAT_PARAM)
         action { store.lenses(chat()).joinToString("\n").ifBlank { "No lenses yet for ${chat()}." } }
+    }
+}
+
+/** A read-only document may export a lens elsewhere, but must not write one back into itself. */
+internal fun Box.requireWritableChatLensDir(destination: File) {
+    val document = File(inside.filename).canonicalFile.toPath()
+    if (destination.canonicalFile.toPath().startsWith(document) && ReadOnlyDocuments.blocksWritesFrom(this)) {
+        ReadOnlyDocuments.refuseWrite("chat-lens", destination.path)
+        throw IllegalStateException("This document is read-only")
     }
 }
 
