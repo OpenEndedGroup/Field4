@@ -2,6 +2,7 @@ package afield.server
 
 import afield.FIELD_API_REQUIRE_SAME_SITE_ENV
 import afield.FIELD_API_REQUIRE_SAME_SITE_PROPERTY
+import afield.fieldApiWriteNeedsSameSite
 import afield.installFieldApiCors
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -10,6 +11,7 @@ import io.ktor.client.request.options
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -18,6 +20,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -46,6 +49,25 @@ import kotlin.test.assertTrue
  * and that is exactly its point: no arrangement of this switch closes the network exposure.
  */
 class FieldApiWriteGuardTest {
+
+    @Test
+    fun onlyTheRouteGuardedAnnotationWritesAreDeferred() {
+        assertFalse(fieldApiWriteNeedsSameSite(HttpMethod.Post, "/api/docs-annotations"))
+        assertFalse(fieldApiWriteNeedsSameSite(HttpMethod.Put, "/api/docs-annotations/x/resolve"))
+        assertFalse(fieldApiWriteNeedsSameSite(HttpMethod.Delete, "/api/docs-annotations/x"))
+
+        for ((method, path) in listOf(
+            HttpMethod.Post to "/api/docs-annotations/x",
+            HttpMethod.Post to "/api/docs-annotations-extra",
+            HttpMethod.Put to "/api/docs-annotations/x",
+            HttpMethod.Put to "/api/docs-annotations/x/resolve/extra",
+            HttpMethod.Delete to "/api/docs-annotations",
+            HttpMethod.Delete to "/api/docs-annotations/x/resolve",
+            HttpMethod.Post to "/api/docs-improvement/pass",
+        )) {
+            assertTrue(fieldApiWriteNeedsSameSite(method, path), "$method $path must keep the global guard")
+        }
+    }
 
     @Test
     fun anExplicitOptOutAllowsCrossSiteWrites() = guardedApp(on = false) {
