@@ -421,6 +421,8 @@
   {"doc": "petri_state_space", "box": "petri_ss_philosophers", "codeSha256": "842deceef95b64f8", "codeLines": 37, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "petri_state_space", "box": "petri_ss_reduction", "codeSha256": "159a7873c0be2884", "codeLines": 58, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "petri_state_space", "box": "petri_ss_unbounded", "codeSha256": "4c8278d92ece4782", "codeLines": 38, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "petri_state_space_sculpture", "box": "chain_renderer", "codeSha256": "ffcb97c4b498d0c3", "codeLines": 9, "receivers": ["afield.Box"], "preamble": "petri_state_space_sculpture__chain_renderer.preamble.kt"},
+  {"doc": "petri_state_space_sculpture", "box": "petri_sculpture_trace", "codeSha256": "f90a0ad8c6d5979b", "codeLines": 164, "receivers": ["afield.Box"], "preamble": "petri_state_space_sculpture__petri_sculpture_trace.preamble.kt"},
   {"doc": "petri_tala_layout", "box": "petri_tala_force", "codeSha256": "f70c92e29ef41f82", "codeLines": 29, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "petri_tala_layout", "box": "petri_tala_status", "codeSha256": "8482479b309ffa5f", "codeLines": 80, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "petri_tala_layout", "box": "petri_tala_tala", "codeSha256": "752102e68a4142c4", "codeLines": 26, "receivers": ["afield.Box"], "preamble": ""},
