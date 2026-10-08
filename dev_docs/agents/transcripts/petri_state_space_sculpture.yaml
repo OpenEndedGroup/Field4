@@ -117,8 +117,8 @@ operations:
           val puttingDown = scene.material(PathTraceMaterial.metal(0.85f, 0.45f, 1.0f, 0.18f))
           val bead = scene.material(PathTraceMaterial.glass(ior = 1.5f))
           val start = scene.material(PathTraceMaterial.metal(1.0f, 0.95f, 0.85f, 0.05f))
-          val route = scene.material(PathTraceMaterial.emissive(9.0f, 3.6f, 0.9f))
-          val stuck = scene.material(PathTraceMaterial.emissive(14.0f, 1.6f, 0.5f))
+          val route = scene.material(PathTraceMaterial.emissive(4.5f, 1.5f, 0.3f))
+          val stuck = scene.material(PathTraceMaterial.emissive(16.0f, 1.2f, 0.4f))
           val floor = scene.material(PathTraceMaterial.plastic(0.05f, 0.05f, 0.06f, 0.12f))
 
           val lo = Vec3(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)

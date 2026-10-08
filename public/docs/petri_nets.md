@@ -711,3 +711,5 @@ Three limits:
 - **Editor diagnostics are lexical.** `petri.js` can see that `@1/0` is not a duration and that
   `=> wobble` is not a combinator. It cannot see that a transition will never fire: that is a
   property of the graph, and the Kotlin parser reports it with the whole graph in front of it.
+
+See also: [A Deadlock, Sculpted and Traced](chain_petri_sculpture.md) builds this state space as a path-traced sculpture.
