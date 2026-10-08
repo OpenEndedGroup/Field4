@@ -5,22 +5,16 @@ the `#petri` parser in `PetriNotation.kt`, the pattern bridge in `PetriMusic.kt`
 `PetriAnalysis.kt` and the drawing in `PetriVisual.kt`. The notation is summarised on the
 [Petri cheatsheet](petri_cheatsheet.md). Start from [what's already in the box](reference/index.md).*
 
-A Petri net is places holding tokens, transitions moving them, arrows saying where. It is one of
-the few computational models with a *standard picture*, and it has about fifty years of theory
-attached, most of which turns out to answer questions a live coder actually has.
+A Petri net is a graph of places that hold tokens and transitions that move them, with arrows
+saying where they go. It has a standard way of being drawn, and a body of theory that answers
+practical questions such as "how long is this loop?" and "can this get stuck?".
 
-Using one as a sequencer is not new. What is new here is that in Field a net does not have to be a
-sequencer at all, because of one fact:
-
-**A net with a deterministic conflict policy is a pure function of time — so a net is a
-`PatPattern`.**
-
-`PatPattern` is not a list of notes; it is a function from a span of time to the events inside it,
-and every combinator in [the pattern language](pattern_language.md) is free to call it with any
-span, in any order, as often as it likes. A stateful sequencer cannot survive that. A memoised
-Petri net can. The moment it does, `every`, `jux`, `off`, `fast`, `rev`, `with gain(sine())`, the
-offline renderer, the piano roll and `respond {}` all apply to a Petri net without a line of new
-code.
+In Field a Petri net can be used as a rhythm, as the structure of a piece, or as a control signal.
+That works because a net whose conflicts are always resolved the same way gives the same firings
+for the same span of time, so `net.emits()` can be a `PatPattern`: a function from a span of time
+to the events inside it. Everything in [the pattern language](pattern_language.md) (`every`, `jux`,
+`off`, `fast`, `rev`, `with gain(sine())`), the offline renderer, the piano roll and `respond {}`
+work on a Petri net as they do on any other pattern.
 
 ---
 
@@ -376,14 +370,12 @@ displayOpen("main")
 :::endfold
 ```
 
-The middle row is past where the textbook usually stops. Breaking
-the symmetry does remove the *deadlock* — but under `PetriConflict.ORDER` the first-declared
-claimant wins the contested fork every single time, so the reversed philosopher never gets it and
-never eats. That is **starvation**, not deadlock: the net never stops, it just permanently excludes
-someone, and `willDeadlock()` correctly says no while `deadTransitions()` says who.
-
-Two different faults, two different fixes. The asymmetry fixes one; a fair conflict policy fixes
-the other.
+The middle row reverses one philosopher, which removes the deadlock. But under
+`PetriConflict.ORDER` the first-declared claimant always wins the contested fork, so the reversed
+philosopher never gets it and never eats. This is starvation: the net keeps running but one
+philosopher is permanently left out. `willDeadlock()` says no, and `deadTransitions()` says who
+is starving. Reversing a philosopher fixes the deadlock; a fair conflict policy fixes the
+starvation.
 
 ### Laying it out
 
@@ -437,29 +429,16 @@ displayOpen("main")
 :::endfold
 ```
 
-Each panel counts its own crossings, and on this table FORCE wins: none against TALA's three.
-That is the result to expect more often than not, because crossings are the thing FORCE is
-optimising. It relaxes from 48 random starts and keeps whichever result scores best on exactly this
-metric, so where it succeeds it is hard to beat on it. Neither drawing carries names, because past
-28 nodes `toFLines` drops the labels and this table has 30.
+Each panel counts its own crossings. FORCE often has fewer, because crossings are what it
+minimises; on other nets TALA wins, and is sometimes faster too, so `AUTO` never picks TALA for you
+— try both on your net. Neither drawing has labels, because `toFLines` drops them on nets this
+large.
 
-The order does reverse. On the smaller table in `dev_docs/agents/transcripts/petri_tala_layout.yaml`
-FORCE crosses five times and TALA once, and TALA gets there in 2.1 s against FORCE's 4.5 s. So the
-choice is per net rather than settled, which is why `AUTO` never makes it for you.
-
-The two panels do not draw their arcs the same way, which is the other half of what TALA gives you.
-A spring model places points and leaves the arcs to whatever runs between them, so FORCE's are
-straight lines from centre to centre. TALA routes each arc around the nodes in its way and
-`toFLines` follows those polylines, which is why the right-hand panel turns corners. On the smaller
-table in the transcript that routing is what takes TALA from one crossing to none. It is also why
-the two sides are not quite comparable as pictures: one is a graph drawing and the other is closer
-to a schematic.
-
-The three in that caption is already the best of four tries. TALA accepts a direction bias, and it
-is worth more than a bigger seed budget: this table crosses itself five times with no bias and three
-under the best of up, down and right, so `PetriLayout.TALA` lays the net out once per direction and
-keeps whichever crosses itself least. Four layouts of a 30-node net still cost less than one FORCE.
-On a net that is already clean the sweep finds nothing to improve and costs the four layouts anyway.
+The arcs are drawn differently as well. FORCE places the nodes and draws each arc as a straight
+line from centre to centre. TALA routes each arc around the nodes in its way, so the right-hand
+panel turns corners and reads more like a schematic than a graph drawing. `PetriLayout.TALA` also
+lays the net out once per direction (up, down, right, and no preference) and keeps the drawing with
+the fewest crossings.
 
 TALA runs in `native/field-d2-layout`, a Go co-process that Field neither builds nor ships. Without
 it `PetriLayout.TALA` draws with `FORCE`, so a document that asks for TALA still opens on a machine
@@ -525,25 +504,23 @@ marking, the shortest route to the deadlock in orange with its transitions writt
 ring on the marking it gets stuck in. Every philosopher picking up one fork: five firings, and
 there is nothing shorter.
 
-Eighty-two markings is about as far as that picture goes. Above `PETRI_STATE_DRAW_LIMIT` (400
-markings) the dot radius has bottomed out at two pixels and the layers overlap, so the drawing
-**declines**: it shows the counterexample alone, laid out one firing per column, over a histogram of
-how many markings sit at each breadth-first depth, and it writes on the figure that it did so. `graph.tooDenseToDraw()` answers the question in advance, and
-`maxNodes` on `toFLines`, `toSvg` and `showPetriStateSpace` moves the line; `Int.MAX_VALUE` insists
-on the hairball if you have measured that you want it. A grey rectangle with an orange line in it is
-not a denser version of the information; it is the absence of it wearing the same shape.
+A drawing of the whole state space is only readable for small nets. Above
+`PETRI_STATE_DRAW_LIMIT` (400 markings) the dots and layers would overlap, so the figure shows the
+counterexample alone, one firing per column, over a histogram of how many markings sit at each
+breadth-first depth, and says on the figure that it has done so. `graph.tooDenseToDraw()` tells you
+in advance; `maxNodes` on `toFLines`, `toSvg` and `showPetriStateSpace` moves the limit, and
+`Int.MAX_VALUE` draws every marking regardless.
 
-Three things follow that the deterministic analysis cannot say:
+The state space answers three things that running the net once cannot:
 
-- **A "no" means something.** `canDeadlock` is `true`, `false` or `null`, and `null` means the
-  search hit its budget. Nothing here reports an unfinished search as safe: every accessor that
-  would be a claim about markings nobody visited returns `null` instead of `false`.
-- **The counterexample is the deliverable.** `graph.witness { … }` is `EF` with the shortest route
-  attached and `graph.invariant { … }` is `AG` returning the shortest violation, so
-  `mutuallyExclusive("crit.a", "crit.b")` either proves the property or hands you the two firings
-  that break it. `PetriTrace.verify()` re-fires the whole sequence through the engine, so a
-  counterexample proves itself rather than restating the search that produced it.
-- **Read and inhibitor arcs are visible again.** The invariants cannot see them because the
+- **Whether it can deadlock at all.** `canDeadlock` is `true`, `false` or `null`, and `null` means
+  the search ran out of budget. Any answer about markings the search did not visit comes back as
+  `null`, never as `false`.
+- **How it goes wrong.** `graph.witness { … }` finds the shortest route to a marking with a property
+  (`EF`), and `graph.invariant { … }` returns the shortest route to a marking that breaks one
+  (`AG`), so `mutuallyExclusive("crit.a", "crit.b")` either proves the property or gives you the two
+  firings that break it. `PetriTrace.verify()` replays a route through the net to confirm it.
+- **What read and inhibitor arcs do.** The invariants cannot see them because the
   incidence matrix is a record of *change*; the search asks the engine whether a transition is
   enabled, and the engine knows. Two nets with identical incidence matrices, one of which enforces
   mutual exclusion with an inhibitor arc, are told apart by `stateSpace()` and by nothing else here.
@@ -561,11 +538,11 @@ halves, and says which of four things it means: *this configuration wedged*, *so
 wedges and here is the sequence*, *proved deadlock-free over N exhausted markings*, or *the budget
 ran out and the answer is unknown*.
 
-#### Where the wall is
+#### How large a net can be searched
 
-An exhaustive search is exponential in the number of things happening at once, so the useful
-question is not "does this work" but "how far does it get before it stops working". Measured, at the
-default 20 000-marking budget:
+The number of markings grows exponentially with the number of things that can happen at once, so
+large concurrent nets exhaust the search budget. These are the sizes at the default 20 000-marking
+budget:
 
 | net | markings | note |
 | --- | --- | --- |
@@ -574,22 +551,20 @@ default 20 000-marking budget:
 | an *N*-section `petriSong` | *N* | linear, even though every token carries a `PatPattern` |
 | *N* philosophers | 6, 14, 34, 82, 198, 478, 1154, 2786 … | `a(n) = 2a(n-1) + a(n-2)` — about **2.41× per philosopher** |
 
-So a musical net is nowhere near the wall and a concurrency puzzle can be. Eleven philosophers is
+Musical nets stay far inside the budget; concurrency puzzles can exceed it. Eleven philosophers is
 16 238 markings in 230 ms and `COMPLETE`; **twelve is past the budget**, and the search says
 `BUDGET` and returns `null` from `canDeadlock` rather than guessing.
 
-The coloured-token row could have gone the other way. A `petriSong` carries a whole `PatPattern` in each
-token's colour, and a strict key distinguishes colours that `signature()` would have merged, so the
-space could have multiplied; but the sections live in separate places and exactly one token
-circulates, so it stays linear. Colour multiplies the state space
+A `petriSong` stays linear even though each token carries a whole `PatPattern`, because its
+sections live in separate places and only one token circulates. Colour multiplies the state space
 only when the same place can hold different colours; a net that mints a *fresh* colour per firing has
 no finite state space at all, and gets `BUDGET`.
 
-#### Moving the wall: stubborn sets
+#### Searching larger nets: stubborn sets
 
-Almost all of that 2.41ⁿ is the same firings shuffled. Five philosophers each reaching for their left
-fork is one event five times over, and a full search dutifully visits all 5! orderings of it. A
-**partial-order reduction** explores one ordering and proves that is enough:
+Most of those philosopher markings are the same firings in a different order: five philosophers
+each reaching for their left fork can happen in 5! orders, and a full search visits all of them. A
+partial-order reduction explores one order when the others cannot change the answer:
 
 ```diffstatic {data-lang=kotlin}
 net.stateSpace(reduction = PetriReduction.STUBBORN)
@@ -613,39 +588,32 @@ sequential net has no independence to exploit.
 
 Three limits bound what it will answer:
 
-- **It answers deadlock and refuses everything else.** The theorem is about terminal markings. A
-  reduced graph's state count is not the reachable state count, so a bound read off it would be a
-  lower bound wearing the word "exact". `graph.exact` is `complete && reduction == NONE`, and
+- **It answers only deadlock questions.** A reduced graph does not contain every reachable
+  marking, so bounds read off it would be wrong. `graph.exact` is `complete && reduction == NONE`, and
   `bounds`, `isSafe`, `isLive`, `isReversible`, `homeMarkings`, `neverFires()`, `mutuallyExclusive`
   and `proves { }` all return `null` on a reduced graph. `canDeadlock` and `deadlockTrace` do not.
 - **It is not a shortest path.** The reduced search reaches a deadlock that really is reachable, by a
   route at least as long as the true shortest. Every trace still passes `verify()`; it is just not
-  guaranteed minimal. Measured, that gap has never yet opened: over 758 generated nets where both
-  searches found a counterexample, the two lengths were equal every time — but the theorem does not
-  promise it, so do not build on it.
+  guaranteed to be the shortest. In practice the two are usually the same length, but do not rely
+  on it.
 - **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
   `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
   on such a net returns an unreduced (and therefore still `exact`) graph, with no complaint and with
   `graph.reduction == PetriReduction.NONE` saying so.
 
-#### Read and inhibitor arcs break the closure
+??? aside "How the reduction is checked"
+    A differential test runs both searches over generated nets and compares the set of reachable
+    terminal markings, the length of the counterexample, containment of the reduced state set in the
+    full one, and that every accessor gated on `exact` refuses. `dev_docs/PETRI_REDUCTION_AGREEMENT.md`
+    has the corpus, the floors and a run's numbers.
 
-The three limits above are what the theorem says; the reduction is about eighty lines of code
-deciding what *not* to explore, and a theorem does not check code. A differential test runs both
-searches over about fifteen hundred generated nets and compares the **set** of reachable terminal
-markings, the length of the counterexample, containment of the reduced state set in the full one,
-and every accessor gated on `exact` refusing. `dev_docs/PETRI_REDUCTION_AGREEMENT.md` has the
-corpus, the floors and a run's numbers.
-
-Half of that corpus is saturated with read arcs, inhibitor arcs, capacities and arc weights,
-because the closure has to be symmetric and those are where it stops being. A stubborn set must be
-closed under "this transition may disable that one" as well as under the reverse. In a plain
-place/transition net the two coincide: if firing `t` disables `t'` they share an input place, so
-`t'` is in the set already. They stop coinciding once a transition can starve a
-**read** arc it does not consume from, or arm an **inhibitor** arc by producing into its place, and a
-one-directional closure can then call a net deadlock-free that the full search wedges in five
-firings, which is the one direction of error this layer exists not to make. A three-transition net
-and a four-transition net pin each case.
+    Half of that corpus uses read arcs, inhibitor arcs, capacities and arc weights. A stubborn set
+    must be closed under "this transition may disable that one" as well as under the reverse. In a
+    plain place/transition net the two coincide: if firing `t` disables `t'` they share an input
+    place, so `t'` is in the set already. They stop coinciding once a transition can starve a read
+    arc it does not consume from, or arm an inhibitor arc by producing into its place, and a
+    one-directional closure could then call a net deadlock-free that the full search deadlocks. A
+    three-transition net and a four-transition net pin each case.
 
 #### When the state space is infinite
 
