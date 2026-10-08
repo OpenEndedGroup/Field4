@@ -299,14 +299,30 @@ def refresh_mirror_digests(document_md: Path) -> None:
         document_md.write_text(text, encoding="utf-8")
 
 
-def corpus_paths(root: Path) -> list[str]:
+def tracked_paths(root: Path) -> list[str] | None:
+    """What git tracks under the corpus roots, or None when ``root`` is not itself a checkout's top.
+
+    An inherited ``GIT_DIR`` / ``GIT_WORK_TREE`` (a hook, the lander) would point git at some other
+    repository than ``root``; the bounce of 2026-10-08 was the tests' fixture directory answered
+    with the real repository's files, so neither is passed on and the top level must be ``root``.
+    """
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE")}
+
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=True,
+                              env=env).stdout.decode("utf-8")
+
     try:
-        listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--", *CORPUS_ROOTS],
-                                capture_output=True, check=True).stdout.decode("utf-8")
-        tracked = [p for p in listed.split("\0") if p]
+        if Path(git("rev-parse", "--show-toplevel").strip()).resolve() != root.resolve():
+            return None
+        return [p for p in git("ls-files", "-z", "--", *CORPUS_ROOTS).split("\0") if p]
     except (OSError, subprocess.CalledProcessError):
-        tracked = None
-    if tracked:
+        return None
+
+
+def corpus_paths(root: Path) -> list[str]:
+    tracked = tracked_paths(root)
+    if tracked is not None:
         return sorted(p for p in tracked if in_corpus(p) and (root / p).is_file())
     # Not a checkout (the tests' fixture directories): every file on disk.
     paths = []

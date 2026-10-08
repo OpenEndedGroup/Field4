@@ -221,6 +221,18 @@ class ScopeTests(unittest.TestCase):
         self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/README.md"))
         self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/backups/b_code__backup_00000.kt"))
 
+    def test_an_inherited_git_dir_does_not_replace_the_root(self):
+        # The lander's environment pointed git at the real repository, so the fixture read as empty.
+        import os
+        from unittest import mock
+        f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": "record(Box.context.get()!!)\n"})
+        try:
+            with mock.patch.dict(os.environ, {"GIT_DIR": str(idioms.REPO_ROOT / ".git"),
+                                              "GIT_WORK_TREE": str(idioms.REPO_ROOT)}):
+                self.assertEqual(idioms.corpus_paths(f.root), ["dev_docs/agents/demos/d/x_code_.kt"])
+        finally:
+            f.close()
+
     def test_paths_limit_the_check_to_the_changed_files(self):
         f = Fixture({TRANSCRIPT: YAML, "dev_docs/agents/demos/d/clean_code_.kt": "val a = 1\n"})
         try:
