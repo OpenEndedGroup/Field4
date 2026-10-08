@@ -1,0 +1,312 @@
+name: petri_sparks
+description: |
+  Three boxes, and one Petri net drives a particle system without either knowing about the other.
+
+    - `ps_renderer` owns the Window and pumps the loop.
+    - `ps_net` parses a `#petri` net — three token rings of three, four and five places on one
+      eighth-note grid, and a bounded `charge` place that four kicks fill and a clap empties — and
+      publishes the net and one run of it as inherited properties. It is the same net
+      `PetriSparksDocs` plays from the pinned Dirt-Samples on the page.
+    - `ps_sparks` asks that run, once a frame, which transitions fired in the last 1.6 seconds
+      (`firingsOver`), where each ring's token is (`markingAt`) and how full `charge` is
+      (`countAt`). Each recent firing becomes one slot of a small per-frame buffer; the vertex
+      shader turns each slot into a burst of streaks, coloured by the transition, and draws the
+      three rings as dust with each token as a bright comet. `charge` brightens the dust.
+
+  The clock is the frame count at sixty a second, so the picture is the same on every machine and
+  needs no audio device. To hear the net in step with it, play `sparkNet.emits()` through a Dirt
+  player and read the cycle from the same clock.
+operations:
+  - create:
+      box: ps_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          once.renderer {
+              window = Window("Field · A Petri net that throws sparks")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: ps_net
+      name: "the net"
+      frame: { x: 260.0, y: 40.0, w: 240.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.PetriNet
+          import afield.petri.PetriRun
+          import afield.petri.petri
+
+          // Inherited by the box below, which is all it takes for the particles to hear the net.
+          prop<PetriNet>(sparkNet)
+          prop<PetriRun>(sparkRun)
+
+          sparkNet = petri("""
+              #petri
+              !grid 1/8
+
+              // four places round: a kick each lap, and a token into charge
+              k0 : 1
+              k0 -[ kick : bd ]-> k1 + charge
+              k1 -[ k1.go ]-> k2
+              k2 -[ k2.go ]-> k3
+              k3 -[ k3.go ]-> k0
+
+              // three places round: a snare each lap
+              s0 : 1
+              s0 -[ snare : sn ]-> s1
+              s1 -[ s1.go ]-> s2
+              s2 -[ s2.go ]-> s0
+
+              // five places round: two hats each lap
+              h0 : 1
+              h0 -[ hat : hh ]-> h1
+              h1 -[ h1.go ]-> h2
+              h2 -[ hat.2 : hh ]-> h3
+              h3 -[ h3.go ]-> h4
+              h4 -[ h4.go ]-> h0
+
+              // four kicks fill charge, and emptying it is a clap
+              charge : 0 ^4
+              4*charge -[ clap : cp ]->
+          """)
+
+          // One run, shared: a run remembers the steps it has taken, so every query below reuses them.
+          sparkRun = sparkNet.run()
+          println("net ready: ${sparkNet.places.size} places, ${sparkNet.transitions.size} transitions")
+  - create:
+      box: ps_sparks
+      name: "firings into sparks"
+      frame: { x: 260.0, y: 120.0, w: 240.0, h: 50.0 }
+      properties:
+        vertex: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+
+          // One vec4 per recent firing: where it launched, its age in seconds (negative for an
+          // empty slot), and which transition it was in the integer part of w.
+          layout(std430, buffer_reference) buffer Bursts {
+              vec4 b[];
+          };
+
+          layout(location = 0) out vec2 tc;
+          layout(location = 1) out vec3 colour;
+
+          layout(push_constant) uniform push {
+              Bursts bursts;
+              float aspectRatio;
+              float charge;
+              float token0;
+              float token1;
+              float token2;
+          } pc;
+
+          const uint SLOTS = 24u;
+          const uint PER = 1400u;
+          const uint DUST = 2400u;
+          const float LIFE = 1.6;
+
+          const vec2[6] corner = {
+              vec2(-1, -1), vec2(1, -1), vec2(1, 1),
+              vec2(-1, -1), vec2(1, 1), vec2(-1, 1)
+          };
+
+          // kick, snare, hat, hat.2, clap
+          const vec3[5] tint = {
+              vec3(1.00, 0.52, 0.18),
+              vec3(0.30, 0.78, 1.00),
+              vec3(1.00, 0.86, 0.40),
+              vec3(0.55, 1.00, 0.55),
+              vec3(1.00, 0.35, 0.85)
+          };
+
+          // snare ring, kick ring, hat ring, from the centre out
+          const float[3] ringRadius = { 0.36, 0.56, 0.76 };
+          const vec3[3] ringTint = { vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40) };
+
+          float hash(uint x) {
+              x ^= x >> 16; x *= 0x7feb352du;
+              x ^= x >> 15; x *= 0x846ca68bu;
+              x ^= x >> 16;
+              return float(x) / 4294967295.0;
+          }
+
+          void main() {
+              uint p = uint(gl_VertexIndex) / 6u;
+              vec2 c = corner[gl_VertexIndex % 6];
+              vec2 centre = vec2(0.0);
+              vec2 along = vec2(1.0, 0.0);
+              float halfLength = 0.004;
+              float halfWidth = 0.004;
+
+              if (p < SLOTS * PER) {
+                  vec4 burst = pc.bursts.b[p / PER];
+                  uint j = p % PER;
+                  uint kind = uint(burst.w);
+                  uint seed = j * 2654435761u + uint(fract(burst.w) * 4096.0) * 40503u;
+                  float lifetime = LIFE * (0.35 + 0.65 * hash(seed + 2u));
+                  float age = burst.z;
+                  if (age < 0.0 || age > lifetime) {
+                      gl_Position = vec4(0.0);
+                      colour = vec3(0.0);
+                      tc = c;
+                      return;
+                  }
+                  // A clap is thrown hardest, a kick next, the snare and hats are lighter.
+                  float punch = kind == 4u ? 1.5 : kind == 0u ? 1.0 : 0.7;
+                  float a = hash(seed) * 6.2831853;
+                  float speed = punch * (0.15 + 0.85 * pow(hash(seed + 1u), 0.7));
+                  vec2 v = vec2(cos(a), sin(a)) * speed;
+                  float drag = 2.4;
+                  vec2 gravity = vec2(0.0, -0.45);
+                  centre = burst.xy + v * (1.0 - exp(-drag * age)) / drag + 0.5 * gravity * age * age;
+                  vec2 velocity = v * exp(-drag * age) + gravity * age;
+                  along = normalize(velocity + vec2(1e-5));
+                  halfLength = 0.003 + 0.045 * length(velocity);
+                  halfWidth = 0.0028;
+                  float fade = 1.0 - age / lifetime;
+                  float twinkle = 0.55 + 0.45 * sin(age * 47.0 + hash(seed + 3u) * 6.2831853);
+                  colour = mix(vec3(1.0), tint[kind], clamp(age * 3.0, 0.0, 1.0)) * fade * fade * twinkle * 0.9;
+              } else {
+                  uint q = p - SLOTS * PER;
+                  uint ring = min(q / DUST, 2u);
+                  uint j = q % DUST;
+                  float angle = hash(j * 31u + ring * 7919u) * 6.2831853;
+                  float r = ringRadius[ring] + (hash(j * 13u + ring * 101u + 5u) - 0.5) * 0.018;
+                  centre = r * vec2(cos(angle), sin(angle));
+                  float token = ring == 0u ? pc.token0 : ring == 1u ? pc.token1 : pc.token2;
+                  // How far behind the token this mote is, going the way the token travels.
+                  float behind = mod(angle - token, 6.2831853);
+                  float comet = exp(-behind * 5.0);
+                  halfLength = halfWidth = 0.0035 + 0.006 * comet;
+                  colour = ringTint[ring] * (0.05 + 0.10 * pc.charge + 1.4 * comet);
+              }
+
+              vec2 side = vec2(-along.y, along.x);
+              vec2 xy = centre + along * c.x * halfLength + side * c.y * halfWidth;
+              gl_Position = vec4(xy.x / pc.aspectRatio, xy.y, 0.0, 1.0);
+              tc = c;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec2 tc;
+          layout(location = 1) in vec3 colour;
+          layout(location = 0) out vec4 uFragColor;
+
+          void main() {
+              float d = length(tc);
+              if (d > 1.0) discard;
+              float glow = (1.0 - d) * (1.0 - d);
+              // Added, not blended: where sparks cross, they get brighter.
+              uFragColor = vec4(colour * glow, 0.0);
+          }
+        code: |
+          import afield.four.synth.PatArc
+          import afield.four.synth.PatQ
+          import org.lwjgl.vulkan.VK10.*
+
+          val cps = 0.5     // cycles a second; the net's grid is an eighth of a cycle
+          val life = 1.6    // seconds a spark lives, LIFE in the vertex shader
+          val slots = 24    // SLOTS in the vertex shader: firings drawn at once
+          val particles = slots * 1400 + 3 * 2400
+
+          // The rings as the shader draws them, centre out, and where each sounding transition
+          // launches from: (colour, ring, place). The clap launches from the centre.
+          val rings = listOf(listOf("s0", "s1", "s2"), listOf("k0", "k1", "k2", "k3"), listOf("h0", "h1", "h2", "h3", "h4"))
+          val radius = listOf(0.36, 0.56, 0.76)
+          val launches = mapOf(
+              "kick" to Triple(0, 1, 0),
+              "snare" to Triple(1, 0, 0),
+              "hat" to Triple(2, 2, 0),
+              "hat.2" to Triple(3, 2, 2),
+              "clap" to Triple(4, -1, 0),
+          )
+
+          // A place's angle on its ring: the first place at the top, the token going clockwise.
+          fun angle(ring: Int, place: Double) = Math.PI / 2 - 2 * Math.PI * place / rings[ring].size
+
+          var module = moduleHere {
+              primitiveType = triangles
+              blend = true
+              srcColor = VK_BLEND_FACTOR_ONE
+              dstColor = VK_BLEND_FACTOR_ONE
+              depthTest = false
+              depthWrite = false
+          }
+          var sparks = Mesh()
+          module += "sparks" to sparks
+          renderer += "petri-sparks" to module
+
+          // perFrame: one buffer per frame in flight, so it can be rewritten every frame.
+          var bursts = defaultBuffer {
+              perFrame = true
+              size = slots.vec4s
+          }.buffer
+
+          var charge = 0.0
+          val tokens = DoubleArray(3)
+
+          sparks.bursts = { bursts }
+          sparks.aspectRatio = { window.width / window.height.toFloat() }
+          sparks.charge = { charge.f }
+          sparks.token0 = { angle(0, tokens[0]).f }
+          sparks.token1 = { angle(1, tokens[1]).f }
+          sparks.token2 = { angle(2, tokens[2]).f }
+          sparks.set(particles * 6, 0) {}
+
+          println("sparks ready: $particles particles, one burst per firing of ${launches.keys}")
+
+          var frame = 0
+          loop {
+              // Where the net is, in cycles, counting frames at sixty a second.
+              val now = frame++ / 60.0 * cps
+              val at = PatQ.fromDouble(now)
+
+              // Everything that fired in the last `life` seconds, newest last.
+              val since = PatQ.fromDouble(maxOf(0.0, now - life * cps))
+              val recent = sparkRun.firingsOver(PatArc(since, at))
+                  .filter { it.transition in launches }
+                  .takeLast(slots)
+
+              bursts.write {
+                  for (s in 0 until slots) {
+                      val firing = recent.getOrNull(s)
+                      if (firing == null) {
+                          put(vec(0.0, 0.0, -1.0, 0.0))
+                      } else {
+                          val (colour, ring, place) = launches.getValue(firing.transition)
+                          val r = if (ring < 0) 0.0 else radius[ring]
+                          val a = if (ring < 0) 0.0 else angle(ring, place.toDouble())
+                          val age = (now - firing.at.toDouble()) / cps
+                          // Integer part: the colour. Fraction: a seed, so no two bursts match.
+                          put(vec(r * Math.cos(a), r * Math.sin(a), age, colour + (firing.index % 4093) / 4096.0))
+                      }
+                  }
+              }
+
+              // Each ring's token, between the place it is in and the next one.
+              val marking = sparkRun.markingAt(at)
+              val step = (now * 8) % 1.0
+              rings.forEachIndexed { i, places ->
+                  tokens[i] = places.indexOfFirst { marking.count(it) > 0 } + step
+              }
+              // charge holds 0 to 4 tokens; the dust brightens as it fills.
+              charge = sparkRun.countAt("charge", at) / 4.0
+              true
+          }
+  - connect: { parent: ps_renderer, child: ps_net }
+  - connect: { parent: ps_net, child: ps_sparks }
+  - launch: { box: ps_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - launch: { box: ps_net, property: code }
+  - await: { wait: pending }
+  - launch: { box: ps_sparks, property: code }
+  - await: { wait: pending }
