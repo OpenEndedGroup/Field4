@@ -166,9 +166,11 @@ supported way to edit a box's code from outside Field.
 
 **A `metadata.edn` edit is reconciled at box granularity, not merged.** An external modification runs
 `src/jvmMain/kotlin/afield/FileWatchManager.kt:500#private fun reconcileMetadata(workspaceDir: File)`,
-which adds boxes present on disk and absent from the session, and tombstones boxes present in the
-session and absent from the file
+which adds boxes present on disk and absent from the session, and tombstones boxes that were in the
+last `metadata.edn` Field wrote or loaded and are absent from the new one
 (`src/jvmMain/kotlin/afield/FileWatchManager.kt:578#box.setPropertyRaw("_tombstone", true, doResync = true)`).
+A box created in the session since that write is left alone: it was never in the file, so the edit
+cannot have removed it.
 Its own contract line is the one to read:
 `src/jvmMain/kotlin/afield/FileWatchManager.kt:496#properties of boxes already present in the`
 session are left alone. So *adding* or *removing* a box by editing `metadata.edn` under a live Field
