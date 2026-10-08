@@ -3042,7 +3042,27 @@ def ensure_state(config: Any) -> RunnerState:
     return STATE
 
 
+EMBED_SCREENSHOT_RE = re.compile(r'^```\w*_runner\b[^\n]*\bembed=true\b[^\n]*$', re.M)
+IMAGE_LINE_RE = re.compile(r'^!\[[^\]]*\]\(([^)\s]+)\)', re.M)
+
+
+def duplicate_embedded_images(markdown: str) -> list[tuple[int, str]]:
+    """(line, path) of each image line repeating a screenshot an `embed=true` runner fence on the
+    page already puts there: the embed appends the capture under its fence, so a second reference
+    shows every figure twice (paint_canvas.md, watercolor.md and paint_gestures.md did, 2026-10-08)."""
+    embedded = set()
+    for m in EMBED_SCREENSHOT_RE.finditer(markdown):
+        shot = re.search(r'\bscreenshot="([^"]+)"', m.group(0))
+        if shot:
+            embedded.add(shot.group(1))
+    return [(markdown.count("\n", 0, m.start()) + 1, m.group(1)) for m in IMAGE_LINE_RE.finditer(markdown) if m.group(1) in embedded]
+
+
 def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, files: Any) -> str:
+    duplicates = duplicate_embedded_images(markdown)
+    if duplicates:
+        raise RuntimeError(f"{page_path}: these image lines repeat a screenshot their runner fence already embeds (embed=true); "
+                           "delete them: " + ", ".join(f"line {n} {path}" for n, path in duplicates))
     markdown = rewrite_source_citations(
         markdown,
         depth=page_directory_depth(page_path, state.docs_dir),

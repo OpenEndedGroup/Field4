@@ -34,8 +34,6 @@ canvas.stroke(FLine().moveTo(920, 450).cubicTo(600, 520, 350, 390, 80, 450), bru
 display("main", canvas.png(relief = 0.6))
 ```
 
-![one round brush along the same curve at 20, 80 and 300 mm/s, and right to left](assets/paint_gestures/speed.png)
-
 `dynamicBrush(kind, width, hairs, segments, config)` takes the same `BrushKind` and
 [`BrushConfig`](paint_canvas.md#brushes-made-to-order) as an ordinary brush, with the number of
 hairs to simulate (32 by default) and the segments in each (5). It loads like one, `load(color,
@@ -99,8 +97,6 @@ canvas.stroke(canvas.gesture(line(500.0, 540.0, 900.0, 540.0), speed = 80.0, til
 display("main", canvas.png(relief = 0.6))
 ```
 
-![a flick and a slow lift, a paused stroke, a rolled flat, and a filbert upright and laid over](assets/paint_gestures/gestures.png)
-
 ## Seeing the hairs
 
 `canvas.hairs(brush)` gives each hair's nodes as they are now: x and y in canvas coordinates and
@@ -126,8 +122,6 @@ val side = canvas.hairs(brush).map { hair ->
 val paper = FLine().moveTo(300, 0).lineTo(560, 0).apply { thickness = 2.0; color = vec(0.5, 0.6, 0.7, 1.0) }
 lines(side + paper, w = 520.0, h = 240.0, fitToSize = true)
 ```
-
-![a brush's hairs seen from the side, bent back along the canvas behind the ferrule](assets/paint_gestures/hairs.png)
 
 ## A brush that keeps a set
 
@@ -178,8 +172,6 @@ display("main", canvas.png(relief = 0.6))
 markdown("retained bend: fresh %.3f rad, scrubbed %.3f rad".format(fresh.retainedBend, abused.retainedBend))
 ```
 
-![a fresh hog flat's full stroke above the thin line of one scrubbed until its bristles took a bend](assets/paint_gestures/set.png)
-
 ## Watercolour
 
 `brush.loadWater(canvas, paint, fill)` loads a moving brush with
@@ -203,8 +195,6 @@ for ((i, fill) in listOf(1.0, 0.25, 0.08).withIndex()) {
 sheet.dry()
 display("main", sheet.png(relief = 0.5))
 ```
-
-![a full, a quarter full and a nearly dry moving brush on rough paper, the last breaking up on the tooth](assets/paint_gestures/water.png)
 
 ## Keeping a brush
 

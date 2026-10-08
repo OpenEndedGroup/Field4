@@ -37,8 +37,6 @@ canvas.stroke(zigzag, brush)
 display("main", canvas.png())
 ```
 
-![a white canvas with three horizontal brushstrokes: blue, orange-yellow, and a yellow zigzag that thins out as the brush runs dry](assets/paint_canvas/first.png)
-
 A few things in that box apply everywhere on this page:
 
 - **Coordinates.** The canvas is always 1000 units wide and `1000 / aspect` units tall, with y
@@ -69,8 +67,6 @@ BrushKind.entries.forEachIndexed { i, kind ->
 }
 display("main", canvas.png())
 ```
-
-![six strokes of the same curve, one per brush kind: three solid bands, a fan stroke split into lines, a mottled rigger stroke, and a badger stroke fading to a wash](assets/paint_canvas/brushes.png)
 
 `width` is the brush's width at full pressure, in canvas units. A brush gets wider when pressed
 harder, so `stroke(..., pressure = 0.3..0.9)` gives a stroke that starts thin and swells.
@@ -124,8 +120,6 @@ canvas.stroke(FLine().moveTo(750, 280).lineTo(750, 440), blue.load(rgb(0.1, 0.25
 display("main", canvas.png())
 ```
 
-![a black band under three white strokes of increasing opacity, and two yellow bands each crossed by blue: green and streaky where the yellow was wet, clean blue where it was dry](assets/paint_canvas/layers.png)
-
 `wait(minutes)` lets simulated time pass without drying everything. Paint keeps stiffening for as
 long as you wait, and how fast depends on its thickness and its `drying` rate. `dry()` waits until
 every stroke is touch-dry. Neither rendering nor `png()` changes the canvas: they show a dried copy,
@@ -167,8 +161,6 @@ repeat(260) {
 display("main", canvas.png(relief = 0.8))
 ```
 
-![a few hundred curved brushstrokes sweeping in swirling currents, warm colours at the top shading to cool blues and violets at the bottom](assets/paint_canvas/flow.png)
-
 ## Pencil and chalk
 
 The same canvas takes graphite and chalk. `canvas.pencil("2B")` is a pencil of that grade, from
@@ -207,8 +199,6 @@ canvas.draw(FLine().moveTo(80, 560).lineTo(920, 560), canvas.chalk(), pressure =
 
 display("main", canvas.png(relief = 0.0))
 ```
-
-![a pencil sketch of a vase with its shadow side hatched, standing on a ruled chalk line](assets/paint_canvas/drawing.png)
 
 Graphite stays loose until something seals it. `erase(region, strength)` lifts it the way a
 kneaded eraser does: more from the tops of the paper's grain than from the hollows, and never quite
@@ -256,8 +246,6 @@ canvas.outline(FLine().moveTo(700, 420).lineTo(820, 90).lineTo(950, 420).lineTo(
 display("main", canvas.png())
 ```
 
-![a region of blue strokes crossed by pale broad strokes, a feathered red stipple, and a triangle drawn in several broken brush strokes](assets/paint_canvas/areas.png)
-
 For single marks there is `touch(brush, x, y)`, which presses the brush tip down and lifts it with
 no path: a dab. `drag`, `twist` and `angle` move, roll and turn the tip while it is down.
 
@@ -295,8 +283,6 @@ canvas.work(crown, rgb(0.2, 0.35, 0.15), Handling.Body, hiding = 0.6, width = 14
 
 display("main", canvas.png())
 ```
-
-![a pencil-drawn landscape painted over with thin blue sky and green grass, the pencil hill line and tree trunk still visible through the paint](assets/paint_canvas/underdrawing.png)
 
 ## Tube paints, glazes and age
 
@@ -336,8 +322,6 @@ canvas.crack(CrackKind.Aged)
 
 display("main", canvas.png(relief = 0.8, gloss = 0.3))
 ```
-
-![seven pale bands mixed from lead white and seven different tubes on a red-brown ground, with fine cracks running through everything](assets/paint_canvas/aged.png)
 
 ## Knives, rags and spatter
 
@@ -391,8 +375,6 @@ canvas.spatter(flick, 150.0, 540.0, toward = 600.0 to -60.0, spread = 0.3, force
 display("main", canvas.png(wet = true, light = PaintLight.Raking))
 ```
 
-![a dark passage with two lights wiped out by a rag, a knifed cream slab scraped through, and red and blue spatter](assets/paint_canvas/tools.png)
-
 ## Brushes made to order
 
 A `BrushKind` is a starting point. `brush(kind, width, config = BrushConfig(...))` changes how the
@@ -419,8 +401,6 @@ configs.forEachIndexed { i, config ->
 }
 display("main", canvas.png())
 ```
-
-![five strokes of one brush made five ways: solid, streaky with 12 bristles, ragged, striped and ridged, thin and even](assets/paint_canvas/configured.png)
 
 ## Brushes that stay dirty
 
