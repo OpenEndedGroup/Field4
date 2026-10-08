@@ -3796,6 +3796,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="orca-io",
+            description="ORCA runs in a box output; its notes, UDP, OSC and CC reach Kotlin, a Kotlin write reaches its grid and the document, a re-run reopens that grid, and the AI tools read and write it.",
+            commands=[
+                "new-box --name OrcaRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/orca-io.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/orca-io.js"), "--timeout", pw_timeout]),
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/orca-reopen.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/orca-reopen.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-tools",
             description="Optional viewer tools load from Field, restore state and dispose without an idle loop.",
             commands=[

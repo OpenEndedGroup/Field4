@@ -10,11 +10,14 @@ ossia score and the python and JavaScript libraries all speak it.
 list, show as controls and set. A box can also open another program's OSCQuery service and read,
 set and follow its parameters.
 
-[Open the OSCQuery demo ↗](offline.html?file=assets/oscquery_demo/metadata.edn) to read its
-boxes, or open `public/docs/assets/oscquery_demo/` as a document in Field to run them with nothing
-else running: box 1 publishes, and boxes 3 and 4 connect back to it as a remote.
+[Open the OSCQuery demo ↗](offline.html?file=assets/oscquery_demo/metadata.edn) to read it, or
+open `public/docs/assets/oscquery_demo/` as a document in Field to run it with nothing else
+running: one box publishes, and two others connect back to it as a remote.
 
 ## Publishing parameters
+
+This box publishes a filter cutoff, an on/off switch and a scene menu, and keeps each in a
+variable that other programs can set:
 
 ```diffstatic {data-lang=kotlin}
 import afield.oscquery.*
@@ -174,7 +177,7 @@ another machine can browse and set it. That is what OSCQuery is for, but anyone 
 can change those parameters. `OscQueryServer(name, bindAddress = "127.0.0.1")` keeps a service on
 this machine only. `OscQueryServices.closeAll()` stops every service and remote connection.
 
-## What this does not do
+## Not supported
 
 - No `TAGS`, `UNIT`, `CLIPMODE`, `EXTENDED_TYPE` or `CRITICAL`; `HOST_INFO` lists them as
   unsupported, and remotes fall back to their defaults.
@@ -183,12 +186,16 @@ this machine only. `OscQueryServices.closeAll()` stops every service and remote 
 - Discovery does not resolve a name clash: two services with the same name on one network both
   appear, under the same name.
 
+## See also
+
+- [OSC](osc.md), for sending and receiving plain OSC messages.
+- [MQTT](mqtt.md), for sensors and devices that publish through a broker.
+- [Driving lights](dmx_lighting.md), for Art-Net and sACN output.
+
 ??? aside "How this page was checked"
-    Two fences are captured by the docs runner: the JSON fetched over loopback HTTP from inside a
-    box, and the parameter list a remote reads back from Field's own service. The rest are static.
-    The behaviour is pinned by `src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`,
-    which drives a server over real loopback HTTP, UDP and WebSocket with the JDK clients and
-    JavaOSC, and by the demo document, whose boxes were each run through the backdoor. The DNS-SD
-    responder is written from RFC 6762 and 6763 rather than taken from JmDNS, to avoid a new
-    dependency. `dev_docs/OSCQUERY_BRIDGE.md` records what was tested against other
+    Three fences are captured by the docs runner: the JSON fetched over loopback HTTP from inside a
+    box, the published controls with the paths the service lists for them, and the parameter list
+    a remote reads back from Field's own service. The rest are static. The behaviour is covered by
+    `src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`, over real loopback HTTP, UDP and
+    WebSocket. `dev_docs/OSCQUERY_BRIDGE.md` records what was tested against other
     implementations.

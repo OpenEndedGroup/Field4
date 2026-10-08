@@ -26,8 +26,7 @@ an error that says how to build it.
 
 Everything on this page is also in one Field document: a Kotlin root with three Pd boxes under it,
 and four Kotlin boxes that drive patches from Kotlin. Browse it here, read-only, box by box. To run
-it, open **pure_data_demo** from the welcome screen's starting points, or replay
-`dev_docs/agents/transcripts/pure_data_demo.yaml`.
+it, open pure_data_demo from the welcome screen's starting points.
 
 <iframe
   src="offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn"
@@ -215,7 +214,8 @@ showSignals("[table scope]" to recorded.toList(), channel = "scope",
 ## Rendering without an audio device
 
 `PdInstance` is the Pd underneath a launch, and it can be used directly. `renderOffline` pulls
-samples out of it without opening an audio device, which is how the tests measure it:
+samples out of it without opening an audio device. This box renders one second of a 440 Hz sine and
+measures it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/offline-measure.png" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="900" h="200" name="pure-data-offline-measure" alt="A measured output reading: 48000 samples, 440 upward zero crossings, peak 0.2500, left == right: true."}
 val pd = afield.pd.PdInstance(sampleRate = 48000)
@@ -230,9 +230,9 @@ display("measured", "<pre style='margin:8px'>${left.size} samples, $ups upward z
     "peak ${"%.4f".format(peak)}, left == right: ${left.contentEquals(right)}</pre>")
 ```
 
-The sine gives 440 upward zero crossings in that second, and a peak of the amplitude it was given;
-`PdTest` holds both to within one crossing and 0.002. `renderPdWav(file, patchText, seconds)` writes the same thing to a 16-bit
-stereo `.wav`, and `pdWaveform(patchText)` plots a few milliseconds in the box.
+The sine gives 440 upward zero crossings in that second, and a peak of the amplitude it was given.
+`renderPdWav(file, patchText, seconds)` writes the same thing to a 16-bit stereo `.wav`, and
+`pdWaveform(patchText)` plots a few milliseconds in the box.
 
 Here is `pdWaveform` on a sawtooth, drawn with its patch. The patch runs in libpd, and no audio
 device is opened:
@@ -401,11 +401,10 @@ is on and suggests what was probably meant. This Pd box was launched with `[osc 
 #X connect 0 0 1 0;
 ```
 
-The same message, and the same mark on the box's own line, come from `pd("""…""")` in a Kotlin box. The
-suggestions come from `pd-objects.txt`, which the libpd build writes from the same pinned sources it
-compiles. It lists every object and alias Pd registers (297 at libpd 0.16.1), so a suggestion is
-always something this Pd can make. `PdObjects.suggest` tries the signal or control twin first (`osc` for
-`osc~`, `metro~` for `metro`), then a difference of case, then the nearest names within two edits.
+The same message, and the same mark on the box's own line, come from `pd("""…""")` in a Kotlin box.
+The suggestions are drawn from the objects this build of Pd actually has, so a suggestion is always
+something it can make. The signal or control twin comes first (`osc~` for `osc`, `metro` for
+`metro~`), then a difference of case, then the nearest names within two edits.
 
 ## What is not here
 
@@ -419,35 +418,14 @@ always something this Pd can make. `PdObjects.suggest` tries the signal or contr
 - **One output per launch.** Every patch opened in one Pd sums into that Pd's `[dac~]`; the launch's
   `gain` applies to the sum.
 
-??? aside "The four fences left without a figure"
+??? aside "How the figures are made"
 
-    Every fence on this page that makes something visible has its output captured right after it.
-    Four do not. `./gradlew buildLibpdNative` is a shell command. The Pd-box drone text is a patch
-    for the box language, and its drawing is the figure directly under it: running such a box draws
-    exactly that, in the same `patch` output. The round-trip patch text is shown so the line-note
-    figure below it can be read against its lines. And the `pdSend` fence's first line is what the
-    send-from-Kotlin figure runs; its arpeggio loop changes only what is heard, a quarter second at a
-    time, and a still of it would show the same line note with a different number.
+    Every figure is captured by running the code on the docs build machine; all but the patch
+    drawing need libpd there (`./gradlew buildDocsNativePrerequisites` builds it). The two line-note
+    figures need a playing patch and the cursor on a given line, so each has a setup transcript in
+    `dev_docs/agents/transcripts/docs_capture/`. The numbers on the page are also checked by
+    `PdTest`, and the demo document is built from `dev_docs/agents/transcripts/pure_data_demo.yaml`.
 
-??? aside "What the figures need, and how the editor ones are made"
-
-    Every figure here is captured by running real code on the docs build machine. All but the
-    patch drawing need libpd there: those fences say `requires="libpd"`, and
-    `./gradlew buildDocsNativePrerequisites` builds it with the rest. The drawing reads text only.
-
-    The typo figure is an ordinary editor capture of a Pd box: the runner puts the fence under a
-    `mainLanguage` root (`tools/field_languages.py` lists `pd` for that) and launches it, and
-    `expect-error=true` makes the missing error a failure rather than the error itself. The two
-    line-note figures need a patch that is already playing and a cursor on a particular line, so
-    each has a setup transcript in `dev_docs/agents/transcripts/docs_capture/` (launch the Pd box,
-    run a message line or the Kotlin sender) and a short drive script that opens the editor, sizes
-    its pane to the patch with `ui.editorHeight`, moves the cursor and waits for the note to appear.
-    Screenshot prep holds the caret solid while a still is taken, so the caret is on the line the
-    note describes. The note's text is the server's answer for that
-    line, so a wrong value would be photographed as wrong.
-
-    The numbers elsewhere on this page come from `PdTest` in `src/jvmTest`, which skips when libpd
-    is not built, and the loadable scene is `dev_docs/agents/transcripts/pure_data_demo.yaml`.
-
-For where Pd sits among Field's other ways of making a sound, see
-[Making a Sound, Every Path There Is](sound_paths.md).
+See also: [Faust](faust.md), [Sonic Pi](sonic_pi.md), and
+[Making a Sound, Every Path There Is](sound_paths.md) for where Pd sits among Field's other ways of
+making a sound.

@@ -63,9 +63,7 @@ flags that pick a device or a file (`-o`, `-i`, `-+rtaudio`, `-M` and the like),
 audio engine is the device. Text without `<CsInstruments>` is read as a bare orchestra with no score.
 
 A `chn_k` channel starts at the default it declares: above, `chnget "cutoff"` reads 2400 until
-something writes the channel. Csound on its own leaves the channel at 0 and keeps the default only
-as a hint for the host, so the same file in another Csound host can play a 0 Hz `butterlp`, which is
-silence.
+something writes the channel. Other Csound hosts may start it at 0, which makes this `butterlp` silent there.
 
 ### The keys
 
@@ -110,15 +108,10 @@ ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```
 
-The opcode list is not written by hand. `./gradlew generateCsoundVocabulary` asks libcsound for
-every opcode it has compiled in (`csoundNewOpcodeList`): 1220 opcodes and 1906 signatures in Csound
-6.18.1. It then joins on the description, syntax lines and arguments from the Csound Reference
-Manual's DocBook source, release 6.18.0, downloaded and checksummed. The result is
-`src/commonMain/resources/csound-vocabulary.json`. The manual describes 1183 of the 1220 opcodes;
-the other 37 (`maxtab`, `tabmap`, `mp3sr` and the like, mostly deprecated or undocumented) show
-their signatures alone. A test fails when the names or signatures no longer match the library, and
-another when the descriptions no longer match the pinned manual. The editor's highlighting reads the
-same file.
+The opcode list comes from libcsound itself, so it holds every opcode your build has compiled in.
+The descriptions, syntax lines and arguments come from the Csound Reference Manual. The few opcodes
+the manual does not describe, mostly deprecated ones such as `maxtab` and `mp3sr`, show their
+signatures alone. The editor's highlighting reads the same list.
 
 Hovering on an opcode in the editor shows its description and syntax, and links to its page in the
 manual, for example [`butterlp`](https://csound.com/docs/manual/butterlp.html).
@@ -239,8 +232,7 @@ of Field's graph. Two things to know about timing:
 
 - Csound performs whole `ksmps` blocks, 32 frames here. Audio into Csound, through `connect` or
   `ins`, is delayed by exactly one block, 32 frames or 0.67 ms at 48 kHz, so that every block has a
-  whole control period of input whatever size the engine's buffer is. A test checks that a
-  straight-through channel returns the input exactly 32 frames late.
+  whole control period of input whatever size the engine's buffer is.
 - Audio out of Csound is not delayed further. It is in step with the block Field asked for.
 
 The same holds offline. `renderSignalsOffline` advances any number of signals through the same audio
@@ -293,23 +285,17 @@ shows a player and a waveform.
 
 ## The demo
 
-`dev_docs/agents/transcripts/csound_demo.yaml` builds the whole set in a fresh document: a Csound root
-with three Csound boxes (**pluck**, **fx**, **typo**), and five Kotlin boxes that use every
-direction above. Replay it with the backdoor's `macro write csound_demo --file …` and `macro run
-csound_demo`, or open **csound_demo** from the welcome screen's starting points.
+Open csound_demo from the welcome screen's starting points. It is a Csound root with three Csound
+boxes (**pluck**, **fx**, **typo**) and five Kotlin boxes that use each of the directions above.
+
+See also: [Faust](faust.md) and [Pure Data](pure_data.md), the other languages that play through
+the same audio engine, and [How to make sound in Field](sound.md).
 
 ??? aside "How the captures and numbers on this page were made"
     The two editor figures and the completion popup are captured by the docs runner against a
     real Field. The editor figures are gated on `requires="csound"`, so a machine without a built
-    libcsound keeps the committed images and says why. An editor image does not show whether the
-    fence plays, so `CsoundDocsFencesTest` renders every `data-lang=csound` fence on this page
-    offline and fails on a silent one, or on an `expect-error` fence that compiles. It found the
-    Pluck fence silent before Field applied `chn_k` defaults. The completion figure needs no libcsound,
-    because it reads the committed vocabulary. The quoted gain (0.2420) and the latency (exactly 32
-    frames) come from `CsoundDataPlaneTest` and from running the demo through the backdoor on
-    2026-10-02.
-
-    One build fix is behind the named instruments on this page. Csound marks a named p1
-    (`i "Pluck"`) with a NaN, and the `-ffast-math` its CMake adds lets clang assume that NaNs
-    cannot happen. With it, every named-instrument event was "instr 0 undefined" (reproduced in a
-    few lines of C against the library). `build_csound_native.py` turns fast-math off.
+    libcsound keeps the committed images. `CsoundDocsFencesTest` renders every `data-lang=csound`
+    fence on this page offline and fails on a silent one, or on an `expect-error` fence that
+    compiles. The opcode vocabulary is regenerated by `./gradlew generateCsoundVocabulary` into
+    `src/commonMain/resources/csound-vocabulary.json`, and tests fail when it drifts from the
+    library or the pinned manual. The quoted gain and latency come from `CsoundDataPlaneTest`.

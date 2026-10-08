@@ -1375,6 +1375,22 @@ AI4](ai4_experiments.md) shows a painting made with it. It needs the paint libra
 
 [Open ↗](offline.html?file=assets/agent_transcripts/ai4_paint_studio/metadata.edn)
 
+### stacksl_evolve_studio
+
+A StackSL search toward a picture that the AI chat steers. The one box holds the search and gives
+the chat agent tools to run generations, look at the best programs, propose programs of its own,
+ask the fast model for a round of edits, take a gradient step on a program's numbers, and change the
+metric and population. The population belongs to the conversation: rewinding the chat to a request
+puts the search back as it was before it, and the agent can breed the current population with one
+from a branch it left. Opening the document shows only the target; the search starts when you ask
+for it. Open the box's AI panel and ask, for instance, "evolve toward the target, and bring in the
+watchmaker when it stalls". [Evolving a Shader](stacksl_evolve.md#steering-it-from-the-ai-chat)
+describes it. It needs an AI provider.
+
+![rows of targets and the best programs found for them: the plain search draws noise and stripes, the search with the watchmaker draws each target](assets/stacksl_evolve/watchmaker-original.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacksl_evolve_studio/metadata.edn)
+
 ### paint_canvas
 
 Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
@@ -2027,6 +2043,24 @@ skips the Csound ones; every box was run by hand against a built Csound on 2026-
 [Csound](csound.md) has the walkthrough.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
+
+### orca_hello
+
+[ORCA](orca.md) in a box output, playing a melody and a bass line through a `PatSynthBank`. Run the
+box, click the grid and type; every note ORCA plays is shown under it. The box also gives its AI
+Chat tools that read and write the grid, so you can ask AI4 to change the tune.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_hello/metadata.edn)
+
+### orca_duet
+
+Two ORCAs in one box and a Kotlin `frames { }` loop between them. `lead` plays a tune; the loop
+copies the last eight notes it played into `echo`, which plays them back three frames to a note
+against `lead`'s two, and every eighth echo moves one note of `lead`'s tune up the scale. A line
+under the grids shows what Kotlin heard and changed. Launch the box, then type into either grid.
+[ORCA](orca.md#two-orcas-and-kotlin-between-them) has the video and a recording.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
 ### marf_demo
 
