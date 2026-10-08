@@ -60,3 +60,11 @@ fun LorisModel.crop(startSeconds: Double, endSeconds: Double): LorisModel {
 private fun LorisModel.mapPoints(f: (LorisBreakpoint) -> LorisBreakpoint): LorisModel = copy(partials = partials.mapNotNull { p ->
     p.points.map(f).filter { it.frequencyHz < sampleRate * .49 }.takeIf { it.isNotEmpty() }?.let { p.copy(points = it) }
 })
+
+/** Centre of the [binSeconds] bin with the largest summed breakpoint amplitude: a simple marker for dilate. */
+fun LorisModel.loudestTimeSeconds(binSeconds: Double = .05): Double {
+    require(binSeconds.isFinite() && binSeconds > 0)
+    val bins = DoubleArray(ceil(durationSeconds / binSeconds).toInt().coerceAtLeast(1))
+    partials.forEach { p -> p.points.forEach { b -> bins[(b.timeSeconds / binSeconds).toInt().coerceIn(bins.indices)] += b.amplitude } }
+    return (bins.indices.maxBy { bins[it] } + .5) * binSeconds
+}

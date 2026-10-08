@@ -103,6 +103,10 @@ class LorisTransformTest {
         }
         val halfway = client.morph(a, b, LorisEnvelope.constant(.5)).model.labelled(1).at(.5).frequencyHz
         assertTrue(halfway > 225 && halfway < 325, "frequency morph midpoint $halfway")
+        val viaFutures = client.distillAsync(a, LorisReference.constant(220.0)).thenCompose { d ->
+            client.dilateAsync(d.model, listOf(.5), listOf(.5)) }.thenCompose { d ->
+            client.morphAsync(d.model.dropUnlabeled(), b, LorisEnvelope.constant(0.0)) }.get()
+        assertEquals(a.labelled(1).at(.5).frequencyHz, viaFutures.model.labelled(1).at(.5).frequencyHz, 1.0)
         val glide = client.morph(a, b, LorisEnvelope.ramp(.2, .8))
         assertEquals(rate, glide.samples.size)
         assertTrue(glide.model.labelled(1).at(.15).frequencyHz < 225 && glide.model.labelled(1).at(.85).frequencyHz > 325)

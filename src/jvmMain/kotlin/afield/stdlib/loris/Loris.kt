@@ -196,6 +196,16 @@ class LorisClient(val cacheDirectory: Path = Path.of("build/field-loris/cache"),
         }
     }
 
+    fun distillAsync(model: LorisModel, reference: LorisReference, distill: Boolean = true): CompletableFuture<LorisResult> =
+        CompletableFuture.supplyAsync { distill(model, reference, distill) }
+
+    fun dilateAsync(model: LorisModel, from: List<Double>, to: List<Double>): CompletableFuture<LorisResult> =
+        CompletableFuture.supplyAsync { dilate(model, from, to) }
+
+    fun morphAsync(source: LorisModel, target: LorisModel, frequency: LorisEnvelope, amplitude: LorisEnvelope = frequency,
+                   bandwidth: LorisEnvelope = amplitude): CompletableFuture<LorisResult> =
+        CompletableFuture.supplyAsync { morph(source, target, frequency, amplitude, bandwidth) }
+
     /** Loris's Sieve: of overlapping same-label partials keep the longest; others become label 0 (or are dropped). */
     fun sift(model: LorisModel, fadeSeconds: Double = .005, dropUnlabeled: Boolean = false): LorisResult {
         require(fadeSeconds.isFinite() && fadeSeconds >= 0)
