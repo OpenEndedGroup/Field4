@@ -301,7 +301,7 @@ you click, it follows your changes from that moment on.
 
 ---
 
-## Will it get stuck?
+## Deadlock and starvation
 
 A Petri net doesn't have to make sound. The same analysis that finds a drum loop's length can
 tell you whether processes that share resources can get stuck.
@@ -370,7 +370,7 @@ philosopher is permanently left out. `willDeadlock()` says no, and `deadTransiti
 is starving. Reversing a philosopher fixes the deadlock; a fair conflict policy fixes the
 starvation.
 
-### A buffer that cannot leak
+### Conservation laws in a bounded buffer
 
 A *P-invariant* is a weighted sum of token counts that no transition can change, worked out from
 the arcs. This example builds a four-slot buffer between a producer and a consumer, lists its
