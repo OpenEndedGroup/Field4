@@ -3,9 +3,9 @@
 Write a Pat pattern in a box, render twelve cycles of it, and there is a finite WAV file on disk
 before you have heard it play. That file is all Field Audio ever sees of the music. Pat, Dirt,
 Dough and Faust render faster than real time and Sonic Pi records a real-time performance, but
-every one of them hands back the same `RenderedAudioFile`, and
-`FieldAudioClient.analyzeRenderedAudio(...)` takes it from there. It imports the immutable bytes,
-submits cached analysis jobs, follows progress and returns durable results.
+every one of them hands back the same `RenderedAudioFile`. Pass it to
+`FieldAudioClient.analyzeRenderedAudio(...)`, which uploads the file, starts the analysis jobs,
+reports their progress and returns the results.
 
 The loop:
 
@@ -18,14 +18,15 @@ Field code (Pat / Dirt / Dough / Faust / Sonic Pi)
     → revise the generating code
 ```
 
-The project model stays in Field. `RenderedAudioFile.provenance` stays with the Field operation
-and the source code stays in its box. The server asset id names only the WAV bytes, which
-means two programs that genuinely render identical audio share the asset and its cached analyses.
+The source code stays in its box and the render's `provenance` map stays in Field; the server
+only sees the WAV. Two programs that render identical audio therefore share one uploaded asset
+and its cached analyses.
 
 ## Rendering a Pat pattern and analysing it
 
-`renderDirtWav` may be replaced by any renderer in the table below; the import, job and
-visualization half is unchanged.
+This box renders twelve cycles of a Pat pattern through the Dirt samples, sends the file for
+analysis and shows each job's progress, then the combined view. Swap `renderDirtWav` for any
+renderer in the table below and the rest stays the same.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.synth.*
@@ -90,9 +91,9 @@ Listen to the Dirt render while comparing the analysis lanes.
 <audio controls preload="metadata" src="assets/audio_render_analysis/pat-dirt-study.wav"></audio>
 
 
-The final view behaves as one instrument: audio playback moves every analysis cursor; hovering a
-pitch or beat lane moves the waveform cursor; clicking any lane seeks the player; zoom and pan
-share the same time window.
+The lanes share one cursor: playing the audio moves every lane's cursor, hovering a pitch or beat
+lane moves the waveform cursor, clicking any lane seeks the player, and zoom and pan apply to all
+of them.
 
 ## Renderers
 
@@ -111,14 +112,15 @@ share the same time window.
 
 </div>
 
-All writers accept explicit paths and never silently choose a project location. The transcript uses
-the system temporary directory because the uploaded asset is durable and content-addressed; use a
-path beside a Field project when retaining the local WAV is part of the composition.
+Every renderer writes to the path you give it. The example above uses the system temporary
+directory, since the uploaded copy is kept by the server; write beside your document instead when
+you want to keep the WAV yourself.
 
 ## Choosing analyses and regions
 
 `standardAudioAnalyses(region)` requests multi-scale beats, monophonic pYIN and polyphonic Basic
-Pitch. Disable irrelevant legs to make an experiment cheaper:
+Pitch. Turn off the ones you do not need to make a run faster. This call analyses twelve seconds
+starting at 4 s, beats only:
 
 ```diffstatic {data-lang=kotlin}
 client.analyzeRenderedAudio(
@@ -134,15 +136,16 @@ client.analyzeRenderedAudio(
 )
 ```
 
-For a custom fan-out, return `NamedAudioAnalysis(label, operation)` values from `requests`. Accepted
-jobs are exposed immediately, WebSocket progress is optional, and `RenderedAudioAnalysis.analyses`
-retains each label, `JobAccepted` record and final `AnalysisResult`. Identical bytes plus identical
-operation parameters resolve through the existing cache.
+To request your own set of analyses, return `NamedAudioAnalysis(label, operation)` values from
+`requests`. The result's `analyses` list keeps each label with its accepted job and final
+`AnalysisResult`. Asking again for the same audio with the same parameters returns the cached
+result.
 
 ## Asynchronous renderers
 
 Faust source compilation and Sonic Pi capture return `CompletableFuture<RenderedAudioFile>`, so they
-compose directly into analysis without blocking Field:
+chain straight into analysis without blocking Field. Here a Faust program is compiled, rendered
+for 18 seconds and analysed:
 
 ```diffstatic {data-lang=kotlin}
 renderFaustWavAsync(path, "voice", faustSource, seconds = 18.0)
@@ -154,12 +157,7 @@ Sonic Pi's helper starts the recorder, evaluates the Ruby program, captures for 
 stops its jobs, waits for the saved file to stabilize, and only then imports it. It does not close
 the shared Sonic Pi daemon.
 
-Load the `audio_render_analysis` operation transcript for complete Pat/Dirt, Dough, Faust and Sonic
-Pi boxes plus the durable job monitor. Continue with [beat and pitch analysis](audio_ai_analysis.md),
-[the general audio visualizer](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation),
-or [every sound path in Field](sound_paths.md).
-
-### The service waveform
+## The service waveform
 
 This view requests the same render through Field Audio's waveform-summary endpoint.
 
@@ -177,3 +175,9 @@ val audio = asset.representations.first { it.mediaType == "audio/wav" }
 display("waveform", audio.audioVisualizerHtml(label = "Pat through Dirt · service waveform envelope", options = AudioVisualizerOptions(width = 1040, waveformHeight = 170)))
 
 ```
+
+## See also
+
+- [Beat and pitch analysis](audio_ai_analysis.md)
+- [The audio visualizer](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation)
+- [Every sound path in Field](sound_paths.md)
