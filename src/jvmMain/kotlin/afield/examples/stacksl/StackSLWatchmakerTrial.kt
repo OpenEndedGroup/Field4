@@ -116,9 +116,41 @@ object StackSLWatchmakerTrial {
         println("stacksl watchmaker figure written to ${out.absolutePath}")
     }
 
+    /**
+     * Resemblance over time, for a plot: every saved run in [dirs] (`s<seed>-<target>-<arm>.json`),
+     * every new best program it found, with the renders it took, that program's layout agreement at
+     * [side] px and its skill under the trial's one referee (LPIPS at 32 px over the whole picture, the
+     * same for every stage and arm), as CSV rows `arm,target,seed,generation,renders,layout,skill,origin`.
+     */
+    fun curves(dirs: List<File>, out: File, side: Int = 128) {
+        val name = Regex("""s(\d+)-([a-z]+)-([a-z-]+)\.json""")
+        val rows = ArrayList<String>()
+        rows += "arm,target,seed,generation,renders,layout,skill,origin"
+        val referees = HashMap<String, StackSLImageObjective>()
+        for (dir in dirs) for (f in dir.listFiles().orEmpty().sortedBy { it.name }) {
+            val m = name.matchEntire(f.name) ?: continue
+            val (seed, target, arm) = m.destructured
+            val snapshot = runCatching { afield.stdlib.StackSLEvolutionSnapshot.read(f) }.getOrNull() ?: continue
+            val t = targetAt(target, side).raster
+            val referee = referees.getOrPut(target) { StackSLImageObjective(targetAt(target, 32), metric = StackSLMetric.LPIPS) }
+            for (i in snapshot.improvements) {
+                val program = StackSLProgram.of(i.program)
+                val layout = StackSLLayout.layoutAgreement(StackSLCpu.renderStill(i.program, dim = side), t)
+                val skill = referee.skill(referee.evaluate(program).fitness)
+                rows += "$arm,$target,$seed,${i.generation},${i.renders},%.4f,%.4f,${i.origin.replace(",", " ")}".format(layout, skill)
+            }
+        }
+        out.writeText(rows.joinToString("\n") + "\n")
+        println("stacksl watchmaker curves: ${rows.size - 1} rows written to ${out.absolutePath}")
+    }
+
     @JvmStatic
     fun main(args: Array<String>) {
         fun arg(name: String) = args.indexOf("--$name").takeIf { it >= 0 }?.let { args.getOrNull(it + 1) }
+        arg("curves")?.let { dirs ->
+            curves(dirs.split(",").map { File(it) }, File(arg("out") ?: "build/stacksl-watchmaker-curves.csv"))
+            return
+        }
         arg("figure")?.let { results ->
             figure(File(results), (arg("arms") ?: "baseline,frequent").split(","), arg("seed")?.toLong() ?: 1L,
                 arg("targets")?.split(","), arg("side")?.toInt() ?: 128, File(arg("out") ?: "build/stacksl-watchmaker-figure.png"),

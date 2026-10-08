@@ -110,6 +110,12 @@ Each search below had 1,200 renders on each of twelve targets, over two or three
 
 The last row is the model run with almost no search behind it: one population, one blind change per generation, a round every generation, stopped after 13 or 14 model calls. It draws far less than the model and the search together, at more calls.
 
+Over the course of a run, the difference starts at the model's first round. This plots the best program so far on the five built-in targets against the number of programs rendered: on the left its skill, scored the same way for every search, and on the right its layout agreement:
+
+![two line charts on a dark background, both against programs rendered from 0 to 1,200, each with four lines (median of 15 runs, with the middle half shaded). Left, skill: the search without a model climbs slowly to about 0.54; the three watchmaker searches jump when the model is first asked, at about 330 renders when it is asked every 4 generations and about 650 when every 8, and finish between 0.96 and 1.00. Right, layout agreement: the search without a model stays at 0 throughout; the watchmaker searches rise steeply after their first round and finish at 0.99 to 1.00](assets/stacksl_evolve/watchmaker-over-time.png)
+
+The search without a model gets better at its score and never at the picture. The lines are medians, so they hide the runs that missed: the shading shows how far the middle half spreads, and the table above has the means.
+
 These are the seven new targets from one seed: each target, then the best program from the plain search (GP), from the model alone, and from `watchmaker()` (both), each with its layout agreement:
 
 ![seven rows on black, one per new target, each showing the target and three results with their layout agreement. The plain search draws arcs, stripes and blocks that resemble none of them. The model alone draws a stepped triangle, diagonal stripes, two squares for the two discs, a checkerboard for the cross, a thin ring with a dot for the bullseye, a stepped edge and a small sun. The search with the watchmaker draws the triangle, stripes, cross, bullseye and tilted edge almost exactly, the sunset with a ring for its sun, and a green smear for the two discs](assets/stacksl_evolve/watchmaker-heldout.png)
