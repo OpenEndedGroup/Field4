@@ -198,6 +198,8 @@ nav:
       - "MQTT: sensors, devices and brokers": mqtt.md
       - "OSCQuery: controls other tools can find": oscquery.md
       - "Network MIDI: RTP-MIDI sessions": rtp_midi.md
+      # Next to the other show-control protocols: the clock desks, video servers and DAWs share.
+      - "SMPTE Timecode: LTC and MTC": smpte_timecode.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md
