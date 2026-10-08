@@ -13,10 +13,17 @@ On its own the search finds programs that score better than random ones, and it 
 val run = evolveStackSLTowards(StackSLTargets.quadrants(32), budget = 400, selection = Selection.LEXICASE)
 print(run.summary())
 print(run.best!!.text)
-showImg(run.contactSheet(), caption = "the target, the evolved program, the random control's best")
+
+// The program the watchmaker (below) found for the same target, for comparison.
+val watchmaker = StackSLProgram.of(
+    "[0.05,0.06,0.15] [0.98,0.9,0.1] uv x 0.5 < mix [0.1,0.5,0.95] [0.9,0.1,0.1] uv x 0.5 < mix uv y 0.5 > mix"
+)
+showImg(run.contactSheet(also = listOf("watchmaker" to watchmaker)),
+    caption = "the target, the evolved program, the random control's best, and the watchmaker's (skill %.2f)"
+        .format(run.skillOf(watchmaker)))
 ```
 
-It takes under a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws both programs at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored.
+It takes under a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws each program at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored. The last picture is not from this search: it is the program a language model wrote for the same target in [one of the runs below](#the-watchmaker), passed in with `also` and scored the same way by `run.skillOf`.
 
 `run.best!!.text` is the program. It is ordinary StackSL and runs anywhere StackSL runs, including a GPU shader box, and `run.best!!.render()` draws it at 160 pixels.
 
