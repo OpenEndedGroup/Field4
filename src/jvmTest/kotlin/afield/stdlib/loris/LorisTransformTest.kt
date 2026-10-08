@@ -39,6 +39,8 @@ class LorisTransformTest {
         val cropped = m.crop(.4, .6)
         assertEquals(9600, cropped.frameCount)
         assertTrue(cropped.partials.all { p -> p.points.all { it.timeSeconds in 0.0.. .2 } })
+        val accent = LorisModel(48000, 48000, listOf(partial(5, 1, 1000.0), partial(9, 1, 500.0, .61, .63, a = 1.0)))
+        assertEquals(.625, accent.loudestTimeSeconds(), 1e-12, "centre of the 50 ms bin holding the accent")
     }
 
     /** Harmonic tone whose fundamental and harmonic weights are chosen per test. */
