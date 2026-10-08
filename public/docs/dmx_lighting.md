@@ -17,7 +17,9 @@ sender: 200 pixels on a curve, 170 in universe 1 and the remaining 30 in univers
 second grid on the left is mostly empty. On the right, a matrix of RGBW fixtures is sent as sACN and
 received back in the same box.
 
-## Five lines to a light
+## A first light
+
+This sets two channels on a node at a fixed address:
 
 ```diffstatic {data-lang=kotlin}
 import afield.dmx.*
@@ -91,8 +93,7 @@ patch.mapImage(imgFromFile("sky.png"))               // the rig's bounding box s
 ```
 
 `map` hands the function each fixture's position, so the same function drives a strip, a grid or a
-scattered rig. `mapImage` samples an `Img` bilinearly at each fixture's position (it uses the
-imaging library's own `sampleBilinear`), which turns a matrix of fixtures into a very low
+scattered rig. `mapImage` samples an `Img` bilinearly at each fixture's position, which turns a matrix of fixtures into a very low
 resolution screen.
 
 !!! note "`mapImage` takes point samples"
@@ -204,15 +205,18 @@ immediate output after 4 s without.
 their decoders) work outside a box too. Then nothing closes the sockets for you: call `close()`.
 `DmxSockets.closeAll()` closes everything the box helpers opened, for a panic button.
 
-## What this does not do
+## Not supported
 
 RDM (remote device management), Art-Net's ArtAddress/ArtIpProg node programming, and sACN
 per-channel priority (start code `0xDD`) are not implemented; an sACN packet with a non-zero start
 code is ignored on receive.
 
+See also: [A RectSL scene on a light rig](chain_scene_to_light.md), which drives a fixture grid
+from a rendered scene, and [OSC and TUIO](osc.md) for show-control messages.
+
 ??? aside "How this page's pictures were made"
-    Every picture is real output from the code on this page, run by an agent through Field's backdoor
-    on 2026-09-27, not a docs-runner capture. The first is a Playwright screenshot of the demo
+    The pictures are output from the code on this page, run through Field's backdoor, not
+    docs-runner captures. The first is a Playwright screenshot of the demo
     document, loaded from the committed bundle, with its three launched boxes running. The two
     Art-Net universes further down were drawn inside Field from what its `DmxInput` had received
     over UDP (`renderLinesPng(universeToFLines(...))`); the strip and matrix pictures are the SVG
