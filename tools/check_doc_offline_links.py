@@ -98,6 +98,7 @@ CARRIER_PAGES = {
     # `offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn`, no leading slash.
     "public/docs/keyframe_autosweep.md",
     "public/docs/keyframe_editor.md",
+    "public/docs/loris.md",
     "public/docs/lua.md",
     "public/docs/mesh_examples.md",
     "public/docs/nano_examples.md",

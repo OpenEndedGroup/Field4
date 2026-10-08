@@ -241,12 +241,109 @@ A small hop cannot recover events blurred by a long window. Try a fine-time pass
 separate readings of the same source. When judging attacks, look at a waveform or spectrogram as
 well.
 
+## Label, align and morph two sounds
+
+Loris's best-known trick is the morph: one sound turns into another with frequency, amplitude
+and noise bandwidth moving on their own schedules. Before that can happen, both sounds need the
+same numbering of their partials, and their important moments need to line up. Three calls do
+this, and all three run Loris's own algorithms in the worker:
+
+- `client.distill(model, reference)` labels each partial with the harmonic it sits nearest to,
+  then joins the partials that share a label, so you are left with one partial per harmonic plus
+  the unlabeled rest (label 0). `LorisReference.Estimated(minimumHz, maximumHz)` lets Loris
+  estimate the fundamental itself; `LorisReference.constant(220.0)` or
+  `LorisReference.Track(envelope)` gives it one you know. Pass `distill = false` to label without
+  joining.
+- `client.dilate(model, from, to)` warps time so each time in `from` lands on the matching time
+  in `to`.
+- `client.morph(a, b, frequency, amplitude, bandwidth)` morphs partials with the same label.
+  Each argument is a `LorisEnvelope` from time in seconds to a weight, where 0 is `a` and 1 is
+  `b`. Pass one envelope and all three follow it.
+
+This box takes two two-second phrases from the film, labels each against its own estimated
+fundamental, moves the loudest moment of the second onto the loudest moment of the first, and
+morphs from the first to the second between 0.4 and 1.6 seconds:
+
+```diffstatic {data-lang=kotlin}
+import afield.stdlib.loris.LorisClient
+import afield.stdlib.loris.LorisEnvelope
+import afield.stdlib.loris.LorisOptions
+import afield.stdlib.loris.LorisReference
+import afield.stdlib.loris.LorisViewOptions
+import afield.stdlib.loris.crop
+import afield.stdlib.loris.dropUnlabeled
+import afield.stdlib.loris.labelCounts
+import afield.stdlib.loris.loudestTimeSeconds
+import afield.stdlib.loris.visualizationHtml
+import afield.stdlib.path
+
+val client = LorisClient()
+client.analyzeWavAsync(
+    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+    options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+        frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+    onProgress = { display("status", it) },
+).thenAccept { analyzed ->
+    val film = analyzed.model
+    val a = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).model
+    val b = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).model
+    display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
+    val end = a.durationSeconds
+    val aligned = client.dilate(b, listOf(0.0, b.loudestTimeSeconds(), end),
+        listOf(0.0, a.loudestTimeSeconds(), end), durationSeconds = end).model
+    val morphed = client.morph(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6))
+    display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
+}.exceptionally { error ->
+    display("error", error.cause?.message ?: error.message ?: error.toString())
+    null
+}
+```
+
+The three plots below are that pipeline on the film: the first phrase distilled, the second
+distilled and dilated, and the morph. The long straight segments are where the distiller joined
+pieces of one harmonic across a pause. Label 0 partials are left out of the morph here; keep them
+and Loris crossfades them instead.
+
+```diffstatic {data-lang=kotlin}
+import afield.stdlib.loris.LorisDocs
+display("morph", LorisDocs.morphHtml())
+```
+
+<audio controls preload="metadata" src="assets/loris/morph-a-to-b.wav"></audio>
+
+The [morph manifest](assets/loris/morph-provenance.json) records both ranges, the label counts,
+the dilation markers, the envelope and the gain applied before writing the file.
+
+To keep the sources' frequencies while their amplitudes cross, give the morph separate envelopes:
+`client.morph(a, b, frequency = LorisEnvelope.constant(0.0), amplitude = LorisEnvelope.ramp(0.0, 2.0))`.
+An envelope can have as many breakpoints as you like,
+`LorisEnvelope(listOf(0.0 to 0.0, 0.8 to 1.0, 1.2 to 0.2, 2.0 to 1.0))`, and holds its first and
+last values outside them. `client.sift(model)` is Loris's Sieve: where same-label partials
+overlap, it keeps the longest and unlabels the rest.
+
+### Edits that stay in Kotlin
+
+These change the breakpoints directly and return a new `LorisModel`; resynthesize it with
+`client.synthesize(...)`:
+
+| Call | What it does |
+| --- | --- |
+| `model.shiftPitch(cents)` | Transposes; also takes a `LorisEnvelope` of cents for a glide |
+| `model.stretched(factor)` | Scales every time and the timeline |
+| `model.tilt(dbPerOctave, pivotHz)` | Brightens (positive) or darkens (negative) around `pivotHz` |
+| `model.keepLabels(1..8)`, `model.dropUnlabeled()` | Keeps partials by label, after `distill` |
+| `model.minimumDuration(seconds)`, `model.minimumPeak(db)` | Drops short or quiet partials |
+| `model.crop(start, end)` | Keeps a time range and moves it to zero |
+| `model.labelCounts()` | How many partials carry each label |
+
+Breakpoints that a transposition or tilt pushes above 0.49 × the sample rate are removed.
+
 ## A document to explore
 
 [The Loris partial explorer](offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn)
 has a box for each step on this page: playing the source, analysis with its status, picking
 partials, removing noise, the spectral whirlpool, resynthesis, and a fine-time against
-fine-frequency comparison. Each box runs its own analysis, so you can start from any of them.
+fine-frequency comparison, and the label, align and morph pipeline. Each box runs its own analysis, so you can start from any of them.
 
 ## Setup and caching
 
