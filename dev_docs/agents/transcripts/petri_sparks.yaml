@@ -229,8 +229,9 @@ operations:
               "clap" to Triple(4, -1, 0),
           )
 
-          // A place's angle on its ring: the first place at the top, the token going clockwise.
-          fun angle(ring: Int, place: Double) = Math.PI / 2 - 2 * Math.PI * place / rings[ring].size
+          // A place's angle on its ring, the token going clockwise. Each ring's first place is a
+          // third of a turn round from the last one's, so the three launch points spread out.
+          fun angle(ring: Int, place: Double) = Math.PI / 2 - 2 * Math.PI * (ring / 3.0 + place / rings[ring].size)
 
           var module = moduleHere {
               primitiveType = triangles
@@ -266,7 +267,7 @@ operations:
           var frame = 0
           loop {
               // Where the net is, in cycles, counting frames at sixty a second.
-              val now = frame++ / 60.0 * cps
+              val now = ++frame / 60.0 * cps
               val at = PatQ.fromDouble(now)
 
               // Everything that fired in the last `life` seconds, newest last.
