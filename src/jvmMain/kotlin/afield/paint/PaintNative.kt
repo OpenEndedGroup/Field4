@@ -122,6 +122,41 @@ internal object PaintNative {
     private val saveStateH by fn("field_paint_save_state", I, A, A)
     private val loadStateH by fn("field_paint_load_state", A, A)
 
+    // ---- upstream's later tools (tools.rs) ----
+    private val D = JAVA_DOUBLE
+    private val canvasNewV2H by fn("field_paint_canvas_new_v2", A, I, F, I, L, F, F, F, F, I)
+    private val canvasEngineH by fn("field_paint_canvas_engine", I, A)
+    private val groundFinishH by fn("field_paint_ground_finish", I, A, F)
+    private val brushNewV2H by fn("field_paint_brush_new_v2", A, I, F, L, I, A)
+    private val brushConfigH by fn("field_paint_brush_config", I, A, A)
+    private val brushLoadV2H by fn("field_paint_brush_load_v2", I, A, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, L)
+    private val brushWipeH by fn("field_paint_brush_wipe", I, A, F)
+    private val brushCarriedH by fn("field_paint_brush_carried_mm3", I, A, A, A)
+    private val brushPaintH by fn("field_paint_brush_paint", I, A, A, A)
+    private val spatterH by fn("field_paint_spatter", I, A, A, F, F, F, F, F, F, L)
+    private val knifeNewH by fn("field_paint_knife_new", A, F)
+    private val knifeFreeH by fn("field_paint_knife_free", null, A)
+    private val knifeLoadH by fn("field_paint_knife_load", I, A, F, F, F, F, F, F, F, F, I, F, F, F)
+    private val knifeWipeH by fn("field_paint_knife_wipe", I, A)
+    private val knifeFullnessH by fn("field_paint_knife_fullness", F, A)
+    private val knifePaintH by fn("field_paint_knife_paint", I, A, A, A)
+    private val knifeDragH by fn("field_paint_knife_drag", I, A, A, A, I, F, F, F, I, F)
+    private val ragNewH by fn("field_paint_rag_new", A, F, L)
+    private val ragFreeH by fn("field_paint_rag_free", null, A)
+    private val ragDipH by fn("field_paint_rag_dip", I, A, A, F)
+    private val ragRefoldH by fn("field_paint_rag_refold", I, A, A)
+    private val ragWipeH by fn("field_paint_rag_wipe", D, A, A, A, I, A, I, L)
+    private val ragStateH by fn("field_paint_rag_state", I, A, A, A)
+    private val renderLitH by fn("field_paint_render_lit_argb", I, A, F, F, F, I, A, I)
+    private val statsV2H by fn("field_paint_stats_v2", I, A, A)
+    private val freeBytesH by fn("field_paint_free_bytes", null, A, L)
+    private val brushStateH by fn("field_paint_brush_state", I, A, A, A)
+    private val brushFromStateH by fn("field_paint_brush_from_state", A, A, L)
+    private val knifeStateH by fn("field_paint_knife_state", I, A, A, A)
+    private val knifeFromStateH by fn("field_paint_knife_from_state", A, A, L)
+    private val ragStateBytesH by fn("field_paint_rag_state_bytes", I, A, A, A)
+    private val ragFromStateH by fn("field_paint_rag_from_state", A, A, L)
+
     private fun error(what: String): Nothing {
         val msg = (lastErrorH.invokeExact() as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
         throw IllegalStateException("paint: $what failed: $msg")
@@ -322,4 +357,118 @@ internal object PaintNative {
     fun loadState(path: String): MemorySegment = Arena.ofConfined().use { a ->
         nonNull(loadStateH.invokeExact(a.allocateFrom(path)) as MemorySegment, "loading $path")
     }
+
+    // ---- upstream's later tools ----
+
+    fun canvasNewV2(w: Int, aspect: Float, style: Int, seed: Long, r: Float, g: Float, b: Float, sizeMm: Float, engine: Int): MemorySegment =
+        nonNull(canvasNewV2H.invokeExact(w, aspect, style, seed, r, g, b, sizeMm, engine) as MemorySegment, "creating a canvas")
+
+    fun canvasEngine(c: MemorySegment): Int = (canvasEngineH.invokeExact(c) as Int).also { if (it < 0) error("reading the engine") }
+
+    fun groundFinish(c: MemorySegment, absorbent: Float) = check(groundFinishH.invokeExact(c, absorbent) as Int, "finishing the ground")
+
+    /** [cfg] is the 11 construction values of `field_paint_brush_new_v2`, NaN for the preset's. */
+    fun brushNewV2(kind: Int, width: Float, seed: Long, engine: Int, cfg: FloatArray): MemorySegment = Arena.ofConfined().use { a ->
+        require(cfg.size == 11)
+        nonNull(brushNewV2H.invokeExact(kind, width, seed, engine, a.allocateFrom(F, *cfg)) as MemorySegment, "creating a brush")
+    }
+
+    /** kind, width, bristles, length, stiffness, hair, run, lay, pickup, push, splay, ragged, point. */
+    fun brushConfig(b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 13)
+        check(brushConfigH.invokeExact(b, out) as Int, "reading the brush")
+        out.toArray(F)
+    }
+
+    fun brushLoadV2(b: MemorySegment, r: Float, g: Float, bl: Float, hiding: Float, scatter: Float, stiff: Float, drying: Float,
+                    amount: Float, wipe: Float, thinner: Float, turps: Float, oil: Float, side: Float, share: Float, streak: Float, partSeed: Long) =
+        check(brushLoadV2H.invokeExact(b, r, g, bl, hiding, scatter, stiff, drying, amount, wipe, thinner, turps, oil,
+            side, share, streak, partSeed) as Int, "loading the brush")
+
+    fun brushWipe(b: MemorySegment, fraction: Float) = check(brushWipeH.invokeExact(b, fraction) as Int, "wiping the brush")
+
+    fun brushCarried(c: MemorySegment, b: MemorySegment): DoubleArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 2)
+        check(brushCarriedH.invokeExact(c, b, out) as Int, "measuring the brush")
+        out.toArray(D)
+    }
+
+    /** `[r, g, b (linear), mm³]` of the paint in the brush, or null when it is clean. */
+    fun brushPaint(c: MemorySegment, b: MemorySegment): FloatArray? = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 4)
+        val st = brushPaintH.invokeExact(c, b, out) as Int
+        check(st, "reading the brush's paint")
+        if (st == 0) null else out.toArray(F)
+    }
+
+    fun spatter(c: MemorySegment, b: MemorySegment, x: Float, y: Float, tx: Float, ty: Float, spread: Float, force: Float, seed: Long): Int =
+        (spatterH.invokeExact(c, b, x, y, tx, ty, spread, force, seed) as Int).also { check(it, "spatter") }
+
+    fun knifeNew(width: Float): MemorySegment = nonNull(knifeNewH.invokeExact(width) as MemorySegment, "making a knife")
+    fun knifeFree(k: MemorySegment) { knifeFreeH.invokeExact(k) }
+    fun knifeLoad(k: MemorySegment, r: Float, g: Float, b: Float, hiding: Float, scatter: Float, stiff: Float, drying: Float,
+                  amount: Float, wipe: Boolean, thinner: Float, turps: Float, oil: Float) =
+        check(knifeLoadH.invokeExact(k, r, g, b, hiding, scatter, stiff, drying, amount, if (wipe) 1 else 0, thinner, turps, oil) as Int, "loading the knife")
+    fun knifeWipe(k: MemorySegment) = check(knifeWipeH.invokeExact(k) as Int, "wiping the knife")
+    fun knifeFullness(k: MemorySegment): Float = knifeFullnessH.invokeExact(k) as Float
+    fun knifePaint(c: MemorySegment, k: MemorySegment): FloatArray? = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 4)
+        val st = knifePaintH.invokeExact(c, k, out) as Int
+        check(st, "reading the knife's paint")
+        if (st == 0) null else out.toArray(F)
+    }
+    fun knifeDrag(c: MemorySegment, k: MemorySegment, xy: FloatArray, p0: Float, p1: Float, angle: Float, lay: Boolean, lift: Float) =
+        Arena.ofConfined().use { a ->
+            check(knifeDragH.invokeExact(c, k, a.allocateFrom(F, *xy), xy.size / 2, p0, p1, angle, if (lay) 1 else 0, lift) as Int, "a knife stroke")
+        }
+
+    fun ragNew(width: Float, seed: Long): MemorySegment = nonNull(ragNewH.invokeExact(width, seed) as MemorySegment, "making a rag")
+    fun ragFree(g: MemorySegment) { ragFreeH.invokeExact(g) }
+    fun ragDip(c: MemorySegment, g: MemorySegment, amount: Float) = check(ragDipH.invokeExact(c, g, amount) as Int, "dipping the rag")
+    fun ragRefold(c: MemorySegment, g: MemorySegment) = check(ragRefoldH.invokeExact(c, g) as Int, "refolding the rag")
+    fun ragWipe(c: MemorySegment, g: MemorySegment, xy: FloatArray, pressure: List<Double>, seed: Long): Double = Arena.ofConfined().use { a ->
+        val pr = if (pressure.isEmpty()) MemorySegment.NULL else a.floats(pressure)
+        val got = ragWipeH.invokeExact(c, g, a.allocateFrom(F, *xy), xy.size / 2, pr, pressure.size, seed) as Double
+        if (got < 0) error("a wipe") else got
+    }
+    /** load, soaked, damp. */
+    fun ragState(c: MemorySegment, g: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 3)
+        check(ragStateH.invokeExact(c, g, out) as Int, "reading the rag")
+        out.toArray(F)
+    }
+
+    fun renderLitArgb(c: MemorySegment, pixels: Int, azimuth: Float, elevation: Float, strength: Float, dried: Boolean): IntArray =
+        Arena.ofConfined().use { a ->
+            val out = a.allocate(I, pixels.toLong())
+            check(renderLitH.invokeExact(c, azimuth, elevation, strength, if (dried) 1 else 0, out, pixels) as Int, "render")
+            out.toArray(I)
+        }
+
+    fun statsV2(c: MemorySegment): PaintStats = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 9)
+        check(statsV2H.invokeExact(c, out) as Int, "stats")
+        val v = out.toArray(D)
+        PaintStats(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8].toInt())
+    }
+
+    private fun bytes(what: String, call: (MemorySegment, MemorySegment) -> Int): ByteArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(A)
+        val len = a.allocate(L)
+        check(call(out, len), what)
+        val n = len.get(L, 0)
+        val buf = out.get(A, 0).reinterpret(n)
+        try { buf.toArray(java.lang.foreign.ValueLayout.JAVA_BYTE) } finally { freeBytesH.invokeExact(buf, n) }
+    }
+
+    private fun fromBytes(bytes: ByteArray, what: String, call: (MemorySegment, Long) -> MemorySegment): MemorySegment = Arena.ofConfined().use { a ->
+        nonNull(call(a.allocateFrom(java.lang.foreign.ValueLayout.JAVA_BYTE, *bytes), bytes.size.toLong()), what)
+    }
+
+    fun brushState(b: MemorySegment): ByteArray = bytes("saving the brush") { o, l -> brushStateH.invokeExact(b, o, l) as Int }
+    fun brushFromState(bytes: ByteArray): MemorySegment = fromBytes(bytes, "restoring a brush") { p, n -> brushFromStateH.invokeExact(p, n) as MemorySegment }
+    fun knifeState(k: MemorySegment): ByteArray = bytes("saving the knife") { o, l -> knifeStateH.invokeExact(k, o, l) as Int }
+    fun knifeFromState(bytes: ByteArray): MemorySegment = fromBytes(bytes, "restoring a knife") { p, n -> knifeFromStateH.invokeExact(p, n) as MemorySegment }
+    fun ragStateBytes(g: MemorySegment): ByteArray = bytes("saving the rag") { o, l -> ragStateBytesH.invokeExact(g, o, l) as Int }
+    fun ragFromState(bytes: ByteArray): MemorySegment = fromBytes(bytes, "restoring a rag") { p, n -> ragFromStateH.invokeExact(p, n) as MemorySegment }
 }

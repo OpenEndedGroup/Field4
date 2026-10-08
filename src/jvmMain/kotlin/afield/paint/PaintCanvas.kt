@@ -10,8 +10,8 @@ import java.lang.foreign.MemorySegment
 /**
  * A simulated oil-painting canvas that [FLine]s are painted and drawn onto.
  *
- * The simulation is [claude-paint](https://github.com/aliceisjustplaying/claude-paint)'s `paint`
- * crate: brushes made of individual bristles carrying paint, Kubelka–Munk mixing on the canvas,
+ * The simulation is the `paint` crate of [claude-paint](https://github.com/aliceisjustplaying/claude-paint),
+ * by alice (github.com/aliceisjustplaying), MIT licensed and vendored in `native/field-paint/vendor/paint`: brushes made of individual bristles carrying paint, Kubelka–Munk mixing on the canvas,
  * paint that stays wet, stiffens and dries over simulated minutes, graphite and chalk that catch
  * the tooth of the ground, stippling, glazes, and craquelure. Field reaches it through a small Rust
  * wrapper, `native/field-paint`, which is optional — build it once with `./gradlew buildPaintNative`
@@ -59,9 +59,26 @@ class PaintCanvas internal constructor(
     private var nextSeed = seed * 7919 + 1
     internal fun seed(): Long = nextSeed++
 
-    /** A brush held over this canvas. Load it with [PaintBrush.load] before stroking. */
-    fun brush(kind: BrushKind = BrushKind.Round, width: Double = 20.0, point: Double = 0.0): PaintBrush =
-        PaintBrush(kind, width, point, seed())
+    /** The engine version this canvas paints with ([PaintCanvas.invoke]'s `engine`). */
+    val paintEngine: Int by lazy { PaintNative.canvasEngine(handle) }
+
+    /**
+     * A brush held over this canvas, [width] canvas units wide whatever the [view]. Load it with
+     * [PaintBrush.load] before stroking. [config]
+     * changes how it is made — how many bristles, how stiff and long, how much it lays and picks
+     * up — from the kind's own.
+     */
+    fun brush(kind: BrushKind = BrushKind.Round, width: Double = 20.0, point: Double = 0.0, config: BrushConfig? = null): PaintBrush =
+        PaintBrush(kind, width, point, seed(), paintEngine, config)
+
+    /**
+     * A painting knife whose blade is [width] canvas units long (a 4 cm blade is about 60 units on a
+     * 700 mm canvas). Tool sizes are canvas units whatever the [view], as a brush's width is.
+     */
+    fun knife(width: Double = 60.0): PaintKnife = PaintKnife(PaintNative.knifeNew(width.toFloat()))
+
+    /** A clean cotton rag bunched into a pad [width] canvas units across. */
+    fun rag(width: Double = 50.0): PaintRag = PaintRag(PaintNative.ragNew(width.toFloat(), seed()))
 
     /**
      * A graphite pencil of [grade] ("2H", "HB", "4B", ...) for [draw], [sketch] and [hatch]. Hard
@@ -215,6 +232,76 @@ class PaintCanvas internal constructor(
             linear(color.x), linear(color.y), linear(color.z), hiding.toFloat(), coats.toFloat())
     }
 
+    /**
+     * Flick [brush] at ([x], [y]) towards [toward] (a direction whose length is how far the paint
+     * carries): the paint the hairs can't hold by capillarity flies off in droplets and lands in a
+     * cone [spread] radians either side. Only the loose paint flies — more of it the harder the
+     * [force] (0..1) and the more fluid the paint (thinned or turps-rich paint spatters, stiff tube
+     * paint barely leaves the brush) — and a harder flick breaks it into more, smaller drops. Each
+     * drop comes off one hair with that hair's paint, so a double-loaded brush spatters both
+     * colours. Returns how many droplets landed.
+     */
+    fun spatter(brush: PaintBrush, x: Double, y: Double, toward: Pair<Double, Double>, spread: Double = 0.35, force: Double = 0.7): Int =
+        PaintNative.spatter(handle, brush.handle, toCanvasX(x).toFloat(), toCanvasY(y).toFloat(),
+            toCanvasDx(toward.first).toFloat(), toCanvasDy(toward.second).toFloat(), spread.toFloat(), force.toFloat(), seed())
+
+    /**
+     * Pull [knife] along every subpath of [line], pressed [pressure] from start to end, the blade
+     * across the path or at [angle] (radians). The flexible blade rests on the high points of the
+     * dry surface and stands off them by a gap that closes as it is pressed (a light touch rides
+     * about 0.3 mm up). Wet paint above the blade is cut into its bead, or pressed out past its
+     * ends into ridges; with [lay], below it the bead fills the surface to the blade's level: a
+     * flat-topped slab, or paint on the peaks of dry impasto only. When the blade lifts, [lift] of
+     * the bead stays where it was.
+     */
+    fun knife(
+        line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.6..0.6,
+        angle: Double? = null, lay: Boolean = true, lift: Double = 0.3,
+    ): PaintCanvas = apply {
+        for (xy in polylines(line, 2.0)) {
+            PaintNative.knifeDrag(handle, knife.handle, xy, pressure.start.toFloat(), pressure.endInclusive.toFloat(),
+                angle?.toFloat() ?: Float.NaN, lay, lift.toFloat())
+        }
+    }
+
+    /** Scrape wet paint off along [line] with [knife], pressed hard: [knife] with nothing laid. */
+    fun scrape(line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.9..0.9, angle: Double? = null): PaintCanvas =
+        knife(line, knife, pressure, angle, lay = false, lift = 0.0)
+
+    /**
+     * Wipe [rag] along every subpath of [line] at [pressure] (one value, or values spread along the
+     * path). The pad rests on the tops of the weave and reaches into the hollows as it is pressed,
+     * and the cloth touches in creases, so a wipe lifts in streaks. Returns the mm³ of paint lifted.
+     */
+    fun wipe(line: FLine, rag: PaintRag, pressure: List<Double> = listOf(0.6)): Double =
+        polylines(line, 2.0).sumOf { PaintNative.ragWipe(handle, rag.handle, it, pressure, seed()) }
+
+    /** Press [rag] down at ([x], [y]) and lift it off: a crumpled patch. Returns the mm³ lifted. */
+    fun blot(rag: PaintRag, x: Double, y: Double, pressure: Double = 0.6): Double =
+        PaintNative.ragWipe(handle, rag.handle, floatArrayOf(toCanvasX(x).toFloat(), toCanvasY(y).toFloat()), listOf(pressure), seed())
+
+    /** Dip [rag]'s face in spirits, [amount] 0..1: damp, it lifts paint nearly to the ground until the spirits evaporate. */
+    fun dampen(rag: PaintRag, amount: Double = 0.5): PaintCanvas = apply { PaintNative.ragDip(handle, rag.handle, amount.toFloat()) }
+
+    /** Turn a cleaner face of [rag] outward (no face is cleaner than what has soaked through the cloth). */
+    fun refold(rag: PaintRag): PaintCanvas = apply { PaintNative.ragRefold(handle, rag.handle) }
+
+    /** How loaded and damp [rag] is now, on this canvas's clock. */
+    fun ragState(rag: PaintRag): RagState = PaintNative.ragState(handle, rag.handle).let { RagState(it[0].toDouble(), it[1].toDouble(), it[2].toDouble()) }
+
+    /** The paint [brush] carries, in mm³ on this canvas's physical scale, and its mixed colour. */
+    fun carried(brush: PaintBrush): Carried {
+        val v = PaintNative.brushCarried(handle, brush.handle)
+        val p = PaintNative.brushPaint(handle, brush.handle)
+        return Carried(p?.let { Vec4(srgb(it[0]), srgb(it[1]), srgb(it[2]), 1f) }, v[0], v[1])
+    }
+
+    /** The paint on [knife]'s blade, as [carried] for a brush. */
+    fun carried(knife: PaintKnife): Carried {
+        val p = PaintNative.knifePaint(handle, knife.handle)
+        return Carried(p?.let { Vec4(srgb(it[0]), srgb(it[1]), srgb(it[2]), 1f) }, p?.get(3)?.toDouble() ?: 0.0, 0.0)
+    }
+
     // ---- graphite and chalk -------------------------------------------------------------------
 
     /**
@@ -297,11 +384,18 @@ class PaintCanvas internal constructor(
     /**
      * Lay a ground over the whole canvas: [microns] µm of [color] at [hiding], with body [stiff]
      * (fluid chalk-glue ≈ 0.2, oil lead white ≈ 0.6), roughened by [texture] before it levels.
-     * Dries the canvas first.
+     * Dries the canvas first. [absorbent] (0..1, engine 4) makes it a chalk and glue ground that
+     * draws oil out of the paint laid on it — up to 0.6 coats' worth — so that paint dries leaner,
+     * stiffer and matte, until paint seals it.
      */
-    fun prime(color: Vec4, hiding: Double = 0.85, microns: Double = 60.0, stiff: Double = 0.4, texture: Double = 0.3): PaintCanvas = apply {
+    fun prime(
+        color: Vec4, hiding: Double = 0.85, microns: Double = 60.0, stiff: Double = 0.4, texture: Double = 0.3,
+        absorbent: Double = 0.0,
+    ): PaintCanvas = apply {
         PaintNative.prime(handle, linear(color.x), linear(color.y), linear(color.z), hiding.toFloat(),
             microns.toFloat(), stiff.toFloat(), texture.toFloat(), seed())
+        // engine 4 grounds have a finish: an oil ground's semi-matte, or an absorbent chalk ground
+        if (paintEngine >= 4 || absorbent > 0.0) PaintNative.groundFinish(handle, absorbent.toFloat())
     }
 
     /**
@@ -319,7 +413,7 @@ class PaintCanvas internal constructor(
     fun dry(): PaintCanvas = apply { PaintNative.dry(handle) }
 
     /** Where the painting stands: its clock, the hand time spent, and how much paint is still wet. */
-    val stats: PaintStats get() = PaintNative.stats(handle)
+    val stats: PaintStats get() = PaintNative.statsV2(handle)
 
     // ---- looking at it ------------------------------------------------------------------------
 
@@ -330,16 +424,23 @@ class PaintCanvas internal constructor(
      * itself stays wet. [wet] shows it as it looks now instead, wet paint at its laid thickness (no
      * relief). [relief] lights the impasto from the upper left (0.3–1 is reasonable) and [gloss]
      * adds a varnish sheen.
+     *
+     * With a [light], the surface is seen under that light instead of [relief]'s: relief and wet
+     * films cast shadows along it and wet paint shines; [wet] then chooses between the canvas as it
+     * is and the dried copy.
      */
-    fun render(relief: Double = 0.0, gloss: Double = 0.0, wet: Boolean = false): IntArray {
+    fun render(relief: Double = 0.0, gloss: Double = 0.0, wet: Boolean = false, light: PaintLight? = null): IntArray {
         val n = pixelSize.first * pixelSize.second
-        return if (wet) PaintNative.renderWetArgb(handle, n)
-        else PaintNative.renderArgb(handle, n, relief.toFloat(), gloss.toFloat())
+        return when {
+            light != null -> PaintNative.renderLitArgb(handle, n, light.azimuth.toFloat(), light.elevation.toFloat(), light.strength.toFloat(), !wet)
+            wet -> PaintNative.renderWetArgb(handle, n)
+            else -> PaintNative.renderArgb(handle, n, relief.toFloat(), gloss.toFloat())
+        }
     }
 
     /** [render] encoded as PNG — what `display("main", ...)` shows as an image. */
-    fun png(relief: Double = 0.6, gloss: Double = 0.0, wet: Boolean = false): ByteArray =
-        PngEncoder.encode(render(relief, gloss, wet), pixelSize.first, pixelSize.second)
+    fun png(relief: Double = 0.6, gloss: Double = 0.0, wet: Boolean = false, light: PaintLight? = null): ByteArray =
+        PngEncoder.encode(render(relief, gloss, wet, light), pixelSize.first, pixelSize.second)
 
     /** Save a dried copy with the crate's own dithered PNG writer (no relief). */
     fun save(path: String) = PaintNative.savePng(handle, path)
@@ -395,6 +496,11 @@ class PaintCanvas internal constructor(
          *   or linen canvas and each oil style's own size. Every mark has a real size — a pencil
          *   point is 0.3 mm, a crack opens a few dozen µm — so a small sheet at a given pixel width
          *   shows them larger. A pencil drawing at 800 px reads best at about 200 mm.
+         * @param engine the paint engine to paint with; `null` is the newest ([PaintCanvas.engine]).
+         *   An engine is a fixed behaviour: engine 2, what Field painted with before engine 5,
+         *   paints the same calls to the same pixels. Engine 3 adds thinned paint and raw cloth, 4
+         *   stiff impasto, clumping hair, turps, oil, absorbent grounds and gloss, 5 the knife's
+         *   tears; oil paint dries 2.5 times slower from engine 3 on.
          */
         operator fun invoke(
             widthPx: Int = 800,
@@ -404,9 +510,10 @@ class PaintCanvas internal constructor(
             seed: Long = 1,
             view: Rect? = null,
             sizeMm: Double? = null,
+            engine: Int? = null,
         ): PaintCanvas = PaintCanvas(
-            PaintNative.canvasNew(widthPx, aspect.toFloat(), ground.code, seed,
-                linear(groundColor.x), linear(groundColor.y), linear(groundColor.z), sizeMm?.toFloat() ?: 0f),
+            PaintNative.canvasNewV2(widthPx, aspect.toFloat(), ground.code, seed,
+                linear(groundColor.x), linear(groundColor.y), linear(groundColor.z), sizeMm?.toFloat() ?: 0f, engine ?: 0),
             aspect, seed, view,
         )
 
@@ -439,4 +546,10 @@ data class PaintStats(
     val tacky: Double,
     /** Touch-dry paint, or bare ground. */
     val dry: Double,
+    /** Wet oil paint on the canvas, mm³. */
+    val wetPaintMm3: Double = 0.0,
+    /** Solvent (thinner) still in the open films, mm³. */
+    val solventMm3: Double = 0.0,
+    /** The engine the canvas paints with. */
+    val engine: Int = 0,
 )

@@ -3596,11 +3596,12 @@ tasks.register("buildLorisNative") {
     }
 }
 
-// Build native/field-paint: claude-paint's `paint` crate (a bristle-brush oil-paint simulation)
-// behind a flat C ABI, for afield.paint.PaintCanvas.
+// Build native/field-paint: claude-paint's `paint` crate (a bristle-brush oil-paint simulation,
+// vendored with Field's additions in native/field-paint/vendor/paint, see VENDORED.md there) behind
+// a flat C ABI, for afield.paint.PaintCanvas.
 //
 // Optional and not wired into `check`: it needs cargo, and the first build fetches the crate's
-// repository by its pinned revision (in native/field-paint/Cargo.toml). The docs page
+// dependencies from crates.io (pinned by native/field-paint/Cargo.lock). The docs page
 // (public/docs/paint_canvas.md) declares `requires="paint"`, so buildDocsNativePrerequisites builds it. The
 // output is build/field-paint/release, which PaintLibrary searches; -Dafield.paint.library or
 // AFIELD_PAINT_LIBRARY point elsewhere.

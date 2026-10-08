@@ -1362,10 +1362,12 @@ same shape through Field's own `marchingCubes` and names the difference.
 ### ai4_paint_studio
 
 A studio where AI4 paints. The one box puts a canvas from the [paint simulator](paint_canvas.md) on
-an easel and gives the chat agent eleven tools to paint on it: strokes, dabs, whole regions worked
+an easel and gives the chat agent sixteen tools to paint on it: strokes, dabs, whole regions worked
 the way a painter blocks in, glazes, pencil lines, hatching, stippling, drying time, a fresh canvas,
-and *hang*, which keeps a finished painting in the document's gallery. The canvas belongs to the
-conversation, so rewinding the chat to a request brings back the canvas from before it. Open the
+a painting knife, a rag, spatter, brushes kept by name between requests, and *hang*, which keeps a
+finished painting in the document's gallery. The canvas and the kept tools belong to the
+conversation, so rewinding the chat to a request brings back the canvas, and every kept brush as
+dirty as it was, from before it. Open the
 box's AI panel and ask for a painting; [AI4 paints](ai4_painting.md) shows three made this way. A
 second box, Scribbler, adds a `scribble` tool with `aiTool { }`; [Experimenting with
 AI4](ai4_experiments.md) shows a painting made with it. It needs the paint library

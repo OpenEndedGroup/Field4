@@ -9,9 +9,10 @@ description = "claude-paint's `paint` crate behind a flat C ABI, for afield.pain
 crate-type = ["cdylib"]
 
 [dependencies]
-# Pinned by revision: a painting replays with the engine it was painted with, and so should ours.
+# Vendored at a pinned upstream revision, with Field's additions (vendor/paint/VENDORED.md): a
+# painting replays with the engine it was painted with, and so should ours.
 # MIT, https://github.com/aliceisjustplaying/claude-paint/tree/main/crates/paint
-paint = { git = "https://github.com/aliceisjustplaying/claude-paint", rev = "8e78df09e08faa754665a8822da8db6a1d78fc47" }
+paint = { path = "vendor/paint" }
 
 [profile.release]
 opt-level = 3

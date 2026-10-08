@@ -1,8 +1,9 @@
 // A studio for AI4: open this box's AI panel and ask for a painting ("a quiet harbour at dusk").
 // The agent paints with the paint_* tools below, looks at the canvas as it goes, and hangs what it
-// finishes in the gallery. The canvas belongs to the conversation: rewind the chat to a request and
-// the canvas goes back to how it was before it; /branches and /branch switch between versions.
-// /canvas, /palette and /gallery show the easel, the tube paints and the hung paintings.
+// finishes in the gallery. The canvas and the painter's tools belong to the conversation: rewind the
+// chat to a request and the canvas, and every kept brush as dirty as it was, go back to how they were
+// before it; /branches and /branch switch between versions. /canvas, /palette, /tools and /gallery show
+// the easel, the tube paints, the kept tools and the hung paintings.
 // Needs the paint library: ./gradlew buildPaintNative.
 import afield.paint.*
 import java.io.File
@@ -13,6 +14,8 @@ fun fresh(ground: PaintGround = PaintGround.Oil, aspect: Double = 1.25, seed: Lo
     PaintCanvas(900, aspect = aspect, ground = ground, seed = seed)
 fun canvas(): PaintCanvas = thisBox.properties.getOrPut("studio.canvas") { fresh() } as PaintCanvas
 fun replace(c: PaintCanvas) { thisBox.properties["studio.canvas"] = c }
+// The tools the painter keeps by name, on the box for the same reason: a brush stays dirty between requests.
+fun tools(): PaintToolbox = thisBox.properties.getOrPut("studio.tools") { PaintToolbox() } as PaintToolbox
 
 fun pngUrl(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
 fun show() = display("main", canvas().png())
@@ -59,6 +62,21 @@ fun rad(degrees: Double) = degrees * PI / 180
 
 fun brushOf(name: String) = BrushKind.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
     ?: throw IllegalArgumentException("no brush \"$name\": ${BrushKind.entries.joinToString { it.name }}")
+// A kept brush by name, or a fresh one of a kind (loaded below); a fresh one needs a colour.
+fun brushFor(tool: String?, kind: String, width: Double, color: String?): PaintBrush =
+    if (tool != null) tools().brush(tool)
+    else canvas().brush(brushOf(kind), width = width).also { require(color != null) { "a fresh brush needs a color (or name a kept tool)" } }
+fun loadInto(b: PaintBrush, color: String?, wipe: Double = 0.85, hiding: Double = 0.92, thinness: Double = 0.0, turps: Double = 0.0, part: LoadPart? = null) {
+    val p = paintOf(color ?: return)
+    if (p.tubes != null) b.load(p.tubes, medium = thinness, wipe = wipe, turps = turps, part = part)
+    else b.load(p.color, hiding = hiding, wipe = wipe, turps = turps, part = part)
+}
+fun lightOf(name: String) = when (name.lowercase()) {
+    "flat" -> null
+    "raking" -> PaintLight.Raking
+    "gallery" -> PaintLight.Gallery
+    else -> throw IllegalArgumentException("no light \"$name\": flat, raking or gallery")
+}
 fun handlingOf(name: String) = Handling.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
     ?: throw IllegalArgumentException("no handling \"$name\": ${Handling.entries.joinToString { it.name }}")
 
@@ -94,8 +112,9 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         describe("Look at the painting as it stands: an image of the canvas (dried, lit from the upper left), and how wet it is.")
         effects(ToolEffect.CAPTURE_IMAGE)
         val wet by param<Boolean>("show the paint as it is now, wet, without relief", default = false)
+        val light by param<String>("flat; raking, a low lamp that shows the relief, knife ridges and wet sheen; or gallery", default = "flat")
         action {
-            val png = canvas().png(relief = if (wet()) 0.0 else 0.6, wet = wet())
+            val png = canvas().png(relief = if (wet()) 0.0 else 0.6, wet = wet(), light = lightOf(light()))
             // Every look is also kept, numbered, in the document's progress folder: the painting's stages.
             val dir = File(thisBox.inside.filename, "progress").apply { mkdirs() }
             File(dir, "%03d.png".format((dir.list()?.size ?: 0) + 1)).writeBytes(png)
@@ -108,22 +127,23 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
             "[x0, y0, x1, y1, ...]; the brush is loaded once, before the first, and runs out along the rest the way a real one does.")
         effects(ToolEffect.CONTROL_RUNTIME)
         val paths by param<List<List<Double>>>("paths, each [x0, y0, x1, y1, ...] in canvas units")
-        val color by param<String>("#rrggbb, a tube name, or tubes by parts: \"lead white:3, yellow ochre:1\"")
-        val brush by param<String>("Round, HogFlat, Filbert, Fan, Rigger or Badger", default = "Filbert")
-        val width by param<Double>("brush width in canvas units", default = 20.0)
+        val color by param<String?>("#rrggbb, a tube name, or tubes by parts: \"lead white:3, yellow ochre:1\"; null paints a kept tool with what it carries", default = null)
+        val tool by param<String?>("a kept brush's name (paint_tool) to paint with, dirty as it is; null for a fresh brush of `brush`", default = null)
+        val brush by param<String>("Round, HogFlat, Filbert, Fan, Rigger or Badger (a fresh brush)", default = "Filbert")
+        val width by param<Double>("brush width in canvas units (a fresh brush)", default = 20.0)
         val pressure by param<List<Double>>("pressure at the start and end of each movement, 0..1", default = listOf(0.7, 0.7))
         val thinness by param<Double>("0 paint from the tube, 1 thinned with oil (tube mixes only)", default = 0.0)
         val wipe by param<Double>("how much of the brush's last paint to wipe off first; 0 mixes into it", default = 0.85)
         val hiding by param<Double>("0.05 a glaze, 0.5 a scumble, 0.92 body colour (hex colours only)", default = 0.92)
         action {
-            val c = canvas(); val p = paintOf(color())
-            val b = c.brush(brushOf(brush()), width = width())
-            if (p.tubes != null) b.load(p.tubes, medium = thinness(), wipe = wipe()) else b.load(p.color, hiding = hiding(), wipe = wipe())
+            val c = canvas()
+            val b = brushFor(tool(), brush(), width(), color())
+            loadInto(b, color(), wipe = wipe(), hiding = hiding(), thinness = thinness())
             val line = FLine()
             paths().forEach { line += through(it) }
             val pr = pressure()
             c.stroke(line, b, pressure = pr.first()..(pr.getOrNull(1) ?: pr.first()))
-            done("${paths().size} stroke(s), ${brush()} ${width()}")
+            done("${paths().size} stroke(s), " + (tool()?.let { "with $it, now ${pct(b.fullness)} loaded" } ?: "${brush()} ${width()}"))
         }
     }
 
@@ -131,17 +151,137 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         describe("Touch the brush down at points and lift it: dabs, petals, leaves, highlights. One load for all of them.")
         effects(ToolEffect.CONTROL_RUNTIME)
         val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
-        val color by param<String>("#rrggbb, a tube name, or tubes by parts")
-        val brush by param<String>("Round, HogFlat, Filbert, Fan, Rigger or Badger", default = "Round")
+        val color by param<String?>("#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries", default = null)
+        val tool by param<String?>("a kept brush's name to dab with; null for a fresh brush", default = null)
+        val brush by param<String>("Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)", default = "Round")
         val width by param<Double>("brush width in canvas units", default = 12.0)
         val pressure by param<Double>("harder makes a bigger, fuller mark", default = 0.6)
         val angle by param<Double>("a flat's wide axis, degrees", default = 0.0)
         action {
-            val c = canvas(); val p = paintOf(color())
-            val b = c.brush(brushOf(brush()), width = width())
-            if (p.tubes != null) b.load(p.tubes) else b.load(p.color)
+            val c = canvas()
+            val b = brushFor(tool(), brush(), width(), color())
+            loadInto(b, color())
             points().chunked(2).filter { it.size == 2 }.forEach { c.touch(b, it[0], it[1], pressure = pressure(), angle = rad(angle())) }
             done("${points().size / 2} dab(s)")
+        }
+    }
+
+    tool("paint.tool") {
+        describe("Pick up a tool and keep it by name for later requests: a brush stays dirty with what it last picked up until you " +
+            "load or wipe it, a knife keeps its bead, a rag its load. Replaces a kept tool of the same name.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val name by param<String>("what to call it, e.g. \"big filbert\"")
+        val type by param<String>("a brush (Round, HogFlat, Filbert, Fan, Rigger, Badger, Stippler), Knife, Rag, or a pencil grade (HB, 4B) or Chalk")
+        val width by param<Double>("brush width, knife blade length or rag pad size, canvas units", default = 20.0)
+        val bristles by param<Int?>("how many bristles (a brush); null for the kind's own", default = null)
+        val stiffness by param<Double?>("0 soft hair .. 1 stiff hog (a brush); null for the kind's own", default = null)
+        val ragged by param<Double?>("0 even .. 1 ragged hair lengths, for broken marks (a brush)", default = null)
+        val point by param<Double?>("0 blunt .. 1 a fine point (a round brush)", default = null)
+        action {
+            val c = canvas(); val t = type().trim()
+            val made: PaintTool = when {
+                t.equals("knife", true) -> c.knife(width())
+                t.equals("rag", true) -> c.rag(width())
+                t.equals("chalk", true) -> c.chalk()
+                BrushKind.entries.any { it.name.equals(t, true) } ->
+                    c.brush(brushOf(t), width = width(), config = BrushConfig(bristles = bristles(), stiffness = stiffness(), ragged = ragged(), point = point()))
+                else -> c.pencil(t)
+            }
+            tools()[name()] = made
+            mapOf("ok" to true, "kept" to name(), "tools" to tools().describe(c))
+        }
+    }
+
+    tool("paint.load") {
+        describe("Load a kept brush or knife with paint, or dampen a kept rag with spirits. A brush mixes the new paint into what is " +
+            "left in it unless you wipe it; dip one edge (side, share) to double-load it.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val tool by param<String>("the kept tool's name")
+        val color by param<String?>("#rrggbb, a tube name, or tubes by parts; null only wipes (a rag: dampens; a pencil: sharpens)", default = null)
+        val amount by param<Double>("a knife: 0..1 of a full bead", default = 0.6)
+        val wipe by param<Double>("how much of what is in the brush to wipe off first, 0..1; 0 mixes into it (a knife: above 0 wipes it clean)", default = 0.85)
+        val thinness by param<Double>("tube mixes: 0 from the tube, 1 thinned with oil medium", default = 0.0)
+        val turps by param<Double>("0..0.9 of the paint's volume turpentine: it flows, spatters, and evaporates as it is laid", default = 0.0)
+        val side by param<Double>("dip one edge only: -1 or 1; 0 the whole brush", default = 0.0)
+        val share by param<Double>("with side: the share of the width that goes in", default = 1.0)
+        val damp by param<Double>("a rag: how damp with spirits, 0..1", default = 0.6)
+        action {
+            val c = canvas()
+            when (val t = tools()[tool()] ?: throw IllegalArgumentException("no kept tool \"${tool()}\": ${tools().names}")) {
+                is PaintBrush ->
+                    if (color() == null) t.wipe(wipe())
+                    else loadInto(t, color(), wipe = wipe(), thinness = thinness(), turps = turps(),
+                        part = if (side() != 0.0 || share() < 1.0) LoadPart(side(), share()) else null)
+                is PaintKnife -> {
+                    val p = color()?.let(::paintOf)
+                    if (p == null) t.wipe()
+                    else if (p.tubes != null) t.load(p.tubes, medium = thinness(), amount = amount(), wipe = wipe() > 0)
+                    else t.load(p.color, amount = amount(), wipe = wipe() > 0, turps = turps())
+                }
+                is PaintRag -> c.dampen(t, damp())
+                is Pencil -> t.sharpen()
+            }
+            mapOf("ok" to true, "tools" to tools().describe(c))
+        }
+    }
+
+    tool("paint.knife") {
+        describe("Pull a painting knife along paths: it lays flat slabs of paint with ridges at the blade's ends, or, with lay=false and " +
+            "pressed hard, scrapes wet paint off back to the dry surface. The paint it scrapes stays on the blade.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val paths by param<List<List<Double>>>("paths, each [x0, y0, x1, y1, ...]")
+        val tool by param<String?>("a kept knife's name; null for a fresh 60-unit knife", default = null)
+        val color by param<String?>("paint to pick up first; null uses what is on the blade", default = null)
+        val pressure by param<Double>("0.3 a light touch riding on the surface .. 1 down to the dry paint", default = 0.6)
+        val lay by param<Boolean>("lay paint from the blade (false: scrape only)", default = true)
+        val angle by param<Double?>("the blade's angle in degrees; null holds it across the path", default = null)
+        action {
+            val c = canvas()
+            val k = tool()?.let { tools().knife(it) } ?: c.knife(60.0)
+            color()?.let(::paintOf)?.let { if (it.tubes != null) k.load(it.tubes) else k.load(it.color) }
+            val line = FLine(); paths().forEach { line += through(it) }
+            c.knife(line, k, pressure = pressure()..pressure(), angle = angle()?.let(::rad), lay = lay())
+            done("${paths().size} knife pull(s), the blade ${pct(k.fullness)} loaded")
+        }
+    }
+
+    tool("paint.wipe") {
+        describe("Lift wet paint with a rag: wipe along paths (streaks, wiped-out lights) or blot at points (a crumpled patch). Only paint " +
+            "that is still open comes away. A dampened rag (paint_load) lifts nearly to the ground.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val paths by param<List<List<Double>>>("wipes, each [x0, y0, x1, y1, ...]", default = emptyList<List<Double>>())
+        val points by param<List<Double>>("blots, [x0, y0, x1, y1, ...]", default = emptyList<Double>())
+        val tool by param<String?>("a kept rag's name; null for a fresh clean rag", default = null)
+        val width by param<Double>("a fresh rag's pad size", default = 50.0)
+        val pressure by param<Double>("0..1", default = 0.6)
+        val refold by param<Boolean>("turn a clean face out first", default = false)
+        action {
+            val c = canvas()
+            val r = tool()?.let { tools().rag(it) } ?: c.rag(width())
+            if (refold()) c.refold(r)
+            var lifted = paths().sumOf { c.wipe(through(it), r, listOf(pressure())) }
+            lifted += points().chunked(2).filter { it.size == 2 }.sumOf { c.blot(r, it[0], it[1], pressure()) }
+            done("lifted ${"%.1f".format(lifted)} mm³ of paint; the rag's face is ${pct(c.ragState(r).load)} loaded")
+        }
+    }
+
+    tool("paint.spatter") {
+        describe("Flick a loaded brush: the loose paint flies off in droplets that land in a cone toward the flick. Fluid or turps-thinned " +
+            "paint spatters readily, stiff paint barely; harder flicks throw more, smaller drops.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val at by param<List<Double>>("where the brush is, [x, y]")
+        val toward by param<List<Double>>("the flick's direction and reach, [dx, dy] in canvas units")
+        val tool by param<String?>("a kept brush's name; null for a fresh round brush", default = null)
+        val color by param<String?>("paint to load first; null flicks what the kept brush carries", default = null)
+        val turps by param<Double>("with color: 0..0.9 turpentine in the paint", default = 0.4)
+        val spread by param<Double>("half the cone's angle, degrees", default = 20.0)
+        val force by param<Double>("0..1", default = 0.6)
+        action {
+            val c = canvas()
+            val b = brushFor(tool(), "Round", 30.0, color())
+            loadInto(b, color(), turps = turps())
+            val n = c.spatter(b, at()[0], at()[1], toward = toward()[0] to toward()[1], spread = rad(spread()), force = force())
+            done("$n droplets landed")
         }
     }
 
@@ -267,7 +407,7 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
     context("canvas") {
         val c = canvas()
         "The canvas on the Studio easel is 1000 units wide and ${c.heightUnits.roundToInt()} tall (aspect ${c.aspect}), " +
-            "x to the right, y DOWN from the top edge. ${state()}."
+            "x to the right, y DOWN from the top edge. ${state()}. Kept tools: " + tools().describe(c).lines().joinToString("; ")
     }
 
     context("craft", changesOften = false) {
@@ -278,12 +418,17 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         |the canvas — look after each stage, and judge it as a painting. Wet paint mixes into what you lay over it: wait or dry
         |(paint_wait) when you want a clean layer on top. Every request you are given starts from the canvas as the conversation
         |left it, and rewinding the chat brings back the canvas as it was then, so be bold.
+        |Keep the tools you will come back to (paint_tool, then paint_load and the tool= of paint_stroke and paint_dab): a kept
+        |brush carries what it picked up from the canvas into its next stroke, as a real one does, so a brush kept for the sky
+        |stays a sky brush. A knife (paint_knife) lays flat slabs and ridges or scrapes wet paint away; a rag (paint_wipe) lifts
+        |open paint for lights; paint_spatter flicks fluid paint. paint_look with light="raking" shows the relief and wet sheen.
         |Colours: "#rrggbb", or real tube paints mixed by parts, "lead white:4, cadmium yellow:1" (they mix like paint, so blue and
         |yellow make green). Tubes: ${Tubes.names.joinToString()}.
         """.trimMargin()
     }
 
     command("canvas", "show the canvas here") { "![the canvas](${pngUrl(canvas().png())})\n\n${state()}" }
+    command("tools", "list the kept tools and what they carry") { _ -> tools().describe(canvas()).lines().joinToString("\n") { "- $it" } }
     command("gallery", "list the hung paintings") { _ ->
         galleryDir().listFiles { f -> f.name.endsWith(".png") }.orEmpty().sortedBy { it.lastModified() }
             .joinToString("\n") { "- *${it.nameWithoutExtension}*" }.ifBlank { "Nothing hung yet." }
@@ -300,6 +445,11 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
     branchState("canvas",
         save = { canvas().saveState(it.path) },
         restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() },
+        onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
+    // and so do the kept tools, each bristle's paint and all
+    branchState("tools",
+        save = { tools().save(it) },
+        restore = { f -> thisBox.properties["studio.tools"] = f?.let { PaintToolbox.load(it) } ?: PaintToolbox() },
         onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
 }
 

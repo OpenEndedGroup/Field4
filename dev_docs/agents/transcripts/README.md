@@ -109,8 +109,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
   without it every box says so and stops.
 - `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
-  `agentExtension` with eleven `paint.*` tools, canvas and craft context, `/canvas`, `/palette` and
-  `/gallery`, and the canvas as `branchState`, so a chat rewind restores it; and a Scribbler box whose
+  `agentExtension` with sixteen `paint.*` tools (among them named tools kept between requests, a
+  knife, a rag and spatter), canvas and craft context, `/canvas`, `/palette`, `/tools` and
+  `/gallery`, and the canvas and the kept tools as `branchState`, so a chat rewind restores both;
+  and a Scribbler box whose
   `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
   needs a person (or `agent-task --chat-box Studio`) and a provider.
 - `stacksl_evolve_studio.yaml`: one box that makes a StackSL search toward a picture a world for
