@@ -5,10 +5,11 @@ ESP32 and Arduino sketches, Node-RED, Home Assistant and TouchDesigner all speak
 **broker**; anything subscribed to a matching **topic** (a path such as `sensors/kitchen/temp`)
 receives them. Field includes its own broker, so nothing needs installing to try it.
 
-Open `public/docs/assets/mqtt_demo/` as a document. Box 1 plays three pretend sensors, box 2 listens
-to every temperature, box 3 plots them, and box 4 shows a retained message.
+The demo document `public/docs/assets/mqtt_demo/` puts the pieces of this page together: one box
+plays three pretend sensors, one listens to every temperature, one plots them, and one shows a
+retained message.
 
-## Five lines to a sensor feed
+## A sensor feed
 
 This subscribes to every room's temperature and shows the latest one:
 
@@ -142,7 +143,7 @@ disappears without disconnecting.
 The connection is made once per broker and reconnects by itself, resubscribing, if the broker
 restarts or the network drops. `print(mqtt)` shows its state and message counts.
 
-## What this does not do
+## Not supported
 
 - MQTT 3.1.1 only; MQTT 5 brokers accept 3.1.1 clients, so this matters only for v5-only features.
 - No TLS (`mqtts://`, port 8883) and no WebSocket transport.

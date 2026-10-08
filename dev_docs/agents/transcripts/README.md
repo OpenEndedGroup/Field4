@@ -93,6 +93,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
+- `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
+- `orca_duet.yaml`: two ORCAs in one box, `lead` and `echo`, with a `frames { }` loop that copies lead's notes into echo's track and nudges lead's tune from echo's; ends with `synth + frames { }`, so launch it. Compiled only, like `orca_hello`; `OrcaHeadlessTest` runs the same exchange headless and fails if the transcript drifts from `OrcaSoundDocs`.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
@@ -111,6 +113,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `/gallery`, and the canvas as `branchState`, so a chat rewind restores it; and a Scribbler box whose
   `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
   needs a person (or `agent-task --chat-box Studio`) and a provider.
+- `stacksl_evolve_studio.yaml`: one box that makes a StackSL search toward a picture a world for
+  AI4 — an `agentExtension` with `evolve_*` tools (step, look, propose, watchmaker, fit, configure,
+  states, crossbreed, render, guide), context on the search, `/population` and `/sheet`, and the
+  population as `branchState`, so a chat rewind rewinds the search and `evolve_crossbreed` can breed
+  with a branch left behind. The transcript only runs the box, which renders the target and nothing
+  else; searching needs a person (or `agent-task --chat-box Evolve`) and a provider.
 - `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.

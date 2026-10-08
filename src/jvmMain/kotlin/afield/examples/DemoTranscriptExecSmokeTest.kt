@@ -414,6 +414,11 @@ object DemoTranscriptExecSmokeTest {
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
         // says so and stops, like paint_canvas.
         "ai4_paint_studio",
+        // One pure-CPU box that keeps a StackSLEvolution on itself and registers an agentExtension over
+        // it (evolve_* tools, context, commands, the population as branch state). Executing it renders
+        // only the target: the search, LPIPS and the watchmaker start at the first evolve_step, which
+        // needs a chat. No model is called.
+        "stacksl_evolve_studio",
         // Three CPU boxes: pen strokes with pressure drawn on the drawing layer and read back with
         // notation, then painted (brush swell from the pen) and drawn in pencil through afield.paint.
         // The paint boxes check PaintCanvas.isAvailable first, like paint_canvas.
@@ -448,6 +453,13 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio
+        // device; and ORCA itself only plays in a browser. `run_ui_regressions.py --id orca-io` runs
+        // the same calls in a real page, and OrcaTest feeds the Kotlin side the page's reports.
+        "orca_hello",
+        // Two of them and a frames loop between: the same reasons. OrcaHeadlessTest runs its exchange
+        // on ORCA's own operators in the JVM, and pins it to this transcript.
+        "orca_duet",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
