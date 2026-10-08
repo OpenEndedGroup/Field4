@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -27,7 +29,11 @@ class Fixture:
         return (self.root / rel).read_text(encoding="utf-8")
 
     def run(self, *args: str) -> int:
-        return idioms.main(["--root", str(self.root), *args])
+        # The landing guard exports the changed-paths listing to every check it runs, this suite
+        # included; inherited, it would scope each "whole corpus" run here to the landing's files.
+        with mock.patch.dict(os.environ):
+            os.environ.pop("AFIELD_GUARD_CHANGED_PATHS_FILE", None)
+            return idioms.main(["--root", str(self.root), *args])
 
     def close(self) -> None:
         self._dir.cleanup()
@@ -222,9 +228,7 @@ class ScopeTests(unittest.TestCase):
         self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/backups/b_code__backup_00000.kt"))
 
     def test_an_inherited_git_dir_does_not_replace_the_root(self):
-        # The lander's environment pointed git at the real repository, so the fixture read as empty.
-        import os
-        from unittest import mock
+        # A hook's environment can point git at the real repository instead of the fixture.
         f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": "record(Box.context.get()!!)\n"})
         try:
             with mock.patch.dict(os.environ, {"GIT_DIR": str(idioms.REPO_ROOT / ".git"),
