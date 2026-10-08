@@ -121,17 +121,13 @@ object PatSpatialSoundDocs {
     val FIGURES: List<Figure> = listOf(
         Figure(
             name = "spatial-source-plain",
-            pageLabel = "**The mono source, as Steam Audio is handed it.** Not the spatialised " +
-                "output — this is `source.mono`, one `spat` group's dough engine with every event " +
-                "sent `pan/0`, which is the buffer the binaural effect takes as its input.",
+            pageLabel = "The mono source for one `spat` group, before Steam Audio places it.",
             forwarded = emptyMap(),
         ),
         Figure(
             name = "spatial-source-forwarded",
-            pageLabel = "**The same notes, with `lpf` added to the pattern.** `lpf` is not one of " +
-                "the six spatial tags, so it is forwarded to dough untouched and the engine's own " +
-                "filter answers for it. Everything you can hear between these two clips is that " +
-                "forwarding rule.",
+            pageLabel = "The same notes with `lpf` added to the pattern. `lpf` is not a spatial key, so " +
+                "dough receives it and its own filter darkens the sound.",
             forwarded = mapOf("lpf" to "700"),
         ),
     )
@@ -418,8 +414,9 @@ object PatSpatialSoundDocs {
         // And the page has to carry what the figures claim, so the prose cannot drift off the audio.
         val page = File(PAGE)
         if (page.isFile) {
-            val text = page.readText()
-            val missing = FIGURES.filterNot { text.contains(it.pageLabel) }
+            // Whitespace-insensitive, so reflowing the paragraph is not drift; changing a word is.
+            val text = page.readText().collapseWhitespace()
+            val missing = FIGURES.filterNot { text.contains(it.pageLabel.collapseWhitespace()) }
             check(missing.isEmpty()) {
                 "$PAGE does not carry the caption(s) ${missing.map { it.name }} verbatim, so the " +
                     "prose and the published clip can drift apart"
@@ -456,3 +453,5 @@ object PatSpatialSoundDocs {
     /** How far below the plain figure's centroid the `lpf` figure's has to sit to be the filter. */
     const val FORWARDING_CENTROID_CEILING = 0.6
 }
+
+private fun String.collapseWhitespace() = trim().replace(Regex("""\s+"""), " ")
