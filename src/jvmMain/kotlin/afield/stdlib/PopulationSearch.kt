@@ -598,7 +598,7 @@ object PopulationSearch {
      * is the shape premature convergence takes when mutation is often neutral. Without a signature
      * there is nothing to deduplicate on and this is a plain truncation.
      */
-    private fun <G> truncate(ops: GenomeOps<G>, sorted: List<Individual<G>>, mu: Int): List<Individual<G>> {
+    internal fun <G> truncate(ops: GenomeOps<G>, sorted: List<Individual<G>>, mu: Int): List<Individual<G>> {
         val first = sorted.firstOrNull() ?: return emptyList()
         if (ops.signature(first.genome) == null) return sorted.take(mu)
         val kept = LinkedHashMap<String, Individual<G>>()
@@ -611,7 +611,7 @@ object PopulationSearch {
         return (kept.values + unkeyed).take(mu)
     }
 
-    private fun <G> select(
+    internal fun <G> select(
         pool: List<Individual<G>>,
         k: Int,
         how: Selection,

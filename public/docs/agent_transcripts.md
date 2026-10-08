@@ -1375,6 +1375,22 @@ AI4](ai4_experiments.md) shows a painting made with it. It needs the paint libra
 
 [Open ↗](offline.html?file=assets/agent_transcripts/ai4_paint_studio/metadata.edn)
 
+### stacksl_evolve_studio
+
+A StackSL search toward a picture that the AI chat steers. The one box holds the search and gives
+the chat agent tools to run generations, look at the best programs, propose programs of its own,
+ask the fast model for a round of edits, take a gradient step on a program's numbers, and change the
+metric and population. The population belongs to the conversation: rewinding the chat to a request
+puts the search back as it was before it, and the agent can breed the current population with one
+from a branch it left. Opening the document shows only the target; the search starts when you ask
+for it. Open the box's AI panel and ask, for instance, "evolve toward the target, and bring in the
+watchmaker when it stalls". [Evolving a Shader](stacksl_evolve.md#steering-it-from-the-ai-chat)
+describes it. It needs an AI provider.
+
+![rows of targets and the best programs found for them: the plain search draws noise and stripes, the search with the watchmaker draws each target](assets/stacksl_evolve/watchmaker-original.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacksl_evolve_studio/metadata.edn)
+
 ### paint_canvas
 
 Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
