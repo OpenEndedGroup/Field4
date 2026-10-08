@@ -530,6 +530,13 @@ class SavingContext {
                     val metadataStartedAt = System.nanoTime()
                     metadataChanged = checkDifference(metadataPath, ednText)
                     metadataMs = SaveReloadLog.elapsedMillis(metadataStartedAt)
+                    // Now, not with the sidecars at the end: the rest of a save can take long enough
+                    // that the file's own watch event arrives first and is taken for an external edit.
+                    snapshot.fileWatchManager?.markMetadataWrite(
+                        File(metadataPath),
+                        snapshot.transfers.map { it.id },
+                        written = metadataChanged
+                    )
                     altered = altered || metadataChanged
                     if (metadataChanged) alteredFiles.add(metadataPath)
 
@@ -606,11 +613,8 @@ class SavingContext {
                             if (watchManager == null) {
                                 SaveReloadLog.log("save-warning", "doc=$fn missing-watch-manager")
                             }
+                            // metadata.edn was registered when it was written (markMetadataWrite).
                             watchManager?.let {
-                                val metadataFile = File(root, METADATA_EDN)
-                                if (metadataFile.exists()) {
-                                    it.markInternalSave(metadataFile)
-                                }
                                 File(root).listFiles()?.forEach { file ->
                                     if (file.isFile && file.name.contains("_") &&
                                         Box.ioSeparateProperties.values.contains(file.extension)
