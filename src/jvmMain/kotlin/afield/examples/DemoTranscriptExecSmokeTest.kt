@@ -455,6 +455,8 @@ object DemoTranscriptExecSmokeTest {
         // Two of them and a frames loop between: the same reasons. OrcaHeadlessTest runs its exchange
         // on ORCA's own operators in the JVM, and pins it to this transcript.
         "orca_duet",
+        // ORCA with AI4 on the board: the same reasons as orca_hello. Its tools run in the orca-io regression.
+        "orca_jam",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
