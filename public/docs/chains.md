@@ -72,6 +72,12 @@ expect.
     way here: a drum pattern is split into four bands, and those four numbers move 24,000
     particles in a compute shader.
 
+-   ![Three rings of dust with bursts of coloured sparks leaving them](assets/chain_petri_sparks/sparks.png)
+
+    **[A Petri Net That Throws Sparks](chain_petri_sparks.md).** One Petri net plays a drum part
+    from the Dirt-Samples, and every transition that fires throws a burst of GPU sparks in its own
+    colour.
+
 -   ![A drawn score: blue piano-roll rectangles, a red glissando, a green held note and an orange playhead](assets/chain_drawn_score/hero.png)
 
     **[A Drawn Score, Heard](chain_drawn_score.md).** Rectangles and pen strokes on the drawing
