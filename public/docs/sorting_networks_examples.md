@@ -2,11 +2,11 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`sorting_networks.kt`](reference/data.md#sorting-networks-kt). Start from [what's already in the box](reference/index.md).*
 
-Sorting networks make an algorithm hold still. The compare-and-swap plan is fixed ahead of time; the data is what moves. That makes them good material for pictures: topology first, then disorder collapse, then search over the topology itself.
+A sorting network is a fixed list of compare-and-swap steps between wires: the plan is decided ahead of time, and only the data changes. Because the plan is fixed, it can be drawn. This page draws two networks, plots how quickly each one removes disorder from random inputs, and then uses `SortingNetwork.anneal(...)` to search for smaller networks.
 
 ## Topology: bubble against odd-even merge
 
-Ten wires each, drawn at the same layer spacing, so the two panels are directly comparable. Bubble is `n * (n - 1) / 2` comparators, 45 at ten wires, arranged in as many columns as ASAP scheduling needs; Batcher's odd-even merge is O(n log²n) comparators in O(log²n) columns.
+This example builds a bubble network and Batcher's odd-even merge network on ten wires and draws them one above the other at the same column spacing, so their widths can be compared directly. Bubble uses `n * (n - 1) / 2` comparators; each comparator is placed in the earliest column it can go. Odd-even merge uses O(n log²n) comparators in O(log²n) columns.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/topology_compare.png" wait="1.0" capture="box"}
 :::static
@@ -47,13 +47,13 @@ lines(
 )
 ```
 
-The top panel runs to almost twice the width of the bottom one, and that is the comparison: the difference in cost is readable off the two diagrams before a single input goes through either.
+The top panel is almost twice as wide as the bottom one, so the difference in cost shows before any input has gone through either network.
 
-![two wire diagrams stacked in tinted panels, twelve horizontal wires each, comparators drawn as coloured vertical bars with a dot at either end. The blue upper panel's comparators fill its whole width and form a long descending staircase of nested triangles. The orange lower panel's comparators are packed into a little over half the width, in tight columns of near-full-height bars, and the rest of its panel is empty](assets/sorting_networks_examples/topology_compare.png)
+![two wire diagrams stacked in tinted panels, ten horizontal wires each, comparators drawn as coloured vertical bars with a dot at either end. The blue upper panel's comparators fill its whole width and form a long descending staircase of nested triangles. The orange lower panel's comparators are packed into a little over half the width, in tight columns of near-full-height bars, and the rest of its panel is empty](assets/sorting_networks_examples/topology_compare.png)
 
 ## Disorder collapse across layers
 
-A diagram says nothing about how fast a network actually clears disorder. `layerTrace(...)` answers that: it returns the wire array after every parallel layer, so a random permutation can be watched collapsing. Each curve below is one such trace's inversion count divided by 66, the inversions in a fully reversed twelve-wire input.
+A diagram doesn't show how quickly a network removes disorder. `layerTrace(...)` returns the wire values after every column of comparators, so you can follow a random permutation as it is sorted. This example traces random twelve-wire inputs through both networks and plots each trace's inversion count (the number of out-of-order pairs), divided by the inversion count of a fully reversed input so that every curve starts at or below 1.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/disorder_decay.png" wait="1.0" capture="box"}
 :::static
@@ -175,7 +175,7 @@ Odd-even merge front-loads. Its first layer is the steepest segment of either me
 
 ## One annealing run
 
-`SortingNetwork.anneal(...)` reports its best-so-far network through a callback, not just its final answer, so the whole trajectory can be plotted.
+`SortingNetwork.anneal(...)` starts from a network and searches for a smaller one that still sorts. It reports the best network found so far through a callback, so this example can plot the whole run as well as draw the start and end networks.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_search.png" wait="1.0" capture="box" timeout="70"}
 :::static
@@ -258,9 +258,9 @@ Left is the `bubble(8)` seed, right is the network the run came back with, and t
 
 ![two eight-wire comparator diagrams across the top, the left one visibly denser and wider than the right. Below them two wide panels, one cyan and one green, each holding a single trace that starts flat at the top left, steps down twice inside the first third, and then runs dead flat to the right-hand edge](assets/sorting_networks_examples/anneal_search.png)
 
-## Twenty-seven annealing runs
+## Comparing starting networks and schedules
 
-Three seed topologies, three temperature schedules and three random seeds, all at eight wires and 2000 iterations.
+This example runs `anneal` over every combination of three starting networks, three temperature schedules and three random seeds, all on eight wires, and plots every run together with a scatter of where each one finished.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_regimes.png" wait="1.0" capture="box" timeout="90"}
 :::static
@@ -427,9 +427,9 @@ lines(
 )
 ```
 
-Two thirds of the traces in the top two panels are flat lines, and the reason is in the KDoc rather than in the search: `oddEvenMerge(8)` is 19 comparators, which `anneal` lists as the known optimum for eight wires. All nine merge-seeded runs therefore start where the search would like to finish, never move, and land on one another as the single green square at the left of the scatter. `merge+` is that same network with four of its first-layer comparators appended a second time — 23 comparators of which exactly four are provably dead — and its runs spread out across the middle, because they recover different numbers of the four. The bubble-seeded runs start from 28 and sit up and to the right, having spent 2000 iterations without reaching either merge family's depth.
+Most of the traces in the top two panels are flat because `oddEvenMerge(8)` already has the fewest comparators known for eight wires, so the runs that start from it have nothing to remove; they all finish in the same place, the single green square at the left of the scatter. `merge+` is the same network with four of its first-layer comparators repeated, which makes those four copies useless, and its runs spread across the middle according to how many of them each run removed. The runs that start from bubble finish up and to the right, without reaching the depth of either merge network.
 
-The scatter puts comparator count across the page and depth up it. Across the whole grid the seed topology separates the results almost perfectly by colour, and the temperature schedule barely registers.
+The scatter puts comparator count across the page and depth up it. The starting network decides where a run ends up far more than the temperature schedule does.
 
 ![three stacked panels. The top two each hold twenty-seven traces, most of them dead-flat horizontal lines, with a bundle of blue ones wandering and stepping down through the first half before flattening; a green line lies flat along the bottom of both. The third panel is a scatter: one green square alone at the far left on the floor, four orange squares stepping rightward along the same floor, and five blue squares higher and further right, the highest of them near the top right](assets/sorting_networks_examples/anneal_regimes.png)
 
