@@ -107,6 +107,9 @@ CARRIER_PAGES = {
     # `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`, no leading slash.
     "public/docs/open_dlss_nr.md",
     "public/docs/openxr_eye_intersection.md",
+    # Added 2026-10-08: `1ba2eb637` landed two starting-point links. Shape checked:
+    # `offline.html?file=assets/agent_transcripts/orca_{hello,duet}/metadata.edn`, both exist.
+    "public/docs/orca.md",
     "public/docs/particle_video.md",
     "public/docs/profiling_timeline.md",
     # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
