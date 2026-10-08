@@ -3577,6 +3577,24 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Build native/field-slug, the helper afield.graphics.slug.SlugPath shells out to. Explicit opt-in
+// like Loris: build.sh fetches the pinned Slughorn revision from GitHub on first run.
+val buildSlugNative = tasks.register<Exec>("buildSlugNative") {
+    group = "build"
+    description = "Builds native/field-slug (pinned Slughorn + C++20), which SlugPath and four.slug.readback need."
+    inputs.files("native/field-slug/build.sh", "native/field-slug/main.cpp")
+    outputs.file("native/field-slug/build/field-slug")
+    commandLine("bash", "native/field-slug/build.sh")
+}
+
+// The natives the FIELD_TEST smoke catalog needs that `clean` or a fresh worktree leaves absent.
+// The docs set is buildDocsNativePrerequisites; this one is what run_field_tests.py launches against.
+tasks.register("buildSmokeNativePrerequisites") {
+    group = "build"
+    description = "Builds or fetches the native helpers the smoke catalog needs (Steam Audio, field-slug)."
+    dependsOn(fetchSteamAudioNatives, buildSlugNative)
+}
+
 // Explicit opt-in: no ordinary build, check or Field startup downloads/builds Loris.
 tasks.register("buildLorisNative") {
     group = "build"
