@@ -111,7 +111,8 @@ class DynamicBrushTest {
 
     @Test fun movingHairsPaintWatercolourAndTheBooksBalance() {
         if (!available()) return
-        // the share of the stroke's middle left as gaps: under a tenth of the pigment the stroke lays at its 90th percentile
+        // the share of the stroke's middle left as gaps: under a quarter of the pigment the stroke lays at its 90th
+        // percentile (the paper shows through it)
         fun stroke(paper: Paper, fill: Double): Pair<Double, PaintCanvas> {
             val c = PaintCanvas.paper(200, aspect = 1.5, paper = paper, sizeMm = 60.0, seed = 5)
             val b = c.dynamicBrush(BrushKind.Round, 100.0, hairs = 24).loadWater(c, Watercolors.burntSienna * 20.0, fill = fill)
@@ -122,7 +123,7 @@ class DynamicBrushTest {
             val row = (330.0 / 1000 * 200).toInt()
             val v = (40 until 160).flatMap { x -> (row - 2..row + 2).map { y -> m[y * 200 + x] } }.sorted()
             val hi = v[v.size * 9 / 10]
-            return v.count { it < 0.1f * hi } / v.size.toDouble() to c
+            return v.count { it < 0.25f * hi } / v.size.toDouble() to c
         }
         val (full, c) = stroke(Paper.Rough, 1.0)
         c.use {

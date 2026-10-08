@@ -3,8 +3,8 @@
 A [PaintCanvas](paint_canvas.md) made with `PaintCanvas.paper(...)` is a sheet of watercolour
 paper, and water laid on it moves by itself. It flows downhill and into the hollows of the paper,
 sinks in, wicks along the fibres and evaporates. The pigment it carries settles, stains or dries
-in place. A wash dries with a darker edge, ultramarine granulates in the tooth, clean water dropped
-into a damp wash pushes its colour out into a backrun, and a nearly dry brush skips over rough
+in place. A wash dries with a darker edge and the paper's grain in it, clean water dropped into a
+damp wash pushes its colour out into a backrun, and a nearly dry brush skips over rough
 paper, because the water and the pigment do those things, not because a rule paints them in.
 
 The oil paint, brushes and canvas underneath are alice's
@@ -16,7 +16,7 @@ paper's tooth. It needs the same native library (`./gradlew buildPaintNative`).
 Here is a sheet of cold-pressed paper, a round watercolour brush and a sky, with hills painted once
 the sky had dried:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/first.png" alt="a small watercolour study on off-white cold-pressed paper. The top is a sky of four overlapping horizontal brushstrokes of blue that have run together into one band, deeper above and paler below, mottled and granular where the pigment gathered in the hollows of the paper's texture. Below, two broad wavy strokes of warm grey-brown for the hills, granular in the same way, with crisp edges and a little white paper left between them" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="first" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/first.png" alt="a small watercolour study on off-white cold-pressed paper. The top is a sky of four overlapping horizontal brushstrokes of blue that have run together into one band, deeper above and paler below, with a fine grain where a little more pigment gathered in the hollows of the paper's texture. Below, two broad wavy strokes of warm grey-brown for the hills, with the same fine grain and crisp edges and a little white paper left between them" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="first" embed=true}
 :::static
 import afield.paint.*
 
@@ -99,7 +99,7 @@ four minutes until it was damp, with one drop of clean water into it. The clean 
 through the settled pigment and pushes it out ahead of itself, and the colour dries where the flood
 stopped: a backrun, with a pale middle and a dark, frilled edge.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/blooms.png" alt="two passages side by side on cold-pressed paper. Left: on dampened paper, three blue and two rose drops, each a dense, rounded blot of strong colour surrounded by a pale, soft halo where its colour spread into the damp paper, the rose halos larger and feathered at their edges. Right: a flat, granular light-brown wash with a small pale patch in its middle, outlined by a thin, darker, frilled line where the clean water pushed the pigment out" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="blooms" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/blooms.png" alt="two passages side by side on cold-pressed paper. Left: on dampened paper, three blue and two rose drops, each a dense, rounded blot of strong colour surrounded by a pale, soft halo where its colour spread into the damp paper, the rose halos larger and feathered at their edges. Right: a flat light-brown wash with a fine grain and a small pale patch in its middle, outlined by a thin, darker, frilled line where the clean water pushed the pigment out" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="blooms" embed=true}
 :::static
 import afield.paint.*
 
@@ -187,7 +187,7 @@ On dried paint the water from a damp brush redissolves the gum the pigment dried
 lifts it, slowly. How much comes up depends on the pigment: ultramarine sits loose on the surface
 and lifts back nearly to white, while phthalo blue has stained the fibres and barely moves.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/lift.png" alt="two dried rectangles of blue wash side by side on cold-pressed paper, a granular mid ultramarine on the left and an even, intense phthalo blue on the right. A horizontal band has been scrubbed across both with a damp brush: through the ultramarine it is a clearly paler stripe, lifted most of the way to the paper; through the phthalo it is barely visible" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="lift" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/lift.png" alt="two dried rectangles of blue wash side by side on cold-pressed paper, a mid ultramarine on the left and an intense phthalo blue on the right. A horizontal band has been scrubbed across both with a damp brush: through the ultramarine it is a clearly paler stripe, lifted most of the way to the paper; through the phthalo it is barely visible" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="lift" embed=true}
 :::static
 import afield.paint.*
 
@@ -225,19 +225,21 @@ To come back to a brush later, with the water and pigment still in it, keep it i
 glue). Each one is its colour and the physics that decide how it behaves:
 
 - **density** (g/cm³) and **diameterUm**, the particle size. Dense, coarse pigment (ultramarine,
-  viridian, the earths) settles into the hollows of the paper before the water has gone and dries
-  granular. Fine pigment (phthalo, quinacridone, carbon) stays suspended and dries smooth.
+  viridian, the earths) settles out onto the paper within a minute, where the water laid it. Fine
+  pigment (phthalo, quinacridone, carbon) stays suspended and goes where the water goes: into the
+  paper as it soaks in, and onto the fibres it diffuses to.
 - **stain**: how fast it soaks into the fibres from water in the sheet, after which it no longer
   lifts.
 - **lift**: how fast a dried deposit goes back into water standing on it.
 
 `WaterPigment.of(name, masstone, ...)` makes another one from the colour it has laid thick, with
 the same physical parameters, and its optics follow from that colour (Kubelka–Munk absorption and
-scattering, the same optics the oil paint uses). Below, ultramarine and phthalo blue in the same
-wash, left to dry: the ultramarine has gathered in the paper's tooth, the phthalo has stained it
-evenly.
+scattering, the same optics the oil paint uses). Below, ultramarine, phthalo blue and the two
+mixed, each laid as the same wash and left to dry. Each shows the paper's grain a little, because a
+wash stands deeper over the hollows; the ultramarine has settled out onto the paper, while the
+phthalo has soaked into its fibres and stained them, which is why it would not lift.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/pigments.png" alt="a flat dried blue wash on cold-pressed paper, three panels side by side. Left, ultramarine alone: a mottled, granular mid blue, darker in the hollows of the paper's texture. Middle, phthalo blue alone: an even, smooth, intense greenish blue. Right, a mix of both: a deep blue whose smooth phthalo stain is speckled with darker granules of ultramarine" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="pigments" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/watercolor/pigments.png" alt="three dried rectangles of blue wash side by side on cold-pressed paper, each with a soft, fine grain from the paper's texture. Left, ultramarine alone: a mid violet-blue. Middle, phthalo blue alone: an intense greenish blue. Right, the two mixed: a deeper, stronger blue" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="pigments" embed=true}
 :::static
 import afield.paint.*
 
@@ -253,7 +255,7 @@ sheet.dry()
 display("main", sheet.png(relief = 0.4))
 ```
 
-![dried washes of ultramarine (granular), phthalo blue (smooth) and the two mixed](assets/watercolor/pigments.png)
+![dried washes of ultramarine, phthalo blue and the two mixed](assets/watercolor/pigments.png)
 
 ## Oil, pencil and the knife on paper
 
@@ -386,7 +388,10 @@ and for each pigment its mass in each of the five states of the books above. On 
 | Wetting dry paper | water advances only from a film deeper than the paper's `pinMicrons` | an approximation of contact-angle hysteresis by one number |
 | Absorption and wicking | surface water drawn into the pores at the paper's sizing rate; capillary diffusion through the sheet, faster along the fibres | simulated, with a linear stand-in for the slowing of uptake as the sheet fills |
 | Evaporation | from the surface water, faster near the edge of a wet patch (Deegan et al., *Nature* 389, 1997); then from the pores | simulated; the dark edge of a dried wash is the flow toward the edge carrying pigment, not a rule |
-| Settling | each pigment falls through the water at its Stokes velocity, from its density and particle size | simulated; granulation follows from it |
+| Settling | each pigment falls through the water at its Stokes velocity, from its density and particle size | simulated |
+| Diffusion to the fibres | fine particles diffuse through the water to the paper (Stokes–Einstein) and stick there, the same amount per area wherever the water stands deep enough | simulated |
+| Texture in a wash | a wash's surface lies level, so it stands deeper over the paper's hollows and leaves more there; how much shows depends on the paper's relief | simulated; the reliefs are estimates |
+| Granulation | coarse pigment gathering in the hollows beyond what the water's depth leaves there, so that ultramarine speckles more than phthalo | not simulated: here every pigment follows the depth about equally |
 | Filtering and staining | particles larger than the pores stay on the surface; staining pigments adsorb onto the fibres | simulated with estimated rates |
 | Backruns | settled pigment is carried on by water flowing through it; drying glues it down | simulated |
 | Blooms | paint lowers surface tension, and the cleaner water pulls the surface outward (Marangoni flow) | simulated with an estimated tension drop; the wetting agents are carried and adsorbed |

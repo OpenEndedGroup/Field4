@@ -41,8 +41,11 @@
 //!   edge of a dried wash is that flow, not a rule.
 //! - **Pigment** moves with the water it is in. Suspended particles settle at their Stokes velocity
 //!   `2/9 · Δρ g r² / μ` from their density and size, so dense coarse pigments (ultramarine, earths)
-//!   settle into the hollows of the sheet first and granulate, and fine ones (phthalo, carbon) stay
-//!   suspended until the water is gone. As water is absorbed, particles larger than the pores are
+//!   settle out within a minute, where the water laid them, and fine ones (phthalo, carbon) stay
+//!   suspended until the water is gone, diffusing to the fibres (Stokes–Einstein) and sticking there.
+//!   A wash's surface lies level, so it stands deeper over the sheet's hollows and leaves more of
+//!   either there: the paper's grain in a wash. Granulation proper, coarse pigment gathering in the
+//!   hollows beyond that, is not modelled. As water is absorbed, particles larger than the pores are
 //!   filtered at the surface (`filter`); the rest enter the sheet, where staining pigments adsorb
 //!   onto the fibres (`stain`, per second). Sediment that has not dried is entrained by water flowing
 //!   through its pixel, at `ENTRAIN` times the rate the water there turns over (so clean water flooding a
@@ -95,6 +98,11 @@ const GRAVITY_FILM: f64 = 998.0 * 9.81 / (3.0 * 1.0e-3);
 const MU: f64 = 1.0e-3;
 /// Water density, kg/m³.
 const RHO_W: f64 = 998.0;
+/// k T at 20 °C, J.
+const BOLTZMANN_T: f64 = 1.380649e-23 * 293.15;
+/// The time over which a wash's particles diffuse to the paper, s: about how long a wash stays wet
+/// (an estimate; the boundary layer's depth goes as its square root).
+const DIFFUSE_REF_S: f32 = 100.0;
 /// Surface water below this, µm, is a dry pixel (what is left wets the pores or evaporates).
 const W_DRY: f32 = 0.05;
 /// How much more the rim of a wet patch evaporates than its middle: × 1 + RIM × the share of the
@@ -183,7 +191,10 @@ pub struct Paper {
     pub fibre_mm: f32,
     /// How uneven the sheet's grammage is (formation): standard deviation relative to the mean.
     pub formation: f32,
-    /// Surface relief: standard deviation of the height, µm.
+    /// Surface relief: standard deviation of the height, µm (estimates: peak to valley is four to five
+    /// times this, some 50 µm on cold press and 150 µm on rough). A wash's free surface is level, so
+    /// it stands deeper over the hollows, and what it leaves follows: this is what decides how much a
+    /// wash shows the paper's texture.
     pub roughness_um: f32,
     /// Size of the relief's features (the felt's knots, the mould's laid lines), mm.
     pub texture_mm: f32,
@@ -202,15 +213,15 @@ impl Paper {
     /// water it takes up in a minute under standing water, is some 20–30 g/m²: about 0.4 µm/s.)
     pub fn cold_press() -> Paper {
         Paper { name: "cold press".into(), color: [0.86, 0.85, 0.80], cap_um: 160.0, absorb_um_s: 0.4, wick_mm2_s: 0.08,
-            anisotropy: 1.3, fibre_mm: 2.5, formation: 0.08, roughness_um: 22.0, texture_mm: 1.4, pin_um: 1000.0 }
+            anisotropy: 1.3, fibre_mm: 2.5, formation: 0.08, roughness_um: 11.0, texture_mm: 1.4, pin_um: 1000.0 }
     }
     /// The same sheet hot pressed: smooth, a little harder sized.
     pub fn hot_press() -> Paper {
-        Paper { name: "hot press".into(), roughness_um: 5.0, texture_mm: 0.8, absorb_um_s: 0.3, pin_um: 900.0, ..Paper::cold_press() }
+        Paper { name: "hot press".into(), roughness_um: 3.0, texture_mm: 0.8, absorb_um_s: 0.3, pin_um: 900.0, ..Paper::cold_press() }
     }
     /// Rough: a deep tooth that a dry brush skips across.
     pub fn rough() -> Paper {
-        Paper { name: "rough".into(), roughness_um: 55.0, texture_mm: 2.6, pin_um: 1100.0, ..Paper::cold_press() }
+        Paper { name: "rough".into(), roughness_um: 32.0, texture_mm: 2.6, pin_um: 1100.0, ..Paper::cold_press() }
     }
     /// Thin unsized xuan (rice) paper of long bast fibres, for ink: it drinks water at once and
     /// wicks it far along its grain.
@@ -390,6 +401,11 @@ impl AqPigment {
         AqPigment { name: name.into(), k, s, density, diameter_um, stain, lift }
     }
     /// Stokes settling velocity in water, µm/s.
+    /// Brownian diffusivity in water at 20 °C, µm²/s (Stokes–Einstein: kT / 3π μ d).
+    pub fn diffusivity_um2_s(&self) -> f32 {
+        let d = self.diameter_um as f64 * 1e-6;
+        (BOLTZMANN_T / (3.0 * std::f64::consts::PI * MU * d.max(1e-9)) * 1e12) as f32
+    }
     pub fn settling_um_s(&self) -> f32 {
         let r = self.diameter_um as f64 * 0.5e-6;
         let dr = (self.density as f64 * 1000.0 - RHO_W).max(0.0);
@@ -403,7 +419,7 @@ impl AqPigment {
     /// density and staining from the ranges reported for it; the colours are masstones.
     pub fn named(name: &str) -> Option<AqPigment> {
         Some(match name {
-            // PB29: coarse, dense, granulating, lifts readily
+            // PB29: coarse, dense, lifts readily
             "ultramarine" => AqPigment::new("ultramarine", [0.035, 0.05, 0.42], 0.9, 0.03, 2.35, 2.0, 0.002, 0.005),
             // PB15:3: very fine, organic, staining
             "phthalo blue" => AqPigment::new("phthalo blue", [0.005, 0.03, 0.14], 3.0, 0.01, 1.6, 0.08, 0.15, 0.0004),
@@ -413,7 +429,7 @@ impl AqPigment {
             "quinacridone rose" => AqPigment::new("quinacridone rose", [0.5, 0.02, 0.12], 1.6, 0.02, 1.5, 0.1, 0.12, 0.0006),
             // PY35: dense, semi-opaque
             "cadmium yellow" => AqPigment::new("cadmium yellow", [0.78, 0.48, 0.02], 0.6, 0.35, 4.3, 0.8, 0.005, 0.003),
-            // PG18: coarse, granulating
+            // PG18: coarse
             "viridian" => AqPigment::new("viridian", [0.02, 0.22, 0.13], 0.7, 0.05, 3.3, 1.2, 0.004, 0.004),
             // PBk6 in animal glue, as sumi ink: very fine, fixed by its glue once dry
             "sumi" | "sumi ink" => AqPigment::new("sumi", [0.012, 0.012, 0.013], 4.0, 0.02, 1.8, 0.12, 0.08, 0.0001),
@@ -1060,6 +1076,7 @@ impl Water {
         let tq = std::time::Instant::now();
         // ---- per pixel: absorption, evaporation, settling, staining, lifting --------------------
         let settle: Vec<f32> = self.species.iter().map(|p| p.settling_um_s()).collect();
+        let diffuse: Vec<f32> = self.species.iter().map(|p| p.diffusivity_um2_s()).collect();
         let filter: Vec<f32> = self.species.iter().map(|p| p.filter()).collect();
         let stain: Vec<f32> = self.species.iter().map(|p| p.stain).collect();
         let lift: Vec<f32> = self.species.iter().map(|p| p.lift).collect();
@@ -1091,7 +1108,7 @@ impl Water {
             sw: self.sw.as_mut_ptr(), aw: self.aw.as_mut_ptr(),
             m: [&mut self.ms, &mut self.ma, &mut self.md, &mut self.mb, &mut self.mg].map(|s| s.iter_mut().map(|v| v.as_mut_ptr()).collect()),
         };
-        let k = Constants { nk, dt, absorb, evap, settle: &settle, filter: &filter, stain: &stain, lift: &lift };
+        let k = Constants { nk, dt, absorb, evap, settle: &settle, diffuse: &diffuse, filter: &filter, stain: &stain, lift: &lift };
         let (cap_v, sealed_v) = (&self.cap, &self.sealed);
         let (absorbed, evaporated) = (0..bh).into_par_iter().with_min_len((CHUNK / bw.max(1)).max(1)).map(|cy| {
             let mut sums = (0.0f64, 0.0f64);
@@ -1232,6 +1249,7 @@ struct Constants<'a> {
     absorb: f32,
     evap: f32,
     settle: &'a [f32],
+    diffuse: &'a [f32],
     filter: &'a [f32],
     stain: &'a [f32],
     lift: &'a [f32],
@@ -1303,7 +1321,15 @@ fn pixel(p: &mut Px, cap: f32, cap_full: f32, rim: f32, through: f32, k: &Consta
     if p.sw > W_DRY {
         let entrain = 1.0 - (-ENTRAIN * through / p.sw.max(1.0) * dt).exp();
         for q in 0..k.nk {
-            let down = p.m[S][q] * (1.0 - (-k.settle[q] * dt / p.sw.max(1.0)).exp());
+            // settling, and Brownian diffusion to the fibres, where the particles stick: the flux
+            // D c / δ over a boundary layer δ as deep as the water or as far as the particles diffuse
+            // in DIFFUSE_REF_S, whichever is less. Where the water stands deeper than that, every part
+            // of a wash gains the same pigment per area however deep it is: it evens a wash of fine
+            // pigment over the paper's tooth a little.
+            let h = p.sw.max(1.0);
+            let reach = (std::f32::consts::PI * k.diffuse[q] * DIFFUSE_REF_S).sqrt();
+            let diffuse = k.diffuse[q] / (h * h.min(reach).max(1e-3));
+            let down = p.m[S][q] * (1.0 - (-(k.settle[q] / h + diffuse) * dt).exp());
             let up = p.m[D][q] * entrain;
             let lifted = p.m[G][q] * (1.0 - (-k.lift[q] * dt).exp());
             p.m[S][q] += up + lifted - down;
