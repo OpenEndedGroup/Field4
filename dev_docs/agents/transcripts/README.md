@@ -111,6 +111,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `/gallery`, and the canvas as `branchState`, so a chat rewind restores it; and a Scribbler box whose
   `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
   needs a person (or `agent-task --chat-box Studio`) and a provider.
+- `stacksl_evolve_studio.yaml`: one box that makes a StackSL search toward a picture a world for
+  AI4 — an `agentExtension` with `evolve_*` tools (step, look, propose, watchmaker, fit, configure,
+  states, crossbreed, render, guide), context on the search, `/population` and `/sheet`, and the
+  population as `branchState`, so a chat rewind rewinds the search and `evolve_crossbreed` can breed
+  with a branch left behind. The transcript only runs the box, which renders the target and nothing
+  else; searching needs a person (or `agent-task --chat-box Evolve`) and a provider.
 - `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.

@@ -20,7 +20,7 @@ import java.io.File
  * [StackSLEvolutionSnapshot] before and after every chat turn, so rewinding the chat to a request
  * puts the population, its history and its scores back as they were before it, and switching branch
  * puts back that branch's. Every snapshot saved is also filed in a [StackSLPopulationArchive] under
- * the box's study directory, which nothing deletes, so `evolve.crossbreed` can bring in the
+ * the box's study directory, which nothing deletes, so `evolve_crossbreed` can bring in the
  * survivors of a branch the conversation is no longer on.
  *
  * ```kotlin
@@ -40,7 +40,7 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
     suspend fun <T> work(block: () -> T): T = withContext(Dispatchers.Default) { synchronized(evolution) { block() } }
 
     agentExtension(id) {
-        tool("evolve.look") {
+        tool("evolve_look") {
             describe("Look at the search: the target and the best programs rendered, each with its skill (0 = a flat fill of the " +
                 "target's mean colour, 1 = exact), its region scores and where it came from.")
             effects(ToolEffect.CAPTURE_IMAGE)
@@ -51,9 +51,9 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.step") {
+        tool("evolve_step") {
             describe("Run the search for some generations: blind mutation and crossover, plus whatever the settings switch on " +
-                "(the watchmaker, gradient steps). Returns the leaders afterwards, as evolve.look does.")
+                "(the watchmaker, gradient steps). Returns the leaders afterwards, as evolve_look does.")
             effects(ToolEffect.CONTROL_RUNTIME)
             val generations by param<Int>("generations to run, 1..200", default = 10)
             action {
@@ -66,7 +66,7 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.propose") {
+        tool("evolve_propose") {
             describe("Put programs of your own into the population. Each is checked, rendered and scored like any candidate, and kept " +
                 "only if it scores well enough. One line of StackSL per string; definitions allowed, texture words not.")
             effects(ToolEffect.CONTROL_RUNTIME)
@@ -78,7 +78,7 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.watchmaker") {
+        tool("evolve_watchmaker") {
             describe("One round of the cheap model: it is shown the target and the top programs rendered, and proposes edits. " +
                 "Returns what it proposed and what each scored.")
             effects(ToolEffect.CONTROL_RUNTIME, ToolEffect.NETWORK)
@@ -94,7 +94,7 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.fit") {
+        tool("evolve_fit") {
             describe("A round of Adam on a program's own numbers: the exact gradient of its render's pixel error toward the target, " +
                 "then re-scored by the search's metric and offered to the population. Moves numbers, never words.")
             effects(ToolEffect.CONTROL_RUNTIME)
@@ -112,7 +112,7 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.configure") {
+        tool("evolve_configure") {
             describe("Change how the search runs. Leave a value at its default to keep it. metric: LPIPS, PIXEL or LPIPS_PIXEL; " +
                 "dim: the fitness resolution (16, 32 or 64); grid: LPIPS regions per side scored as cases (0, 2 or 3). " +
                 "watchmakerEvery / fitEvery: generations between automatic watchmaker rounds / gradient steps (0 = off).")
@@ -161,8 +161,8 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.states") {
-            describe("The saved populations evolve.crossbreed can breed with: every state this conversation has been in, on any " +
+        tool("evolve_states") {
+            describe("The saved populations evolve_crossbreed can breed with: every state this conversation has been in, on any " +
                 "branch, by id, with its generation and best program.")
             action {
                 archive.list().takeLast(20).joinToString("\n") { (sid, s) ->
@@ -172,21 +172,21 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.crossbreed") {
-            describe("Breed with a saved population (an id from evolve.states): its best programs come in as they are, and as " +
+        tool("evolve_crossbreed") {
+            describe("Breed with a saved population (an id from evolve_states): its best programs come in as they are, and as " +
                 "one-point recombinants with this population's leaders.")
             effects(ToolEffect.CONTROL_RUNTIME)
             val state by param<String>("a saved population's id, e.g. p004")
             val count by param<Int>("how many of its programs, and how many recombinants", default = 6)
             action {
-                val other = archive.get(state().trim()) ?: return@action toolError("no saved population '${state()}'; see evolve.states")
+                val other = archive.get(state().trim()) ?: return@action toolError("no saved population '${state()}'; see evolve_states")
                 val out = work { evolution.crossbreed(other, count().coerceIn(1, 24)) }
                 show()
                 outcomes(out)
             }
         }
 
-        tool("evolve.render") {
+        tool("evolve_render") {
             describe("Render any StackSL program, without adding it to the population, to see what it draws.")
             effects(ToolEffect.CAPTURE_IMAGE)
             val program by param<String>("a StackSL program")
@@ -199,7 +199,7 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             }
         }
 
-        tool("evolve.guide") {
+        tool("evolve_guide") {
             describe("The StackSL words guide: the section(s) mentioning a word, or the list of sections when the word is blank.")
             val word by param<String>("a word to look up, e.g. smoothstep", default = "")
             action { StackSLWatchmakerPrompt.lookup(word()) }
@@ -224,13 +224,13 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
             |You are steering a genetic-programming search over StackSL programs (a stack language run once per pixel; the top of
             |the stack is the colour, rgb clamped to 0..1; uv is 0..1 with y UP; p = uv - 0.5). It breeds programs whose picture
             |looks like a target. Skill 0 is a flat fill of the target's mean colour, 1 is exact; region scores are the same
-            |measure over regions read row by row from the top left. Look before you act (evolve.look). You can run generations
-            |(evolve.step), add programs of your own (evolve.propose), ask the cheap model for a round of edits (evolve.watchmaker),
-            |take a gradient step on a leader's numbers (evolve.fit), change the metric, resolution and population
-            |(evolve.configure), and breed with populations from earlier states or other branches (evolve.states,
-            |evolve.crossbreed). Programs are one line; `: name ... ;` definitions are allowed if each called one consumes one value
+            |measure over regions read row by row from the top left. Look before you act (evolve_look). You can run generations
+            |(evolve_step), add programs of your own (evolve_propose), ask the cheap model for a round of edits (evolve_watchmaker),
+            |take a gradient step on a leader's numbers (evolve_fit), change the metric, resolution and population
+            |(evolve_configure), and breed with populations from earlier states or other branches (evolve_states,
+            |evolve_crossbreed). Programs are one line; `: name ... ;` definitions are allowed if each called one consumes one value
             |and leaves one (open with >v, not =v); no '?' reads, no sample/prev/gather. Look words up
-            |with evolve.guide. The population belongs to the conversation: rewinding the chat rewinds it, so be bold.
+            |with evolve_guide. The population belongs to the conversation: rewinding the chat rewinds it, so be bold.
             """.trimMargin()
         }
 
@@ -240,7 +240,9 @@ fun Box.stackSLEvolveStudio(evolution: StackSLEvolution, id: String = "evolve") 
         branchState("population",
             save = { f ->
                 val snapshot = synchronized(evolution) { evolution.snapshot() }
-                snapshot.write(f)
+                // Without the time it was saved: Field compares this file with the state as it is now to
+                // tell whether anything outside the conversation changed it, and a timestamp always would.
+                snapshot.copy(savedAt = 0L).write(f)
                 val last = archive.list().lastOrNull()?.second
                 if (last == null || last.generation != snapshot.generation || last.renders != snapshot.renders || last.best != snapshot.best) {
                     archive.add(snapshot.copy(label = "gen ${snapshot.generation}"))

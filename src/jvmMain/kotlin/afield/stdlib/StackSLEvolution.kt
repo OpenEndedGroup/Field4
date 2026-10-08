@@ -92,6 +92,9 @@ class StackSLEvolution(
     val ranked: List<Individual<StackSLProgram>>
         get() = pools.flatten().sortedByDescending { it.fitness }.distinctBy { it.genome.text }
 
+    /** Whether there is a population yet. Looking at a search that has not started does not start it. */
+    val started: Boolean get() = pools.any { it.isNotEmpty() }
+
     /** The best program in any island. */
     val best: Individual<StackSLProgram>? get() = ranked.firstOrNull()
 
@@ -477,9 +480,9 @@ class StackSLEvolution(
     // looking
     // ------------------------------------------------------------------------------------------
 
-    /** The target and the [top] programs, rendered at [side], labelled by rank and skill. */
+    /** The target and the [top] programs, rendered at [side], labelled by rank and skill. Only the target before [started]. */
     fun contactSheet(top: Int = 6, side: Int = 128): Img {
-        ensureStartedQuietly()
+        if (!started) return montage(listOf("target" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))), columns = 1, cellSide = side + 8)
         val panels = ArrayList<Pair<String, Img>>()
         panels += "target" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))
         ranked.take(top).forEachIndexed { i, ind ->
@@ -511,6 +514,10 @@ class StackSLEvolution(
 
     /** A few lines: where the search is, its leader, and which origins have earned their keep. */
     fun summary(): String = buildString {
+        if (!started) {
+            appendLine("$targetName: no population yet; ${stage.describe()} first, ${settings.islands} island(s) of ${settings.mu}")
+            return@buildString
+        }
         val b = best
         appendLine("%s: generation %d, %d renders, stage %s, %d island(s) of %d".format(
             targetName, generation, renders, stage.describe(), pools.size, settings.mu))
@@ -804,16 +811,28 @@ data class StackSLEvolveSettings(
     companion object {
         /**
          * Wider and deeper than [evolveStackSLTowards]: three islands of 12, programs up to 48 words,
-         * a coarse 16 px pixel-error stage, then LPIPS on the quadrants, then LPIPS on ninths.
+         * a coarse 16 px stage, then LPIPS on the quadrants, then LPIPS plus pixel error on ninths.
+         *
+         * The last stage adds pixel error because LPIPS barely tells a picture from its negative:
+         * scored by LPIPS alone, one run kept concentric rings in inverted colours as its best
+         * (layout −0.98). Measured with the watchmaker on, 29 runs over twelve targets, the pixel
+         * term gave the same mean layout (0.90 against 0.91) and more runs above 0.9 on the seven
+         * targets the prompt was never tuned on (10 of 14 against 6 of 14).
          */
         fun wide(): StackSLEvolveSettings = StackSLEvolveSettings(
             islands = 3,
             stages = listOf(
                 StackSLStage(generations = 6, dim = 16, metric = StackSLMetric.LPIPS_PIXEL, lpipsGrid = 2),
                 StackSLStage(generations = 20, dim = 32, metric = StackSLMetric.LPIPS, lpipsGrid = 2),
-                StackSLStage(dim = 32, metric = StackSLMetric.LPIPS, lpipsGrid = 3)
+                StackSLStage(dim = 32, metric = StackSLMetric.LPIPS_PIXEL, lpipsGrid = 3)
             )
         )
+
+        /**
+         * [wide] with the watchmaker taking a round every 4 generations and after 2 without
+         * improvement, each round with its second pass. The settings that drew all twelve test targets.
+         */
+        fun watchmaker(): StackSLEvolveSettings = wide().copy(watchmakerEvery = 4, watchmakerOnStall = 2)
     }
 }
 
