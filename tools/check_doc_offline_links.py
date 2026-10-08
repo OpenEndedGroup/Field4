@@ -98,9 +98,11 @@ CARRIER_PAGES = {
     # `offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn`, no leading slash.
     "public/docs/keyframe_autosweep.md",
     "public/docs/keyframe_editor.md",
+    "public/docs/loris.md",
     "public/docs/lua.md",
     "public/docs/mesh_examples.md",
     "public/docs/nano_examples.md",
+    "public/docs/oscquery.md",
     # Added 2026-10-03: both new pages link their starting points. Shape checked:
     # `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`, no leading slash.
     "public/docs/open_dlss_nr.md",

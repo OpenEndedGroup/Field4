@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ORCA in Field</title>
+  <link rel="stylesheet" href="/vendor/orca/223e45c/links/main.css">
+  <style>
+    /* ORCA's own window is frameless and dragged by its body; inside Field that would move Field's window. */
+    body { -webkit-app-region: no-drag !important; }
+    #field-orca-status { position: fixed; right: 8px; bottom: 6px; font: 11px "Iosevka Web", Iosevka, monospace;
+      color: #ffb545; background: #000c; padding: 2px 6px; display: none; z-index: 2; }
+  </style>
+  <!-- ORCA's desktop IO asks Node for dgram and node-osc. In Field there is no Node: the adapter
+       carries UDP and OSC messages to the box instead, so these requires return nothing. -->
+  <script>function require (name) { return undefined }</script>
+  <script src="/vendor/orca/223e45c/scripts/lib/acels.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/lib/theme.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/lib/history.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/lib/source.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/library.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/io.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/operator.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/orca.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/transpose.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/io/cc.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/io/midi.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/io/mono.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/io/osc.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/core/io/udp.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/clock.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/commander.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/cursor.js"></script>
+  <script src="/vendor/orca/223e45c/scripts/client.js"></script>
+  <script src="/orca_capture.js"></script>
+  <script src="/orca_field.js"></script>
+</head>
+<body>
+  <div id="field-orca-status"></div>
+  <script>
+    'use strict'
+    // ORCA's operators reach the client through this global, as they do in upstream's index.html.
+    const client = new Client()
+    client.install(document.body)
+    window.addEventListener('load', () => {
+      client.start()
+      installFieldOrca(client)
+    })
+  </script>
+</body>
+</html>

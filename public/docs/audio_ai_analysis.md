@@ -22,13 +22,16 @@ into Field's output JSON.
 
 ## The views
 
-Every panel draws a server-downsampled preview: 1,200 points per series by default, 4,096 at most.
-Full-resolution arrays stay in NPZ. The beat view separates onset, tempo and confidence lanes; pYIN
+Every panel draws a preview the server has downsampled; the full-resolution arrays stay in the
+NPZ asset. The beat view separates onset, tempo and confidence lanes; pYIN
 shows pitch against a note grid with its voicing track; Basic Pitch combines a piano roll with
 maximum activation and active-pitch count.
 Hover, zoom and pan one panel and the others follow. A live board can join the source player on the
 same shared timeline: playback drives every analysis cursor, hovering either surface highlights the
 other, and clicking an analysis plot seeks the recording.
+
+The figure below shows the three views on made-up data, so it draws without the analysis worker;
+the next section runs the real jobs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_analysis/synchronized_analysis.png" wait="2" capture="box" open-outputs="true" padding="18"}
 :::static
@@ -142,6 +145,5 @@ new operation. `AnalysisResult.data` is the complete NPZ representation;
 `AnalysisResult.artifacts` includes Basic Pitch MIDI where applicable; `client.download(...)`
 copies either immutable asset when local numerical work needs the full resolution.
 
-The loadable `audio_ai_analysis` operation transcript contains this live box, a persistent monitor,
-and a model-free synchronized gallery. Continue with the [general audio visualizers](visualizers.md#beat-and-pitch-analysis-views)
-or the [gesture board](audio_ai_gesture_board.md).
+See also the [general audio visualizers](visualizers.md#beat-and-pitch-analysis-views), the
+[gesture board](audio_ai_gesture_board.md) and [speech embeddings](audio_ai_speech_embeddings.md).

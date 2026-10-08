@@ -68,4 +68,44 @@ object LorisDocs {
         return edited.visualizationHtml(LorisViewOptions(height = 400, syncGroup = "loris-whirlpool",
             label = "6–9 seconds · ±18-semitone whirlpool / 12 Hz shutter / noisy core"))
     }
+
+    /** Two phrases from the same film, labelled, aligned and morphed by Loris. */
+    data class Morph(val source: LorisResult, val target: LorisResult, val aligned: LorisResult, val morphed: LorisResult)
+
+    val morphSource = 1.6 to 3.6
+    val morphTarget = 11.5 to 13.5
+    val morphEnvelope = LorisEnvelope.ramp(.4, 1.6)
+
+    fun morph(): Morph {
+        val client = LorisClient()
+        val film = render().first.model
+        val a = client.distill(film.crop(morphSource.first, morphSource.second), LorisReference.Estimated(150.0, 450.0))
+        val b = client.distill(film.crop(morphTarget.first, morphTarget.second), LorisReference.Estimated(60.0, 200.0))
+        val markerA = a.model.loudestTimeSeconds(); val markerB = b.model.loudestTimeSeconds()
+        // Pin both ends so only the inside is warped: B's loudest moment moves onto A's.
+        val end = a.model.durationSeconds
+        val aligned = client.dilate(b.model, listOf(0.0, markerB, end), listOf(0.0, markerA, end), durationSeconds = end)
+        val raw = client.morph(a.model.dropUnlabeled(), aligned.model.dropUnlabeled(), morphEnvelope)
+        val gain = if (raw.peak > .95f) .95 / raw.peak else 1.0
+        val morphed = if (gain == 1.0) raw else client.synthesize(raw.model.transformed(gain = gain))
+        Files.createDirectories(folder)
+        WavFloatArrayWriter.writeMono16(folder.resolve("morph-a-to-b.wav").toString(), morphed.samples, morphed.model.sampleRate)
+        Files.writeString(folder.resolve("morph-provenance.json"), TimeViewerShell.scriptJson(mapOf(
+            "parentAnalysis" to render().first.provenance, "sourceSeconds" to morphSource, "targetSeconds" to morphTarget,
+            "sourceReference" to "Estimated(150, 450)", "targetReference" to "Estimated(60, 200)",
+            "sourceLabels" to a.model.labelCounts(), "targetLabels" to b.model.labelCounts(),
+            "dilateFrom" to listOf(0.0, markerB, end), "dilateTo" to listOf(0.0, markerA, end), "morphEnvelope" to morphEnvelope.points,
+            "morph" to raw.provenance, "gain" to gain, "synthesis" to morphed.provenance,
+            "peak" to morphed.peak, "normalization" to "explicit gain above, no clipping")))
+        return Morph(a, b, aligned, morphed)
+    }
+
+    fun morphHtml(): String {
+        val m = morph()
+        val view = { label: String -> LorisViewOptions(height = 260, minimumHz = 0.0, maximumHz = 5000.0,
+            syncGroup = "loris-morph", label = label) }
+        return m.source.visualizationHtml(view("Phrase A · film 1.6–3.6 s · distilled")) +
+            m.aligned.visualizationHtml(view("Phrase B · film 11.5–13.5 s · distilled, loudest moment dilated onto A's")) +
+            m.morphed.visualizationHtml(view("Morph · A → B between 0.4 and 1.6 s"))
+    }
 }

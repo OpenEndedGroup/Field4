@@ -10,10 +10,14 @@ ossia score and the python and JavaScript libraries all speak it.
 list, show as controls and set. A box can also open another program's OSCQuery service and read,
 set and follow its parameters.
 
-Open `public/docs/assets/oscquery_demo/` as a document to try everything on this page with
-nothing else running: box 1 publishes, and boxes 3 and 4 connect back to it as a remote.
+[Open the OSCQuery demo ↗](offline.html?file=assets/oscquery_demo/metadata.edn) to read it, or
+open `public/docs/assets/oscquery_demo/` as a document in Field to run it with nothing else
+running: one box publishes, and two others connect back to it as a remote.
 
 ## Publishing parameters
+
+This box publishes a filter cutoff, an on/off switch and a scene menu, and keeps each in a
+variable that other programs can set:
 
 ```diffstatic {data-lang=kotlin}
 import afield.oscquery.*
@@ -31,6 +35,22 @@ q.menu("/scene", listOf("dawn", "dusk", "night")) { scene -> markdown("scene: $s
 9020, takes OSC over UDP on 9021, and announces itself on the network as `name`. In TouchDesigner,
 add an *OSCQuery* COMP; "My piece" appears in its list of servers, with a slider for the cutoff, a
 toggle for `on` and a menu for the scene.
+
+What another program reads is plain JSON. Any HTTP client sees it, including one in a box:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/served_json.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="oscquery-served-json" alt="The JSON the service returns for /synth/cutoff on one line: FULL_PATH /synth/cutoff, TYPE f, ACCESS 3, VALUE [1000.0], RANGE min 20.0 max 20000.0, DESCRIPTION filter cutoff in Hz"}
+import afield.oscquery.*
+import java.net.URI
+import java.net.http.*
+
+oscQuery("My piece").float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
+
+val http = HttpClient.newHttpClient()
+val req = HttpRequest.newBuilder(URI("http://127.0.0.1:9020/synth/cutoff")).build()
+markdown("```json\n" + http.send(req, HttpResponse.BodyHandlers.ofString()).body() + "\n```")
+```
+
+`ACCESS` 3 means other programs may both read and set the value; `OscAccess.READ` gives 1.
 
 Each callback runs on Field's main loop, like the rest of the box, when another program sets the
 parameter. Values arrive as the declared type and clipped to the range. An int sent to `cutoff`
@@ -72,13 +92,18 @@ analysis results.
 `controls` builds a [control group](visualizers.md#build-one-surface-with-mixed-control-types) whose sliders and checkboxes are also OSCQuery
 parameters, under one prefix:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/published_controls.png" capture="box" open-outputs="true" embed=true w="760" h="120" wait="2.0" timeout="90" name="oscquery-published-controls" alt="The box's controls channel with a GAIN slider at 0.5 and an unchecked MUTE checkbox, and below it the two paths the service now lists for them, /surface/gain and /surface/mute"}
+import afield.oscquery.*
+
 var gain = 0.5
 var mute = false
 oscQuery("My piece").controls("/surface") {
     slider("gain", 0.0, 1.0, initialValue = gain) { gain = it }
     checkbox("mute", mute) { mute = it }
 }
+
+val published = oscQueryRemote("127.0.0.1", 9020).params.filter { it.path.startsWith("/surface") }
+markdown(published.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
 ```
 
 Dragging the slider in Field runs the callback and sends the new value to every listening
@@ -102,6 +127,20 @@ parameter's declared type, so `0.5` goes out as a float. `listen` asks the servi
 change over its WebSocket. Its callback runs on the main loop. `number`, `value`, `range`,
 `choices` and `description` read what the service last reported; `refresh()` reads the list
 again.
+
+Pointed at Field's own service, a remote lists what the publishing box above declared:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/remote_list.png" embed=true w="760" h="50" wait="2.0" timeout="90" name="oscquery-remote-list" alt="Three parameters read back by the remote: /scene of type s with no range, /synth/cutoff of type f with range 20.0 to 20000.0, and /synth/on of type T with no range"}
+import afield.oscquery.*
+
+val q = oscQuery("My piece")
+q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
+q.bool("/synth/on", true) { }
+q.menu("/scene", listOf("dawn", "dusk", "night")) { }
+
+val self = oscQueryRemote("127.0.0.1", 9020)
+markdown(self.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
+```
 
 `oscQueryMirror(remote)` builds Field controls for all of them: a slider for each number and a
 checkbox for each boolean. Each control sets the remote parameter when you move it, and moves
@@ -138,7 +177,7 @@ another machine can browse and set it. That is what OSCQuery is for, but anyone 
 can change those parameters. `OscQueryServer(name, bindAddress = "127.0.0.1")` keeps a service on
 this machine only. `OscQueryServices.closeAll()` stops every service and remote connection.
 
-## What this does not do
+## Not supported
 
 - No `TAGS`, `UNIT`, `CLIPMODE`, `EXTENDED_TYPE` or `CRITICAL`; `HOST_INFO` lists them as
   unsupported, and remotes fall back to their defaults.
@@ -147,10 +186,16 @@ this machine only. `OscQueryServices.closeAll()` stops every service and remote 
 - Discovery does not resolve a name clash: two services with the same name on one network both
   appear, under the same name.
 
+## See also
+
+- [OSC](osc.md), for sending and receiving plain OSC messages.
+- [MQTT](mqtt.md), for sensors and devices that publish through a broker.
+- [Driving lights](dmx_lighting.md), for Art-Net and sACN output.
+
 ??? aside "How this page was checked"
-    The fences here are static: nothing on the page is captured by the docs runner. The behaviour
-    is pinned by `src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`, which drives a
-    server over real loopback HTTP, UDP and WebSocket with the JDK clients and JavaOSC, and by
-    the demo document, whose boxes were each run through the backdoor. The DNS-SD responder is
-    written from RFC 6762 and 6763 rather than taken from JmDNS, to avoid a new dependency.
-    `dev_docs/OSCQUERY_BRIDGE.md` records what was tested against other implementations.
+    Three fences are captured by the docs runner: the JSON fetched over loopback HTTP from inside a
+    box, the published controls with the paths the service lists for them, and the parameter list
+    a remote reads back from Field's own service. The rest are static. The behaviour is covered by
+    `src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`, over real loopback HTTP, UDP and
+    WebSocket. `dev_docs/OSCQUERY_BRIDGE.md` records what was tested against other
+    implementations.
