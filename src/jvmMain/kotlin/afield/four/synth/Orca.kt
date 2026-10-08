@@ -152,6 +152,14 @@ class Orca internal constructor(
     private val pendingCells = ConcurrentHashMap<Pair<Int, Int>, Pair<Char, Long>>()
     private var rows: List<String> = emptyList()
     private var lastSaved: String? = null
+
+    // More than one page can show this output: a second tab, or the browser AI4 takes pictures in.
+    // The first to report is the one that plays and takes commands; the others are stopped mirrors
+    // of its grid, so a picture of any of them shows the board. A silent player is replaced.
+    private var player: String? = null
+    private var playerSeen = 0L
+    internal var playerTimeoutNanos = 2_000_000_000L
+    private val mirrors = HashMap<String, String?>()
     private val waiting = CopyOnWriteArrayList<Pair<Long, CompletableDeferred<Unit>>>()
     private var offsetNanos: Long? = null
     private var lastError: String? = null
@@ -364,10 +372,20 @@ class Orca internal constructor(
         val received = System.nanoTime()
         val report = data.jsonObject
         val commands = mutableListOf<JsonObject>()
+        val page = report["page"]?.jsonPrimitive?.contentOrNull ?: ""
+        if (player != null && page != player && received - playerSeen < playerTimeoutNanos) return mirror(page)
+        if (player != null && page != player) {
+            // Taking over from a player that went quiet: this page may have been a stopped mirror.
+            mirrors.remove(page)
+            commands += op("load", "grid" to JsonPrimitive(reportedGrid))
+            if (playing) commands += op("play")
+        }
+        player = page
+        playerSeen = received
         if (report.bool("hello")) {
-            initialGrid?.let { commands += command("load", "grid" to JsonPrimitive(it)) }
-            initialBpm?.let { commands += command("bpm", "value" to JsonPrimitive(it)) }
-            commands += command("guide", "on" to JsonPrimitive(showGuide))
+            initialGrid?.let { commands += op("load", "grid" to JsonPrimitive(it)) }
+            initialBpm?.let { commands += op("bpm", "value" to JsonPrimitive(it)) }
+            commands += op("guide", "on" to JsonPrimitive(showGuide))
             report["operators"]?.jsonPrimitive?.contentOrNull?.let { operators = it }
         }
 
@@ -452,6 +470,21 @@ class Orca internal constructor(
         return buildJsonObject { put("commands", JsonArray(commands)) }
     }
 
+    /** A page that is not the player: keep it stopped, showing the player's grid. */
+    private fun mirror(page: String): JsonElement {
+        val commands = mutableListOf<JsonObject>()
+        if (page !in mirrors) {
+            commands += op("guide", "on" to JsonPrimitive(false))
+            commands += op("stop")
+            mirrors[page] = null
+        }
+        if (mirrors[page] != reportedGrid) {
+            commands += op("load", "grid" to JsonPrimitive(reportedGrid))
+            mirrors[page] = reportedGrid
+        }
+        return buildJsonObject { put("commands", JsonArray(commands)) }
+    }
+
     private fun save() {
         val box = box ?: return
         if (grid == lastSaved) return
@@ -475,7 +508,7 @@ class Orca internal constructor(
         }
     }
 
-    private fun command(op: String, vararg fields: Pair<String, JsonElement>) =
+    private fun op(op: String, vararg fields: Pair<String, JsonElement>) =
         JsonObject(mapOf("op" to JsonPrimitive(op)) + fields)
 
     private fun JsonObject.int(key: String) = this[key]?.jsonPrimitive?.intOrNull

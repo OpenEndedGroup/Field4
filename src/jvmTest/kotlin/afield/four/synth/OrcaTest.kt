@@ -192,6 +192,29 @@ class OrcaTest {
         assertNull(fire["id"], "js() does not ask for an answer")
     }
 
+    @Test fun aSecondPageIsAStoppedMirrorUntilThePlayerGoesQuiet() {
+        val orca = Orca(box(), "orca", "D4\n.:03C", null, false)
+        val notes = mutableListOf<String>()
+        orca.onNote { notes += "${it.frame}" }
+        orca.receive(report("""{"page":"tab","hello":true,"t":1,"events":[],"grid":"D4\n.:03C","paused":false}"""))
+        orca.write(0, 3, "#x#")
+
+        // AI4's capture browser opens the same output: it is stopped and shown the player's grid,
+        // its own notes are ignored, and the box's write still goes to the tab.
+        val mirror = commands(orca.receive(report("""{"page":"capture","hello":true,"t":1,"events":[{"kind":"note","frame":0,"midi":60}],"grid":"."}""")))
+        assertEquals(listOf("guide", "stop", "load"), mirror.map { it["op"]!!.jsonPrimitive.content })
+        assertEquals("D4\n.:03C", mirror[2]["grid"]!!.jsonPrimitive.content)
+        assertTrue(notes.isEmpty())
+        assertEquals(listOf("write"), commands(orca.receive(report("""{"page":"tab","t":2,"events":[]}"""))).map { it["op"]!!.jsonPrimitive.content })
+        assertTrue(commands(orca.receive(report("""{"page":"capture","t":2,"events":[]}"""))).isEmpty(), "an up-to-date mirror is left alone")
+
+        // The tab closes; the mirror takes over, is given the grid again and set playing.
+        orca.playerTimeoutNanos = 0
+        val takeover = commands(orca.receive(report("""{"page":"capture","t":3,"events":[{"kind":"note","frame":5,"midi":60}]}""")))
+        assertEquals(listOf("load", "play"), takeover.map { it["op"]!!.jsonPrimitive.content })
+        assertEquals(listOf("5"), notes)
+    }
+
     @Test fun exposeToolsRegistersTheOrcaTools() {
         val orca = Orca(box(), "orca", null, null, false)
         assertEquals(listOf("orca_read", "orca_write", "orca_load", "orca_command", "orca_js"),

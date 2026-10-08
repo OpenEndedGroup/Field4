@@ -21,6 +21,8 @@ function installFieldOrca (client) {
   const events = []
   const recent = []
   const results = [] // answers to the box's eval commands, sent with the next report
+  // This page among any others showing the same output (another tab, AI4's capture browser).
+  const page = Math.random().toString(36).slice(2)
   let requests = null
   let inFlight = false
   let dead = false
@@ -97,6 +99,7 @@ function installFieldOrca (client) {
     if (!requests || inFlight || dead) return
     const s = grid()
     const payload = {
+      page,
       frame: client.orca.f,
       bpm: client.clock.speed.value,
       paused: client.clock.isPaused,
