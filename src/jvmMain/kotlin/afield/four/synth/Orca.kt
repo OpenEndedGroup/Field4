@@ -5,6 +5,8 @@ import afield.Box
 import afield.LiveOutputIframe
 import afield.ai.core.BoxTool
 import afield.ai.core.ToolEffect
+import afield.ai.core.BranchConflict
+import afield.ai.core.agentExtension
 import afield.ai.core.aiTool
 import afield.displayOpen
 import afield.exposeOutputIframeTools
@@ -123,6 +125,20 @@ class Orca internal constructor(
     companion object {
         /** The grid each output had when last edited, as `{channel: grid}` JSON, saved with the document. */
         private const val SAVED = "orcaGrids"
+
+        // Redraw ORCA's canvas (a page in the background skips drawing) and return it, scaled down.
+        private val PICTURE = """
+            (() => {
+              client.clear(); client.ports = client.findPorts(); client.drawProgram(); client.drawInterface(); client.drawGuide()
+              const source = client.el, scale = Math.min(1, 1400 / source.width)
+              const out = document.createElement('canvas')
+              out.width = Math.round(source.width * scale); out.height = Math.round(source.height * scale)
+              const g = out.getContext('2d')
+              g.fillStyle = client.theme.active.background || '#000'; g.fillRect(0, 0, out.width, out.height)
+              g.drawImage(source, 0, 0, out.width, out.height)
+              return out.toDataURL('image/png')
+            })()
+        """.trimIndent()
 
         init {
             // Registered on first use, as syncToProperty does, rather than in Box's own list, which
@@ -300,68 +316,136 @@ class Orca internal constructor(
     private val owner: Box get() = box ?: throw IllegalStateException("A headless ORCA has no box output")
 
     /**
-     * Give AI4 tools to read this ORCA, write to it, command it and run JavaScript in its page
-     * (`<name>_read`, `_write`, `_load`, `_command`, `_js`), plus the generic live-iframe tools (`iframe_<name>_screenshot`, ...) when
-     * [iframeTools] is true. Re-running the box replaces them; not calling this removes them.
+     * ORCA as the page playing it has drawn it, as a PNG data URL at most 1400 pixels wide. It comes
+     * from ORCA's own canvas, through ORCA's connection, so it works in any browser and shows exactly
+     * what is on the screen; it is drawn fresh first, in case the page is in the background.
      */
-    fun exposeTools(name: String = "orca", iframeTools: Boolean = true): List<BoxTool> {
+    suspend fun picture(timeoutMillis: Long = 5_000): String =
+        (eval(PICTURE, timeoutMillis) as? JsonPrimitive)?.contentOrNull
+            ?: throw IllegalStateException("ORCA's page returned no picture")
+
+    /**
+     * The grid with each row prefixed by its y, as AI4's tools show it. Empty cells at the ends of rows,
+     * and empty rows at the bottom, are left off: they move nothing, and a window-wide grid is mostly them.
+     */
+    val numberedGrid: String get() = grid.lines().map { it.trimEnd('.') }.dropLastWhile { it.isEmpty() }
+        .mapIndexed { y, row -> "%3d %s".format(y, row).trimEnd() }.joinToString("\n")
+
+    /**
+     * Let the document's AI4 play this ORCA, the way the paint studio lets it paint. AI4 gets tools
+     * to look at the board (`<name>_look`: the picture ORCA drew, and the grid as text), read it, write
+     * cells while it plays, replace it, command it and run JavaScript in its page; the board, the
+     * tempo and how to play are in its context every turn; and `/orca` shows the board in the chat.
+     *
+     * The board belongs to the conversation: it and the tempo are saved with every AI4 turn, so
+     * rewinding the chat puts the board back as it was before that request, switching branch puts back that branch's,
+     * and each saved board is a node in the chat's States tree. [about] tells AI4 anything the grid
+     * cannot, such as which channel is which instrument. [iframeTools] adds the live-iframe tools
+     * (Electron only). Re-running the box replaces all of it; not calling this removes it.
+     */
+    fun exposeTools(name: String = "orca", about: String = "", iframeTools: Boolean = false): List<BoxTool> {
         // The tool DSL's scopes have their own `box`, `name` and `frame()`; say which ORCA is meant.
         val orca = this
         val box = owner
         val where = "output '$channel' of box '${box.name.ifBlank { box.id }}'"
-        val read = box.aiTool("${name}_read") {
-            namespace("orca")
-            effects(ToolEffect.READ_DOCUMENT)
-            describe("Read the ORCA livecoding grid in $where: rows prefixed with their y (x counts from 0 at the " +
-                "first glyph), size, frame, bpm, whether it plays, the last messages it sent (notes, cc, udp, osc), " +
-                "and ORCA's operator reference.")
-            action {
-                mapOf(
-                    "grid" to orca.grid.lines().mapIndexed { y, row -> "%3d %s".format(y, row) }.joinToString("\n"),
-                    "width" to orca.width, "height" to orca.height, "frame" to orca.frame, "bpm" to orca.bpm,
-                    "playing" to orca.playing, "cursor" to listOf(orca.cursor.first, orca.cursor.second),
-                    "recent" to orca.recent.takeLast(32), "operators" to orca.operators,
-                )
+        val tools = mutableListOf<BoxTool>()
+        box.agentExtension(name) {
+            tools += tool("${name}_look") {
+                namespace("orca")
+                effects(ToolEffect.CAPTURE_IMAGE, ToolEffect.READ_DOCUMENT)
+                describe("Look at the ORCA in $where as it plays: the picture ORCA has drawn in the page that is " +
+                    "playing it, and the grid as text with each row prefixed by its y.")
+                action {
+                    image(orca.picture(), "Frame ${orca.frame} at ${orca.bpm} bpm, " +
+                        (if (orca.playing) "playing" else "paused") + ". The grid:\n" + orca.numberedGrid)
+                }
             }
+            tools += tool("${name}_read") {
+                namespace("orca")
+                effects(ToolEffect.READ_DOCUMENT)
+                describe("Read the ORCA grid in $where as text: rows prefixed with their y (x counts from 0 at the " +
+                    "first glyph), size, frame, bpm, whether it plays, the last messages it sent (notes, cc, udp, osc), " +
+                    "and ORCA's operator reference.")
+                action {
+                    mapOf(
+                        "grid" to orca.numberedGrid, "width" to orca.width, "height" to orca.height,
+                        "frame" to orca.frame, "bpm" to orca.bpm, "playing" to orca.playing,
+                        "cursor" to listOf(orca.cursor.first, orca.cursor.second),
+                        "recent" to orca.recent.takeLast(32), "operators" to orca.operators,
+                    )
+                }
+            }
+            tools += tool("${name}_write") {
+                namespace("orca")
+                effects(ToolEffect.CONTROL_RUNTIME)
+                describe("Write glyphs onto the ORCA grid in $where while it plays, top-left at (x, y); it lands at " +
+                    "ORCA's next frame, with no need to edit or re-run the box. Newlines in text start the next row " +
+                    "at the same x; '.' is an empty cell. Returns the grid afterwards.")
+                val x by param<Int>("Column, from 0.")
+                val y by param<Int>("Row, from 0.")
+                val text by param<String>("Glyphs to write, possibly several rows.")
+                action { orca.write(x(), y(), text()); orca.sync(); mapOf("grid" to orca.numberedGrid) }
+            }
+            tools += tool("${name}_load") {
+                namespace("orca")
+                effects(ToolEffect.CONTROL_RUNTIME)
+                describe("Replace the whole ORCA grid in $where with these rows ('.' for empty) while it plays. " +
+                    "Returns the grid afterwards.")
+                val rows by param<String>("The new grid, one row per line.")
+                action { orca.grid = rows(); orca.sync(); mapOf("grid" to orca.numberedGrid) }
+            }
+            tools += tool("${name}_command") {
+                namespace("orca")
+                effects(ToolEffect.CONTROL_RUNTIME)
+                describe("Run an ORCA commander string in $where: play, stop, run, bpm:140, frame:0, " +
+                    "write:TEXT;x;y, find:TEXT, select:x;y;w;h, erase, copy, paste. Returns the grid afterwards.")
+                val text by param<String>("The command.")
+                action {
+                    orca.command(text()); orca.sync()
+                    mapOf("bpm" to orca.bpm, "playing" to orca.playing, "frame" to orca.frame, "grid" to orca.numberedGrid)
+                }
+            }
+            tools += tool("${name}_js") {
+                namespace("orca")
+                effects(ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME)
+                describe("Run JavaScript in the page of the ORCA in $where, at global scope where ORCA's `client` " +
+                    "(client.orca: the grid, client.clock, client.theme, client.io) and `library` (the operators, by " +
+                    "lowercase glyph) live, and return its JSON value. Use it to inspect or patch ORCA itself: " +
+                    "restyle it, redefine an operator, wrap client.run. Works in any browser, not only Electron.")
+                val code by param<String>("JavaScript expression, or statements whose last value is returned.")
+                action { mapOf("json" to orca.eval(code()).toString()) }
+            }
+
+            context("$name-board") {
+                "The ORCA in $where is " + (if (orca.playing) "playing" else "paused") + " at ${orca.bpm} bpm, " +
+                    "frame ${orca.frame}, ${orca.width}x${orca.height}. Its grid, rows prefixed with y:\n" +
+                    orca.numberedGrid + (if (about.isBlank()) "" else "\n\nAbout it, from the box: $about")
+            }
+            context("$name-craft", changesOften = false) {
+                """
+                |You can play the ORCA in $where, a livecoding sequencer: a grid where each letter is an operator,
+                |uppercase ones run every frame, lowercase ones only when a bang (*) lands beside them, and four frames
+                |make a beat. Play it while it runs: write cells with ${name}_write (or replace the grid with
+                |${name}_load); a change lands at the next frame, and the music carries on. Look with ${name}_look
+                |after a change and listen through ${name}_read's recent notes. Leave the box's code alone unless asked:
+                |the grid is the instrument. Rewinding the chat brings the board back as it was, so be bold.
+                |ORCA's operators:
+                |${orca.operators}
+                """.trimMargin()
+            }
+            command(name, "show the ORCA board") { "```\n${orca.numberedGrid}\n```\n\nFrame ${orca.frame}, ${orca.bpm} bpm" }
+            // The board belongs to the conversation. ORCA's operators rewrite cells every frame, so it never
+            // matches the board the conversation last saw: restore anyway (the replaced board is saved first).
+            branchState("board",
+                save = { it.writeText(buildJsonObject { put("grid", orca.grid); put("bpm", orca.bpm) }.toString()) },
+                restore = { f ->
+                    val saved = f?.readText()?.let { Json.parseToJsonElement(it).jsonObject }
+                    saved?.get("grid")?.jsonPrimitive?.contentOrNull?.let { orca.grid = it }
+                    saved?.get("bpm")?.jsonPrimitive?.intOrNull?.let { orca.bpm = it }
+                },
+                onConflict = BranchConflict.RESTORE)
         }
-        val write = box.aiTool("${name}_write") {
-            namespace("orca")
-            effects(ToolEffect.CONTROL_RUNTIME)
-            describe("Write glyphs onto the ORCA grid in $where with the top-left at (x, y). Newlines in text " +
-                "start the next row at the same x; '.' is an empty cell. Returns the grid afterwards.")
-            val x by param<Int>("Column, from 0.")
-            val y by param<Int>("Row, from 0.")
-            val text by param<String>("Glyphs to write, possibly several rows.")
-            action { orca.write(x(), y(), text()); orca.sync(); mapOf("grid" to orca.grid) }
-        }
-        val load = box.aiTool("${name}_load") {
-            namespace("orca")
-            effects(ToolEffect.CONTROL_RUNTIME)
-            describe("Replace the whole ORCA grid in $where with these rows (all the same width, '.' for empty). " +
-                "Returns the grid afterwards.")
-            val rows by param<String>("The new grid, one row per line.")
-            action { orca.grid = rows(); orca.sync(); mapOf("grid" to orca.grid) }
-        }
-        val command = box.aiTool("${name}_command") {
-            namespace("orca")
-            effects(ToolEffect.CONTROL_RUNTIME)
-            describe("Run an ORCA commander string in $where: play, stop, run, bpm:140, frame:0, " +
-                "write:TEXT;x;y, find:TEXT, select:x;y;w;h, erase, copy, paste.")
-            val text by param<String>("The command.")
-            action { orca.command(text()); orca.sync(); mapOf("bpm" to orca.bpm, "playing" to orca.playing, "frame" to orca.frame) }
-        }
-        val javascript = box.aiTool("${name}_js") {
-            namespace("orca")
-            effects(ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME)
-            describe("Run JavaScript in the page of the ORCA in $where, at global scope where ORCA's `client` " +
-                "(client.orca: the grid, client.clock, client.theme, client.io) and `library` (the operators, by " +
-                "lowercase glyph) live, and return its JSON value. Use it to inspect or patch ORCA itself: " +
-                "restyle it, redefine an operator, wrap client.run. Works in any browser, not only Electron.")
-            val code by param<String>("JavaScript expression, or statements whose last value is returned.")
-            action { mapOf("json" to orca.eval(code()).toString()) }
-        }
-        return listOf(read, write, load, command, javascript) +
-            (if (iframeTools) box.exposeOutputIframeTools(channel, name) else emptyList())
+        return tools + (if (iframeTools) box.exposeOutputIframeTools(channel, name) else emptyList())
     }
 
     private fun send(op: String, vararg fields: Pair<String, JsonElement>) {

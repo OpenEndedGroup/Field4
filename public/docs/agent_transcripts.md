@@ -2052,6 +2052,15 @@ Chat tools that read and write the grid, so you can ask AI4 to change the tune.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_hello/metadata.edn)
 
+### orca_jam
+
+An ORCA with four voiced channels (a soft lead, a bass, a noise hi-hat, a bright square) and AI4 on
+the board. Run the box, open its AI Chat and ask it to play: it writes into the grid while the music
+runs, and rewinding the chat puts the board and the tempo back. [ORCA](orca.md#gpt-jams-orca) has a
+recording of a jam.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_jam/metadata.edn)
+
 ### orca_duet
 
 Two ORCAs in one box and a Kotlin `frames { }` loop between them. `lead` plays a tune; the loop

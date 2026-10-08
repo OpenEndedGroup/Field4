@@ -215,9 +215,15 @@ class OrcaTest {
         assertEquals(listOf("5"), notes)
     }
 
+    @Test fun theBoardAsTextLeavesOffEmptyCellsAtTheEnds() {
+        val orca = Orca(box(), "orca", null, null, false)
+        orca.receive(report("""{"t":1,"events":[],"grid":"D4......\n........\n.:03C...\n........\n........"}"""))
+        assertEquals("  0 D4\n  1\n  2 .:03C", orca.numberedGrid)
+    }
+
     @Test fun exposeToolsRegistersTheOrcaTools() {
         val orca = Orca(box(), "orca", null, null, false)
-        assertEquals(listOf("orca_read", "orca_write", "orca_load", "orca_command", "orca_js"),
+        assertEquals(listOf("orca_look", "orca_read", "orca_write", "orca_load", "orca_command", "orca_js"),
             orca.exposeTools(iframeTools = false).map { it.name })
     }
 }
