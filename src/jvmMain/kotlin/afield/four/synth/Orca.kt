@@ -52,7 +52,7 @@ import kotlin.math.pow
  *
  * @param cols the output's width when it opens, in ORCA cells. ORCA fits its grid to the output,
  *   and keeps doing so when the output is resized.
- * @param rows the output's height when it opens, in ORCA cells.
+ * @param rows the output's height when it opens, in ORCA cells; at least ten, so ORCA's status lines fit.
  * @param guide show ORCA's operator guide when it starts (Escape hides it).
  */
 fun Box.orca(
@@ -67,7 +67,9 @@ fun Box.orca(
     val orca = Orca(this, channel, grid?.trimIndent() ?: Orca.savedGrid(this, channel), bpm, guide)
     val binding = outputRequests("orca-" + channel.replace(Regex("[^A-Za-z0-9_-]"), "_").take(70)) { orca.receive(it) }
     val width = cols * 10 + 60
-    val height = rows * 15 + 90
+    // ORCA draws its two status lines inside a canvas a fifth taller than the grid, which only has
+    // room for them from ten rows up; any shorter and the output crops them.
+    val height = maxOf(rows, 10) * 15 + 90
     display(channel, """<iframe src="/orca.html?binding=${binding.id}" allow="midi" """ +
         """style="border:0;display:block;background:#000;width:${width}px;height:${height}px"></iframe>""")
     displayOpen(channel)

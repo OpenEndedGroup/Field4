@@ -19,7 +19,7 @@ Echo, which plays the last eight back in threes, an octave up; every eighth note
 plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 
 ```edn [field-box id="orca_duet" role="properties"]
-{"id" "orca_duet" "index" 0 "name" "ORCA duet · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA duet · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_duet_code_.kt" "lines" 57 "characters" 1942 "sha256" "385ea6e898a4211198431d70f90d9f7d7d1ee8e9c4367759bd850bd0d5696f8b"}]}
+{"id" "orca_duet" "index" 0 "name" "ORCA duet · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA duet · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_duet_code_.kt" "lines" 57 "characters" 1944 "sha256" "0daf82df62530eb853254541aa2d7cef6ad820a988d98ef65055d4cce2df85a8"}]}
 ```
 
 ```kotlin [field-property box="orca_duet" name="code" path="orca_duet_code_.kt"]
@@ -27,7 +27,7 @@ plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to
 // Echo, which plays the last eight back in threes, an octave up; every eighth note Echo
 // plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 val synth = PatSynthBank()
-val lead = orca("lead", cols = 40, rows = 9, grid = """
+val lead = orca("lead", cols = 40, rows = 10, grid = """
     #.LEAD.#
     .
     .2C8
@@ -37,7 +37,7 @@ val lead = orca("lead", cols = 40, rows = 9, grid = """
     D8
     .:12C
 """)
-val echo = orca("echo", cols = 40, rows = 6, grid = """
+val echo = orca("echo", cols = 40, rows = 10, grid = """
     #.ECHO.#
     .
     .3C8

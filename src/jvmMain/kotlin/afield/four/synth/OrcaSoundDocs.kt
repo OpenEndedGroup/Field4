@@ -71,8 +71,8 @@ object OrcaSoundDocs {
         voice.run(seconds) { o.step() }
     }
 
-    private fun duet(seconds: Double): Rendered = OrcaHeadless(LEAD, cols = 40, rows = 9).use { leadEngine ->
-        OrcaHeadless(ECHO, cols = 40, rows = 6).use { echoEngine ->
+    private fun duet(seconds: Double): Rendered = OrcaHeadless(LEAD, cols = 40, rows = 10).use { leadEngine ->
+        OrcaHeadless(ECHO, cols = 40, rows = 10).use { echoEngine ->
             val lead = leadEngine.orca
             val echo = echoEngine.orca
             val voice = Voicing(leadEngine)
