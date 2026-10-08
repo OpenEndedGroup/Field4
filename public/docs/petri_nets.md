@@ -698,5 +698,5 @@ guards, `enabledIf`, capacities) but may run out of budget. `coverability()` alw
 is only correct for nets without inhibitor arcs, place capacities or colour-dependent behaviour.
 When a net has any of those, it adds a line to `coverability().caveats` and sets `sound` to false.
 
-See also: [Interaction nets](interaction_nets_examples.md), [the pattern language](pattern_language.md).
+See also: [Interaction nets](interaction_nets_examples.md), [the pattern language](pattern_language.md), [A Petri net that throws sparks](chain_petri_sparks.md).
 

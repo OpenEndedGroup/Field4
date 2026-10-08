@@ -536,6 +536,9 @@ object DemoTranscriptExecSmokeTest {
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
         // synth.pat.seam, which needs no device at all.
         "pattern_particles",
+        // A window and a per-frame burst buffer; the net and the three run queries the sparks box
+        // makes each frame (firingsOver, markingAt, countAt) are covered by PetriSparksDocsTest.
+        "petri_sparks",
         "life3d_manifold_path_trace",
         "rectsl_spacetime_path_trace",
         "skinned_volume_path_trace",

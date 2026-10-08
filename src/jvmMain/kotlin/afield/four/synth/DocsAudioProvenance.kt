@@ -133,6 +133,9 @@ object DocsAudioProvenance {
         // Boolean-network note streams played through the pinned Dirt-Samples subset, strictly:
         // no token falls back, so the family is the pure one. See boolean_network_music_examples.md.
         "afield.four.synth.BooleanNetworkSoundDocs" to Origin.DIRT_SAMPLES,
+        // A Petri net's emits() played through the pinned Dirt-Samples subset, strictly. See
+        // chain_petri_sparks.md.
+        "afield.four.synth.PetriSparksDocs" to Origin.DIRT_SAMPLES,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */
