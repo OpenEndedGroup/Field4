@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9970 of 16869 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9972 of 16871 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
 **816 undocumented entry points** (types, top-level functions and values) and 5735 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -88,7 +88,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StudyBuilds.kt](../src/jvmMain/kotlin/afield/stdlib/StudyBuilds.kt) | Workspace | studies | 0 | 20 | 52% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [particlevideo.kt](../src/jvmMain/kotlin/afield/stdlib/particlevideo.kt) | Video | particle_video | 0 | 20 | 45% |
-| [Orca.kt](../src/jvmMain/kotlin/afield/four/synth/Orca.kt) | Patterns | orca | 0 | 19 | 64% |
+| [Orca.kt](../src/jvmMain/kotlin/afield/four/synth/Orca.kt) | Patterns | orca | 0 | 19 | 65% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples, alife_examples | 0 | 19 | 50% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples, chain_life3d_render | 0 | 19 | 71% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
