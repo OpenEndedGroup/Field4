@@ -102,6 +102,7 @@ CARRIER_PAGES = {
     "public/docs/lua.md",
     "public/docs/mesh_examples.md",
     "public/docs/nano_examples.md",
+    "public/docs/oscquery.md",
     # Added 2026-10-03: both new pages link their starting points. Shape checked:
     # `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`, no leading slash.
     "public/docs/open_dlss_nr.md",
