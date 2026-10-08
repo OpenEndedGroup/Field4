@@ -2,14 +2,15 @@
 
 [Faust](https://faust.grame.fr) is a functional language for signal processing. You write what the
 signal *is* and its compiler turns that into efficient code. Field embeds the compiler. A `#faust`
-region inside an ordinary Kotlin string is compiled, instantiated and playing through Field's audio
-engine, with the sliders it declares showing up as real Field controls.
+region inside an ordinary Kotlin string is compiled and played through Field's audio engine, and the
+sliders it declares appear as Field controls.
 
-Nothing is installed to make this work. Not `faust`, not LLVM, not a C++ toolchain. The compiler
-travels with Field as 5.3MB of platform-independent WebAssembly, and the bill arrives as compile
-speed, which [Nothing to install](#nothing-to-install) sets out at the end of the page.
+There is nothing to install: the compiler comes with Field. The price is compile speed, a little
+under a second per compile once warm (see [Nothing to install](#nothing-to-install)).
 
 ## A box that is a signal processor
+
+This box plays a sawtooth through a low-pass filter, with three sliders:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -23,24 +24,22 @@ process = os.sawtooth(freq) : fi.lowpass(2, cutoff) * gain <: _,_;
 """)
 ```
 
-Returning the result as the box's last expression is what ties the sound to the box. The box stays lit
-while the processor runs, and stopping the box stops the sound *and* releases the DSP, by the same
-path any other Field audio launch takes.
+Returning the result as the box's last expression ties the sound to the box. The box stays lit
+while the processor runs, and stopping the box stops the sound and releases the DSP, like any other
+Field audio launch.
 
-Three sliders were declared, so three sliders appear in the box's control area. Nobody wrote them:
-they are the program's own `hslider` declarations, with the ranges, defaults and steps it asked for.
-Move one and the value is written straight into the running DSP.
+The three sliders appear in the box's control area, with the ranges, defaults and steps the
+`hslider` declarations asked for. Moving one changes the running sound immediately.
 
 ### The marker is not part of the program
 
-`#faust` marks the region. In Sonic Pi the marker is harmless: `#` starts a Ruby comment, and
-`#sonicpi` rides along into the program Sonic Pi is handed. **`#` is not a comment in Faust**, and a
-`#faust` line is a syntax error. Field strips it before compiling and shifts every line number the
-compiler reports back onto the box's own lines. That is why an error lands on the line you wrote it on.
+`#faust` marks the region, but `#` is not a comment in Faust, so Field strips that line before
+compiling. Line numbers in the compiler's messages are shifted back onto the box's own lines, so an
+error lands on the line you wrote.
 
 ## Errors land on the line
 
-Faust's diagnostics are good, and they arrive as markers:
+Faust's compiler errors appear as markers in the editor. Running this misspelled oscillator
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -51,51 +50,39 @@ process = os.sawtoothX(440);
 """)
 ```
 
-puts `undefined symbol : sawtoothX` on the `process` line. The compile also throws, so the box does
-not sit there looking as though it succeeded.
+puts `undefined symbol : sawtoothX` on the `process` line, and the box reports the run as failed.
 
-The editor adds a second, faster layer that does not need the compiler at all: unbalanced brackets,
-unterminated strings and comments, a library prefix that `stdfaust.lib` does not bind, a member that
-is not documented in the library you named, and a region with no `process` definition. Those appear as
-you type. Everything else waits for the real compiler, which is ~600ms away.
+Some mistakes are marked as you type, before you run anything: unbalanced brackets, unterminated
+strings and comments, a library prefix that `stdfaust.lib` does not define, a function that is not in
+the library you named, and a region with no `process` definition. Everything else waits for the
+compiler.
 
 ## Completion knows the standard library
 
-Faust's standard library is about fifty `.lib` files documenting themselves in a rigid comment
-convention. `tools/generate_faust_vocabulary.py` reads that convention *out of the compiler Field
-ships* and writes `faust-vocabulary.json`: **1008 functions**, 990 with a summary and 940 with a signature,
-across 37 library prefixes.
+Completion follows the way Faust is written, by library prefix:
 
-So completion is qualified, which is the way Faust is actually written:
+* `os.` offers the oscillators, with their signatures; `fi.` the filters, `ba.` the basics, `pm.`
+  the physical models.
+* With nothing typed, it offers the language itself: `process`, `with`, `letrec`, the UI primitives,
+  and the library prefixes.
+* The UI primitives insert as snippets with their arguments in order, because Faust puts `init`
+  *before* `min`.
 
-* `os.` offers the 78 oscillator functions, with signatures — not a flat list of a thousand names.
-* `fi.` offers 109 filters, `ba.` 90 basics, `pm.` 150 physical-modelling functions.
-* A bare caret offers the language itself: `process`, `with`, `letrec`, the UI primitives, and the
-  library prefixes.
-* The UI primitives insert as snippets, because their argument order is the thing everyone
-  misremembers: Faust puts `init` *before* `min`.
+Hovering a qualified name shows its signature, summary and parameters.
 
-Hovering a qualified name shows its signature, its summary and its parameters, taken from the same
-generated file. Because the vocabulary is extracted rather than typed, it cannot drift from the
-compiler: bump the vendored version and re-run the script.
+The list comes from the standard library inside the compiler Field ships:
+`tools/generate_faust_vocabulary.py` reads the libraries' documentation comments and writes
+`faust-vocabulary.json`. Re-run it after updating the compiler.
 
 ## The controls are the program's own
 
-A Faust program declares its interface in the source, and Field turns that declaration into an ordinary
-Field control group: `Box.controlGroup`, the same call any other box would make. Nothing about it is
-Faust-specific. Whatever a control group can do, a Faust program's declared interface does too,
-including being served to a phone or an iPad by the controller websocket.
+A Faust program declares its interface in its source, and Field turns that into an ordinary Field
+control group (`Box.controlGroup`, as any other box would build). Anything a control group can do, a
+Faust program's controls can do too, including appearing on a phone or tablet through
+[mobile controllers](mobile_controllers.md); that last part has not been tried with a Faust box yet.
 
-!!! note "Remote controllers are untested here"
-    Faust controls reach a remote controller because they are registered through the same
-    `registerControllerControlGroup` path as every other control, not because of anything in the
-    Faust binding. That follows from the code; nobody has put a Faust box's sliders on a tablet and
-    moved them.
-
-The mapping is unusually direct. Faust's `hslider(label, init, min, max, step)` and Field's
-`slider(label, min, max, step, initialValue)` carry the same five values. And Field's control group
-already reuses a control's value across box reruns, which is exactly what live-coding a DSP needs:
-recompiling must not snap every slider back to its default.
+Controls keep their values when you re-run the box, so editing the program does not snap every
+slider back to its default. Each Faust declaration becomes:
 
 | Faust declares | Field shows |
 |---|---|
@@ -106,16 +93,18 @@ recompiling must not snap every slider back to its default.
 | `hgroup`, `vgroup`, `tgroup` | a qualified label, `filter/cutoff` |
 | `[unit:Hz]` | appended to the label |
 
-Three of those are compromises rather than finished work:
+Three of those differ from Faust:
 
-* **`button` is momentary in Faust and Field's checkbox latches.** Holding the checkbox holds the
-  gate, which is usable, but it is not the same thing. From code, `launch.press("gate")` is the real
-  momentary trigger: press and release are queued in order, so both land even inside one audio block.
-* **`hbargraph`/`vbargraph` are outputs rather than controls.** They are not in the control group at
-  all; `launch.meter("level")` reads the most recent value, sampled once per audio block.
-* **`[scale:log]` is not honoured by the slider's travel.** The declared range is kept and the numbers
-  are right, but a log frequency slider moves linearly. Field's slider has no law parameter; the
-  metadata is parsed and readable on `FaustControl.scale`.
+* A Faust `button` is momentary, but Field's checkbox stays on until you click it again. From code,
+  `launch.press("gate")` is a true momentary press: the press and the release both reach the DSP, in
+  order, even inside one audio block.
+* `hbargraph` and `vbargraph` are outputs, so they are not in the control group;
+  `launch.meter("level")` reads the latest value, updated once per audio block.
+* `[scale:log]` keeps its range but the slider moves linearly, because Field's slider has no log
+  setting. The scale is available as `FaustControl.scale`.
+
+This voice has a `gate` button; the code presses it for a quarter of a second and changes
+the frequency:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -136,8 +125,10 @@ voice
 
 ## A pattern plays it
 
-A Faust program can also be an *instrument* rather than a drone: N instances of the same compiled DSP,
-allocated to notes, with the notes coming from Field's own [pattern language](sound.md).
+A Faust program can also be an *instrument* rather than a drone. `faustPoly` runs several copies
+(voices) of the same compiled program and gives each note a voice, with the notes coming from Field's
+own [pattern language](pattern_language.md). This one plays four chords on eight voices, and patterns
+the filter cutoff as well:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -161,10 +152,7 @@ inst.play(
 inst
 ```
 
-Nothing is recompiled to make eight voices. A Faust wasm factory is built with internal memory, so
-`compute(0, …)` addresses a struct at offset 0 of each instance's own memory: eight
-`WebAssembly.Instance`s of one module are eight independent voices, and they all live in one GraalVM
-context.
+The program is compiled once, however many voices you ask for.
 
 Note the second pattern. `Pat` is a rhythm of *anything*, so the filter is patterned exactly as the
 notes are, and both go through the same event timeline.
@@ -180,77 +168,62 @@ The second changes only that argument, to `voices = 1`, so you can hear what the
 //                    cycles = 2, cps = 0.5, voices = 8, automation = cutoff steps)
 ```
 
-**Eight voices.** Four triads, one per cycle. Three notes of each chord sound together, which is three fundamentals in a band that can hold nothing else.
+With eight voices, the four triads play one per cycle, and all three notes of each chord sound
+together.
+
+With one voice, the pattern, program and gain are the same:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-one-voice.wav" audio-spec="poly-chord-one-voice" audio-renderer="afield.four.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-one-voice"}
 // FaustPolySoundDocs.render("poly-chord-one-voice")
 // the identical call with voices = 1
 ```
 
-**The same notation, one voice.** Identical pattern, program and gain. The three notes of a chord arrive on the same frame, so two of them steal the only voice there is — and what you hear is the last of the three, with a click where the voice turned over.
+The three notes of each chord arrive at the same moment and take the only voice in turn, so you hear
+the last of the three, with a click where the voice changed note.
 
-The difference is measurable as well as audible: three of the chord's notes sound at once at
-`voices = 8` and one at `voices = 1`, counted as spectral peaks in the band where only fundamentals
-can sit. Counting attacks would not tell you that, because a single voice stealing itself produces
-exactly the same number of them. Both clips are asserted by `synth.faust.poly.sound`, and the peak
-counts, the band and what limits them are in `dev_docs/FAUST_MEASUREMENTS.md`.
+The launch's `steals` count tells you how often that happened. A voice whose note has ended and whose
+release has finished is free and is reused without a steal, so on this pattern only the second and
+third notes of each chord steal. Read `steals` as a count of notes that wanted to sound at the same
+time when you choose `voices`.
 
-`steals` counts same-frame collisions, not notes that ran out of voices, so it reports far fewer
-than you would expect from the note count. A voice whose gate has fallen and whose release has
-finished is *finished*, and a finished voice is reused rather than stolen — so on this pattern only
-the second and third note of each chord, which arrive on the very same frame as the first, steal
-anything at all. Read it as a count of simultaneity when you size `voices`. The worked arithmetic
-for this render is in `dev_docs/FAUST_MEASUREMENTS.md`. The one-voice clip holds the last note of
-each chord as notated, not the first.
+??? aside "How the clips are checked"
+    `synth.faust.poly.sound` counts spectral peaks in a band where only fundamentals can sit: three at
+    `voices = 8`, one at `voices = 1`. Counting attacks would not separate them, because a voice
+    stealing itself produces as many attacks. The band, the counts and the steal arithmetic are in
+    `dev_docs/FAUST_MEASUREMENTS.md`.
 
 ### Play it yourself: the `faust_polyphony` starting point
 
-Everything on this page ships as a loadable document — six boxes, on the welcome screen under
-**Starting points**, or straight from here:
+The examples on this page are in the `faust_polyphony` starting point, on the welcome screen under
+Starting points, or from here:
 
 [Open the starting point](offline.html?file=assets/agent_transcripts/faust_polyphony/metadata.edn)
 
-*Faust instrument* is the live one and the only box that opens an audio device: `faustPoly(…, voices = 8)`
-playing the pattern above, returned as the box's last expression so the box stays lit while it plays
-and stopping it stops the sound, the feeder thread and the GraalVM context. *Offline, with a plot* is
-the path the clips above came from, safe on any machine. *Three notes at once* counts the sounding
-fundamentals for you, at four voices and at one. *Onsets, in samples* puts every notated frame
-beside the frame the audio attacks on. *What it refuses* is a program with no `gate`. *When it runs
-out of voices* renders the same over-subscribed passage at `stealReleaseFrames = 1` and at `1440`,
-with both WAVs playable and the line to edit marked — the knob whose two ends are measured
-[below](#stealing-clicks-and-the-stealreleaseframes-trade).
-
-Five of the six are replayed on every CI run by `examples.demo-transcript.exec`, so the boxes cannot
-rot silently; the document itself is regenerated from the transcript by
-`examples.agent-transcripts.materialize`, which fails if the committed copy has drifted. See the
-[gallery entry](agent_transcripts.md) for what each box prints.
+*Faust instrument* plays the pattern above live, and is the only box that opens an audio device.
+*Offline, with a plot* renders the clips above, and is safe on any machine. *Three notes at once*
+counts the sounding notes at four voices and at one. *Onsets, in samples* puts every notated frame
+beside the frame the audio starts on. *What it refuses* is a program with no `gate`. *When it runs
+out of voices* renders the same crowded passage at two settings of `stealReleaseFrames`
+([below](#stealing-clicks-and-the-stealreleaseframes-trade)), with both WAVs playable. The
+[gallery entry](agent_transcripts.md) shows what each box prints.
 
 ### The notes land on the sample, not on the block
 
-A 128-frame block at 48 kHz is 2.67 ms. Quantising a note onset to it is audible: it is the difference
-between a groove and a grid. So `FaustVoiceBank.render` enters the GraalVM context **once** and then walks
-the block in chunks that end where the next event begins: apply the writes due at this exact frame,
-`compute` up to the next event, repeat.
+Audio is computed in blocks of 128 frames, 2.67 ms at 48 kHz, and rounding note starts to a block
+boundary would be audible. So a polyphonic launch splits each block where the next note or parameter
+change falls, and every note starts on the exact sample the pattern names. Splitting costs about
+twice an unsplit block at eight events, so schedule as finely as the music wants.
 
-This is also why [`FaustDsp.setParam`](#reference)'s queue is *not* used on this path: it drains once per
-`render` call, which is block granularity by construction. A per-block write would put a note up to 110
-frames — 2.3 ms — from where it was notated.
-
-Offline the first non-zero sample of a note *is* the notated frame, exactly, and so is a patterned
-parameter change. `dev_docs/FAUST_MEASUREMENTS.md` has the numbers and what limits them.
-
-Splitting the block costs about twice an undisturbed one at eight events, so schedule as finely as
-the music wants; the budget goes on the crossing below, not on the chunking.
+On a single `faust` launch, setting a control from code (`launch["cutoff"] = …`) takes effect at the
+start of the next block instead.
 
 ### `freq`, `gate`, `gain`: found by label, refused when absent
 
-Faust's own polyphonic convention is `freq`/`gate`/`gain`, the three names `-nvoices` looks for; a
-program written for `faust2jaqt -nvoices 8` plays here unchanged. They are discovered out of the program's
-declared UI **by label and never by index**, because Faust lists controls *alphabetically within each
-group*: in the program above, control index 0 is `cutoff`. An allocator that wrote pitch to index 0 would
-sweep a filter and never change a note.
+A polyphonic program names its pitch, gate and loudness controls `freq`, `gate` and `gain`, Faust's
+own convention, so a program written for `faust2jaqt -nvoices 8` plays here unchanged. Field finds
+them by label, so their order in the program does not matter.
 
-A program that does not declare them is refused, with the message a person can act on rather than silence:
+A program that does not declare `gate` is refused with a message saying what to add:
 
 ```diffstatic {data-lang=text}
 Faust: 'box_a1b2c3' cannot be played polyphonically — a polyphonic program must declare `gate`,
@@ -260,71 +233,58 @@ cutoff (hslider), freq (hslider).
   … and gate the envelope with it, e.g. en.adsr(0.005, 0.08, 0.6, 0.05, gate)
 ```
 
-Silence is the hardest bug to read, and writing to control 0 and hoping is how you get it.
-
-The control group a polyphonic launch generates contains the *shared* controls only: `cutoff` here.
-`freq`, `gate` and `gain` are absent: the notes write them on the sample a note begins, and a
-slider fighting the notes for them would look broken.
+The control group of a polyphonic launch has only the controls the voices share, `cutoff` here. There
+are no sliders for `freq`, `gate` and `gain`, because each note sets them.
 
 ### How a note claims a voice
 
 A note claims a voice in this order:
 
-1. a **finished** voice — gate down *and* its own output below `idleThreshold`. That is the Faust
-   architecture layer's own answer, watching the output, rather than a guess at an envelope the host cannot
-   see: Faust does not report its release time, so guessing it would be wrong for every program but the one
-   it was tuned on.
-2. else a **released but still ringing** voice, counted as `tailCuts` — audible as a shortened tail.
-3. else **steal the oldest sounding voice**, counted as `steals`. A note is never dropped; an instrument
-   that silently ignores a note is worse than one that audibly runs out.
+1. a finished voice: its gate is down and its output has fallen below `idleThreshold`. Field watches
+   the output because Faust does not report how long a release lasts.
+2. else a released voice that is still ringing, counted as `tailCuts`; you hear its tail cut short.
+3. else the oldest sounding voice is stolen, counted as `steals`. A note is never dropped.
 
 `peakConcurrency` is how much polyphony a pattern actually asked for: the most voices that ever
 sounded together over a render.
 
 #### Stealing clicks, and the `stealReleaseFrames` trade
 
-A steal clicks, because Faust's `en.adsr` resets to zero on a trigger rather than continuing from the
-level it was at. The one-sample gate dip that gives the new note its rising edge therefore drops the
-outgoing note's amplitude to zero in a single sample. The dip is not optional: writing `freq` to a voice
-whose gate is already up does not restart the envelope, so without it the stolen voice glides in at the old
-level and no note is heard at all.
+A steal clicks. To start the new note, Field drops the voice's gate for one sample, and Faust's
+`en.adsr` restarts from zero rather than from the level it was at, so the old note is cut off in a
+single sample. Without the drop, the envelope would not restart and the new note would not be heard.
 
-`stealReleaseFrames` trades the click against lateness. The default of `1` leaves the new note on time and
-the click measurable; `1440` (30 ms, longer than this program's release) all but removes the click and puts
-the note 30 ms late. Both ends are asserted by `synth.faust.poly`. Stealing is an overload condition either
-way.
+`stealReleaseFrames` trades the click against lateness. The default, `1`, keeps the new note on time
+and leaves the click; `1440` (30 ms, longer than this program's release) all but removes the click
+and makes the note 30 ms late. If you hear steals, the better fix is more voices.
 
 ### Rendering a pattern offline
 
-`faustPatternRender` renders a pattern through a bank with no audio device and no window, in 128-frame
-blocks, and through the *same* `render` the audio thread calls, so what you measure is what would be
-heard. `Box.showFaustPattern` is the one-liner that puts a player and a waveform in a box's output.
+`faustPatternRender` renders a pattern with no audio device and no window, through the same code the
+audio thread runs, so what you measure is what you would hear. `Box.showFaustPattern` puts a player
+and a waveform in a box's output.
 
 Three measurement helpers come with it:
 
-* `faustOnsets` — the frame of every attack. A burst is a run of samples that is not quiet, allowing
+* `faustOnsets`: the frame of every attack. A burst is a run of samples that is not quiet, allowing
   quiet stretches shorter than `minGapMs`; the onset is the burst's first sample.
-* `faustSilentGaps` — **run this before believing any onset count.** A pattern rendered at `sustain = 1.0`
-  is a continuous tone with no attacks at all, and an onset detector pointed at one will report envelope
-  ripple as notes. `FAUST_PATTERN_SUSTAIN` is 0.9 rather than 1.0 for exactly this reason.
-* `faustSpectrumPeaks` — the only thing here that can tell polyphony from monophony. Counting attacks
-  cannot: a single voice stealing itself produces the same number of them.
+* `faustSilentGaps`: the quiet stretches between notes. Check these before trusting an onset count.
+  At `sustain = 1.0` notes join into one continuous tone, and an onset detector reports envelope
+  ripple as notes; that is why `FAUST_PATTERN_SUSTAIN` is 0.9.
+* `faustSpectrumPeaks`: the partials present, which tell a chord from a single note. Counting attacks
+  cannot, because one voice stealing itself makes as many attacks.
 
 ### Calling in from another thread
 
-`render` takes no lock. `schedule` and `automate` hand work over through lock-free queues that `render`
-drains once at the top of each block, and the audio thread owns the ordered queues outright. Producers pay
-the node allocation on their own thread, where it is harmless.
-
-The one thing that costs you: work handed over *during* a `render` call is seen by the next block, at most
-2.67 ms later. Notes are scheduled ahead of their frame anyway, and one that arrives late is played
-immediately and counted in `lateNotes`. `clearSchedule()` takes effect within a block rather than
-instantly, for the same reason.
+You can call `schedule` and `automate` from any thread; the audio thread never waits on a lock. Work
+handed over while a block is being computed is picked up by the next block, at most 2.67 ms later.
+Notes are scheduled ahead of time anyway, and one that arrives too late is played at once and
+counted in `lateNotes`. For the same reason, `clearSchedule()` takes effect within a block.
 
 ## The block diagram
 
-Faust is a language about signal flow, and its block diagram *is* the signal flow. Field can show it,
-generated by the same embedded compiler, with no `faust -svg` on the command line:
+Faust can draw a program as a block diagram of its signal flow. Pass `diagram = true` and Field shows
+it in the box's output:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -335,12 +295,13 @@ process = os.sawtooth(220) : fi.lowpass(2, 1200) * 0.2 <: _,_;
 """, diagram = true)
 ```
 
-Faust emits a set of linked SVGs, one per sub-expression; the top-level `process.svg` is the one shown.
-The links between them are file references, which Field does not follow, so you see the top level only.
+Only the top level is shown. Faust draws each sub-expression as a separate linked diagram, and Field
+does not follow those links.
 
 ## Effects, not just synths
 
-A program that declares inputs is an effect. Give it something to process:
+A program that declares inputs is an effect. Pass it something to process as `input`; here, a
+detuned pair of sawtooths goes through a reverb:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -355,12 +316,12 @@ process = _,_ : re.zita_rev1_stereo(20, 200, 2000, 3.0, 2.0, 48000) : *(room), *
 """, input = dry)
 ```
 
-A program with inputs and no `input` argument hears silence, which looks like a broken effect.
+Without an `input` argument the effect hears silence, and so does not make a sound.
 
 ## What it costs
 
-Both halves of Faust run inside the GraalVM runtime Field already uses for `dough.wasm`, and they have
-opposite performance profiles. Measured on an M-series Mac, GraalVM CE 25.0.2:
+Faust runs inside GraalVM's WebAssembly runtime. Playing is cheap and compiling is slow. Measured on
+an M-series Mac, GraalVM CE 25.0.2:
 
 <div class="field-data-table" markdown>
 
@@ -373,31 +334,23 @@ opposite performance profiles. Measured on an M-series Mac, GraalVM CE 25.0.2:
 
 </div>
 
-The two render figures say different things. Faust's generated code is very fast (7.6µs), and almost
-everything else in the 60.4µs is the cost of crossing between the JVM and WebAssembly once per block:
-entering the context, and copying the output out. So a voice costs a little over 2% of one core, and a
-handful of Faust boxes is unremarkable. A polyphonic bank is cheaper still, because it hosts every
-voice in one GraalVM context — where `FaustDsp` gives each its own — and so crosses once for all of
-them. Its cost is then linear in voices. `dev_docs/FAUST_MEASUREMENTS.md` measures both arrangements
-against each other as the voice count climbs.
+Most of a voice's 60.4µs is the cost of passing audio between the JVM and WebAssembly once per block,
+not Faust's own code. A voice costs a little over 2% of one core, so a handful of Faust boxes is no
+problem. A polyphonic instrument is cheaper per voice, because all its voices share one crossing.
 
-The compiler is the real cost, and three things blunt it:
+The compiler is the slow part, and three things soften it:
 
-* compiles are memoised on a hash of the source, so re-running an unchanged box, or undoing back to a
-  program already seen, is free;
-* the compiler has its own GraalVM context, never shared with a running DSP, because a 600ms compile
-  holding a lock the audio thread wants every 2.67ms would be audible;
-* and `FaustEngine.warmInBackground()` pays the cold start on a background thread. Call it from a
-  workspace that is going to use Faust and the 13–22s goes by while you are still typing.
+* compiles are cached by source, so re-running an unchanged box, or undoing back to a program already
+  seen, costs nothing;
+* compiling never blocks a playing sound, so you can edit while it plays;
+* `FaustEngine.warmInBackground()` does the slow first compile on a background thread. Call it early
+  in a document that will use Faust, and the 13–22 s passes while you are still typing.
 
 ## Nothing to install
 
-This is the part that is different from [Sonic Pi](sonic_pi.md), which can only work if Sonic Pi
-happens to be installed and whose "owned mode" exists to work around that.
-
-Field vendors the Faust compiler as WebAssembly: `src/jvmMain/resources/faust/`, 5.3MB, LGPL-3.0,
-unmodified, with its licence and provenance recorded alongside. WebAssembly is platform-independent,
-so those are the *same bytes* on every platform Field runs on:
+Unlike [Sonic Pi](sonic_pi.md), Faust needs nothing installed beside Field. Field ships the Faust
+compiler as WebAssembly in `src/jvmMain/resources/faust/` (5.3MB, LGPL-3.0, unmodified, with its
+licence alongside). The same files run on every platform:
 
 | Platform | Needs |
 |---|---|
@@ -405,17 +358,12 @@ so those are the *same bytes* on every platform Field runs on:
 | Linux (x86_64, aarch64) | nothing |
 | Windows (x86_64) | nothing |
 
-No `faust` on `PATH`, no LLVM (a stock `libfaust` links against it, and is ~100MB *per platform*), no
-C++ toolchain, no `faust2*` scripts, no Homebrew or apt or vcpkg step, and no per-platform binary in
-`libs/`. A fresh clone can play a Faust box.
+You do not need `faust` on your `PATH`, LLVM, a C++ toolchain or the `faust2*` scripts. A fresh
+clone can play a Faust box. The cost is the slower compiler described above.
 
-The trade is the 5.3MB in the repository and the slow compiler above. That is the right way round for
-a live-coding environment: a slow first compile is a warm-up, whereas a missing toolchain is a wall.
-
-!!! note "Not verified on Linux or Windows"
-    These are platform-independent bytes on a runtime Field already ships for `dough.wasm`, but the
-    measurements above were taken on macOS/aarch64 and nobody has run the smoke test elsewhere.
-    `synth.faust.smoke` is the thing to run there; it needs no audio hardware and no GPU.
+!!! note "Not yet tried on Linux or Windows"
+    The measurements above were taken on macOS (Apple silicon). On another platform, the smoke test
+    `synth.faust.smoke` checks the compiler works; it needs no audio hardware and no GPU.
 
 ## Reference
 
@@ -446,10 +394,8 @@ a live-coding environment: a slow first compile is a warm-up, whereas a missing 
 
 </div>
 
-Field's Faust smokes assert the vendored compiler's behaviour as well as Field's own, so a version
-bump that changes either cannot pass unnoticed. Which smoke covers what — the compiler and its
-diagnostics, the editor extension under node, the box path, and the polyphonic layer — is in
-`dev_docs/FAUST_MEASUREMENTS.md`.
-
-What none of them covers is the launch itself: a box staying lit while sound comes out of a speaker.
-That is the generic audio return-value path, and it needs an audio device.
+??? aside "What the Faust smoke tests cover"
+    The smokes check the compiler and its diagnostics, the editor extension, the box path and the
+    polyphonic layer, so a compiler update that changes behaviour fails; the list is in
+    `dev_docs/FAUST_MEASUREMENTS.md`. None covers a live launch through a speaker, which needs an
+    audio device.
