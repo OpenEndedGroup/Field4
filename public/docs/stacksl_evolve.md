@@ -13,10 +13,17 @@ On its own the search finds programs that score better than random ones, and it 
 val run = evolveStackSLTowards(StackSLTargets.quadrants(32), budget = 400, selection = Selection.LEXICASE)
 print(run.summary())
 print(run.best!!.text)
-showImg(run.contactSheet(), caption = "the target, the evolved program, the random control's best")
+
+// The program the watchmaker (below) found for the same target, for comparison.
+val watchmaker = StackSLProgram.of(
+    "[0.05,0.06,0.15] [0.98,0.9,0.1] uv x 0.5 < mix [0.1,0.5,0.95] [0.9,0.1,0.1] uv x 0.5 < mix uv y 0.5 > mix"
+)
+showImg(run.contactSheet(also = listOf("watchmaker" to watchmaker)),
+    caption = "the target, the evolved program, the random control's best, and the watchmaker's (skill %.2f)"
+        .format(run.skillOf(watchmaker)))
 ```
 
-It takes under a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws both programs at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored.
+It takes under a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws each program at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored. The last picture is not from this search: it is the program a language model wrote for the same target in [one of the runs below](#the-watchmaker), passed in with `also` and scored the same way by `run.skillOf`.
 
 `run.best!!.text` is the program. It is ordinary StackSL and runs anywhere StackSL runs, including a GPU shader box, and `run.best!!.render()` draws it at 160 pixels.
 
@@ -102,6 +109,12 @@ Each search below had 1,200 renders on each of twelve targets, over two or three
 | the model alone, at the same number of calls | 0.67 | 8 of 15 | 0.52 | 2 of 14 |
 
 The last row is the model run with almost no search behind it: one population, one blind change per generation, a round every generation, stopped after 13 or 14 model calls. It draws far less than the model and the search together, at more calls.
+
+Over the course of a run, the difference starts at the model's first round. This plots the best program so far on the five built-in targets against the number of programs rendered: on the left its skill, scored the same way for every search, and on the right its layout agreement:
+
+![two line charts on a dark background, both against programs rendered from 0 to 1,200, each with four lines (median of 15 runs, with the middle half shaded). Left, skill: the search without a model climbs slowly to about 0.54; the three watchmaker searches jump when the model is first asked, at about 330 renders when it is asked every 4 generations and about 650 when every 8, and finish between 0.96 and 1.00. Right, layout agreement: the search without a model stays at 0 throughout; the watchmaker searches rise steeply after their first round and finish at 0.99 to 1.00](assets/stacksl_evolve/watchmaker-over-time.png)
+
+The search without a model gets better at its score and never at the picture. The lines are medians, so they hide the runs that missed: the shading shows how far the middle half spreads, and the table above has the means.
 
 These are the seven new targets from one seed: each target, then the best program from the plain search (GP), from the model alone, and from `watchmaker()` (both), each with its layout agreement:
 

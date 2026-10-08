@@ -1417,14 +1417,21 @@ class StackSLEvolveRun(
      *
      * The target is enlarged pixel by pixel; both programs are re-rendered at [side], so
      * what you see is the program, not an enlarged thumbnail of what the search scored.
+     * [also] adds more programs after them, each labelled with its name alone (a long name and a
+     * score do not fit under a panel): a program from another search, or one written by hand, for
+     * comparison. [skillOf] gives its score under this run's objective.
      */
-    fun contactSheet(side: Int = 160): Img {
+    fun contactSheet(side: Int = 160, also: List<Pair<String, StackSLProgram>> = emptyList()): Img {
         val panels = ArrayList<Pair<String, Img>>()
         panels += "target" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))
         evolved.best?.genome?.let { panels += "evolved %.2f".format(evolvedSkill) to objective.render(it, side).toImg() }
         control.best?.genome?.let { panels += "random %.2f".format(controlSkill) to objective.render(it, side).toImg() }
+        for ((name, program) in also) panels += name to objective.render(program, side).toImg()
         return montage(panels, columns = panels.size, cellSide = side + 10)
     }
+
+    /** [program]'s skill under this run's own objective, the units [evolvedSkill] is in. */
+    fun skillOf(program: StackSLProgram): Double = objective.skill(objective.evaluate(program).fitness)
 
     fun summary(): String = buildString {
         append("%-10s evolved %.4f (skill %+.3f)  random %.4f (skill %+.3f)".format(
