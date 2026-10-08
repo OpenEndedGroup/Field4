@@ -2922,6 +2922,16 @@ each way, because the count is a property of the surface and not only of the aut
 
 [Open ↗](offline.html?file=assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn)
 
+### petri_state_space_sculpture
+
+The dining philosophers' reachability graph as a path-traced sculpture. Each marking of the
+symmetric five-seat table becomes a glass bead, placed by breadth-first depth and by which
+philosophers hold forks; each firing becomes a `tubeMesh` coloured by what it does, and the
+shortest route to the deadlock glows. The stubborn-set reduced graph stands beside it. See
+[the walkthrough](chain_petri_sculpture.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/petri_state_space_sculpture/metadata.edn)
+
 ### rectsl_spacetime_path_trace
 
 A RectSL animation read as a solid object. The scene's signed
