@@ -53,7 +53,10 @@ class LandQueueTest(unittest.TestCase):
         self.primary = root / "repo"
         self.lander = root / "lander"
         self.env = {
-            **os.environ,
+            # Not the lander's own GRADLE_USER_HOME, which it exports to the guard running this suite:
+            # inherited, the test lander's watchdog ran `gradlew --stop` in a fixture with no gradlew,
+            # and the wedge test stayed pending on every landing that ran checkPythonTools.
+            **{k: v for k, v in os.environ.items() if k != "GRADLE_USER_HOME"},
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
             "FIELD_LAND_BY": "test-agent",
