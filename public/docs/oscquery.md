@@ -10,8 +10,9 @@ ossia score and the python and JavaScript libraries all speak it.
 list, show as controls and set. A box can also open another program's OSCQuery service and read,
 set and follow its parameters.
 
-Open `public/docs/assets/oscquery_demo/` as a document to try everything on this page with
-nothing else running: box 1 publishes, and boxes 3 and 4 connect back to it as a remote.
+[Open the OSCQuery demo ↗](offline.html?file=assets/oscquery_demo/metadata.edn) to read its
+boxes, or open `public/docs/assets/oscquery_demo/` as a document in Field to run them with nothing
+else running: box 1 publishes, and boxes 3 and 4 connect back to it as a remote.
 
 ## Publishing parameters
 
@@ -88,13 +89,18 @@ analysis results.
 `controls` builds a [control group](visualizers.md#build-one-surface-with-mixed-control-types) whose sliders and checkboxes are also OSCQuery
 parameters, under one prefix:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/published_controls.png" capture="box" open-outputs="true" embed=true w="760" h="120" wait="2.0" timeout="90" name="oscquery-published-controls" alt="The box's controls channel with a GAIN slider at 0.5 and an unchecked MUTE checkbox, and below it the two paths the service now lists for them, /surface/gain and /surface/mute"}
+import afield.oscquery.*
+
 var gain = 0.5
 var mute = false
 oscQuery("My piece").controls("/surface") {
     slider("gain", 0.0, 1.0, initialValue = gain) { gain = it }
     checkbox("mute", mute) { mute = it }
 }
+
+val published = oscQueryRemote("127.0.0.1", 9020).params.filter { it.path.startsWith("/surface") }
+markdown(published.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
 ```
 
 Dragging the slider in Field runs the callback and sends the new value to every listening
