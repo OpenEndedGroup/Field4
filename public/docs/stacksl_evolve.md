@@ -18,7 +18,7 @@ showImg(run.contactSheet(), caption = "the target, the evolved program, the rand
 
 It takes under a minute. `budget` is the number of programs each side gets to render; doubling it roughly doubles the time. The printed line gives both sides' scores as *skill*: 0 is what a flat fill of the target's average colour would score, 1 is an exact match. The contact sheet draws both programs at 160 pixels, so you see the program itself rather than an enlarged thumbnail of what the search scored.
 
-`run.best!!.text` is the program. It is ordinary StackSL and runs anywhere StackSL runs, including `StackSLCpu.renderStill(text)` and a GPU shader box.
+`run.best!!.text` is the program. It is ordinary StackSL and runs anywhere StackSL runs, including a GPU shader box, and `run.best!!.render()` draws it at 160 pixels.
 
 ## Your own picture
 
@@ -41,12 +41,14 @@ Simple, high-contrast pictures work best: flat shapes, a few colours, structure 
 val evolution = StackSLEvolution(StackSLTargets.spot(32), StackSLEvolveSettings.wide())
 evolution.runTo(600)
 print(evolution.summary())
-showImg(evolution.contactSheet(top = 3), caption = "the target and the three best programs, with their skill")
+showImg(evolution.contactSheet(top = 3), caption = "the target and the best programs that score differently, with their skill")
 ```
+
+Without the model, 600 renders find no disc: the best is a red and green cross on dark stripes, and the population has settled on variants of it. `summary()` prints the best program and a table of where improvements came from.
 
 `StackSLEvolveSettings.wide()` is a larger search than `evolveStackSLTowards`'s: three populations ("islands") of 12 that evolve apart and swap their best every 8 generations, programs up to 48 words, and a schedule that starts at 16 pixels and ends scoring 32-pixel renders by LPIPS plus pixel error over a 3×3 grid of regions. Bigger is not better on its own: at the same budget it draws the targets no more often than `evolveStackSLTowards` does. It is the search the next two sections add to.
 
-`summary()` ends with a table of where candidates came from: how many each operator offered, how many stayed in a population, and how many took the lead. Between generations you can:
+The table counts, for each kind of change, how many candidates it offered, how many stayed in a population, and how many took the lead. Between generations you can:
 
 - `evolution.step(10)` or `evolution.runTo(budget)` to carry on;
 - `evolution.inject(listOf("p length 0.3 threshold"))` to offer programs of your own, which are scored like any other and kept only if they do well;
@@ -137,8 +139,8 @@ val fitted = evolution.fit(seed, literals = listOf(4), iterations = 30)
 print(fitted)
 showImg(montage(listOf(
     "target" to evolution.target.raster.toImg().upscaleNearest(5),
-    "seed" to StackSLCpu.renderStill(seed.text, dim = 160).toImg(),
-    "fitted" to StackSLCpu.renderStill(fitted.fitted!!, dim = 160).toImg()
+    "seed" to seed.render(),
+    "fitted" to StackSLProgram.of(fitted.fitted!!).render()
 ), columns = 3, cellSide = 170), caption = "the disc's radius, moved by gradient descent")
 ```
 

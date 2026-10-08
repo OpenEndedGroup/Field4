@@ -480,12 +480,16 @@ class StackSLEvolution(
     // looking
     // ------------------------------------------------------------------------------------------
 
-    /** The target and the [top] programs, rendered at [side], labelled by rank and skill. Only the target before [started]. */
+    /**
+     * The target and the [top] programs that score differently ([distinctLeaders]), rendered at
+     * [side], labelled by rank and skill. Only the target before [started].
+     */
     fun contactSheet(top: Int = 6, side: Int = 128): Img {
         if (!started) return montage(listOf("target" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))), columns = 1, cellSide = side + 8)
         val panels = ArrayList<Pair<String, Img>>()
         panels += "target" to target.raster.toImg().upscaleNearest(max(1, side / target.raster.width))
-        ranked.take(top).forEachIndexed { i, ind ->
+        // Leaders that score differently: the top few by text are often one picture and its variants.
+        distinctLeaders(top).forEachIndexed { i, ind ->
             panels += "#${i + 1} %.2f".format(skill(ind.fitness)) to StackSLCpu.renderStill(ind.genome.text, dim = side, time = time, parallel = parallel).toImg()
         }
         return montage(panels, columns = min(panels.size, 4), cellSide = side + 8)
@@ -940,6 +944,9 @@ class StackSLPopulationArchive(val directory: File) {
         directory.listFiles { f -> f.name.endsWith(".json") }.orEmpty().sortedBy { it.name }
             .mapNotNull { f -> runCatching { f.nameWithoutExtension to StackSLEvolutionSnapshot.read(f) }.getOrNull() }
 }
+
+/** What this program draws, at [side] pixels square and render time [time]: for `showImg` and `montage`. */
+fun StackSLProgram.render(side: Int = 160, time: Float = 1.75f): Img = StackSLCpu.renderStill(text, dim = side, time = time).toImg()
 
 /** An [Img] as a PNG data URL, for a model or an `<img>`. */
 fun Img.toPngDataUrl(): String = "data:image/png;base64," + Base64.getEncoder().encodeToString(toPngBytes())
