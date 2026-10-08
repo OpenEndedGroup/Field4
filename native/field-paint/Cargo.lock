@@ -204,7 +204,6 @@ dependencies = [
 [[package]]
 name = "paint"
 version = "0.1.0"
-source = "git+https://github.com/aliceisjustplaying/claude-paint?rev=8e78df09e08faa754665a8822da8db6a1d78fc47#8e78df09e08faa754665a8822da8db6a1d78fc47"
 dependencies = [
  "image",
  "mixbox",

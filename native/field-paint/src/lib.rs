@@ -5,17 +5,27 @@
 //!
 //! Coordinates are paint's "units": the canvas is 1000 units wide and `1000 / aspect` tall, y down.
 //! Colours cross the boundary as linear-light RGB in 0..1.
+//!
+//! The crate is vendored (`vendor/paint/VENDORED.md`): upstream's engine, plus Field's additions
+//! under `paint::field`.
 
 use paint::{Canvas, Gesture, Held, Orient, Paint, Palette, Style, Tool};
+
+pub use studio::Studio;
 use std::cell::RefCell;
 use std::ffi::{c_char, CString};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+
+mod dynamic;
+mod studio;
+mod tools;
+mod water;
 
 thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::default());
 }
 
-fn guard<T>(fallback: T, f: impl FnOnce() -> Result<T, String>) -> T {
+pub(crate) fn guard<T>(fallback: T, f: impl FnOnce() -> Result<T, String>) -> T {
     let r = catch_unwind(AssertUnwindSafe(f)).unwrap_or_else(|p| {
         Err(p
             .downcast_ref::<&str>()
@@ -54,7 +64,7 @@ pub extern "C" fn field_paint_engine() -> u32 {
 /// red-ground style; 3 bare linen of colour (r,g,b). `size_mm` > 0 sets the physical width, which
 /// is what every mark's real size (a 0.3 mm pencil point, a crack's µm opening) is measured against.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_canvas_new(width_px: i32, aspect: f32, style: i32, seed: u64, r: f32, g: f32, b: f32, size_mm: f32) -> *mut Canvas {
+pub extern "C" fn field_paint_canvas_new(width_px: i32, aspect: f32, style: i32, seed: u64, r: f32, g: f32, b: f32, size_mm: f32) -> *mut Studio {
     guard(std::ptr::null_mut(), || {
         if width_px < 8 || !(aspect.is_finite() && aspect > 0.0) {
             return Err(format!("bad canvas size: width {width_px}, aspect {aspect}"));
@@ -71,12 +81,12 @@ pub extern "C" fn field_paint_canvas_new(width_px: i32, aspect: f32, style: i32,
             3 => Canvas::new(w, aspect, [r, g, b]).with_size_mm(mm).with_linen(paint::Linen::fine(seed)),
             s => return Err(format!("unknown canvas style {s}")),
         };
-        Ok(Box::into_raw(Box::new(c)))
+        Ok(Box::into_raw(Box::new(Studio::new(c))))
     })
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_canvas_free(c: *mut Canvas) {
+pub extern "C" fn field_paint_canvas_free(c: *mut Studio) {
     if !c.is_null() {
         unsafe { drop(Box::from_raw(c)) }
     }
@@ -84,7 +94,7 @@ pub extern "C" fn field_paint_canvas_free(c: *mut Canvas) {
 
 /// Pixel size of the canvas.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_canvas_size(c: *const Canvas, w: *mut i32, h: *mut i32) {
+pub extern "C" fn field_paint_canvas_size(c: *const Studio, w: *mut i32, h: *mut i32) {
     let f = unsafe { &*c }.frame();
     unsafe {
         *w = f.w as i32;
@@ -146,7 +156,7 @@ pub extern "C" fn field_paint_brush_fullness(h: *const Held) -> f32 {
 /// `swell`/`swell_n`: pressure multipliers at evenly spaced knots (may be empty).
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_drag(
-    c: *mut Canvas, h: *mut Held, xy: *const f32, n: i32,
+    c: *mut Studio, h: *mut Held, xy: *const f32, n: i32,
     p0: f32, p1: f32, shake: f32, attack: f32, release: f32, orient: i32,
     swell: *const f32, swell_n: i32,
 ) -> i32 {
@@ -159,22 +169,26 @@ pub extern "C" fn field_paint_drag(
         if pts.iter().any(|p| !(p.0.is_finite() && p.1.is_finite())) {
             return Err("non-finite point in stroke".into());
         }
+        // Field clamped pressure to 1 before engine 5; an engine-2 canvas still does, so its calls paint
+        // as they did. Later engines press as hard as asked.
+        let c = unsafe { &mut *c };
+        let press = |p: f32| if c.engine() <= 2 { p.clamp(0.0, 1.0) } else { p.max(0.0) };
         let mut g = Gesture::new(pts)
-            .pressure(p0.clamp(0.0, 1.0), p1.clamp(0.0, 1.0))
+            .pressure(press(p0), press(p1))
             .shake(shake.max(0.0))
             .ramps(attack.clamp(0.0, 1.0), release.clamp(0.0, 1.0))
             .orient(if orient == 1 { Orient::Along } else { Orient::Across });
         if swell_n > 0 {
             g = g.swell(unsafe { std::slice::from_raw_parts(swell, swell_n as usize) }.to_vec());
         }
-        unsafe { &mut *c }.drag(unsafe { &mut *h }, &g, None);
+        c.oil(|c| c.drag(unsafe { &mut *h }, &g, None));
         Ok(0)
     })
 }
 
 /// Let `minutes` of drying time pass.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_wait(c: *mut Canvas, minutes: f32) -> i32 {
+pub extern "C" fn field_paint_wait(c: *mut Studio, minutes: f32) -> i32 {
     guard(-1, || {
         if !minutes.is_finite() {
             return Err(format!("wait needs finite minutes, got {minutes}"));
@@ -186,7 +200,7 @@ pub extern "C" fn field_paint_wait(c: *mut Canvas, minutes: f32) -> i32 {
 
 /// Dry every film on the canvas (touch-dry), compositing it into the picture.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_dry(c: *mut Canvas) -> i32 {
+pub extern "C" fn field_paint_dry(c: *mut Studio) -> i32 {
     guard(-1, || {
         unsafe { &mut *c }.dry();
         Ok(0)
@@ -198,32 +212,36 @@ pub extern "C" fn field_paint_dry(c: *mut Canvas) -> i32 {
 /// dried to touch-dry, leaving the canvas itself wet. `relief` > 0 lights the impasto from the
 /// upper left (paint's `Canvas::relief`, strength ~0.3–1), `gloss` adds varnish sheen.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_render_argb(c: *const Canvas, relief: f32, gloss: f32, out: *mut i32, capacity: i32) -> i32 {
+pub extern "C" fn field_paint_render_argb(c: *const Studio, relief: f32, gloss: f32, out: *mut i32, capacity: i32) -> i32 {
     guard(-1, || {
-        let mut copy = unsafe { &*c }.clone();
-        copy.dry();
-        if relief > 0.0 {
-            copy.relief(relief, gloss.max(0.0));
-        }
-        let px = copy.pixels();
-        if px.len() > capacity as usize {
-            return Err(format!("render buffer holds {capacity} pixels, canvas has {}", px.len()));
-        }
-        let out = unsafe { std::slice::from_raw_parts_mut(out, px.len()) };
-        let to8 = |v: f32| (paint::color::linear_to_srgb(v) * 255.0).round().clamp(0.0, 255.0) as u32;
-        for (o, p) in out.iter_mut().zip(px) {
-            *o = (0xff00_0000u32 | to8(p[0]) << 16 | to8(p[1]) << 8 | to8(p[2])) as i32;
-        }
-        Ok(px.len() as i32)
+        write_argb(&unsafe { &*c }.picture(relief, gloss), out, capacity)
     })
+}
+
+/// Linear RGB pixels as 8-bit sRGB ARGB (`0xAARRGGBB`) into `out`, which holds `capacity` ints.
+pub(crate) fn write_argb(px: &[paint::Rgb], out: *mut i32, capacity: i32) -> Result<i32, String> {
+    if px.len() > capacity as usize {
+        return Err(format!("render buffer holds {capacity} pixels, canvas has {}", px.len()));
+    }
+    let out = unsafe { std::slice::from_raw_parts_mut(out, px.len()) };
+    let to8 = |v: f32| (paint::color::linear_to_srgb(v) * 255.0).round().clamp(0.0, 255.0) as u32;
+    for (o, p) in out.iter_mut().zip(px) {
+        *o = (0xff00_0000u32 | to8(p[0]) << 16 | to8(p[1]) << 8 | to8(p[2])) as i32;
+    }
+    Ok(px.len() as i32)
 }
 
 /// Save a dried copy as paint's own dithered sRGB PNG.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_save_png(c: *const Canvas, path: *const c_char) -> i32 {
+pub extern "C" fn field_paint_save_png(c: *const Studio, path: *const c_char) -> i32 {
     guard(-1, || {
         let p = unsafe { std::ffi::CStr::from_ptr(path) }.to_str().map_err(|e| e.to_string())?;
-        let mut copy = unsafe { &*c }.clone();
+        let s = unsafe { &*c };
+        let mut copy = s.canvas.clone();
+        copy.dry();
+        if let Some(w) = &s.water {
+            paint::field::watercolor::lay_over(&mut copy, w);
+        }
         copy.save(p).map_err(|e| e.to_string())?;
         Ok(0)
     })
@@ -233,7 +251,7 @@ pub extern "C" fn field_paint_save_png(c: *const Canvas, path: *const c_char) ->
 
 /// A mask from closed polygons (even-odd), `xy` interleaved canvas units, `ring_sizes` points per
 /// ring. `feather` > 0 blurs its edge by that many units.
-fn region(c: &Canvas, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32) -> Result<paint::Mask, String> {
+pub(crate) fn region(c: &Canvas, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32) -> Result<paint::Mask, String> {
     if rings < 1 {
         return Err("a region needs at least one closed ring".into());
     }
@@ -290,7 +308,7 @@ pub extern "C" fn field_paint_pencil_softness(grade: *const c_char) -> f32 {
     })
 }
 
-fn points<'a>(xy: *const f32, n: i32) -> Result<Vec<(f32, f32)>, String> {
+pub(crate) fn points<'a>(xy: *const f32, n: i32) -> Result<Vec<(f32, f32)>, String> {
     if n < 2 {
         return Err(format!("a line needs two points, got {n}"));
     }
@@ -307,7 +325,7 @@ fn points<'a>(xy: *const f32, n: i32) -> Result<Vec<(f32, f32)>, String> {
 /// the point has drawn since it was sharpened. Returns the mm this line drew (negative on error).
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_draw_line(
-    c: *mut Canvas, medium: i32, soft: f32, worn_mm: f32,
+    c: *mut Studio, medium: i32, soft: f32, worn_mm: f32,
     xy: *const f32, n: i32, profile: *const f32, profile_n: i32,
     tremor: f32, smooth: i32, ruler: i32, seed: u64,
 ) -> f32 {
@@ -316,7 +334,7 @@ pub extern "C" fn field_paint_draw_line(
         let pts = points(xy, n)?;
         let prof = if profile_n > 0 { unsafe { std::slice::from_raw_parts(profile, profile_n as usize) }.to_vec() } else { vec![0.6] };
         let mark = paint::graphite::hand_line(&pts, &prof, smooth != 0, ruler != 0, tremor.max(0.0), seed);
-        Ok(unsafe { &mut *c }.draw(&l, &mark, worn_mm.max(0.0), seed))
+        Ok(unsafe { &mut *c }.oil(|c| c.draw(&l, &mark, worn_mm.max(0.0), seed)))
     })
 }
 
@@ -324,18 +342,19 @@ pub extern "C" fn field_paint_draw_line(
 /// broken into pieces. Returns the mm drawn.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_sketch_line(
-    c: *mut Canvas, medium: i32, soft: f32, worn_mm: f32,
+    c: *mut Studio, medium: i32, soft: f32, worn_mm: f32,
     xy: *const f32, n: i32, pressure: f32, passes: i32, wander: f32, tremor: f32, seed: u64,
 ) -> f32 {
     guard(-1.0, || {
         let l = lead(medium, soft)?;
         let pts = points(xy, n)?;
         let marks = paint::graphite::sketch_marks(&pts, pressure.clamp(0.0, 1.0), passes.max(1) as usize, wander.max(0.0), true, tremor.max(0.0), seed);
-        let c = unsafe { &mut *c };
         let mut worn = worn_mm.max(0.0);
-        for (k, m) in marks.iter().enumerate() {
-            worn += c.draw(&l, m, worn, seed.wrapping_add(k as u64 * 7919));
-        }
+        unsafe { &mut *c }.oil(|c| {
+            for (k, m) in marks.iter().enumerate() {
+                worn += c.draw(&l, m, worn, seed.wrapping_add(k as u64 * 7919));
+            }
+        });
         Ok(worn - worn_mm.max(0.0))
     })
 }
@@ -344,7 +363,7 @@ pub extern "C" fn field_paint_sketch_line(
 /// at most `length` units. Returns the mm drawn.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_hatch(
-    c: *mut Canvas, medium: i32, soft: f32, worn_mm: f32,
+    c: *mut Studio, medium: i32, soft: f32, worn_mm: f32,
     xy: *const f32, ring_sizes: *const i32, rings: i32,
     angle: f32, spacing: f32, length: f32, pressure: f32, seed: u64,
 ) -> f32 {
@@ -357,16 +376,18 @@ pub extern "C" fn field_paint_hatch(
         let m = region(c, xy, ring_sizes, rings, 0.0)?;
         let marks = paint::graphite::hatch_marks(&m, angle, spacing, length, pressure.clamp(0.0, 1.0), seed);
         let mut worn = worn_mm.max(0.0);
-        for (k, mk) in marks.iter().enumerate() {
-            worn += c.draw(&l, mk, worn, seed.wrapping_add(k as u64 * 7919));
-        }
+        c.oil(|c| {
+            for (k, mk) in marks.iter().enumerate() {
+                worn += c.draw(&l, mk, worn, seed.wrapping_add(k as u64 * 7919));
+            }
+        });
         Ok(worn - worn_mm.max(0.0))
     })
 }
 
 /// A kneaded eraser over a region: lifts `strength` (0..1) of the loose drawing there.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_erase(c: *mut Canvas, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32, strength: f32) -> i32 {
+pub extern "C" fn field_paint_erase(c: *mut Studio, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32, strength: f32) -> i32 {
     guard(-1, || {
         let c = unsafe { &mut *c };
         let m = region(c, xy, ring_sizes, rings, feather)?;
@@ -377,7 +398,7 @@ pub extern "C" fn field_paint_erase(c: *mut Canvas, xy: *const f32, ring_sizes: 
 
 /// Fixative over the whole canvas: the drawing can no longer be erased.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_fix_drawing(c: *mut Canvas) -> i32 {
+pub extern "C" fn field_paint_fix_drawing(c: *mut Studio) -> i32 {
     guard(-1, || {
         unsafe { &mut *c }.fix_drawing(None);
         Ok(0)
@@ -392,7 +413,7 @@ pub extern "C" fn field_paint_fix_drawing(c: *mut Canvas) -> i32 {
 /// `feather` softens the region's edge (units), so coverage thins out towards it.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_stipple(
-    c: *mut Canvas, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32,
+    c: *mut Studio, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32,
     size: f32, coverage: f32, r: f32, g: f32, b: f32, hiding: f32, stiff: f32,
     p0: f32, p1: f32, cluster: f32, drag: f32, dip_every: i32, seed: u64,
 ) -> i32 {
@@ -411,7 +432,7 @@ pub extern "C" fn field_paint_stipple(
             .cluster(cluster.clamp(0.0, 1.0), None)
             .drag(drag.max(0.0), None)
             .dips(dip_every.max(1) as usize, 0.5, 0.5);
-        c.stipple(&m, &sp, seed);
+        c.oil(|c| c.stipple(&m, &sp, seed));
         Ok(0)
     })
 }
@@ -421,10 +442,12 @@ pub extern "C" fn field_paint_stipple(
 /// One touch of the brush tip at (x, y): pressed with `pressure`, drifting (dx, dy) while down,
 /// the handle rolled `twist` radians, the wide axis at `angle` radians.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_touch(c: *mut Canvas, h: *mut Held, x: f32, y: f32, pressure: f32, dx: f32, dy: f32, twist: f32, angle: f32) -> i32 {
+pub extern "C" fn field_paint_touch(c: *mut Studio, h: *mut Held, x: f32, y: f32, pressure: f32, dx: f32, dy: f32, twist: f32, angle: f32) -> i32 {
     guard(-1, || {
-        let t = paint::Touch::at(x, y).pressure(pressure.clamp(0.0, 1.0)).drag(dx, dy).twist(twist).angle(angle);
-        unsafe { &mut *c }.touch(unsafe { &mut *h }, &t, None);
+        let c = unsafe { &mut *c };
+        let p = if c.engine() <= 2 { pressure.clamp(0.0, 1.0) } else { pressure.max(0.0) };
+        let t = paint::Touch::at(x, y).pressure(p).drag(dx, dy).twist(twist).angle(angle);
+        c.oil(|c| c.touch(unsafe { &mut *h }, &t, None));
         Ok(0)
     })
 }
@@ -433,7 +456,7 @@ pub extern "C" fn field_paint_touch(c: *mut Canvas, h: *mut Held, x: f32, y: f32
 /// canvas). It dries at once; the paint under it should be dry.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_glaze(
-    c: *mut Canvas, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32,
+    c: *mut Studio, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32,
     r: f32, g: f32, b: f32, hiding: f32, coats: f32,
 ) -> i32 {
     guard(-1, || {
@@ -441,6 +464,8 @@ pub extern "C" fn field_paint_glaze(
         let m = if rings > 0 { Some(region(c, xy, ring_sizes, rings, feather)?) } else { None };
         let pig = paint::Pigment::with_hiding([r, g, b], hiding.clamp(0.001, 0.999));
         let k = coats.max(0.0);
+        // a glaze lays into the dry picture itself: the watercolour under it is sealed first
+        c.seal_first(m.as_ref().map(|m| m.data.iter().map(|&v| v > 0.0).collect()));
         c.glaze(&pig, m.as_ref(), move |_, _| k);
         Ok(0)
     })
@@ -453,7 +478,7 @@ pub extern "C" fn field_paint_glaze(
 /// along `sweep`, 2 scatter; `clip` 1 stops bristles at the region's edge.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_work(
-    c: *mut Canvas, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32,
+    c: *mut Studio, xy: *const f32, ring_sizes: *const i32, rings: i32, feather: f32,
     preset: i32, r: f32, g: f32, b: f32, hiding: f32, stiff: f32, angle: f32, angle_jitter: f32,
     len0: f32, len1: f32, coverage: f32, p0: f32, p1: f32, cross: f32,
     order: i32, sweep: f32, clip: i32, width: f32, seed: u64,
@@ -505,7 +530,7 @@ pub extern "C" fn field_paint_work(
         if clip >= 0 {
             hd = hd.clip(clip != 0);
         }
-        c.work(&m, &hd, seed);
+        c.oil(|c| c.work(&m, &hd, seed));
         Ok(0)
     })
 }
@@ -524,7 +549,7 @@ fn character(ch: i32, amount: f32) -> Result<paint::Character, String> {
 }
 
 /// Floats handed to the JVM; free with `field_paint_free_floats`.
-fn hand_out(v: Vec<f32>, out: *mut *mut f32, out_len: *mut i64) {
+pub(crate) fn hand_out(v: Vec<f32>, out: *mut *mut f32, out_len: *mut i64) {
     let mut b = v.into_boxed_slice();
     unsafe {
         *out_len = b.len() as i64;
@@ -546,14 +571,14 @@ pub extern "C" fn field_paint_free_floats(p: *mut f32, len: i64) {
 /// back in `out` as `[count, n_0 .. n_{count-1}, x, y, ...]`.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_outline(
-    c: *mut Canvas, h: *mut Held, xy: *const f32, n: i32, closed: i32, ch: i32, amount: f32,
+    c: *mut Studio, h: *mut Held, xy: *const f32, n: i32, closed: i32, ch: i32, amount: f32,
     pressure: f32, size: f32, seed: u64, out: *mut *mut f32, out_len: *mut i64,
 ) -> i32 {
     guard(-1, || {
         let pts = points(xy, n)?;
         let o = paint::Outline::draw(&pts, &[], closed != 0, character(ch, amount)?, seed, if size > 0.0 { Some(size) } else { None });
         if !h.is_null() {
-            o.paint(unsafe { &mut *c }, unsafe { &mut *h }, pressure.clamp(0.0, 1.0), None);
+            unsafe { &mut *c }.oil(|c| o.paint(c, unsafe { &mut *h }, pressure.clamp(0.0, 1.0), None));
         }
         let strokes: Vec<&Vec<(f32, f32)>> = o.strokes.iter().map(|s| &s.pts).filter(|p| p.len() >= 2).collect();
         let mut v = vec![strokes.len() as f32];
@@ -574,16 +599,18 @@ pub extern "C" fn field_paint_outline(
 /// Craquelure: `kind` 0 aged (a hierarchy of cracks, patchy, with grime), 1 even (one uniform
 /// network). Fitted to the canvas's ground thickness. Dries the canvas first.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_crack(c: *mut Canvas, kind: i32, seed: u64) -> i32 {
+pub extern "C" fn field_paint_crack(c: *mut Studio, kind: i32, seed: u64) -> i32 {
     guard(-1, || {
         let c = unsafe { &mut *c };
         c.dry();
+        c.seal_first(None);
         let k = match kind {
             0 => paint::Cracks::aged(seed),
             1 => paint::Cracks::even(seed),
             k => return Err(format!("unknown crack kind {k}")),
         };
-        c.crack(&k.fit(c.ground_um().max(60.0)));
+        let um = c.ground_um().max(60.0);
+        c.crack(&k.fit(um));
         Ok(0)
     })
 }
@@ -591,9 +618,11 @@ pub extern "C" fn field_paint_crack(c: *mut Canvas, kind: i32, seed: u64) -> i32
 /// A ground layer over everything: `um` micrometres of (r,g,b) at `hiding`, body `stiff`, roughened
 /// by `texture` before it levels.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_prime(c: *mut Canvas, r: f32, g: f32, b: f32, hiding: f32, um: f32, stiff: f32, texture: f32, seed: u64) -> i32 {
+pub extern "C" fn field_paint_prime(c: *mut Studio, r: f32, g: f32, b: f32, hiding: f32, um: f32, stiff: f32, texture: f32, seed: u64) -> i32 {
     guard(-1, || {
-        unsafe { &mut *c }.prime([r, g, b], hiding.clamp(0.001, 0.999), um.max(0.0), stiff.clamp(0.0, 1.0), texture.clamp(0.0, 1.0), seed);
+        let c = unsafe { &mut *c };
+        c.seal_first(None);
+        c.prime([r, g, b], hiding.clamp(0.001, 0.999), um.max(0.0), stiff.clamp(0.0, 1.0), texture.clamp(0.0, 1.0), seed);
         Ok(0)
     })
 }
@@ -691,31 +720,22 @@ pub extern "C" fn field_paint_mix_spectral(rgb: *const f32, weights: *const f32,
 
 /// An independent copy of the canvas, wet paint and all.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_canvas_copy(c: *const Canvas) -> *mut Canvas {
+pub extern "C" fn field_paint_canvas_copy(c: *const Studio) -> *mut Studio {
     guard(std::ptr::null_mut(), || Ok(Box::into_raw(Box::new(unsafe { &*c }.clone()))))
 }
 
 /// The canvas as it looks now, wet paint included at its laid thickness, as sRGB ARGB.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_render_wet_argb(c: *const Canvas, out: *mut i32, capacity: i32) -> i32 {
+pub extern "C" fn field_paint_render_wet_argb(c: *const Studio, out: *mut i32, capacity: i32) -> i32 {
     guard(-1, || {
-        let px = unsafe { &*c }.seen();
-        if px.len() > capacity as usize {
-            return Err(format!("render buffer holds {capacity} pixels, canvas has {}", px.len()));
-        }
-        let out = unsafe { std::slice::from_raw_parts_mut(out, px.len()) };
-        let to8 = |v: f32| (paint::color::linear_to_srgb(v) * 255.0).round().clamp(0.0, 255.0) as u32;
-        for (o, p) in out.iter_mut().zip(&px) {
-            *o = (0xff00_0000u32 | to8(p[0]) << 16 | to8(p[1]) << 8 | to8(p[2])) as i32;
-        }
-        Ok(px.len() as i32)
+        write_argb(&unsafe { &*c }.seen_now(), out, capacity)
     })
 }
 
 /// Clock, wet volume and drying: `out` gets `[clock minutes, hand minutes, open, setting, tacky,
 /// dry]`, the last four the share of the canvas at each stage.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_stats(c: *const Canvas, out: *mut f64) -> i32 {
+pub extern "C" fn field_paint_stats(c: *const Studio, out: *mut f64) -> i32 {
     guard(-1, || {
         let c = unsafe { &*c };
         let s = c.stage_shares();
@@ -726,22 +746,21 @@ pub extern "C" fn field_paint_stats(c: *const Canvas, out: *mut f64) -> i32 {
 
 /// Write the whole canvas state, wet paint included, to `path`.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_save_state(c: *const Canvas, path: *const c_char) -> i32 {
+pub extern "C" fn field_paint_save_state(c: *const Studio, path: *const c_char) -> i32 {
     guard(-1, || {
         let p = unsafe { std::ffi::CStr::from_ptr(path) }.to_str().map_err(|e| e.to_string())?;
         let mut f = std::io::BufWriter::new(std::fs::File::create(p).map_err(|e| format!("{p}: {e}"))?);
-        unsafe { &*c }.write_state(&mut f, "field-paint").map_err(|e| e.to_string())?;
+        unsafe { &*c }.write_state(&mut f).map_err(|e| e.to_string())?;
         Ok(0)
     })
 }
 
 /// Read a canvas written by `field_paint_save_state`.
 #[unsafe(no_mangle)]
-pub extern "C" fn field_paint_load_state(path: *const c_char) -> *mut Canvas {
+pub extern "C" fn field_paint_load_state(path: *const c_char) -> *mut Studio {
     guard(std::ptr::null_mut(), || {
         let p = unsafe { std::ffi::CStr::from_ptr(path) }.to_str().map_err(|e| e.to_string())?;
         let mut f = std::io::BufReader::new(std::fs::File::open(p).map_err(|e| format!("{p}: {e}"))?);
-        let (c, _) = Canvas::read_state(&mut f).map_err(|e| e.to_string())?;
-        Ok(Box::into_raw(Box::new(c)))
+        Ok(Box::into_raw(Box::new(Studio::read_state(&mut f)?)))
     })
 }

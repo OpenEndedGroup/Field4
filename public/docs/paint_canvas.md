@@ -2,10 +2,12 @@
 
 `PaintCanvas` turns any [FLine](fline_examples.md) into a brushstroke of simulated oil paint, a
 pencil line, hatching, a stippled area or a hand-drawn outline. The
-simulation is the `paint` crate from
-[claude-paint](https://github.com/aliceisjustplaying/claude-paint/tree/main/crates/paint). It models
+simulation is the `paint` crate from [claude-paint](https://github.com/aliceisjustplaying/claude-paint),
+by alice ([@aliceisjustplaying](https://github.com/aliceisjustplaying)), MIT licensed. It models
 a brush as individual bristles that carry paint and run out. Paint mixes on the canvas like pigment,
 so blue into yellow makes green. Each stroke stays wet, stiffening and drying over simulated minutes.
+The same canvas can be a sheet of paper for [watercolour and ink](watercolor.md), and its
+brushes can have [hairs that move](paint_gestures.md).
 Field calls it through a small native library, which you build once (see
 [Building the library](#building-the-library)). The examples below are also in the
 [paint_canvas](agent_transcripts.md#paint_canvas) starting point, and the classes they use
@@ -337,9 +339,116 @@ display("main", canvas.png(relief = 0.8, gloss = 0.3))
 
 ![seven pale bands mixed from lead white and seven different tubes on a red-brown ground, with fine cracks running through everything](assets/paint_canvas/aged.png)
 
+## Knives, rags and spatter
+
+Three more tools work the paint without a brush:
+
+- `canvas.knife(width)` is a painting knife, and `knife.load(color)` puts a bead of paint on its
+  blade. `canvas.knife(line, knife)` pulls it along a line. The flexible blade rests on the high
+  points of the surface and lays a flat-topped slab below its edge, pressing paint out into ridges
+  at its ends and leaving a bead where it lifts. `canvas.scrape(line, knife)` presses hard and lays
+  nothing: it cuts the wet paint off down to the dry surface, and the blade keeps what it cut.
+- `canvas.rag(width)` is a cotton rag bunched into a pad. `canvas.wipe(line, rag)` lifts open paint
+  along a line in streaks, where the creases of the cloth touch, and `canvas.blot(rag, x, y)` presses
+  it down once. Paint past its gel point no longer comes away. The face of the rag loads up as it
+  works; `canvas.refold(rag)` turns a cleaner face out and `canvas.dampen(rag)` wets it with spirits,
+  so that it lifts nearly to the ground.
+- `canvas.spatter(brush, x, y, toward)` flicks a loaded brush. Only the paint the hairs can't hold
+  flies off, so fluid paint spatters and stiff paint barely does: load with `turps` (turpentine,
+  0..0.9 of the paint's volume) for a wet flick. Each drop comes off one hair, so a brush loaded with
+  two colours, one on each side (`part = LoadPart(side = ...)`), spatters both.
+
+All three report what they move. `wipe` and `blot` return the mm³ of paint they lifted,
+`canvas.carried(knife)` is the paint on the blade, and `stats.wetPaintMm3` is the wet paint left on
+the canvas; a scrape takes off the canvas exactly what it puts on the blade.
+
+The box below lays a dark passage, wipes two lights out of it with a rag, knifes a pale band across
+it and scrapes through that, then spatters a double-loaded brush. A low lamp from the upper left
+(`light = PaintLight.Raking`) shows the slab's ridges and the shine of the wet paint.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/tools.png" alt="an oil canvas whose warm brown ground shows through a dark umber passage of broad, ragged horizontal strokes. A rag has wiped two lighter streaks across its upper half: the first wavy and marked by the creases of the cloth, the second straight, wider and paler, lifted almost to the ground. Lower left, a pale cream slab laid with a painting knife stands up in relief, with torn holes and ragged ends, crossed by two cleared vertical bands where the knife scraped it. Across the lower right, small round drops of red and blue paint are spattered over the dark paint, thinning out to the right" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="tools" embed=true}
+:::static
+import afield.paint.*
+
+val canvas = PaintCanvas(900, aspect = 1.5, ground = PaintGround.Oil, sizeMm = 300.0, seed = 4)
+val passage = FLine().moveTo(60, 60).lineTo(940, 60).lineTo(940, 600).lineTo(60, 600).lineTo(60, 60)
+canvas.work(passage, rgb(0.22, 0.16, 0.12), handling = Handling.Broad, hiding = 0.7, stiff = 0.3)
+
+val rag = canvas.rag(70.0)
+canvas.wipe(FLine().moveTo(120, 170).cubicTo(350, 120, 600, 220, 880, 150), rag, listOf(0.8))
+canvas.refold(rag).dampen(rag, 0.8)
+canvas.wipe(FLine().moveTo(160, 260).lineTo(840, 250), rag, listOf(0.6))
+
+val knife = canvas.knife(90.0).load(rgb(0.92, 0.85, 0.66), amount = 1.0)
+canvas.knife(FLine().moveTo(100, 420).lineTo(900, 400), knife, pressure = 0.4..0.6)
+canvas.scrape(FLine().moveTo(240, 330).lineTo(250, 520), knife.wipe())
+
+val flick = canvas.brush(BrushKind.Round, 40.0)
+flick.load(rgb(0.8, 0.2, 0.1), stiff = 0.3, turps = 0.5, part = LoadPart(side = -1.0, share = 0.5))
+flick.load(rgb(0.2, 0.45, 0.8), stiff = 0.3, turps = 0.5, wipe = 0.0, part = LoadPart(side = 1.0, share = 0.5))
+canvas.spatter(flick, 150.0, 540.0, toward = 600.0 to -60.0, spread = 0.3, force = 0.6)
+
+display("main", canvas.png(wet = true, light = PaintLight.Raking))
+```
+
+![a dark passage with two lights wiped out by a rag, a knifed cream slab scraped through, and red and blue spatter](assets/paint_canvas/tools.png)
+
+## Brushes made to order
+
+A `BrushKind` is a starting point. `brush(kind, width, config = BrushConfig(...))` changes how the
+brush is made: `bristles` (how many hairs it is simulated with), `stiffness` (0 soft sable to 1
+stiff hog), `length` (how far the tips trail behind the contact), `lay` (how thick a full brush
+lays paint), `run` (how far a load lasts), `pickup` and `push` (how much wet paint each hair takes
+up or ploughs aside), `splay`, `ragged` and `point`. Anything left out keeps the kind's own value,
+and `brush.config` reads back what the brush is. Below, the same hog flat, each dipped in the same
+paint and stroked the same way: as it comes, with 12 bristles, with 40 ragged ones, taking up and
+ploughing aside most of the paint it passes over, and laying a thin film that lasts:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/configured.png" alt="five dark blue S-shaped strokes from the same hog flat brush on cream paper. The first is a solid band. The second, with 12 bristles, splits into separate streaks and runs out into thin lines at its lower end. The third, with 40 ragged bristles, is solid at the top and frays into a broken end. The fourth, which takes up and ploughs aside most of the paint, is striped light and dark along its length, with dark ridges at its edges. The fifth, laying a thin film that lasts, is paler and finely streaked all the way down" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="configured" embed=true}
+:::static
+import afield.paint.*
+
+val canvas = PaintCanvas(900, aspect = 1.6, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 300.0)
+val configs = listOf(null, BrushConfig(bristles = 12), BrushConfig(bristles = 40, ragged = 1.0),
+    BrushConfig(pickup = 0.9, push = 0.9), BrushConfig(lay = 0.4, run = 900.0))
+configs.forEachIndexed { i, config ->
+    val brush = canvas.brush(BrushKind.HogFlat, width = 60.0, config = config)
+    brush.load(rgb(0.12, 0.13, 0.2), amount = 0.6)
+    val x = 110.0 + i * 190
+    canvas.stroke(FLine().moveTo(x, 50).cubicTo(x + 90, 230, x - 90, 400, x, 580), brush, pressure = 0.9..0.5)
+}
+display("main", canvas.png())
+```
+
+![five strokes of one brush made five ways: solid, streaky with 12 bristles, ragged, striped and ridged, thin and even](assets/paint_canvas/configured.png)
+
+## Brushes that stay dirty
+
+A brush keeps what it picks up. Stroked through wet paint, it carries some of that colour into its
+next stroke, and `load` mixes new paint into what is left unless `wipe` takes it out first. To come
+back to the same brush later, keep it: a `PaintToolbox` holds brushes, knives, rags and pencils by
+name.
+
+```diffstatic {data-lang=kotlin}
+val tools = PaintToolbox()
+tools["sky"] = canvas.brush(BrushKind.HogFlat, 45.0)
+tools.brush("sky").load(rgb(0.45, 0.55, 0.75))
+canvas.stroke(sky, tools.brush("sky"))
+// later, dirty with the earth it was dragged through
+canvas.stroke(horizon, tools.brush("sky"))
+tools.save(file)                      // every bristle's paint, the knife's bead, the rag's faces
+val again = PaintToolbox.load(file)   // carries on exactly as the tools would have
+```
+
+`canvas.carried(brush)` reports the colour and volume of the paint in a brush, and
+`tools.describe(canvas)` says the same for every tool. Each tool also snapshots on its own:
+`brush.state()` and `PaintBrush.restore(state)`. [AI4 paints](ai4_painting.md) keeps its painter's
+brushes this way, so a conversation rewound to an earlier request gets its brushes back as dirty as
+they were.
+
 ## The canvas itself
 
-`PaintCanvas(widthPx, aspect, ground, groundColor, seed, view, sizeMm)`:
+`PaintCanvas(widthPx, aspect, ground, groundColor, seed, view, sizeMm, engine)`:
 
 - `ground` is what the canvas starts as:
     - `PaintGround.Bare`, the default, is a flat ground of `groundColor` (white by default).
@@ -347,20 +456,34 @@ display("main", canvas.png(relief = 0.8, gloss = 0.3))
       warm red-brown ground. Its texture shows through thin paint and catches the relief lighting.
     - `PaintGround.OilRedGround` is a red-brown layer under two pale knifed and rolled grounds.
     - `PaintGround.Linen` is raw linen in `groundColor`, for priming yourself with
-      `prime(color, microns = ...)`.
+      `prime(color, microns = ...)`. `prime(..., absorbent = 1.0)` makes that ground a chalk and
+      glue one, which draws oil out of the paint laid on it, so the paint dries leaner and matte.
+    - `PaintGround.RawCotton` and `PaintGround.RawLinen` are bare cloth in its own colour, with no
+      ground at all, as soak-stain painters used it.
 
     `groundColor` only applies to `Bare` and `Linen`.
 - `sizeMm` is the canvas's physical width. It changes nothing about the coordinates, only how big
   the real-sized things in the simulation look: bristles, pencil points, the linen weave, cracks.
 - `seed` seeds every brush, pencil mark and crack, and the linen of an oil ground. The same seed and
   the same calls always paint the same picture.
+- `engine` is the version of the simulation to paint with, the newest by default
+  (`PaintCanvas.engine`). An engine never changes: a canvas made with `engine = 2` paints the same
+  calls to the same pixels as Field did before engine 5, and a saved canvas opens with the engine it
+  was painted with. Engine 3 added thinned paint and raw cloth, engine 4 stiff impasto that holds its
+  ridges, hair that clumps in stiff paint, turpentine and oil in the paint, absorbent grounds and a
+  matte or glossy surface, and engine 5 the knife's torn edges. Oil paint dries 2.5 times more slowly
+  from engine 3 on.
 
 Looking at it, and keeping it:
 
 - `png()` and `render()` show a dried copy, the way the painting will look. `render(wet = true)`
-  shows it as it looks right now, wet paint and all.
+  shows it as it looks right now, wet paint and all. `light = PaintLight(azimuth, elevation)` looks
+  at it under a lamp instead of the default relief lighting: ridges cast shadows along the light,
+  and wet paint shines. `PaintLight.Raking` is a low lamp from the upper left, `PaintLight.Gallery`
+  a high one.
 - `stats` reports the simulated clock, an estimate of the hand time the marks would take a painter,
-  and how much of the canvas is still open, setting, tacky or dry.
+  how much of the canvas is still open, setting, tacky or dry, and the wet paint and solvent on it
+  in mm³.
 - `copy()` is an independent copy, wet paint included, for trying something out.
   `saveState(path)` writes the whole canvas to a file and `PaintCanvas.load(path)` carries on from
   it. `save(path)` writes a PNG.
@@ -379,13 +502,19 @@ versions before preparing paint. Build it once:
 ./gradlew buildPaintNative
 ```
 
-The first build downloads the crate from GitHub at a fixed revision, and takes a few minutes.
+The crate is alice's [claude-paint](https://github.com/aliceisjustplaying/claude-paint) `paint`
+crate, kept in the repository at `native/field-paint/vendor/paint` under its MIT licence, with the
+upstream commit it was taken from in `VENDORED.md` there. Field's additions to it are in its
+`src/field/` and are Field's, not alice's. The first build downloads the crate's dependencies from
+crates.io and takes a few minutes.
 Later builds take seconds. The library goes in `build/field-paint/release`, where Field finds it
 without restarting. To use a copy somewhere else, set `AFIELD_PAINT_LIBRARY` or
 `-Dafield.paint.library` to its path. `PaintCanvas.isAvailable` says whether Field can find it, and
 `PaintLibrary.describe()` says where it looked.
 
-See also: [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
+See also: [Watercolour and ink](watercolor.md), where water on paper moves by itself,
+[Brushes with moving hairs](paint_gestures.md), whose hairs bend, splay and flick under timed
+gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
 [Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
 layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
 canvas.
