@@ -348,6 +348,8 @@
   {"doc": "optical_flow_pingpong", "box": "agent_graphics_context", "codeSha256": "b9d0b059d6d3d09a", "codeLines": 16, "receivers": ["afield.Box"], "preamble": "optical_flow_pingpong__agent_graphics_context.preamble.kt"},
   {"doc": "optical_flow_pingpong", "box": "flow_texture", "codeSha256": "ef02e5b85d011e00", "codeLines": 12, "receivers": ["afield.Box"], "preamble": "optical_flow_pingpong__flow_texture.preamble.kt"},
   {"doc": "optical_flow_pingpong", "box": "optical_flow_pingpong", "codeSha256": "5387236b823c6dac", "codeLines": 98, "receivers": ["afield.Box"], "preamble": "optical_flow_pingpong__optical_flow_pingpong.preamble.kt"},
+  {"doc": "orca_duet", "box": "orca_duet", "codeSha256": "58d8de4fa4d8e0ea", "codeLines": 57, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "orca_hello", "box": "orca_hello", "codeSha256": "023868da8a1031b0", "codeLines": 20, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "paint_canvas", "box": "paint_first_strokes", "codeSha256": "273b0b2f2d5e2278", "codeLines": 24, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "paint_canvas", "box": "paint_flow_field", "codeSha256": "29cb9b56d9005919", "codeLines": 33, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "paint_canvas", "box": "paint_pencil_drawing", "codeSha256": "f809458ed2534138", "codeLines": 25, "receivers": ["afield.Box"], "preamble": ""},
