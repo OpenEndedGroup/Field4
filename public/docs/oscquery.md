@@ -32,6 +32,22 @@ q.menu("/scene", listOf("dawn", "dusk", "night")) { scene -> markdown("scene: $s
 add an *OSCQuery* COMP; "My piece" appears in its list of servers, with a slider for the cutoff, a
 toggle for `on` and a menu for the scene.
 
+What another program reads is plain JSON. Any HTTP client sees it, including one in a box:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/served_json.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="oscquery-served-json" alt="The JSON the service returns for /synth/cutoff on one line: FULL_PATH /synth/cutoff, TYPE f, ACCESS 3, VALUE [1000.0], RANGE min 20.0 max 20000.0, DESCRIPTION filter cutoff in Hz"}
+import afield.oscquery.*
+import java.net.URI
+import java.net.http.*
+
+oscQuery("My piece").float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
+
+val http = HttpClient.newHttpClient()
+val req = HttpRequest.newBuilder(URI("http://127.0.0.1:9020/synth/cutoff")).build()
+markdown("```json\n" + http.send(req, HttpResponse.BodyHandlers.ofString()).body() + "\n```")
+```
+
+`ACCESS` 3 means other programs may both read and set the value; `OscAccess.READ` gives 1.
+
 Each callback runs on Field's main loop, like the rest of the box, when another program sets the
 parameter. Values arrive as the declared type and clipped to the range. An int sent to `cutoff`
 arrives as a Double, and 30000 arrives as 20000.
@@ -103,6 +119,20 @@ change over its WebSocket. Its callback runs on the main loop. `number`, `value`
 `choices` and `description` read what the service last reported; `refresh()` reads the list
 again.
 
+Pointed at Field's own service, a remote lists what the publishing box above declared:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/remote_list.png" embed=true w="760" h="50" wait="2.0" timeout="90" name="oscquery-remote-list" alt="Three parameters read back by the remote: /scene of type s with no range, /synth/cutoff of type f with range 20.0 to 20000.0, and /synth/on of type T with no range"}
+import afield.oscquery.*
+
+val q = oscQuery("My piece")
+q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
+q.bool("/synth/on", true) { }
+q.menu("/scene", listOf("dawn", "dusk", "night")) { }
+
+val self = oscQueryRemote("127.0.0.1", 9020)
+markdown(self.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
+```
+
 `oscQueryMirror(remote)` builds Field controls for all of them: a slider for each number and a
 checkbox for each boolean. Each control sets the remote parameter when you move it, and moves
 when the remote value changes. The optional third argument keeps only the parameters you want:
@@ -148,9 +178,11 @@ this machine only. `OscQueryServices.closeAll()` stops every service and remote 
   appear, under the same name.
 
 ??? aside "How this page was checked"
-    The fences here are static: nothing on the page is captured by the docs runner. The behaviour
-    is pinned by `src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`, which drives a
-    server over real loopback HTTP, UDP and WebSocket with the JDK clients and JavaOSC, and by
-    the demo document, whose boxes were each run through the backdoor. The DNS-SD responder is
-    written from RFC 6762 and 6763 rather than taken from JmDNS, to avoid a new dependency.
-    `dev_docs/OSCQUERY_BRIDGE.md` records what was tested against other implementations.
+    Two fences are captured by the docs runner: the JSON fetched over loopback HTTP from inside a
+    box, and the parameter list a remote reads back from Field's own service. The rest are static.
+    The behaviour is pinned by `src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`,
+    which drives a server over real loopback HTTP, UDP and WebSocket with the JDK clients and
+    JavaOSC, and by the demo document, whose boxes were each run through the backdoor. The DNS-SD
+    responder is written from RFC 6762 and 6763 rather than taken from JmDNS, to avoid a new
+    dependency. `dev_docs/OSCQUERY_BRIDGE.md` records what was tested against other
+    implementations.
