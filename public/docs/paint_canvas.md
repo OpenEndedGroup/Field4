@@ -6,6 +6,8 @@ simulation is the `paint` crate from [claude-paint](https://github.com/aliceisju
 by alice ([@aliceisjustplaying](https://github.com/aliceisjustplaying)), MIT licensed. It models
 a brush as individual bristles that carry paint and run out. Paint mixes on the canvas like pigment,
 so blue into yellow makes green. Each stroke stays wet, stiffening and drying over simulated minutes.
+The same canvas can be a sheet of paper for [watercolour and ink](watercolor.md), and its
+brushes can have [hairs that move](paint_gestures.md).
 Field calls it through a small native library, which you build once (see
 [Building the library](#building-the-library)). The examples below are also in the
 [paint_canvas](agent_transcripts.md#paint_canvas) starting point, and the classes they use
@@ -510,7 +512,9 @@ without restarting. To use a copy somewhere else, set `AFIELD_PAINT_LIBRARY` or
 `-Dafield.paint.library` to its path. `PaintCanvas.isAvailable` says whether Field can find it, and
 `PaintLibrary.describe()` says where it looked.
 
-See also: [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
+See also: [Watercolour and ink](watercolor.md), where water on paper moves by itself,
+[Brushes with moving hairs](paint_gestures.md), whose hairs bend, splay and flick under timed
+gestures of the hand, [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md),
 [Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
 layer with the pen's pressure, and [AI4 paints](ai4_painting.md), where the AI chat paints on this
 canvas.

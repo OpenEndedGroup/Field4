@@ -16,6 +16,7 @@ use std::cell::RefCell;
 use std::ffi::{c_char, CString};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+mod dynamic;
 mod studio;
 mod tools;
 mod water;

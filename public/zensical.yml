@@ -157,6 +157,8 @@ nav:
     - Colour & Images:
       - Colors Examples: colors_examples.md
       - Paint and Pencil from FLines: paint_canvas.md
+      - Watercolour and Ink: watercolor.md
+      - Brushes with Moving Hairs: paint_gestures.md
       - Imaging & Computer Vision: imaging_examples.md
       - Depth & CLIP (ONNX): onnx.md
     - Geometry & Solids:

@@ -239,10 +239,13 @@ pub fn reach_um(p: f32, fill: f32) -> f32 {
     HAIR_REACH_UM * (0.3 + 3.0 * p) * (0.25 + 0.75 * fill.min(1.0).sqrt()) + MENISCUS_UM * fill.min(1.0).powi(2)
 }
 
+/// Water standing deeper than this, µm, wets a hair that touches it wherever it lies in the tooth.
+const STANDING_UM: f32 = 20.0;
+
 /// How fully a brush whose lowest reach is `reach` µm below `top` (the highest relief under it)
 /// touches pixel `idx`: water already standing there wets the hair wherever it is.
 pub fn touch(water: &Water, idx: usize, top: f32, reach: f32) -> f32 {
-    if water.sw[idx] > water.paper.pin_um {
+    if water.sw[idx] > STANDING_UM {
         return 1.0;
     }
     ((water.relief[idx] - (top - reach)) / (0.3 * reach).max(1.0)).clamp(0.0, 1.0)
@@ -424,7 +427,7 @@ pub fn water_for_canvas(c: &Canvas, seed: u64) -> Water {
     } else if c.absorb_any {
         Paper { name: "chalk ground".into(), cap_um: 30.0, absorb_um_s: 8.0, wick_mm2_s: 0.05, roughness_um: 0.0, ..Paper::hot_press() }
     } else {
-        Paper { name: "sealed ground".into(), cap_um: 0.0, absorb_um_s: 0.0, wick_mm2_s: 0.0, roughness_um: 0.0, pin_um: 40.0, ..Paper::hot_press() }
+        Paper { name: "sealed ground".into(), cap_um: 0.0, absorb_um_s: 0.0, wick_mm2_s: 0.0, roughness_um: 0.0, pin_um: 800.0, ..Paper::hot_press() }
     };
     paper.formation = paper.formation.max(1e-3);
     let mut w = Water::new(Paper { roughness_um: 1.0, ..paper.clone() }, f.w, f.h, c.px_mm(), seed);
@@ -475,6 +478,51 @@ pub fn lay_over(c: &mut Canvas, water: &Water) {
 }
 
 // ---- saving ---------------------------------------------------------------------------------------
+
+/// A watercolour brush, exactly (`FPW1`): width, capacity, water, scrub and every pigment in it.
+pub fn write_wbrush(b: &WaterBrush) -> Vec<u8> {
+    let mut v = b"FPW1".to_vec();
+    for x in [b.width, b.capacity_mm3, b.water_mm3, b.scrub] {
+        v.extend_from_slice(&x.to_le_bytes());
+    }
+    v.extend_from_slice(&(b.pigment.len() as u64).to_le_bytes());
+    for (p, m) in &b.pigment {
+        v.extend_from_slice(&(p.name.len() as u64).to_le_bytes());
+        v.extend_from_slice(p.name.as_bytes());
+        for x in [p.k[0], p.k[1], p.k[2], p.s, p.density, p.diameter_um, p.stain, p.lift, *m] {
+            v.extend_from_slice(&x.to_le_bytes());
+        }
+    }
+    v
+}
+
+/// A watercolour brush written by `write_wbrush`.
+pub fn read_wbrush(b: &[u8]) -> Result<WaterBrush, String> {
+    let mut at = 0usize;
+    let mut take = |n: usize| -> Result<&[u8], String> {
+        let s = b.get(at..at + n).ok_or("truncated brush state")?;
+        at += n;
+        Ok(s)
+    };
+    if take(4)? != b"FPW1" {
+        return Err("not a watercolour brush's state".into());
+    }
+    let mut f = || -> Result<f32, String> { Ok(f32::from_le_bytes(take(4)?.try_into().unwrap())) };
+    let (width, capacity_mm3, water_mm3, scrub) = (f()?, f()?, f()?, f()?);
+    std::mem::drop(f);
+    let n = u64::from_le_bytes(take(8)?.try_into().unwrap()) as usize;
+    let mut pigment = Vec::new();
+    for _ in 0..n.min(64) {
+        let l = u64::from_le_bytes(take(8)?.try_into().unwrap()) as usize;
+        let name = String::from_utf8_lossy(take(l.min(1 << 16))?).into_owned();
+        let mut v = [0f32; 9];
+        for x in &mut v {
+            *x = f32::from_le_bytes(take(4)?.try_into().unwrap());
+        }
+        pigment.push((AqPigment { name, k: [v[0], v[1], v[2]], s: v[3], density: v[4], diameter_um: v[5], stain: v[6], lift: v[7] }, v[8]));
+    }
+    Ok(WaterBrush { width, capacity_mm3, water_mm3, pigment, scrub })
+}
 
 struct W(Vec<u8>);
 impl W {
@@ -541,6 +589,7 @@ pub fn write_water(water: &Water) -> Vec<u8> {
     let l = &water.ledger;
     for v in [l.water_added, l.water_taken, l.water_evaporated, l.water_runoff, l.water_absorbed] { w.d(v); }
     for v in [&l.pigment_added, &l.pigment_taken, &l.pigment_runoff, &l.pigment_sealed] { w.ds(v); }
+    w.fs(&water.fibre_agent);
     w.0
 }
 
@@ -574,7 +623,9 @@ pub fn read_water(bytes: &[u8]) -> Result<Water, String> {
         water_added: r.d()?, water_taken: r.d()?, water_evaporated: r.d()?, water_runoff: r.d()?, water_absorbed: r.d()?,
         pigment_added: r.ds()?, pigment_taken: r.ds()?, pigment_runoff: r.ds()?, pigment_sealed: r.ds()?,
     };
-    Ok(Water { w, h, dx_mm, paper, relief, cap, fdir, perm, sealed, sw, aw, agent, species, ms, ma, md, mg, mb, tilt_deg, tilt_dir_deg, evap_um_s, dispersion_mm2_s, marangoni_n_m, clock_s, last_dt, last_wick_change, last_flow_change, last_marangoni_mm_s, steps_taken: 0, ledger })
+    // (written after the rest: a state from before the fibres held agent has none on them)
+    let fibre_agent = if r.1 < r.0.len() { r.fs(Some(n))? } else { vec![0.0; n] };
+    Ok(Water { w, h, dx_mm, paper, relief, cap, fdir, perm, sealed, sw, aw, agent, fibre_agent, species, ms, ma, md, mg, mb, tilt_deg, tilt_dir_deg, evap_um_s, dispersion_mm2_s, marangoni_n_m, clock_s, last_dt, last_wick_change, last_flow_change, last_marangoni_mm_s, steps_taken: 0, ledger })
 }
 
 #[cfg(test)]

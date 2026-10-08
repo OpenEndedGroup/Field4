@@ -16,6 +16,9 @@ use std::io::{Read, Write};
 pub struct Studio {
     pub canvas: Canvas,
     pub water: Option<Box<Water>>,
+    /// Seconds of hair contact per pixel in the last segmented-brush stroke (not saved: it describes
+    /// a stroke, not the canvas).
+    pub last_contact: Option<Vec<f32>>,
 }
 
 impl std::ops::Deref for Studio {
@@ -36,7 +39,7 @@ const MAGIC: &[u8; 8] = b"FPSTUDI1";
 
 impl Studio {
     pub fn new(canvas: Canvas) -> Studio {
-        Studio { canvas, water: None }
+        Studio { canvas, water: None, last_contact: None }
     }
 
     fn has_pigment(&self) -> bool {
@@ -154,7 +157,7 @@ impl Studio {
             let (canvas, _) = Canvas::read_state(&mut &canvas_bytes[..]).map_err(|e| e.to_string())?;
             let m = len(16 + n)?;
             let water = paint::field::watercolor::read_water(all.get(24 + n..24 + n + m).ok_or("truncated studio state")?)?;
-            return Ok(Studio { canvas, water: Some(Box::new(water)) });
+            return Ok(Studio { canvas, water: Some(Box::new(water)), last_contact: None });
         }
         let (canvas, _) = Canvas::read_state(&mut &all[..]).map_err(|e| e.to_string())?;
         Ok(Studio::new(canvas))

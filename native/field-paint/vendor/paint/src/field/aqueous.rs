@@ -51,11 +51,13 @@
 //!   pigment's `lift` rate (its gum arabic redissolving), faster under a moving brush.
 //! - **Marangoni flow**: paint's gum arabic and wetting agents lower the water's surface tension, by
 //!   up to `marangoni_n_m` (0.008 N/m; an estimate) as the paint's concentration rises (the pigment
-//!   stands for the additives that go with it). Cleaner, higher-tension water pulls the surface
+//!   stands for the additives that go with it), by Szyszkowski's law up to the agents' critical
+//!   micelle concentration and no further, so a wash of paint is evenly tensioned inside. Cleaner, higher-tension water pulls the surface
 //!   toward it, a film flux of `h² / (2 μ) · ∇σ`, so paint touched into a wet wash spreads into it:
 //!   wet-in-wet's blooms. The agents are their own field (`agent`), laid with the paint, carried by
 //!   the water and spreading themselves; the surface moves at `h / (2 μ) · ∇σ` (capped at 10 mm/s),
-//!   carrying the agents and the suspended pigment with it. The agents also adsorb onto the fibres
+//!   carrying the agents with it, and the suspended pigment, mixed through the film's depth, at half
+//!   that speed. The agents also adsorb onto the fibres
 //!   they wet (`AGENT_ADSORB_S`, 0.2 per second; an estimate), so the drive dies away within seconds
 //!   and a bloom stays where it reached. The water itself is not moved by the flow.
 //! - **Dispersion** (an approximation, off by default, `Water::dispersion_mm2_s`): a diffusion of the
@@ -77,6 +79,15 @@
 
 use crate::Rgb;
 use rayon::prelude::*;
+
+thread_local! {
+    /// Seconds spent in each phase of `Water::step` on this thread (profiling): flow, Marangoni and
+    /// the rest of the surface, wicking, per pixel.
+    pub static PROFILE: std::cell::RefCell<[f64; 4]> = const { std::cell::RefCell::new([0.0; 4]) };
+}
+fn prof(k: usize, since: std::time::Instant) {
+    PROFILE.with(|p| p.borrow_mut()[k] += since.elapsed().as_secs_f64());
+}
 
 /// ρ g / (3 μ) for water at 20 °C: 998 kg/m³ × 9.81 m/s² / (3 × 1.0 mPa s), per m per s.
 const GRAVITY_FILM: f64 = 998.0 * 9.81 / (3.0 * 1.0e-3);
@@ -117,14 +128,30 @@ pub const MARANGONI_N_M: f32 = 0.008;
 /// Wetting agent and gum laid with each µg of pigment, µg (a proxy: tube watercolour carries about as
 /// much binder and additive as pigment).
 const AGENT_PER_UG: f32 = 1.0;
-/// The rate the wetting agents adsorb onto the fibres they wet, leaving the surface, per second (an
-/// estimate: blooms stop spreading within seconds, though the wash stays wet for minutes).
+/// The rate the wetting agents adsorb onto the fibres they wet, leaving the surface, per second, while
+/// the fibres have room (an estimate: blooms stop spreading within seconds, though the wash stays wet
+/// for minutes).
 const AGENT_ADSORB_S: f32 = 0.2;
+/// How much wetting agent the fibres of a pixel hold once saturated, µg/mm² (Langmuir adsorption, an
+/// estimate): a bloom spreading onto paper wetted only by clean water loses its agents to the fibres
+/// and stops, while inside a wash the paper is soon saturated and the paint keeps its agents, so its
+/// tension stays even.
+const AGENT_FIBRE_UG_MM2: f32 = 0.05;
+/// A film pulled along by its surface moves with a velocity falling linearly from the surface's to
+/// nothing at the paper, so pigment mixed through its depth travels at half the surface's speed,
+/// while the agents, at the surface, travel at all of it.
+const MARANGONI_PIGMENT_SHARE: f32 = 0.5;
 /// The fastest the Marangoni flow moves the surface, mm/s: the film law gives far more at a pixel-sharp
 /// front, which real fronts are not; surface speeds of a few mm/s to cm/s are what blooms show (an
 /// estimate).
 const MARANGONI_MAX_MM_S: f32 = 10.0;
-const SIGMA_HALF_UG_MM3: f32 = 1.0;
+/// How the wetting agents lower the water's surface tension with their concentration c (µg/mm³):
+/// Szyszkowski's law, Δσ ∝ ln(1 + c / A), up to the critical micelle concentration, past which more
+/// agent forms micelles and the tension stays where it is. So inside a wash of paint (well above it)
+/// the tension is even and drives nothing; it pulls only where paint meets cleaner water, a bloom.
+/// Estimates: the CMC of the gum and wetting agents in paint, and Szyszkowski's A.
+const AGENT_CMC_UG_MM3: f32 = 0.5;
+const SZYSZKOWSKI_A_UG_MM3: f32 = 0.05;
 /// Sediment entrainment: the share of a pixel's sediment taken up per turnover of the water there
 /// (an estimate of the order of one).
 const ENTRAIN: f32 = 1.0;
@@ -160,7 +187,12 @@ pub struct Paper {
     pub roughness_um: f32,
     /// Size of the relief's features (the felt's knots, the mould's laid lines), mm.
     pub texture_mm: f32,
-    /// Depth of water needed to advance onto dry paper, µm.
+    /// Depth of water needed to advance onto dry paper, µm: contact-angle pinning. A front advances
+    /// once the water behind it stands deeper than a puddle can on that surface, 2 ℓc sin(θa / 2) for
+    /// water's capillary length ℓc = 2.7 mm and the advancing contact angle θa. Sized cotton sheets
+    /// hold about a millimetre (θa about 20°: an estimate; a 15 µl drop stands as a dome about 4 mm
+    /// across, and a bead gathers along the lower edge of a wash on a tilted board before it runs), so
+    /// a stroke stays where the brush laid it; unsized papers drink the water before it can stand.
     pub pin_um: f32,
 }
 
@@ -170,15 +202,15 @@ impl Paper {
     /// water it takes up in a minute under standing water, is some 20–30 g/m²: about 0.4 µm/s.)
     pub fn cold_press() -> Paper {
         Paper { name: "cold press".into(), color: [0.86, 0.85, 0.80], cap_um: 160.0, absorb_um_s: 0.4, wick_mm2_s: 0.08,
-            anisotropy: 1.3, fibre_mm: 2.5, formation: 0.08, roughness_um: 22.0, texture_mm: 1.4, pin_um: 18.0 }
+            anisotropy: 1.3, fibre_mm: 2.5, formation: 0.08, roughness_um: 22.0, texture_mm: 1.4, pin_um: 1000.0 }
     }
     /// The same sheet hot pressed: smooth, a little harder sized.
     pub fn hot_press() -> Paper {
-        Paper { name: "hot press".into(), roughness_um: 5.0, texture_mm: 0.8, absorb_um_s: 0.3, pin_um: 14.0, ..Paper::cold_press() }
+        Paper { name: "hot press".into(), roughness_um: 5.0, texture_mm: 0.8, absorb_um_s: 0.3, pin_um: 900.0, ..Paper::cold_press() }
     }
     /// Rough: a deep tooth that a dry brush skips across.
     pub fn rough() -> Paper {
-        Paper { name: "rough".into(), roughness_um: 55.0, texture_mm: 2.6, pin_um: 22.0, ..Paper::cold_press() }
+        Paper { name: "rough".into(), roughness_um: 55.0, texture_mm: 2.6, pin_um: 1100.0, ..Paper::cold_press() }
     }
     /// Thin unsized xuan (rice) paper of long bast fibres, for ink: it drinks water at once and
     /// wicks it far along its grain.
@@ -446,6 +478,9 @@ pub struct Water {
     /// pigment laid): what lowers the surface tension and drives the Marangoni flow. It moves with the
     /// surface water, spreads itself, and stays when the water dries (to redissolve when rewetted).
     pub agent: Vec<f32>,
+    /// Wetting agent adsorbed onto the fibres, µg/mm², up to `AGENT_FIBRE_UG_MM2`: paper wetted by
+    /// paint has taken what it can, and water arriving there keeps its agents.
+    pub fibre_agent: Vec<f32>,
     pub species: Vec<AqPigment>,
     /// Pigment by species, each a Vec over pixels (µg/mm²), allocated when the species arrives.
     pub ms: Vec<Vec<f32>>,
@@ -486,7 +521,7 @@ impl Water {
         let (relief, cap, fdir, perm) = paper.form(w, h, dx_mm, seed);
         let n = w * h;
         Water {
-            w, h, dx_mm, paper, relief, cap, fdir, perm, sealed: vec![0.0; n], sw: vec![0.0; n], aw: vec![0.0; n], agent: vec![0.0; n],
+            w, h, dx_mm, paper, relief, cap, fdir, perm, sealed: vec![0.0; n], sw: vec![0.0; n], aw: vec![0.0; n], agent: vec![0.0; n], fibre_agent: vec![0.0; n],
             species: vec![], ms: vec![], ma: vec![], md: vec![], mg: vec![], mb: vec![],
             tilt_deg: 0.0, tilt_dir_deg: 90.0, evap_um_s: 0.15, dispersion_mm2_s: DISPERSION_MM2_S, marangoni_n_m: MARANGONI_N_M, clock_s: 0.0, last_dt: 0.0, last_wick_change: 0.0, last_flow_change: 0.0, last_marangoni_mm_s: 0.0, steps_taken: 0, ledger: Ledger::default(),
         }
@@ -651,7 +686,7 @@ impl Water {
         let s2 = (s_max.min(1.0) as f64).powi(2).max(1e-4);
         let wick = self.paper.wick_mm2_s as f64 * self.paper.anisotropy.max(1.0) as f64 * s2;
         // in the pores alone nothing moves fast: evaporation and staining are exact at any step
-        let mut dt = if w_max > 0.0 { 0.5f64 } else { MAX_PORE_DT };
+        let mut dt = if w_max > 0.0 { MAX_FLOW_DT } else { MAX_PORE_DT };
         if wick > 0.0 {
             let explicit = 0.2 * dx2 / wick;
             // in the pores only, a step grows while wicking changes little in it: the flux limiter
@@ -688,6 +723,7 @@ impl Water {
     }
 
     fn step(&mut self, (x0, y0, x1, y1): (usize, usize, usize, usize), dt: f32) {
+        let tq = std::time::Instant::now();
         let (w, h) = (self.w, self.h);
         let dx = self.dx_mm;
         let nk = self.species.len();
@@ -801,6 +837,8 @@ impl Water {
                 self.ms[k][i] = (self.ms[k][i] + dm[k]).max(0.0);
             }
         }
+        prof(0, tq);
+        let tq = std::time::Instant::now();
         // Marangoni flow: where the wetting agent lowers the surface tension unevenly, the surface
         // moves toward the higher tension at h / (2 μ) · ∇σ (capped at MARANGONI_MAX_MM_S), carrying
         // the agent and the suspended pigment with it. The surface's own motion is not followed into
@@ -810,8 +848,8 @@ impl Water {
         if self.marangoni_n_m > 0.0 {
             let dsig = self.marangoni_n_m;
             let sigma_of = |agent_ug_mm2: f32, sw_um: f32| -> f32 {
-                let c = agent_ug_mm2 * 1000.0 / sw_um.max(1e-3);
-                -dsig * c / (c + SIGMA_HALF_UG_MM3)
+                let c = (agent_ug_mm2 * 1000.0 / sw_um.max(1e-3)).min(AGENT_CMC_UG_MM3);
+                -dsig * (1.0 + c / SZYSZKOWSKI_A_UG_MM3).ln() / (1.0 + AGENT_CMC_UG_MM3 / SZYSZKOWSKI_A_UG_MM3).ln()
             };
             let edge_speed = |sa: f32, sb: f32, h: f32| -> f32 {
                 // mm/s: (h m) / (2 μ) × (Δσ / dx m), toward the higher tension
@@ -861,7 +899,7 @@ impl Water {
                     let mut dm = [0.0f32; MAX_SPECIES];
                     let mut cross = |f: f32, src: usize, sign: f32| {
                         da += sign * f * agent[src];
-                        for k in 0..nk { dm[k] += sign * f * ms[k][src]; }
+                        for k in 0..nk { dm[k] += sign * f * MARANGONI_PIGMENT_SHARE * ms[k][src]; }
                     };
                     // out across j's own edges, in across its neighbours'
                     for (f, jn) in [(fx[j], j + 1), (fy[j], j + bw)] {
@@ -893,14 +931,17 @@ impl Water {
                 }
             }
         }
-        // the agents adsorb onto the fibres they wet, out of the surface: a bloom's drive lasts seconds
-        let keep = (-AGENT_ADSORB_S * dt).exp();
-        let adsorbed: Vec<f32> = (0..n).into_par_iter().with_min_len(CHUNK).map(|j| {
+        // the agents adsorb onto the fibres they wet, out of the surface, while the fibres have room:
+        // a bloom's drive lasts seconds, and paper the paint has wetted keeps no more
+        let take = 1.0 - (-AGENT_ADSORB_S * dt).exp();
+        for j in 0..n {
             let i = at(j);
-            if self.sw[i] > W_DRY { self.agent[i] * keep } else { self.agent[i] }
-        }).collect();
-        for (j, a) in adsorbed.into_iter().enumerate() {
-            self.agent[at(j)] = a;
+            if self.sw[i] > W_DRY && self.agent[i] > 0.0 {
+                let room = (AGENT_FIBRE_UG_MM2 - self.fibre_agent[i]).max(0.0);
+                let a = (self.agent[i] * take * room / AGENT_FIBRE_UG_MM2).min(room);
+                self.agent[i] -= a;
+                self.fibre_agent[i] += a;
+            }
         }
         // dispersion, the dial: a spreading of pigment through standing water for mixing the model
         // does not resolve (0 by default)
@@ -963,6 +1004,8 @@ impl Water {
                 self.ledger.pigment_runoff[k] += runoff_k[k];
             }
         }
+        prof(1, tq);
+        let tq = std::time::Instant::now();
         // ---- wicking within the sheet ----------------------------------------------------------
         let wick = self.paper.wick_mm2_s * dt / (dx * dx);
         let an = self.paper.anisotropy;
@@ -1013,6 +1056,8 @@ impl Water {
                 }
             }
         }
+        prof(2, tq);
+        let tq = std::time::Instant::now();
         // ---- per pixel: absorption, evaporation, settling, staining, lifting --------------------
         let settle: Vec<f32> = self.species.iter().map(|p| p.settling_um_s()).collect();
         let filter: Vec<f32> = self.species.iter().map(|p| p.filter()).collect();
@@ -1073,6 +1118,7 @@ impl Water {
         }).reduce(|| (0.0, 0.0), |a, b| (a.0 + b.0, a.1 + b.1));
         self.ledger.water_absorbed += absorbed * area * 1e-3;
         self.ledger.water_evaporated += evaporated * area * 1e-3;
+        prof(3, tq);
     }
 
     /// What is on and in the sheet now.
@@ -1320,6 +1366,31 @@ mod tests {
         }
     }
 
+    /// Timing, not a check: `cargo test --release --lib bench_drying -- --ignored --nocapture` prints
+    /// the clock, steps and wall time as a studio-sized sheet dries, and where `step` spent it.
+    #[test]
+    #[ignore]
+    fn bench_drying_a_wet_sheet() {
+        // a studio sheet: 900 × 720 px of rough paper 300 mm wide, wet all over with two pigments
+        let mut w = Water::new(Paper::rough(), 900, 720, 300.0 / 900.0, 3);
+        let u = w.species_index(&AqPigment::named("ultramarine").unwrap()).unwrap();
+        let y = w.species_index(&AqPigment::named("cadmium yellow").unwrap()).unwrap();
+        for i in 0..w.w * w.h {
+            w.add(i, 70.0, &[(u, 0.02), (y, 0.04)]);
+        }
+        let t = std::time::Instant::now();
+        let mut last = (0.0f64, 0u64);
+        for _ in 0..40 {
+            if w.wet_bounds(0).is_none() { break; }
+            w.advance(30.0);
+            let t2 = w.totals();
+            eprintln!("clock {:6.0} s: surface {:.0} µm·px, absorbed {:.0}; steps {} (+{}), last dt {:.3}; wall {:.1} s",
+                w.clock_s, t2.surface_water, t2.absorbed_water, w.steps_taken, w.steps_taken - last.1, w.last_dt, t.elapsed().as_secs_f64() - last.0);
+            last = (t.elapsed().as_secs_f64(), w.steps_taken);
+        }
+        PROFILE.with(|p| eprintln!("phases: flow {:.1} s, marangoni+rest {:.1} s, wick {:.1} s, pixel {:.1} s; total {:.1} s", p.borrow()[0], p.borrow()[1], p.borrow()[2], p.borrow()[3], t.elapsed().as_secs_f64()));
+    }
+
     #[test]
     fn the_books_balance_through_flow_absorption_and_drying() {
         for paper in [Paper::cold_press(), Paper::xuan()] {
@@ -1330,8 +1401,9 @@ mod tests {
             for _ in 0..20 {
                 w.advance(1.0);
                 let ((on, books), (pon, pbooks)) = w.check();
-                // (f32 state: rounding leaves the books about 1e-6 of the water out)
-                assert!((on - books).abs() < 1e-5 * books.abs().max(1e-3), "{}: water {on} vs {books}", paper.name);
+                // (f32 state: rounding leaves the books about 1e-6 to 1e-5 of the water out, the more the
+                // deeper it stands: a pinned puddle 400 µm deep through hundreds of short steps)
+                assert!((on - books).abs() < 3e-5 * books.abs().max(1e-3), "{}: water {on} vs {books}", paper.name);
                 assert!((pon - pbooks).abs() < 1e-5 * pbooks.abs().max(1e-3), "{}: pigment {pon} vs {pbooks}", paper.name);
             }
             w.dry_out();
@@ -1341,6 +1413,41 @@ mod tests {
             // (the state is f32: thousands of steps of rounding leave the books 1e-5 of the water out)
             assert!(on.abs() < 1e-9 && books.abs() < 1e-4 * w.ledger.water_added, "{}: all the water left: {books}", paper.name);
         }
+    }
+
+    #[test]
+    fn paint_touched_into_clean_water_blooms_but_a_wash_keeps_its_tension_even() {
+        // a drop of paint into clean wet paper: how far its pigment reaches after 10 s
+        let reach = |marangoni: f32| -> f32 {
+            let mut w = Water::new(Paper::cold_press(), 200, 150, 0.3, 4);
+            w.marangoni_n_m = marangoni;
+            let k = w.species_index(&AqPigment::named("quinacridone rose").unwrap()).unwrap();
+            for i in 0..w.w * w.h { w.add(i, 100.0, &[]); }
+            disc(&mut w, 100.0, 75.0, 8.0, 30.0, Some((k, 0.5)));
+            w.advance(10.0);
+            let m = |i: usize| w.ms[k][i] + w.ma[k][i] + w.md[k][i] + w.mg[k][i] + w.mb[k][i];
+            let total: f32 = (0..w.w * w.h).map(m).sum();
+            // the radius holding 90 % of it
+            let mut by_r: Vec<(f32, f32)> = (0..w.w * w.h).map(|i| ((((i % 200) as f32 - 100.0).powi(2) + ((i / 200) as f32 - 75.0).powi(2)).sqrt(), m(i))).collect();
+            by_r.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            let mut acc = 0.0;
+            by_r.iter().find(|(_, v)| { acc += v; acc >= 0.9 * total }).unwrap().0
+        };
+        let (still, bloom) = (reach(0.0), reach(MARANGONI_N_M));
+        assert!(bloom > 1.3 * still, "the paint blooms out into the clean water: {bloom} px vs {still} px without");
+        // a wash of one paint: the same evenness with the tension's pull or without it
+        let unevenness = |marangoni: f32| -> f32 {
+            let mut w = Water::new(Paper::cold_press(), 160, 120, 0.3, 2);
+            w.marangoni_n_m = marangoni;
+            let k = w.species_index(&AqPigment::named("burnt sienna").unwrap()).unwrap();
+            for y in 20..100 { for x in 20..140 { w.add(y * 160 + x, 70.0, &[(k, 0.18)]); } }
+            w.dry_out();
+            let v: Vec<f32> = (30..90).flat_map(|y| (30..130).map(move |x| y * 160 + x)).map(|i| w.md[k][i] + w.mg[k][i] + w.mb[k][i]).collect();
+            let mean = v.iter().sum::<f32>() / v.len() as f32;
+            (v.iter().map(|m| (m - mean).powi(2)).sum::<f32>() / v.len() as f32).sqrt() / mean
+        };
+        let (plain, pulled) = (unevenness(0.0), unevenness(MARANGONI_N_M));
+        assert!(pulled < 1.1 * plain, "the paint's own tension is even: cv {pulled} vs {plain} without");
     }
 
     #[test]

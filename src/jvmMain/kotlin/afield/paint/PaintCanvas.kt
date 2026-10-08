@@ -6,6 +6,10 @@ import afield.graphics.FLine
 import afield.stdlib.Vec4
 import afield.util.PngEncoder
 import java.lang.foreign.MemorySegment
+import kotlin.math.abs
+
+/** A turn of the path sharper than this, degrees, is a reversal: the hand pushes the brush back instead of turning it ([PaintCanvas.gesture]). */
+private const val REVERSAL_DEGREES = 120.0
 
 /**
  * A simulated oil-painting canvas that [FLine]s are painted and drawn onto.
@@ -317,9 +321,16 @@ class PaintCanvas internal constructor(
     /**
      * A [TimedGesture] along every subpath of [line] (one after another, [gap] seconds apart), moving
      * at [speed] mm/s, pressing [pressure] (one value, a start and end, or a profile at evenly spaced
-     * stations), sampled every [spacing] canvas units.
+     * stations), sampled every [spacing] canvas units. The handle is tilted [tilt] degrees from
+     * upright; with [lean] it leans toward where it is going (the hairs trailing behind, as a brush is
+     * pulled), and a flat's wide axis is held across the path unless [roll] (degrees) fixes it. Where
+     * the path doubles back on itself by more than 120°, as in scrubbing, the handle keeps its lean
+     * and the brush is pushed back.
      */
-    fun gesture(line: FLine, speed: Double = 80.0, pressure: List<Double> = listOf(0.6), gap: Double = 0.3, spacing: Double = 4.0): TimedGesture {
+    fun gesture(
+        line: FLine, speed: Double = 80.0, pressure: List<Double> = listOf(0.6), gap: Double = 0.3, spacing: Double = 4.0,
+        tilt: Double = 0.0, lean: Boolean = true, roll: Double? = null,
+    ): TimedGesture {
         require(speed > 0.0) { "a gesture moves: speed must be above 0 mm/s" }
         val out = mutableListOf<TimedGesture.Sample>()
         var t = 0.0
@@ -332,9 +343,20 @@ class PaintCanvas internal constructor(
                 arc
             }
             if (out.isNotEmpty()) t += gap
+            // the way the hand holds the brush: it turns the handle with the path, unwrapped (a path
+            // heading due left must not flip between 180° and -180°), but where the path doubles back
+            // sharply, scrubbing, it pushes the brush back the way it came rather than swinging the
+            // handle round. Each subpath is a fresh hold.
+            var hand: Double? = null
             pts.forEachIndexed { i, p ->
                 val u = if (arc > 0) arcs[i] / arc else 0.0
-                out += TimedGesture.Sample(p.x.toDouble(), p.y.toDouble(), t + arcs[i] * mmPerUnit / speed, profile(pressure, u))
+                // the way the path goes here, in canvas units, for the handle's lean and a flat's roll
+                val (a, b) = if (i + 1 < pts.size) pts[i] to pts[i + 1] else pts[(i - 1).coerceAtLeast(0)] to pts[i]
+                val raw = Math.toDegrees(Math.atan2(toCanvasDy((b.y - a.y).toDouble()), toCanvasDx((b.x - a.x).toDouble())))
+                val heading = hand?.let { prev -> val turn = (raw - prev + 540.0) % 360.0 - 180.0; if (abs(turn) > REVERSAL_DEGREES) prev else prev + turn } ?: raw
+                hand = heading
+                out += TimedGesture.Sample(p.x.toDouble(), p.y.toDouble(), t + arcs[i] * mmPerUnit / speed, profile(pressure, u),
+                    tilt = tilt, azimuth = if (lean) heading else 0.0, roll = roll ?: (heading + 90.0))
             }
             t += arc * mmPerUnit / speed
         }
@@ -366,6 +388,52 @@ class PaintCanvas internal constructor(
         }
         val r = PaintNative.wbrushStroke(handle, brush.handle, xytp, seed())
         return WashReport(r[0], r[1], r[2], r[3], r[4])
+    }
+
+    /**
+     * A brush of [kind] whose hairs move ([DynamicBrush]): [hairs] guide hairs of [segments]
+     * segments each, made as [config] says (its stiffness, length, point and so on).
+     */
+    fun dynamicBrush(kind: BrushKind = BrushKind.Round, width: Double = 30.0, hairs: Int = 32, segments: Int = 5, config: BrushConfig? = null): DynamicBrush =
+        DynamicBrush(PaintNative.dbrushNew(handle, kind.code, width.toFloat(), (config ?: BrushConfig()).values(), hairs, segments, seed()), kind)
+
+    /** Drag a [DynamicBrush] through a timed [gesture], in oil or watercolour as it was last loaded. */
+    fun stroke(gesture: TimedGesture, brush: DynamicBrush): DynamicReport {
+        val v = FloatArray(gesture.samples.size * 7)
+        gesture.samples.forEachIndexed { i, s ->
+            v[7 * i] = toCanvasX(s.x).toFloat(); v[7 * i + 1] = toCanvasY(s.y).toFloat(); v[7 * i + 2] = s.t.toFloat(); v[7 * i + 3] = s.pressure.toFloat()
+            v[7 * i + 4] = Math.toRadians(s.tilt).toFloat(); v[7 * i + 5] = Math.toRadians(s.azimuth).toFloat(); v[7 * i + 6] = Math.toRadians(s.roll).toFloat()
+        }
+        val r = PaintNative.dbrushStroke(handle, brush.handle, v, seed())
+        return DynamicReport(r[0].toLong(), r[1], r[2].toLong(), r[3], r[4], r[5], r[6], r[7])
+    }
+
+    /**
+     * Drag a [DynamicBrush] along [line] at [speed] mm/s, tilted [tilt] degrees and leaning the way it
+     * goes ([gesture] makes the timing and the handle's pose).
+     */
+    fun stroke(line: FLine, brush: DynamicBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0, tilt: Double = 30.0): DynamicReport =
+        stroke(gesture(line, speed, pressure, tilt = tilt), brush)
+
+    /** Seconds of hair contact per pixel in the last [DynamicBrush] stroke (row major), or `null` before one. */
+    fun contactMap(): FloatArray? = PaintNative.contactMap(handle, pixelSize.first * pixelSize.second)
+
+    /** [contactMap] as a PNG, black where no hair touched and white at the most-touched pixel. */
+    fun contactMapPng(): ByteArray {
+        val v = contactMap() ?: FloatArray(pixelSize.first * pixelSize.second)
+        val hi = (v.maxOrNull() ?: 1f).coerceAtLeast(1e-9f)
+        val px = IntArray(v.size) { i -> val g = (v[i] / hi * 255).toInt().coerceIn(0, 255); (0xff shl 24) or (g shl 16) or (g shl 8) or g }
+        return PngEncoder.encode(px, pixelSize.first, pixelSize.second)
+    }
+
+    /**
+     * [brush]'s hairs as they are now: each a polyline of its nodes, x and y in this canvas's
+     * coordinates and z the height above the canvas in mm. Draw them with [FLine]s to see the brush.
+     */
+    fun hairs(brush: DynamicBrush): List<List<Triple<Double, Double, Double>>> {
+        val v = PaintNative.dbrushHairs(handle, brush.handle)
+        val n = v[0].toInt(); val m = v[1].toInt()
+        return List(n) { h -> List(m) { k -> val o = 2 + 3 * (h * m + k); Triple(fromCanvasX(v[o].toDouble()), fromCanvasY(v[o + 1].toDouble()), v[o + 2].toDouble()) } }
     }
 
     /** Let a drop of [volumeMm3] µl of [paint] fall at ([x], [y]): it spreads to a puddle, then the sheet takes it. */

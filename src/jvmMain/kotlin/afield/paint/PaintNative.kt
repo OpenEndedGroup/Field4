@@ -183,6 +183,19 @@ internal object PaintNative {
     private val aqPigmentNamesH by fn("field_paint_aq_pigment_names", A)
     private val aqPigmentMakeH by fn("field_paint_aq_pigment_make", I, F, F, F, F, F, F, F, F, F, A)
 
+    // ---- the segmented brush (dynamic.rs) ----
+    private val dbrushNewH by fn("field_paint_dbrush_new", A, A, I, F, A, I, I, L)
+    private val dbrushFreeH by fn("field_paint_dbrush_free", null, A)
+    private val dbrushSetH by fn("field_paint_dbrush_set", I, A, F, F, F, F, F, F)
+    private val dbrushInfoH by fn("field_paint_dbrush_info", I, A, A)
+    private val dbrushLoadH by fn("field_paint_dbrush_load", I, A, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, L)
+    private val dbrushLoadWaterH by fn("field_paint_dbrush_load_water", I, A, A, A, A, A, I, F, F)
+    private val dbrushStrokeH by fn("field_paint_dbrush_stroke", I, A, A, A, I, L, A)
+    private val dbrushHairsH by fn("field_paint_dbrush_hairs", I, A, A, A, A)
+    private val contactMapH by fn("field_paint_contact_map", I, A, A, I)
+    private val dbrushStateH by fn("field_paint_dbrush_state", I, A, A, A)
+    private val dbrushFromStateH by fn("field_paint_dbrush_from_state", A, A, L)
+
     private fun error(what: String): Nothing {
         val msg = (lastErrorH.invokeExact() as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
         throw IllegalStateException("paint: $what failed: $msg")
@@ -600,4 +613,48 @@ internal object PaintNative {
             check(aqPigmentMakeH.invokeExact(r, g, b, strength, opacity, density, diameter, stain, lift, out) as Int, "making a pigment")
             out.toArray(F)
         }
+
+    // ---- the segmented brush ----
+
+    fun dbrushNew(c: MemorySegment, kind: Int, width: Float, cfg: FloatArray, hairs: Int, segs: Int, seed: Long): MemorySegment = Arena.ofConfined().use { a ->
+        require(cfg.size == 11)
+        nonNull(dbrushNewH.invokeExact(c, kind, width, a.allocateFrom(F, *cfg), hairs, segs, seed) as MemorySegment, "making a segmented brush")
+    }
+    fun dbrushFree(b: MemorySegment) { dbrushFreeH.invokeExact(b) }
+    fun dbrushSet(b: MemorySegment, muS: Float, muK: Float, yieldRad: Float, plastic: Float, recover: Float, cohesion: Float) =
+        check(dbrushSetH.invokeExact(b, muS, muK, yieldRad, plastic, recover, cohesion) as Int, "setting the brush")
+    fun dbrushInfo(b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 14)
+        check(dbrushInfoH.invokeExact(b, out) as Int, "reading the brush")
+        out.toArray(F)
+    }
+    fun dbrushLoad(b: MemorySegment, r: Float, g: Float, bl: Float, hiding: Float, scatter: Float, stiff: Float, drying: Float,
+                   amount: Float, wipe: Float, thinner: Float, turps: Float, oil: Float, side: Float, share: Float, streak: Float, partSeed: Long) =
+        check(dbrushLoadH.invokeExact(b, r, g, bl, hiding, scatter, stiff, drying, amount, wipe, thinner, turps, oil, side, share, streak, partSeed) as Int, "loading the brush")
+    fun dbrushLoadWater(c: MemorySegment, b: MemorySegment, paint: WaterPaint, fill: Float, wipe: Float) = Arena.ofConfined().use { a ->
+        val p = a.pig(paint)
+        check(dbrushLoadWaterH.invokeExact(c, b, p.names, p.params, p.conc, p.n, fill, wipe) as Int, "loading the brush with watercolour")
+    }
+    /** [samples] is x, y, t, pressure, tilt, azimuth, roll per sample (radians). */
+    fun dbrushStroke(c: MemorySegment, b: MemorySegment, samples: FloatArray, seed: Long): DoubleArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 8)
+        check(dbrushStrokeH.invokeExact(c, b, a.allocateFrom(F, *samples), samples.size / 7, seed, out) as Int, "a segmented stroke")
+        out.toArray(D)
+    }
+    fun dbrushHairs(c: MemorySegment, b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(A)
+        val len = a.allocate(L)
+        check(dbrushHairsH.invokeExact(c, b, out, len) as Int, "reading the hairs")
+        val n = len.get(L, 0)
+        val buf = out.get(A, 0).reinterpret(n * 4)
+        try { buf.toArray(F) } finally { freeFloatsH.invokeExact(buf, n) }
+    }
+    fun contactMap(c: MemorySegment, pixels: Int): FloatArray? = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, pixels.toLong())
+        val n = contactMapH.invokeExact(c, out, pixels) as Int
+        check(n, "the contact map")
+        if (n == 0) null else out.toArray(F)
+    }
+    fun dbrushState(b: MemorySegment): ByteArray = bytes("saving the brush") { o, l -> dbrushStateH.invokeExact(b, o, l) as Int }
+    fun dbrushFromState(bytes: ByteArray): MemorySegment = fromBytes(bytes, "restoring a segmented brush") { p, n -> dbrushFromStateH.invokeExact(p, n) as MemorySegment }
 }

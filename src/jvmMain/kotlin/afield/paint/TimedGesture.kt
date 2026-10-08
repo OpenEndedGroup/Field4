@@ -8,8 +8,9 @@ package afield.paint
  * speed; a pen or an agent can give the samples themselves.
  *
  * Coordinates are those of the canvas's FLines (canvas units, or its `view`), [Sample.t] seconds
- * from the gesture's start, pressure 0 (lifted) upward — 1 is a firm press, and more is harder
- * still.
+ * from the gesture's start. Pressure 1 is a firm press, and more is harder still. For a
+ * [WaterBrush], 0 is lifted. For a [DynamicBrush], 0 is the hairs' tips just touching the surface,
+ * and below 0 lifts them clear of it, so a flick ends below 0.
  */
 data class TimedGesture(val samples: List<Sample>) {
     init {

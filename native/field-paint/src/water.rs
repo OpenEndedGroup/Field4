@@ -69,7 +69,7 @@ pub extern "C" fn field_paint_canvas_new_paper(width_px: i32, aspect: f32, paper
         let f = c.frame();
         let w = Water::new(pp, f.w, f.h, c.px_mm(), seed);
         wc::emboss(&mut c, &w.relief);
-        Ok(Box::into_raw(Box::new(Studio { canvas: c, water: Some(Box::new(w)) })))
+        Ok(Box::into_raw(Box::new(Studio { canvas: c, water: Some(Box::new(w)), last_contact: None })))
     })
 }
 
@@ -368,20 +368,7 @@ pub extern "C" fn field_paint_aq_pigment_make(r: f32, g: f32, b: f32, strength: 
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_wbrush_state_bytes(b: *const WaterBrush, out: *mut *mut u8, out_len: *mut i64) -> i32 {
     guard(-1, || {
-        let b = unsafe { &*b };
-        let mut v = b"FPW1".to_vec();
-        for x in [b.width, b.capacity_mm3, b.water_mm3, b.scrub] {
-            v.extend_from_slice(&x.to_le_bytes());
-        }
-        v.extend_from_slice(&(b.pigment.len() as u64).to_le_bytes());
-        for (p, m) in &b.pigment {
-            v.extend_from_slice(&(p.name.len() as u64).to_le_bytes());
-            v.extend_from_slice(p.name.as_bytes());
-            for x in [p.k[0], p.k[1], p.k[2], p.s, p.density, p.diameter_um, p.stain, p.lift, *m] {
-                v.extend_from_slice(&x.to_le_bytes());
-            }
-        }
-        crate::tools::hand_bytes(v, out, out_len);
+        crate::tools::hand_bytes(wc::write_wbrush(unsafe { &*b }), out, out_len);
         Ok(0)
     })
 }
@@ -390,30 +377,7 @@ pub extern "C" fn field_paint_wbrush_state_bytes(b: *const WaterBrush, out: *mut
 pub extern "C" fn field_paint_wbrush_from_state(bytes: *const u8, len: i64) -> *mut WaterBrush {
     guard(std::ptr::null_mut(), || {
         let b = unsafe { std::slice::from_raw_parts(bytes, len.max(0) as usize) };
-        let mut at = 0usize;
-        let mut take = |n: usize| -> Result<&[u8], String> {
-            let s = b.get(at..at + n).ok_or("truncated brush state")?;
-            at += n;
-            Ok(s)
-        };
-        if take(4)? != b"FPW1" {
-            return Err("not a watercolour brush's state".into());
-        }
-        let mut f = || -> Result<f32, String> { Ok(f32::from_le_bytes(take(4)?.try_into().unwrap())) };
-        let (width, capacity_mm3, water_mm3, scrub) = (f()?, f()?, f()?, f()?);
-        drop(f);
-        let n = u64::from_le_bytes(take(8)?.try_into().unwrap()) as usize;
-        let mut pigment = Vec::new();
-        for _ in 0..n.min(64) {
-            let l = u64::from_le_bytes(take(8)?.try_into().unwrap()) as usize;
-            let name = String::from_utf8_lossy(take(l.min(1 << 16))?).into_owned();
-            let mut v = [0f32; 9];
-            for x in &mut v {
-                *x = f32::from_le_bytes(take(4)?.try_into().unwrap());
-            }
-            pigment.push((AqPigment { name, k: [v[0], v[1], v[2]], s: v[3], density: v[4], diameter_um: v[5], stain: v[6], lift: v[7] }, v[8]));
-        }
-        Ok(Box::into_raw(Box::new(WaterBrush { width, capacity_mm3, water_mm3, pigment, scrub })))
+        Ok(Box::into_raw(Box::new(wc::read_wbrush(b)?)))
     })
 }
 

@@ -197,7 +197,10 @@ class Pencil internal constructor(val medium: DrawingMedium, val softness: Doubl
     fun sharpen(): Pencil = apply { worn = 0.0 }
 }
 
-/** Something a painter holds and puts down again: a [PaintBrush], [PaintKnife], [PaintRag] or [Pencil]. */
+/**
+ * Something a painter holds and puts down again: a [PaintBrush], [DynamicBrush], [WaterBrush],
+ * [PaintKnife], [PaintRag] or [Pencil].
+ */
 sealed interface PaintTool
 
 /**
@@ -410,6 +413,86 @@ class WaterBrush internal constructor(internal val handle: MemorySegment) : Pain
         fun restore(state: ByteArray): WaterBrush = WaterBrush(PaintNative.wbrushFromState(state))
     }
 }
+
+/**
+ * A brush whose hairs move: a few dozen guide hairs simulated as chains of segments under a timed
+ * gesture of the handle ([TimedGesture]: position, pressure, tilt, lean and roll). The hairs bend
+ * against the paper and its paint, stick and slip by friction, clump when wet, and keep a bend they
+ * were forced past (retained deformation, so a brush once splayed stays splayed for a while). Load it
+ * with oil ([load]: upstream's bristles, following the hairs, carry and lay the paint) or with
+ * watercolour ([loadWater]). Get one from [PaintCanvas.dynamicBrush].
+ */
+class DynamicBrush internal constructor(internal val handle: MemorySegment, val kind: BrushKind) : PaintTool, AutoCloseable {
+    private val cleanable = PaintNative.cleaner.register(this, PaintNative.Free(handle, PaintNative::dbrushFree))
+
+    private val info get() = PaintNative.dbrushInfo(handle)
+
+    /** Width across the ferrule, mm. */
+    val widthMm: Double get() = info[0].toDouble()
+    /** Hair length out of the ferrule, mm. */
+    val lengthMm: Double get() = info[1].toDouble()
+    /** Guide hairs simulated. */
+    val hairCount: Int get() = info[3].toInt()
+    /** Static and kinetic friction against the surface. */
+    val friction: Pair<Double, Double> get() = info[5].toDouble() to info[6].toDouble()
+    /** How full of paint or water it is, 0..1. */
+    val fill: Double get() = info[11].toDouble()
+    /** True when it paints watercolour (it was last loaded with [loadWater]). */
+    val watercolour: Boolean get() = info[12] > 0.5f
+    /** The bend the hairs keep at rest, radians, averaged over every joint: 0 a straight brush. */
+    val retainedBend: Double get() = info[13].toDouble()
+
+    /**
+     * How the hairs behave; `null` keeps a value. [friction] is static to kinetic against the surface;
+     * a joint bent more than [yieldDegrees] from its rest angle keeps some of the bend, at [plasticity]
+     * per second; rest bends straighten again at [recovery] per second; [cohesion] (0..1) is how
+     * strongly the liquid in a full brush draws neighbouring tips together.
+     */
+    fun set(friction: Pair<Double, Double>? = null, yieldDegrees: Double? = null, plasticity: Double? = null, recovery: Double? = null, cohesion: Double? = null): DynamicBrush = apply {
+        val nan = Float.NaN
+        PaintNative.dbrushSet(handle, friction?.first?.toFloat() ?: nan, friction?.second?.toFloat() ?: nan,
+            yieldDegrees?.let { Math.toRadians(it).toFloat() } ?: nan, plasticity?.toFloat() ?: nan, recovery?.toFloat() ?: nan, cohesion?.toFloat() ?: nan)
+    }
+
+    /** Load it with oil paint, as [PaintBrush.load]. */
+    fun load(color: Vec4, hiding: Double = 0.92, stiff: Double = 0.8, drying: Double = 1.0, amount: Double = 1.0, wipe: Double = 0.85,
+             thinner: Double = 0.0, turps: Double = 0.0, oil: Double = 1.0, part: LoadPart? = null): DynamicBrush = apply {
+        val p = part ?: LoadPart()
+        PaintNative.dbrushLoad(handle, linear(color.x), linear(color.y), linear(color.z), hiding.toFloat(), Float.NaN, stiff.toFloat(), drying.toFloat(),
+            amount.toFloat(), wipe.toFloat(), thinner.toFloat(), turps.toFloat(), oil.toFloat(), p.side.toFloat(), p.share.toFloat(), p.streak.toFloat(), p.hashCode().toLong())
+    }
+
+    /** Load it with tube paints by parts, as [PaintBrush.load]. */
+    fun load(tubes: Map<String, Double>, medium: Double = 0.0, amount: Double = 1.0, wipe: Double = 0.85): DynamicBrush = apply {
+        val m = PaintNative.mixTubes(tubes, medium.toFloat())
+        PaintNative.dbrushLoad(handle, m[0], m[1], m[2], 0.9f, m[3], m[4], m[5], amount.toFloat(), wipe.toFloat(), 0f, 0f, 1f, 0f, 1f, 0f, 0)
+    }
+
+    /** Load it with watercolour, as [WaterBrush.load]: from now on it paints watercolour, on [canvas]'s scale. */
+    fun loadWater(canvas: PaintCanvas, paint: WaterPaint, fill: Double = 1.0, wipe: Double = 1.0): DynamicBrush = apply {
+        PaintNative.dbrushLoadWater(canvas.handle, handle, paint, fill.toFloat(), wipe.toFloat())
+    }
+
+    /** A snapshot of the whole brush: hairs, their retained bends, and the paint or water in it. */
+    fun state(): ByteArray = PaintNative.dbrushState(handle)
+    override fun close() = cleanable.clean()
+
+    companion object {
+        fun restore(state: ByteArray, kind: BrushKind): DynamicBrush = DynamicBrush(PaintNative.dbrushFromState(state), kind)
+    }
+}
+
+/** What a segmented-brush stroke did ([PaintCanvas.stroke] with a [DynamicBrush]). */
+data class DynamicReport(
+    val substeps: Long,
+    val seconds: Double,
+    /** Hair contacts summed over the substeps. */
+    val contacts: Long,
+    /** The most of one hair's length that lay on the paper, 0..1. */
+    val maxContact: Double,
+    /** Watercolour: mm³ of water laid and taken up, µg of pigment laid and taken up. */
+    val waterLaid: Double, val waterTaken: Double, val pigmentLaid: Double, val pigmentTaken: Double,
+)
 
 /** How loaded a [PaintRag] is ([PaintCanvas.ragState]). */
 data class RagState(

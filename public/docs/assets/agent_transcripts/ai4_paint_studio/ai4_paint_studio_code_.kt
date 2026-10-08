@@ -82,6 +82,22 @@ fun waterPaintOf(spec: String): WaterPaint {
         Watercolors[n] * conc
     }.reduce(WaterPaint::plus)
 }
+// A moving brush takes watercolour when the colour names watercolour pigments (or "water"), oil otherwise.
+fun isWatercolour(spec: String) = spec.split(',').all { part ->
+    val name = part.split(':')[0].trim()
+    name.equals("water", true) || Watercolors.names.any { it.equals(name, true) }
+}
+fun loadMoving(d: DynamicBrush, color: String, wipe: Double = 0.85, hiding: Double = 0.92, fill: Double = 1.0) {
+    if (isWatercolour(color)) { d.loadWater(canvas(), waterPaintOf(color), fill = fill); return }
+    val p = paintOf(color)
+    if (p.tubes != null) d.load(p.tubes, wipe = wipe) else d.load(p.color, hiding = hiding, wipe = wipe)
+}
+fun movingReport(name: String, d: DynamicBrush, r: DynamicReport) =
+    "%.1f s of gesture with %s; at most %s of a hair lay on the paper; %s".format(r.seconds, name, pct(r.maxContact),
+        if (d.watercolour) "laid %.1f mm³ of water and %.1f µg of pigment, the brush %s full".format(r.waterLaid, r.pigmentLaid, pct(d.fill))
+        else "the brush ${pct(d.fill)} loaded") +
+        (if (d.retainedBend > 0.05) "; its hairs have taken a set of %.0f°".format(Math.toDegrees(d.retainedBend)) else "")
+
 fun lightOf(name: String) = when (name.lowercase()) {
     "flat" -> null
     "raking" -> PaintLight.Raking
@@ -126,7 +142,8 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         effects(ToolEffect.CAPTURE_IMAGE)
         val wet by param<Boolean>("show the paint as it is now, wet, without relief", default = false)
         val light by param<String>("flat; raking, a low lamp that shows the relief, knife ridges and wet sheen; or gallery", default = "flat")
-        val map by param<String?>("instead of the picture, a map of the water: surface (standing water), absorbed, pigment", default = null)
+        val map by param<String?>("instead of the picture, a map of the water: surface (standing water), absorbed, pigment; " +
+            "or contact, where the hairs of the last moving-brush stroke touched", default = null)
         action {
             val c = canvas()
             val png = map()?.let { m ->
@@ -134,9 +151,10 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
                     "surface" -> WaterMap.SurfaceWater
                     "absorbed" -> WaterMap.AbsorbedWater
                     "pigment" -> WaterMap.Pigment
-                    else -> throw IllegalArgumentException("no map \"$m\": surface, absorbed or pigment")
+                    "contact" -> null
+                    else -> throw IllegalArgumentException("no map \"$m\": surface, absorbed, pigment or contact")
                 }
-                c.waterMapPng(which)
+                which?.let { c.waterMapPng(it) } ?: c.contactMapPng()
             } ?: c.png(relief = if (wet()) 0.0 else 0.6, wet = wet(), light = lightOf(light()))
             // Every look is also kept, numbered, in the document's progress folder: the painting's stages.
             val dir = File(thisBox.inside.filename, "progress").apply { mkdirs() }
@@ -160,6 +178,12 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         val hiding by param<Double>("0.05 a glaze, 0.5 a scumble, 0.92 body colour (hex colours only)", default = 0.92)
         action {
             val c = canvas()
+            (tool()?.let { tools()[it] } as? DynamicBrush)?.let { d ->
+                color()?.let { loadMoving(d, it, wipe = wipe(), hiding = hiding()) }
+                val line = FLine(); paths().forEach { line += through(it) }
+                val r = c.stroke(c.gesture(line, pressure = pressure(), tilt = 30.0), d)
+                return@action done(movingReport(tool()!!, d, r))
+            }
             val b = brushFor(tool(), brush(), width(), color())
             loadInto(b, color(), wipe = wipe(), hiding = hiding(), thinness = thinness())
             val line = FLine()
@@ -213,6 +237,42 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         }
     }
 
+    tool("paint.gesture") {
+        describe("Paint with a kept brush of moving hairs (paint_tool moving=true) through timed movements of the hand: how fast, how hard, " +
+            "how the handle is tilted and turned. The hairs bend, drag, splay and flick as a real brush's do, pick up and lay paint where " +
+            "they touch, and keep a set if they are bent hard. Slower to paint with than paint_stroke; use it for the marks that depend on " +
+            "the hand: a flicked grass blade, a rolled ribbon, a broken drybrush scrub, a pressed and lifted calligraphic stroke.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val paths by param<List<List<Double>>>("movements, each [x0, y0, x1, y1, ...]; one after another")
+        val tool by param<String>("the kept moving brush")
+        val color by param<String?>("oil (#rrggbb or tubes by parts) or, for watercolour, pigments by concentration, µg/mm³ " +
+            "(\"ultramarine:3\"; 1 pale .. 6 strong .. 20-80 pan strength for drybrush); null paints with what it holds", default = null)
+        val fill by param<Double>("watercolour: how full of water to load it, 0..1 (0.1-0.3 for drybrush)", default = 1.0)
+        val speed by param<Double>("mm/s: 20 slow and deliberate .. 400 a flick", default = 80.0)
+        val pressure by param<List<Double>>("pressure along each movement, evenly spaced, 0 the tips just touch .. 1 pressed .. 1.5 crushed, below 0 lifted off: " +
+            "[0.9, -0.3] presses then lifts away", default = listOf(0.6))
+        val tilt by param<Double>("the handle's lean from upright, degrees: 0 straight down .. 60 laid over", default = 30.0)
+        val roll by param<List<Double>?>("the handle's turn, degrees, at the start and end of each movement (a flat's wide axis); null keeps a flat across its path", default = null)
+        val pause by param<Double>("seconds between movements (the brush stays down and still at the end of each for this long first)", default = 0.3)
+        action {
+            val c = canvas()
+            val d = tools().dynamicBrush(tool())
+            color()?.let { loadMoving(d, it, fill = fill()) }
+            var g: TimedGesture? = null
+            for (xy in paths()) {
+                val one = c.gesture(through(xy), speed = speed(), pressure = pressure(), tilt = tilt())
+                val r = roll()
+                val rolled = if (r == null) one else TimedGesture(one.samples.mapIndexed { i, s ->
+                    val u = if (one.samples.size > 1) i.toDouble() / (one.samples.size - 1) else 0.0
+                    s.copy(roll = r.first() + ((r.getOrNull(1) ?: r.first()) - r.first()) * u)
+                })
+                g = g?.pause(pause())?.then(rolled) ?: rolled
+            }
+            val r = c.stroke(g ?: throw IllegalArgumentException("no movements given"), d)
+            done(movingReport(tool(), d, r))
+        }
+    }
+
     tool("paint.drop") {
         describe("Let drops of watercolour or ink fall on the paper (or clean water into a damp wash, for a bloom). Each spreads and the paper takes it.")
         effects(ToolEffect.CONTROL_RUNTIME)
@@ -254,9 +314,13 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         val stiffness by param<Double?>("0 soft hair .. 1 stiff hog (a brush); null for the kind's own", default = null)
         val ragged by param<Double?>("0 even .. 1 ragged hair lengths, for broken marks (a brush)", default = null)
         val point by param<Double?>("0 blunt .. 1 a fine point (a round brush)", default = null)
+        val moving by param<Boolean>("a brush whose hairs move (paint with paint_gesture): they bend, splay, flick and keep a set; " +
+            "load it with oil or watercolour", default = false)
         action {
             val c = canvas(); val t = type().trim()
             val made: PaintTool = when {
+                moving() -> c.dynamicBrush(brushOf(t), width = width(), hairs = 32,
+                    config = BrushConfig(bristles = bristles(), stiffness = stiffness(), ragged = ragged(), point = point()))
                 t.equals("knife", true) -> c.knife(width())
                 t.equals("rag", true) -> c.rag(width())
                 t.equals("watercolour", true) || t.equals("watercolor", true) -> c.waterBrush(width())
@@ -299,6 +363,7 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
                 is PaintRag -> c.dampen(t, damp())
                 is Pencil -> t.sharpen()
                 is WaterBrush -> color()?.let { t.load(waterPaintOf(it), fill = amount(), wipe = wipe()) } ?: t.blot(wipe())
+                is DynamicBrush -> loadMoving(t, color() ?: throw IllegalArgumentException("a moving brush is loaded with a color"), wipe = wipe(), fill = amount())
             }
             mapOf("ok" to true, "tools" to tools().describe(c))
         }
@@ -445,7 +510,9 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
 
     tool("paint.wait") {
         describe("Let simulated time pass: wet oil sets (minutes); water flows, sinks in and evaporates (seconds: a wash goes from wet " +
-            "to damp in a minute or two). Or dry the canvas completely: paint laid afterwards no longer mixes into what is there.")
+            "to damp in a minute or two). Or dry the canvas completely: paint laid afterwards no longer mixes into what is there. " +
+            "Drying a sheet that is wet all over is simulated minute by minute and takes a minute or two to compute: call it on its own, " +
+            "not inside a tool program with a short timeout.")
         effects(ToolEffect.CONTROL_RUNTIME)
         val minutes by param<Double?>("how long; null with no seconds dries the canvas completely", default = null)
         val seconds by param<Double?>("how long, in seconds, for watercolour timing", default = null)
@@ -502,7 +569,9 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
     context("canvas") {
         val c = canvas()
         "The canvas on the Studio easel is 1000 units wide and ${c.heightUnits.roundToInt()} tall (aspect ${c.aspect}), " +
-            "x to the right, y DOWN from the top edge. ${state()}. Kept tools: " + tools().describe(c).lines().joinToString("; ")
+            "x to the right, y DOWN from the top edge. It is ${(c.mmPerUnit * 1000).roundToInt()} mm wide, so one unit is " +
+            "${"%.2f".format(c.mmPerUnit)} mm: a 10 mm brush is ${(10 / c.mmPerUnit).roundToInt()} units wide. ${state()}. " +
+            "Kept tools: " + tools().describe(c).lines().joinToString("; ")
     }
 
     context("craft", changesOften = false) {
@@ -521,6 +590,23 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         |paint_drop, paint_wet and paint_tilt. The water then moves by itself, flowing, sinking in, granulating, drying to darker edges
         |and blooming where wet meets damp; time matters (paint_wait seconds), and paint_look map="surface" shows where it is still
         |wet. Watercolours: ${Watercolors.names.joinToString()}. Oil, pencil and the knife still work on paper, over the watercolour.
+        |Watercolour strength is µg of pigment per mm³ of water: 0.5 a faint tint, 1-2 pale, 3-5 a middle value, 6-10 strong and
+        |dark, 20-80 the paint straight off the pan. Size brushes by the paper's millimetres (the canvas context gives the scale): a
+        |real painter's rounds are 3-25 mm, a wash brush 25-50 mm. Paint a subject made of separate things (stones, leaves, boats)
+        |as separate strokes, each the size of the thing.
+        |Drybrush: a moving round or flat loaded with pan-strength colour (20-80) and little water (fill 0.08-0.2), dragged fast
+        |(150-300 mm/s), light (pressure 0.2-0.35) and laid over (tilt 40-60) across the form, so the paint catches only the tops of
+        |the paper's tooth and leaves the hollows white: weathered stone and wood, bark, dry grass, light glittering on water. It
+        |works on Rough paper, less on ColdPress, hardly on HotPress, and over a wash only once the wash is dry.
+        |Light comes from the white paper, so plan it: leave the lights unpainted and paint the colour around and across them.
+        |Glitter on water is drybrush of the water's own dark colour dragged across white or pale paper in short horizontal strokes,
+        |so the hollows stay white and sparkle; don't paint the glitter, paint the dark between it.
+        |Soft, blended passages (a sky, a soft distance) are wet-in-wet: paint_wet the region with clean water first (40-100 µm),
+        |then wash or drop the colours into it while it is still wet, before anything dries; let it dry before hard-edged forms go
+        |over it. Paint light to dark and big to small: washes first, then the middle values, then darks, drybrush and details.
+        |A brush kept with paint_tool moving=true has hairs that move: paint with it through paint_gesture, giving the speed, pressure
+        |profile, tilt and roll of the hand, for marks that depend on the hand (flicks, rolled ribbons, a broken drybrush scrub, a
+        |pressed-and-lifted line). It takes oil or watercolour; paint_look map="contact" shows where its hairs touched.
         |Colours: "#rrggbb", or real tube paints mixed by parts, "lead white:4, cadmium yellow:1" (they mix like paint, so blue and
         |yellow make green). Tubes: ${Tubes.names.joinToString()}.
         """.trimMargin()

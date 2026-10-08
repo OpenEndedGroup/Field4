@@ -88,6 +88,33 @@ moonlit night was painted from there, with the sky brush as the evening had left
 
 ![three paintings on black of the same landscape: pale sky over grey-green hills and a dark field; the same field under a dark blue-grey storm sky with pale spatters of rain across the whole picture; and the evening landscape repainted as a night with a deep blue sky and a small pale moon](assets/ai4_painting/kept_tools.jpg)
 
+## Watercolour, and brushes whose hairs move
+
+On a sheet of paper (`paint_fresh` with `ColdPress`, `HotPress`, `Rough`, `Xuan` or `Blotting`) the
+agent paints in [watercolour and ink](watercolor.md): `paint_wash` with a watercolour brush,
+`paint_drop`, `paint_wet` to wet a region, and `paint_tilt` to tilt the board. The water then
+moves on its own, so the agent waits for it (`paint_wait` with seconds) and can look at where the
+paper is still wet (`paint_look` with `map="surface"`).
+
+A brush kept with `paint_tool` and `moving=true` is a [brush with moving hairs](paint_gestures.md).
+The agent paints with it through `paint_gesture`, giving the speed, pressure along the stroke, and
+the tilt and roll of the handle, for the marks that depend on the hand. Below, the agent was asked
+for grasses at the edge of a wood, scrubbing the wood in with a moving hog flat, flicking the
+blades up with a moving rigger and rolling the flat through a path; then to scrub the hog hard
+along the bottom edge and lay three light strokes with it. The conversation was then rewound to
+before the scrub, and both brushes came back exactly as the grasses had left them.
+
+![three oil paintings on black of the same scene: a dark green wood scrubbed in with broad zigzag strokes over the top half, a field of olive grass below with pale flicked grass blades, and a cream path winding up through it, laid with a flat brush rolled as it went. In the middle painting, a broad flat cream band has been scrubbed along the bottom edge and three long, light cream strokes cross the grass. The third painting is the first again, as the rewind restored it](assets/ai4_painting/moving_hairs.jpg)
+
+??? aside "How the moving-hairs figure was made"
+    One live run on 2026-10-08, OpenAI `gpt-6.1-sol`, in a fresh Studio, from one backdoor connection:
+    two requests as real panel turns (`agent-task --chat-box Studio`) and the rewind as the panel sends
+    it. The first and middle frames are the PNG `paint_hang` wrote and the agent's own `paint_look` after
+    the second request; the third is its first look after the rewind. A probe box hashed both kept
+    brushes' `state()` and the canvas between the steps: after the rewind all three hashed as they had
+    after the first request (the hog's retained bend back to 0.005 rad from 0.013). The docs build
+    cannot remake the figure, since that needs a model.
+
 ## The same request, another model
 
 The Studio works with whichever model the AI chat is set to use. The painting on the left is the dusk
@@ -148,11 +175,12 @@ tool("paint.dab") {
 ```
 
 Colours can be hex, or real tube paints mixed by parts, `"lead white:4, cadmium yellow:1"`, which
-mix the way paint does. The Studio has sixteen tools in all: strokes along curves, dabs, whole
-regions worked with a painter's handling (`Broad`, `Body`, `Detail`, `Glaze`, `Scumble`, `Blend`),
-glazes, pencil and chalk lines, hatching, stippling, a painting knife, a rag, spatter, keeping a tool
-by name and loading it, drying time, a fresh canvas, hanging, and an ageing tool the agent loads only
-when it asks for it.
+mix the way paint does. The Studio's other tools are strokes along curves, whole regions worked
+with a painter's handling (`Broad`, `Body`, `Detail`, `Glaze`, `Scumble`, `Blend`), glazes, pencil
+and chalk lines, hatching, stippling, a painting knife, a rag, spatter, keeping a tool by name and
+loading it, timed gestures with a brush of moving hairs, watercolour washes, drops, wetting and
+tilting the board, drying time, a fresh canvas or sheet of paper, hanging, and an ageing tool the
+agent loads only when it asks for it.
 
 The agent also needs to know the canvas it is painting on. A `context` block is text the agent
 reads at the start of every request, computed then, so it describes the canvas as it is:

@@ -110,37 +110,41 @@ pub const BRUSH_CONFIG: usize = 11;
 /// preset's. `engine` is the canvas's (it decides what the brush's state records).
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_brush_new_v2(kind: i32, width: f32, seed: u64, engine: i32, cfg: *const f32) -> *mut Held {
-    guard(std::ptr::null_mut(), || {
-        if !(width.is_finite() && width > 0.0) {
-            return Err(format!("bad brush width {width}"));
+    guard(std::ptr::null_mut(), || Ok(Box::into_raw(Box::new(held_from(kind, width, seed, engine, cfg)?))))
+}
+
+/// A held brush of preset `kind` at `width`, its construction changed by `cfg` (`BRUSH_CONFIG`
+/// values, NaN keeping the preset's), as the canvas of `engine` (0: the newest) records it.
+pub(crate) fn held_from(kind: i32, width: f32, seed: u64, engine: i32, cfg: *const f32) -> Result<Held, String> {
+    if !(width.is_finite() && width > 0.0) {
+        return Err(format!("bad brush width {width}"));
+    }
+    let mut t = tool_of(kind, width)?;
+    let v = unsafe { std::slice::from_raw_parts(cfg, BRUSH_CONFIG) };
+    let set = |x: f32, into: &mut f32| {
+        if x.is_finite() {
+            *into = x;
         }
-        let mut t = tool_of(kind, width)?;
-        let v = unsafe { std::slice::from_raw_parts(cfg, BRUSH_CONFIG) };
-        let set = |x: f32, into: &mut f32| {
-            if x.is_finite() {
-                *into = x;
-            }
-        };
-        if v[0].is_finite() {
-            // (a guard on time and memory: 20 000 bristles take about 1.5 s a stroke)
-            if !(1.0..=100_000.0).contains(&v[0]) {
-                return Err(format!("a brush has 1 to 100 000 bristles, not {}", v[0]));
-            }
-            t.bristles = v[0].round() as usize;
+    };
+    if v[0].is_finite() {
+        // (a guard on time and memory: 20 000 bristles take about 1.5 s a stroke)
+        if !(1.0..=100_000.0).contains(&v[0]) {
+            return Err(format!("a brush has 1 to 100 000 bristles, not {}", v[0]));
         }
-        set(v[1], &mut t.length);
-        set(v[2], &mut t.stiffness);
-        set(v[3], &mut t.hair);
-        set(v[4], &mut t.run);
-        set(v[5], &mut t.lay);
-        set(v[6], &mut t.pickup);
-        set(v[7], &mut t.push);
-        set(v[8], &mut t.splay);
-        set(v[9], &mut t.ragged);
-        set(v[10], &mut t.point);
-        t.validate()?;
-        Ok(Box::into_raw(Box::new(Held::new(t, seed).with_engine(engine_of(engine)?))))
-    })
+        t.bristles = v[0].round() as usize;
+    }
+    set(v[1], &mut t.length);
+    set(v[2], &mut t.stiffness);
+    set(v[3], &mut t.hair);
+    set(v[4], &mut t.run);
+    set(v[5], &mut t.lay);
+    set(v[6], &mut t.pickup);
+    set(v[7], &mut t.push);
+    set(v[8], &mut t.splay);
+    set(v[9], &mut t.ragged);
+    set(v[10], &mut t.point);
+    t.validate()?;
+    Ok(Held::new(t, seed).with_engine(engine_of(engine)?))
 }
 
 /// The brush's construction into `out`: kind, width, then the `BRUSH_CONFIG` values.

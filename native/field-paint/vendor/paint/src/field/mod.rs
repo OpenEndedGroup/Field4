@@ -9,3 +9,4 @@
 pub mod state;
 pub mod aqueous;
 pub mod watercolor;
+pub mod bristles;

@@ -59,6 +59,9 @@ class PaintToolbox : AutoCloseable {
     /** The watercolour brush called [name]. */
     fun waterBrush(name: String): WaterBrush = typed(name)
 
+    /** The brush of moving hairs called [name]. */
+    fun dynamicBrush(name: String): DynamicBrush = typed(name)
+
     private inline fun <reified T : PaintTool> typed(name: String): T = when (val t = tools[name]) {
         null -> throw NoSuchElementException("no tool named \"$name\"" + if (tools.isEmpty()) "" else "; there are: ${tools.keys.joinToString()}")
         is T -> t
@@ -84,6 +87,7 @@ class PaintToolbox : AutoCloseable {
                 is PaintRag -> { out.writeByte('R'.code); bytes(out, t.state()) }
                 is Pencil -> { out.writeByte('P'.code); out.writeInt(t.medium.code); out.writeDouble(t.softness); out.writeDouble(t.worn) }
                 is WaterBrush -> { out.writeByte('W'.code); bytes(out, t.state()) }
+                is DynamicBrush -> { out.writeByte('D'.code); out.writeInt(t.kind.code); bytes(out, t.state()) }
             }
         }
     }
@@ -108,6 +112,9 @@ class PaintToolbox : AutoCloseable {
             }
             is PaintRag -> canvas.ragState(t).let { "rag, face ${"%.0f".format(it.load * 100)}% loaded, cloth ${"%.0f".format(it.soaked * 100)}% soaked" + if (it.damp > 0.01) ", damp" else "" }
             is Pencil -> "${t.medium.name.lowercase()} (softness ${t.softness}), ${"%.0f".format(t.worn)} mm drawn since sharpened"
+            is DynamicBrush -> "${t.kind} brush of ${t.hairCount} moving hairs, ${"%.0f".format(t.widthMm)} mm wide, " +
+                (if (t.watercolour) "watercolour" else "oil") + ", ${"%.0f".format(t.fill * 100)}% full" +
+                if (t.retainedBend > 0.05) ", hairs set in a bend of ${"%.0f".format(Math.toDegrees(t.retainedBend))}°" else ""
             is WaterBrush -> "watercolour brush ${"%.0f".format(t.width)} wide, ${"%.0f".format(t.fill * 100)}% full of water " +
                 "(${"%.1f".format(t.waterMm3)} of ${"%.1f".format(t.capacityMm3)} mm³)" + if (t.pigmentUg > 0) ", ${"%.1f".format(t.pigmentUg)} µg of pigment" else ", clean"
         }
@@ -133,6 +140,7 @@ class PaintToolbox : AutoCloseable {
                     'K' -> PaintKnife.restore(bytes(input))
                     'R' -> PaintRag.restore(bytes(input))
                     'W' -> WaterBrush.restore(bytes(input))
+                    'D' -> { val kind = input.readInt(); DynamicBrush.restore(bytes(input), BrushKind.entries.first { it.code == kind }) }
                     'P' -> {
                         val medium = input.readInt()
                         Pencil(DrawingMedium.entries.first { it.code == medium }, input.readDouble()).also { it.worn = input.readDouble() }
@@ -152,6 +160,7 @@ class PaintToolbox : AutoCloseable {
             is PaintRag -> "rag"
             is Pencil -> "pencil"
             is WaterBrush -> "watercolour brush"
+            is DynamicBrush -> "brush of moving hairs"
         }
 
         private fun hex(c: afield.stdlib.Vec4) = "#%02x%02x%02x".format(
