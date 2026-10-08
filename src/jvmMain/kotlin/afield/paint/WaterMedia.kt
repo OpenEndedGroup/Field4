@@ -30,7 +30,7 @@ enum class Paper(internal val id: String) {
 /**
  * A pigment as water carries it: its optics (Kubelka–Munk absorption [k] per channel and scattering
  * [s], per µg/mm² of pigment) and what decides how it moves — particle [density] (g/cm³) and
- * [diameterUm] (dense, coarse pigment settles into the paper's hollows and granulates; fine pigment
+ * [diameterUm] (dense, coarse pigment settles out onto the paper within a minute; fine pigment
  * stays suspended), [stain] (per second it adsorbs onto fibres from water in the sheet, after which
  * it can't be lifted) and [lift] (per second a deposit goes back into still water standing on it; a
  * moving brush lifts much faster).
@@ -82,7 +82,7 @@ object Watercolors {
     operator fun get(name: String): WaterPigment = PaintNative.aqPigment(name)?.let { WaterPigment.fromParams(name, it) }
         ?: throw NoSuchElementException("no watercolour pigment \"$name\"; there are: ${names.joinToString()}")
 
-    /** PB29: coarse and dense, it granulates, and lifts readily. */
+    /** PB29: coarse and dense, it settles fast, and lifts readily. */
     val ultramarine get() = get("ultramarine")
     /** PB15: very fine and staining: smooth, intense, hard to lift. */
     val phthaloBlue get() = get("phthalo blue")
@@ -91,7 +91,7 @@ object Watercolors {
     val quinacridoneRose get() = get("quinacridone rose")
     /** PY35: dense and semi-opaque. */
     val cadmiumYellow get() = get("cadmium yellow")
-    /** PG18: coarse, granulating. */
+    /** PG18: coarse, settles fast. */
     val viridian get() = get("viridian")
     /** Carbon in animal glue: very fine, fixed by its glue once dry. */
     val sumi get() = get("sumi")

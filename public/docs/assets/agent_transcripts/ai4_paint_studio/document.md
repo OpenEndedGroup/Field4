@@ -92,7 +92,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 641 "characters" 44988 "sha256" "7c8c82f3a6850a6b85336332e9a84c83fe43bd58f0a8a1d0a514b57ca837ebf7"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 641 "characters" 44982 "sha256" "d7179a44651515b9f3e15d9ea143dae19c87fc1a2f15570f19e5837d331f315e"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -313,7 +313,7 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
 
     tool("paint.wash") {
         describe("Watercolour or ink with a round watercolour brush: the water on the paper flows, sinks in, dries with dark edges, " +
-            "granulates and blooms on its own. A full brush lays a wet wash; a nearly dry one (fill 0.1-0.3), light and fast, " +
+            "settles and blooms on its own. A full brush lays a wet wash; a nearly dry one (fill 0.1-0.3), light and fast, " +
             "skips over the paper's tooth (drybrush); a damp clean brush on a wet wash drinks colour back up. Paint wet into wet " +
             "by washing over water already there (paint_wet).")
         effects(ToolEffect.CONTROL_RUNTIME)
@@ -685,7 +685,7 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         |stays a sky brush. A knife (paint_knife) lays flat slabs and ridges or scrapes wet paint away; a rag (paint_wipe) lifts
         |open paint for lights; paint_spatter flicks fluid paint. paint_look with light="raking" shows the relief and wet sheen.
         |On paper (paint_fresh with ColdPress, HotPress, Rough, Xuan or Blotting) you can paint in watercolour and ink: paint_wash,
-        |paint_drop, paint_wet and paint_tilt. The water then moves by itself, flowing, sinking in, granulating, drying to darker edges
+        |paint_drop, paint_wet and paint_tilt. The water then moves by itself, flowing, sinking in, settling, drying to darker edges
         |and blooming where wet meets damp; time matters (paint_wait seconds), and paint_look map="surface" shows where it is still
         |wet. Watercolours: ${Watercolors.names.joinToString()}. Oil, pencil and the knife still work on paper, over the watercolour.
         |Watercolour strength is µg of pigment per mm³ of water: 0.5 a faint tint, 1-2 pale, 3-5 a middle value, 6-10 strong and
