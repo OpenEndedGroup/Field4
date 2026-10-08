@@ -1,6 +1,6 @@
 # Sonic Pi
 
-[Sonic Pi](https://sonic-pi.net) v5 is a live-coding instrument with a genuinely good synth engine, a
+[Sonic Pi](https://sonic-pi.net) v5 is a live-coding instrument with a good synth engine, a
 sample library, and an idea of time that a text editor can drive. You write Sonic Pi's Ruby in a
 Field box and run the box. Field talks to it in *owned* mode: Field starts the Sonic Pi server itself
 and becomes the client it expects, so there is no Sonic Pi window. Your box is the buffer, and Sonic
@@ -24,14 +24,15 @@ Do not start the Sonic Pi GUI when using it from Field. Field starts and owns th
 that is how it receives v5's one-time control token, routes errors back to the right box, and stops
 the audio job when you stop the box.
 
-There is no alternative to owned mode, and the reason is the token. Every interesting message in
-Sonic Pi's control API is authenticated with it; the server mints it at boot and prints it exactly
-once, to the daemon's stdout. `daemon.log` will not do instead: the boot-time log line is commented
-out, and the one that survives runs inside the daemon's *exit* handler, so it arrives after the
-daemon has stopped. Whoever started the server is the only client that can ask it to run anything.
-(A Sonic Pi you launched yourself is still reachable, but only over the unauthenticated cue port:
-`SonicPi.cue`. For OSC to and from other programs, [OSC and TUIO](osc.md) covers `osc` and
-`oscClient`.)
+A Sonic Pi you launched yourself can still be reached, but only through its cue port, with
+`SonicPi.cue`; it will not run code Field sends it. For OSC to and from other programs, see
+[OSC and TUIO](osc.md).
+
+??? aside "Why owned mode is the only mode"
+    Sonic Pi authenticates every message that runs code with a token the server mints at boot and
+    prints once, to the daemon's stdout. `daemon.log` does not have it in time: the boot-time log
+    line is commented out, and the surviving one runs in the daemon's exit handler. So only the
+    process that started the server can ask it to run anything.
 
 ## A box that is a piece of music
 
@@ -59,10 +60,9 @@ Returning the result as the box's last expression is what ties the music to the 
 for as long as the `live_loop` runs, and stopping the box stops the music: Sonic Pi's job is cancelled
 through the same path as any other Field launch.
 
-That is also why the code above is written as a `live_loop`. A loop never finishes on its own, so the
-box stays lit and stays stoppable. A bare sequence of `play` calls would flash green for a few
-milliseconds, go idle, and leave whatever it had scheduled sounding with nothing in the interface
-admitting responsibility for it.
+Write the music as a `live_loop` for the same reason. A loop never finishes on its own, so the box
+stays lit and stays stoppable. A bare sequence of `play` calls flashes green for a few milliseconds
+and goes idle, and whatever it scheduled keeps sounding with no box left to stop.
 
 ## Errors arrive late, and land on the line
 
@@ -102,9 +102,7 @@ NoMethodError: undefined method 'final_no'
 ```
 
 The line number is marked in the editor as well as printed, and a fresh run clears the previous
-marker. Line 5 there is line 5 of the box, not line 5 of some string: the offset between the two is
-inferred from where the literal sits in the box's own code, because it is zero only when the
-`sonicPi(` call happens to be the first line.
+marker. Line 5 is counted in the box's code, wherever the `sonicPi(` call sits in it.
 
 ## Which line is making sound
 
@@ -112,11 +110,11 @@ Sonic Pi tells its client which line just triggered a note. `play`, `synth`, `sa
 `play_chord` and the `with_fx` / `live_loop` block boundaries each report the caller's line, so the
 editor can show the music moving through the code.
 
-Two properties of that stream shape what the display can do with it. It arrives at musical rate
-rather than human rate (two loops at a modest tempo produce something like sixteen reports a second),
-so the display samples recency instead of repainting per note, and a line cools off over about half a
-second rather than latching on. And it reports *triggering*, not audibility: a `play` at `amp: 0`
-still creates a node and still reports, so a lit line does not prove you can hear it.
+A lit line fades over about half a second after its last report. A line lights when it triggers a
+note, whether or not you can hear it: a `play` at `amp: 0` still lights its line.
+
+The same reports are available from code. `activity()` counts triggers per line, and
+`activeLines` lists the lines that triggered recently:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -145,9 +143,8 @@ A `#sonicpi` region gets highlighting, hover documentation and completions: func
 function you are calling, and (filtered by context) synth, FX and sample names. `use_synth :` offers
 synths; `sample :` offers samples.
 
-None of that vocabulary is written down in Field. Sonic Pi already describes its own language, so
-`tools/generate_sonic_pi_vocabulary.py` extracts every signature, opt, synth, FX and sample name from
-the installed app:
+The vocabulary comes from the Sonic Pi you have installed.
+`tools/generate_sonic_pi_vocabulary.py` extracts every signature, opt, synth, FX and sample name from the app:
 
 ```diffstatic {data-lang=bash}
 :::static
@@ -156,11 +153,9 @@ tools/generate_sonic_pi_vocabulary.py
 #   238 fns, 66 synths, 42 fx, 206 samples in 18 groups
 ```
 
-Several hundred signatures typed out by hand would be wrong somewhere and would rot at the next
-release. Extracted, they describe the app on this machine rather than the release someone was reading
-when they typed them: `link_audio` and `set_drive!`, both new in v5, are offered because Sonic Pi
-offers them. Re-run the tool after upgrading; `--check` fails whenever the committed vocabulary and
-the installed app disagree.
+Re-run it after upgrading Sonic Pi, and new functions such as v5's `link_audio` and `set_drive!`
+appear in completion. `--check` reports whether the committed vocabulary still matches the
+installed app.
 
 Here is a region in the editor, with the vocabulary in play:
 
@@ -184,15 +179,16 @@ ui.pause(1500)
 
 ## Field patterns as a Sonic Pi sequencer
 
-Field already owns a pattern algebra. `pat("bd [hh hh] sd")` parses Tidal-style mini-notation, keeps
+Field has its own pattern language. `pat("bd [hh hh] sd")` parses Tidal-style mini-notation, keeps
 every transform exact in *rational* cycle space, and has `.every(4) { it.rev() }`, `.degradeBy`,
 euclidean rhythms, polymeters and continuous control signals on top of it
-([Patterns & Rhythm](pattern_language.md)). Sonic Pi has 66 synths, 42 FX, 206 samples and a
-scheduler that is sample-accurate. `SonicPiPatterns.kt` is the join, so reaching Sonic Pi from Field
-does not mean typing Sonic Pi's own language into a string literal the pattern algebra cannot see
-into.
+([Patterns & Rhythm](pattern_language.md)). Sonic Pi has the synths, FX, samples and a
+sample-accurate scheduler. You can write the pattern in Field and have Sonic Pi play it, without
+writing any Ruby.
 
-There are two ways to make the join, and they are good at different things.
+There are two ways to do it. `compile` turns the pattern into a Sonic Pi program, which keeps
+perfect time. `drive` sends Sonic Pi one note at a time from Field's clock, which lets you edit the
+pattern mid-bar.
 
 ### compile: the pattern becomes a program
 
@@ -231,40 +227,33 @@ live_loop :groove do
 end
 ```
 
-Two decisions in that output separate a lowering that works from one that nearly works.
+`use_bpm 60 * cps` makes one Sonic Pi beat one Field cycle, so each `sleep` is the fraction of a
+cycle the pattern computed. Change `cps` and only the `use_bpm` line changes.
 
-**`use_bpm 60 * cps` makes one Sonic Pi beat exactly one Field cycle.** So every `sleep` in the
-emitted program *is* the cycle fraction the pattern computed; the lattice is the pattern's own, and
-nothing in the body depends on the tempo. Change `cps` and only the `use_bpm` line moves.
+Three even hits inside a quarter of a bar fall at twelfths, which no decimal holds exactly, and a
+rounded `sleep` would drift out of time over a long `live_loop`. So a duration is written as a
+decimal when it has one that ends (halves, quarters, fifths) and as a Ruby `Rational` otherwise.
 
-**`Rational(1, 12)`, not `0.0833`.** Three even hits inside a quarter of a bar is a position no
-decimal can hold, and a `live_loop` runs for a great deal longer than the minute it takes a rounded
-`sleep` to lose a beat. A decimal is emitted when the denominator is a product of 2s and 5s, because
-then it terminates and reads the way a musician expects; a Ruby `Rational` otherwise.
-
-`cycles` is the one parameter that needs thought. A pattern that varies per cycle (`<a b>`,
+Choose `cycles` with care. A pattern that varies per cycle (`<a b>`,
 `.every(4)`, `.iter`) needs a loop long enough to contain the variation, or the emitted program
 plays cycle 0 for ever.
 
-### Atoms become instruments, checked against the installed vocabulary
+### How words in a pattern become instruments
 
-An atom resolves in order: an explicit override, then a real sample name, then a real synth name,
-then a note (`c4`, `e2`, `60`), then the drum-machine aliases: `bd`, `sd`, `hh`, `cp`, `oh`, `amen`
-and thirty-four more. "Real" means *present in `sonicpi-vocabulary.json`*, the file extracted from the
-installed app.
+Each word (atom) in the pattern is looked up in order: an explicit override, then a Sonic Pi sample
+name, then a synth name, then a note (`c4`, `e2`, `60`), then the drum-machine aliases such as `bd`,
+`sd`, `hh`, `cp`, `oh` and `amen`. Sample and synth names are checked against the vocabulary
+extracted from your installed Sonic Pi.
 
-The check matters because Sonic Pi answers `sample :bd_hauz` by doing nothing at all, with no error
-and no sound, and a `live_loop` playing three of its four voices is very hard to debug by ear. So a
-mistyped alias is a failing test rather than a silence, and an atom that matches nothing is named in
-a comment at the top of the emitted program rather than dropped.
+Sonic Pi plays a misspelled sample such as `sample :bd_hauz` as silence, with no error. So an atom
+that matches nothing is named in a comment at the top of the generated program instead of being
+dropped quietly.
 
-Notes come out as MIDI numbers rather than `:c4` because Field puts middle C at `c5`, Sonic Pi
-at `:c4`, and emitting the number the pattern meant removes a whole class of off-by-an-octave that
-neither side would report.
+Notes are written as MIDI numbers rather than `:c4`, because Field puts middle C at `c5` and Sonic
+Pi puts it at `:c4`; the number avoids an octave error.
 
-Control patterns arrive through `PatAlgebra`'s parameters, so `with(gain(sine().range(0.2, 0.8)))`
-works unchanged. Two of the three names below are conversions rather than renames, and they are the
-ones that would otherwise be wrong in a way you can hear but not see:
+Control patterns such as `with(gain(sine().range(0.2, 0.8)))` carry over. Two of them are converted
+on the way:
 
 | Field | Sonic Pi | conversion |
 | --- | --- | --- |
@@ -272,10 +261,11 @@ ones that would otherwise be wrong in a way you can hear but not see:
 | `pan` | `pan:` | Field's pan is `0..1`, Sonic Pi's is `-1..1` |
 | `cutoff` | `cutoff:` on a synth, `lpf:` on a sample | Field's cutoff is **Hz**, Sonic Pi's is a **MIDI note number** |
 
-Anything else is passed through only if the vocabulary says the target accepts it. `cutoff` is not
-an opt of `:beep`, so on a `:beep` layer it is dropped *and recorded* (in
-`SonicPiProgram.droppedOpts` and in a comment in the program) rather than sent for Sonic Pi to
-ignore. Which synth a layer's bare notes play on is a property of the layer:
+Other parameters are passed through only if the target synth or sample accepts them. `cutoff` is
+not an opt of `:beep`, so on a `:beep` layer it is dropped, and the drop is listed in
+`SonicPiProgram.droppedOpts` and in a comment in the program.
+
+Pass `synth =` to choose which synth a layer's notes play on:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -289,10 +279,9 @@ sonicPiProgram(
 
 ### FX wrap a layer
 
-`with_fx` is where Sonic Pi is furthest ahead of anything Field has, so a layer can carry a chain of
-it. Names and opts are checked when the layer is built, against the same extracted vocabulary, which
-matters more here than anywhere else: Sonic Pi's answer to `with_fx :revreb` is a runtime error on
-the `live_loop`'s own thread, minutes into a performance.
+A layer can carry a chain of Sonic Pi's `with_fx` effects. FX names and opts are checked against the
+vocabulary when the layer is built, so a typo such as `:revreb` fails in Field rather than as a
+runtime error in the middle of a performance. This layer runs through reverb and then echo:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -304,6 +293,8 @@ sonicPiProgram(
     cps = 0.5
 )
 ```
+
+and this is the program it generates:
 
 ```diffstatic {data-lang=ruby}
 :::static
@@ -323,17 +314,14 @@ live_loop :bass do
 end
 ```
 
-The FX wrap the body rather than the `use_bpm`, and each one adds an `end` inside the `live_loop`, so
-count them when reading the nesting: taking the first `end` for the loop's closes the loop early and
-gives a period of zero. `synth.sonic-pi.patterns` runs the differential oracle again through two
-nested FX and requires the lattice to be identical to the dry layer's.
+The FX wrap the body inside the `live_loop`, and each adds its own `end`; the last `end` closes the
+loop.
 
-### drive: Field's clock sequences, Sonic Pi sounds
+### drive: Field keeps time, Sonic Pi plays
 
-The other direction sends one `/run-code` per event, through the same `PatResponseSpec` machinery
-that drives every other live pattern in Field. There is no `live_loop` to redefine, so the pattern
-stays editable mid-bar, and a continuous signal is sampled once per note, which a compiled loop
-cannot do.
+`sonicPiLive` sends Sonic Pi one message per note, timed by Field's clock like any other live
+pattern in Field. There is no `live_loop` to redefine, so you can edit the pattern mid-bar, and a
+continuous signal is sampled at every note, which a compiled loop cannot do.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -341,38 +329,34 @@ cannot do.
     .sonicPiLive(cps = 0.5)
 ```
 
-The trade is timing. Each event is a UDP message plus Sonic Pi's own scheduling latency, so onsets
-carry a roughly constant offset and a few milliseconds of jitter, where a compiled `live_loop` is
-sample-accurate. The offset is the same for every event, so it reads as latency rather than as loose
-rhythm; the jitter is what you would hear.
+The cost is timing. Each note travels as a network message and then waits for Sonic Pi's own
+scheduling, so notes arrive a roughly constant time late with a few milliseconds of jitter. The
+constant part sounds like latency; the jitter is what you hear. A compiled `live_loop` has neither.
 
-### What the compiled path buys you
+### Which one keeps time
 
-Recorded from a real Sonic Pi 5: eleven onsets across eight seconds of
-`pat("bd ~ [bd bd bd] bd")`, triplets included, each landing on exactly the sample the pattern's
-rational schedule names.
+This is a recording of a real Sonic Pi 5 playing the compiled `pat("bd ~ [bd bd bd] bd")` for eight
+seconds. Every onset, triplets included, lands on the sample the pattern asked for.
 
 ![The recorded pattern. Blue is what the pattern asked for, green is what the recording contains.](assets/sonic_pi/pattern_onsets.png)
 
-There is nothing left to drift: SuperCollider schedules bundles sample-accurately, and the lowering
-emits `Rational(1, 3)` rather than `0.333`. That is the difference the `drive` path's UDP hop gives
-up, and the reason to reach for `compile` when a figure has to land.
+Use `compile` when the rhythm has to be exact, and `drive` when you want to change the pattern while
+it plays.
 
-Two probes hold it, and both skip on a machine without Sonic Pi installed:
-`synth.sonic-pi.patterns` parses the emitted program back and compares it to the pattern's own
-`PatQ` positions, and `sonicpi.pattern.timing` records the audible run and measures the onsets.
-`FIELD_SONIC_PI_REQUIRED=1` turns the skip, or a boot that never becomes ready, into a failure on a
-machine whose job is to exercise the external engine. The instrument, the bounds each probe asserts
-and its last printed run are in `dev_docs/SONIC_PI_MEASUREMENTS.md`.
+??? aside "How the timing is checked"
+    Two smoke probes skip on a machine without Sonic Pi: `synth.sonic-pi.patterns` parses the
+    generated program back and compares it with the pattern's own positions, including through
+    nested FX, and `sonicpi.pattern.timing` records the audible run and measures the onsets.
+    `FIELD_SONIC_PI_REQUIRED=1` turns a skip into a failure. The bounds and the last run are in
+    `dev_docs/SONIC_PI_MEASUREMENTS.md`.
 
 ### A document to open
 
-`public/docs/assets/sonicpi_pattern_demo/metadata.edn` is a loadable Field document with three
-boxes. The first needs no Sonic Pi at all: it is a text transformation, and it prints the program
-and the atom resolutions. The second plays it. The third drives Sonic Pi from Field's clock.
+`public/docs/assets/sonicpi_pattern_demo/metadata.edn` is a Field document with three boxes. The
+first needs no Sonic Pi at all: it prints the generated program and how each atom was resolved. The
+second plays it. The third drives Sonic Pi from Field's clock.
 
-
-**1 — A pattern, lowered to Sonic Pi.** Needs nothing installed.
+The first box, a pattern turned into a Sonic Pi program, needs nothing installed:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -406,7 +390,7 @@ listOf("bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch").forEach {
 }
 ```
 
-**2 — Hear it.** Turn your volume down first.
+The second box plays it. Turn your volume down first.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -443,7 +427,7 @@ sonicPiPattern(
 )
 ```
 
-**3 — Field's clock, Sonic Pi's instrument.**
+The third box keeps time in Field and lets Sonic Pi play the notes:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -463,13 +447,13 @@ sonicPiPattern(
 ## Streaming Field's audio into Sonic Pi
 
 Sonic Pi v5 has `link_audio`, which subscribes to another Ableton Link peer's published audio channel
-and treats it exactly like a soundcard input. Field publishes one, so Field's output can be an input
-to a Sonic Pi patch (with reverb on it, or a filter, or whatever else Sonic Pi does to a live input),
-and the two share tempo over the same Link session.
+and treats it like a soundcard input. Field publishes one, so Field's output can be an input to a
+Sonic Pi patch (with reverb on it, a filter, or anything else Sonic Pi does to a live input), and the
+two share tempo over the same Link session.
 
-Field publishes as a *peer* with *channels*: the peer name comes from `LinkAudioInterface.shared`, the
-channel from `enableLinkOutput`. Name the channel `Main` and the Sonic Pi side is a one-liner, since
-that is `link_audio`'s default.
+Field publishes as a *peer* with *channels*: the peer name comes from `LinkAudioInterface.shared`,
+the channel from `enableLinkOutput`. Name the channel `Main`, which is `link_audio`'s default, and
+the Sonic Pi side needs only the peer name:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -486,11 +470,11 @@ with_fx :reverb, room: 0.8 do
 end
 ```
 
-One prerequisite has no symptom of its own: **Sonic Pi's Link visibility defaults to Off**, and no
-Sonic Pi *language* function turns it on, only the GUI's Link toggle, which owned mode does not have.
-Until it is on, neither side can see the other, `link_audio` accepts the call without complaining,
-and you get silence with nothing to explain it. A second, separate gate controls Sonic Pi
-*publishing* its own channels, also off by default.
+Sonic Pi's Link visibility is off by default, and only the Sonic Pi GUI's Link toggle turns it on;
+there is no Sonic Pi function for it, and owned mode has no GUI. Until it is on, neither side can
+see the other and `link_audio` plays silence without an error. Turn it on from the box with Sonic
+Pi's internal Link API. A second setting, also off by default, lets Sonic Pi publish its own
+channels:
 
 ```diffstatic {data-lang=ruby}
 :::static
@@ -500,9 +484,9 @@ and you get silence with nothing to explain it. A second, separate gate controls
 puts @link_api.link_get_visibility       #=> 2
 ```
 
-`sonicpi.link-audio.probe` checks that the two implementations interoperate. It publishes a 440 Hz
-sine from Field, has Sonic Pi subscribe and record its own mixer output, and measures the recording
-at 440 Hz against a control frequency:
+The smoke probe `sonicpi.link-audio.probe` checks the connection end to end. It publishes a 440 Hz
+sine from Field, has Sonic Pi subscribe and record its own output, and compares the energy at 440 Hz
+with a control frequency:
 
 ```diffstatic {data-lang=text}
 :::static
@@ -515,13 +499,10 @@ tone / control ...... 7423.66
 VERDICT: YES — 440.0 Hz dominates the recording, so Field's channel reached Sonic Pi
 ```
 
-The probe commits PCM to the Link sink directly rather than through an audio device, so it does not
-depend on which soundcard the machine happens to have selected.
-
 ## Ports, tokens and shutting down
 
-The daemon prints one line to stdout and nothing else identifies it: five ports and the token, in the
-daemon's own order.
+The Sonic Pi daemon announces itself with one line on stdout: five ports and the token, in this
+order.
 
 ```diffstatic {data-lang=text}
 :::static
@@ -534,27 +515,16 @@ daemon's own order.
 #     gui-listen-to-spider — bound by us, where the log and errors come back
 ```
 
-Whoever holds the token has to keep sending `/daemon/keep-alive`, or the daemon reaps its whole
-process tree, which is what stops a dead Field from leaving an orphaned audio server behind. Do not
-trust the "more frequently than every 3s" in Sonic Pi's own `daemon.rb` header, though: v5's
-`KillSwitch` sleeps 40s before it starts watching and then gives up only after five empty 10s
-windows, so the real grace period is nearer 90s. Field sends every 1.2s and asks the daemon to exit
-outright on close.
+Field sends `/daemon/keep-alive` every 1.2 s and asks the daemon to exit when Field closes. If Field
+dies instead, the daemon shuts down its audio server by itself, but only after about 90 s (Sonic Pi's
+`daemon.rb` says 3 s; its `KillSwitch` waits much longer).
 
-That grace period has a consequence which presents as a mystery: a Sonic Pi started and then
-abandoned holds the cue port for the whole of it, pushing the *next* boot onto a random cue port. If
-`oscCues` is not 4560, suspect a stranded daemon rather than a configuration change.
+Until then the abandoned daemon holds the cue port, so the next boot gets a random one. If
+`oscCues` is not 4560, look for a leftover Sonic Pi process.
 
-## `Invalid token: 0`, and a stop that takes a second and a half
+Stopping a box takes about a second and a half to go quiet. Sonic Pi has already scheduled the next
+moment of audio, and that drains after the stop.
 
-**A shifted OSC argument reads as a rejected token.** OSC pads every string and typetag to a multiple
-of four bytes, adding *nothing* when the length is already aligned. Pad an already-aligned `,is`
-typetag by a further four and every argument after it shifts, so `/run-code`'s token arrives as `0`
-and Sonic Pi ignores the message, while unauthenticated messages like `/version` keep working
-perfectly and send you looking somewhere else entirely. The only evidence is `Invalid token: 0` in
-`~/.sonic-pi/log/spider.log`. Field goes through JavaOSC, which gets this right, and the smoke test
-pins the alignment so a change of OSC library fails loudly instead of silently.
-
-**Stopping takes about a second and a half.** Sonic Pi's activity reports are queued against
-scheduled audio time, so whatever was already scheduled when a stop landed still drains. A test that
-demands silence the instant the box stops is asking for something Sonic Pi does not offer.
+If Sonic Pi ignores everything Field sends while `/version` still answers, check
+`~/.sonic-pi/log/spider.log` for `Invalid token: 0`. That means the OSC messages are misaligned, so
+the token arrives as 0; it should only happen if the OSC library changes.
