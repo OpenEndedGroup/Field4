@@ -8,8 +8,7 @@ function for each direction: `osc(port)` listens, and `oscClient(host, port)` se
 touch table, and `TuioReceiver` turns it into one frame per tracker update.
 
 Every figure on this page is a box that sends OSC to itself over the loopback interface and shows
-what arrived. The same exchanges with programs that are not Field, python-osc and SuperCollider,
-are recorded in `dev_docs/OSC_TUIO_MEASUREMENTS.md`.
+what arrived, so each example runs as it is, with no other program.
 
 ## Receiving a message
 
@@ -230,9 +229,8 @@ Three details decide whether another program can read what you send:
 - **Write `0.5f`, not `0.5`.** A bare Kotlin decimal is a `Double`, and goes out as `d`. `f` is one
   of the four types OSC 1.0 requires every receiver to understand. `d`, `h` (`Long`), `T`/`F` and
   `N` are among the optional types, and the specification tells a receiver that does not know a tag
-  to discard the whole message. SuperCollider 3.12 reads `d`, but it does not read `h`: the
-  measurement page records a `Long` arriving there as a character, and every argument after it
-  arriving wrong.
+  to discard the whole message. SuperCollider 3.12 reads `d`, but it does not read `h`: a `Long`
+  arrives there as a character, and every argument after it arrives wrong.
 - **A `List` is the argument list.** `send("/types", sent)` sends nine arguments, not one array.
   The `vararg` form `send("/fader/1", 0.75f)` is the same call spelled differently.
 - **`Char` goes out as `c`**, which python-osc does not decode at all. Send a one-letter `String`.
@@ -547,8 +545,8 @@ NetAddr("127.0.0.1", 57301).sendMsg("/fader/1", 0.75);
 ```
 
 SuperCollider sends a decimal as `f`, so it arrives in Field as a `Float`. In the other direction,
-send `Int`, `Float` and `String`; the measurement page shows SuperCollider 3.12 misreading a `Long`
-and the arguments that follow it.
+send `Int`, `Float` and `String`, since SuperCollider 3.12 misreads a `Long` and the arguments
+that follow it.
 
 **A phone or tablet control surface**, such as TouchOSC. Set the app's host to the computer's
 address on the local network and its outgoing port to the one your box listens on. Listen on the
@@ -565,13 +563,6 @@ to Sonic Pi's cue port, where `sync "/osc*/your/address"` waits for it. That is 
 [Sonic Pi](sonic_pi.md) page. A Sonic Pi you started yourself also accepts cues, since the cue port
 needs no token.
 
-??? aside "Which peers were run while writing this page"
-    The Field side of every exchange here was run against python-osc 1.10.2, an OSC implementation
-    that shares no code with JavaOSC, and against SuperCollider 3.12.2's `sclang` run headless.
-    The commands and their output are in `dev_docs/OSC_TUIO_MEASUREMENTS.md`, together with the
-    defects they found. TouchOSC and Max are GUI programs, which the docs build cannot drive; the
-    settings described for them are the programs' own, and were not exercised here.
-
 ## Field's own OSC editor
 
 Separately from anything a box does, Field can listen for OSC itself and use it to edit code. The
@@ -580,5 +571,15 @@ Separately from anything a box does, Field can listen for OSC itself and use it 
 numeric argument and, after a short pause, runs the box being edited again, so a physical fader can
 scrub a constant in your code. The *launch* and *stop* addresses (`/field/launch`, `/field/stop`)
 launch and stop the box being edited. The default port is 9000,
-the same as `osc()`'s default, so a box that listens on 9000 and the editor are then sharing one port
-under the rule described in the warning above.
+the same as `osc()`'s default, so a box that listens on 9000 shares that port with the editor;
+give your boxes another one.
+
+See also: [Mobile controllers](mobile_controllers.md) for building a control surface in Field
+itself, [OSCQuery](oscquery.md), and [Sonic Pi](sonic_pi.md).
+
+??? aside "Which peers were run while writing this page"
+    The Field side of every exchange here was run against python-osc 1.10.2, an OSC implementation
+    that shares no code with JavaOSC, and against SuperCollider 3.12.2's `sclang` run headless.
+    The commands and their output are in `dev_docs/OSC_TUIO_MEASUREMENTS.md`, together with the
+    defects they found. TouchOSC and Max are GUI programs, which the docs build cannot drive; the
+    settings described for them are the programs' own, and were not exercised here.
