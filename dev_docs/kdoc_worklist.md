@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9846 of 16626 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9849 of 16629 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
 **808 undocumented entry points** (types, top-level functions and values) and 5627 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -86,7 +86,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [Loris.kt](../src/jvmMain/kotlin/afield/stdlib/loris/Loris.kt) | Audio | loris | 0 | 20 | 33% |
 | [particlevideo.kt](../src/jvmMain/kotlin/afield/stdlib/particlevideo.kt) | Video | particle_video | 0 | 20 | 45% |
-| [Orca.kt](../src/jvmMain/kotlin/afield/four/synth/Orca.kt) | Patterns | orca | 0 | 19 | 62% |
+| [Orca.kt](../src/jvmMain/kotlin/afield/four/synth/Orca.kt) | Patterns | orca | 0 | 19 | 64% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples, alife_examples | 0 | 19 | 50% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples, chain_life3d_render | 0 | 19 | 71% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
@@ -290,7 +290,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FM.kt](../src/jvmMain/kotlin/afield/four/synth/FM.kt) | Synthesis | — | 0 | 1 | 90% |
 | [HeadTrackedSpatialSmokeTest.kt](../src/jvmMain/kotlin/afield/four/synth/HeadTrackedSpatialSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |
 | [MarfSmokeTest.kt](../src/jvmMain/kotlin/afield/four/synth/MarfSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |
-| [OrcaHeadless.kt](../src/jvmMain/kotlin/afield/four/synth/OrcaHeadless.kt) | Patterns | — | 0 | 1 | 80% |
+| [OrcaHeadless.kt](../src/jvmMain/kotlin/afield/four/synth/OrcaHeadless.kt) | Patterns | — | 0 | 1 | 83% |
 | [PatSpatialBudgetProbe.kt](../src/jvmMain/kotlin/afield/four/synth/PatSpatialBudgetProbe.kt) | Patterns | — | 0 | 1 | 50% |
 | [PatSpatialEngineSmoke.kt](../src/jvmMain/kotlin/afield/four/synth/PatSpatialEngineSmoke.kt) | Patterns | — | 0 | 1 | 50% |
 | [PatSpatialSmokeTest.kt](../src/jvmMain/kotlin/afield/four/synth/PatSpatialSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |

@@ -2,6 +2,7 @@
 package afield.four.synth
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.graalvm.polyglot.Context
 import org.graalvm.polyglot.Engine
 import org.graalvm.polyglot.EnvironmentAccess
@@ -26,6 +27,7 @@ import java.io.OutputStream
  * live one — `onNote`, `o[x, y]`, `onChange`, `variable` — works here too, and a change made in a
  * callback lands at the next frame, as it does live. What it lacks is a page: no keyboard, no
  * drawing, no MIDI device, and of the commander only `play`, `stop`, `bpm:`, `frame:` and `write:`.
+ * JavaScript runs here too: [evaluate] at once, or [Orca.eval] / [Orca.js] at the next step.
  * Time is the frame count: each [step] is one ORCA frame, `60 / bpm / 4` seconds of music, however
  * long it took to compute. That is what makes an offline render of an ORCA program possible.
  *
@@ -65,7 +67,7 @@ class OrcaHeadless(grid: String? = null, bpm: Int = 120, cols: Int = 64, rows: I
             const client = { orca: new Orca(library), clock: { speed: { value: 120 }, isPaused: false },
               cursor: { x: 0, y: 0 }, grid: { w: 8, h: 8 }, commander: { trigger: (text) => fieldOrcaCommand(`${'$'}{text}`) } }
             client.io = new IO(client)
-            const events = []
+            const events = [], results = []
             let millis = 0, lastGrid = null, sent = 0
             const capture = fieldOrcaCapture(client, (event) => { event.frame = client.orca.f; event.at = millis; events.push(event) })
 
@@ -91,6 +93,7 @@ class OrcaHeadless(grid: String? = null, bpm: Int = 120, cols: Int = 64, rows: I
               if (sent++ === 0) report.hello = true
               if (s !== lastGrid) { report.grid = s; report.w = client.orca.w; report.h = client.orca.h; lastGrid = s }
               if (Object.keys(client.orca.variables).length) report.variables = client.orca.variables
+              if (results.length) report.results = results.splice(0)
               return JSON.stringify(report)
             }
 
@@ -101,6 +104,7 @@ class OrcaHeadless(grid: String? = null, bpm: Int = 120, cols: Int = 64, rows: I
                   case 'write': client.orca.writeBlock(c.x, c.y, c.text); break
                   case 'set': client.orca.write(c.x, c.y, c.glyph); break
                   case 'variable': capture.hold(c.name, c.value); break
+                  case 'eval': fieldOrcaEval(c, results); break
                   case 'bpm': client.clock.speed.value = Math.min(300, Math.max(60, c.value)); break
                   case 'frame': client.orca.f = c.value; break
                   case 'play': client.clock.isPaused = false; break
@@ -108,6 +112,11 @@ class OrcaHeadless(grid: String? = null, bpm: Int = 120, cols: Int = 64, rows: I
                   case 'command': fieldOrcaCommand(`${'$'}{c.text}`); break
                 }
               }
+            }
+
+            function fieldOrcaEvaluate (js) {
+              const value = (0, eval)(js)
+              return JSON.stringify(value === undefined ? null : value)
             }
 
             function fieldOrcaCommand (text) {
@@ -174,6 +183,12 @@ class OrcaHeadless(grid: String? = null, bpm: Int = 120, cols: Int = 64, rows: I
             exchange()
         }
     }
+
+    /**
+     * Run [javascript] in this ORCA's context now, at global scope beside `client` and `library`,
+     * and return its value as JSON. The headless counterpart of [Orca.eval], which waits for a page.
+     */
+    fun evaluate(javascript: String): JsonElement = Json.parseToJsonElement(call("fieldOrcaEvaluate", javascript))
 
     /** The length of one frame at the current tempo, in seconds. */
     val frameSeconds: Double get() = 60.0 / orca.bpm / 4.0

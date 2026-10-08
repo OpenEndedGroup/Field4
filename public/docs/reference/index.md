@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**16626 public symbols across 478 source files**, 9846 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**16629 public symbols across 478 source files**, 9849 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -23,7 +23,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Search](search.md) | 2 | 156 | 102 (65%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 20 | 581 | 495 (85%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 40 | 1424 | 676 (47%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
-| [Patterns](patterns.md) | 40 | 1304 | 710 (54%) | Musical time, as a value. |
+| [Patterns](patterns.md) | 40 | 1307 | 713 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 23 | 955 | 326 (34%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 105 | 2852 | 1267 (44%) | Field's small languages, from the host side. |
@@ -313,8 +313,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [NumpyShared.kt](languages.md#numpyshared-kt) | Languages | 24 | 17 |  |  |
 | [OctreeBarnesHut.kt](simulation.md#octreebarneshut-kt) | Simulation | 10 | 10 | Approximate inverse-square forces over a particle cloud, by summarising distant groups as a single mass each. |  |
 | [Off.kt](polytopes.md#off-kt) | Polytopes | 1 | 1 | The one-way bridge to OFF, the plain-text polygon interchange format that Geomview and most polyhedron tooling read. |  |
-| [Orca.kt](patterns.md#orca-kt) | Patterns | 51 | 32 |  | [ORCA](../orca.md) |
-| [OrcaHeadless.kt](patterns.md#orcaheadless-kt) | Patterns | 5 | 4 |  |  |
+| [Orca.kt](patterns.md#orca-kt) | Patterns | 53 | 34 |  | [ORCA](../orca.md) |
+| [OrcaHeadless.kt](patterns.md#orcaheadless-kt) | Patterns | 6 | 5 |  |  |
 | [OrcaSoundDocs.kt](patterns.md#orcasounddocs-kt) | Patterns | 8 | 2 |  |  |
 | [osc.kt](audio.md#osc-kt) | Audio | 28 | 11 | OSC in and out, wrapped around JavaOSC (`com.illposed.osc`) and driven from Field's main runloop. | [OSC and TUIO](../osc.md) |
 | [Oscillators.kt](synthesis.md#oscillators-kt) | Synthesis | 94 | 39 | The sources: oscillators, noise, and the samplers that stand in for one. | [Csound](../csound.md) |

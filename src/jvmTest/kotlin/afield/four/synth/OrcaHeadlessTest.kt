@@ -27,6 +27,23 @@ class OrcaHeadlessTest {
         assertTrue(67 in notes, "the note set from Kotlin plays: $notes")
     }
 
+    @Test fun javaScriptRunsBesideTheOperatorsAndCanPatchThem() = OrcaHeadless("D1\n.:03C").use { o ->
+        assertEquals(64, o.evaluate("client.orca.w").toString().toInt())
+        // Replace the MIDI operator's note with a fixed G, from Kotlin, through the same op a box sends.
+        val notes = mutableListOf<Int>()
+        o.orca.onNote { notes += it.midi }
+        o.orca.js("""
+            const Midi = library[':']
+            library[':'] = function (orca, x, y, passive) {
+              Midi.call(this, orca, x, y, passive)
+              const listen = this.listen
+              this.listen = (port, toValue) => port === this.ports.note ? 'G' : listen.call(this, port, toValue)
+            }
+        """)
+        o.step(3)
+        assertTrue(notes.isNotEmpty() && notes.last() == 67, "the patched operator plays G: $notes")
+    }
+
     @Test fun everyOutputKindIsCaptured() = OrcaHeadless("D1\n.;hi\nD1\n.=a12\nD1\n.!012").use { o ->
         val udp = mutableListOf<String>(); val osc = mutableListOf<OrcaOsc>(); var cc = 0
         o.orca.onUdp { udp += it }.onOsc { osc += it }.onCC { cc++ }

@@ -11,10 +11,12 @@ import afield.exposeOutputIframeTools
 import afield.outputIframe
 import afield.outputRequests
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.pow
 
@@ -40,7 +42,7 @@ import kotlin.math.pow
  * operators beside a cell, [variable] holds an ORCA variable, [write] puts text on the grid, [grid]
  * replaces all of it, [command] runs anything ORCA's commander takes (`"bpm:140"`, `"play"`, ...),
  * and [onChange] / [onCell] report the cells ORCA changes, so a box can play a part in the grid as
- * one more operator. A [grid] passed here is
+ * one more operator. [eval] and [js] run JavaScript in ORCA's page, for patching ORCA itself. A [grid] passed here is
  * loaded when ORCA starts; without one, the box reopens the grid it had when last edited, which is
  * saved with the document. [exposeTools] lets AI4 read and write the grid.
  *
@@ -143,6 +145,7 @@ class Orca internal constructor(
     private val oscs = CopyOnWriteArrayList<(OrcaOsc) -> Unit>()
     private val frames = CopyOnWriteArrayList<(Orca) -> Unit>()
     private val changes = CopyOnWriteArrayList<(OrcaCell) -> Unit>()
+    private val evals = ConcurrentHashMap<String, CompletableDeferred<JsonElement>>()
     /** Cells this box set that ORCA has not reported back yet, with the report that will show them. */
     private val pendingCells = ConcurrentHashMap<Pair<Int, Int>, Pair<Char, Long>>()
     private var rows: List<String> = emptyList()
@@ -212,6 +215,31 @@ class Orca internal constructor(
         send("set", "x" to JsonPrimitive(x), "y" to JsonPrimitive(y), "glyph" to JsonPrimitive(glyph.toString()))
     }
 
+    /**
+     * Run [javascript] in ORCA's page, at global scope beside ORCA's `client` and `library`, and
+     * suspend until its value comes back as JSON with the next report; a promise is awaited first.
+     * Anything goes: read ORCA's state, restyle it, replace an operator in `library`, wrap
+     * `client.run`. A JavaScript error comes back as an [IllegalStateException] carrying its stack.
+     *
+     * ```kotlin
+     * go { println(o.eval("client.orca.w + ' x ' + client.orca.h")) }
+     * ```
+     */
+    suspend fun eval(javascript: String, timeoutMillis: Long = 5_000): JsonElement {
+        val id = UUID.randomUUID().toString()
+        val result = CompletableDeferred<JsonElement>()
+        evals[id] = result
+        send("eval", "id" to JsonPrimitive(id), "js" to JsonPrimitive(javascript))
+        try {
+            return withTimeout(timeoutMillis) { result.await() }
+        } finally {
+            evals.remove(id)
+        }
+    }
+
+    /** Run [javascript] in ORCA's page at its next frame, as [eval] does, without waiting for a value. */
+    fun js(javascript: String) = send("eval", "js" to JsonPrimitive(javascript))
+
     /** Put a `*` at ([x], [y]): next frame, the operators beside it fire, and ORCA erases it. */
     fun bang(x: Int, y: Int) = set(x, y, '*')
 
@@ -262,8 +290,8 @@ class Orca internal constructor(
     private val owner: Box get() = box ?: throw IllegalStateException("A headless ORCA has no box output")
 
     /**
-     * Give AI4 tools to read this ORCA, write to it and command it (`<name>_read`, `_write`, `_load`,
-     * `_command`), plus the generic live-iframe tools (`iframe_<name>_screenshot`, ...) when
+     * Give AI4 tools to read this ORCA, write to it, command it and run JavaScript in its page
+     * (`<name>_read`, `_write`, `_load`, `_command`, `_js`), plus the generic live-iframe tools (`iframe_<name>_screenshot`, ...) when
      * [iframeTools] is true. Re-running the box replaces them; not calling this removes them.
      */
     fun exposeTools(name: String = "orca", iframeTools: Boolean = true): List<BoxTool> {
@@ -312,7 +340,17 @@ class Orca internal constructor(
             val text by param<String>("The command.")
             action { orca.command(text()); orca.sync(); mapOf("bpm" to orca.bpm, "playing" to orca.playing, "frame" to orca.frame) }
         }
-        return listOf(read, write, load, command) +
+        val javascript = box.aiTool("${name}_js") {
+            namespace("orca")
+            effects(ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME)
+            describe("Run JavaScript in the page of the ORCA in $where, at global scope where ORCA's `client` " +
+                "(client.orca: the grid, client.clock, client.theme, client.io) and `library` (the operators, by " +
+                "lowercase glyph) live, and return its JSON value. Use it to inspect or patch ORCA itself: " +
+                "restyle it, redefine an operator, wrap client.run. Works in any browser, not only Electron.")
+            val code by param<String>("JavaScript expression, or statements whose last value is returned.")
+            action { mapOf("json" to orca.eval(code()).toString()) }
+        }
+        return listOf(read, write, load, command, javascript) +
             (if (iframeTools) box.exposeOutputIframeTools(channel, name) else emptyList())
     }
 
@@ -341,6 +379,13 @@ class Orca internal constructor(
         report["cursor"]?.jsonObject?.let { cursor = (it.int("x") ?: 0) to (it.int("y") ?: 0) }
         variables = report["variables"]?.jsonObject?.mapValues { it.value.jsonPrimitive.content } ?: emptyMap()
         if (report.bool("edited")) save()
+        for (element in report["results"]?.jsonArray.orEmpty()) {
+            val result = element.jsonObject
+            val waiting = evals.remove(result["id"]?.jsonPrimitive?.contentOrNull ?: continue) ?: continue
+            val error = result["error"]?.jsonPrimitive?.contentOrNull
+            if (error != null) waiting.completeExceptionally(IllegalStateException("JavaScript in ORCA's page failed: $error"))
+            else waiting.complete(result["value"] ?: JsonNull)
+        }
 
         // The page's clock and this JVM's differ by a constant plus the trip; the quickest trip seen
         // (allowed to creep up 0.1 ms a report, for drift) puts each event back where ORCA played it.

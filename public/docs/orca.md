@@ -99,6 +99,35 @@ A Field slider that calls `variable` is a knob on the grid.
 A grid passed to `orca(grid = ...)` is loaded every time the box runs. Leave it out and the box
 reopens the grid as it was when you last edited it, which is saved with the document.
 
+## Patching ORCA itself
+
+ORCA is JavaScript, and a box can run JavaScript in its page. `o.eval(js)` runs it there, beside
+ORCA's own `client` and `library`, and suspends until the value comes back as JSON; `o.js(js)`
+runs it without waiting. With those, ORCA is yours to rewrite while it plays. This recolours its
+highlights and turns every `:` into a drone on G, whatever note the grid gives it:
+
+```diffstatic {data-lang=kotlin}
+go {
+    println(o.eval("client.orca.w + ' x ' + client.orca.h"))
+    o.js("client.theme.set('b_med', '#ff4fa0')")
+    o.js("""
+        const Midi = library[':']
+        library[':'] = function (orca, x, y, passive) {
+          Midi.call(this, orca, x, y, passive)
+          const listen = this.listen
+          this.listen = (port, value) => port === this.ports.note ? 'G' : listen.call(this, port, value)
+        }
+    """)
+}
+```
+
+`eval` is a suspending call, so it goes in a coroutine (`go { }`). A JavaScript error comes back as
+an exception carrying the page's stack trace. Each ORCA operator is a constructor in `library`,
+keyed by its lowercase glyph, and `client` holds the grid (`client.orca`), the clock, the theme and
+the IO objects; ORCA's [source](https://github.com/hundredrabbits/Orca/tree/main/desktop/sources/scripts)
+is short enough to read in an evening. Everything else on this page keeps working, because it
+listens to ORCA's IO objects rather than to its operators.
+
 ## Two ORCAs, and Kotlin between them
 
 A box can hold more than one ORCA, and Kotlin can sit between them. Here `lead` plays a tune two
@@ -193,8 +222,9 @@ later.
 
 ## Letting AI4 play
 
-`exposeTools()` gives the document's AI chat four tools: `orca_read` (the grid with coordinates,
-what ORCA last played, and its operator reference), `orca_write`, `orca_load` and `orca_command`.
+`exposeTools()` gives the document's AI chat five tools: `orca_read` (the grid with coordinates,
+what ORCA last played, and its operator reference), `orca_write`, `orca_load`, `orca_command` and
+`orca_js`, which runs JavaScript in ORCA's page as `o.eval` does.
 It also adds the live-iframe tools from [Let AI4 Drive a Live Webpage](ai4_live_iframe.md), so the
 chat can take a screenshot of the grid. Add one line to the first example:
 
@@ -217,10 +247,12 @@ alongside it.
 - Notes arrive a little after ORCA plays them. `OrcaNote.time` puts each one back on ORCA's clock
   plus `o.latency` (50 ms), and `PatSynthBank.play` schedules it for then, so the rhythm stays
   even. Give a larger `latency` on a slow machine.
-- `o.page` is the output's iframe, for the [live-iframe bridge](ai4_live_iframe.md)'s `evaluate`
-  and `screenshot`. Inside the iframe, `window.fieldOrca` holds `grid()`, `write`, `load`,
+- `o.page` is the output's iframe, for the [live-iframe bridge](ai4_live_iframe.md)'s `evaluate`,
+  `cdp` and `screenshot` in the Field app. `o.eval` reaches the same page through ORCA's own
+  connection instead, so it also works in a plain browser. Inside the iframe, `window.fieldOrca` holds `grid()`, `write`, `load`,
   `command`, `recent()` and ORCA's own `client`.
 - `OrcaHeadless(grid)` runs ORCA with no page: its own operators in the JVM, a frame per
   `step()`, as fast as you call it. Its `orca` is the same `Orca` a box gets, callbacks, cells and
-  all, so an ORCA program can be rendered to a file or checked in a test.
+  all, so an ORCA program can be rendered to a file or checked in a test. `evaluate(js)` runs
+  JavaScript in it at once.
 - ORCA is Hundred Rabbits' code, unmodified, under the MIT licence.

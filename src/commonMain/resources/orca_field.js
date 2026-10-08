@@ -5,13 +5,14 @@
 // ORCA runs unmodified. orca_capture.js records every message its operators emit; after each frame
 // this ships that frame's messages, and the grid if it changed, to the box through its
 // output-request binding. The reply carries whatever the box asked for since (cells, writes, whole
-// grids, variables, commander strings, play/stop), which is applied straight away. WebMIDI output
+// grids, variables, JavaScript to run, commander strings, play/stop), which is applied straight
+// away. WebMIDI output
 // still works as it does in upstream ORCA, if the browser has a device.
 //
 // window.fieldOrca is the same surface for anything evaluating JavaScript in this frame
 // (Field's live-iframe bridge, AI4's iframe tools, the devtools console).
 
-/* global performance, fieldOrcaCapture, fieldOrcaRectangle */
+/* global performance, fieldOrcaCapture, fieldOrcaRectangle, fieldOrcaEval */
 
 function installFieldOrca (client) {
   const params = new URLSearchParams(location.search)
@@ -19,6 +20,7 @@ function installFieldOrca (client) {
   const status = document.getElementById('field-orca-status')
   const events = []
   const recent = []
+  const results = [] // answers to the box's eval commands, sent with the next report
   let requests = null
   let inFlight = false
   let dead = false
@@ -69,6 +71,7 @@ function installFieldOrca (client) {
           // One cell, kept out of ORCA's undo history: a box may set cells every frame.
           case 'set': client.orca.write(c.x, c.y, c.glyph); break
           case 'variable': capture.hold(c.name, c.value); break
+          case 'eval': fieldOrcaEval(c, results); break
           case 'command': client.commander.trigger(c.text, null, false); break
           case 'play': client.clock.play(); break
           case 'stop': client.clock.stop(); client.io.silence(); break
@@ -104,6 +107,7 @@ function installFieldOrca (client) {
     if (sent === 0) { payload.hello = true; payload.operators = client.docs() }
     if (s !== lastGrid) { payload.grid = s; payload.w = client.orca.w; payload.h = client.orca.h }
     if (edited) payload.edited = true
+    if (results.length) payload.results = results.splice(0)
     const variables = client.orca.variables
     if (variables && Object.keys(variables).length) payload.variables = variables
     inFlight = true

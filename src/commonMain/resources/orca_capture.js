@@ -6,7 +6,7 @@
 // It wraps the five IO objects ORCA's operators write to (midi, mono, cc, udp, osc) so each message
 // is also handed to `record`, and holds the variables a Field box sets (see Orca.variable).
 
-/* exported fieldOrcaCapture, fieldOrcaRectangle */
+/* exported fieldOrcaCapture, fieldOrcaRectangle, fieldOrcaEval */
 
 function fieldOrcaCapture (client, record) {
   const seen = new WeakSet()
@@ -53,6 +53,21 @@ function fieldOrcaCapture (client, record) {
       Object.assign(client.orca.variables, held)
     }
   }
+}
+
+// A box's own JavaScript, run at global scope beside ORCA (so `client`, `library` and `fieldOrca`
+// are all in reach): read anything, patch anything. A promise is awaited. When the command has an
+// id the box is waiting, and the value, as JSON, or the error goes into `results` for the next report.
+function fieldOrcaEval (command, results) {
+  Promise.resolve()
+    .then(() => (0, eval)(`${command.js}`))
+    .then((value) => (value === undefined ? null : JSON.parse(JSON.stringify(value))))
+    .then((value) => { if (command.id) results.push({ id: command.id, value }) },
+      (error) => {
+        const message = `${(error && error.stack) || error}`
+        if (command.id) results.push({ id: command.id, error: message })
+        else console.warn('Field', 'ORCA js failed', message)
+      })
 }
 
 // ORCA reads every row at the first row's width, so pad ragged rows out with empty cells.

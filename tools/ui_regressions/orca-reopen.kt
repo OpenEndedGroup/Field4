@@ -1,5 +1,5 @@
 // No grid this time: the box reopens the one saved by the previous run's write. The AI tools,
-// single cells, a held variable and the change feed are driven from Kotlin, as a player would.
+// single cells, a held variable, the change feed and JavaScript in the page are driven from Kotlin, as a player would.
 val o = orca(cols = 24, rows = 10)
 val tools = o.exposeTools(iframeTools = false)
 val synth = PatSynthBank()
@@ -15,8 +15,12 @@ go {
     o.variable('z', '7')
     val immediate = o[22, 1]
     o.sync()
+    val width = o.eval("client.orca.w")
+    val failed = runCatching { o.eval("nope()") }.exceptionOrNull()?.message.orEmpty().contains("nope is not defined")
+    o.js("client.theme.set('b_med', '#ff4fa0')")
+    o.sync()
     display("tools", """<pre id="orca-tools">{"written":${"#ai#" in written.toString()},""" +
         """"read":${"#ai#" in read.toString() && "D4" in read.toString()},"names":"${tools.joinToString(",") { it.name }}",""" +
-        """"played":$played,"immediate":"$immediate","reported":"${o[22, 1]}","changed":$changed}</pre>""")
+        """"played":$played,"immediate":"$immediate","reported":"${o[22, 1]}","changed":$changed,"width":$width,"failed":$failed}</pre>""")
 }
 displayOpen("tools")

@@ -170,9 +170,31 @@ class OrcaTest {
         assertTrue(sent.all { it["op"]!!.jsonPrimitive.content == "variable" && it["name"]!!.jsonPrimitive.content == "a" })
     }
 
-    @Test fun exposeToolsRegistersFourOrcaTools() {
+    @Test fun evalSendsJavaScriptAndReturnsWhatThePageAnswers() = runBlocking {
         val orca = Orca(box(), "orca", null, null, false)
-        assertEquals(listOf("orca_read", "orca_write", "orca_load", "orca_command"),
+        val answer = async { orca.eval("client.orca.w") }
+        yield()
+        val sent = commands(orca.receive(report("""{"t":1,"events":[]}"""))).single()
+        assertEquals("eval", sent["op"]!!.jsonPrimitive.content)
+        assertEquals("client.orca.w", sent["js"]!!.jsonPrimitive.content)
+        val id = sent["id"]!!.jsonPrimitive.content
+        orca.receive(report("""{"t":2,"events":[],"results":[{"id":"$id","value":{"w":64}}]}"""))
+        assertEquals(64, answer.await().jsonObject["w"]!!.jsonPrimitive.int)
+
+        val failing = async { runCatching { orca.eval("nope()") } }
+        yield()
+        val failId = commands(orca.receive(report("""{"t":3,"events":[]}"""))).single()["id"]!!.jsonPrimitive.content
+        orca.receive(report("""{"t":4,"events":[],"results":[{"id":"$failId","error":"ReferenceError: nope is not defined"}]}"""))
+        assertTrue(failing.await().exceptionOrNull()!!.message!!.contains("nope is not defined"))
+
+        orca.js("client.clock.stop()")
+        val fire = commands(orca.receive(report("""{"t":5,"events":[]}"""))).single()
+        assertNull(fire["id"], "js() does not ask for an answer")
+    }
+
+    @Test fun exposeToolsRegistersTheOrcaTools() {
+        val orca = Orca(box(), "orca", null, null, false)
+        assertEquals(listOf("orca_read", "orca_write", "orca_load", "orca_command", "orca_js"),
             orca.exposeTools(iframeTools = false).map { it.name })
     }
 }
