@@ -52,7 +52,7 @@ class OrcaHeadlessTest {
         assertEquals(duet.notes.map { it.frame to it.midi }, OrcaSoundDocs.render("duet").notes.map { it.frame to it.midi })
     }
 
-    /** The renderer's copies of the duet and of the page's first box must match the originals. */
+    // The renderer's copies of the duet and of the page's first box must match the originals.
     @Test fun theRendererPlaysTheSameGridsAndExchangeAsTheBoxes() {
         val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "dev_docs").isDirectory }
         val duet = File(root, "dev_docs/agents/transcripts/orca_duet.yaml").readText()
