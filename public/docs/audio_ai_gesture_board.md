@@ -1,11 +1,10 @@
 # Gesture board: drawing toward a sound
 
-Eighteen seconds of a piece nobody has heard yet: low strings that barely move, woodwind fragments
-circling in around the fifth second, a dark accent pinned at 13.1, a curve for how busy the middle
-gets. That drawing, typed, is a `gestureBoard`, and a generator works toward it from a few seconds
-of a recording that already exists, one candidate per seed.
+A `gestureBoard` describes a sound you want over time: text prompts for stretches of the piece,
+marked events, and curves for how busy, bright or high it should be. A generator then works toward
+it from a few seconds of an existing recording, producing one candidate per seed.
 
-Only some of the drawing reaches the MusicGen-Style worker as a condition. The rest is measured
+Only some of the board reaches the MusicGen-Style worker as a condition. The rest is measured
 against what comes back:
 
 - the base prompt is a **direct** global text condition;
@@ -15,8 +14,11 @@ against what comes back:
 
 After each candidate is generated, the service measures its waveform, compares the measured
 trajectories with the board, and stores an overall score plus every lane score in the candidate's
-provenance. The candidate browser exposes those scores without removing manual listening, rating
-or selection.
+provenance. The candidate browser shows those scores next to the usual listening, rating and
+selection.
+
+The example below sketches eighteen seconds of an uneasy orchestral piece: still low strings,
+woodwinds entering around five seconds, a dark accent at 13.1 s, and four curves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_gesture_board/gesture_board.png" wait="3" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -82,5 +84,5 @@ client.submit(operation)
 GPU time. Re-evaluating an unchanged operation reuses the same content-addressed candidate family
 and its stored gesture measurements.
 
-The loadable starting document is recorded as the `audio_ai_gesture_board` operation transcript.
-Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) for token-level material.
+See also the [EnCodec reconstruction microscope](audio_ai_codec.md) for token-level material, and
+[beat and pitch analysis](audio_ai_analysis.md).
