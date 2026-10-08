@@ -993,7 +993,7 @@ fn cone(tool: &Tool, p: f32, coh: f32) -> f32 {
 
 /// Cohesion of a pointed tuft from its load: wet hairs cling into a point,
 /// hairs run dry spring apart (the point splits).
-fn cohesion(held: &Held, full: f32) -> f32 {
+pub(crate) fn cohesion(held: &Held, full: f32) -> f32 {
     if held.tool.point <= 0.0 {
         return 1.0;
     }
@@ -1013,7 +1013,7 @@ fn mix_cure(cure: f32, vol: f32, c: f32, v: f32) -> f32 {
 /// (the belly feeds the tip). Moves the share `k` of every hair's paint into
 /// a common pool and shares it out evenly; volume is conserved exactly and
 /// colors mix through the tuft.
-fn feed(bristles: &mut [Bristle], k: f32) {
+pub(crate) fn feed(bristles: &mut [Bristle], k: f32) {
     if k <= 0.0 || bristles.is_empty() {
         return;
     }
@@ -1383,7 +1383,7 @@ fn wander(t: f32, seed: u64) -> f32 {
 /// to the distance it travels; `dep` instead fixes the volume (units² ×
 /// coats) it would lay on full contact (a touch: film splitting).
 #[allow(clippy::too_many_arguments)]
-unsafe fn exchange(
+pub(crate) unsafe fn exchange(
     sf: Surf,
     br: &mut Bristle,
     tool: &Tool,

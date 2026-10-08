@@ -7,3 +7,5 @@
 //! the hooks `VENDORED.md` lists.
 
 pub mod state;
+pub mod aqueous;
+pub mod watercolor;

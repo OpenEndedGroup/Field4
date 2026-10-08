@@ -92,7 +92,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 456 "characters" 30199 "sha256" "44b233614f58bb48b458abb2fb8b27f31c5b26495712a674bdcbdae247b40290"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 555 "characters" 37314 "sha256" "bcb820074029e01d9308bef145ce86912048bd1474d713352e0c2df4e7f7d319"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -110,6 +110,7 @@ import java.util.Base64
 // The canvas is kept on the box, not in a script variable, so re-running this box keeps the painting.
 fun fresh(ground: PaintGround = PaintGround.Oil, aspect: Double = 1.25, seed: Long = 7) =
     PaintCanvas(900, aspect = aspect, ground = ground, seed = seed)
+fun freshPaper(paper: Paper, aspect: Double, seed: Long) = PaintCanvas.paper(900, aspect = aspect, paper = paper, seed = seed)
 fun canvas(): PaintCanvas = thisBox.properties.getOrPut("studio.canvas") { fresh() } as PaintCanvas
 fun replace(c: PaintCanvas) { thisBox.properties["studio.canvas"] = c }
 // The tools the painter keeps by name, on the box for the same reason: a brush stays dirty between requests.
@@ -169,6 +170,16 @@ fun loadInto(b: PaintBrush, color: String?, wipe: Double = 0.85, hiding: Double 
     if (p.tubes != null) b.load(p.tubes, medium = thinness, wipe = wipe, turps = turps, part = part)
     else b.load(p.color, hiding = hiding, wipe = wipe, turps = turps, part = part)
 }
+// Watercolour: "ultramarine:2, burnt sienna:1" by µg of pigment per mm³ of water, or "water".
+fun waterPaintOf(spec: String): WaterPaint {
+    if (spec.trim().equals("water", ignoreCase = true)) return WaterPaint.Clear
+    return spec.split(',').filter { it.isNotBlank() }.map { part ->
+        val (name, conc) = part.split(':').let { it[0].trim() to (it.getOrNull(1)?.trim()?.toDoubleOrNull() ?: 2.0) }
+        val n = Watercolors.names.firstOrNull { it.equals(name, ignoreCase = true) }
+            ?: throw IllegalArgumentException("no watercolour \"$name\": ${Watercolors.names.joinToString()}, or \"water\"")
+        Watercolors[n] * conc
+    }.reduce(WaterPaint::plus)
+}
 fun lightOf(name: String) = when (name.lowercase()) {
     "flat" -> null
     "raking" -> PaintLight.Raking
@@ -182,7 +193,9 @@ fun pct(x: Double) = "${(x * 100).roundToInt()}%"
 fun state(): String = canvas().stats.let {
     "about ${it.handMinutes.roundToInt()} minutes of a painter's work so far; " +
         "paint open ${pct(it.open)}, setting ${pct(it.setting)}, tacky ${pct(it.tacky)}, dry or bare ${pct(it.dry)}"
-}
+} + (canvas().water?.let { w ->
+    if (w.dry) "; the water has all dried" else "; water %.0f mm³ standing on the paper and %.0f mm³ in it".format(w.surfaceMm3, w.absorbedMm3)
+} ?: "")
 // The hung paintings, newest first, as a strip of thumbnails in the "gallery" channel.
 fun galleryDir() = File(thisBox.inside.filename, "gallery")
 fun showGallery() {
@@ -211,8 +224,18 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         effects(ToolEffect.CAPTURE_IMAGE)
         val wet by param<Boolean>("show the paint as it is now, wet, without relief", default = false)
         val light by param<String>("flat; raking, a low lamp that shows the relief, knife ridges and wet sheen; or gallery", default = "flat")
+        val map by param<String?>("instead of the picture, a map of the water: surface (standing water), absorbed, pigment", default = null)
         action {
-            val png = canvas().png(relief = if (wet()) 0.0 else 0.6, wet = wet(), light = lightOf(light()))
+            val c = canvas()
+            val png = map()?.let { m ->
+                val which = when (m.lowercase()) {
+                    "surface" -> WaterMap.SurfaceWater
+                    "absorbed" -> WaterMap.AbsorbedWater
+                    "pigment" -> WaterMap.Pigment
+                    else -> throw IllegalArgumentException("no map \"$m\": surface, absorbed or pigment")
+                }
+                c.waterMapPng(which)
+            } ?: c.png(relief = if (wet()) 0.0 else 0.6, wet = wet(), light = lightOf(light()))
             // Every look is also kept, numbered, in the document's progress folder: the painting's stages.
             val dir = File(thisBox.inside.filename, "progress").apply { mkdirs() }
             File(dir, "%03d.png".format((dir.list()?.size ?: 0) + 1)).writeBytes(png)
@@ -264,12 +287,66 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         }
     }
 
+    tool("paint.wash") {
+        describe("Watercolour or ink with a round watercolour brush: the water on the paper flows, sinks in, dries with dark edges, " +
+            "granulates and blooms on its own. A full brush lays a wet wash; a nearly dry one (fill 0.1-0.3), light and fast, " +
+            "skips over the paper's tooth (drybrush); a damp clean brush on a wet wash drinks colour back up. Paint wet into wet " +
+            "by washing over water already there (paint_wet).")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val paths by param<List<List<Double>>>("strokes, each [x0, y0, x1, y1, ...]")
+        val color by param<String?>("pigments by concentration in µg per mm³ of water, \"ultramarine:2, burnt sienna:1\" (1 pale .. 6 strong), " +
+            "\"water\" for clean water; null paints a kept brush with what it holds", default = null)
+        val tool by param<String?>("a kept watercolour brush (paint_tool type Watercolour); null for a fresh one", default = null)
+        val width by param<Double>("a fresh brush's width, canvas units", default = 40.0)
+        val fill by param<Double>("how full of water the brush is loaded, 0..1 (above 1 overloads it)", default = 1.0)
+        val pressure by param<Double>("0.2 light .. 1 pressed flat", default = 0.6)
+        val speed by param<Double>("mm/s: 30 slow and wet .. 300 a quick flick", default = 80.0)
+        action {
+            val c = canvas()
+            val b = tool()?.let { tools().waterBrush(it) } ?: c.waterBrush(width()).also { require(color() != null) { "a fresh brush needs a color (or name a kept one)" } }
+            color()?.let { b.load(waterPaintOf(it), fill = fill()) }
+            val line = FLine(); paths().forEach { line += through(it) }
+            val r = c.wash(line, b, pressure = listOf(pressure()), speed = speed())
+            done("laid %.1f mm³ of water and %.1f µg of pigment, took up %.1f mm³; the brush is %s full".format(r.waterLaid, r.pigmentLaid, r.waterTaken, pct(b.fill)))
+        }
+    }
+
+    tool("paint.drop") {
+        describe("Let drops of watercolour or ink fall on the paper (or clean water into a damp wash, for a bloom). Each spreads and the paper takes it.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
+        val color by param<String>("pigments by concentration, \"sumi:3\", or \"water\"")
+        val volume by param<Double>("each drop's volume, µl (mm³): 5 a small drop .. 50 a big one", default = 20.0)
+        action {
+            val c = canvas(); val p = waterPaintOf(color())
+            points().chunked(2).filter { it.size == 2 }.forEach { c.drop(it[0], it[1], p, volumeMm3 = volume()) }
+            done("${points().size / 2} drop(s)")
+        }
+    }
+
+    tool("paint.wet") {
+        describe("Lay water over a region at once with a wide mop: clean water to paint wet-in-wet into, or a flat wash of colour.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val outline by param<List<Double>>("the region, [x0, y0, ...]")
+        val microns by param<Double>("how deep, µm: 40 damp .. 150 a wet wash .. 300 flooded", default = 100.0)
+        val color by param<String>("\"water\", or pigments by concentration", default = "water")
+        action { canvas().wet(region(outline()), microns(), waterPaintOf(color())); done("wet a region with ${microns()} µm") }
+    }
+
+    tool("paint.tilt") {
+        describe("Tilt the board: wet washes run downhill, gather and drip off the edge. 0 lays it flat again.")
+        effects(ToolEffect.CONTROL_RUNTIME)
+        val degrees by param<Double>("from flat; 90 upright", default = 20.0)
+        val toward by param<Double>("the direction it falls, degrees: 90 down the canvas, 0 to the right", default = 90.0)
+        action { canvas().tilt(degrees(), toward()); done("tilted ${degrees()}° toward ${toward()}°") }
+    }
+
     tool("paint.tool") {
         describe("Pick up a tool and keep it by name for later requests: a brush stays dirty with what it last picked up until you " +
             "load or wipe it, a knife keeps its bead, a rag its load. Replaces a kept tool of the same name.")
         effects(ToolEffect.CONTROL_RUNTIME)
         val name by param<String>("what to call it, e.g. \"big filbert\"")
-        val type by param<String>("a brush (Round, HogFlat, Filbert, Fan, Rigger, Badger, Stippler), Knife, Rag, or a pencil grade (HB, 4B) or Chalk")
+        val type by param<String>("a brush (Round, HogFlat, Filbert, Fan, Rigger, Badger, Stippler), Watercolour, Knife, Rag, or a pencil grade (HB, 4B) or Chalk")
         val width by param<Double>("brush width, knife blade length or rag pad size, canvas units", default = 20.0)
         val bristles by param<Int?>("how many bristles (a brush); null for the kind's own", default = null)
         val stiffness by param<Double?>("0 soft hair .. 1 stiff hog (a brush); null for the kind's own", default = null)
@@ -280,6 +357,7 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
             val made: PaintTool = when {
                 t.equals("knife", true) -> c.knife(width())
                 t.equals("rag", true) -> c.rag(width())
+                t.equals("watercolour", true) || t.equals("watercolor", true) -> c.waterBrush(width())
                 t.equals("chalk", true) -> c.chalk()
                 BrushKind.entries.any { it.name.equals(t, true) } ->
                     c.brush(brushOf(t), width = width(), config = BrushConfig(bristles = bristles(), stiffness = stiffness(), ragged = ragged(), point = point()))
@@ -296,7 +374,7 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         effects(ToolEffect.CONTROL_RUNTIME)
         val tool by param<String>("the kept tool's name")
         val color by param<String?>("#rrggbb, a tube name, or tubes by parts; null only wipes (a rag: dampens; a pencil: sharpens)", default = null)
-        val amount by param<Double>("a knife: 0..1 of a full bead", default = 0.6)
+        val amount by param<Double>("a knife: 0..1 of a full bead; a watercolour brush: how full of water, 0..1", default = 0.6)
         val wipe by param<Double>("how much of what is in the brush to wipe off first, 0..1; 0 mixes into it (a knife: above 0 wipes it clean)", default = 0.85)
         val thinness by param<Double>("tube mixes: 0 from the tube, 1 thinned with oil medium", default = 0.0)
         val turps by param<Double>("0..0.9 of the paint's volume turpentine: it flows, spatters, and evaporates as it is laid", default = 0.0)
@@ -318,6 +396,7 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
                 }
                 is PaintRag -> c.dampen(t, damp())
                 is Pencil -> t.sharpen()
+                is WaterBrush -> color()?.let { t.load(waterPaintOf(it), fill = amount(), wipe = wipe()) } ?: t.blot(wipe())
             }
             mapOf("ok" to true, "tools" to tools().describe(c))
         }
@@ -463,21 +542,37 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
     }
 
     tool("paint.wait") {
-        describe("Let simulated time pass so wet paint sets (minutes), or dry the canvas completely: paint laid afterwards no longer mixes into what is there.")
+        describe("Let simulated time pass: wet oil sets (minutes); water flows, sinks in and evaporates (seconds: a wash goes from wet " +
+            "to damp in a minute or two). Or dry the canvas completely: paint laid afterwards no longer mixes into what is there.")
         effects(ToolEffect.CONTROL_RUNTIME)
-        val minutes by param<Double?>("how long; null dries the canvas completely", default = null)
-        action { minutes()?.let { canvas().wait(it) } ?: canvas().dry(); done(minutes()?.let { "waited $it minutes" } ?: "dried") }
+        val minutes by param<Double?>("how long; null with no seconds dries the canvas completely", default = null)
+        val seconds by param<Double?>("how long, in seconds, for watercolour timing", default = null)
+        action {
+            val c = canvas()
+            when {
+                seconds() != null -> c.waitSeconds(seconds()!!)
+                minutes() != null -> c.wait(minutes()!!)
+                else -> c.dry()
+            }
+            done(seconds()?.let { "waited $it s" } ?: minutes()?.let { "waited $it minutes" } ?: "dried")
+        }
     }
 
     tool("paint.fresh") {
         describe("Put a new canvas on the easel. The old one is not lost: it stays with the conversation, and rewinding brings it back.")
         effects(ToolEffect.CONTROL_RUNTIME)
-        val ground by param<String>("Oil (warm primed linen), OilRedGround, Linen (raw) or Bare (flat white)", default = "Oil")
+        val ground by param<String>("Oil (warm primed linen), OilRedGround, Linen (raw), Bare (flat white); or paper for watercolour and ink: " +
+            "ColdPress, HotPress, Rough, Xuan (rice paper), Blotting", default = "Oil")
         val aspect by param<Double>("width / height: 1.25 landscape, 0.8 portrait, 1 square", default = 1.25)
         action {
-            val g = PaintGround.entries.firstOrNull { it.name.equals(ground(), true) } ?: throw IllegalArgumentException("no ground \"${ground()}\": ${PaintGround.entries.joinToString()}")
-            replace(fresh(g, aspect(), seed = System.nanoTime() % 100_000))
-            done("a fresh ${g.name} canvas, ${aspect()}")
+            val seed = System.nanoTime() % 100_000
+            val paper = Paper.entries.firstOrNull { it.name.equals(ground(), true) }
+            if (paper != null) replace(freshPaper(paper, aspect(), seed)) else {
+                val g = PaintGround.entries.firstOrNull { it.name.equals(ground(), true) }
+                    ?: throw IllegalArgumentException("no ground \"${ground()}\": ${PaintGround.entries.joinToString()}, ${Paper.entries.joinToString()}")
+                replace(fresh(g, aspect(), seed))
+            }
+            done("a fresh ${ground()} ${if (paper != null) "sheet" else "canvas"}, ${aspect()}")
         }
     }
 
@@ -520,6 +615,10 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         |brush carries what it picked up from the canvas into its next stroke, as a real one does, so a brush kept for the sky
         |stays a sky brush. A knife (paint_knife) lays flat slabs and ridges or scrapes wet paint away; a rag (paint_wipe) lifts
         |open paint for lights; paint_spatter flicks fluid paint. paint_look with light="raking" shows the relief and wet sheen.
+        |On paper (paint_fresh with ColdPress, HotPress, Rough, Xuan or Blotting) you can paint in watercolour and ink: paint_wash,
+        |paint_drop, paint_wet and paint_tilt. The water then moves by itself, flowing, sinking in, granulating, drying to darker edges
+        |and blooming where wet meets damp; time matters (paint_wait seconds), and paint_look map="surface" shows where it is still
+        |wet. Watercolours: ${Watercolors.names.joinToString()}. Oil, pencil and the knife still work on paper, over the watercolour.
         |Colours: "#rrggbb", or real tube paints mixed by parts, "lead white:4, cadmium yellow:1" (they mix like paint, so blue and
         |yellow make green). Tubes: ${Tubes.names.joinToString()}.
         """.trimMargin()

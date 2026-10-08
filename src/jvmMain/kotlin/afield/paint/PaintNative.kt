@@ -157,6 +157,32 @@ internal object PaintNative {
     private val ragStateBytesH by fn("field_paint_rag_state_bytes", I, A, A, A)
     private val ragFromStateH by fn("field_paint_rag_from_state", A, A, L)
 
+    // ---- water (water.rs) ----
+    private val canvasNewPaperH by fn("field_paint_canvas_new_paper", A, I, F, A, L, F, I)
+    private val mmPerUnitH by fn("field_paint_canvas_mm_per_unit", F, A)
+    private val paperH by fn("field_paint_paper", I, A, A)
+    private val tiltH by fn("field_paint_tilt", I, A, F, F, L)
+    private val evaporationH by fn("field_paint_evaporation", I, A, F, L)
+    private val waitSecondsH by fn("field_paint_wait_seconds", I, A, F)
+    private val dispersionH by fn("field_paint_dispersion", I, A, F, L)
+    private val marangoniH by fn("field_paint_marangoni", I, A, F, L)
+    private val wbrushNewH by fn("field_paint_wbrush_new", A, A, F, F)
+    private val wbrushFreeH by fn("field_paint_wbrush_free", null, A)
+    private val wbrushLoadH by fn("field_paint_wbrush_load", I, A, A, A, A, I, F, F)
+    private val wbrushBlotH by fn("field_paint_wbrush_blot", I, A, F)
+    private val wbrushStateH by fn("field_paint_wbrush_state", I, A, A)
+    private val wbrushStrokeH by fn("field_paint_wbrush_stroke", I, A, A, A, I, L, A)
+    private val wbrushStateBytesH by fn("field_paint_wbrush_state_bytes", I, A, A, A)
+    private val wbrushFromStateH by fn("field_paint_wbrush_from_state", A, A, L)
+    private val waterDropH by fn("field_paint_water_drop", I, A, F, F, F, A, A, A, I, L)
+    private val waterWashH by fn("field_paint_water_wash", I, A, A, A, I, F, F, A, A, A, I, L)
+    private val waterStatsH by fn("field_paint_water_stats", I, A, A, I)
+    private val waterSpeciesH by fn("field_paint_water_species", A, A)
+    private val waterMapH by fn("field_paint_water_map", I, A, I, A, I)
+    private val aqPigmentH by fn("field_paint_aq_pigment", I, A, A)
+    private val aqPigmentNamesH by fn("field_paint_aq_pigment_names", A)
+    private val aqPigmentMakeH by fn("field_paint_aq_pigment_make", I, F, F, F, F, F, F, F, F, F, A)
+
     private fun error(what: String): Nothing {
         val msg = (lastErrorH.invokeExact() as MemorySegment).reinterpret(Long.MAX_VALUE).getString(0)
         throw IllegalStateException("paint: $what failed: $msg")
@@ -471,4 +497,107 @@ internal object PaintNative {
     fun knifeFromState(bytes: ByteArray): MemorySegment = fromBytes(bytes, "restoring a knife") { p, n -> knifeFromStateH.invokeExact(p, n) as MemorySegment }
     fun ragStateBytes(g: MemorySegment): ByteArray = bytes("saving the rag") { o, l -> ragStateBytesH.invokeExact(g, o, l) as Int }
     fun ragFromState(bytes: ByteArray): MemorySegment = fromBytes(bytes, "restoring a rag") { p, n -> ragFromStateH.invokeExact(p, n) as MemorySegment }
+
+    // ---- water ----
+
+    fun canvasNewPaper(w: Int, aspect: Float, paper: String, seed: Long, sizeMm: Float, engine: Int): MemorySegment = Arena.ofConfined().use { a ->
+        nonNull(canvasNewPaperH.invokeExact(w, aspect, a.allocateFrom(paper), seed, sizeMm, engine) as MemorySegment, "making a sheet of $paper")
+    }
+
+    fun mmPerUnit(c: MemorySegment): Float = mmPerUnitH.invokeExact(c) as Float
+
+    /** The paper's 12 values, or null when the canvas has no water. */
+    fun paper(c: MemorySegment): FloatArray? = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 12)
+        val st = paperH.invokeExact(c, out) as Int
+        check(st, "reading the paper")
+        if (st == 0) null else out.toArray(F)
+    }
+
+    fun tilt(c: MemorySegment, degrees: Float, direction: Float, seed: Long) = check(tiltH.invokeExact(c, degrees, direction, seed) as Int, "tilting")
+    fun evaporation(c: MemorySegment, umS: Float, seed: Long) = check(evaporationH.invokeExact(c, umS, seed) as Int, "setting evaporation")
+    fun dispersion(c: MemorySegment, v: Float, seed: Long) = check(dispersionH.invokeExact(c, v, seed) as Int, "setting dispersion")
+    fun marangoni(c: MemorySegment, v: Float, seed: Long) = check(marangoniH.invokeExact(c, v, seed) as Int, "setting the surface tension drop")
+    fun waitSeconds(c: MemorySegment, s: Float) = check(waitSecondsH.invokeExact(c, s) as Int, "waiting")
+
+    fun wbrushNew(c: MemorySegment, width: Float, capacity: Float): MemorySegment = nonNull(wbrushNewH.invokeExact(c, width, capacity) as MemorySegment, "making a watercolour brush")
+    fun wbrushFree(b: MemorySegment) { wbrushFreeH.invokeExact(b) }
+
+    private class Pig(val names: MemorySegment, val params: MemorySegment, val conc: MemorySegment, val n: Int)
+    private fun Arena.pig(paint: WaterPaint): Pig {
+        val ps = paint.pigments.entries.toList()
+        if (ps.isEmpty()) return Pig(allocateFrom(""), MemorySegment.NULL, MemorySegment.NULL, 0)
+        require(ps.none { '\n' in it.key.name }) { "pigment names cannot contain newlines" }
+        val params = FloatArray(8 * ps.size)
+        ps.forEachIndexed { i, e -> e.key.params().copyInto(params, 8 * i) }
+        return Pig(allocateFrom(ps.joinToString("\n") { it.key.name }), allocateFrom(F, *params),
+            allocateFrom(F, *FloatArray(ps.size) { ps[it].value.toFloat() }), ps.size)
+    }
+
+    fun wbrushLoad(b: MemorySegment, paint: WaterPaint, fill: Float, wipe: Float) = Arena.ofConfined().use { a ->
+        val p = a.pig(paint)
+        check(wbrushLoadH.invokeExact(b, p.names, p.params, p.conc, p.n, fill, wipe) as Int, "loading the brush")
+    }
+    fun wbrushBlot(b: MemorySegment, share: Float) = check(wbrushBlotH.invokeExact(b, share) as Int, "blotting the brush")
+    fun wbrushState(b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 4)
+        check(wbrushStateH.invokeExact(b, out) as Int, "reading the brush")
+        out.toArray(F)
+    }
+    /** [xytp] is x, y, t, pressure per sample; returns laid mm³, taken mm³, laid µg, taken µg, seconds. */
+    fun wbrushStroke(c: MemorySegment, b: MemorySegment, xytp: FloatArray, seed: Long): DoubleArray = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 5)
+        check(wbrushStrokeH.invokeExact(c, b, a.allocateFrom(F, *xytp), xytp.size / 4, seed, out) as Int, "a watercolour stroke")
+        out.toArray(D)
+    }
+    fun wbrushStateBytes(b: MemorySegment): ByteArray = bytes("saving the brush") { o, l -> wbrushStateBytesH.invokeExact(b, o, l) as Int }
+    fun wbrushFromState(bytes: ByteArray): MemorySegment = fromBytes(bytes, "restoring a watercolour brush") { p, n -> wbrushFromStateH.invokeExact(p, n) as MemorySegment }
+
+    fun waterDrop(c: MemorySegment, x: Float, y: Float, volume: Float, paint: WaterPaint, seed: Long) = Arena.ofConfined().use { a ->
+        val p = a.pig(paint)
+        check(waterDropH.invokeExact(c, x, y, volume, p.names, p.params, p.conc, p.n, seed) as Int, "a drop")
+    }
+    fun waterWash(c: MemorySegment, rings: List<FloatArray>, feather: Float, um: Float, paint: WaterPaint, seed: Long) = Arena.ofConfined().use { a ->
+        val (xy, sizes, n) = a.rings(rings)
+        val p = a.pig(paint)
+        check(waterWashH.invokeExact(c, xy, sizes, n, feather, um, p.names, p.params, p.conc, p.n, seed) as Int, "a wash")
+    }
+    fun waterStats(c: MemorySegment): WaterLedger? = Arena.ofConfined().use { a ->
+        val out = a.allocate(D, 9 + 9 * 8)
+        val n = waterStatsH.invokeExact(c, out, 9 + 9 * 8) as Int
+        check(n, "reading the water")
+        if (n == 0) return@use null
+        val v = out.toArray(D)
+        val names = (waterSpeciesH.invokeExact(c) as MemorySegment).let { p ->
+            nonNull(p, "naming the pigments")
+            try { p.reinterpret(Long.MAX_VALUE).getString(0) } finally { freeStringH.invokeExact(p) }
+        }.split('\n')
+        val pigments = (0 until v[8].toInt()).map { k ->
+            val o = 9 + 9 * k
+            PigmentLedger(names.getOrElse(k) { "?" }, v[o], v[o + 1], v[o + 2], v[o + 3], v[o + 4], v[o + 5], v[o + 6], v[o + 7], v[o + 8])
+        }
+        WaterLedger(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], pigments)
+    }
+    fun waterMap(c: MemorySegment, which: Int, pixels: Int): FloatArray? = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, pixels.toLong())
+        val n = waterMapH.invokeExact(c, which, out, pixels) as Int
+        check(n, "a water map")
+        if (n == 0) null else out.toArray(F)
+    }
+    fun aqPigment(name: String): FloatArray? = Arena.ofConfined().use { a ->
+        val out = a.allocate(F, 8)
+        val st = aqPigmentH.invokeExact(a.allocateFrom(name), out) as Int
+        check(st, "a pigment")
+        if (st == 0) null else out.toArray(F)
+    }
+    fun aqPigmentNames(): List<String> {
+        val p = nonNull(aqPigmentNamesH.invokeExact() as MemorySegment, "listing pigments")
+        try { return p.reinterpret(Long.MAX_VALUE).getString(0).split('\n') } finally { freeStringH.invokeExact(p) }
+    }
+    fun aqPigmentMake(r: Float, g: Float, b: Float, strength: Float, opacity: Float, density: Float, diameter: Float, stain: Float, lift: Float): FloatArray =
+        Arena.ofConfined().use { a ->
+            val out = a.allocate(F, 8)
+            check(aqPigmentMakeH.invokeExact(r, g, b, strength, opacity, density, diameter, stain, lift, out) as Int, "making a pigment")
+            out.toArray(F)
+        }
 }

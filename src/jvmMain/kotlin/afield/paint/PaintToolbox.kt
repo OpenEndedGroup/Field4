@@ -7,7 +7,8 @@ import java.io.File
 
 /**
  * Tools kept by name between strokes: a brush stays dirty with what it last picked up, a knife
- * keeps its bead, a rag its load, a pencil its wear, until they are reloaded, wiped or replaced.
+ * keeps its bead, a rag its load, a pencil its wear, a watercolour brush its water and pigment,
+ * until they are reloaded, wiped or replaced.
  *
  * ```
  * val tools = PaintToolbox()
@@ -55,6 +56,9 @@ class PaintToolbox : AutoCloseable {
     /** The pencil (or chalk) called [name]. */
     fun pencil(name: String): Pencil = typed(name)
 
+    /** The watercolour brush called [name]. */
+    fun waterBrush(name: String): WaterBrush = typed(name)
+
     private inline fun <reified T : PaintTool> typed(name: String): T = when (val t = tools[name]) {
         null -> throw NoSuchElementException("no tool named \"$name\"" + if (tools.isEmpty()) "" else "; there are: ${tools.keys.joinToString()}")
         is T -> t
@@ -79,6 +83,7 @@ class PaintToolbox : AutoCloseable {
                 is PaintKnife -> { out.writeByte('K'.code); bytes(out, t.state()) }
                 is PaintRag -> { out.writeByte('R'.code); bytes(out, t.state()) }
                 is Pencil -> { out.writeByte('P'.code); out.writeInt(t.medium.code); out.writeDouble(t.softness); out.writeDouble(t.worn) }
+                is WaterBrush -> { out.writeByte('W'.code); bytes(out, t.state()) }
             }
         }
     }
@@ -103,6 +108,8 @@ class PaintToolbox : AutoCloseable {
             }
             is PaintRag -> canvas.ragState(t).let { "rag, face ${"%.0f".format(it.load * 100)}% loaded, cloth ${"%.0f".format(it.soaked * 100)}% soaked" + if (it.damp > 0.01) ", damp" else "" }
             is Pencil -> "${t.medium.name.lowercase()} (softness ${t.softness}), ${"%.0f".format(t.worn)} mm drawn since sharpened"
+            is WaterBrush -> "watercolour brush ${"%.0f".format(t.width)} wide, ${"%.0f".format(t.fill * 100)}% full of water " +
+                "(${"%.1f".format(t.waterMm3)} of ${"%.1f".format(t.capacityMm3)} mm³)" + if (t.pigmentUg > 0) ", ${"%.1f".format(t.pigmentUg)} µg of pigment" else ", clean"
         }
     }
 
@@ -125,6 +132,7 @@ class PaintToolbox : AutoCloseable {
                     'B' -> { val kind = input.readInt(); PaintBrush.restore(bytes(input), BrushKind.entries.first { it.code == kind }) }
                     'K' -> PaintKnife.restore(bytes(input))
                     'R' -> PaintRag.restore(bytes(input))
+                    'W' -> WaterBrush.restore(bytes(input))
                     'P' -> {
                         val medium = input.readInt()
                         Pencil(DrawingMedium.entries.first { it.code == medium }, input.readDouble()).also { it.worn = input.readDouble() }
@@ -143,6 +151,7 @@ class PaintToolbox : AutoCloseable {
             is PaintKnife -> "knife"
             is PaintRag -> "rag"
             is Pencil -> "pencil"
+            is WaterBrush -> "watercolour brush"
         }
 
         private fun hex(c: afield.stdlib.Vec4) = "#%02x%02x%02x".format(

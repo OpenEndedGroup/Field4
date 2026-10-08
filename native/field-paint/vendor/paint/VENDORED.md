@@ -25,6 +25,9 @@ these hooks:
 - `src/bristle.rs`: fields widened to `pub(crate)` so `field` can read and rebuild tools —
   `Bristle`'s `rx`, `ry`, `len`, `thresh`, `bend`, `seed`, `prev`, `lat`, `hide`, `cure`; `Held`'s
   `shows_solvent`, `shows_oil`; `Knife`'s `vol`, `solvent`, `lat`, `hide`, `cure`.
+- `src/bristle.rs`: `exchange`, `cohesion` and `feed` widened to `pub(crate)`, so the segmented
+  brush (`field::bristles`) can trade paint with the canvas through upstream's own per-bristle
+  exchange from the contacts it computes.
 
 ## Taking a newer upstream
 

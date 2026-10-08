@@ -368,6 +368,49 @@ class PaintRag internal constructor(internal val handle: MemorySegment) : PaintT
     }
 }
 
+/**
+ * A round watercolour brush: a belly that holds water, and the pigment dissolved in it. Where it
+ * touches the paper water flows between them by capillary suction, from the wetter to the drier: a
+ * full brush lays water and pigment, a damp one on a wet wash drinks it back up (with the pigment
+ * floating in it). A fast stroke lays less than a slow one. A light, nearly dry brush reaches only
+ * the peaks of the paper's tooth: drybrush comes from the paper, not a texture. Get one from
+ * [PaintCanvas.waterBrush].
+ */
+class WaterBrush internal constructor(internal val handle: MemorySegment) : PaintTool, AutoCloseable {
+    private val cleanable = PaintNative.cleaner.register(this, PaintNative.Free(handle, PaintNative::wbrushFree))
+
+    /**
+     * Dip it: first squeeze out [wipe] (0..1) of what it holds, then take up water to [fill] of its
+     * capacity (more than 1 overloads it) with [paint] dissolved in it.
+     */
+    fun load(paint: WaterPaint, fill: Double = 1.0, wipe: Double = 1.0): WaterBrush = apply {
+        PaintNative.wbrushLoad(handle, paint, fill.toFloat(), wipe.toFloat())
+    }
+
+    /** Touch it to a towel: it loses [share] of its water and the pigment in it. */
+    fun blot(share: Double = 0.6): WaterBrush = apply { PaintNative.wbrushBlot(handle, share.toFloat()) }
+
+    private val st get() = PaintNative.wbrushState(handle)
+
+    /** Width at full pressure, canvas units. */
+    val width: Double get() = st[0].toDouble()
+    /** Water the belly holds full, mm³. */
+    val capacityMm3: Double get() = st[1].toDouble()
+    /** Water in it now, mm³. */
+    val waterMm3: Double get() = st[2].toDouble()
+    /** Pigment in it now, µg. */
+    val pigmentUg: Double get() = st[3].toDouble()
+    /** Its water over its capacity. */
+    val fill: Double get() = waterMm3 / capacityMm3
+
+    fun state(): ByteArray = PaintNative.wbrushStateBytes(handle)
+    override fun close() = cleanable.clean()
+
+    companion object {
+        fun restore(state: ByteArray): WaterBrush = WaterBrush(PaintNative.wbrushFromState(state))
+    }
+}
+
 /** How loaded a [PaintRag] is ([PaintCanvas.ragState]). */
 data class RagState(
     /** The face in use: 0 clean .. 1 full. */

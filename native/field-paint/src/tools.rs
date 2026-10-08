@@ -7,7 +7,7 @@ use paint::rag::Rag;
 use paint::{Canvas, Held, Knife, Paint, Part, Spatter, Style, Tool};
 
 /// Bytes handed to the JVM; free with `field_paint_free_bytes`.
-fn hand_bytes(v: Vec<u8>, out: *mut *mut u8, out_len: *mut i64) {
+pub(crate) fn hand_bytes(v: Vec<u8>, out: *mut *mut u8, out_len: *mut i64) {
     let mut b = v.into_boxed_slice();
     unsafe {
         *out_len = b.len() as i64;
@@ -288,7 +288,7 @@ pub extern "C" fn field_paint_spatter(c: *mut Studio, h: *mut Held, x: f32, y: f
     guard(-1, || {
         let sp = Spatter { at: (x, y), toward: (tx, ty), spread, force, seed };
         sp.validate()?;
-        Ok(unsafe { &mut *c }.spatter(unsafe { &mut *h }, &sp, None) as i32)
+        Ok(unsafe { &mut *c }.oil(|c| c.spatter(unsafe { &mut *h }, &sp, None)) as i32)
     })
 }
 
@@ -364,7 +364,8 @@ pub extern "C" fn field_paint_knife_drag(c: *mut Studio, k: *mut Knife, xy: *con
             return Err("knife pressure and lift must be numbers".into());
         }
         let angle = if angle.is_finite() { Some(angle) } else { None };
-        c.knife(unsafe { &mut *k }, &pts, (p0.max(0.0), p1.max(0.0)), angle, lay != 0, within(lift, 0.0..=1.0, "lift (the share of the bead left)")?);
+        let lift = within(lift, 0.0..=1.0, "lift (the share of the bead left)")?;
+        c.oil(|c| c.knife(unsafe { &mut *k }, &pts, (p0.max(0.0), p1.max(0.0)), angle, lay != 0, lift));
         Ok(0)
     })
 }
@@ -455,14 +456,7 @@ pub extern "C" fn field_paint_render_lit_argb(c: *const Studio, azimuth: f32, el
             return Err("the light needs a finite azimuth, elevation and strength".into());
         }
         let c = unsafe { &*c };
-        let px = if dried != 0 {
-            let mut copy = c.canvas.clone();
-            copy.dry();
-            copy.seen_lit(azimuth, elevation, strength)
-        } else {
-            c.seen_lit(azimuth, elevation, strength)
-        };
-        crate::write_argb(&px, out, capacity)
+        crate::write_argb(&c.lit(azimuth, elevation, strength, dried != 0), out, capacity)
     })
 }
 
