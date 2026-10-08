@@ -214,6 +214,13 @@ object FieldMLMacroLayer {
             "ai", Reach.NEEDS_KOTLIN,
             "asks a model for Kotlin and inserts it (ai_macro.kt:490); generated Kotlin, by definition",
         ),
+        Route(
+            "showMeshGrid", Reach.CALL_SHAPED,
+            "@LabelsArgumentsFromSource: rewrites showMeshGrid(cube, ball) to showMeshGrid(\"cube\" to cube, " +
+                "\"ball\" to ball) — same callee, only the labels are added, so a FieldML call that passes " +
+                "labelled pairs reaches it directly",
+            "showMeshGrid", "afield.stdlib.Mesh_fieldKt",
+        ),
     ).associateBy { it.macro }
 
     /**
