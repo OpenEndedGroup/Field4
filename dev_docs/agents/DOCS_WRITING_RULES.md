@@ -55,7 +55,10 @@ This file is about what goes on a page and how it reads.
 13. **Look at every capture you make, at column width.** It is legible, not half size. There is no
    empty canvas or editor below the content (trim or clip it). The interesting state is showing
    (a selected version, not the current one; the panel open, not the window). It matches today's
-   UI, including the command palette's current shortcut.
+   UI, including the command palette's current shortcut. Alt text and captions are prose, and
+   they describe what the code draws today: when they disagree with the fence (a caption saying
+   twelve wires over code that builds ten, from an older capture), fix the text to match the code
+   (`sorting_networks_examples.md`, 2026-10-08).
 14. **Captures come from the runner.** Videos come from a `capture="ui"` fence or an operation
    transcript (use `hide-toasts=true` when notifications cover the subject), never a hand
    recording, which goes stale silently. AGENTS.md section 3 forbids faking one.
