@@ -3,9 +3,9 @@
 *The code is `afield.petri.*`: the model and DSL in `PetriNets.kt`, this notation's parser in
 `PetriNotation.kt`. The worked examples are on [Petri nets](petri_nets.md).*
 
-The `#petri` notation is the terse surface. Everything it can express, the Kotlin DSL can also
-express, and the DSL can do more, because it can take a lambda. What the notation buys is that a
-whole net fits on screen and one arc is one line, so you can edit it while it plays.
+The `#petri` notation is the short way to write a net: a whole net fits on screen and one arc is one
+line, so you can edit it while it plays. The Kotlin DSL can express everything the notation can,
+and more, because its arcs can take a lambda.
 
 ```diffstatic {data-lang=petri}
 #petri
@@ -16,7 +16,6 @@ kick -[ hit  @1/16 : bd ]-> hats
 hats -[ back @1/16 : sd ]-> kick
 ```
 
-Every operator in the tables below has a worked example on the examples page or in the gallery.
 `//` starts a comment; a leading `#petri` line is the editor's marker and is otherwise ignored.
 
 ## Directives
@@ -69,7 +68,7 @@ marking, a capacity or a colour.
 
 </div>
 
-The double-quote form is the asymmetry: a quoted string is a *pattern*, so one token can carry a
+Double quotes are the form to remember: a quoted string is a *pattern*, so one token can carry a
 whole rhythm, and a place can hold a section of a song rather than a single hit.
 
 ## Arcs
@@ -87,8 +86,7 @@ whole rhythm, and a place can hold a section of a song rather than a single hit.
 
 </div>
 
-Either side may be empty: `-[ spawn ]-> pool` is a source and `pool -[ sink ]->` is a drain. A
-transition may be named on several lines, which is how one with several inputs stays readable.
+A transition may be named on several lines, which keeps one with several inputs readable.
 
 ## Transition settings
 
@@ -110,7 +108,7 @@ Written after the name, inside the brackets, in any order.
 ## Combinators
 
 What `=>` can name. Each takes the tokens a firing consumed and returns the colour of the token it
-produces. The vocabulary is closed: these words and no others. For anything else, use the Kotlin
+produces. There are no others; for anything else, use the Kotlin
 DSL, where an output arc takes a lambda.
 
 <div class="field-reference" data-code-lang="petri" markdown>
@@ -136,7 +134,7 @@ DSL, where an output arc takes a lambda.
 
 ## Kotlin entry points
 
-Not notation — the API around it.
+The Kotlin calls that build, play and analyse a net.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -149,7 +147,7 @@ Not notation — the API around it.
 | `petriSong("verse" to (pat("…") to 8), …)` | a linear form whose sections are pattern-valued tokens |
 | `net.run()` | a memoised, deterministic trajectory |
 | `net.live()` | a stateful instance you can `inject`, `remove` and `force` |
-| `net.pattern()` | `PatPattern<PetriFiring>` — the whole language now applies |
+| `net.pattern()` | `PatPattern<PetriFiring>`, so every pattern operation applies |
 | `net.emits()` | `PatPattern<String>`, ready for `notes()`, Dirt, or a synth |
 | `pattern.unfold<String>()` | plays the pattern each firing consumed, across that firing's arc |
 | `run.signal(place)` | the place's token count as a continuous control signal |
@@ -157,18 +155,18 @@ Not notation — the API around it.
 | `run.gate(place)` | 1 while the place is occupied, 0 when it is not |
 | `net.period()` | how long the net takes to come back round, in cycles |
 | `net.tInvariants()` | its minimal loops, from the incidence matrix |
-| `net.willDeadlock()` | whether it wedges — the check to run before committing an edit |
+| `net.willDeadlock()` | whether it can get stuck with nothing able to fire |
 | `net.deadTransitions()` | the voices that silently never fire |
 | `net.report()` | all of the above, as a paragraph |
-| `net.stateSpace()` | every marking reachable by **any** interleaving — the classical answers |
-| `graph.deadlockTrace()` | the shortest firing sequence that wedges it, or null |
+| `net.stateSpace()` | every marking reachable by any interleaving, for the checks below |
+| `graph.deadlockTrace()` | the shortest firing sequence that gets it stuck, or null |
 | `graph.witness { … }` | `EF`: the shortest route to a marking satisfying the predicate |
 | `graph.invariant { … }` | `AG`: the shortest violation, or null when the property holds |
 | `graph.mutuallyExclusive("a", "b")` | true / false / null — null means the search was truncated |
 | `graph.bound(place)`, `graph.isSafe`, `graph.isLive` | exact, or null when the budget ran out |
 | `graph.neverFires()` | fireable in *no* interleaving — the strict `deadTransitions()` |
 | `trace.verify()` | re-fires the counterexample through the engine; null means it holds up |
-| `net.stateSpace(reduction = PetriReduction.STUBBORN)` | partial-order reduction — 73× on eleven philosophers, deadlock only |
+| `net.stateSpace(reduction = PetriReduction.STUBBORN)` | a much smaller graph for large nets; answers deadlock questions only |
 | `graph.exact` | `complete && reduction == NONE`; everything but deadlock needs it |
 | `graph.tooDenseToDraw()` | above `PETRI_STATE_DRAW_LIMIT` the drawing summarises instead of drawing |
 | `graph.proves { … }` | true / false / null — the three-valued form of `invariant` |

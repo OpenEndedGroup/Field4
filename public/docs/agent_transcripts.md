@@ -2900,6 +2900,16 @@ output device. See [the walkthrough](chain_pattern_particles.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pattern_particles/metadata.edn)
 
+### petri_sparks
+
+Three boxes: a renderer, a `#petri` net of three token rings and a `charge` place that four kicks
+fill and a clap empties, and a sparks box that asks a run of the net each frame what fired in the
+last 1.6 seconds (`firingsOver`), where each token is (`markingAt`) and how full `charge` is
+(`countAt`). Each firing becomes a burst of streaks in its transition's colour, computed entirely in
+the vertex shader from the burst's origin and age. See [the walkthrough](chain_petri_sparks.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/petri_sparks/metadata.edn)
+
 ### life3d_manifold_path_trace
 
 `LIFE3D_BLOB` for eight generations, then the question a volume of
