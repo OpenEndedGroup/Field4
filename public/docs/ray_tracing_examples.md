@@ -446,10 +446,8 @@ instances or animate them. Re-evaluating the installation replaces that named sc
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.fabricated.RayTracingDocsHarness
-import afield.four.modules.fromContext
 import kotlin.math.sin
 
-val renderer: Renderer = fromContext()
 prop<RayTracingDocsHarness.LiveMirrorBallsScene>(mirrors)
 mirrors = RayTracingDocsHarness.installMirrorBallsSceneInWindow(
     renderer, name = "mirror-study", width = 1536, height = 1024

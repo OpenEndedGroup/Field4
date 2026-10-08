@@ -29,9 +29,7 @@ clamping disabled so its transmitted lighting and caustics are preserved.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.fabricated.*
-import afield.four.modules.fromContext
 
-val renderer: Renderer = fromContext()
 val tracer = PathTraceDemo.install(renderer,
     "public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
 tracer.samplesPerFrame = 1
@@ -305,10 +303,8 @@ tracer.fogBackground = true
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/fog.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="fog study converged" embed=true hidden=true timeout="180" name="path-tracing-fog" alt="A row of PBR spheres and a checkerboard floor fading into blue-grey depth fog with increasing distance"}
 import afield.four.fabricated.*
 import afield.four.util.Camera
-import afield.four.modules.fromContext
 import afield.stdlib.linalg.Vector3f
 
-val renderer: Renderer = fromContext()
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.3f, 0.3f, 0.3f))
 val light = scene.material(PathTraceMaterial.diffuse(0.65f, 0.65f, 0.65f))

@@ -1013,7 +1013,6 @@ renderer by walking up the box's parents, so the box has to be connected beneath
 the one that opened the window:
 
 ```diffstatic {data-lang=kotlin}
-val renderer: Renderer = fromContext()
 val module = moduleHere { }
 val mesh = Mesh()
 module += mesh named "fullscreen"

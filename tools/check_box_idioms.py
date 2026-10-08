@@ -13,19 +13,28 @@ This is the check that retires the prose. The rules:
   printed, never rewritten, and not a failure.
 - ``bind-push-constant``: ``mesh.push.bindPushConstant("n", { e }) { throw ... }``. ``moduleHere``
   generates ``var Mesh.n`` for every push-constant member it sees, so this is ``mesh.n = { e }``.
-- ``box-context-lookup``: ``Box.context.get()!!``. That is ``thisBox``, and ``thisBox`` itself is
-  rarely needed: the box is the implicit receiver, so ``thisBox.foo`` is ``foo``. Rewritten to
-  ``thisBox``. An alias (``val historyOwner = thisBox``) is a finding too but is not rewritten here:
-  removing it means rewriting each use (``historyOwner.foo`` is ``foo``, ``historyOwner`` as an
-  argument is ``thisBox``), which the revision pass or a person does.
+- ``box-context-lookup``: ``Box.context.get()!!`` (or ``afield.Box.context.get() ?: throw ...``). That
+  is ``thisBox``, and ``thisBox`` itself is rarely needed: the box is the implicit receiver, so
+  ``thisBox.foo`` is ``foo``. (It cannot be spelled ``this``.) Rewritten to ``thisBox``. An alias
+  (``val historyOwner = thisBox``) is usually a smell but not always wrong, so it is a note: printed,
+  never rewritten, and not a failure. Removing one means rewriting each use (``historyOwner.foo`` is
+  ``foo``, ``historyOwner`` as an argument is ``thisBox``), which the revision pass or a person does.
 - ``spaced-fragment-marker``: ``// %-``. The splitter accepts it (``isFragmentBreak``), but until
   2026-10-05 it matched ``//%-`` exactly, so older Field ran a spaced marker as one fragment;
   published code uses the one documented spelling.
 
-Where it looks: Kotlin in ``code: |`` block scalars of ``dev_docs/agents/transcripts/**.yaml``,
-``*.kt`` files under the published corpora, and ```` ```kotlin ```` fences in ``public/docs/**.md``.
-Generated copies (``public/docs/assets/agent_transcripts``) are skipped: fix the transcript and
-regenerate.
+Where it looks: Kotlin in ``code: |`` block scalars of ``dev_docs/agents/transcripts/**.yaml`` and
+of each demo's ``build.yaml`` / ``verify.yaml``, ``*.kt`` files under the published corpora,
+```` ```kotlin ```` fences in ``public/docs/**.md``, and the Field-written ``document.md`` mirror of
+each demo. Generated copies (``public/docs/assets/agent_transcripts``) are skipped: fix the
+transcript and regenerate. So are ``backups/`` and a demo's ``operations.yaml``, which record what
+the code used to be. With no scope the corpus is what git tracks, so an ignored local document
+under ``demos/`` is not reported.
+
+A fixed demo sidecar leaves two copies behind: ``metadata.edn``'s inline fallback (refresh it with
+``./gradlew regenerateAgentDemos -Ponly=<demo>``) and ``document.md``. ``--fix`` rewrites the
+``document.md`` fence like any other and then refreshes the ``lines`` / ``characters`` / ``sha256``
+of every block whose fence now matches its sidecar.
 
 Scope: with ``--paths`` (or ``AFIELD_GUARD_CHANGED_PATHS_FILE``, one repo-relative path per line,
 which the landing guard writes) only those files are checked; this is how existing debt stays out
@@ -42,8 +51,10 @@ Exit status: 0 clean, 1 findings (listed), 2 on a usage or I/O problem.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,13 +79,23 @@ BIND_PUSH = re.compile(
     r"^(?P<indent>\s*)(?P<target>[A-Za-z_][\w.]*)\.push\.bindPushConstant\(\s*\"(?P<name>\w+)\"\s*,\s*"
     r"(?P<lambda>\{.*\})\s*\)\s*\{\s*throw\b[^{}]*\}\s*$"
 )
-BOX_CONTEXT = re.compile(r"\bBox\.context\.get\(\)(?:!!)?")
-BOX_ALIAS = re.compile(r"^\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*(?:thisBox|Box\.context\.get\(\)(?:!!)?)\s*(?://.*)?$")
+BOX_CONTEXT = re.compile(r"(?<![\w.])(?:afield\.)?Box\.context\.get\(\)(?:!!)?")
+# `val owner = Box.context.get() ?: throw IllegalStateException("...")`: the lookup and its guard are one
+# `thisBox`, which cannot be null.
+LOOKUP_ALIAS = re.compile(
+    r"^(?P<head>\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*)(?:afield\.)?Box\.context\.get\(\)"
+    r"(?:!!|\s*\?:\s*(?:throw\s+\w+\(.*\)|error\(.*\)))?(?P<tail>\s*(?://.*)?)$"
+)
+BOX_ALIAS = re.compile(r"^\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*thisBox\s*(?://.*)?$")
 SPACED_MARKER = re.compile(r"^(?P<indent>\s*)//\s+%-(?P<rest>.*)$")
 UNUSED_IMPORTS = {
     "import afield.four.Renderer": re.compile(r"\bRenderer\b"),
     "import afield.four.modules.fromContext": re.compile(r"\bfromContext\b"),
 }
+
+
+# Rules whose unfixable findings are judgement calls: printed as notes, never a failure.
+NOTE_RULES = {"redundant-renderer", "box-alias"}
 
 
 @dataclass(frozen=True)
@@ -87,8 +108,16 @@ class Finding:
     blocking: bool = True  # False: printed as a note, does not fail the check
 
 
+DEMOS = "dev_docs/agents/demos"
+
+
 def _under(path: str, root: str) -> bool:
     return path == root or path.startswith(root + "/")
+
+
+def _is_demo_file(path: str, *names: str) -> bool:
+    parts = path.split("/")
+    return _under(path, DEMOS) and len(parts) == 5 and parts[-1] in names
 
 
 def in_corpus(path: str) -> bool:
@@ -96,12 +125,14 @@ def in_corpus(path: str) -> bool:
         return False
     if not any(_under(path, root) for root in CORPUS_ROOTS):
         return False
+    if "backups" in path.split("/")[:-1]:
+        return False
     if path.endswith(".kt"):
         return True
     if path.endswith(".md"):
-        return _under(path, "public/docs")
+        return _under(path, "public/docs") or _is_demo_file(path, "document.md")
     if path.endswith((".yaml", ".yml")):
-        return _under(path, "dev_docs/agents/transcripts")
+        return _under(path, "dev_docs/agents/transcripts") or _is_demo_file(path, "build.yaml", "verify.yaml")
     return False
 
 
@@ -158,10 +189,14 @@ def check_block(lines: list[str], start: int, end: int) -> list[tuple[int, str, 
         elif m := BIND_PUSH.match(line):
             out.append((i, "bind-push-constant",
                         f"write `{m['target']}.{m['name']} = {m['lambda']}`: moduleHere generates the property", True))
-        elif m := BOX_ALIAS.match(line):
+        elif m := LOOKUP_ALIAS.match(line):
             out.append((i, "box-context-lookup",
-                        f"remove `{m['name']}`: it is the box this code runs in, already the implicit receiver; "
-                        f"write `foo` for `{m['name']}.foo`, and `thisBox` where the box is an argument", False))
+                        f"write `val {m['name']} = thisBox`, and consider removing `{m['name']}`: the box is the "
+                        f"implicit receiver", True))
+        elif m := BOX_ALIAS.match(line):
+            out.append((i, "box-alias",
+                        f"`{m['name']}` is the box this code runs in, already the implicit receiver; unless it earns "
+                        f"its line, write `foo` for `{m['name']}.foo` and `thisBox` where the box is an argument", False))
         elif BOX_CONTEXT.search(line):
             out.append((i, "box-context-lookup",
                         "write `thisBox` (and usually not even that: the box is the implicit receiver)", True))
@@ -188,7 +223,10 @@ def fix_block(lines: list[str], start: int, end: int) -> list[str]:
         if m := SPACED_MARKER.match(line):
             out.append(f"{m['indent']}//%-{m['rest']}")
             continue
-        if BOX_CONTEXT.search(line) and not BOX_ALIAS.match(line):
+        if m := LOOKUP_ALIAS.match(line):
+            out.append(f"{m['head']}thisBox{m['tail']}")
+            continue
+        if BOX_CONTEXT.search(line):
             out.append(BOX_CONTEXT.sub("thisBox", line))
             continue
         out.append(line)
@@ -219,7 +257,7 @@ def process(path: str, root: Path, fix: bool) -> list[Finding]:
     lines = original.split("\n")
     blocks = kotlin_blocks(path, lines)
     findings = [
-        Finding(path, i + 1, rule, message, fixable, blocking=fixable or rule != "redundant-renderer")
+        Finding(path, i + 1, rule, message, fixable, blocking=fixable or rule not in NOTE_RULES)
         for start, end in blocks
         for i, rule, message, fixable in check_block(lines, start, end)
     ]
@@ -230,7 +268,47 @@ def process(path: str, root: Path, fix: bool) -> list[Finding]:
     return findings
 
 
+MIRROR_FENCE = re.compile(r'^(`{3,})\w* \[field-property box="[^"]+" name="[^"]+" path="(?P<path>[^"]+)"\]\n'
+                          r'(?P<body>.*?)^\1[ \t]*$', re.M | re.S)
+
+
+def refresh_mirror_digests(document_md: Path) -> None:
+    """Re-derive document.md's ``lines``/``characters``/``sha256`` for blocks whose fence is their sidecar.
+
+    The counts are ``SavingContext``'s: characters is the Kotlin string's length (UTF-16 units), lines
+    counts newlines plus an unterminated last line. Blocks that already disagree with their sidecar are
+    left alone: that drift predates this edit and is a re-save in Field, not a digest.
+    """
+    demo = document_md.parent
+    original = text = document_md.read_text(encoding="utf-8")
+    for m in MIRROR_FENCE.finditer(original):
+        sidecar = demo / m["path"]
+        if not sidecar.is_file():
+            continue
+        source = sidecar.read_text(encoding="utf-8")
+        if m["body"].rstrip("\n") != source.rstrip("\n"):
+            continue
+        lines = source.count("\n") + (0 if not source or source.endswith("\n") else 1)
+        characters = len(source.encode("utf-16-le")) // 2
+        digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+        text = re.sub(
+            r'("path" "%s" "lines" )\d+( "characters" )\d+( "sha256" ")\w+(")' % re.escape(m["path"]),
+            lambda d: f"{d[1]}{lines}{d[2]}{characters}{d[3]}{digest}{d[4]}", text,
+        )
+    if text != original:
+        document_md.write_text(text, encoding="utf-8")
+
+
 def corpus_paths(root: Path) -> list[str]:
+    try:
+        listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--", *CORPUS_ROOTS],
+                                capture_output=True, check=True).stdout.decode("utf-8")
+        tracked = [p for p in listed.split("\0") if p]
+    except (OSError, subprocess.CalledProcessError):
+        tracked = None
+    if tracked:
+        return sorted(p for p in tracked if in_corpus(p) and (root / p).is_file())
+    # Not a checkout (the tests' fixture directories): every file on disk.
     paths = []
     for corpus in CORPUS_ROOTS:
         base = root / corpus
@@ -270,6 +348,19 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     findings = [f for path in paths for f in process(path, args.root, args.fix)]
+    if args.fix:
+        # A fixed demo file has copies in its document.md mirror: fix those fences too (even when the
+        # mirror was not in scope), then bring the mirror's digests up to date.
+        demos = sorted({"/".join(f.path.split("/")[:4]) for f in findings if f.fixable and _under(f.path, DEMOS)})
+        for demo in demos:
+            mirror = f"{demo}/document.md"
+            if (args.root / mirror).is_file():
+                if mirror not in paths:
+                    process(mirror, args.root, True)
+                refresh_mirror_digests(args.root / mirror)
+        if demos:
+            print("check_box_idioms: refresh the inline copies with ./gradlew regenerateAgentDemos -Ponly="
+                  + ",".join(d.split("/")[-1] for d in demos))
     remaining = [f for f in findings if not (args.fix and f.fixable)]
     notes = [f for f in remaining if not f.blocking]
     remaining = [f for f in remaining if f.blocking]

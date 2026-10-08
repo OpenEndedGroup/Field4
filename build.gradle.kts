@@ -2142,7 +2142,7 @@ tasks.register<JavaExec>("formatBoxCode") {
 
 tasks.register<Exec>("checkBoxIdioms") {
     group = "verification"
-    description = "Flags redundant renderer lookups, bindPushConstant calls and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
+    description = "Flags redundant renderer lookups, bindPushConstant calls, Box.context lookups and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
     workingDir = rootDir
     commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_box_idioms.py")
 }
