@@ -75,7 +75,7 @@ Each round, the model gets one picture: the target, marked T, and the four best 
 
 With it come each program's text and scores, including a score for each region of the picture, the target's colours as numbers, and what its previous round's programs did. It replies with one line per program:
 
-```text
+```diffstatic {data-lang=text}
 0 | uv x 4 * floor uv y 4 * floor + 2 mod [0.9,0.1,0.7] [0.05,0.45,0.4] mix | Rebuilds the checkerboard directly
 #2 | ... | ...
 ```
@@ -111,7 +111,7 @@ The model alone's diagonal stripes look right and score 0.01: they are a quarter
 
 What the programs look like is the other half of the result. The plain search's winners are 20 to 30 words that happen to score well. The watchmaker's are what a person would write:
 
-```text
+```diffstatic {data-lang=text}
 [0.03,0.04,0.12] [1.0,0.82,0.25] p length 0.2785 < mix              # spot
 [0.05,0.1,0.55] [0.98,0.9,0.1] uv x 3.005 * fract 0.513 < mix       # bands
 p length 12.699 * floor 2 mod 1- white *                           # rings
