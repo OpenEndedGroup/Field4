@@ -2379,7 +2379,7 @@ you observe do not depend on how the caller chopped up the arc. `PatSignalsTest`
 
 `src/jvmMain/kotlin/afield/four/synth/PatSignals.kt` — [read the source](source/jvmMain/afield/four/synth/PatSignals/)
 
-**Used in:** [A pattern as a function generator](../marf.md), [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md)
+**Used in:** [A pattern as a function generator](../marf.md), [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets](../petri_nets.md)
 
 ### Top-level functions { #patsignals-kt-functions }
 
@@ -3736,7 +3736,7 @@ name to write against, and the one that will survive if the language underneath 
 
 `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt` — [read the source](source/jvmMain/afield/four/synth/TidalPatterns/)
 
-**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [A pattern as a function generator](../marf.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md)
+**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [A pattern as a function generator](../marf.md), [Petri nets](../petri_nets.md)
 
 ### Top-level functions { #tidalpatterns-kt-functions }
 

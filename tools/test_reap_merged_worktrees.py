@@ -294,6 +294,19 @@ class GitBackedTests(unittest.TestCase):
         self.assertEqual(verdict.reason, "live")
         self.assertIn("4242", verdict.text)
 
+    def test_a_registered_worktree_whose_directory_is_gone_is_prunable_not_a_crash(self) -> None:
+        """2026-10-08: four such entries, and the first `git status` inside one stopped the run."""
+        path = self.fx.add_worktree(self.fx.base, "deleted", "nightly/2026-01-02/deleted", "2026-01-02T00:00:00+00:00")
+        tree = self.fx.tree_at(path)
+        shutil.rmtree(path)
+        verdict = classify_worktree(
+            tree, repo=self.fx.repo, main_head=self.fx.main_head, families=self.fx.families,
+            cwds={}, min_idle_hours=DEFAULT_MIN_IDLE_HOURS, now_epoch=self.now,
+        )
+        self.assertFalse(verdict.removable)
+        self.assertEqual(verdict.reason, "prunable")
+        self.assertIn(verdict.reason, REFUSAL_LABELS)
+
     # ---- report / candidate parity, which is the regression that matters ------------------
 
     def test_agent_root_tree_with_a_nightly_name_is_not_counted_as_reclaimable(self) -> None:
@@ -598,6 +611,18 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(allowed.returncode, 0, allowed.stderr)
         self.assertIn("branches preserved", allowed.stdout)
         self.assertTrue(path.is_dir(), "dry run must leave the checkout alone")
+
+    def test_a_dry_run_reports_a_vanished_worktree_and_leaves_it_registered(self) -> None:
+        path = self.fx.add_worktree(self.fx.base, "vanished", "nightly/2026-01-02/vanished", "2026-01-02T00:00:00+00:00")
+        self.fx.add_worktree(self.fx.base, "ok1", "nightly/2026-01-02/ok1", "2026-01-02T00:00:00+00:00")
+        shutil.rmtree(path)
+        result = self.run_tool("--base", str(self.fx.base))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("directory is gone; --apply prunes them: vanished", result.stdout)
+        self.assertIn("DRY RUN", result.stdout)
+        # Pruning is --apply's job; a dry run must not change git's worktree list either.
+        listed = self.fx.git("worktree", "list", "--porcelain").stdout
+        self.assertIn(str(path.resolve()), listed)
 
     def test_completed_on_a_protected_branch_does_not_suggest_a_flag(self) -> None:
         """There is no flag, and hinting at one invites somebody to go looking for it."""
