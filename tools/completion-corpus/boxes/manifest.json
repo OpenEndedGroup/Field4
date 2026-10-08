@@ -1,7 +1,7 @@
 [
   {"doc": "ai4_iframe_hello", "box": "ai4_iframe_hello", "codeSha256": "a37b7c636de3d47d", "codeLines": 2, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "ai4_paint_studio", "box": "ai4_paint_scribbler", "codeSha256": "82f7e24d1ba98bba", "codeLines": 58, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "ai4_paint_studio", "box": "ai4_paint_studio", "codeSha256": "9cf7647b7daaaf20", "codeLines": 306, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "ai4_paint_studio", "box": "ai4_paint_studio", "codeSha256": "bb9f9791ec240603", "codeLines": 641, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "alife_evolution", "box": "evolve_ca", "codeSha256": "b3de791b0d4d16a3", "codeLines": 73, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "alife_evolution", "box": "evolve_lenia", "codeSha256": "c3a6b211d17d8eda", "codeLines": 67, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "alife_evolution", "box": "map_elites", "codeSha256": "3a067fbfbe122196", "codeLines": 55, "receivers": ["afield.Box"], "preamble": ""},
