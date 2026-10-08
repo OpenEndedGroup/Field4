@@ -8,6 +8,7 @@
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
     uv run python tools/land.py doc                               # build the local docs when its turn arrives
     uv run python tools/land.py huh [--context]                   # ask claude -p what the queue is doing
+    uv run python tools/land.py bouncy [--hours 12] [--context]   # ask claude -p about stranded bounces
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
 Why: every agent used to land itself. Each merged `main`, ran ~45 minutes of guards, found `main` had
@@ -317,8 +318,14 @@ def _superseded_by(queue: Path, item: dict) -> dict | None:
     # Doc builds (`land.py doc`) are queue items with no branch; they never supersede anything.
     if _is_doc(item) or not item.get("branch"):
         return None
+    # A later attempt: enqueued later (seq is nanoseconds; finished times are per-second, so a fix
+    # landing in the bounce's own second was missed), falling back to time for items without seq.
+    def later_than(other: dict) -> bool:
+        if other.get("seq") and item.get("seq"):
+            return other["seq"] > item["seq"]
+        return other.get("finished", "") > item.get("finished", "")
     later = [other for other in _items(queue, LANDED)
-             if other.get("branch") == item["branch"] and other.get("finished", "") > item.get("finished", "")]
+             if other.get("branch") == item["branch"] and other["id"] != item["id"] and later_than(other)]
     return later[0] if later else None
 
 
@@ -502,6 +509,113 @@ def _ask_huh(queue: Path) -> str:
         return result.stdout.strip() or "(claude returned nothing)"
     except subprocess.TimeoutExpired:
         return "claude -p took more than 4 minutes; giving up."
+
+
+def _ask_claude(prompt: str, context: str) -> str:
+    claude = shutil.which("claude")
+    if not claude:
+        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + context
+    try:
+        result = subprocess.run([claude, "-p", "--output-format", "text"], input=prompt + context,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=300)
+        return result.stdout.strip() or "(claude returned nothing)"
+    except subprocess.TimeoutExpired:
+        return "claude -p took more than 5 minutes; giving up."
+
+
+# ---------------------------------------------------------------------------- bouncy?
+
+
+def _stranded_bounces(queue: Path, hours: float) -> list[dict]:
+    """Bounces in the last [hours] that nothing has followed up: no later landing of the branch and
+    no attempt of it still queued. The ones somebody has to act on."""
+    cutoff = time.time() - hours * 3600
+    queued = {i.get("branch") for i in _items(queue, PENDING)}
+    out = []
+    for item in _items(queue, BOUNCED):
+        when = _when(item.get("finished"))
+        if _is_doc(item) or not when or when.timestamp() < cutoff:
+            continue
+        if _superseded_by(queue, item) or item.get("branch") in queued:
+            continue
+        # Landed some other way (merged into another branch that landed): not stranded.
+        if _ok(_primary(Path.cwd()), "merge-base", "--is-ancestor", item["sha"], "refs/heads/main"):
+            continue
+        out.append(item)
+    # One per branch: the newest attempt is the one that matters.
+    newest: dict[str, dict] = {}
+    for item in out:
+        newest[item["branch"]] = item
+    return list(newest.values())
+
+
+def _bouncy_context(queue: Path, items: list[dict]) -> str:
+    primary = _primary(Path.cwd())
+    worktrees = {}
+    current = None
+    for line in _git(primary, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            current = line.split(" ", 1)[1]
+        elif line.startswith("branch refs/heads/"):
+            worktrees[line[len("branch refs/heads/"):]] = current
+    out = []
+    for item in items:
+        branch = item["branch"]
+        tip = _git(primary, "rev-parse", "-q", "--verify", f"refs/heads/{branch}", check=False)
+        moved = ""
+        if tip and tip != item["sha"]:
+            moved = _git(primary, "log", "--format=%h %cr %s", f"{item['sha']}..{tip}", check=False) or "(rewritten)"
+        on_main = _ok(primary, "merge-base", "--is-ancestor", item["sha"], "refs/heads/main")
+        out.append(f"===== bounce {item['id']} =====")
+        out.append(f"branch: {branch}\nbounced commit: {item['sha']}  \u201c{_subject(item)}\u201d")
+        out.append(f"enqueued by: {item.get('by')}\nbounced: {item.get('finished')} ({_span(_since(item.get('finished')))} ago)")
+        out.append(f"history: {item.get('history', [])}")
+        out.append(f"reason: {' '.join(str(item.get('reason', '?')).split())}")
+        out.append(f"branch tip now: {tip or '(branch deleted)'}; worktree: {worktrees.get(branch, '(none)')}")
+        out.append(f"bounced commit already on main: {on_main}")
+        out.append("commits on the branch since the bounce (fixed but never re-enqueued?):\n" + (moved or "(none)"))
+        log = Path(item.get("log", ""))
+        failures = log.with_suffix(".failures.txt") if item.get("log") else None
+        if failures and failures.exists():
+            out.append("failure messages:\n" + failures.read_text()[:4000])
+        if log.is_file():
+            lines = log.read_text(errors="replace").splitlines()
+            out.append("log tail:\n" + "\n".join(lines[-60:]))
+        out.append("")
+    return "\n".join(out)
+
+
+BOUNCY_PROMPT = """You are looking at Field4's landing queue (tools/land.py). Agents enqueue branches; a lander merges
+them onto main, regenerates generated files, runs a guard, and bounces a branch that fails, with a
+reason. The bounces below happened recently and nothing followed them up: the branch has not landed
+since and is not queued again. For EACH bounce, briefly:
+1. Whose fault: the branch's own change, or the lander/tooling/environment (a false alarm, a killed
+   build, a dirty checkout, a hang)? Give the evidence.
+2. What has happened since: fixed on the branch but never re-enqueued, untouched, or already on main.
+3. What to do: if it was not the branch's fault, or it is already fixed, the exact
+   `uv run python tools/land.py enqueue <branch>` to run. Otherwise the concrete fix.
+4. A short message (3-5 sentences) Marc can paste to the agent that owns the branch.
+Be brief and specific. Plain text, no markdown headers. Never suggest merging into main by hand.
+
+"""
+
+
+def _ask_bouncy(queue: Path, hours: float) -> str:
+    items = _stranded_bounces(queue, hours)
+    if not items:
+        return f"Nothing bounced in the last {hours:g} h is left stranded: every bounce since then has landed or is queued again."
+    head = f"{len(items)} stranded bounce(s) in the last {hours:g} h: " + ", ".join(i["branch"] for i in items) + "\n\n"
+    return head + _ask_claude(BOUNCY_PROMPT, _bouncy_context(queue, items))
+
+
+def cmd_bouncy(args: argparse.Namespace) -> int:
+    queue = _queue_dir(Path.cwd())
+    items = _stranded_bounces(queue, args.hours)
+    if args.context:
+        print(_bouncy_context(queue, items) if items else "(no stranded bounces)")
+        return 0
+    print(_ask_bouncy(queue, args.hours))
+    return 1 if items else 0
 
 
 def cmd_huh(args: argparse.Namespace) -> int:
@@ -731,7 +845,7 @@ def cmd_status(args: argparse.Namespace) -> int:
                 lines = frame.getvalue().split("\n")
                 if len(lines) > rows - 2:
                     lines = lines[: rows - 3] + [_Style().dim(f"  \u2026 {len(lines) - rows + 3} more lines (make the window taller)")]
-                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 h huh? \u00b7 q to quit")
+                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 h huh? \u00b7 b bouncy? \u00b7 q to quit")
                 sys.stdout.write("\033[H" + "\033[K\n".join(lines) + "\033[K\n" + footer + "\033[K\033[J")
                 sys.stdout.flush()
                 if stdin is None:
@@ -740,6 +854,11 @@ def cmd_status(args: argparse.Namespace) -> int:
                     key = os.read(stdin, 1)
                     if key in (b"q", b"Q", b"\x1b", b"\x03"):
                         break
+                    if key in (b"b", b"B"):
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("bouncy? looking for bounces nobody followed up (then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.flush()
+                        _pager(_ask_bouncy(queue, 12), stdin)
+                        sys.stdout.write("\033[2J")
                     if key in (b"h", b"H"):
                         sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking claude about the queue (gathering context, then claude -p; ~30-60 s)") + "\n")
                         sys.stdout.flush()
@@ -1465,6 +1584,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
     p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
+    p = sub.add_parser("bouncy", help="ask claude -p about recent bounces nobody followed up (what --watch's b key does)")
+    p.add_argument("--hours", type=float, default=12.0, help="how far back to look (default 12)")
+    p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
+    p.set_defaults(func=cmd_bouncy)
     p = sub.add_parser("huh", help="ask claude -p what is going on with the queue (what --watch's h key does)")
     p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
     p.set_defaults(func=cmd_huh)

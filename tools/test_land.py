@@ -438,6 +438,20 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
         self.run_lander()                        # the next lander starts...
         self.assertFalse(self._alive(pgid), "...and must stop the orphan before landing anything")
 
+    def test_bouncy_lists_only_bounces_nobody_followed_up(self) -> None:
+        self.land(self.branch_with("rho", "BREAKS"), "enqueue")        # bounces and is left alone
+        fixed = self.branch_with("sigma", "BREAKS")
+        self.land(fixed, "enqueue")                                     # bounces...
+        self.run_lander()
+        (fixed / "BREAKS").unlink()
+        self.git(fixed, "commit", "-qam", "fix sigma")
+        self.land(fixed, "enqueue")                                     # ...then is fixed and lands
+        self.run_lander()
+        context = self.land(self.primary, "bouncy", "--context").stdout
+        self.assertIn("branch: rho", context)
+        self.assertNotIn("branch: sigma", context)
+        self.assertIn("a guard failed", context)
+
 
 if __name__ == "__main__":
     unittest.main()
