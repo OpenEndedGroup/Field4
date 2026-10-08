@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="pt_emitters" index="1" -->
 
 ```edn [field-box id="pt_emitters" role="properties"]
-{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 180.0 380.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 55 "characters" 2755 "sha256" "78358aa84940ec00c93413f36d88fa00cb745da8072b34a75cf0d84d64d258aa"}]}
+{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 180.0 380.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 53 "characters" 2677 "sha256" "595a8711ed424dcb264ac617006457d39d96c812757c9325231318a0a55e52de"}]}
 ```
 
 ```kotlin [field-property box="pt_emitters" name="code" path="pt_emitters_code_.kt"]
@@ -39,12 +39,10 @@ import afield.four.fabricated.PathTraceEnvironment
 import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 // Two lamps in the dark and nothing else: the case BSDF sampling alone cannot find.

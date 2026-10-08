@@ -9,7 +9,13 @@ checked and improved, and what an agent revising it is asked.
   a redundant `val renderer: Renderer = fromContext()` (the renderer box publishes
   `prop<Renderer>(renderer)`), `mesh.push.bindPushConstant("n", { e }) { throw ... }` instead of
   `mesh.n = { e }`, `Box.context.get()!!` (that is `thisBox`, and the box is the implicit
-  receiver, so `thisBox.foo` is `foo`), and the spaced `// %-` marker.
+  receiver, so `thisBox.foo` is `foo`; it cannot be spelled `this`), and the spaced `// %-`
+  marker. A box alias (`val owner = thisBox`) and a renderer copy in a box that starts coroutines
+  are printed as notes: judgement calls for the pass below, not failures.
+- It reads what git tracks: transcripts, each demo's sidecars, `build.yaml` / `verify.yaml` and
+  `document.md` mirror, lessons, and docs fences. A demo's `backups/` and `operations.yaml` are
+  history and are skipped. `--fix` on a demo also rewrites its `document.md` fences and digests;
+  `./gradlew regenerateAgentDemos -Ponly=<demo>` then refreshes `metadata.edn`.
 - `./gradlew checkBoxCodeCompiles` compiles, without evaluating, the Kotlin of every transcript
   it is pointed at, through `DemoTranscriptExecSmokeTest`'s compile-only path.
 - Landing runs both over the files the landing changes only (`AFIELD_GUARD_CHANGED_PATHS_FILE`),
@@ -40,9 +46,9 @@ fragment, and see the result soon? In particular:
 - **Fragments.** Never add a `//%-` break and never remove one; the author placed them. Where one
   is already there, a comment above it says why (what has to have run before the next fragment
   compiles, or which expensive setup the part being iterated on can rerun without).
-- **No alias for the box.** `val historyOwner = thisBox` (or `= Box.context.get()!!`) goes, and
-  so does the verbosity it brings: `historyOwner.foo` is `foo`, and where the box is an argument
-  it is `thisBox`.
+- **Usually no alias for the box.** `val historyOwner = thisBox` is a smell, though not always
+  wrong: where it only saves typing it goes, and so does the verbosity it brings —
+  `historyOwner.foo` is `foo`, and where the box is an argument it is `thisBox`.
 - **Commented where a reader would stop.** A short comment on what a longer chunk does (what
   the `loop` advances, why a cleanup is owned by the run), and nothing on a line that already
   says it.

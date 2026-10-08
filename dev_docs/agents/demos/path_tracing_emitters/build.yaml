@@ -33,12 +33,10 @@ operations:
           import afield.four.fabricated.PathTraceMaterial
           import afield.four.fabricated.PathTraceScene
           import afield.four.fabricated.PathTracingRenderer
-          import afield.four.modules.fromContext
           import afield.four.util.Camera
           import afield.stdlib.linalg.Vector3f
           import afield.stdlib.linalg.Vector4f
 
-          val renderer: Renderer = fromContext()
           prop<PathTracingRenderer>(tracer)
 
           // Two lamps in the dark and nothing else: the case BSDF sampling alone cannot find.

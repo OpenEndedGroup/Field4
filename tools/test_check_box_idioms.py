@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -27,7 +29,11 @@ class Fixture:
         return (self.root / rel).read_text(encoding="utf-8")
 
     def run(self, *args: str) -> int:
-        return idioms.main(["--root", str(self.root), *args])
+        # The landing guard exports the changed-paths listing to every check it runs, this suite
+        # included; inherited, it would scope each "whole corpus" run here to the landing's files.
+        with mock.patch.dict(os.environ):
+            os.environ.pop("AFIELD_GUARD_CHANGED_PATHS_FILE", None)
+            return idioms.main(["--root", str(self.root), *args])
 
     def close(self) -> None:
         self._dir.cleanup()
@@ -144,14 +150,64 @@ class BoxContextTests(unittest.TestCase):
         finally:
             f.close()
 
-    def test_an_alias_fails_and_is_left_for_a_rewrite(self):
-        code = "val historyOwner = Box.context.get()!!\nhistoryOwner.frame\n"
+    def test_a_qualified_lookup_loses_its_qualifier(self):
+        f = Fixture({self.PATH: "afield.Box.context.get()!!.display(\"x\", \"y\")\n"})
+        try:
+            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.read(self.PATH), "thisBox.display(\"x\", \"y\")\n")
+        finally:
+            f.close()
+
+    def test_a_guarded_lookup_alias_becomes_a_thisBox_alias(self):
+        code = 'val owner = afield.Box.context.get() ?: throw IllegalStateException("Run in a Field box") // tools\n'
+        f = Fixture({self.PATH: code})
+        try:
+            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.read(self.PATH), "val owner = thisBox // tools\n")
+        finally:
+            f.close()
+
+    def test_a_thisBox_alias_is_a_note_and_is_left_alone(self):
+        # A smell, but not always wrong: the revision pass or a person decides.
+        code = "val historyOwner = thisBox\nhistoryOwner.frame\n"
         f = Fixture({self.PATH: code})
         try:
             findings = idioms.process(self.PATH, f.root, fix=False)
-            self.assertEqual([(x.rule, x.fixable) for x in findings], [("box-context-lookup", False)])
-            self.assertEqual(f.run("--fix"), 1)
+            self.assertEqual([(x.rule, x.blocking) for x in findings], [("box-alias", False)])
+            self.assertEqual(f.run("--fix"), 0)
             self.assertEqual(f.read(self.PATH), code)
+        finally:
+            f.close()
+
+
+MIRROR = """\
+# Field Document: d
+
+```edn [field-box id="b" role="properties"]
+{"blockProperties" [{"name" "code" "language" "kotlin" "path" "b_code_.kt" "lines" 2 "characters" 49 "sha256" "stale"}]}
+```
+
+```kotlin [field-property box="b" name="code" path="b_code_.kt"]
+val renderer: Renderer = fromContext()
+renderer.x
+```
+"""
+
+
+class DemoTests(unittest.TestCase):
+    SIDECAR = "dev_docs/agents/demos/d/b_code_.kt"
+    MIRROR = "dev_docs/agents/demos/d/document.md"
+
+    def test_fixing_a_sidecar_fixes_its_mirror_and_refreshes_the_digest(self):
+        import hashlib
+        f = Fixture({self.SIDECAR: "val renderer: Renderer = fromContext()\nrenderer.x\n", self.MIRROR: MIRROR})
+        try:
+            self.assertEqual(f.run("--fix", "--paths", self.SIDECAR), 0)
+            self.assertEqual(f.read(self.SIDECAR), "renderer.x\n")
+            mirror = f.read(self.MIRROR)
+            self.assertIn("```kotlin [field-property box=\"b\" name=\"code\" path=\"b_code_.kt\"]\nrenderer.x\n```", mirror)
+            digest = hashlib.sha256(b"renderer.x\n").hexdigest()
+            self.assertIn(f'"path" "b_code_.kt" "lines" 1 "characters" 11 "sha256" "{digest}"', mirror)
         finally:
             f.close()
 
@@ -162,6 +218,24 @@ class ScopeTests(unittest.TestCase):
         self.assertFalse(idioms.in_corpus("src/jvmMain/kotlin/afield/Server.kt"))
         self.assertTrue(idioms.in_corpus("public/docs/assets/canonical_graphics/a_code_.kt"))
         self.assertTrue(idioms.in_corpus(TRANSCRIPT))
+
+    def test_demo_build_scripts_and_mirrors_count_but_history_does_not(self):
+        self.assertTrue(idioms.in_corpus("dev_docs/agents/demos/d/build.yaml"))
+        self.assertTrue(idioms.in_corpus("dev_docs/agents/demos/d/verify.yaml"))
+        self.assertTrue(idioms.in_corpus("dev_docs/agents/demos/d/document.md"))
+        self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/operations.yaml"))
+        self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/README.md"))
+        self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/backups/b_code__backup_00000.kt"))
+
+    def test_an_inherited_git_dir_does_not_replace_the_root(self):
+        # A hook's environment can point git at the real repository instead of the fixture.
+        f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": "record(Box.context.get()!!)\n"})
+        try:
+            with mock.patch.dict(os.environ, {"GIT_DIR": str(idioms.REPO_ROOT / ".git"),
+                                              "GIT_WORK_TREE": str(idioms.REPO_ROOT)}):
+                self.assertEqual(idioms.corpus_paths(f.root), ["dev_docs/agents/demos/d/x_code_.kt"])
+        finally:
+            f.close()
 
     def test_paths_limit_the_check_to_the_changed_files(self):
         f = Fixture({TRANSCRIPT: YAML, "dev_docs/agents/demos/d/clean_code_.kt": "val a = 1\n"})

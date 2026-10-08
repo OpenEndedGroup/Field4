@@ -347,10 +347,6 @@ If you do want the numbers in Kotlin (for logging, tests, or a custom readout),
 the read-back is a few scalars per channel, not a sample array:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.Renderer
-import afield.four.modules.fromContext
-val renderer: Renderer = fromContext()
-
 val N = 16384
 
 val stats = fieldStatsHere(channels = 1)
