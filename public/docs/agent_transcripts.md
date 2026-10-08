@@ -2028,6 +2028,24 @@ skips the Csound ones; every box was run by hand against a built Csound on 2026-
 
 [Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
 
+### orca_hello
+
+[ORCA](orca.md) in a box output, playing a melody and a bass line through a `PatSynthBank`. Run the
+box, click the grid and type; every note ORCA plays is shown under it. The box also gives its AI
+Chat tools that read and write the grid, so you can ask AI4 to change the tune.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_hello/metadata.edn)
+
+### orca_duet
+
+Two ORCAs in one box and a Kotlin `frames { }` loop between them. `lead` plays a tune; the loop
+copies the last eight notes it played into `echo`, which plays them back three frames to a note
+against `lead`'s two, and every eighth echo moves one note of `lead`'s tune up the scale. A line
+under the grids shows what Kotlin heard and changed. Launch the box, then type into either grid.
+[ORCA](orca.md#two-orcas-and-kotlin-between-them) has the video and a recording.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
+
 ### marf_demo
 
 **One bank of stages, read four different ways — three drawn, one heard.** A MARF *bank* is a list

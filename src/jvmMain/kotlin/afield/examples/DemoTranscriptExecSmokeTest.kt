@@ -448,6 +448,13 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio
+        // device; and ORCA itself only plays in a browser. `run_ui_regressions.py --id orca-io` runs
+        // the same calls in a real page, and OrcaTest feeds the Kotlin side the page's reports.
+        "orca_hello",
+        // Two of them and a frames loop between: the same reasons. OrcaHeadlessTest runs its exchange
+        // on ORCA's own operators in the JVM, and pins it to this transcript.
+        "orca_duet",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",

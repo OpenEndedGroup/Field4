@@ -1,0 +1,33 @@
+name: orca_hello
+description: ORCA in a box output, playing a melody and a bass line through a PatSynthBank, with AI4 tools to read and write its grid.
+operations:
+  - create:
+      box: orca_hello
+      name: ORCA · run me
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 300.0
+        h: 60.0
+      properties:
+        code: |
+          // Click the grid to type into ORCA. Space plays and pauses; Cmd-G shows every operator.
+          val synth = PatSynthBank()
+          val o = orca(rows = 12, grid = """
+              #.ORCA.IN.FIELD.#
+              .
+              .2C8
+              D2.8TCDEGAGED
+              .:04
+              .
+              D8
+              .:12C
+          """)
+          o.onNote {
+              synth.play(it)
+              markdown("heard", "`${it.note}${it.octave}` on channel ${it.channel}, MIDI ${it.midi}")
+          }
+          displayOpen("heard")
+          // Ask AI4 (Cmd-4) to change the tune: it can read, write and command this ORCA.
+          o.exposeTools()
+          synth
