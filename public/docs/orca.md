@@ -236,8 +236,11 @@ Run the box, open its AI Chat with **Cmd-4**, and ask for something:
 
 > Add a hi-hat on channel 2 that plays on every other beat, and make the melody go up an octave.
 
-The tools act on the ORCA you are looking at, so you can watch the edit land and keep typing
-alongside it.
+Asked that, AI4 reads the board with `orca_read` and sees that a hi-hat needs a noise voice, which
+is Kotlin rather than ORCA. So it edits the box, adding the hat to the grid and raising the
+melody's octave there too, runs it again, and then looks at the output to check; its picture of the
+board appears in the chat. A smaller change, a note or a row, it can make with `orca_write` on the
+ORCA that is playing, and you can keep typing alongside it.
 
 ## Details
 
