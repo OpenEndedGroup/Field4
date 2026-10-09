@@ -107,7 +107,7 @@ data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
 data class DefinitionInfo(val name: String, val type: String, val fileRef: String, val language: String)
 
 /** Tool: get full contents of text properties for the current box/file context. */
-@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers.")
+@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListContentsRequest(val unused: Int = 0)
 
@@ -195,7 +195,7 @@ data class EvaluateKotlinExpressionResult(
 )
 
 /** Tool: edit another file by name (your integration decides how to apply this). */
-@JsonClassDescription("Edit another file by specifying its name and new content.")
+@JsonClassDescription("Replace the whole text of another box property, named by its file ref (from ListContentsRequest), with newContent. Returns success and a message. Use it when the change belongs in a box other than the one this chat is on; for the box itself use SetBoxPropertyRequest or RunBoxRequest instead. It does not run anything. An unsupported file ref, or an unknown document or box, fails with success=false. e.g. file = `afield://doc/box-uid/code`.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.MUTATE_DOCUMENT])
 data class EditFileRequest(val file: String, val newContent: String)
 
@@ -1056,6 +1056,10 @@ internal class ToolRegistry {
      */
     internal fun coreToolClasses(): List<Class<*>> =
         handlers.entries.filter { it.key !in extensionOwned }.map { it.value.cls }.sortedBy { it.simpleName }
+
+    /** Every extension-owned request class (what [AgentToolExtensions] applied), for the same audit. */
+    internal fun extensionToolClasses(): List<Class<*>> =
+        handlers.entries.filter { it.key in extensionOwned }.map { it.value.cls }.sortedBy { it.simpleName }
 
     /** True if [registerExtension] would accept [name] — i.e. core does not already hold it. */
     internal fun acceptsExtensionNamed(name: String): Boolean =
