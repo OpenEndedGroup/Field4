@@ -559,6 +559,15 @@ object MacroRegistry {
         callRewrite["rootProp"] = { box, id, args ->
             box.macro_root_prop(args)
         }
+        callRewrite["propUp"] = { box, id, args ->
+            box.macro_reactive_prop(args, afield.stdlib.Reactive.UP, "propUp")
+        }
+        callRewrite["propDown"] = { box, id, args ->
+            box.macro_reactive_prop(args, afield.stdlib.Reactive.DOWN, "propDown")
+        }
+        callRewrite["propUpDown"] = { box, id, args ->
+            box.macro_reactive_prop(args, afield.stdlib.Reactive.UP_DOWN, "propUpDown")
+        }
         callRewrite["_print"] = { box, id, args ->
             box.macro_printHere(args)
         }
