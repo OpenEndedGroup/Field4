@@ -3,7 +3,6 @@ package afield.ai.core
 import afield.AiChatModelIdentity
 import com.anthropic.client.AnthropicClient
 import com.anthropic.core.JsonValue
-import com.anthropic.errors.AnthropicServiceException
 import com.anthropic.errors.UnauthorizedException
 import com.anthropic.models.messages.Base64ImageSource
 import com.anthropic.models.messages.CacheControlEphemeral
@@ -31,7 +30,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.math.min
 
 /**
  * Anthropic (Claude) implementation of [LlmBridge], mirroring [OpenAiIdeCodexBridge]'s
@@ -66,12 +64,14 @@ class AnthropicBridge(
     /** Per-thread message history (stateless API — we resend the full transcript each turn). */
     private val history = ConcurrentHashMap<String, MutableList<MessageParam>>()
 
-    private val maxRateLimitRetries: Int =
-        (System.getenv("AFIELD_AI_RATE_LIMIT_RETRIES") ?: System.getProperty("afield.ai.rateLimitRetries") ?: "4")
-            .toIntOrNull()?.coerceIn(0, 12) ?: 4
-    private val maxRateLimitDelayMs: Long =
-        (System.getenv("AFIELD_AI_RATE_LIMIT_MAX_DELAY_MS") ?: System.getProperty("afield.ai.rateLimitMaxDelayMs") ?: "30000")
-            .toLongOrNull()?.coerceIn(250L, 300_000L) ?: 30_000L
+    private val rateLimitRecovery = AiRateLimitRecovery.fromConfig()
+
+    /**
+     * As on [OpenAiIdeCodexBridge], Field owns the retries, the deadline and the visible wait, so the SDK makes none:
+     * each HTTP request is then one attempt in the request ledger, and a 429 the SDK would have absorbed has its record.
+     * Taken from [client] on every request because a 401 replaces it.
+     */
+    private fun messageService() = client.messages().withOptions { it.maxRetries(0) }
 
     private fun info(message: String) = log.log("info,ai.bridge.anthropic", message)
     private fun warn(message: String) = log.log("warning,ai.bridge.anthropic", message)
@@ -237,7 +237,7 @@ class AnthropicBridge(
         var activePhase = "model:initial"
         try {
         var hitToolRoundCap = false
-        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null), requestLedger("initial"))
+        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null), requestLedger("initial"), onProgress)
         countUsage(response)
         onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
@@ -380,7 +380,7 @@ class AnthropicBridge(
             val phase = if (includeTools) "followup" else "forced_final"
             activePhase = "model:$phase"
             response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null, toolsDisabled = !includeTools),
-                requestLedger(phase))
+                requestLedger(phase), onProgress)
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
@@ -493,40 +493,48 @@ class AnthropicBridge(
 
     // ---- create with rate-limit + auth-refresh retry -------------------------
 
-    /** One logical request: each `create` is an attempt in [ledger], recorded before the call and after its outcome. */
-    private fun createMessage(params: MessageCreateParams, ledger: AiRequestLedger.Request): Message {
-        var attempt = 0
-        var refreshedAuth = false
-        while (true) {
+    /**
+     * One logical request: each `create` is an attempt in [ledger], recorded before the call and after its outcome.
+     * [rateLimitRecovery] waits out 429, 529 `overloaded_error` and the SDK's other retryable failures (408, 409, 5xx,
+     * connection errors), honouring `retry-after-ms`, `retry-after` and `x-should-retry` as the SDK did; each wait is a
+     * `retry_wait`. A 401 refreshes the OAuth token and is retried once per logical request.
+     */
+    private fun createMessage(params: MessageCreateParams, ledger: AiRequestLedger.Request, onProgress: ((LlmProgressUpdate) -> Unit)?): Message {
+        fun attempt(): Message {
             val recorded = ledger.attempt()
             try {
-                return client.messages().create(params).also { recorded.response(it); recorded.finish() }
-            } catch (e: UnauthorizedException) {
-                recorded.finish(e)
-                if (!refreshedAuth) {
-                    warn("401 from Anthropic; refreshing OAuth token and retrying once.")
-                    invalidateAnthropicOAuthToken()
-                    client = anthropicClientFromFieldConfig(forceRefresh = true)
-                    refreshedAuth = true
-                    continue
-                }
-                throw e
-            } catch (e: AnthropicServiceException) {
-                recorded.finish(e)
-                val delay = OpenAiIdeCodexBridge.retryDelayMsForRateLimitMessage(e.message ?: "")
-                if (delay != null && attempt < maxRateLimitRetries) {
-                    val wait = min(delay, maxRateLimitDelayMs)
-                    ledger.retry(attempt + 1, wait)
-                    warn("rate limited (attempt ${attempt + 1}/$maxRateLimitRetries); waiting ${wait}ms.")
-                    log.userNotice("The AI service is busy. Retrying automatically in ${(wait + 999) / 1000}s; completed work is kept.", attention = true)
-                    Thread.sleep(wait)
-                    attempt++
-                    continue
-                }
-                throw e
+                return messageService().create(params).also { recorded.response(it); recorded.finish() }
             } catch (e: Exception) {
                 recorded.finish(e)
                 throw e
+            }
+        }
+        var refreshedAuth = false
+        var lastRetry = 0
+        return rateLimitRecovery.run(
+            onWait = { wait ->
+                if (lastRetry != wait.retry) {
+                    lastRetry = wait.retry
+                    ledger.retry(wait.retry, wait.remainingMs)
+                    log.userNotice("The AI service is busy. Retrying automatically in ${(wait.remainingMs + 999) / 1000}s; completed work is kept.", attention = true)
+                    warn("messages-create temporarily unavailable; retry ${wait.retry} in ${wait.remainingMs}ms")
+                }
+                onProgress?.invoke(LlmProgressUpdate(
+                    "Provider busy · retrying in ${(wait.remainingMs + 999) / 1000}s",
+                    "Waiting automatically. Completed tool work is retained.", phase = "model"
+                ))
+            },
+            onRetry = { onProgress?.invoke(LlmProgressUpdate("Waiting for model", phase = "model")) }
+        ) {
+            try {
+                attempt()
+            } catch (e: UnauthorizedException) {
+                if (refreshedAuth) throw e
+                warn("401 from Anthropic; refreshing OAuth token and retrying once.")
+                invalidateAnthropicOAuthToken()
+                client = anthropicClientFromFieldConfig(forceRefresh = true)
+                refreshedAuth = true
+                attempt()
             }
         }
     }

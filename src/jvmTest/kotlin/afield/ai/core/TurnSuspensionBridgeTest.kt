@@ -1,16 +1,13 @@
 package afield.ai.core
 
 import afield.AiAssist
-import com.anthropic.client.AnthropicClient
 import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
-import com.anthropic.services.blocking.MessageService
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.openai.client.okhttp.OpenAIOkHttpClient
 import com.sun.net.httpserver.HttpServer
-import java.lang.reflect.Proxy
 import java.net.InetSocketAddress
 import kotlin.test.*
 
@@ -106,15 +103,7 @@ class TurnSuspensionBridgeTest {
             "content":[{"type":"text","text":"The bake succeeded.","citations":null}],
             "stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}""")
         val sent = mutableListOf<MessageCreateParams>()
-        val messages = Proxy.newProxyInstance(javaClass.classLoader, arrayOf(MessageService::class.java)) { _, method, args ->
-            if (method.name == "create" && args?.firstOrNull() is MessageCreateParams) {
-                sent += args[0] as MessageCreateParams
-                if (sent.size == 1) toolUse else done
-            } else throw UnsupportedOperationException(method.name)
-        } as MessageService
-        val client = Proxy.newProxyInstance(javaClass.classLoader, arrayOf(AnthropicClient::class.java)) { _, method, _ ->
-            if (method.name == "messages") messages else throw UnsupportedOperationException(method.name)
-        } as AnthropicClient
+        val client = fakeAnthropicClient { params -> sent += params; if (sent.size == 1) toolUse else done }
         val bridge = AnthropicBridge(client = client, model = "claude-test", log = SilentLog)
         bridge.registerTool(Awaiting::class.java) { _, _ -> Awaiting() }
         val state = bridge.startThread("k", "")

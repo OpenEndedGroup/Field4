@@ -1,5 +1,10 @@
 package afield.ai.core
 
+import com.anthropic.core.JsonValue
+import com.anthropic.core.http.Headers
+import com.anthropic.errors.BadRequestException
+import com.anthropic.errors.InternalServerException
+import com.anthropic.errors.RateLimitException
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletionException
 import kotlin.test.*
@@ -81,6 +86,37 @@ class AiRateLimitRecoveryTest {
         } finally { Thread.interrupted() }
         val wrapped = CompletionException(CancellationException("429"))
         assertSame(wrapped, assertFails { AiRateLimitRecovery().run { throw wrapped } })
+    }
+
+    /** Anthropic's failures, retried as its SDK retried them before the bridge turned the SDK's retries off. */
+    @Test fun anthropicFailuresAreRetriedAsItsSdkRetriedThem() {
+        fun body(type: String) = JsonValue.from(mapOf("type" to "error", "error" to mapOf("type" to type, "message" to "PRIVATE")))
+        fun headers(vararg pairs: Pair<String, String>) = Headers.builder().apply { pairs.forEach { (k, v) -> put(k, v) } }.build()
+        fun limited(vararg pairs: Pair<String, String>) = RateLimitException.builder().headers(headers(*pairs)).body(body("rate_limit_error")).build()
+        fun server(status: Int, type: String, vararg pairs: Pair<String, String>) =
+            InternalServerException.builder().statusCode(status).headers(headers(*pairs)).body(body(type)).build()
+
+        assertEquals(2_000L, temporaryRateLimitDelay(limited("retry-after" to "2")), "the header alone is the hint")
+        assertEquals(1_500L, temporaryRateLimitDelay(limited("retry-after-ms" to "1500", "retry-after" to "1")), "the longer of the two")
+        assertEquals(0L, temporaryRateLimitDelay(server(529, "overloaded_error")), "a 529 is waited out like a rate limit")
+        assertNull(temporaryRateLimitDelay(server(500, "api_error")), "a 500 is a brief server failure, not a rate limit")
+        assertNull(temporaryRateLimitDelay(limited("x-should-retry" to "false")))
+
+        var clock = 0L
+        fun calls(failure: Exception, succeedOn: Int = Int.MAX_VALUE): Int {
+            var n = 0
+            runCatching {
+                AiRateLimitRecovery(clock = { clock }, sleep = { clock += it }, jitter = { 0 }).run { if (++n < succeedOn) throw failure }
+            }
+            return n
+        }
+        assertEquals(6, calls(server(529, "overloaded_error"), succeedOn = 6), "a 529 goes on past a 500's two retries")
+        assertEquals(3, calls(server(503, "api_error", "retry-after-ms" to "10")))
+        assertEquals(3, calls(com.anthropic.errors.AnthropicIoException("Connection reset")))
+        assertEquals(1, calls(server(500, "api_error", "x-should-retry" to "false")))
+        assertEquals(1, calls(BadRequestException.builder().headers(headers()).body(body("invalid_request_error")).build()))
+        assertEquals(3, calls(BadRequestException.builder().headers(headers("x-should-retry" to "true")).body(body("invalid_request_error")).build()),
+            "x-should-retry: true makes any status retryable, as in the SDK")
     }
 
     @Test fun partialAnswersAreNeverReplayed() {

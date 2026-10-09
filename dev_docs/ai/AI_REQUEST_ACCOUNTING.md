@@ -34,7 +34,8 @@ evaluation).
   structured model error code (on Anthropic, the error type such as
   `rate_limit_error`), rate-limit figures parsed from the provider error, and an
   allowlist of diagnostic HTTP headers available on HTTP exceptions (including
-  Anthropic's `request-id` and `anthropic-ratelimit-*`).
+  `retry-after`, `retry-after-ms`, `x-should-retry`, and Anthropic's `request-id`
+  and `anthropic-ratelimit-*`).
 - `retry_wait`: retry number and intended delay; retries share a logical request ID.
 
 Cached input is a subset of input; reasoning is a subset of output. Do not add
@@ -53,12 +54,17 @@ cache read and `cacheWriteTokens` the cache creation, and the uncached remainder
 inside output), so `reasoningTokens` is null. Its `stopReason` (`end_turn`,
 `tool_use`, `max_tokens`, ...) takes the place of the Responses `responseStatus`.
 
-An attempt is one call into the provider SDK. The OpenAI bridge turns the SDK's own
-retries off, so there an attempt is one HTTP request and every rate limit has its
-record. The Anthropic client keeps the SDK's retries (two, for 408, 409, 429 and 5xx,
-honouring `retry-after`) inside the call, so an Anthropic attempt can be several HTTP
-requests and a limit the SDK recovered from leaves only a longer `elapsedMs`. The
-bridge's own rate-limit retries are recorded as on OpenAI.
+An attempt is one HTTP request. Both bridges turn their SDK's own retries off and
+retry in one loop of their own (`AiRateLimitRecovery`), so every rate limit has its
+`attempt_finished` record and every wait its `retry_wait`. The Anthropic bridge
+retries what the Anthropic SDK did: a 429 and a 529 `overloaded_error` are waited out
+under the limits and settings the OpenAI bridge uses for rate limits (see "Request
+recovery" in `AI4_OPENAI_EFFICIENCY.md`); 408, 409, other 5xx and connection failures
+get two retries; `retry-after-ms` and `retry-after` are minimums, even above the
+backoff cap; and `x-should-retry` is obeyed both ways. A 401 is retried once, after
+refreshing the OAuth token. Anthropic records written before this change (also
+2026-10-09) can hold up to three HTTP requests in one attempt, and a limit the SDK
+recovered from shows there only as a longer `elapsedMs`.
 
 The ledger contains no prompts, tool arguments/results, images, API keys,
 Authorization headers or raw exception text. Endpoint user-info/query/fragment are
@@ -76,10 +82,13 @@ absence of other activity.
 Verification: local HTTP fixtures exercise streaming and nonstreaming HTTP 429
 recovery through the real SDK/bridge, asserting tokens, attempt identity, diagnostic
 headers and exclusion of private content. `AnthropicBridgeContractTest` drives the
-Anthropic bridge through a fake client across a rate-limited attempt and its retry,
+Anthropic bridge through a fake client across a 429 and a 529 and their retries,
 the follow-up and forced-final phases, and a failed request, asserting attribution,
 cache-adjusted input, null for unreported figures, error status and headers, and the
-same exclusions. Python tests aggregate multiple process identities, duplicate
+same exclusions. A local HTTP fixture whose client keeps the SDK's default retries
+shows one attempt per HTTP request through a 429 whose only hint is `retry-after`, a
+529, a 500 with `retry-after-ms` and a 500 marked `x-should-retry: false`, and that
+each wait lasted at least what its header asked. Python tests aggregate multiple process identities, duplicate
 responses, unknown outcomes, and partially written records. No paid model call is
 required for these tests.
 
