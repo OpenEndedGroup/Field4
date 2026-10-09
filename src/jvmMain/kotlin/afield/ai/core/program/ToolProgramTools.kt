@@ -47,7 +47,7 @@ import com.fasterxml.jackson.databind.JsonNode
  */
 @JsonClassDescription(
     "Run a short JavaScript program that calls this conversation's other tools as functions and returns " +
-        "one combined result. tools.NewBox({name, code}), tools.RunBox({box}), tools.ListBoxes({}) ... — the " +
+        "one combined result. Use it when a step means four or more similar tool calls (every box, every value of a sweep); a single call is cheaper made directly. tools.NewBox({name, code}), tools.RunBox({box}), tools.ListBoxes({}) ... — the " +
         "same tools and arguments as direct calls, with the Request suffix dropped (box-authored tools by their " +
         "own name, tools[\"rectsl.run\"]({...}), or their listed name, tools.rectsl_run). Calls are synchronous. " +
         "A call that fails (could not run, or returned success:false / error:true) throws a ToolFailure whose " +
