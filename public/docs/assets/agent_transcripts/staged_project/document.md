@@ -18,7 +18,7 @@ The rule that places loot. It changes only after a replay on real placements: se
 "Change a rule without breaking what already works" in the Field docs.
 
 ```edn [field-box id="staged_rule" role="properties"]
-{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1660.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 36 "characters" 1975 "sha256" "1c62819dccf953a3af55664ca5e7d644ee419f04654810c6e1c0a1a40d898e13"}]}
+{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1440.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 36 "characters" 1975 "sha256" "1c62819dccf953a3af55664ca5e7d644ee419f04654810c6e1c0a1a40d898e13"}]}
 ```
 
 ```kotlin [field-property box="staged_rule" name="code" path="staged_rule_code_.kt"]
@@ -73,7 +73,7 @@ A room is [x, y, w, h] in cells. A door is [x, y, side]: an opening from cell (x
 to its neighbour on side "e" (east) or "s" (south). Loot is [x, y, path budget].
 
 ```edn [field-box id="staged_level" role="properties"]
-{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 134 "characters" 7966 "sha256" "6b01854fea14e59deed06c9af6546c61b12084b0b79106c0a5ad1d99dec7a018"}]}
+{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [40.0 700.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 134 "characters" 8030 "sha256" "58c743a298e16cb33cf8062df3051746088249198338e3879da1babbe4fdd0c4"}]}
 ```
 
 ```kotlin [field-property box="staged_level" name="code" path="staged_level_code_.kt"]
@@ -145,10 +145,9 @@ fun edited(source: String, operations: List<Map<String, Any?>>): String {
     return json.writeValueAsString(level)
 }
 
-// The plan view: rooms, doors, the spawn and the loot, and paths when there are any.
-val drawLevel = { source: String, paths: List<List<List<Number>>> ->
+// The plan view: rooms, doors, the spawn and the loot, and paths when there are any, at s pixels a cell.
+val drawLevel = { source: String, paths: List<List<List<Number>>>, s: Double ->
     val level = json.readValue<Map<String, Any?>>(source)
-    val s = 24.0
     val out = mutableListOf<FLine>()
     for ((id, r) in (level["rooms"] as Map<String, List<Int>>)) out += fline {
         rect(r[0] * s, r[1] * s, r[2] * s, r[3] * s); color = vec(0.75, 0.8, 0.85, 1.0); thickness = 1.5
@@ -156,9 +155,9 @@ val drawLevel = { source: String, paths: List<List<List<Number>>> ->
     for ((_, d) in (level["doors"] as Map<String, List<Any>>)) {
         val x = (d[0] as Number).toDouble(); val y = (d[1] as Number).toDouble()
         out += fline {
-            if (d[2] == "e") { moveTo((x + 1) * s, y * s + 5); lineTo((x + 1) * s, (y + 1) * s - 5) }
-            else { moveTo(x * s + 5, (y + 1) * s); lineTo((x + 1) * s - 5, (y + 1) * s) }
-            color = vec(1.0, 0.75, 0.3, 1.0); thickness = 5.0
+            if (d[2] == "e") { moveTo((x + 1) * s, y * s + s / 5); lineTo((x + 1) * s, (y + 1) * s - s / 5) }
+            else { moveTo(x * s + s / 5, (y + 1) * s); lineTo((x + 1) * s - s / 5, (y + 1) * s) }
+            color = vec(1.0, 0.75, 0.3, 1.0); thickness = s / 5
         }
     }
     for (path in paths) out += fline {
@@ -169,17 +168,18 @@ val drawLevel = { source: String, paths: List<List<List<Number>>> ->
         color = vec(0.35, 0.85, 1.0, 0.9); thickness = 2.0
     }
     val spawn = level["spawn"] as List<Number>
-    out += fline { circle((spawn[0].toDouble() + 0.5) * s, (spawn[1].toDouble() + 0.5) * s, 7.0); color = vec(0.4, 1.0, 0.5, 1.0); filled = true }
+    out += fline { circle((spawn[0].toDouble() + 0.5) * s, (spawn[1].toDouble() + 0.5) * s, s * 0.3); color = vec(0.4, 1.0, 0.5, 1.0); filled = true }
     for ((_, l) in (level["loot"] as Map<String, List<Number>>)) out += fline {
         val x = (l[0].toDouble() + 0.5) * s; val y = (l[1].toDouble() + 0.5) * s
-        moveTo(x, y - 8); lineTo(x + 8, y); lineTo(x, y + 8); lineTo(x - 8, y); close()
+        val r = s / 3
+        moveTo(x, y - r); lineTo(x + r, y); lineTo(x, y + r); lineTo(x - r, y); close()
         color = vec(1.0, 0.85, 0.2, 1.0); filled = true
     }
     out
 }
 thisBox.properties["drawLevel"] = drawLevel
 
-fun showPlan() = BoxStudies.show(thisBox, "plan", linesToHTML(drawLevel(plan.revision().source, emptyList()), 440.0, 240.0, true))
+fun showPlan() = BoxStudies.show(thisBox, "plan", linesToHTML(drawLevel(plan.revision().source, emptyList(), 24.0), 440.0, 240.0, true))
 showPlan()
 
 // The edit level.edit makes, kept in a property so other boxes can make it too.
@@ -225,7 +225,7 @@ Three stages derived from the level: blockout, traversal and placement.
 Each reads the level as it was when its build started, and reports what it measured.
 
 ```edn [field-box id="staged_builds" role="properties"]
-{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [760.0 520.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 188 "characters" 11880 "sha256" "bd18874f2aec89776ef9cfc41032ff2e365ade52e5057621ea1778e9c57495f1"}]}
+{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 191 "characters" 12151 "sha256" "675cef523b9d295b0cea243af563252d2844b2ab4fb00523133cdb37af6bcb73"}]}
 ```
 
 ```kotlin [field-property box="staged_builds" name="code" path="staged_builds_code_.kt"]
@@ -372,6 +372,9 @@ val reachable = StudyBuildGate("reachable loot", dependencies = listOf("traversa
     if (far.isEmpty()) null else "Out of reach within its path budget: ${far.joinToString()}."
 }
 
+// Each rule text is compiled once, so the corpus does not compile the same rule for every variant.
+val compiledRules = java.util.concurrent.ConcurrentHashMap<String, (String) -> Map<String, String>>()
+
 val placement = StudyBuildStage("placement", "Placement", "placement-v1", setOf("reachable loot", "rule"), listOf("traversal"),
     inputHelp = StudyBuildInputHelp("Needs the loot rule", "Run the Loot rule box; placement follows its rule."),
     resultNotes = { r -> listOf(StudyBuildNotice((r.facts["placed"] as Map<*, *>).entries.joinToString { "${it.key} ${it.value}" } +
@@ -379,7 +382,7 @@ val placement = StudyBuildStage("placement", "Placement", "placement-v1", setOf(
     val measured = json.readValue<Map<String, Any?>>(c.dependencyFile("traversal", "traversal.json"))["loot"] as Map<String, Map<String, Any?>>
     // The rule's input: each loot point with its relaxed path length and the doors on the way.
     val input = measured.toSortedMap().entries.joinToString(", ") { (id, m) -> "$id ${m["relaxed"]} ${m["doors"]}" }
-    val place = QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String>
+    val place = compiledRules.getOrPut(c.inputs.getValue("rule")) { QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String> }
     val placed = place(input)
     c.file("rule-input.txt").writeText(input)
     c.file("placement.json").writeText(json.writeValueAsString(placed))
@@ -406,11 +409,11 @@ kotlin.concurrent.thread(isDaemon = true) {
     while (true) {
         val current = runCatching { builds.stages().first { it.id == "traversal" }.current }.getOrElse { break }
         if (current != null && current.id != shown) {
-            val draw = thisBox.named("Level").properties["drawLevel"] as? (String, List<List<List<Number>>>) -> List<FLine>
+            val draw = thisBox.named("Level").properties["drawLevel"] as? (String, List<List<List<Number>>>, Double) -> List<FLine>
             if (draw != null) {
                 val found = json.readValue<Map<String, Any?>>(builds.currentFile("traversal", "traversal.json"))
                 val paths = (found["paths"] as Map<String, Map<String, Any?>>).values.map { it["relaxed"] as List<List<Number>> }
-                BoxStudies.show(thisBox, "paths", linesToHTML(draw(current.inputs.getValue("level"), paths), 440.0, 240.0, true))
+                BoxStudies.show(thisBox, "paths", linesToHTML(draw(current.inputs.getValue("level"), paths, 24.0), 440.0, 240.0, true))
                 shown = current.id
             }
         }
@@ -431,7 +434,7 @@ Seeded variants of the level, built by the same stages and shown side by side.
 Nothing here asks a model: it is the machine run many times. Run this box to build them.
 
 ```edn [field-box id="staged_corpus" role="properties"]
-{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1660.0 700.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 80 "characters" 5545 "sha256" "d3be0ec56733e66a137f84e8ab2693bdfe7283bdcf7082ca25976b66b08bfdb0"}]}
+{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1440.0 520.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 83 "characters" 5708 "sha256" "ed8b25b437306dee69fdb059f1e6952cb2bd3755265eee9373a5960ada8ad3ab"}]}
 ```
 
 ```kotlin [field-property box="staged_corpus" name="code" path="staged_corpus_code_.kt"]
@@ -478,7 +481,7 @@ fun variant(source: String, seed: Int): String {
 fun runCorpus() {
     val stages = thisBox.named("Builds").properties["levelStages"] as List<StudyBuildStage>
     val gates = thisBox.named("Builds").properties["levelGates"] as List<StudyBuildGate>
-    val draw = thisBox.named("Level").properties["drawLevel"] as (String, List<List<List<Number>>>) -> List<FLine>
+    val draw = thisBox.named("Level").properties["drawLevel"] as (String, List<List<List<Number>>>, Double) -> List<FLine>
     val level = thisBox.named("Level").getPropertyRaw("level") as String
     val rule = thisBox.named("Loot rule").getPropertyRaw("lootRule") as String
     val tiles = seeds.map { seed ->
@@ -500,12 +503,15 @@ fun runCorpus() {
             if (seed == 0) "the level as it is" else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
             "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
             "longest relaxed/rough ${worst?.let { "%.2f".format(it) } ?: "–"}",
-            placed?.let { "placed: " + (it.facts["placed"] as Map<*, *>).entries.joinToString { e -> "${e.key} ${e.value}" } }
-                ?: "placement waits: " + (builds.stages().first { it.id == "placement" }.reason ?: "").removePrefix("Waiting for reachable loot: "))
-        "<div style='width:420px'>" + drawToSVG(draw(source, paths), 420.0, 230.0) +
-            caption.joinToString("") { "<p style='margin:4px 0 0;color:#bbb;font:12px/1.35 Iosevka,monospace'>$it</p>" } + "</div>"
+            when {
+                placed?.status == StudyBuildStatus.SUCCEEDED -> "placed: " + (placed.facts["placed"] as Map<*, *>).entries.joinToString { e -> "${e.key} ${e.value}" }
+                placed != null -> "placement failed: ${placed.message}"
+                else -> "placement waits: " + (builds.stages().first { it.id == "placement" }.reason ?: "").removePrefix("Waiting for reachable loot: ")
+            })
+        "<div style='width:220px'>" + drawToSVG(draw(source, paths, 12.0), 220.0, 120.0) +
+            caption.joinToString("") { "<p style='margin:3px 0 0;color:#bbb;font:11px/1.3 Iosevka,monospace'>$it</p>" } + "</div>"
     }
-    BoxStudies.show(thisBox, "gallery", "<div style='display:grid;grid-template-columns:repeat(2,420px);gap:18px;background:#000;padding:16px;border-radius:12px'>" +
+    BoxStudies.show(thisBox, "gallery", "<div style='display:grid;grid-template-columns:repeat(3,220px);gap:16px;background:#000;padding:16px;border-radius:12px'>" +
         tiles.joinToString("") + "</div>")
 }
 
@@ -528,7 +534,7 @@ From `code`
 The brief, for you and for the agent. It is also kept as guides/start-here.md, which every agent in this document can read.
 
 ```edn [field-box id="staged_start" role="properties"]
-{"id" "staged_start" "index" 4 "name" "Start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_start_code_.kt" "lines" 29 "characters" 1813 "sha256" "d45190898784c946d43fc77a3a1a121b0f5c586cfc95a8e38261fa9b20541b72"}]}
+{"id" "staged_start" "index" 4 "name" "Start here" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Start here" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_start_code_.kt" "lines" 29 "characters" 1826 "sha256" "00897a55a3d48c3c6155b483b97f6c4eb72d121f7ac730ce8008ef7b40c95566"}]}
 ```
 
 ```kotlin [field-property box="staged_start" name="code" path="staged_start_code_.kt"]
@@ -560,6 +566,6 @@ only cover what someone thought to measure.
 
 val guide = "%document/guides/start-here.md".file
 if (!guide.exists()) { guide.parentFile.mkdirs(); guide.writeText(brief + "\n") }
-markdown(guide.readText())
+markdown(guide.readText(), width = 520)
 ```
 

@@ -41,7 +41,7 @@ fun variant(source: String, seed: Int): String {
 fun runCorpus() {
     val stages = thisBox.named("Builds").properties["levelStages"] as List<StudyBuildStage>
     val gates = thisBox.named("Builds").properties["levelGates"] as List<StudyBuildGate>
-    val draw = thisBox.named("Level").properties["drawLevel"] as (String, List<List<List<Number>>>) -> List<FLine>
+    val draw = thisBox.named("Level").properties["drawLevel"] as (String, List<List<List<Number>>>, Double) -> List<FLine>
     val level = thisBox.named("Level").getPropertyRaw("level") as String
     val rule = thisBox.named("Loot rule").getPropertyRaw("lootRule") as String
     val tiles = seeds.map { seed ->
@@ -63,12 +63,15 @@ fun runCorpus() {
             if (seed == 0) "the level as it is" else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
             "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
             "longest relaxed/rough ${worst?.let { "%.2f".format(it) } ?: "–"}",
-            placed?.let { "placed: " + (it.facts["placed"] as Map<*, *>).entries.joinToString { e -> "${e.key} ${e.value}" } }
-                ?: "placement waits: " + (builds.stages().first { it.id == "placement" }.reason ?: "").removePrefix("Waiting for reachable loot: "))
-        "<div style='width:420px'>" + drawToSVG(draw(source, paths), 420.0, 230.0) +
-            caption.joinToString("") { "<p style='margin:4px 0 0;color:#bbb;font:12px/1.35 Iosevka,monospace'>$it</p>" } + "</div>"
+            when {
+                placed?.status == StudyBuildStatus.SUCCEEDED -> "placed: " + (placed.facts["placed"] as Map<*, *>).entries.joinToString { e -> "${e.key} ${e.value}" }
+                placed != null -> "placement failed: ${placed.message}"
+                else -> "placement waits: " + (builds.stages().first { it.id == "placement" }.reason ?: "").removePrefix("Waiting for reachable loot: ")
+            })
+        "<div style='width:220px'>" + drawToSVG(draw(source, paths, 12.0), 220.0, 120.0) +
+            caption.joinToString("") { "<p style='margin:3px 0 0;color:#bbb;font:11px/1.3 Iosevka,monospace'>$it</p>" } + "</div>"
     }
-    BoxStudies.show(thisBox, "gallery", "<div style='display:grid;grid-template-columns:repeat(2,420px);gap:18px;background:#000;padding:16px;border-radius:12px'>" +
+    BoxStudies.show(thisBox, "gallery", "<div style='display:grid;grid-template-columns:repeat(3,220px);gap:16px;background:#000;padding:16px;border-radius:12px'>" +
         tiles.joinToString("") + "</div>")
 }
 

@@ -26,4 +26,4 @@ only cover what someone thought to measure.
 
 val guide = "%document/guides/start-here.md".file
 if (!guide.exists()) { guide.parentFile.mkdirs(); guide.writeText(brief + "\n") }
-markdown(guide.readText())
+markdown(guide.readText(), width = 520)

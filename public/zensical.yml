@@ -344,6 +344,8 @@ nav:
     - AI4 Paints: ai4_painting.md
     # After the four conversations rather than before them: those pages show a study being worked on,
     # and this one is the layer they share, which reads best once you have seen one.
+    # The entry page for the studies, long-builds, qualified-sources and kits pages that follow it.
+    - Start a Staged Project: staged_projects.md
     - Studies: studies.md
     # Right after Studies: it is about waiting for a study's builds, and reads best once builds are met.
     - Let AI4 Wait for Long Builds: ai4_long_builds.md

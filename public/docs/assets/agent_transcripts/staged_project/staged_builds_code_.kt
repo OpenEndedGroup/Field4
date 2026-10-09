@@ -141,6 +141,9 @@ val reachable = StudyBuildGate("reachable loot", dependencies = listOf("traversa
     if (far.isEmpty()) null else "Out of reach within its path budget: ${far.joinToString()}."
 }
 
+// Each rule text is compiled once, so the corpus does not compile the same rule for every variant.
+val compiledRules = java.util.concurrent.ConcurrentHashMap<String, (String) -> Map<String, String>>()
+
 val placement = StudyBuildStage("placement", "Placement", "placement-v1", setOf("reachable loot", "rule"), listOf("traversal"),
     inputHelp = StudyBuildInputHelp("Needs the loot rule", "Run the Loot rule box; placement follows its rule."),
     resultNotes = { r -> listOf(StudyBuildNotice((r.facts["placed"] as Map<*, *>).entries.joinToString { "${it.key} ${it.value}" } +
@@ -148,7 +151,7 @@ val placement = StudyBuildStage("placement", "Placement", "placement-v1", setOf(
     val measured = json.readValue<Map<String, Any?>>(c.dependencyFile("traversal", "traversal.json"))["loot"] as Map<String, Map<String, Any?>>
     // The rule's input: each loot point with its relaxed path length and the doors on the way.
     val input = measured.toSortedMap().entries.joinToString(", ") { (id, m) -> "$id ${m["relaxed"]} ${m["doors"]}" }
-    val place = QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String>
+    val place = compiledRules.getOrPut(c.inputs.getValue("rule")) { QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String> }
     val placed = place(input)
     c.file("rule-input.txt").writeText(input)
     c.file("placement.json").writeText(json.writeValueAsString(placed))
@@ -175,11 +178,11 @@ kotlin.concurrent.thread(isDaemon = true) {
     while (true) {
         val current = runCatching { builds.stages().first { it.id == "traversal" }.current }.getOrElse { break }
         if (current != null && current.id != shown) {
-            val draw = thisBox.named("Level").properties["drawLevel"] as? (String, List<List<List<Number>>>) -> List<FLine>
+            val draw = thisBox.named("Level").properties["drawLevel"] as? (String, List<List<List<Number>>>, Double) -> List<FLine>
             if (draw != null) {
                 val found = json.readValue<Map<String, Any?>>(builds.currentFile("traversal", "traversal.json"))
                 val paths = (found["paths"] as Map<String, Map<String, Any?>>).values.map { it["relaxed"] as List<List<Number>> }
-                BoxStudies.show(thisBox, "paths", linesToHTML(draw(current.inputs.getValue("level"), paths), 440.0, 240.0, true))
+                BoxStudies.show(thisBox, "paths", linesToHTML(draw(current.inputs.getValue("level"), paths, 24.0), 440.0, 240.0, true))
                 shown = current.id
             }
         }

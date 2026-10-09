@@ -66,10 +66,9 @@ fun edited(source: String, operations: List<Map<String, Any?>>): String {
     return json.writeValueAsString(level)
 }
 
-// The plan view: rooms, doors, the spawn and the loot, and paths when there are any.
-val drawLevel = { source: String, paths: List<List<List<Number>>> ->
+// The plan view: rooms, doors, the spawn and the loot, and paths when there are any, at s pixels a cell.
+val drawLevel = { source: String, paths: List<List<List<Number>>>, s: Double ->
     val level = json.readValue<Map<String, Any?>>(source)
-    val s = 24.0
     val out = mutableListOf<FLine>()
     for ((id, r) in (level["rooms"] as Map<String, List<Int>>)) out += fline {
         rect(r[0] * s, r[1] * s, r[2] * s, r[3] * s); color = vec(0.75, 0.8, 0.85, 1.0); thickness = 1.5
@@ -77,9 +76,9 @@ val drawLevel = { source: String, paths: List<List<List<Number>>> ->
     for ((_, d) in (level["doors"] as Map<String, List<Any>>)) {
         val x = (d[0] as Number).toDouble(); val y = (d[1] as Number).toDouble()
         out += fline {
-            if (d[2] == "e") { moveTo((x + 1) * s, y * s + 5); lineTo((x + 1) * s, (y + 1) * s - 5) }
-            else { moveTo(x * s + 5, (y + 1) * s); lineTo((x + 1) * s - 5, (y + 1) * s) }
-            color = vec(1.0, 0.75, 0.3, 1.0); thickness = 5.0
+            if (d[2] == "e") { moveTo((x + 1) * s, y * s + s / 5); lineTo((x + 1) * s, (y + 1) * s - s / 5) }
+            else { moveTo(x * s + s / 5, (y + 1) * s); lineTo((x + 1) * s - s / 5, (y + 1) * s) }
+            color = vec(1.0, 0.75, 0.3, 1.0); thickness = s / 5
         }
     }
     for (path in paths) out += fline {
@@ -90,17 +89,18 @@ val drawLevel = { source: String, paths: List<List<List<Number>>> ->
         color = vec(0.35, 0.85, 1.0, 0.9); thickness = 2.0
     }
     val spawn = level["spawn"] as List<Number>
-    out += fline { circle((spawn[0].toDouble() + 0.5) * s, (spawn[1].toDouble() + 0.5) * s, 7.0); color = vec(0.4, 1.0, 0.5, 1.0); filled = true }
+    out += fline { circle((spawn[0].toDouble() + 0.5) * s, (spawn[1].toDouble() + 0.5) * s, s * 0.3); color = vec(0.4, 1.0, 0.5, 1.0); filled = true }
     for ((_, l) in (level["loot"] as Map<String, List<Number>>)) out += fline {
         val x = (l[0].toDouble() + 0.5) * s; val y = (l[1].toDouble() + 0.5) * s
-        moveTo(x, y - 8); lineTo(x + 8, y); lineTo(x, y + 8); lineTo(x - 8, y); close()
+        val r = s / 3
+        moveTo(x, y - r); lineTo(x + r, y); lineTo(x, y + r); lineTo(x - r, y); close()
         color = vec(1.0, 0.85, 0.2, 1.0); filled = true
     }
     out
 }
 thisBox.properties["drawLevel"] = drawLevel
 
-fun showPlan() = BoxStudies.show(thisBox, "plan", linesToHTML(drawLevel(plan.revision().source, emptyList()), 440.0, 240.0, true))
+fun showPlan() = BoxStudies.show(thisBox, "plan", linesToHTML(drawLevel(plan.revision().source, emptyList(), 24.0), 440.0, 240.0, true))
 showPlan()
 
 // The edit level.edit makes, kept in a property so other boxes can make it too.

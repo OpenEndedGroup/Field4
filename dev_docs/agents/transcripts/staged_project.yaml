@@ -45,13 +45,13 @@ operations:
 
           val guide = "%document/guides/start-here.md".file
           if (!guide.exists()) { guide.parentFile.mkdirs(); guide.writeText(brief + "\n") }
-          markdown(guide.readText())
+          markdown(guide.readText(), width = 520)
   - create:
       box: staged_level
       name: Level
       frame:
-        x: 760.0
-        y: 40.0
+        x: 40.0
+        y: 700.0
         w: 300.0
         h: 100.0
       properties:
@@ -125,10 +125,9 @@ operations:
               return json.writeValueAsString(level)
           }
 
-          // The plan view: rooms, doors, the spawn and the loot, and paths when there are any.
-          val drawLevel = { source: String, paths: List<List<List<Number>>> ->
+          // The plan view: rooms, doors, the spawn and the loot, and paths when there are any, at s pixels a cell.
+          val drawLevel = { source: String, paths: List<List<List<Number>>>, s: Double ->
               val level = json.readValue<Map<String, Any?>>(source)
-              val s = 24.0
               val out = mutableListOf<FLine>()
               for ((id, r) in (level["rooms"] as Map<String, List<Int>>)) out += fline {
                   rect(r[0] * s, r[1] * s, r[2] * s, r[3] * s); color = vec(0.75, 0.8, 0.85, 1.0); thickness = 1.5
@@ -136,9 +135,9 @@ operations:
               for ((_, d) in (level["doors"] as Map<String, List<Any>>)) {
                   val x = (d[0] as Number).toDouble(); val y = (d[1] as Number).toDouble()
                   out += fline {
-                      if (d[2] == "e") { moveTo((x + 1) * s, y * s + 5); lineTo((x + 1) * s, (y + 1) * s - 5) }
-                      else { moveTo(x * s + 5, (y + 1) * s); lineTo((x + 1) * s - 5, (y + 1) * s) }
-                      color = vec(1.0, 0.75, 0.3, 1.0); thickness = 5.0
+                      if (d[2] == "e") { moveTo((x + 1) * s, y * s + s / 5); lineTo((x + 1) * s, (y + 1) * s - s / 5) }
+                      else { moveTo(x * s + s / 5, (y + 1) * s); lineTo((x + 1) * s - s / 5, (y + 1) * s) }
+                      color = vec(1.0, 0.75, 0.3, 1.0); thickness = s / 5
                   }
               }
               for (path in paths) out += fline {
@@ -149,17 +148,18 @@ operations:
                   color = vec(0.35, 0.85, 1.0, 0.9); thickness = 2.0
               }
               val spawn = level["spawn"] as List<Number>
-              out += fline { circle((spawn[0].toDouble() + 0.5) * s, (spawn[1].toDouble() + 0.5) * s, 7.0); color = vec(0.4, 1.0, 0.5, 1.0); filled = true }
+              out += fline { circle((spawn[0].toDouble() + 0.5) * s, (spawn[1].toDouble() + 0.5) * s, s * 0.3); color = vec(0.4, 1.0, 0.5, 1.0); filled = true }
               for ((_, l) in (level["loot"] as Map<String, List<Number>>)) out += fline {
                   val x = (l[0].toDouble() + 0.5) * s; val y = (l[1].toDouble() + 0.5) * s
-                  moveTo(x, y - 8); lineTo(x + 8, y); lineTo(x, y + 8); lineTo(x - 8, y); close()
+                  val r = s / 3
+                  moveTo(x, y - r); lineTo(x + r, y); lineTo(x, y + r); lineTo(x - r, y); close()
                   color = vec(1.0, 0.85, 0.2, 1.0); filled = true
               }
               out
           }
           thisBox.properties["drawLevel"] = drawLevel
 
-          fun showPlan() = BoxStudies.show(thisBox, "plan", linesToHTML(drawLevel(plan.revision().source, emptyList()), 440.0, 240.0, true))
+          fun showPlan() = BoxStudies.show(thisBox, "plan", linesToHTML(drawLevel(plan.revision().source, emptyList(), 24.0), 440.0, 240.0, true))
           showPlan()
 
           // The edit level.edit makes, kept in a property so other boxes can make it too.
@@ -192,58 +192,11 @@ operations:
               action { mapOf("revision" to editLevel(expectedRevision(), operations(), description()), "next" to "Rebuild the stages in the Builds box.") }
           }
   - create:
-      box: staged_rule
-      name: Loot rule
-      frame:
-        x: 1660.0
-        y: 40.0
-        w: 300.0
-        h: 100.0
-      properties:
-        autorun: true
-        code: |
-          // The rule that places loot. It changes only after a replay on real placements: see
-          // "Change a rule without breaking what already works" in the Field docs.
-          val rule = """
-          // Placement for one loot point, from the length of its path from the spawn and the doors on the way.
-          fun tier(steps: Double, doors: Int) = when {
-              doors >= 3 -> "epic guarded"
-              doors >= 2 || steps > 16 -> "rare"
-              else -> "common"
-          }
-
-          // Checks: everything below this line stays as it is.
-          fun place(points: String): Map<String, String> {
-              val placed = points.split(", ").associate { point ->
-                  val (id, steps, doors) = point.split(" ")
-                  id to tier(steps.toDouble(), doors.toInt())
-              }.toSortedMap()
-              for ((id, placement) in placed)
-                  check(placement in setOf("common", "rare", "epic guarded")) { id + " got " + placement + ", which is not a placement" }
-              check("epic guarded" in placed.values) { "no loot point is epic" }
-              return placed
-          }
-          ::place
-          """.trimStart()
-
-          val loot = qualifiedSource("loot", rule, label = "Loot rule",
-              frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
-              control = QualifiedControl("shallow", "L1 4.0 0, L2 6.5 1", "no loot point is epic"),
-              fixtures = mapOf(
-                  "keep" to QualifiedFixture("L1 12.4 2, L2 19.1 3, L3 5.0 1", mapOf("L1" to "rare", "L2" to "epic guarded", "L3" to "common")),
-                  "crypt" to QualifiedFixture("L1 8.2 1, L2 17.5 1, L3 24.0 3", mapOf("L1" to "common", "L2" to "rare", "L3" to "epic guarded")),
-                  "mill" to QualifiedFixture("L1 21.3 3, L2 9.9 2", mapOf("L1" to "epic guarded", "L2" to "rare"))),
-              // A placement build in this document can be kept as a fixture, with what it placed.
-              retain = { attempt -> QualifiedFixture(attempt.file("rule-input.txt").readText(), attempt.record.facts["placed"]) },
-              replayVersion = "loot-replay-1") { replay ->
-              QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-          }
-  - create:
       box: staged_builds
       name: Builds
       frame:
-        x: 760.0
-        y: 520.0
+        x: 640.0
+        y: 40.0
         w: 300.0
         h: 100.0
       properties:
@@ -392,6 +345,9 @@ operations:
               if (far.isEmpty()) null else "Out of reach within its path budget: ${far.joinToString()}."
           }
 
+          // Each rule text is compiled once, so the corpus does not compile the same rule for every variant.
+          val compiledRules = java.util.concurrent.ConcurrentHashMap<String, (String) -> Map<String, String>>()
+
           val placement = StudyBuildStage("placement", "Placement", "placement-v1", setOf("reachable loot", "rule"), listOf("traversal"),
               inputHelp = StudyBuildInputHelp("Needs the loot rule", "Run the Loot rule box; placement follows its rule."),
               resultNotes = { r -> listOf(StudyBuildNotice((r.facts["placed"] as Map<*, *>).entries.joinToString { "${it.key} ${it.value}" } +
@@ -399,7 +355,7 @@ operations:
               val measured = json.readValue<Map<String, Any?>>(c.dependencyFile("traversal", "traversal.json"))["loot"] as Map<String, Map<String, Any?>>
               // The rule's input: each loot point with its relaxed path length and the doors on the way.
               val input = measured.toSortedMap().entries.joinToString(", ") { (id, m) -> "$id ${m["relaxed"]} ${m["doors"]}" }
-              val place = QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String>
+              val place = compiledRules.getOrPut(c.inputs.getValue("rule")) { QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String> }
               val placed = place(input)
               c.file("rule-input.txt").writeText(input)
               c.file("placement.json").writeText(json.writeValueAsString(placed))
@@ -426,11 +382,11 @@ operations:
               while (true) {
                   val current = runCatching { builds.stages().first { it.id == "traversal" }.current }.getOrElse { break }
                   if (current != null && current.id != shown) {
-                      val draw = thisBox.named("Level").properties["drawLevel"] as? (String, List<List<List<Number>>>) -> List<FLine>
+                      val draw = thisBox.named("Level").properties["drawLevel"] as? (String, List<List<List<Number>>>, Double) -> List<FLine>
                       if (draw != null) {
                           val found = json.readValue<Map<String, Any?>>(builds.currentFile("traversal", "traversal.json"))
                           val paths = (found["paths"] as Map<String, Map<String, Any?>>).values.map { it["relaxed"] as List<List<Number>> }
-                          BoxStudies.show(thisBox, "paths", linesToHTML(draw(current.inputs.getValue("level"), paths), 440.0, 240.0, true))
+                          BoxStudies.show(thisBox, "paths", linesToHTML(draw(current.inputs.getValue("level"), paths, 24.0), 440.0, 240.0, true))
                           shown = current.id
                       }
                   }
@@ -438,11 +394,58 @@ operations:
               }
           }
   - create:
+      box: staged_rule
+      name: Loot rule
+      frame:
+        x: 1440.0
+        y: 40.0
+        w: 300.0
+        h: 100.0
+      properties:
+        autorun: true
+        code: |
+          // The rule that places loot. It changes only after a replay on real placements: see
+          // "Change a rule without breaking what already works" in the Field docs.
+          val rule = """
+          // Placement for one loot point, from the length of its path from the spawn and the doors on the way.
+          fun tier(steps: Double, doors: Int) = when {
+              doors >= 3 -> "epic guarded"
+              doors >= 2 || steps > 16 -> "rare"
+              else -> "common"
+          }
+
+          // Checks: everything below this line stays as it is.
+          fun place(points: String): Map<String, String> {
+              val placed = points.split(", ").associate { point ->
+                  val (id, steps, doors) = point.split(" ")
+                  id to tier(steps.toDouble(), doors.toInt())
+              }.toSortedMap()
+              for ((id, placement) in placed)
+                  check(placement in setOf("common", "rare", "epic guarded")) { id + " got " + placement + ", which is not a placement" }
+              check("epic guarded" in placed.values) { "no loot point is epic" }
+              return placed
+          }
+          ::place
+          """.trimStart()
+
+          val loot = qualifiedSource("loot", rule, label = "Loot rule",
+              frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+              control = QualifiedControl("shallow", "L1 4.0 0, L2 6.5 1", "no loot point is epic"),
+              fixtures = mapOf(
+                  "keep" to QualifiedFixture("L1 12.4 2, L2 19.1 3, L3 5.0 1", mapOf("L1" to "rare", "L2" to "epic guarded", "L3" to "common")),
+                  "crypt" to QualifiedFixture("L1 8.2 1, L2 17.5 1, L3 24.0 3", mapOf("L1" to "common", "L2" to "rare", "L3" to "epic guarded")),
+                  "mill" to QualifiedFixture("L1 21.3 3, L2 9.9 2", mapOf("L1" to "epic guarded", "L2" to "rare"))),
+              // A placement build in this document can be kept as a fixture, with what it placed.
+              retain = { attempt -> QualifiedFixture(attempt.file("rule-input.txt").readText(), attempt.record.facts["placed"]) },
+              replayVersion = "loot-replay-1") { replay ->
+              QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+          }
+  - create:
       box: staged_corpus
       name: Corpus
       frame:
-        x: 1660.0
-        y: 700.0
+        x: 1440.0
+        y: 520.0
         w: 300.0
         h: 100.0
       properties:
@@ -491,7 +494,7 @@ operations:
           fun runCorpus() {
               val stages = thisBox.named("Builds").properties["levelStages"] as List<StudyBuildStage>
               val gates = thisBox.named("Builds").properties["levelGates"] as List<StudyBuildGate>
-              val draw = thisBox.named("Level").properties["drawLevel"] as (String, List<List<List<Number>>>) -> List<FLine>
+              val draw = thisBox.named("Level").properties["drawLevel"] as (String, List<List<List<Number>>>, Double) -> List<FLine>
               val level = thisBox.named("Level").getPropertyRaw("level") as String
               val rule = thisBox.named("Loot rule").getPropertyRaw("lootRule") as String
               val tiles = seeds.map { seed ->
@@ -513,12 +516,15 @@ operations:
                       if (seed == 0) "the level as it is" else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
                       "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
                       "longest relaxed/rough ${worst?.let { "%.2f".format(it) } ?: "–"}",
-                      placed?.let { "placed: " + (it.facts["placed"] as Map<*, *>).entries.joinToString { e -> "${e.key} ${e.value}" } }
-                          ?: "placement waits: " + (builds.stages().first { it.id == "placement" }.reason ?: "").removePrefix("Waiting for reachable loot: "))
-                  "<div style='width:420px'>" + drawToSVG(draw(source, paths), 420.0, 230.0) +
-                      caption.joinToString("") { "<p style='margin:4px 0 0;color:#bbb;font:12px/1.35 Iosevka,monospace'>$it</p>" } + "</div>"
+                      when {
+                          placed?.status == StudyBuildStatus.SUCCEEDED -> "placed: " + (placed.facts["placed"] as Map<*, *>).entries.joinToString { e -> "${e.key} ${e.value}" }
+                          placed != null -> "placement failed: ${placed.message}"
+                          else -> "placement waits: " + (builds.stages().first { it.id == "placement" }.reason ?: "").removePrefix("Waiting for reachable loot: ")
+                      })
+                  "<div style='width:220px'>" + drawToSVG(draw(source, paths, 12.0), 220.0, 120.0) +
+                      caption.joinToString("") { "<p style='margin:3px 0 0;color:#bbb;font:11px/1.3 Iosevka,monospace'>$it</p>" } + "</div>"
               }
-              BoxStudies.show(thisBox, "gallery", "<div style='display:grid;grid-template-columns:repeat(2,420px);gap:18px;background:#000;padding:16px;border-radius:12px'>" +
+              BoxStudies.show(thisBox, "gallery", "<div style='display:grid;grid-template-columns:repeat(3,220px);gap:16px;background:#000;padding:16px;border-radius:12px'>" +
                   tiles.joinToString("") + "</div>")
           }
 
