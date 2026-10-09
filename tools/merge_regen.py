@@ -11,7 +11,9 @@ the loop repeats. ``.gitattributes`` marks those outputs ``merge=field-generated
 (registered by ``tools/install_git_hooks.py``) keeps our side so the merge never stops on them. This
 script then reruns each affected generator once on the merged sources and stages the result before
 committing, and runs the full generated-artifact guard first: the hooks only report, so this is
-where the result is verified rather than trusted.
+where the result is verified rather than trusted. Derived numerals in hand-written prose
+(``**1025**<!--count:key-->``) work the same way: the ``field-counts`` driver merges those pages
+as text without conflicting on the numeral, and the ``citationGates`` regenerator rewrites it.
 
 Only real source conflicts stop the merge. Resolve them, ``git add`` them, and run ``--continue``.
 """
@@ -59,8 +61,13 @@ def _lines(text: str) -> list[str]:
     return [line for line in text.splitlines() if line]
 
 
+MERGE_DRIVERS = ("field-generated", "field-counts")
+
+
 def _driver_registered(repo: Path) -> bool:
-    return _git(repo, "config", "--get", "merge.field-generated.driver", check=False).strip() != ""
+    return all(
+        _git(repo, "config", "--get", f"merge.{name}.driver", check=False).strip() != "" for name in MERGE_DRIVERS
+    )
 
 
 def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
@@ -143,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
         return regen_since(repo, args.regen_since, args.message or "Regenerate generated artifacts")
 
     if not _driver_registered(repo):
-        print("merge driver field-generated is not registered; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
+        print("merge drivers field-generated/field-counts are not registered; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
         return 2
 
     in_merge = subprocess.run(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=repo, stdout=subprocess.DEVNULL).returncode == 0
