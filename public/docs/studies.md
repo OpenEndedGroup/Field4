@@ -311,6 +311,10 @@ can end its turn with `AwaitStudyBuildsRequest`; Field watches the job without t
 the conversation with its outcome when it finishes. See
 [Let AI4 Wait for Long Builds](ai4_long_builds.md).
 
+When a stage follows a rule that an agent may improve, such as a placement recipe or a fallback,
+keep the rule as a qualified source: a change is replayed on the real cases the rule has already
+handled before it applies. See [Change a Rule Without Breaking What Already Works](qualified_sources.md).
+
 Name upstream stages in `dependencies`. The worker reads their captured files through
 `context.dependencyFile(stage, path)`. Until those stages have current results, the dependent stage
 cannot start. `inputKeys` selects the authored inputs that affect this stage, so an unrelated edit
