@@ -504,7 +504,7 @@ class PatSpatialRoom internal constructor(
     val defaultSound: String,
     /** Cycles scanned up front for `spat` tags, so their engines boot before any audio is due. */
     val prescanCycles: Int,
-    /** A pose per render frame, or null to follow [setListenerPose]. See [setListenerPoseAt]. */
+    // A pose per render frame, or null to follow setListenerPose. See setListenerPoseAt.
     listenerPoseAt: ((frame: Long) -> HeadPose)? = null,
 ) {
 
