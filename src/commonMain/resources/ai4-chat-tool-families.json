@@ -68,6 +68,7 @@
         "InspectStudyBuilds",
         "ListStudyBuilds",
         "CancelStudyBuild",
+        "PruneStudyBuilds",
         "LaunchBox",
         "RunBox",
         "StopBox"

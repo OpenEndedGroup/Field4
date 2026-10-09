@@ -24,6 +24,33 @@ class StudyBuildPanelTest {
         assertEquals("", studyBuildResultNotesHtml(emptyList()))
     }
 
+    @Test fun aStageWaitingOnAnotherRunnerOrAGateSaysWhatItWaitsFor() {
+        val acrossRunners = StudyStageState("place", "Place loot", null, null, null,
+            "Build current dependencies first: level/blockout (Not built yet)", listOf("level/blockout"))
+        val html = studyBuildStageHtml(acrossRunners, listOf(acrossRunners), emptyList())
+        assertContains(html, "Waiting for an earlier stage")
+        assertContains(html, "Complete level/blockout first.")
+        val gated = StudyStageState("place", "Place loot", null, null, null, "Waiting for reachable loot: L3 is out of reach.",
+            inputHelp = StudyBuildInputHelp("Waiting for reachable loot", "L3 is out of reach."))
+        val waiting = studyBuildStageHtml(gated, listOf(gated), emptyList()) { _, _, _, _ -> "<button>" }
+        assertContains(waiting, "Waiting for reachable loot</span>")
+        assertContains(waiting, "L3 is out of reach.")
+        assertFalse(waiting.contains("<button>"), "a waiting stage offers no Build button")
+    }
+
+    @Test fun theCardShowsWhatTheLatestAttemptWasAskedFor() {
+        val asked = StudyBuildRecord("attempt", "search", "v1", "fp", emptyMap(), emptyMap(), status = StudyBuildStatus.SUCCEEDED,
+            request = mapOf("resume" to "<job>", "budgetSeconds" to 60))
+        val html = studyBuildStageHtml(StudyStageState("search", "Search", "fp", null, asked, null), emptyList(), emptyList())
+        assertContains(html, "Request: resume = &lt;job&gt;, budgetSeconds = 60")
+        assertFalse(studyBuildStageHtml(StudyStageState("search", "Search", "fp", null, asked.copy(request = emptyMap()), null),
+            emptyList(), emptyList()).contains("Request:"))
+        val resumed = asked.copy(resumedFrom = listOf(StudyBuildResume("1c2f3a4b-0000-0000-0000-000000000000",
+            listOf("a", "b", "c", "d", "e").map { StudyBuildArtifact("routing/$it.json", "0", 1) })))
+        assertContains(studyBuildStageHtml(StudyStageState("search", "Search", "fp", null, resumed, null), emptyList(), emptyList()),
+            "Continued from attempt 1c2f3a4b: routing/a.json, routing/b.json, routing/c.json, 2 more")
+    }
+
     @Test fun failedAttemptWithoutGeometryStillHasSelectableDiagnosticEvidence() {
         val job = StudyBuildRecord("attempt-1", "layout", "v1", "hash", emptyMap(), emptyMap(),
             status = StudyBuildStatus.FAILED,
