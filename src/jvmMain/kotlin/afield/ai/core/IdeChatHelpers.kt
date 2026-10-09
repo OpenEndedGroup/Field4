@@ -171,7 +171,9 @@ class IdeChatHelpers(
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null,
-        maxToolRounds: Int = 24
+        maxToolRounds: Int = 24,
+        /** A tool may end the turn to wait, because the caller will resume it ([ToolExecutionContext.suspendable]). */
+        suspendable: Boolean = false
     ): OpenAiIdeCodexBridge.SendResult {
         info(
             "chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size} " +
@@ -204,7 +206,8 @@ class IdeChatHelpers(
             focus = focus,
             dynamicTools = dynamicTools,
             fieldGraph = fieldGraph,
-            inbox = inbox
+            inbox = inbox,
+            suspendable = suspendable
         )
 
         return chatGeneral(state, code, lang, userPrompt, ctx, imageUrls, vectorStoreIds,

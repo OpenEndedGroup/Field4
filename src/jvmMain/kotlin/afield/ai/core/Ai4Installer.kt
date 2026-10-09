@@ -49,6 +49,8 @@ private data class AiBoxChatRequest(
     /** Make this branch (as `/branches` numbers them) current; -1 = no. */
     val switchTo: Int = -1,
     val listBranches: Boolean = false,
+    /** Stop waiting for the builds a suspended turn awaited (`/stop-waiting`); the builds keep running. */
+    val stopWaiting: Boolean = false,
 )
 
 @kotlinx.serialization.Serializable
@@ -64,6 +66,10 @@ private data class AiBoxChatReply(
     val abandonedTurns: List<String> = emptyList(),
     val undoableEdits: Int = 0,
     val undoableBoxes: Int = 0,
+    /** A turn is running in this box now, in this Field. */
+    val running: Boolean = false,
+    /** What the box's suspended turn waits for (`AwaitStudyBuildsRequest`); null when it is not waiting. */
+    val suspendedOn: afield.ai.agent.AiChatSuspension? = null,
 )
 
 @kotlinx.serialization.Serializable
@@ -584,6 +590,9 @@ fun installAi4() {
      */
     val turnInboxes = ConcurrentHashMap<String, AiTurnInbox>()
     val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
+    // Box chats waiting for builds without the model; a document that loads arms the waits saved with it.
+    val awaits = afield.ai.agent.StudyBuildAwaits.live
+    documentReadyHooks += { info -> awaits.rearm(info) }
     /** The last turn's [ContextReport] per box (`doc\u0000uid`), for `/context`. Metadata only, never the text. */
     val lastContextByBox = ConcurrentHashMap<String, ContextReport>()
     var bridgeRevision = aiProviderConfigRevision()
@@ -895,23 +904,37 @@ fun installAi4() {
             return@mutableSetOf Handled.yes
         }
         val key = "${thisSessionInfo.get().filename}\u0000${target.id}\u0000"
+        // Whether a turn runs, and what a suspended one waits for, so a client never reads them from refusal text.
+        fun AiBoxChatReply.withState() = copy(running = key in activeBoxChats, suspendedOn = awaits.suspensionOf(info, target))
         val busy = request.clear && key in activeBoxChats
         if (key !in activeBoxChats) AiBoxConversation.recoverInterrupted(target)
+        if (request.stopWaiting) {
+            val stopped = awaits.cancel(info, target)
+            // Panels showing the waiting row open get the saved transcript, where it is closed.
+            send(Message("set-output").payload(Set_output(target.id, "outputarea", "ai-chat", AiBoxConversation.read(target))))
+            val n = stopped?.jobs?.size ?: 0
+            reply(Message("ai-chat-history").payload(AiBoxChatReply(request.uid, AiBoxConversation.read(target),
+                message = if (stopped == null) "_This chat is not waiting for any builds._"
+                    else "_Stopped waiting for ${if (n == 1) "1 build" else "$n builds"}; ${if (n == 1) "it keeps" else "they keep"} running._").withState()))
+            return@mutableSetOf Handled.yes
+        }
         val navigating = request.rewindTo >= 0 || request.switchTo >= 0
         if (navigating || request.listBranches) {
             if (key in activeBoxChats) {
                 reply(Message("ai-chat-history").payload(AiBoxChatReply(request.uid, AiBoxConversation.read(target),
-                    "Wait for the current AI turn before rewinding or switching branches.")))
+                    "Wait for the current AI turn before rewinding or switching branches.").withState()))
                 return@mutableSetOf Handled.yes
             }
             val replyPayload = runCatching {
                 if (request.listBranches) {
-                    AiBoxChatReply(request.uid, AiBoxConversation.read(target), message = AiSessionTree.branches(target))
+                    AiBoxChatReply(request.uid, awaits.shown(info, target, AiBoxConversation.read(target)), message = AiSessionTree.branches(target))
                 } else {
                     // The states the conversation last left, for the restore below to tell its own changes from anyone else's.
                     val expectedStates = AiSessionTree.lastKnownStates(target)
                     val moved = if (request.rewindTo >= 0) AiSessionTree.rewind(target, request.rewindTo, request.expectedText)
                         else AiSessionTree.switchTo(target, request.switchTo)
+                    // The turn that waited for builds is no longer the conversation's last; its wait ends with it.
+                    awaits.cancel(info, target)
                     // Branch state: provider threads are rebuilt from the new head's transcript, and agent memory
                     // is the memory of the turn the head now ends with.
                     threadByKey.keys.removeIf { it.startsWith(key) }
@@ -932,10 +955,11 @@ fun installAi4() {
                         undoableBoxes = moved.abandoned.sumOf { AiSessionTree.createdBoxesOf(it).size })
                 }
             }.getOrElse { AiBoxChatReply(request.uid, AiBoxConversation.read(target), it.message ?: it::class.java.simpleName) }
-            reply(Message("ai-chat-history").payload(replyPayload))
+            reply(Message("ai-chat-history").payload(replyPayload.withState()))
             return@mutableSetOf Handled.yes
         }
         if (request.clear && !busy) {
+            awaits.cancel(info, target)
             AiBoxConversation.write(target, "")
             AiSessionTree.clear(target)
             threadByKey.keys.removeIf { it.startsWith(key) }
@@ -945,10 +969,10 @@ fun installAi4() {
         }
         // A panel opened mid-turn shows what is waiting for that turn too; the saved transcript never holds it.
         val queued = turnInboxes[key]?.queuedMarkdown().orEmpty()
-        val shown = AiBoxConversation.read(target).let { if (queued.isEmpty()) it else it.trimEnd() + "\n" + queued }
+        val shown = awaits.shown(info, target, AiBoxConversation.read(target)).let { if (queued.isEmpty()) it else it.trimEnd() + "\n" + queued }
         reply(Message("ai-chat-history").payload(AiBoxChatReply(
             request.uid, shown, if (busy) "Wait for the current AI turn before clearing." else ""
-        )))
+        ).withState()))
         Handled.yes
     })
 
@@ -1163,8 +1187,10 @@ fun installAi4() {
             if (!exec.queueIfBusy || exec.kind != "general") return false
             val shown = (listOf(expandedExtraPrompt.trim()) + exec.images.map { "![attachment]($it)" })
                 .filter { it.isNotBlank() }.joinToString("\n\n")
-            val pending = AiTurnInbox.Pending(shown, modelUserPrompt, exec.images, exec, thisSession.get())
+            val pending = AiTurnInbox.Pending(shown, modelUserPrompt, exec.images, exec, thisSession.get(),
+                fromField = exec.continuationId.isNotBlank())
             val inbox = synchronized(turnInboxes) { turnInboxes[boxChatKey]?.takeIf { it.offer(pending) } } ?: return false
+            afield.ai.agent.StudyBuildAwaits.accepted(exec.continuationId)
             inbox.onQueued?.invoke()
             return true
         }
@@ -1818,6 +1844,8 @@ fun installAi4() {
             notify("This box already has an AI turn running.", "AI4")
             return@mutableSetOf Handled.yes
         }
+        // A build outcome Field resumes this chat with has a turn now (StudyBuildAwaits offers it until one does).
+        afield.ai.agent.StudyBuildAwaits.accepted(exec.continuationId)
         if (exec.kind == "chat" || exec.kind == "cursor" || exec.kind == "rewrite" || exec.kind == "error") {
             clearProvisional(docPath)
         }
@@ -1870,10 +1898,11 @@ fun installAi4() {
                     live = latestProgressOpen, finalText = aiText.takeIf { it.isNotEmpty() }, additions = additions)
             }
 
-            // The panel is sent the transcript plus whatever waits in the inbox; only the transcript is saved.
+            // The panel is sent the transcript plus whatever waits in the inbox, with a build wait's row open
+            // while it lasts; only the transcript is saved.
             fun sendToPanel(markdown: String) {
                 val queued = inbox.queuedMarkdown()
-                val shown = if (queued.isEmpty()) markdown else markdown.trimEnd() + "\n" + queued
+                val shown = awaits.shown(sessionInfo, box, markdown).let { if (queued.isEmpty()) it else it.trimEnd() + "\n" + queued }
                 _send(Message("set-output").payload(Set_output(box.id, "outputarea", "ai-chat", shown)), document = escapedDocPath)
             }
 
@@ -2011,6 +2040,8 @@ fun installAi4() {
                     "general" -> {
                         chatResult = chatHelpers!!.chatGeneral(
                             maxToolRounds = exec.maxToolRounds,
+                            // AwaitStudyBuildsRequest may end this turn: StudyBuildAwaits resumes it.
+                            suspendable = true,
                             state = state,
                             code = exec.prompt,
                             lang = lang,
@@ -2246,18 +2277,23 @@ fun installAi4() {
                         .filter { it.isNotBlank() }
                         .joinToString("\n") { it.trimEnd() }
                     val checklistMarkdown = agentMemory.checklistMarkdown()
+                    val suspension = chatResult.suspension
                     val responseWithChecklist = buildString {
-                        append(trimmedResponse.ifEmpty { "_(no response)_" })
+                        // A turn that ended to wait may have said nothing; its waiting row says what it waits for.
+                        append(trimmedResponse.ifEmpty { if (suspension != null) "" else "_(no response)_" })
                         if (checklistMarkdown.isNotBlank()) {
-                            append("\n\n")
+                            if (isNotEmpty()) append("\n\n")
                             append(checklistMarkdown)
                         }
                     }
-                    val next = renderLiveConversation(
+                    val rendered = renderLiveConversation(
                         aiText = responseWithChecklist,
                         latestProgressOpen = false,
                         additions = additions
                     )
+                    // It ends with the waiting row, saved with the wait itself; StudyBuildAwaits resumes the chat.
+                    val next = if (suspension == null) rendered else
+                        rendered.trimEnd() + "\n" + awaits.suspend(sessionInfo, box, suspension, exec.property, exec.maxToolRounds).row
                     saveHistory(next)
                     sendToPanel(next)
                     val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
@@ -2278,7 +2314,8 @@ fun installAi4() {
                             )
                         )
                     }
-                    notify("Reply ready in the chat.", "AI4")
+                    notify(if (suspension != null) "Waiting for builds without the model; the chat carries on when they finish."
+                        else "Reply ready in the chat.", "AI4")
                 } else if (editResult != null) {
                     threadByKey[conversationKey] = editResult.threadState
                     markProvisional(box, exec.property, editResult.editedCode)

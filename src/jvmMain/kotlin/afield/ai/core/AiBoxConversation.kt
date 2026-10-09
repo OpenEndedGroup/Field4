@@ -32,7 +32,7 @@ object AiBoxConversation {
         markPending(box)
     }
 
-    private fun markPending(box: Box) {
+    internal fun markPending(box: Box) {
         if (box.isInsideInitialized() && box.inside.writesToDisk) box.inside.markSidecarPending(box.id, PROPERTY)
     }
 

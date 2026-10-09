@@ -592,6 +592,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "ai4_auto_name_signature",
             "ai4_chat_history",
             "ai4_chat_running",
+            // What a box chat's suspended turn waits for, so a restarted Field resumes it (afield.ai.agent.StudyBuildAwaits).
+            "ai4_chat_suspension",
             // The same conversation as a tree with checkpoints (afield.ai.core.AiSessionTree).
             "ai4_session",
             "fileManagerAccessHistory"

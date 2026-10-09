@@ -390,5 +390,15 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
         private val JOB_ID = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
         private val ACTIVE = setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING)
         private fun now(): String = Instant.now().toString()
+
+        /**
+         * The attempt [id] as [directory]'s manifest last recorded it, read without opening (or locking) the
+         * runner; null when there is no such record. A record still queued or running here belongs to a runner
+         * that stopped without closing: reopening it would mark the attempt interrupted.
+         */
+        internal fun retainedRecord(directory: File, id: String): StudyBuildRecord? = runCatching {
+            val saved = File(directory, "builds.json").takeIf { it.isFile } ?: return null
+            jacksonObjectMapper().readValue<Manifest>(saved).records.firstOrNull { it.id == id }
+        }.getOrNull()
     }
 }

@@ -229,6 +229,7 @@ class OpenAiIdeCodexBridge(
                     "localThreadId" to state.localThreadId,
                     "previousResponseId" to (state.previousResponseId ?: ""),
                     "continuesCappedTurn" to (state.cappedTurnContinuation != null),
+                    "continuesSuspendedTurn" to (state.suspendedRound != null),
                     "fileKey" to state.fileKey,
                     "inputChars" to inputText.length,
                     "attachmentCount" to ctx.attachments.size,
@@ -324,8 +325,10 @@ class OpenAiIdeCodexBridge(
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
         )
         try {
-        // After a capped turn, the calls it left unrun and its forced final answer, ahead of this prompt.
-        val continuationItems = state.cappedTurnContinuation?.let(::continuationItems).orEmpty()
+        // After a suspended turn, the outputs of the calls its last response made; after a capped turn, the
+        // calls it left unrun and its forced final answer. Either goes ahead of this prompt.
+        val continuationItems = state.suspendedRound?.outputs.orEmpty().map { functionOutput(it.callId, it.outputJson) } +
+            state.cappedTurnContinuation?.let(::continuationItems).orEmpty()
         val promptItems = continuationItems + listOfNotNull(stableItem) + buildPromptItems(inputText, imageDataUrls)
 
         val paramsBuilder = ResponseCreateParams.builder()
@@ -358,6 +361,7 @@ class OpenAiIdeCodexBridge(
         var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta, onProgress, requestLedger("initial")) }
         if (stableItem != null) state.stableInstructionsHash = stableHash
         state.cappedTurnContinuation = null
+        state.suspendedRound = null
         if (onTextDelta != null) {
             info("")
         }
@@ -407,6 +411,7 @@ class OpenAiIdeCodexBridge(
         emitResponseProgress(response, onProgress)
 
         var rounds = 0
+        var suspension: TurnSuspension? = null
         while (rounds < maxToolRounds) {
             val calls = response.output()
                 .filter { it.isFunctionCall() }
@@ -419,6 +424,8 @@ class OpenAiIdeCodexBridge(
 
             info("toolCalls=${calls.size} (round ${rounds + 1}/$maxToolRounds)")
             val toolOutputs = mutableListOf<ResponseInputItem>()
+            val roundResults = mutableListOf<Any>()
+            val roundOutputs = mutableListOf<PendingToolOutput>()
             for (call in calls) {
                 log.toolActivity(call.name())
                 val argumentSummary = summarizeToolArguments(call.name(), call.arguments())
@@ -546,6 +553,8 @@ class OpenAiIdeCodexBridge(
                     .outputAsJson(toolResult)
                     .build()
                 toolOutputs += ResponseInputItem.ofFunctionCallOutput(outputItem)
+                roundResults += toolResult
+                roundOutputs += PendingToolOutput(call.callId(), call.name(), toolResultJson, toolFailed)
 
                 // Any tool result may carry images, including ReloadShaders' post-reload screenshot.
                 //
@@ -595,6 +604,20 @@ class OpenAiIdeCodexBridge(
                     toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
+            // A tool ended the turn (AwaitStudyBuildsRequest): no follow-up request. The outputs go with the
+            // next turn, and whatever the person wrote meanwhile stays in the inbox, which becomes a turn of its own.
+            // An image a co-scheduled call returned is not carried over; its JSON output is.
+            TurnSuspension.of(roundResults)?.let { awaited ->
+                suspension = awaited
+                if (runtimeConfig.isOpenRouter) appendStatelessHistory(state, roundOutputs.map { functionOutput(it.callId, it.outputJson) })
+                else state.suspendedRound = SuspendedRound(roundOutputs.toList())
+                rounds++
+                info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
+                toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
+                    "deadlineMs" to awaited.deadlineMs, "pendingCallIds" to roundOutputs.map { it.callId }))
+            }
+            if (suspension != null) break
+
             // What the person wrote while this round ran (AiTurnInbox), after every call's output.
             callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { taken ->
                 val text = AiTurnInbox.modelText(taken)
@@ -646,7 +669,8 @@ class OpenAiIdeCodexBridge(
             rounds++
         }
 
-        val pendingCalls = response.output()
+        // A suspended turn's last calls all ran; their outputs wait in suspendedRound, not for a forced final.
+        val pendingCalls = if (suspension != null) emptyList() else response.output()
             .filter { it.isFunctionCall() }
             .mapNotNull { it.functionCall().orElse(null) }
         val hitToolRoundCap = pendingCalls.isNotEmpty()
@@ -741,7 +765,7 @@ class OpenAiIdeCodexBridge(
                 "commentaryCount" to commentaryMessages.size,
                 "toolCallCount" to toolTranscript.size,
                 "elapsedMs" to ms,
-                "status" to "completed",
+                "status" to if (suspension != null) "suspended" else "completed",
                 "modelElapsedMs" to modelElapsedMs,
                 "toolElapsedMs" to toolElapsedMs
             )
@@ -758,6 +782,7 @@ class OpenAiIdeCodexBridge(
             modelIdentity = responseIdentity(response),
             rounds = rounds,
             hitToolRoundCap = hitToolRoundCap,
+            suspension = suspension,
             inputTokens = inputTokens,
             outputTokens = outputTokens,
             cacheReadTokens = cacheReadTokens,
@@ -798,6 +823,11 @@ class OpenAiIdeCodexBridge(
         val rounds: Int = -1,
         /** True when the turn hit maxToolRounds and the bridge forced a final answer. */
         val hitToolRoundCap: Boolean = false,
+        /**
+         * Set when a tool ended the turn to wait ([SuspendsTurn]): what it waits for. The caller arranges
+         * the resumption; the thread state holds the last round's outputs for the turn that resumes it.
+         */
+        val suspension: TurnSuspension? = null,
         /** Summed over every model request in the turn; null when the provider did not report usage. */
         val inputTokens: Long? = null,
         val outputTokens: Long? = null,
@@ -862,6 +892,15 @@ class OpenAiIdeCodexBridge(
          */
         @Volatile
         var cappedTurnContinuation: CappedTurnContinuation? = null
+
+        /**
+         * Set when the last turn was suspended by a tool ([SuspendsTurn]): the outputs of its last round, which
+         * the next turn sends first. [previousResponseId] still names the response that made those calls.
+         * Cleared once the next turn's first request succeeds. The OpenRouter path appends the outputs to
+         * its local history instead and never sets it.
+         */
+        @Volatile
+        var suspendedRound: SuspendedRound? = null
 
         /** The last turn ended at its tool-round cap; the next turn's input says the limit has reset. */
         @get:JsonIgnore
@@ -1072,6 +1111,9 @@ class OpenAiIdeCodexBridge(
         // under that stop stay out, and the next turn adds the continuation as it does on the direct path.
         return createResponse(builder.build(), onTextDelta, onProgress, ledger)
     }
+
+    private fun functionOutput(callId: String, outputJson: String): ResponseInputItem =
+        ResponseInputItem.ofFunctionCallOutput(ResponseInputItem.FunctionCallOutput.builder().callId(callId).output(outputJson).build())
 
     private fun notRunOutput(callId: String, name: String): ResponseInputItem =
         ResponseInputItem.ofFunctionCallOutput(
