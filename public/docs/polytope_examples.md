@@ -1452,33 +1452,25 @@ polyhedron.solveRealization()
 
 ## A loadable demo
 
-These operation transcripts each build a document you can open, edit and re-run:
+Each of these starting points is a document you can open, edit and re-run:
 
-- `dev_docs/agents/transcripts/polytope_conway_demo.yaml`: one compact box that marks two
+- [`polytope_conway_demo`](agent_transcripts.md#polytope_conway_demo): one compact box that marks two
   opposite cube faces with different heights, applies `kis` only there, and sends the polygon faces
   to the on-canvas viewer. Hover a face, click it, and a provenance card reports the output face id,
   the transform role, the deployed height, the source elements and the 3D hit position.
-- `dev_docs/agents/transcripts/polytope_conway_gallery.yaml`: small boxes for a Conway-expression
+- [`polytope_conway_gallery`](agent_transcripts.md#polytope_conway_gallery): small boxes for a Conway-expression
   gallery you can retype, a topology-only
   dual shown before a policy supplies coordinates, a non-uniform parameter field painted
   onto the output faces, and a realization before/after that leaves the diagnostics as its final
   value.
-- `dev_docs/agents/transcripts/polytope_canonical_gallery.yaml`: one box that evaluates a Conway
+- [`polytope_canonical_gallery`](agent_transcripts.md#polytope_canonical_gallery): one box that evaluates a Conway
   expression, canonicalizes it, and draws the realized and canonical forms side by side with the
   diagnostics underneath. Change `val expression = "gD"` to `"ktC"`, `"bD"` or `"sD"` and re-run.
   Set it to `"kkC"` and the box reports that `canonicalize()` did not converge.
-- `dev_docs/agents/transcripts/polytope_holes_and_chains.yaml`: the `cubeWithWindow` seed with its
+- [`polytope_holes_and_chains`](agent_transcripts.md#polytope_holes_and_chains): the `cubeWithWindow` seed with its
   rings, Euler characteristics and refusals, as clickable polygon FLines; the hand-built plate with
   and without its hole; and every named composite chained off one `ambo`, with what each chain
   asked for beside what ran.
-
-Replay any of them from the repository root:
-
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
-  --command 'macro write polytope_conway_gallery --file dev_docs/agents/transcripts/polytope_conway_gallery.yaml' \
-  --command 'macro run polytope_conway_gallery'
-```
 
 ## Limitations
 

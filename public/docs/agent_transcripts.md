@@ -1460,6 +1460,24 @@ box prints both; read apart, that pair of lines looks like a contradiction.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/solidsl_notation/metadata.edn)
 
+### solidsl_gallery
+
+The three boxes from the end of [SolidSL](solid_notation.md#open-this). *One shape, two evaluations*
+puts one part through both lowerings and shows the meshes side by side; *the same source as a GLSL
+raymarcher* prints the emitted shader and what the simplifier drops; *refusals, and the hybrid build*
+lists every refusal with its reason. The first and third fall back to the field lowering when
+Manifold is not installed, and say so.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/solidsl_gallery/metadata.edn)
+
+### mesh_repair_demo
+
+The two boxes from [Geometry from disk](geometry_from_disk.md#open-this-to-see-it). One punches
+holes in a sphere and shows the diagnosis card; the other repairs it, prints what was done, and cuts
+the result. Both build their mesh in the box, so they need no files and no network.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/mesh_repair_demo/metadata.edn)
+
 ### rectsl_glsl_sdf
 
 Two boxes that print. [RectSL](rectsl_cheatsheet.md) scenes lower to a single
@@ -2073,6 +2091,30 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 [ORCA](orca.md#two-orcas-and-kotlin-between-them) has the video and a recording.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
+
+### mqtt_demo
+
+The demo for [MQTT](mqtt.md), on Field's own broker: one box plays three pretend sensors, one
+listens to every temperature, one plots them, and one shows a retained message. Launch the sensors
+first.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/mqtt_demo/metadata.edn)
+
+### oscquery_demo
+
+The demo for [OSCQuery](oscquery.md): one box publishes parameters, others show them as controls,
+connect back to them as a remote, mirror them, animate one, and discover services on the network.
+Nothing else needs to be running.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/oscquery_demo/metadata.edn)
+
+### sonicpi_pattern_demo
+
+The three boxes from [Sonic Pi](sonic_pi.md#a-document-to-open). The first turns a pattern into a
+Sonic Pi program and prints it, and needs nothing installed; the second plays it; the third drives
+Sonic Pi from Field's clock.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sonicpi_pattern_demo/metadata.edn)
 
 ### marf_demo
 

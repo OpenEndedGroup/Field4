@@ -1,5 +1,7 @@
 # Multi-instrument transcription with MuScriptor
 
+*To run the examples on this page, open the [audio_ai_muscriptor](agent_transcripts.md#audio_ai_muscriptor) starting point.*
+
 MuScriptor turns a mixed recording into a list of notes, each labelled with an instrument, and a
 MIDI file. Field shows the notes as a piano roll that plays in step with the recording, and hands
 them to your code as ordinary values. MuScriptor runs in its own Python environment, started

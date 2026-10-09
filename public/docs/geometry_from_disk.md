@@ -561,7 +561,7 @@ and the smaller red patch are the two blocking rows of the list beside it.
 
 ### Open this to see it
 
-`public/docs/assets/mesh_repair_demo/` holds two boxes: one damages a sphere and shows the diagnosis
+The [`mesh_repair_demo`](agent_transcripts.md#mesh_repair_demo) starting point holds two boxes: one damages a sphere and shows the diagnosis
 card, the other repairs it, prints what was done, and cuts the result. Both run with no files and no
 network.
 
