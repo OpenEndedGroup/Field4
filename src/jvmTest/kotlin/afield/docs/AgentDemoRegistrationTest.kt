@@ -274,7 +274,6 @@ class AgentDemoRegistrationTest {
         "ai_tool_demo",
         "brief_house_demo",
         "canonical_graphics",
-        "dmx_lighting_demo",
         "fieldml_afield_four_demo",
         "fieldml_frames_demo",
         "fieldml_host_bridge_demo",

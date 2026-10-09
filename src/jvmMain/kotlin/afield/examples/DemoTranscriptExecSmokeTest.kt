@@ -690,6 +690,10 @@ object DemoTranscriptExecSmokeTest {
         // checks the bundle opens.
         "mqtt_demo",
         "oscquery_demo",
+        // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
+        // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's
+        // loopback on its own, and its hero capture replays this transcript with the launches.
+        "dmx_lighting_demo",
         // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
         // holds the page's fences to the document.
         "sonicpi_pattern_demo",
