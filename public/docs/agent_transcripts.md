@@ -2116,6 +2116,15 @@ Sonic Pi from Field's clock.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/sonicpi_pattern_demo/metadata.edn)
 
+### sorting_networks
+
+The four examples from [Sorting networks](sorting_networks_examples.md), one box each: a bubble
+network drawn beside an odd-even merge, how fast each removes disorder from random inputs, one
+`SortingNetwork.anneal` run searching for a smaller network, and annealing across three starting
+networks, three temperature schedules and three seeds. The two annealing boxes take about a minute.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sorting_networks/metadata.edn)
+
 ### marf_demo
 
 **One bank of stages, read four different ways — three drawn, one heard.** A MARF *bank* is a list

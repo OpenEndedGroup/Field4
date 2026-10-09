@@ -689,6 +689,9 @@ object DemoTranscriptExecSmokeTest {
         // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
         // holds the page's fences to the document.
         "sonicpi_pattern_demo",
+        // sorting_networks_examples.md's four fences as boxes. Pure CPU, but the two annealing boxes
+        // search for up to 70 and 90 seconds; the docs runner executes all four for its captures.
+        "sorting_networks",
     )
 
     /**

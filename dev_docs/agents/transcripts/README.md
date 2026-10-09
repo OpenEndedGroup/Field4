@@ -253,6 +253,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   name under `public/docs/assets/`, so each page's demo is a starting point. The documents stay
   where they are, because their bundle and drift tests read them there; regenerate the yaml after
   editing one.
+- `sorting_networks.yaml`: the four runner fences of `public/docs/sorting_networks_examples.md`,
+  fold markers removed, one box each. Regenerate it when those fences change.
 - `interaction_nets_lambda.yaml`: **λ-calculus on interaction nets**, three pure-CPU boxes. A term is
   compiled to a net, reduced by local rules, and read back, with every answer checked against a
   capture-avoiding substitution evaluator that shares nothing with it — 25 of 25 named closed terms
