@@ -80,9 +80,11 @@ object PropertyDependencies {
         @Volatile var lastSeen: Long,
         initialCount: Long,
         /** `PROPERTY` / `VARIABLE` / `SELF` for a read; null otherwise. */
-        @Volatile var matchKind: String?,
+        @Volatile
+        var matchKind: String?,
         /** The property key or variable name that matched — differs from [Key.name] for a by-type query. */
-        @Volatile var matchedName: String?,
+        @Volatile
+        var matchedName: String?,
     ) {
         val count = AtomicLong(initialCount)
         /** Accesses since this process started. */
