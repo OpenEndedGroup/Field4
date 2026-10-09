@@ -299,14 +299,32 @@ client.analyzeWavAsync(
 }
 ```
 
-The three plots below are that pipeline on the film: the first phrase distilled, the second
-distilled and dilated, and the morph. The long straight segments are where the distiller joined
+The three plots below are that pipeline on the film. The long straight segments are where the distiller joined
 pieces of one harmonic across a pause. Label 0 partials are left out of the morph here; keep them
 and Loris crossfades them instead.
 
-```diffstatic {data-lang=kotlin}
+Phrase A, film seconds 1.6–3.6, distilled:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-a.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-a" alt="Loris partial map, 0–5000 Hz over two seconds, of phrase A distilled to one track per harmonic, with its reconstruction waveform and player."}
+:::static
 import afield.stdlib.loris.LorisDocs
-display("morph", LorisDocs.morphHtml())
+display("phrase A", LorisDocs.morphPanelHtml(0))
+```
+
+Phrase B, film seconds 11.5–13.5, distilled and dilated so its loudest moment meets A's:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-b.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-b" alt="Loris partial map of phrase B, distilled and time-dilated onto phrase A, with its reconstruction waveform and player."}
+:::static
+import afield.stdlib.loris.LorisDocs
+display("phrase B", LorisDocs.morphPanelHtml(1))
+```
+
+The morph, from A to B between 0.4 and 1.6 seconds:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-result.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-result" alt="Loris partial map of the morph of phrase A into phrase B, with its waveform and player."}
+:::static
+import afield.stdlib.loris.LorisDocs
+display("morph", LorisDocs.morphPanelHtml(2))
 ```
 
 <audio controls preload="metadata" src="assets/loris/morph-a-to-b.wav"></audio>
@@ -356,7 +374,7 @@ Loris is optional, and Field does not build it unless you ask. Build the worker 
 
 The build needs CMake 3.24+ and a C++17 compiler. It downloads a checksummed, pinned Loris source
 archive once and uses the bundled FFT; no FFTW, Python binding, neural model or GPU is needed.
-It has been run on Linux; the macOS and Windows builds are untested. `AFIELD_LORIS_EXECUTABLE`
+It has been built and run on Linux and macOS (Apple silicon); the Windows build is untested. `AFIELD_LORIS_EXECUTABLE`
 or the JVM property `afield.loris.executable` selects another built worker.
 
 Each request runs the worker with a timeout and reports its progress in the box that asked.
