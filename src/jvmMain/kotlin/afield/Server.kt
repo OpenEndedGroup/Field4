@@ -2243,6 +2243,8 @@ class Server {
                             if (!info.writesToDisk) return@forEach
                             if (info.loading) return@forEach
                             refreshFileProxyBoxes(info, notifyMissing = false)
+                            // Box-to-box reads recorded since the last tick, beside metadata.edn.
+                            PropertyDependencies.flush(info)
                             // Only persist when we know sidecar-bearing properties changed.
                             if (info.pendingSidecarSaves.isNotEmpty()) {
 //                            lblock(" saving to ${info.filename}")

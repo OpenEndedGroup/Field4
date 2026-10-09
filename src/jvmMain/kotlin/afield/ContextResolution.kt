@@ -56,6 +56,16 @@ object ContextResolution {
     ): Resolution? = search(box, query, policy, mechanism, explain).resolution
 
     /**
+     * [walk] without [explain] and without recording the outcome in [PropertyDependencies]: for a
+     * tool asking where a value *would* come from, which is not the box depending on it.
+     *
+     * Separate from [walk] rather than a parameter on it because `fromContext` is `inline`, so
+     * compiled box code calls `walk` by its exact signature.
+     */
+    fun peek(box: Box, query: Query, policy: Policy, mechanism: Mechanism): Resolution? =
+        search(box, query, policy, mechanism, explain = false, record = false).resolution
+
+    /**
      * "Why does [box] resolve [name] (or a value of [type]) where it does?" as JSON: the mechanism, the
      * supplier, the path of boxes, the match kind, the shadowed and competing candidates, and which
      * sourced preamble line — if any — declared the name. The entry point behind the backdoor's `why`,
@@ -68,13 +78,32 @@ object ContextResolution {
     /** A walk's answer plus how many ancestors it examined — the count `Inheritance` reports. */
     class Search(val resolution: Resolution?, val ancestorsExamined: Int)
 
-    /** [walk], also reporting how many ancestors were examined before it stopped. */
+    /**
+     * [walk], also reporting how many ancestors were examined before it stopped.
+     *
+     * With [record] (the default for a non-explain walk) the outcome goes to [PropertyDependencies]:
+     * a read of another box's value, or a miss. Tools that only *describe* a resolution — hovers,
+     * `why`, an `explain` walk — pass false, so looking at a dependency does not create one.
+     */
     fun search(
         box: Box,
         query: Query,
         policy: Policy,
         mechanism: Mechanism,
         explain: Boolean = false,
+        record: Boolean = !explain,
+    ): Search {
+        val search = searchUnrecorded(box, query, policy, mechanism, explain)
+        if (record) PropertyDependencies.recordResolution(box, search.resolution, query, mechanism)
+        return search
+    }
+
+    private fun searchUnrecorded(
+        box: Box,
+        query: Query,
+        policy: Policy,
+        mechanism: Mechanism,
+        explain: Boolean,
     ): Search {
         val predecessor = HashMap<Box, Box?>()
         predecessor[box] = null

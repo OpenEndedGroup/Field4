@@ -985,7 +985,7 @@ internal fun resolveInheritedDeclarationForHover(box: Box, symbol: String, pream
             explain = true,
         )
         // Delegation reads this box's own property and nothing else
-        else -> ContextResolution.walk(
+        else -> ContextResolution.peek(
             box,
             ContextResolution.Query.propertyNamed(symbol),
             ContextResolution.Policy.INHERITANCE,
