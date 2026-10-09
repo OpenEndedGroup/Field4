@@ -44,6 +44,14 @@ native/steamaudio/THIRDPARTY.md -text linguist-vendored=true
 optional/opendlssnr/*.patch whitespace=-blank-at-eol,-blank-at-eof
 optional/streamdiffusion/upstream/*.patch whitespace=-blank-at-eol,-blank-at-eof
 
+# Hand-written prose that may carry derived numerals, `**1025**<!--count:key-->`. The `field-counts`
+# driver (`tools/merge_derived_counts.py`) is an ordinary text merge that first takes our side's
+# numeral for every key, so two branches that each moved a count do not conflict on it, and
+# `tools/merge_regen.py` rewrites it from the code (ProseNumeralContractTest). Real prose conflicts
+# still stop the merge. Before the generated rules below, so those still win where both match.
+public/docs/**/*.md merge=field-counts
+dev_docs/**/*.md merge=field-counts
+
 # Generated artifacts: never hand-merge them. The `field-generated` driver keeps our side so the merge
 # never stops on them; `tools/merge_regen.py` (or the landing queue) then reruns each generator on the
 # merged tree. These files topped `main`'s churn every week, and nearly every landing conflict was a

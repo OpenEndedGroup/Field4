@@ -15,7 +15,10 @@ reversible: move ``<name>.local`` back to ``<name>`` to undo.
 
 It also registers the ``field-generated`` merge driver that ``.gitattributes`` names for generated
 artifacts. The driver keeps our side, so a merge never stops on a derived file, and
-``tools/merge_regen.py`` regenerates those files on the merged tree.
+``tools/merge_regen.py`` regenerates those files on the merged tree. And it registers
+``field-counts`` for the Markdown roots: an ordinary text merge that first makes the three sides
+agree on every ``<!--count:key-->`` numeral (``tools/merge_derived_counts.py``), which
+``merge_regen.py`` then rewrites from the code.
 """
 
 from __future__ import annotations
@@ -103,15 +106,27 @@ def main() -> int:
     return 1 if failed else 0
 
 
+# Git runs a driver through the shell in the top of the merging worktree, so the script is the one
+# that worktree has checked out. A branch older than the script, or a PATH with no python3, gets git's
+# own text merge, which is what these files had before: never a "conflict" that left only our side.
+FIELD_COUNTS_DRIVER = (
+    "if [ -f tools/merge_derived_counts.py ] && command -v python3 >/dev/null 2>&1; "
+    "then python3 tools/merge_derived_counts.py %O %A %B %L %P; "
+    "else git merge-file --marker-size=%L -L ours -L base -L theirs %A %O %B; fi"
+)
+
+
 def _register_merge_driver(repo: Path) -> None:
     # `true` leaves %A (our side) in place and reports a clean merge. Config is shared by every
     # worktree of the clone, so one install covers them all.
     for key, value in (
         ("merge.field-generated.name", "Field generated artifact: keep ours, regenerate after merge"),
         ("merge.field-generated.driver", "true"),
+        ("merge.field-counts.name", "Field prose with derived counts: merge as text, regenerate the counts"),
+        ("merge.field-counts.driver", FIELD_COUNTS_DRIVER),
     ):
         subprocess.run(["git", "config", key, value], cwd=repo, check=True)
-    print("registered merge driver field-generated")
+    print("registered merge drivers field-generated, field-counts")
 
 
 if __name__ == "__main__":
