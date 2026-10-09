@@ -84,7 +84,7 @@ let wave t = sin (t * tau) * 0.5 + 0.5
 linspace 0.0 1.0 5 |> map wave
 ```
 
-Prefix `-` negates numbers and vectors. As in other ML languages it binds looser than application, so `f -1.0` is a subtraction — write `f (-1.0)` when you mean a negative argument.
+Prefix `-` negates numbers and vectors. As in other ML languages it binds looser than application, so `f -1.0` is a subtraction. Write `f (-1.0)` when you mean a negative argument.
 
 ## Booleans
 
@@ -355,9 +355,9 @@ animate rose
 
 ## JVM interop
 
-FieldML values can cross into JVM code as ordinary host values. The most direct path is to use curated helpers such as `fline`, `vec2`, `moveTo`, and `color`; they are typed, pipe-friendly, and keep the common graphics workflow compact.
+FieldML values can be passed to Kotlin code as they are. For graphics, the prelude's own helpers (`fline`, `vec2`, `moveTo`, `color`) are typed and fit in a pipe, so use them first.
 
-When a Kotlin function is not curated, use `hostTap` to make a small FieldML wrapper around it. `hostTap` looks up the target in Field's Kotlin source index, injects the current `Box` receiver for extension functions, fills Kotlin source defaults when they are simple literals, and places the piped value into the required data argument. The record names only the arguments you want to override.
+For any other Kotlin function, `hostTap` makes a small FieldML wrapper around it. It finds the function by name, supplies the current box when the function is a `Box` extension, uses the function's default arguments, and passes the piped value as the data argument. The record names only the arguments you want to change.
 
 ```diffstatic {data-lang=fieldml}
 let lines channel =
@@ -369,7 +369,7 @@ fline
   |> lines "main"
 ```
 
-The target name is the Kotlin package plus function name, not the generated JVM class. In the example above, FieldML writes `afield.graphics.lines`; the bridge resolves the generated `SomeSkikoKt` owner class and the `Box.lines(...)` extension shape.
+The target is named the way Kotlin names it, package plus function: `afield.graphics.lines` above is the `Box.lines(...)` extension.
 
 Use `hostTap` for JVM calls that are effects in the middle of a pipe. It runs the JVM call and returns the original piped value, so downstream FieldML code can continue transforming the same object.
 
