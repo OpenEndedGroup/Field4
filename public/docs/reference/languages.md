@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-106 source file(s), 2863 public symbol(s), 1273 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+107 source file(s), 2878 public symbol(s), 1283 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -7615,6 +7615,33 @@ touches.
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/RemoteJS/#L565) |  |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/remotejs/RemoteJS/#L582) |  |
 
+## PhaseNoise.kt { #phasenoise-kt }
+
+`src/jvmMain/kotlin/afield/stacksl/PhaseNoise.kt` — [read the source](source/jvmMain/afield/stacksl/PhaseNoise/)
+
+### PhaseNoiseConstants { #phasenoise-kt-phasenoiseconstants }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhaseNoiseConstants</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L52)
+
+StackSL's phase noise family: `qnoise`, `phnoise`, `phrot` — noise whose *phase* is a control, per frequency.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MAX&#95;OCTAVES</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L54) | Loop bound in the emitted GLSL, shared with the volumetric family. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CARRIER</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L61) | Cycles of the carrier per lattice cell, before jitter. With a window of standard deviation half a cell the band is about ±0.32 cycles wide around this, so at lacunarity 2 consecutive octaves' bands meet rather than leaving gaps. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CARRIER&#95;JITTER&#95;OCTAVES</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L64) | Per-kernel carrier jitter, as a total width in octaves (±half of it). |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WINDOW&#95;FALLOFF</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L67) | The window `exp(-WINDOW_FALLOFF r²)`. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WINDOW&#95;FLOOR</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L74) | `exp(-WINDOW_FALLOFF * 1.5²)`, subtracted from the window so it reaches zero at 1.5 cells. A 4x4 neighbourhood with jitter of ±half a cell is complete for that radius, so no kernel that should contribute is ever skipped and the field has no seams. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ENERGY&#95;EPSILON</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L77) | Added under the energy square root so an octave never divides by zero. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OUTPUT&#95;SCALE</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L80) | Final scale on the quadrature pair; see the class notes for the resulting RMS. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;ROTATION&#95;COS</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L83) | Per-octave lattice rotation (cos, sin) — a 3-4-5 triangle, so it is exactly orthonormal. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;ROTATION&#95;SIN</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L84) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;OFFSET&#95;X</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L87) | Translation after each octave's rotate-and-scale, so the lattices do not share an origin. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">OCTAVE&#95;OFFSET&#95;Y</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L88) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;OCTAVES</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L90) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;LACUNARITY</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L91) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;GAIN</span></code>](source/jvmMain/afield/stacksl/PhaseNoise/#L92) |  |
+
 ## StackSL.kt { #stacksl-kt }
 
 StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime.
@@ -7670,8 +7697,8 @@ emitted GLSL calls into.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">stackSLDocumentableWords</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/StackSL/#L3144) | The words a human is expected to look up: the literal vocabulary plus the named colors, but WITHOUT the mechanically generated surface — arity variants like `fbm3.2` and the ~1100 swizzles — which would drown any documentation page that tried to list them. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">stackSLAllWords</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/StackSL/#L3154) | Everything the compiler will accept as a word, including the mechanically generated arity variants and swizzles. Used by the coverage guard's reverse direction, where a cheatsheet row naming `rgba` or `.xy` is legitimate and must not be reported as a typo. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stackSLDocumentableWords</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/StackSL/#L3217) | The words a human is expected to look up: the literal vocabulary plus the named colors, but WITHOUT the mechanically generated surface — arity variants like `fbm3.2` and the ~1100 swizzles — which would drown any documentation page that tried to list them. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stackSLAllWords</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/StackSL/#L3227) | Everything the compiler will accept as a word, including the mechanically generated arity variants and swizzles. Used by the coverage guard's reverse direction, where a cheatsheet row naming `rgba` or `.xy` is legitimate and must not be reported as a typo. |
 
 ### StackSLSeverity { #stacksl-kt-stackslseverity }
 
