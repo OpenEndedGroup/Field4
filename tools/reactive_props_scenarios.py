@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -595,10 +596,11 @@ def run_startup(port: int, stamp: str, verbose: bool) -> tuple[bool, str]:
     s.box("A", "B").connect("A", "B")
     s.run("A", "propUp<Int>(a)\na = 3")
     s.run("B", "setPropertyRaw(\"result\", a * 2)")
-    # A Boolean, from code: the backdoor's `set` stores the string "true", and `Box.autorun` then
-    # throws a ClassCastException that ends autorun for the whole document.
-    s.ctl(f'thisBox.named("{s.p("A")}").setPropertyRaw("autorun", true)\n'
-          f'thisBox.named("{s.p("B")}").setPropertyRaw("autorun", true)\n'
+    # Through the backdoor's `set`, which sends text: this once stored the string "true", whose read
+    # threw and ended autorun for the whole document (AutorunPropertyTest has both halves of the fix).
+    s.steps.append(Step(shlex.join(["set", "@" + s.p("A"), "autorun", "true"])))
+    s.steps.append(Step(shlex.join(["set", "@" + s.p("B"), "autorun", "true"])))
+    s.ctl(f'check(thisBox.named("{s.p("A")}").getPropertyRaw("autorun") == true) {{ "autorun was stored as text" }}\n'
           f'thisBox.named("{s.p("A")}").removePropertyRaw("a")\nthisBox.named("{s.p("B")}").removePropertyRaw("result")')
     # The autosave writes only when a sidecar-backed property changed; an edit makes it save.
     s.code("ctl", "// saved")
@@ -711,6 +713,42 @@ def execute(s: Scenario, port: int, verbose: bool, reopen: bool = False) -> tupl
     return True, f"{len(expectations)} steps in {time.time() - started:.0f}s"
 
 
+DIAG_DIR = ROOT / "build" / "reactive-scenarios"
+
+
+def diagnose(s: Scenario, port: int) -> str:
+    """After a failure: the whole event log and each box's state, from the same Field, plus the tail of
+    its log. Written under build/reactive-scenarios/ and summarised in the return value."""
+    DIAG_DIR.mkdir(parents=True, exist_ok=True)
+    out = DIAG_DIR / f"{s.doc}.txt"
+    code = (
+        'val sb = StringBuilder()\n'
+        'sb.append("events:\\n")\n'
+        'afield.ReactiveRuns.recentEvents().forEach { sb.append(it).append("\\n") }\n'
+        'sb.append("quiet=" + afield.ReactiveRuns.isQuiet() + "\\nboxes:\\n")\n'
+        'thisBox.root.children.forEach { b ->\n'
+        '  sb.append(b.name + " running=" + afield.ReactiveRuns.isRunning(b) + " states=" + b.currentRunningStates + '
+        '" result=" + b.getPropertyRaw("result") + " reports=" + b.getPropertyRaw("_executionReports") + "\\n")\n'
+        '}\n'
+        f'java.io.File("{out}").writeText(sb.toString())'
+    )
+    argv = [sys.executable, str(BACKDOOR), "--json", "--port", str(port), "--document", s.doc,
+            "--command", f"open {s.doc}", "--command", "new-box --name diag --alias diag",
+            "--command", shlex.join(["run", "@diag", "--value", code, "--no-fail-on-error"]),
+            "--command", "status"]
+    proc = subprocess.run(argv, cwd=ROOT, capture_output=True, text=True)
+    # A reused Field keeps writing to the log of the invocation that started it: the newest one.
+    logs = sorted((ROOT / ".field-backdoor" / "logs").glob("*.managed-server.log"), key=lambda p: p.stat().st_mtime)
+    log_tail = ""
+    if logs:
+        lines = logs[-1].read_text(errors="replace").splitlines()
+        keep = [l for l in lines if re.search(r"error,|warning,|Exception|^\s+at afield\.|timed? ?out", l)]
+        log_tail = f"{logs[-1]}\n" + "\n".join(keep[-80:])
+    report = out.read_text() if out.is_file() else f"(diagnostic run failed)\n{proc.stdout[-3000:]}"
+    out.write_text(report + "\nserver log (errors):\n" + log_tail)
+    return f"diagnostics: {out}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("names", nargs="*", help=f"scenarios to run (default all): {', '.join(list(SCENARIOS) + list(RESTARTS))}")
@@ -727,6 +765,8 @@ def main() -> int:
             s = SCENARIOS[name]
             s.doc = f"reactive_{name}_{stamp}"
             ok, detail = execute(s, args.port, args.verbose)
+            if not ok:
+                detail += "\n" + diagnose(s, args.port)
         print(f"{'PASS' if ok else 'FAIL'} {name}: {detail}", flush=True)
         if not ok:
             failures.append(name)

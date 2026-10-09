@@ -821,7 +821,7 @@ private fun applyAgentProperty(box: Box, property: String, value: JsonElement) {
         when {
             value.isString -> {
                 if (property == "name") box.name = value.content
-                else box.setPropertyRaw(property, value.content, doResync = true)
+                else box.setPropertyRaw(property, textPropertyValue(box, property, value.content), doResync = true)
                 if (Box.ioSeparateProperties.containsKey(property) && box.inside.writesToDisk) {
                     box.inside.markSidecarPending(box.id, property)
                 }

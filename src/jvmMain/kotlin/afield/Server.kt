@@ -526,7 +526,16 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
             attempts++
         }
 
-        targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }
+        // Each box is judged on its own: one box whose autorun cannot be read must not end autorun
+        // for the rest of the document, which is what a ClassCastException here used to do.
+        targetBoxes.filter { box ->
+            try {
+                box.autorun && box.id != "root" && !box.getPropertyRaw("_tombstone").isTrue()
+            } catch (t: Throwable) {
+                lprintln("warning,autorun", "autorun skipped ${box.name}: ${t.message}")
+                false
+            }
+        }
             .forEach { box ->
                 launch {
                     try {
@@ -2579,7 +2588,8 @@ class Server {
                     }
                     // Monaco view/cursor state should persist with the document, but live rebroadcast
                     // makes multiple clients on the same box fight over their local editor position.
-                    targetBox.setPropertyRaw(set.property, set.value, doResync = !isEditorStateProperty)
+                    // `textPropertyValue`: text spelling a Boolean, for a Boolean property, is stored as one.
+                    targetBox.setPropertyRaw(set.property, textPropertyValue(targetBox, set.property, set.value), doResync = !isEditorStateProperty)
                     OperationTranscript.recordEdit(
                         targetBox,
                         set.property,
