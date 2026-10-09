@@ -308,6 +308,15 @@ def parse_agent_check(spec: str) -> dict[str, Any]:
     raise BackdoorError(f"unknown agent-task check kind {kind!r}")
 
 
+def ai_chat_last_reply(history: str) -> str:
+    """The text of an AI4 chat's last `<<ai>>` block: without its model line or the progress rows after it."""
+    if "<<ai>>" not in history:
+        return ""
+    block = history.rsplit("<<ai>>", 1)[1]
+    block = re.sub(r"^\n?<<model:[^\n]*\n", "", block)
+    return block.split("<<progress", 1)[0].strip()
+
+
 def command_result(command: str, ok: bool, data: Any = None, events: list[dict[str, Any]] | None = None, timed_out: bool = False) -> dict[str, Any]:
     return {
         "ok": ok,
@@ -3728,6 +3737,12 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="legacy sends every task's instructions inside the stored message (the context-pipeline A/B arm)")
     agent_eval_parser.add_argument("--timeout", type=float)
 
+    ai_chat_parser = subparsers.add_parser("ai-chat", add_help=False)
+    ai_chat_parser.add_argument("uid", help="The box whose AI4 chat to read: a uid, a unique uid prefix or a name")
+    ai_chat_parser.add_argument("--stop-waiting", action="store_true",
+                                help="End the wait of a turn suspended on builds (the builds keep running)")
+    ai_chat_parser.add_argument("--timeout", type=float)
+
     raw_send = subparsers.add_parser("raw-send", add_help=False)
     raw_send.add_argument("name")
     raw_send.add_argument("payload")
@@ -4772,6 +4787,27 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok)
         return result
 
+    if args.command == "ai-chat":
+        # The chat's state as the server knows it: `running` (a turn is live) and `suspendedOn` (what a turn that
+        # ended with AwaitStudyBuildsRequest waits for), never inferred from refusal text.
+        uid = client.resolve_box_token(args.uid)
+        payload = {"uid": uid, **({"stopWaiting": True} if args.stop_waiting else {})}
+        reply = await client.call_for_single_reply("ai-chat-history", payload, timeout=args.timeout or client.default_timeout)
+        body = reply.get("payload") or {}
+        history = str(body.get("history") or "")
+        data = {
+            "uid": uid,
+            "running": bool(body.get("running")),
+            "suspendedOn": body.get("suspendedOn"),
+            "message": body.get("message") or "",
+            "error": body.get("error") or "",
+            "turns": len(re.findall(r"^<<you>>$", history, re.M)),
+            "lastReply": ai_chat_last_reply(history),
+        }
+        result = command_result(command_line, not data["error"], data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=False)
+        return result
+
     if args.command == "raw-send":
         try:
             payload = json.loads(args.payload)
@@ -4862,7 +4898,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, agent-task, ai-chat, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

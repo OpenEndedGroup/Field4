@@ -26,6 +26,9 @@ every check until route shape was measured).
 
 ### 3a. A turn that waits for its builds without the model
 
+Status 2026-10-09: built (`AwaitStudyBuildsRequest`, `StudyBuildAwaits`, `public/docs/ai4_long_builds.md`);
+the mechanics are in `AI4_OPENAI_EFFICIENCY.md`, "A turn that waits for its builds".
+
 `WaitStudyBuildRequest` observes a job for at most 900 s. A 40-minute build therefore costs a model round every
 15 minutes, each re-sending the whole context (about 80k tokens on the house machine). The house machine's external
 driver works around it: the agent ends its turn naming the jobs it started, the driver polls `ListStudyBuildsRequest`
@@ -72,6 +75,25 @@ Each of these was written privately at least once, and most more than once:
 Public docs: extend `public/docs/studies.md` "Build derived results" with gates, requests, cross-runner
 dependencies, resuming, external processes and pruning. Each gets one small working example and a capture of the
 build card showing the gate's wait. If the section outgrows the page, move it to `public/docs/study_builds.md`.
+
+**Status (2026-10-09): done, in three landings** (`studybuilds/gates-requests`, `studybuilds/resume-process`,
+`studybuilds/prune`). Everything is in `StudyBuilds.kt`, `BoxStudyBuilds.kt`, `StudyBuildHelpers.kt` (processes and
+identity) and `StudyBuildTools.kt`, with one JVM test file per feature beside `StudyBuildsTest.kt`, and a `###`
+subsection with a runner capture per feature in `studies.md` (the section stayed on that page). Where it differs from
+the wording above:
+
+- A gate is `StudyBuildGate(name, inputKeys, dependencies) { evidence -> sentence or null }`, passed to
+  `studyBuilds(..., gates = ...)`; `evidence` gives the dependencies' current facts and hash-checked files. Its open
+  value hashes that evidence. "Re-checks when it starts" is a re-evaluation against the current design when a queued
+  attempt starts: a closed gate fails it with `gate-closed` before the recipe runs.
+- A request is folded into the attempt's `fingerprint`, but currency still compares the stage's design fingerprint
+  (`ranAgainst`), so a requested result is current. `StartStudyBuildRequest.request` has string values.
+- `resumeFrom(jobId, paths, sameDesign = true)` refuses an attempt that built other inputs, dependency results or
+  recipe; that is the guard the house-machine-8 bug needed. Copies are hashed and recorded in `resumedFrom`.
+- Added `StudyBuilds.await(jobId)`, which the docs examples and a model-free corpus need to run stages in order.
+- The card shows a request, a resumed attempt, and (in an exclusive runner) which build the others wait for.
+- `prune` deletes the records as well as the attempt directories; `StudyBuilds.prune(runners)` follows `dependsOn`
+  references across runners, and `PruneStudyBuildsRequest` prunes the whole document (preview by default).
 
 ## Step 4: shared machinery and a starting place
 

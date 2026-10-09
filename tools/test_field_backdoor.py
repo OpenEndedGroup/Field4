@@ -389,6 +389,41 @@ class BoxReferenceTests(unittest.TestCase):
         # `--args=--workspace ...` on the launch path, so on this path it decided nothing.
         self.assertFalse(self.status()["workspaceAppliedToServer"])
 
+    def test_ai_chat_reports_the_servers_running_and_suspended_state(self) -> None:
+        """`ai-chat` passes on what the chat says it is doing, not a guess from refusal text."""
+        from tools.field_backdoor import dispatch_command
+
+        self.client.boxes["b1"] = {"uid": "b1", "name": "Estimate"}
+        calls: list[tuple[str, dict]] = []
+        waiting = {"since": "2026-10-09T11:36:09Z", "resumesBy": "2026-10-09T15:36:09Z",
+                   "jobs": [{"boxId": "b1", "name": "estimate", "jobId": "j1", "stage": "pi", "status": "RUNNING"}]}
+
+        async def reply(name: str, payload: dict, *, timeout: float, **_kwargs) -> dict:
+            calls.append((name, payload))
+            stopped = payload.get("stopWaiting")
+            return {"payload": {
+                "uid": payload["uid"],
+                "history": '<<you>>\nBuild it\n<<ai>>\n<<model:{"provider":"openai"}>>\nStarted it.\n'
+                           '<<progress>>\nWaiting for 1 build · no model calls\n',
+                "running": False,
+                **({} if stopped else {"suspendedOn": waiting}),
+                "message": "_Stopped waiting for 1 build; it keeps running._" if stopped else "",
+            }}
+
+        self.client.call_for_single_reply = reply  # type: ignore[method-assign]
+        result = asyncio.run(dispatch_command(self.client, parse_command("ai-chat Estimate"), "ai-chat Estimate"))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["data"]["suspendedOn"], waiting)
+        self.assertFalse(result["data"]["running"])
+        self.assertEqual(result["data"]["turns"], 1)
+        self.assertEqual(result["data"]["lastReply"], "Started it.")
+
+        line = "ai-chat Estimate --stop-waiting"
+        stopped = asyncio.run(dispatch_command(self.client, parse_command(line), line))
+        self.assertIsNone(stopped["data"]["suspendedOn"])
+        self.assertIn("Stopped waiting", stopped["data"]["message"])
+        self.assertEqual(calls, [("ai-chat-history", {"uid": "b1"}), ("ai-chat-history", {"uid": "b1", "stopWaiting": True})])
+
     def test_set_command_uses_acknowledged_persistent_property_path(self) -> None:
         from tools.field_backdoor import dispatch_command
 

@@ -2149,6 +2149,7 @@ function ensureAiChat(container, uid, property) {
                         "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
                         "- `/context` show what the last AI turn was told besides the conversation, and its size",
                         "- `/branches` list this conversation's branches (made by rewinding or editing a message); `/branch <#>` switch to one",
+                        "- `/stop-waiting` stop waiting for the builds the agent's last turn awaited (the builds keep running)",
                         "- `/box \"box name\"/property` reference a box property in the conversation",
                         "",
                         "`[window]` can be a 1-based window number or part of a window title. Quotes around box names are optional when the name/property split is unambiguous."
@@ -2322,6 +2323,20 @@ function ensureAiChat(container, uid, property) {
                         sendWithReply("ai-chat-context", {uid: targetUid},
                                 `ai-chat-context-${targetUid}-${Date.now()}`, (_message, response) => {
                                         if (chatUid() === targetUid) appendLocalChatTurn("ai", response?.markdown || "_No context report._");
+                                        return "remove";
+                                });
+                        return true;
+                }
+
+                if (command === "stop-waiting") {
+                        textarea.value = "";
+                        const targetUid = chatUid();
+                        // The server ends the wait (StudyBuildAwaits) and returns the transcript with its waiting row closed.
+                        sendWithReply("ai-chat-history", {uid: targetUid, stopWaiting: true},
+                                `ai-chat-stop-waiting-${targetUid}-${Date.now()}`, (_message, response) => {
+                                        if (chatUid() !== targetUid) return "remove";
+                                        if (typeof response?.history === "string") aiChatUpdate(container, targetUid, response.history);
+                                        if (response?.message) appendLocalChatTurn("ai", response.message);
                                         return "remove";
                                 });
                         return true;
