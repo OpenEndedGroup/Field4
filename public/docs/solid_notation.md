@@ -728,7 +728,7 @@ what a torus is.
   src="offline.html?file=assets/solidsl_gallery/metadata.edn"
   loading="lazy"></iframe>
 
-`assets/solidsl_gallery/metadata.edn` is a Field document with three boxes. Open it and run them:
+The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has three boxes. Open it and run them:
 
 - **one shape, two evaluations** — one part put through both lowerings, with the meshes side by side.
   Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
@@ -740,8 +740,8 @@ what a torus is.
 All three need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.
 
-For fitting there is a second document, `dev_docs/agents/demos/solidsl_inverse/metadata.edn`,
-which needs no Manifold at all. Open it in Field and run its three boxes:
+For fitting there is a second starting point, [`solidsl_inverse`](agent_transcripts.md#solidsl_inverse),
+which needs no Manifold at all. Open it and run its three boxes:
 
 - **a solid, and its exact gradient** — the slot census, a template, and `checkGradient` against
   central differences computed in the box. The last probe is the ball's own centre, where the

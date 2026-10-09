@@ -429,6 +429,14 @@ object DemoTranscriptExecSmokeTest {
         // emitter's own starting point still compiles against it.
         "rectsl_glsl_sdf",
         "solidsl_notation",
+        // The solid_notation.md gallery and the geometry_from_disk.md repair demo, as starting points.
+        // CPU only; the Manifold halves print an install message and fall back when it is absent.
+        "solidsl_gallery",
+        "mesh_repair_demo",
+        // sorting_networks_examples.md's four fences as boxes, pure CPU. Only the two drawing boxes are
+        // launched: the two annealing boxes search for 70 and 90 seconds, and the docs runner executes
+        // them for the page's captures.
+        "sorting_networks",
         // Two pure-CPU boxes on the third track backend: one prints a track's symbolic IR with its
         // free parameters still unsolved, the other fits those parameters against waypoints and
         // rasterises target/seed/fitted with TriMesh.renderPng into display(). `toFn` and the Adam
@@ -677,6 +685,14 @@ object DemoTranscriptExecSmokeTest {
         // EXECUTE transcript, because the one point the document makes is that the bank does not
         // know whether it is being drawn or heard, and that argument does not survive the split.
         "marf_demo",
+        // The mqtt.md and oscquery.md demos: `loop { }` boxes over Field's own broker and a published
+        // OSCQuery service on fixed ports, meant to be launched and stopped by hand. MqttDemoBundleTest
+        // checks the bundle opens.
+        "mqtt_demo",
+        "oscquery_demo",
+        // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
+        // holds the page's fences to the document.
+        "sonicpi_pattern_demo",
     )
 
     /**

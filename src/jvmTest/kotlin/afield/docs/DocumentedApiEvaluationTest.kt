@@ -187,6 +187,13 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // The oscquery_demo starting point (2026-10-09) is COMPILE_ONLY: its boxes publish a service on
+        // fixed ports and loop until stopped. OscQueryRoundTripTest runs the server, client, mirror and
+        // DNS-SD discovery these Box wrappers call.
+        "oscQuery" to "oscquery_demo publishes on fixed ports; OscQueryRoundTripTest runs the server underneath",
+        "oscQueryRemote" to "oscquery_demo; OscQueryRoundTripTest runs the client underneath",
+        "oscQueryMirror" to "oscquery_demo; OscQueryRoundTripTest mirrors a Field server's tree",
+        "oscQueryDiscover" to "oscquery_demo; OscQueryRoundTripTest discovers an advertised server over DNS-SD",
         // afield.syphon (2026-10-03): needs macOS, a Vulkan renderer with VK_EXT_external_memory_host
         // and the optional native/field-syphon library. Verified live against an external Syphon
         // client (dev_docs/SYPHON_BRIDGE.md); SyphonTest covers the CPU paths.

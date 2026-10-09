@@ -1,5 +1,7 @@
 # Short-time spectral spaces
 
+*To run the examples on this page, open the [audio_ai_spectral_embeddings](agent_transcripts.md#audio_ai_spectral_embeddings) starting point.*
+
 A resonance sliding upward, a hiss that thickens, a room closing in around a voice: none of that
 needs a trained model to notice, only a record of which frequencies are loud from one moment to the
 next. `analysis.embed_spectral` keeps that record as mel bands, log-mel bands and MFCCs, and Field

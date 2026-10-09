@@ -1,5 +1,7 @@
 # EnCodec reconstruction microscope
 
+*To run the examples on this page, open the [audio_ai_codec](agent_transcripts.md#audio_ai_codec) starting point.*
+
 EnCodec compresses audio into a few streams of tokens and decodes them back. Running a
 `codec.reconstruct` operation on a sound shows you both ends and the tokens in between: the input
 as the model hears it, the token streams (one per codebook), the reconstruction, and how far it
