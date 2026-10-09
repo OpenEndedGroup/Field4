@@ -18,8 +18,8 @@ For the full reference (every flag, the intent matrix, and the internals) see
   find Zensical, install `uv` rather than installing Zensical by hand; the
   `docs` group in `pyproject.toml` already pins it.
 - **A JDK + the Gradle wrapper** (`./gradlew`, already in the repo) — builds and
-  runs the Field JVM. `./field.sh` wraps `./gradlew runJvm` if you just want the
-  app.
+  runs the Field JVM. `./field.sh` builds the app through Gradle and launches it if
+  you just want the app.
 - Everything runs against a **Field server**. The docs and test runners start
   one for you on a port you choose. Pick a dedicated high port like `9477`,
   not the one your interactive Field is on.

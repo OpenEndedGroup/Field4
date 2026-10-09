@@ -428,6 +428,10 @@ nav:
     # process's output goes, this one says how much of it a picture can hold, and both are things
     # you look up after something has already surprised you rather than while composing.
     - What a Capture Can and Cannot Show: capture_limits.md
+    # The tour before the two how-to pages it links to: what the build, test, landing and
+    # revision machinery does and why it is unusual, for a reader deciding whether to read on.
+    # The commands themselves stay on building_and_testing.md and landing_queue.md.
+    - How Field Is Built: how_field_is_built.md
     - Building & Testing: building_and_testing.md
     - Landing on main: landing_queue.md
 
