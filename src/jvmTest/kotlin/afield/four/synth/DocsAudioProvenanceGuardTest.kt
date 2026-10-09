@@ -66,6 +66,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.DOUGH_DSP to 18,
             Origin.FAUST to 3,
             Origin.DOUGH_WASM to 2,
+            Origin.STEAM_AUDIO_HRTF to 1,
         )
         assertEquals(
             expected,
@@ -95,7 +96,7 @@ class DocsAudioProvenanceGuardTest {
         val findings = DocsAudioProvenance.scan().map { DocsAudioProvenance.audit(it, scratch) }
         findings.forEach { println("  " + it.line()) }
 
-        val broken = findings.filter { it.failure != null || !it.reproduces }
+        val broken = findings.filter { it.skipped == null && (it.failure != null || !it.reproduces) }
         assertTrue(
             broken.isEmpty(),
             "published audio the code no longer produces — the shape of 56b124131:\n" +
@@ -206,11 +207,9 @@ class DocsAudioProvenanceGuardTest {
          * [PatSynthBank] rendered block by block.
          *
          * Two are [PatSpatialSoundDocs]', and they brought [Origin.DOUGH_WASM] with them. They are
-         * also the only pair in the corpus that is deliberately **half a path**: they publish the
-         * mono source `pat-spatial` hands Steam Audio, because the spatialised half is realtime-only
-         * and needs a binary this repository does not carry, so this very audit could not re-render
-         * it. Worth stating next to the count: the corpus is now bounded by what can be re-derived,
-         * and one of Field's render paths falls outside that boundary by design.
+         * the only pair in the corpus that is deliberately **half a path**: they publish the mono
+         * source `pat-spatial` hands Steam Audio. (The binaural half was thought realtime-only when
+         * they were written; it is not, and has its own clip since 2026-10-09 — see below.)
          *
          * The three newest are `chain_lambda_sound.md`'s, and they are [Origin.STAND_IN_SYNTH]
          * again: [LambdaSoundDocs] drives [patRenderStereo] the way [CaSoundDocs] does, with an
@@ -255,7 +254,11 @@ class DocsAudioProvenanceGuardTest {
          * `orca.md` added two (2026-10-09), [Origin.STAND_IN_SYNTH]: [OrcaSoundDocs] runs ORCA's own
          * operators in [OrcaHeadless] and voices each note through a [PatSynthBank] of [patVoice]
          * voices, not samples.
+         *
+         * `pat_spatial.md` added one (2026-10-09), [Origin.STEAM_AUDIO_HRTF]:
+         * [PatSpatialHeadTrackedDocs] renders `HeadTrackedPatternDemo`'s four movements binaurally,
+         * re-rendered here only where `libphonon` loads.
          */
-        const val EXPECTED_FENCE_COUNT = 76
+        const val EXPECTED_FENCE_COUNT = 77
     }
 }

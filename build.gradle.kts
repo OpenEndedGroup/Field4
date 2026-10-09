@@ -3469,7 +3469,7 @@ tasks.register<JavaExec>("headTrackedDemo") {
     configureSteamAudioDemoTask(
         "afield.examples.steamaudio.HeadTrackedPatternDemoKt",
         "Renders a pattern placed in a room, heard from a head that turns and walks, to " +
-            "build/demo/head-tracked.wav. Realtime, so it takes as long as it lasts. Headphones.",
+            "build/demo/head-tracked.wav, offline and faster than realtime. Headphones.",
     )
 }
 
@@ -3892,7 +3892,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, "buildLorisNative")
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative")
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

@@ -360,6 +360,22 @@ def default_python_venv_to_this_tree(repo_root: Path) -> None:
     os.environ["FIELD_PYTHON_EXECUTABLE"] = str(interpreter)
 
 
+def steam_audio_library_path(repo_root: Path) -> Path:
+    """Where `./gradlew fetchSteamAudioNatives` unpacks this host's ``libphonon``.
+
+    The layout of ``steamAudioNativeTree`` in ``build.gradle.kts``, which puts that directory on the
+    runtime classpath for ``SteamAudioNatives`` to find. ``-PsteamaudioLibrary`` is a Gradle
+    property this process cannot see, so a library supplied that way is not detected here.
+    """
+    if sys.platform.startswith("win"):
+        platform, name = "windows-x64", "phonon.dll"
+    elif sys.platform == "darwin":
+        platform, name = "macos", "libphonon.dylib"
+    else:
+        platform, name = "linux-x64", "libphonon.so"
+    return repo_root / "build" / "steamaudio" / platform / name
+
+
 def dirt_samples_root_path(repo_root: Path) -> Path:
     """The pinned Dirt-Samples subset, when it is complete and every file has its pinned digest.
 
@@ -401,6 +417,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
     "dirt-samples": (dirt_samples_root_path, "./gradlew fetchDocsDirtSamples"),
+    "steam-audio": (steam_audio_library_path, "./gradlew fetchSteamAudioNatives"),
     "jep": (
         jep_library_path,
         "pip install 'jep==4.3.1' jedi into the interpreter Field resolves, then point "

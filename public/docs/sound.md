@@ -9,7 +9,7 @@ below says which of them produced it.
 
 Other pages cover the other voices. A pattern can play a
 [Faust program](faust.md#a-pattern-plays-it) as a polyphonic instrument, or be placed in space with
-[`patSpatial`](pat_spatial.md), which plays in realtime only.
+[`patSpatial`](pat_spatial.md), which places each sound with Steam Audio.
 [How to make sound in Field](sound_paths.md) lists every way Field makes sound and helps you pick
 one.
 
@@ -186,7 +186,8 @@ Other pages use other voices. The effects on [DoughDSP Sound Examples](dough_dsp
 signals, and [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) plays its own
 instruments. [Subharmonic Synthesis](subharmonic_sound.md) plays a new tone under three real
 sources: a synth bassline, Dirt-Samples drums and the dialogue of a 1968 film. The clips on
-[A pattern in space](pat_spatial.md) are the mono source before spatialisation, since the spatialised output plays in realtime only. The drums on
+[A pattern in space](pat_spatial.md) are the mono source before spatialisation and one binaural
+render through Steam Audio. The drums on
 [How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
 [Boolean network music examples](boolean_network_music_examples.md) are real Tidal samples.
 
