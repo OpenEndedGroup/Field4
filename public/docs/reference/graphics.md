@@ -478,7 +478,7 @@ Live rendered examples: `public/docs/graph_connectivity_examples.md`.
 
 `src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt` — [read the source](source/jvmMain/afield/stdlib/graph_connectivity/)
 
-**Used in:** [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
 
 ### Top-level functions { #graph-connectivity-kt-functions }
 
