@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**16880 public symbols across 484 source files**, 9979 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**16881 public symbols across 484 source files**, 9980 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -24,7 +24,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Visualization](visualization.md) | 20 | 581 | 495 (85%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 40 | 1424 | 676 (47%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1309 | 715 (54%) | Musical time, as a value. |
-| [Audio](audio.md) | 25 | 1000 | 351 (35%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 25 | 1001 | 352 (35%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 106 | 2863 | 1273 (44%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 27 | 381 | 266 (69%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -197,7 +197,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [GlslParser.kt](languages.md#glslparser-kt) | Languages | 5 | 5 | A parser for the GLSL that StackSL's emitter actually produces. |  |
 | [GlslScalars.kt](languages.md#glslscalars-kt) | Languages | 0 | 0 | The value type the GLSL interpreter is generic over, so that one interpreter serves both the `Float` reference path and the differentiable one. |  |
 | [GlslValue.kt](languages.md#glslvalue-kt) | Languages | 23 | 12 | The value model for the GLSL-subset interpreter behind StackSL's CPU backend. |  |
-| [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
+| [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
 | [H2DomainAdapters.kt](visualization.md#h2domainadapters-kt) | Visualization | 1 | 1 | `.h2` adapters for the Field types where the *reflective* default in `H2Reflect.kt` reads badly. |  |
 | [H2Reflect.kt](visualization.md#h2reflect-kt) | Visualization | 0 | 0 | The reflective half of `.h2`: what a domain object's *children* are, computed once and shared by every surface that shows them. |  |
@@ -256,7 +256,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [LineNoteTools.kt](workspace.md#linenotetools-kt) | Workspace | 11 | 5 |  |  |
 | [LiveStudy.kt](workspace.md#livestudy-kt) | Workspace | 54 | 23 |  | [Studies](../studies.md) |
 | [Loris.kt](audio.md#loris-kt) | Audio | 42 | 18 |  | [Loris: partial tracks and resynthesis](../loris.md) |
-| [LorisDocs.kt](audio.md#lorisdocs-kt) | Audio | 14 | 3 |  |  |
+| [LorisDocs.kt](audio.md#lorisdocs-kt) | Audio | 15 | 4 |  |  |
 | [LorisStudy.kt](audio.md#lorisstudy-kt) | Audio | 1 | 1 |  |  |
 | [LorisTransforms.kt](audio.md#loristransforms-kt) | Audio | 18 | 9 |  | [Loris: partial tracks and resynthesis](../loris.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [LorisVisualizer.kt](visualization.md#lorisvisualizer-kt) | Visualization | 11 | 3 |  | [Loris: partial tracks and resynthesis](../loris.md) |
@@ -431,7 +431,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SimulationResult.kt](simulation.md#simulationresult-kt) | Simulation | 31 | 27 | One solved revision: the raw fields exactly as Kratos produced them, and the views Field draws. |  |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 29 | Classical multidimensional scaling and t-SNE, over equal-length vectors or over a distance matrix you computed yourself, wrapping Smile. | [Projecting a distance matrix](../projection_examples.md) |
-| [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
+| [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md) |
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
 | [Solver.kt](simulation.md#solver-kt) | Simulation | 21 | 2 |  | [Pressure membranes](../pressure_membranes.md) |
 | [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 | Sonic Pi v5 driven from a Field box, in owned mode. | [Sonic Pi](../sonic_pi.md) |

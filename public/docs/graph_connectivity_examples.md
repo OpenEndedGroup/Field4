@@ -1,4 +1,4 @@
-# Neighbors & graph connectivity to FLine examples
+# Neighbours and graphs on a point cloud
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`graph_connectivity.kt`](reference/graphics.md#graph-connectivity-kt), [`smile_neighbors.kt`](reference/data.md#smile-neighbors-kt). Start from [what's already in the box](reference/index.md).*
 
@@ -72,21 +72,20 @@ lines(
 )
 ```
 
-Same geometry, same query point, same drawing code; only the question changes.
-
 ![a scatter of a few hundred pale dots on black with one large yellow query dot near the middle. A dozen dark amber radius edges fan out to whatever happens to lie inside the radius; the exact-neighbour edges sit over them in pale blue, thicker and shorter; and the approximate edges are dim enough that only one of them reads at all, the one that leaves the group entirely and runs across the frame to a point far to the lower left](assets/smile_neighbors_examples/query_edges.png)
 
-The exact set is the reference answer and the approximate set is the real-time
-compromise against it, so where a thin green edge leaves the thick blue ones and
-lands on a different point, that is what the speed cost. The radius query
-answers something else entirely: it returns however many points happen to be
-close, which is a reading of local density rather than of rank, and in a sparse
-part of the cloud it can come back with fewer than `k` or with none.
+The exact search is the correct answer, and the approximate search trades some
+accuracy for speed. Where an approximate edge lands on a point the exact search
+did not choose, that is the accuracy you gave up. The radius query returns
+however many points are close, so in a sparse part of the cloud it can return
+fewer than `k` points, or none.
 
-## Diff: tune LSH build options
+## Tuning the approximate index
 
-Approximate search becomes real when you tune it. Bucket width, projection count,
-and hash size all change which relationships later code will believe.
+The approximate search is built on locality-sensitive hashing (LSH), and its
+build options decide which neighbours it finds. Bucket width, projection count
+and hash size all change the answer. The example below changes only those
+options, and keeps the query, the point cloud and the drawing as they were.
 
 ```diff_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/lsh_tuning.png" wait="1.0" capture="box"}
 :::before
@@ -125,24 +124,20 @@ val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; poi
 lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 ```
 
-The diff keeps the query, point cloud, and drawing identical. Only the LSH build
-options change.
-
 ![the same pale point cloud with only the green LSH edges drawn: a tight burst of about a dozen short edges around the query point, none of them reaching beyond the immediate neighbourhood](assets/smile_neighbors_examples/lsh_tuning.png)
 
-These options decide which geometric relationships the next layer ever sees, so
-if a neighborhood feels unstable, fix the index before building clustering,
-pathing, or interaction code on top of it. With a stable index, the same cloud
-can carry *persistent* structure: the graph families below.
+Anything you build on the neighbours (clustering, paths, interaction) sees only
+what the index returns, so if a neighbourhood looks unstable, tune the index
+first.
 
 ## Geometric graph families on one point cloud
 
-One point cloud supports several plausible graphs, and four of the five below
+One point cloud supports several reasonable graphs, and four of the five below
 nest inside one another. The minimum spanning tree is a subset of the
 relative-neighborhood graph, which is a subset of the Gabriel graph, which is a
 subset of the Delaunay triangulation. Urquhart sits off to the side of that
 chain: it is the Delaunay triangulation with the longest edge of each triangle
-removed.
+removed. The example draws all five over the same cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/geometric_families.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
@@ -201,11 +196,10 @@ each as arguments.
 
 ![one point cloud with five graph families drawn over it at once, separated by thickness as much as by colour: a faint blue-grey haze of the densest family reaching everywhere, warmer and progressively sparser edges through the interior, and the spanning tree on top in bright thick green, reading as a single connected chain around the outside of the cloud with a few spurs inward. Only the extremes of the ordering are separable by eye](assets/graph_connectivity_examples/geometric_families.png)
 
-The drawing encodes that ordering as weight. Delaunay is drawn thinnest and
-faintest, at thickness 1.0 and alpha 0.25, and each successive family is thicker
-and more opaque up to the spanning tree at 2.6 and 0.95 — so the sparser a
-family is, the more it stands out, and the edges every family agrees on are the
-ones drawn five times over.
+Delaunay is drawn thinnest and faintest, and each sparser family is drawn
+thicker and more opaque, up to the spanning tree. The sparser a family is, the
+more it stands out, and the edges every family agrees on are drawn five times
+over.
 
 ## Orthant neighborhoods: one edge per direction
 
@@ -216,7 +210,8 @@ point into four quadrants along the coordinate axes and joins the point to its
 nearest neighbor in each quadrant that has one. That gives each point at most
 four edges of its own, and the points other points choose add more. A point on
 the edge of a cluster facing another cluster has an empty quadrant on its own
-side, so its nearest neighbor in that direction is across the gap.
+side, so its nearest neighbor in that direction is across the gap. The example
+draws both graphs over three clusters.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_vs_knn.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
@@ -281,7 +276,8 @@ distance otherwise.
 
 A flat projection stops working once points coil, stack or sit behind one
 another, because a crossing on the page and an edge in space look the same. The
-Three.js viewer takes the graph directly, so you can orbit instead of guessing.
+Three.js viewer takes the graph directly, so you can orbit around it. The
+example draws three graph families over a coiled 3D cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/three_graph_families.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -333,24 +329,21 @@ threeLines(
 )
 ```
 
-This view is less about exact planar relationships and more about spatial
-scaffolding. The faint 4-NN graph gives the permissive local neighborhood,
-Gabriel shows the cleaner mid-density structure, and the spanning tree leaves only
-the bare backbone.
+The faint 4-NN graph shows every local neighbourhood, Gabriel shows a cleaner
+structure in between, and the spanning tree leaves only the backbone.
 
 ![a coiled space curve in the Three.js viewer, the cloud spiralling in on itself from a narrow tail to a wide open loop. A bright green spanning tree follows the coil; orange Gabriel edges cross between neighbouring turns like the rungs of a twisted ladder; the 4-NN edges are faint enough to read only as haze. The viewer's counter reads 769 lines, 0 triangles, 170 points](assets/graph_connectivity_examples/three_graph_families.png)
 
-There is no 3D Urquhart picture here because there is no 3D Urquhart graph:
-`vec3UrquhartGraph(...)` is one line, `return vec3MinimumSpanningTree(points,
-options)`, so asking for it returns the spanning tree already drawn above. Its
-KDoc gives the reason. Urquhart is defined by deleting the longest edge of each
-Delaunay triangle, and there is no 3D Delaunay wired in through JTS to delete
-from. The 2D one is the real thing.
+There is no 3D Urquhart graph, because Field has no 3D Delaunay triangulation
+to remove edges from. `vec3UrquhartGraph(...)` returns the spanning tree
+instead.
 
-## Pathing: anchored cover + A* overlay
+## Paths: covering a graph and finding a route
 
-A graph becomes more useful once you ask it to do something: cover a space from an
-anchor, produce a route, or support both a global reading and a local path.
+A graph becomes more useful once you ask it to do something. This example builds
+a k-nearest-neighbor graph and asks it for two answers: a cover that spreads
+outward from one anchor, and an A* path to a chosen goal. The base graph stays
+faded in the background.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/path_cover_astar.png" wait="1.0" capture="box"}
 :::static
@@ -410,10 +403,6 @@ out += dots
 lines(out, channel = "graph-pathing", w = 1180.0, h = 760.0, fitToSize = true)
 ```
 
-This example builds a modest k-nearest-neighbor graph, then asks for two different
-answers: a cover that spreads outward from one anchor, and an A* path to a chosen
-goal. The faded base graph stays in the background.
-
 ![a nearest-neighbour graph whose every edge is coloured, twelve hues cycling through the cover's paths so the whole graph reads as a stained-glass tangle, with the faint blue-grey base edges almost invisible beneath them. One thick bright yellow route runs across the upper half of the frame from left of centre to the right, stepping between points and crossing edges of several different colours on its way](assets/graph_connectivity_examples/path_cover_astar.png)
 
 The two answers read differently off the same edges. `graphAnchoredGreedyThenDiameterCover`
@@ -424,11 +413,10 @@ every edge of the base graph, but not all of them start at the anchor — the
 later ones are the leftovers, so a long path far from the anchor is not
 necessarily something the anchor reached. The A* overlay is a
 single route by cost, drawn on top, and it is free to leave the cover's edges
-wherever a cheaper one exists. For statistics and dependence measures on related
-datasets, continue with [Values over time: interpolants, keyframes & estimation](interpolants_examples.md).
+wherever a cheaper one exists.
 
-Everything on this page assumes the points sit still and the edges are given. When they do not —
-when the cloud moves every frame and the graph has to be continually proposed, reinforced and
-forgotten — the family to reach for is [graphs that change while you
-watch](dynamic_graph_systems_examples.md), which snapshots back into the `PointGraph` this page
-consumes with a `minWeight` cut that keeps only what has persisted.
+Everything on this page assumes the points sit still. When the cloud moves every
+frame and its edges have to be proposed, strengthened and forgotten as it goes,
+see [graphs that change while you watch](dynamic_graph_systems_examples.md). Its
+snapshots turn back into the `PointGraph` used here, keeping only the edges that
+have lasted.
