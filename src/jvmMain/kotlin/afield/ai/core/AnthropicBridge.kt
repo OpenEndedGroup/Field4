@@ -50,7 +50,9 @@ import kotlin.math.min
 class AnthropicBridge(
     private var client: AnthropicClient = anthropicClientFromFieldConfig(),
     private val model: String = Ai4ModelDefaults.flagshipModel(),
-    private val log: LogSink = StdoutLog
+    private val log: LogSink = StdoutLog,
+    /** Where [client] sends its requests, for the request ledger: the SDK client does not say. */
+    private val baseUrl: String = configuredAnthropicBaseUrl() ?: ANTHROPIC_DEFAULT_BASE_URL
 ) : LlmBridge {
     override val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity("anthropic", model)
     private val tools = ToolRegistry()
@@ -194,6 +196,20 @@ class AnthropicBridge(
             }
         }
 
+        // The request ledger's attribution, as OpenAiIdeCodexBridge's, so tools/ai_usage.py counts both providers.
+        val requestAttribution = mapOf(
+            "provider" to "anthropic", "endpoint" to AiRequestLedger.endpoint(baseUrl),
+            "model" to model, "reasoningEffort" to "provider-default",
+            "fileKey" to state.fileKey,
+            "documentPath" to (ctx.focus?.document ?: ctx.fieldGraph?.info?.filename),
+            "documentName" to ctx.fieldGraph?.info?.documentName,
+            "conversationId" to state.conversationId, "localThreadId" to state.localThreadId,
+            "turnId" to UUID.randomUUID().toString(), "toolIoSessionId" to toolIoSession?.id
+        )
+        fun requestLedger(phase: String) = AiRequestLedger.request(requestAttribution + mapOf(
+            "phase" to phase, "maxOutputTokens" to maxOutputTokens
+        ))
+
         val callCtx = ctx.copy(
             reportProgress = onProgress ?: ctx.reportProgress,
             promoted = ctx.promoted ?: state.promotedTools,
@@ -221,7 +237,7 @@ class AnthropicBridge(
         var activePhase = "model:initial"
         try {
         var hitToolRoundCap = false
-        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null))
+        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null), requestLedger("initial"))
         countUsage(response)
         onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
@@ -361,12 +377,14 @@ class AnthropicBridge(
                 warn("maxToolRounds=$maxToolRounds reached; requesting a final answer with tool_choice none.")
             }
             if (!includeTools) hitToolRoundCap = true
-            activePhase = if (includeTools) "model:followup" else "model:forced_final"
-            response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null, toolsDisabled = !includeTools))
+            val phase = if (includeTools) "followup" else "forced_final"
+            activePhase = "model:$phase"
+            response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null, toolsDisabled = !includeTools),
+                requestLedger(phase))
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
-            logShape(if (includeTools) "followup" else "forced_final", response)
+            logShape(phase, response)
             if (!includeTools) break
         }
 
@@ -475,13 +493,16 @@ class AnthropicBridge(
 
     // ---- create with rate-limit + auth-refresh retry -------------------------
 
-    private fun createMessage(params: MessageCreateParams): Message {
+    /** One logical request: each `create` is an attempt in [ledger], recorded before the call and after its outcome. */
+    private fun createMessage(params: MessageCreateParams, ledger: AiRequestLedger.Request): Message {
         var attempt = 0
         var refreshedAuth = false
         while (true) {
+            val recorded = ledger.attempt()
             try {
-                return client.messages().create(params)
+                return client.messages().create(params).also { recorded.response(it); recorded.finish() }
             } catch (e: UnauthorizedException) {
+                recorded.finish(e)
                 if (!refreshedAuth) {
                     warn("401 from Anthropic; refreshing OAuth token and retrying once.")
                     invalidateAnthropicOAuthToken()
@@ -491,15 +512,20 @@ class AnthropicBridge(
                 }
                 throw e
             } catch (e: AnthropicServiceException) {
+                recorded.finish(e)
                 val delay = OpenAiIdeCodexBridge.retryDelayMsForRateLimitMessage(e.message ?: "")
                 if (delay != null && attempt < maxRateLimitRetries) {
                     val wait = min(delay, maxRateLimitDelayMs)
+                    ledger.retry(attempt + 1, wait)
                     warn("rate limited (attempt ${attempt + 1}/$maxRateLimitRetries); waiting ${wait}ms.")
                     log.userNotice("The AI service is busy. Retrying automatically in ${(wait + 999) / 1000}s; completed work is kept.", attention = true)
                     Thread.sleep(wait)
                     attempt++
                     continue
                 }
+                throw e
+            } catch (e: Exception) {
+                recorded.finish(e)
                 throw e
             }
         }
