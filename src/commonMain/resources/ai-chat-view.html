@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>AI4 chat view</title>
+    <!--
+      Shows chat-panel HTML (aiChatHistoryHtml / aiChatMarkdownHtml, commonMain aiChatHtml.kt) on a page that is
+      not the Field canvas, in the panel's own stylesheet: field.css cannot sit beside a tool page's
+      field-tool-pages.css, whose element rules (p, h2, code, table) would restyle the transcript.
+
+      The parent posts {type: "ai-chat-view", html, follow}; this frame swaps the HTML in, keeps the rounds and
+      blocks the reader opened or closed, highlights code, and posts {type: "ai-chat-view-height", height} back
+      so the parent can size the frame. `follow` keeps a running transcript scrolled to its end while the reader
+      is already there.
+    -->
+    <link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field.css">
+    <link rel="stylesheet" href="/github-dark.min.css">
+    <script src="/highlight.min.js"></script>
+    <style>
+        html, body { margin: 0; background: var(--field-surface); }
+        body { overflow-x: hidden; }
+        .ai-chat-window { height: auto; min-height: 0; overflow: visible; padding: 10px 8px; }
+        .ai-chat-messages { flex: none; overflow: visible; margin-left: 0; padding-right: 0; }
+        .hljs { background: var(--field-editor-bg) !important; }
+        .ai-chat-markdown pre code.hljs { padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+        /* Edit and rewind act on a live chat; a transcript shown here has neither. */
+        .ai-chat-turn-actions { display: none; }
+        .empty { color: var(--field-fg-muted); font: 12px/1.5 var(--field-font); padding: 6px; }
+    </style>
+</head>
+<body>
+<div class="ai-chat-window">
+    <div class="ai-chat-messages" id="messages"></div>
+</div>
+<script>
+    const messages = document.getElementById("messages");
+    // Fold state the reader chose, by block key; everything else opens as the markup says.
+    const chosen = new Map();
+    let lastHtml = null;
+
+    const LANGUAGES = { kt: "kotlin", kts: "kotlin", sh: "bash", zsh: "bash", jsonl: "json", js: "javascript", py: "python", yml: "yaml", md: "markdown" };
+
+    function blockKey(details, index) {
+        if (details.dataset.aiRound) return `round:${details.dataset.aiRound}`;
+        const title = details.querySelector(":scope > summary")?.textContent?.trim() || "";
+        return `${index}:${title}`;
+    }
+
+    function highlight(root) {
+        root.querySelectorAll("pre code").forEach((code) => {
+            const raw = code.className.match(/(?:^|\s)language-([A-Za-z0-9_+-]+)/)?.[1]
+                || code.closest(".ai-chat-code-block")?.dataset?.lang || "";
+            const language = LANGUAGES[raw.toLowerCase()] || raw.toLowerCase();
+            code.className = language && window.hljs?.getLanguage?.(language) ? `language-${language}` : "language-plaintext";
+            try { window.hljs?.highlightElement(code); } catch (_) {}
+        });
+    }
+
+    function reportHeight() {
+        window.parent?.postMessage({ type: "ai-chat-view-height", height: document.documentElement.scrollHeight }, "*");
+    }
+
+    function render(html, follow) {
+        if (html === lastHtml) return;
+        lastHtml = html;
+        const scroller = document.scrollingElement;
+        const atEnd = scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 24;
+        messages.innerHTML = html || "<div class=\"empty\">Nothing yet.</div>";
+        messages.querySelectorAll("details").forEach((details, index) => {
+            const key = blockKey(details, index);
+            details.dataset.viewKey = key;
+            if (chosen.has(key)) details.open = chosen.get(key);
+            // A round that edited source opens by itself: here the edits are what the reader came to review.
+            else if (details.matches(".ai-chat-round") && details.querySelector(".ai-chat-progress[data-kind=edit]")) details.open = true;
+        });
+        highlight(messages);
+        // A re-render restarts the shimmer's sweep; pinning it to the document clock lets it carry on instead.
+        messages.querySelectorAll(".ai-chat-shimmer").forEach((el) => el.getAnimations?.().forEach((a) => { a.startTime = 0; }));
+        reportHeight();
+        if (follow && atEnd) scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    messages.addEventListener("toggle", (event) => {
+        const key = event.target?.dataset?.viewKey;
+        if (key) chosen.set(key, event.target.open);
+        reportHeight();
+    }, true);
+
+    messages.addEventListener("click", (event) => {
+        const button = event.target.closest(".ai-chat-copy");
+        if (!button) return;
+        const code = button.closest(".ai-chat-code-block")?.querySelector("code")?.textContent || "";
+        navigator.clipboard?.writeText(code).then(() => {
+            button.style.opacity = "1";
+            setTimeout(() => { button.style.opacity = ""; }, 600);
+        });
+    });
+
+    window.addEventListener("message", (event) => {
+        if (event.source !== window.parent || event.data?.type !== "ai-chat-view") return;
+        render(event.data.html || "", !!event.data.follow);
+    });
+    new ResizeObserver(reportHeight).observe(document.body);
+    window.parent?.postMessage({ type: "ai-chat-view-ready" }, "*");
+</script>
+</body>
+</html>
