@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-25 source file(s), 1000 public symbol(s), 351 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+25 source file(s), 1001 public symbol(s), 352 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2336,6 +2336,7 @@ Reproducible real-audio documentation fixture; never substitutes synthetic track
 | [<code class="highlight"><span class="k">val</span> <span class="n">morphEnvelope</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L77) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">morph</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Morph</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L79) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">morphHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L103) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">morphPanelHtml</span><span class="p">(</span><span class="n">panel</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/loris/LorisDocs/#L106) | One panel of `morphHtml`: 0 = phrase A, 1 = phrase B aligned, 2 = the morph (each runs the cached pipeline). |
 
 ## LorisStudy.kt { #lorisstudy-kt }
 
