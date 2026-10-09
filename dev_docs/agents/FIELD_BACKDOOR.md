@@ -513,6 +513,16 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 Details, the tool list and measured results are in
 [`../ai/IN_FIELD_AGENT_HARNESS.md`](../ai/IN_FIELD_AGENT_HARNESS.md).
 
+### A box chat's state: `ai-chat`
+
+`ai-chat <box>` asks the box's chat what it is doing (`ai-chat-history`) and returns `running` (a turn
+runs now), `suspendedOn` (what a turn that ended with `AwaitStudyBuildsRequest` waits for: `since`,
+`resumesBy`, each job with its last seen status), `turns` and `lastReply`. Wait on those, never on
+refusal text or the history file going quiet: a turn that waits for builds has ended, and Field starts
+the next one itself when they finish. `--stop-waiting` ends the wait (the builds keep running). An
+`agent-task --chat-box` turn that suspends returns once it has ended waiting. See
+[`public/docs/ai4_long_builds.md`](../../public/docs/ai4_long_builds.md).
+
 ## Suite entrypoints
 
 ```bash

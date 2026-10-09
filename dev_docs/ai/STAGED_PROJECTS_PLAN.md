@@ -26,6 +26,9 @@ every check until route shape was measured).
 
 ### 3a. A turn that waits for its builds without the model
 
+Status 2026-10-09: built (`AwaitStudyBuildsRequest`, `StudyBuildAwaits`, `public/docs/ai4_long_builds.md`);
+the mechanics are in `AI4_OPENAI_EFFICIENCY.md`, "A turn that waits for its builds".
+
 `WaitStudyBuildRequest` observes a job for at most 900 s. A 40-minute build therefore costs a model round every
 15 minutes, each re-sending the whole context (about 80k tokens on the house machine). The house machine's external
 driver works around it: the agent ends its turn naming the jobs it started, the driver polls `ListStudyBuildsRequest`
