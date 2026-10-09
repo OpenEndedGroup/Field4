@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
 
-A Boolean network's state space is finite, its update rule is explicit, and its attractors are loops or fixed points you can enumerate rather than approximate. Each example below therefore draws the mechanism and everything the mechanism does in one picture.
+A Boolean network is a set of nodes that are each on or off, plus a rule that computes every node's next value from the current values of the others. Because there are only finitely many states, every run ends up in a loop or at a fixed point (an *attractor*), and Field can list them all exactly. Each example below draws the network's wiring next to what it does over time.
 
 ## Wiring and state-space, side by side
 
@@ -45,13 +45,13 @@ lines(
 )
 ```
 
-The left image tells you what depends on what; the right image tells you what that dependency does to every possible state. Here the two coincide: with four states and both nodes reading the other, the whole state space is a single period-4 loop, `00 -> 10 -> 11 -> 01` and back. No hidden basin, no dead branch, and no state that is not on the cycle.
+The left image tells you what depends on what; the right image tells you what that dependency does to every possible state. Here the two coincide: with four states and both nodes reading the other, the whole state space is a single period-4 loop, `00 -> 10 -> 11 -> 01` and back.
 
 ![two panels side by side. The blue-tinted left panel holds two blue discs one above the other with a single line between them. The brown-tinted right panel holds four orange discs at the corners of a diamond, joined by a closed four-step loop drawn as two crossing chords, so every disc has exactly one line in and one out](assets/boolean_networks_examples/toggle_state_space.png)
 
-## Segment-polarity basins and a real transient
+## Segment-polarity basins and a transient
 
-`segmentPolarityNetwork()` has four nodes, so sixteen states, and unlike the toggle it does not spend all of them on one cycle. There is more than one attractor, so there is more than one basin, and a basin sketch has something to draw.
+`segmentPolarityNetwork()` has four nodes, so sixteen states, and unlike the toggle it does not spend all of them on one cycle. There is more than one attractor, so there is more than one *basin*: the set of starting states that end on a given attractor.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/segment_basins.png" wait="1.0" capture="box"}
 :::static
@@ -97,7 +97,7 @@ lines(
 )
 ```
 
-The left panel is one concrete transient, the middle panel is the whole 16-state transition graph, and the right panel samples the two largest basins as miniature spacetime strips. The transient is what the transition graph leaves you to trace by hand: which of the sixteen states you start from decides which attractor you end on, and how many steps you spend getting there.
+The left panel is one concrete transient, the middle panel is the whole 16-state transition graph, and the right panel samples the two largest basins as miniature spacetime strips. The transient is the path from a starting state to its attractor: which of the sixteen states you start from decides which attractor you end on, and how many steps it takes.
 
 ![three panels. The narrow blue-tinted left panel is a tall four-column strip of cream and dark cells, one row per step. The middle panel is sixteen nodes arranged in a ring, alternately blue and orange, with straight chords running across the interior between them. The brown-tinted right panel holds two groups of three small spacetime strips separated by a thin orange rule, the left group visibly busier than the right](assets/boolean_networks_examples/segment_basins.png)
 
@@ -198,7 +198,7 @@ lines(
 )
 ```
 
-The plot has no legend, so: blue is the mean number of attractors, orange the mean period, green the mean number of fixed points, each averaged over 18 seeds at `n = 8` for `k` from 1 to 5, and all three share one y scale. All three rise with `k`. Connectivity buys both more attractors and longer ones rather than trading one against the other. Orange overtakes blue around the middle of the sweep and turns down at `k = 5`, and green stays under blue throughout, as it has to: a fixed point is a period-1 attractor and so is counted in both.
+The plot has no legend, so: blue is the mean number of attractors, orange the mean period, green the mean number of fixed points, each averaged over 18 seeds at `n = 8` for `k` from 1 to 5, and all three share one y scale. All three rise with `k`: more connections give more attractors and longer ones. Orange overtakes blue around the middle of the sweep and turns down at `k = 5`, and green stays under blue throughout, as it has to: a fixed point is a period-1 attractor and so is counted in both.
 
 ![three five-point polylines with square markers on a faint grid, no axis labels or legend. Blue climbs steadily from low on the left and flattens at the fourth point. Orange starts just below blue, passes it immediately, meets it again at the middle point, then rises to the highest point on the plot at the fourth and falls back at the fifth. Green stays along the bottom, dipping slightly, then rising over the last two points to finish well below both](assets/boolean_networks_examples/kauffman_sweep.png)
 
@@ -274,7 +274,7 @@ lines(
 )
 ```
 
-The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into five kick / snare / hat / clap / percussion lanes, ready to hand to a Drift-style sample rack. Nothing here makes a sound. The gating produces a grid of triggers that repeats exactly, and you can read that grid off the page before you commit it to a sampler.
+The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into five kick / snare / hat / clap / percussion lanes, ready to hand to a sampler. Nothing on this page makes a sound; the grids repeat exactly, so you can read them off the page before playing them.
 
 ![three panels. The blue-tinted left panel holds five blue discs in a ring with six lines between them, two of them crossing the middle. The middle panel is a five-lane step grid with orange bar-lines every four steps, each lane in its own colour, and two bars' worth of the same pattern repeated. The brown-tinted right panel is the same five lanes much more sparsely filled, a handful of triggers per lane instead of a dense run](assets/boolean_networks_examples/rhythm_cycles.png)
 
