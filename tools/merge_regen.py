@@ -61,13 +61,8 @@ def _lines(text: str) -> list[str]:
     return [line for line in text.splitlines() if line]
 
 
-MERGE_DRIVERS = ("field-generated", "field-counts")
-
-
-def _driver_registered(repo: Path) -> bool:
-    return all(
-        _git(repo, "config", "--get", f"merge.{name}.driver", check=False).strip() != "" for name in MERGE_DRIVERS
-    )
+def _driver_registered(repo: Path, name: str = "field-generated") -> bool:
+    return _git(repo, "config", "--get", f"merge.{name}.driver", check=False).strip() != ""
 
 
 def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
@@ -150,8 +145,12 @@ def main(argv: list[str] | None = None) -> int:
         return regen_since(repo, args.regen_since, args.message or "Regenerate generated artifacts")
 
     if not _driver_registered(repo):
-        print("merge drivers field-generated/field-counts are not registered; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
+        print("merge driver field-generated is not registered; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
         return 2
+    if not _driver_registered(repo, "field-counts"):
+        # Not fatal: without it these pages take git's own text merge, as they did before the driver.
+        print("merge_regen: merge driver field-counts is not registered, so two edits of a <!--count:--> "
+              "numeral will conflict; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
 
     in_merge = subprocess.run(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=repo, stdout=subprocess.DEVNULL).returncode == 0
     if args.cont:
