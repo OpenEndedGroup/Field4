@@ -373,6 +373,150 @@ revokes unfinished publication; reopening records interrupted work and waits for
 Change `recipeVersion` whenever the recipe or its relevant runtime changes. The runner checks
 provenance and lifecycle; the recipe remains responsible for checking its own result.
 
+### Wait until a measurement passes
+
+Often a stage should wait until an earlier result is good enough, not just until it exists: loot
+placement should wait until every loot point can be reached. A `StudyBuildGate` turns that check
+into an input. The check reads the current results of the stages the gate names, and returns `null`
+when the waiting stage may run, or a sentence saying what is still wrong. A stage waits on the gate
+by listing its name in `inputKeys`.
+
+Here `paths` measures how far each loot point is from the spawn, and the gate `reachable loot`
+holds `place` until no point is more than 30 steps away:
+
+<!--
+FIELD_TEST
+id: docs.studies.gate
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Waiting for reachable loot"
+    - "Out of reach (more than 30 steps): L3."
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/gate.png" alt="the builds output channel: a card with two stages, 'Measure paths' marked Current with a Rebuild button, and 'Place loot' marked 'Waiting for reachable loot', with the sentence 'Out of reach (more than 30 steps): L3.' and no Build button" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Waiting for reachable loot" capture="box" embed=true timeout="90" name="studies-gate" w="760" h="120"}
+:::static
+// Each loot point, and how many steps it is from the spawn.
+thisBox.setPropertyRaw("loot", "L1 12, L3 41, L7 30")
+
+val reachable = StudyBuildGate("reachable loot", dependencies = listOf("paths")) { evidence ->
+    val far = evidence.facts("paths")["outOfReach"] as List<*>
+    if (far.isEmpty()) null else "Out of reach (more than 30 steps): ${far.joinToString()}."
+}
+val builds = studyBuilds("loot", listOf(
+    StudyBuildStage("paths", "Measure paths", "paths-v1", setOf("loot")) { c ->
+        val steps = c.inputs.getValue("loot").split(", ").associate { it.substringBefore(' ') to it.substringAfter(' ').toInt() }
+        c.file("steps.txt").writeText(steps.toString())
+        StudyBuildProduct(listOf("steps.txt"), mapOf("outOfReach" to steps.filterValues { it > 30 }.keys.toList()))
+    },
+    StudyBuildStage("place", "Place loot", "place-v1", setOf("reachable loot"), listOf("paths")) { c ->
+        c.file("placed.txt").writeText("loot placed along " + c.dependencyFile("paths", "steps.txt").readText())
+        StudyBuildProduct(listOf("placed.txt"))
+    }), gates = listOf(reachable)) { mapOf("loot" to thisBox.getPropertyRaw("loot", "").toString()) }
+
+builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!)
+showStudyBuilds("loot")
+```
+
+The card shows the gate's sentence under **Place loot**, and agent inspection returns the same text
+as the stage's `inputHelp`. Set `loot` so that L3 is 30 steps or fewer, rebuild **Measure paths**,
+and **Place loot** becomes ready to build. While the gate is open its value is a hash of the results
+it judged, so rebuilding `paths` makes an earlier placement stale even when the check still passes.
+A queued build checks its gates again when it starts; if one has closed meanwhile, the attempt fails
+with the gate's sentence and its recipe does not run.
+
+The check runs every time the card or an agent reads the stages, so keep it quick and read only
+what it is given: `evidence.facts(stage)`, `evidence.file(stage, path)`, which is checked against the
+result's recorded hash, and `evidence.inputs` for the gate's own `inputKeys`. A check that throws
+keeps the gate closed and shows the error as the reason.
+
+### Ask one attempt for more
+
+Some choices belong to one attempt rather than to the design: how long a search may run, or which
+earlier attempt to continue from. Pass them to `start` as a request, and the worker reads them as
+`context.request`. This stage searches for ten seconds unless the request asks for longer:
+
+<!--
+FIELD_TEST
+id: docs.studies.request
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Request: budgetSeconds = 60"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/request.png" alt="the builds output channel: a card with one stage, 'Search for routes', marked Current with a Rebuild button, and the grey line 'Request: budgetSeconds = 60'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Current" capture="box" embed=true timeout="90" name="studies-request" w="760" h="120"}
+:::static
+val builds = studyBuilds("search", listOf(
+    StudyBuildStage("route", "Search for routes", "route-v1", setOf("rooms")) { c ->
+        val budget = (c.request["budgetSeconds"] as? Number)?.toInt() ?: 10
+        c.progress(0.5, "Searching for $budget s")
+        c.file("route.txt").writeText("${c.inputs.getValue("rooms")} rooms searched for $budget s")
+        StudyBuildProduct(listOf("route.txt"), mapOf("budgetSeconds" to budget))
+    })) { mapOf("rooms" to "6") }
+
+builds.start("route", builds.stages().single().fingerprint!!, mapOf("budgetSeconds" to 60))
+showStudyBuilds("search")
+```
+
+The request is kept with the attempt and shown on its card. It is also part of the attempt's
+fingerprint, so a stage that uses this result records which request produced it. The result is
+current like any other, because the stage's own fingerprint covers only the design. A later start,
+including the card's **Rebuild**, has no request unless it is given one again, so a request is never
+left behind for the next build to pick up. Values must survive a JSON round trip. An agent passes a
+request as `request` in `StartStudyBuildRequest`, with string values.
+
+### Depend on another runner's stage
+
+A stage can depend on a stage of another runner in the same document, written
+`dependsOn(runner, stage)`. The runner is found by name, so it can belong to any box in the
+document. To keep the example short, one box holds both runners here: `level` blocks out the walls,
+and `loot` reads them.
+
+<!--
+FIELD_TEST
+id: docs.studies.dependson
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Ready to build"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/depends-on.png" alt="the builds output channel: a card with one stage, 'Place loot', marked 'Ready to build' with a Build button, above the line 'Not built yet'" wait="2.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Ready to build" capture="box" embed=true timeout="90" name="studies-depends-on" w="760" h="120"}
+:::static
+thisBox.setPropertyRaw("plan", "four rooms, two doors")
+
+val level = studyBuilds("level", listOf(
+    StudyBuildStage("blockout", "Block out walls", "blockout-v1", setOf("plan")) { c ->
+        c.file("walls.txt").writeText("walls for " + c.inputs.getValue("plan"))
+        StudyBuildProduct(listOf("walls.txt"))
+    })) { mapOf("plan" to thisBox.getPropertyRaw("plan", "").toString()) }
+
+val loot = studyBuilds("loot", listOf(
+    StudyBuildStage("place", "Place loot", "place-v1", dependencies = listOf(dependsOn("level", "blockout"))) { c ->
+        val walls = c.dependencyFile(dependsOn("level", "blockout"), "walls.txt").readText()
+        c.file("loot.txt").writeText("loot placed inside $walls")
+        StudyBuildProduct(listOf("loot.txt"))
+    })) { emptyMap() }
+
+level.start("blockout", level.stages().single().fingerprint!!)
+showStudyBuilds("loot")
+```
+
+Until **Block out walls** has a current result, **Place loot** waits with "Complete level/blockout
+first"; here the walls are already built, so it is ready. The worker reads the upstream file with
+`context.dependencyFile(dependsOn("level", "blockout"), "walls.txt")`, checked against its hash. The
+upstream attempt is part of the downstream fingerprint, so editing `plan` makes the placement stale
+until both stages are rebuilt. `showStudyBuilds("level")` would show the walls' own card. A gate can
+judge another runner's result the same way, by naming `dependsOn(runner, stage)` in its
+`dependencies`. A cycle of dependencies across runners is refused with an error on the card.
+
 ## The library's studies
 
 StackSL, RectSL and stack.auto are built from the same pieces a `SourceFramesStudy` is, and the
@@ -381,7 +525,7 @@ function study keeps its revisions through the first of them:
 | Piece | What it does |
 | --- | --- |
 | `SourceStudy` | Revisions on disk, the revision-and-hash guard, compare-and-swap publication into the box |
-| `StudyBuilds` | Asynchronous derived stages, frozen inputs, dependency invalidation, progress and retained diagnostics |
+| `StudyBuilds` | Asynchronous derived stages, frozen inputs, gates, per-attempt requests, dependency invalidation across runners, progress and retained diagnostics |
 | `StudyFrames` | Where frames come from: a CPU reference, or the GPU of a running window |
 | `StudyEvidence` | Measurements and the sheets the pictures are laid out on |
 | `StudyCompare` | Before/after/difference and sweeps |
