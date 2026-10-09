@@ -198,6 +198,8 @@ class ToolMetaPinTest {
                 "ReviewGeometryNoteRequest",
                 "ReportGeometryFindingRequest",
                 "InspectGeometryViewRequest",
+                // New on 2026-10-09: which kit a document runs; asked rarely, when a provider seems out of date.
+                "InspectKitRequest",
             ),
             metas.filterValues { it.exposure == ToolExposure.DEFERRED }.keys
         )

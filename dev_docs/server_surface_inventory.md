@@ -285,7 +285,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 51 |
-| `agent_backdoor.kt` | 23 |
+| `agent_backdoor.kt` | 24 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 10 |
@@ -359,6 +359,7 @@ in-route same-site check stops a web page.
 | `agent-open-playwright` | `agent_backdoor.kt` |
 | `agent-playwright-input` | `agent_backdoor.kt` |
 | `agent-run-jvm-main` | `agent_backdoor.kt` |
+| `agent-save-document` | `agent_backdoor.kt` |
 | `agent-set-property` | `agent_backdoor.kt` |
 | `agent-snapshot` | `agent_backdoor.kt` |
 | `agent-task` | `agent_backdoor.kt` |

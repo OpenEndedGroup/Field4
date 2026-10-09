@@ -316,6 +316,9 @@ class FieldGraphTools(
         host.onOwner(info) { afield.stdlib.studyBuildBindings(info.boxes.values + info.root) }
     }, findings = { runs -> host.onOwner(info) { afield.stdlib.studyBuildFindings(info.boxes.values + info.root, runs) } }) }
 
+    /** [InspectKitRequest]: which kit this document runs and what differs from it (KitTools.kt). */
+    fun kit(q: InspectKitRequest): KitToolResult = inspectKit(q) { action -> host.onOwner(info, action) }
+
     companion object {
         /**
          * The one way every AI4 path builds its graph tools: the editor chat passes the box and

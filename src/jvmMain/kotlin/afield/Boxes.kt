@@ -596,7 +596,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "ai4_chat_suspension",
             // The same conversation as a tree with checkpoints (afield.ai.core.AiSessionTree).
             "ai4_session",
-            "fileManagerAccessHistory"
+            "fileManagerAccessHistory",
+            // The role a box plays in a kit (afield.stdlib.Kits); a kit's other properties are declared by its record.
+            "kitRole"
         )
 
         var ioSeparateProperties = mutableMapOf(

@@ -1266,6 +1266,8 @@ class SavingContext {
 
     fun readEdnTransfers(directory: String): List<BoxTransferEdn> {
         val rootValue = Edn.read(File(directory, METADATA_EDN).readText(), ednCustom)
+        // A document on a kit saves its kit's properties as sidecars (afield.stdlib.Kits).
+        afield.stdlib.Kits.declareRecorded(File(directory))
         val boxesValue = when (rootValue) {
             is Map<*, *> -> {
                 // Merge persistent properties from the document with the current global set
