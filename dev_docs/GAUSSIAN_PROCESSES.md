@@ -1,6 +1,6 @@
 # Gaussian process implementation and validation
 
-The public tutorial is `public/docs/gaussian_processes.md`, dedicated to David J. C. MacKay.
+The public tutorial is `public/docs/gaussian_processes.md`.
 
 ## Model and ownership
 
