@@ -43,8 +43,9 @@ class DocsAudioProvenanceGuardTest {
      * The *majority* moved, though, and the direction is worth recording rather than just
      * re-typing: it was 5 of 15 stand-in until `pattern_language.md` grew a mini-notation card per
      * form of the notation, twenty-six clips of `patVoice` in one commit. The stand-in was then
-     * 40 of 54, then 40 of 74, and is now 42 of 76; `sound.md`'s section had to stop arguing that the stand-in is
-     * *not* what you hear on most of the site. A count pinned here and stated in prose there is exactly
+     * 40 of 54, then 40 of 74, then 42 of 76; `sound.md`'s section had to stop arguing that the stand-in is
+     * *not* what you hear on most of the site. On 2026-10-09 those twenty-six cards moved to the pinned
+     * Dirt-Samples, and the stand-in fell to 16 of 76. A count pinned here and stated in prose there is exactly
      * the pair that drifts, which is why the assertion names the page.
      */
     @Test
@@ -59,8 +60,8 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 42,
-            Origin.DIRT_SAMPLES to 10,
+            Origin.STAND_IN_SYNTH to 16,
+            Origin.DIRT_SAMPLES to 36,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 18,
             Origin.FAUST to 3,

@@ -103,7 +103,8 @@ object DocsAudioProvenance {
      */
     val ORIGIN_BY_RENDERER: Map<String, Origin> = mapOf(
         "afield.four.synth.PatSoundDocs" to Origin.STAND_IN_SYNTH,
-        "afield.four.synth.PatMiniNotation" to Origin.STAND_IN_SYNTH,
+        // The mini-notation cards: strict patRenderStereoDirt from the pinned subset since 2026-10-09.
+        "afield.four.synth.PatMiniNotation" to Origin.DIRT_SAMPLES,
         // CaSoundDocs plays its CA rows through patRenderStereoDirt, strictly from the pinned subset.
         "afield.four.synth.CaSoundDocs" to Origin.DIRT_SAMPLES,
         // PatSynthDocs drives patVoice through a PatSynthBank rendered block by block.
