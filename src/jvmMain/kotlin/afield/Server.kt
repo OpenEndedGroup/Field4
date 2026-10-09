@@ -3964,6 +3964,10 @@ class Server {
                             call.respond(AiToolUseImprovementMonitor.status())
                         }
 
+                        get("/api/ai-tool-use-improvement/view") {
+                            call.respond(AiToolUseImprovementMonitor.view())
+                        }
+
                         post("/api/ai-tool-use-improvement") {
                             try {
                                 val request = runCatching { call.receive<AiToolUseImprovementRunRequest>() }

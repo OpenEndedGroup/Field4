@@ -221,7 +221,19 @@ data class AiToolUseImprovementStatus(
     val message: String = "",
     val logTail: String = "",
     val reportMarkdown: String = "",
-    val dryRunPatch: String = ""
+    val dryRunPatch: String = "",
+    val transcriptPath: String = "",
+    /** Changes whenever the transcript, report or patch does: the page fetches [AiToolUseImprovementView] again then. */
+    val viewStamp: String = ""
+)
+
+/** The run's transcript, report and patch as the AI4 chat panel renders them (aiChatHtml.kt), for `ai-chat-view.html`. */
+@Serializable
+data class AiToolUseImprovementView(
+    val viewStamp: String = "",
+    val transcriptHtml: String = "",
+    val reportHtml: String = "",
+    val patchHtml: String = ""
 )
 
 @Serializable
