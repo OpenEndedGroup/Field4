@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="petri_sculpture_trace" index="1" -->
 
 ```edn [field-box id="petri_sculpture_trace" role="properties"]
-{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 164 "characters" 6904 "sha256" "77487f871d87717f20035a4c4492e01d83f0b116a27d37cccc0943a8baa4ebfa"}]}
+{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 172 "characters" 7256 "sha256" "a4f76e086c448f30a39a99ff8d253dd3db13744eb901634d93b3c2eea0d88aee"}]}
 ```
 
 ```kotlin [field-property box="petri_sculpture_trace" name="code" path="petri_sculpture_trace_code_.kt"]
@@ -193,6 +193,14 @@ tracer.maxBounces = 10
 tracer.exposure = 0.9f
 tracer.environmentRotation = 2.1f
 tracer.indirectClamp = 12f
+// The sky still lights the glass and metal, but the camera sees black behind the
+// sculpture, and the floor fades into black fog past it.
+tracer.showEnvironment = false
+tracer.background = Vector4f(0f, 0f, 0f, 1f)
+tracer.fogColor = Vector3f(0f, 0f, 0f)
+tracer.fogStartDistance = span * 0.95f
+tracer.fogDensity = 4f / span
+tracer.fogBackground = true
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {

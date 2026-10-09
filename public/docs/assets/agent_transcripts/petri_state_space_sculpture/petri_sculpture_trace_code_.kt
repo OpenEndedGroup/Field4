@@ -156,6 +156,14 @@ tracer.maxBounces = 10
 tracer.exposure = 0.9f
 tracer.environmentRotation = 2.1f
 tracer.indirectClamp = 12f
+// The sky still lights the glass and metal, but the camera sees black behind the
+// sculpture, and the floor fades into black fog past it.
+tracer.showEnvironment = false
+tracer.background = Vector4f(0f, 0f, 0f, 1f)
+tracer.fogColor = Vector3f(0f, 0f, 0f)
+tracer.fogStartDistance = span * 0.95f
+tracer.fogDensity = 4f / span
+tracer.fogBackground = true
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
