@@ -117,6 +117,46 @@ Public docs: `public/docs/qualified_sources.md` ("Change a rule without breaking
 rule through a candidate, a failing replay, a passing one, a proposed rebaseline and its approval, with captures of
 the replay card and the approval view.
 
+**Status (2026-10-09): done, in one landing** (`qualified-sources`). `QualifiedSource` and `Box.qualifiedSource` are
+in `src/jvmMain/kotlin/afield/stdlib/QualifiedSource.kt`, tests in `QualifiedSourceTest.kt`, and the page is in the
+nav after the long-builds page. The page's last capture is a real press of Approve by the docs runner (`capture="ui"`
+with `assets/transcripts/qualified_sources_approval.yaml`). Built on 3b: the replay is a `studyBuilds` runner named
+after the source, the candidate goes in as the attempt's `request`, and `StudyBuilds.await` orders the docs steps.
+Where it differs from the wording above:
+
+- `QualifiedSource` makes its two `SourceStudy`s rather than being handed them: the rule in the box property
+  `<name>Rule`, the fixtures in `<name>Fixtures`. The rule's `admit` has to see the replay, and the fixtures' `admit`
+  has to know which operation is writing, so each refuses any edit not made by `apply`, `retainFixture`, an approval or
+  `upgradeChecks` (a thread-local admission set by those methods). A first launch makes revision r1 of each from the
+  seed.
+- A fixture is an exact input text and a recorded outcome (any JSON value). The replay function prepares a candidate
+  once and returns a runner for one input: return the outcome, or throw to hold it. Each fixture comes out `SAME`,
+  `CHANGED` or `HELD`. Only a replay whose sole failures are `CHANGED` can be proposed; a held fixture never can. A
+  retained failing attempt records its failure as the outcome, so the candidate that fixes it shows that fixture as
+  changed and a person approves the new outcome. The house kit's diagnostic-subset replays were not carried over:
+  every replay covers the whole corpus.
+- The control is a `QualifiedControl(name, input, messageContains)`. It passes when its replay throws with that text.
+- A passing replay is a `SUCCEEDED` attempt with `replay.json` as its result. A failing one is `FAILED` with problem
+  code `replay-held` or `replay-changed`, and the report's hash in the problem details, because a failed attempt's
+  files are not recorded as artifacts.
+- The candidate's "baseline audit sources" are `QualifiedCandidate.checks`: the frozen part of the applied rule plus
+  the frozen copy, handed to the replay as `QualifiedReplay.checks`. Admission also refuses a candidate whose base is
+  no longer the live rule, so a stale apply says so instead of hitting `SourceStudy`'s generic conflict.
+- `FrozenRegion.files(...)`, `.after(marker)` and `.baseline { current }`. A copy's staleness (it differs from
+  `current()`) is reported on the card and in `inspect` as `checksNotice`, without blocking. The upgrade path is
+  `upgradeChecks(by, reason)`: the card's **Accept the current checks** button, or a migration in box code. The same
+  call accepts an edit to the frozen part of the live rule made outside `apply`, which otherwise blocks new
+  candidates.
+- "Only a person": no tool approves or upgrades; `approve` is internal, reached from the proposal's Approve button, and
+  both refuse inside a box tool call (`currentToolArgs`). Built-in tools such as `EvaluateKotlinExpression` set no such
+  marker, so code an agent runs that way could still call `upgradeChecks`: the guarantee is the tool surface. Field
+  has no user identity, so `approvedBy` is the OS account Field runs under, beside `approvedVia` and `approvedAt`.
+- Added `QualifiedSource.evaluateKotlin(source)`, for a rule written in Kotlin (a fresh engine; compiled in the replay
+  worker in under a second on this machine).
+- Two smoke-tool fixes the page needed: `discover_field_tests.py` now drops `:::fold` markers as the docs runner does
+  (a folded fence ran as "Expecting an identifier"), and a `FIELD_TEST` can say `waitOutput` to wait for output that
+  arrives after `run` returns, since `sleep` records no events (`SMOKE_TEST_ANNOTATION_STRATEGY.md`).
+
 ### 4b. Kits: one machine, many documents
 
 A kit is the set of providers, assets and box-held sources every document of a kind receives:

@@ -577,6 +577,10 @@ def split_markdown_sections(body: str, *, body_start_line: int) -> dict[str, dic
                 current_lines = []
                 current_line = body_start_line + offset + 1
                 continue
+            # Fold markers collapse setup on the page; the docs runner drops the marker and runs
+            # what it encloses (public/docs_hooks.py, is_marker_line), and so does a smoke.
+            if candidate == "endfold" or candidate == "fold" or candidate.startswith("fold "):
+                continue
         current_lines.append(line)
     if current_name is not None:
         sections[current_name] = {

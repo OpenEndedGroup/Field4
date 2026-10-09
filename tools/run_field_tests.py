@@ -1658,6 +1658,18 @@ def build_backdoor_command(
                     ]
                 )
             )
+        elif test.get("waitOutput"):
+            # `waitOutput: {contains, channel?, kind?}`: wait for output that arrives after the run has
+            # returned, such as a build card a worker redraws. `sleep` records no events, so a fixed
+            # settle could never show such output to `expect.outputContains`; this returns the match.
+            wanted = test.get("waitOutput") or {}
+            if not isinstance(wanted, dict) or not str(wanted.get("contains") or ""):
+                raise RunnerError(f"{test.get('id')}: waitOutput needs 'contains'")
+            line = ["wait-output", "@last", "--kind", str(wanted.get("kind") or "all"), "--contains", str(wanted["contains"]),
+                    "--timeout", str(timeout)]
+            if wanted.get("channel"):
+                line += ["--channel", str(wanted["channel"])]
+            commands.append(shlex.join(line))
         elif wait_seconds > 0:
             # Tests without a concrete readiness artifact still need a bounded
             # settle period. Image-producing tests wait for the freshly deleted
