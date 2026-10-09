@@ -91,7 +91,7 @@ request until the builds are done. Compare `WaitStudyBuildRequest`, which an age
 watch a job from inside its turn: each call returns after at most fifteen minutes, and every call
 after that is another model request, which sends the whole conversation again.
 
-On OpenAI and OpenRouter, every request Field makes is recorded, with its time, in
+Every request Field makes to OpenAI, OpenRouter or Anthropic is recorded, with its time, in
 `~/.afield/logs/ai_usage/`. `python3 tools/ai_usage.py --hours 1` counts them by document, so you
 can check the cost of a long build for yourself.
 
