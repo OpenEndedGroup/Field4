@@ -89,7 +89,8 @@ class AiRateLimitRecoveryTest {
     }
 
     /** Anthropic's failures, retried as its SDK retried them before the bridge turned the SDK's retries off. */
-    @Test fun anthropicFailuresAreRetriedAsItsSdkRetriedThem() {
+    @Test
+    fun anthropicFailuresAreRetriedAsItsSdkRetriedThem() {
         fun body(type: String) = JsonValue.from(mapOf("type" to "error", "error" to mapOf("type" to type, "message" to "PRIVATE")))
         fun headers(vararg pairs: Pair<String, String>) = Headers.builder().apply { pairs.forEach { (k, v) -> put(k, v) } }.build()
         fun limited(vararg pairs: Pair<String, String>) = RateLimitException.builder().headers(headers(*pairs)).body(body("rate_limit_error")).build()
