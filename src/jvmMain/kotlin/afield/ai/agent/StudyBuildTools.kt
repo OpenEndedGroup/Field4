@@ -11,6 +11,7 @@ import afield.ai.core.LlmProgressUpdate
 import afield.stdlib.BoxStudyBuildBinding
 import afield.stdlib.StudyBuildArtifact
 import afield.stdlib.StudyBuildRecord
+import afield.stdlib.StudyBuilds
 import afield.stdlib.StudyBuildStatus
 import afield.stdlib.StudyStageState
 import afield.stdlib.StudyBuildFinding
@@ -45,6 +46,14 @@ data class StartStudyBuildRequest(val boxId: String, val name: String, val stage
 @JsonClassDescription("Request cancellation of a specific build. Returns success=true once the request is recorded; an unknown runner or job fails with success=false. Use it when a running build is no longer wanted, e.g. jobId = `job-3` after its inputs changed. Publication is revoked; a running native operation may need time to finish. Poll the same job until terminal instead of treating a cancellation request as proof it stopped. Previous successful results and attempt history are retained.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.CONTROL_RUNTIME, ToolEffect.FILESYSTEM_WRITE])
 data class CancelStudyBuildRequest(val boxId: String, val name: String, val jobId: String)
+
+@JsonClassDescription("Delete build attempts this document no longer needs, across all of its build runners, to free disk space. Returns, per runner, how many attempts were kept and deleted and the bytes freed, plus any pins that name no attempt. Kept: each stage's current result, latest attempt and latest success, running builds, pinned jobIds, and every attempt those depend on, were gated on or resumed from. Use it when attempt history has grown large after many rebuilds: call with apply=false to see what would go, then apply=true to delete it. A deleted attempt cannot be inspected or resumed from again. A read-only document refuses it. e.g. pins = [`<jobId to keep>`], apply = false.")
+@AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ, ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
+data class PruneStudyBuildsRequest(
+    @JsonPropertyDescription("Job IDs to keep even when nothing else needs them, such as a result to compare against later.")
+    val pins: List<String> = emptyList(),
+    @JsonPropertyDescription("false (the default) reports what would be deleted and deletes nothing; true deletes it.")
+    val apply: Boolean = false)
 
 data class StudyBuildToolResult(val success: Boolean, val message: String, val details: Map<String, Any?> = emptyMap()) : SummarisesForToolLog {
     override fun toolLogSummary() = "success=$success $message"
@@ -181,6 +190,19 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
         StudyBuildToolResult(true, job.message, jobDetails(binding, job))
     }
 
+    fun prune(q: PruneStudyBuildsRequest): StudyBuildToolResult = guarded {
+        if (q.apply) check(!info.readOnly && !ReadOnlyDocuments.global) { "This document is read-only" }
+        val runners = bindings().distinctBy { it.builds }
+        val reports = StudyBuilds.prune(runners.map { it.builds }, q.pins.toSet(), dryRun = !q.apply)
+        val entries = runners.zip(reports).map { (binding, report) -> mapOf("boxId" to binding.owner.id, "name" to binding.name,
+            "kept" to report.kept.size, "deleted" to report.deleted.size, "freedBytes" to report.freedBytes) }
+        val count = reports.sumOf { it.deleted.size }
+        val size = "%.1f MB".format(java.util.Locale.ROOT, reports.sumOf { it.freedBytes } / 1e6)
+        StudyBuildToolResult(true, if (q.apply) "Deleted $count attempts, freeing $size."
+            else "Would delete $count attempts, freeing $size; call again with apply=true to delete them.",
+            mapOf("runners" to entries, "unknownPins" to q.pins.filter { pin -> reports.none { pin in it.kept } }))
+    }
+
     // Frozen source remains in input.json. Ordinary orchestration must not resend it to the model.
     private fun jobDetails(binding: BoxStudyBuildBinding, job: StudyBuildRecord): Map<String, Any?> {
         val stage = binding.builds.stages().first { it.id == job.stage }
@@ -221,4 +243,5 @@ internal fun registerStudyBuildTools(tools: ToolRegistry) {
     tools.register(WaitStudyBuildRequest::class.java, { it.fieldGraph != null }) { ctx, q -> ctx.fieldGraph!!.studyBuilds.wait(q, ctx.reportProgress) }
     tools.register(StartStudyBuildRequest::class.java, { it.fieldGraph != null }) { ctx, q -> ctx.fieldGraph!!.studyBuilds.start(q, ctx.reportProgress) }
     tools.register(CancelStudyBuildRequest::class.java, { it.fieldGraph != null }) { ctx, q -> ctx.fieldGraph!!.studyBuilds.cancel(q) }
+    tools.register(PruneStudyBuildsRequest::class.java, { it.fieldGraph != null }) { ctx, q -> ctx.fieldGraph!!.studyBuilds.prune(q) }
 }

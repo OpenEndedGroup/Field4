@@ -188,6 +188,7 @@ class ToolMetaPinTest {
                 "WaitStudyBuildRequest",
                 "StartStudyBuildRequest",
                 "CancelStudyBuildRequest",
+                "PruneStudyBuildsRequest",
                 "StyleGeometryPartsRequest",
                 "ReadGeometryReviewsRequest",
                 "ReadGeometryNoteRequest",

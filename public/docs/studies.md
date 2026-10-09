@@ -623,6 +623,53 @@ scratch directory, pass `exclusive = true` to `studyBuilds`. The runner then bui
 time and refuses a start while another build runs, and the card says which build the others are
 waiting for.
 
+### Delete attempts you no longer need
+
+Every attempt keeps its files, so a stage that is rebuilt often fills the disk. `builds.prune()`
+deletes the attempts nothing needs any more. It keeps each stage's current result, its latest
+attempt and its latest success, every build still running, the attempts you pin, and every attempt
+those name: what they were built from, what their gates judged, and what they continued from. This
+box builds five versions of a level, pins the first, and prunes the rest:
+
+<!--
+FIELD_TEST
+id: docs.studies.prune
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "A dry run would delete 3 attempts"
+    - "Pruning deleted 3"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/prune.png" alt="the main output channel: 'A dry run would delete 3 attempts. Pruning deleted 3 and freed' followed by about 1900 kB, 'keeping 2: the current walls and the pinned first version.'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" wait-output-contains="Pruning deleted" capture="box" embed=true timeout="90" name="studies-prune" w="760" h="120"}
+:::static
+val builds = studyBuilds("walls", listOf(
+    StudyBuildStage("mesh", "Mesh the walls", "mesh-v1", setOf("rooms")) { c ->
+        c.file("walls.obj").writeText("v 0 0 0\n".repeat(20_000 * c.inputs.getValue("rooms").toInt()))
+        StudyBuildProduct(listOf("walls.obj"))
+    })) { mapOf("rooms" to thisBox.getPropertyRaw("rooms", "2").toString()) }
+
+// Five versions of the level, each built once.
+val built = (2..6).map { rooms ->
+    thisBox.setPropertyRaw("rooms", "$rooms")
+    builds.await(builds.start("mesh", builds.stages().single().fingerprint!!).id)
+}
+val preview = builds.prune(pins = setOf(built.first().id), dryRun = true)
+val pruned = builds.prune(pins = setOf(built.first().id))
+markdown("main", "A dry run would delete ${preview.deleted.size} attempts. Pruning deleted ${pruned.deleted.size} " +
+    "and freed ${pruned.freedBytes / 1000} kB, keeping ${pruned.kept.size}: the current walls and the pinned first version.")
+```
+
+A dry run (`dryRun = true`) reports what would go and deletes nothing. A deleted attempt is gone
+from the history with its files, so it can no longer be inspected or continued from; pin anything
+you want to compare against later. Runners that depend on each other's results are pruned together
+with `StudyBuilds.prune(listOf(level, loot))`, so the walls a current placement was built from are
+kept even after the level has been rebuilt. AI4 prunes every runner in the document with
+`PruneStudyBuildsRequest`: with `apply=false`, the default, it reports what would be deleted, and
+with `apply=true` it deletes it.
+
 ## The library's studies
 
 StackSL, RectSL and stack.auto are built from the same pieces a `SourceFramesStudy` is, and the
@@ -631,7 +678,7 @@ function study keeps its revisions through the first of them:
 | Piece | What it does |
 | --- | --- |
 | `SourceStudy` | Revisions on disk, the revision-and-hash guard, compare-and-swap publication into the box |
-| `StudyBuilds` | Asynchronous derived stages, frozen inputs, gates, per-attempt requests, dependency invalidation across runners, progress and retained diagnostics |
+| `StudyBuilds` | Asynchronous derived stages, frozen inputs, gates, per-attempt requests, dependency invalidation across runners, resuming, external programs, progress, retained diagnostics and pruning |
 | `StudyFrames` | Where frames come from: a CPU reference, or the GPU of a running window |
 | `StudyEvidence` | Measurements and the sheets the pictures are laid out on |
 | `StudyCompare` | Before/after/difference and sweeps |
