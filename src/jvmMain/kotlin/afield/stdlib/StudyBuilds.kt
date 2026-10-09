@@ -36,6 +36,9 @@ data class StudyBuildDependency(val jobId: String, val fingerprint: String, val 
 /** Files an attempt copied from the earlier attempt [jobId] with [StudyBuildContext.resumeFrom], as copied. */
 data class StudyBuildResume(val jobId: String, val files: List<StudyBuildArtifact>)
 
+/** What [StudyBuilds.prune] kept and deleted in the runner at [directory], and the bytes the deleted attempts held. */
+data class StudyBuildPruneReport(val directory: File, val kept: List<String>, val deleted: List<String>, val freedBytes: Long, val dryRun: Boolean)
+
 /**
  * Durable record of one attempt, including the exact named input values and dependency results.
  * [request] is what [StudyBuilds.start] was asked for beyond the design, and is part of [fingerprint].
@@ -348,6 +351,46 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
             if (record.status !in ACTIVE || System.nanoTime() >= deadline) return record
             Thread.sleep(minOf(20L, ((deadline - System.nanoTime()) / 1_000_000).coerceAtLeast(1L)))
         }
+    }
+
+    /**
+     * Delete the attempts nothing needs any more, with their files. Kept are each stage's current
+     * result, its latest attempt and its latest success, every attempt still queued or running, every
+     * attempt in [pins], and every attempt those name: their dependencies, the results their gates
+     * judged, the attempts they resumed from, and job IDs among their inputs and requests. Attempt
+     * directories with no record are deleted too. With [dryRun] nothing is deleted, and the report says
+     * what would be. Runners that name each other's attempts are pruned together with the companion [prune].
+     */
+    fun prune(pins: Set<String> = emptySet(), dryRun: Boolean = false): StudyBuildPruneReport =
+        prune(listOf(this), pins, dryRun).single()
+
+    /** Records and heads as they were when a prune read this runner. */
+    private class PruneView(val records: List<StudyBuildRecord>, val heads: Collection<String>)
+
+    private fun pruneView(): PruneView = synchronized(monitor) { ensureOpen(); PruneView(records.values.toList(), heads.values.toList()) }
+
+    private fun pruneRoots(view: PruneView): Set<String> = buildSet {
+        addAll(view.heads)
+        view.records.groupBy { it.stage }.values.forEach { attempts ->
+            add(attempts.last().id)
+            attempts.lastOrNull { it.status == StudyBuildStatus.SUCCEEDED }?.let { add(it.id) }
+        }
+        view.records.filter { it.status in ACTIVE }.forEach { add(it.id) }
+    }
+
+    private fun deleteUnneeded(keep: Set<String>, dryRun: Boolean): StudyBuildPruneReport = synchronized(monitor) {
+        ensureOpen()
+        // An attempt started since the prune read this runner stays, with what it names here.
+        val kept = keep + closure(pruneRoots(PruneView(records.values.toList(), heads.values.toList()))) { records[it] }
+        val unrecorded = File(directory, "attempts").listFiles().orEmpty().filter { it.isDirectory && it.name !in records }
+        val deleted = records.keys.filter { it !in kept }
+        val freed = deleted.sumOf { directoryBytes(attemptDirectory(it)) } + unrecorded.sumOf(::directoryBytes)
+        if (!dryRun) {
+            deleted.forEach { records.remove(it); attemptDirectory(it).deleteRecursively() }
+            unrecorded.forEach { it.deleteRecursively() }
+            persist()
+        }
+        StudyBuildPruneReport(directory, records.keys.filter { it in kept }, deleted, freed, dryRun)
     }
 
     /** Signal cancellation. A running attempt remains running until its worker actually returns. */
@@ -663,6 +706,39 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
         // The runners this thread is reading, so a dependency cycle across runners is refused instead of recursing.
         private val READING = ThreadLocal.withInitial { mutableSetOf<StudyBuilds>() }
         private fun now(): String = Instant.now().toString()
+
+        /**
+         * [StudyBuilds.prune] several runners together, so an attempt one runner keeps also keeps the
+         * attempts it names in another (a `dependsOn` result, a job ID in an input). One report per runner.
+         */
+        fun prune(runners: Collection<StudyBuilds>, pins: Set<String> = emptySet(), dryRun: Boolean = false): List<StudyBuildPruneReport> {
+            val views = runners.distinct().associateWith { it.pruneView() }
+            val byId = views.values.flatMap { it.records }.associateBy { it.id }
+            val keep = closure(pins + views.flatMap { (runner, view) -> runner.pruneRoots(view) }, byId::get)
+            return views.keys.map { it.deleteUnneeded(keep, dryRun) }
+        }
+
+        /** [roots] and every attempt they name, transitively, among the records [find] knows. */
+        private fun closure(roots: Set<String>, find: (String) -> StudyBuildRecord?): Set<String> {
+            val keep = roots.filterTo(mutableSetOf()) { find(it) != null }
+            val frontier = ArrayDeque(keep)
+            while (frontier.isNotEmpty()) {
+                val record = find(frontier.removeFirst()) ?: continue
+                for (id in references(record)) if (find(id) != null && keep.add(id)) frontier.add(id)
+            }
+            return keep
+        }
+
+        /** The attempts [record] names: dependencies, gate evidence, resumed attempts, and job IDs in its inputs or request. */
+        private fun references(record: StudyBuildRecord): Set<String> = buildSet {
+            record.dependencies.values.forEach { add(it.jobId) }
+            record.gates.values.forEach { results -> results.values.forEach { add(it.jobId) } }
+            record.resumedFrom.forEach { add(it.jobId) }
+            JOB_ID.findAll(canonicalMapper.writeValueAsString(listOf(record.inputs, record.request))).forEach { add(it.value) }
+            remove(record.id)
+        }
+
+        private fun directoryBytes(directory: File): Long = directory.walkTopDown().filter { it.isFile }.sumOf { it.length() }
     }
 }
 
