@@ -146,6 +146,10 @@ def automation_server_environment(
         # Test clients register throwaway commands (the chord regression's `cmd+k`), and the server
         # appends every command it sees to the keybindings file; keep that off ~/.afield.
         "AFIELD_KEYBINDINGS_FILE": str(repo_root / "build" / "field-automation-keybindings.yaml"),
+        # The documentation notes store is the revision agents' queue and defaults to the user's
+        # ~/.afield/docs-annotations.json. A capture that writes a note through the panel, or reads
+        # /docs-pass.html, must see this checkout's own notebook instead.
+        "AFIELD_DOCS_ANNOTATIONS_STORE": str(repo_root / "build" / "field-automation-docs-annotations.json"),
         # Set over the inherited environment, not under it: an exported path in the agent's shell
         # is usually the one the user's own Field writes to.
         **automation_log_environment(repo_root),
