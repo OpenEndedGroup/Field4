@@ -275,3 +275,47 @@ the state after one `level.edit`, and the corpus after that edit. Where it diffe
 Every page follows `dev_docs/agents/DOCS_WRITING_RULES.md`: written for the user, the common case first, code
 introduced before it is shown, real captures only. Every API lands with tests. Captures come from the docs runner,
 never hand-made.
+
+## Step 5: the house machine adopts the core versions
+
+Agreed with Marc on 2026-10-10, once steps 3 and 4 had landed. The private house machine (`~/house-machine`) still
+runs its own copies of everything above, on a host pinned to a Field from 2026-10-05. Step 5 moves it onto the core
+versions. It also takes in plan steps 1 and 2, which were never done. The aim is a private repository that holds
+mostly house content: the domain providers, the Python solvers, the corpus houses and the gallery.
+
+Order, one session for each or for two of them together:
+
+1. **Hosts to main.** Move the house, gallery and corpus hosts to current main. This re-pins
+   `backend/backend-identity.json` once, which makes every house's builds stale, so do it with the houses idle and
+   rebuild them without the model. Retire the workarounds that main fixed:
+   - the driver's rewind-and-resend for the round cap (2988e8fcf, 553ecf50e);
+   - `capture_watchdog.sh` (02dc672e0);
+   - the box-recreate step in `src/new_document.py` (08b5fe784).
+2. **Kits and identity.** Replace `kit/manifest.json` and its scripts with `kit.json` and `tools/field_kit.py`. The
+   scripts are `rehash_kit.py`, `stage_kit_manifest.py`, `migrate_document.py`, `activate_document.py`,
+   `publish_kit_template.py` and `template_payload.py`. Replace `backend-identity.json` with `RuntimeIdentity`, and
+   the `house.kit` tool with `InspectKitRequest` / `showKit()`. Every later migration rides on this step.
+3. **StudyBuilds patterns:**
+
+   | Private pattern | Core version |
+   | --- | --- |
+   | fabrication's hand-rolled gates ("cleared route contacts", "loop-free routes") | `StudyBuildGate` |
+   | `houseCoordinationRequest` / `houseRouteBuildRequest` box properties | per-attempt requests |
+   | `freezeCoordinationResume` | `resumeFrom(…, sameDesign = true)` |
+   | the external worker loop, written five times | `runProcess` |
+   | job-id dependencies between runners | `dependsOn` |
+   | whole-provider fingerprints | code identity |
+   | `prune_studies.py` | `PruneStudyBuildsRequest` |
+
+4. **Qualified sources.** Move the recipe, routing and coordination candidate loops to `QualifiedSource`. Every
+   existing fixture must replay with its recorded outcome unchanged. Any change goes to Marc as a rebaseline
+   proposal, never approved by an agent.
+5. **Turns that wait.** Briefs use `AwaitStudyBuildsRequest`. The driver keeps only rate-limit retries, host
+   restarts and the corpus lanes. The corpus runner and `rebuild_house.py` use `StudyBuilds.await`.
+6. **Chat archive and rubric.** Use `chatlog.*` in place of the driver's history parsing. Bring the kit's 106 box
+   tools up to `dev_docs/ai/AI4_TOOL_DESCRIPTIONS.md`, with an `agent-eval` before and after.
+7. **Verification.** Run the corpus base set and rebuild one house on the new machine. Both must reach the same
+   verdicts as before (`docs/EXPERIMENT_FACTS.md` in the private repo records them).
+
+Every house migrates once to the core-based kit. A migration refuses a house with local edits, so house-machine-12
+(off-kit since 2026-10-07) needs Marc's decision.
