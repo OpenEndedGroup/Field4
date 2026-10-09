@@ -133,6 +133,44 @@ which kit its document runs.
 Public docs: `public/docs/kits.md` ("Give many documents the same machine"). Cover making a kit from a document,
 publishing it as a starting point, migrating a document, and what a migration refuses and why.
 
+**Status (2026-10-09): built, in one landing** (`kits/4b`). The kit format, the three-way comparison and the kit
+card are `afield/stdlib/Kits.kt`; the pins are `afield/stdlib/RuntimeIdentity.kt` (built on `classIdentity`);
+the agent tool is `afield/ai/agent/KitTools.kt`; the commands are `tools/field_kit.py`. Tests: `KitsTest`,
+`RuntimeIdentityTest`, `KitToolsTest` (JVM) and `tools/test_field_kit.py`; the page's figures and quoted command
+output come from `tools/capture_kits.py`, which runs every command on the page against a Field it starts. Where
+it differs from the wording above:
+
+- The agent tool is `InspectKitRequest` in a `kit` namespace (deferred), not `kit.inspect`: a core tool is named
+  by its request class, and only box-registered tools can have dotted names. `showKit()` draws the same
+  inspection as a card in a box.
+- The comparison lives in one place, `Kits.inspect`, used by the agent tool, the card and every
+  `field_kit.py` command (they call `InspectKitRequest` through the backdoor); `field_kit.py` only carries out
+  what it says. So what the agent is told a migration would refuse is what the migration refuses.
+- A kit is a directory: `kit.json`, `roles/<role>/<property>.<ext>` and `files/<asset>`. A role's code is
+  its `code` property, one of its properties like any source. Every property has a file and a hash; a
+  frozen copy is a property marked `"frozen": true`, usually sharing its original's file. A document records
+  its kit in `files/kit.json` (the kit's manifest plus the kit's directory). The revision is the hash of the
+  manifest without `revision` and `directory`.
+- Added `make` (a kit from a document: `--role KEY=BOX` in launch order, `--source`, `--frozen`, `--asset`),
+  which the page needed and the house machine did by hand. `activate --install` fills a new document;
+  `activate` alone relaunches one that matches its kit.
+- An absent part is a value in the comparison: a role or asset the kit adds is installed (a box is made for a
+  new role), one the document deleted is refused as its own edit, one the kit dropped is left alone.
+- A migration refuses a kit whose `kit.json` is out of step with its files (`rehash` first), and checks for
+  running builds again just before relaunching. A failed launch leaves the old revision recorded; a rerun
+  installs nothing new and finishes.
+- Frozen copies are replaced whenever they differ from the kit, including on a document already at the kit's
+  revision (the 2026-10-09 audit-copy case), and are listed separately in the migration's plan.
+- `RuntimeIdentity` matches a native library by file name and contents; the path is kept only for the message.
+- Field core gained three small things the commands needed: `kitRole` is a persistent property, and a kit's
+  declared properties are registered as persistent sidecars when a document holding a record loads (the
+  autosave loop only saves after a sidecar property changes); the backdoor's `agent-save-document` message
+  (`FieldBackdoor.save_document`) writes the open document now; and `AFIELD_PERSONAL_TEMPLATES_DIR` names the
+  personal templates root (`personalTemplatesDir()` in `workspace/dir.kt`), so a capture can publish into a
+  scratch root.
+- `publish` copies `metadata.edn`, the box sidecars (not AI chat sidecars), the kit's assets and the record;
+  it leaves out backups, history and build attempts, and keeps a replaced starting point under `.replaced/`.
+
 ### 4c. A starting place: "Staged project"
 
 A Welcome starting point, `templates/staged-project/`, small enough to run in seconds and close enough to

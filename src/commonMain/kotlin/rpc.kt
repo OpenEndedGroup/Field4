@@ -930,6 +930,15 @@ data class AgentGetPropertyResponse(
     val message: String = ""
 )
 
+/** Reply to `agent-save-document`: whether the open document was written to [path] now. */
+@Serializable
+data class AgentSaveDocumentResponse(
+    val ok: Boolean,
+    val documentName: String,
+    val path: String,
+    val message: String = ""
+)
+
 @Serializable
 data class AgentWaitFramesResponse(
     val ok: Boolean,

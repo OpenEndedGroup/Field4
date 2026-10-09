@@ -1570,6 +1570,25 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    // Write the open document now, as the autosave loop would, whether or not it thinks anything is pending.
+    // The loop saves only after a sidecar property changes; `tools/field_kit.py` sets plain properties too.
+    handlers["agent-save-document"] = mutableSetOf({ _, reply ->
+        val info = thisSessionInfo.get()
+        val response = if (!info.writesToDisk) {
+            AgentSaveDocumentResponse(false, info.documentName, info.filename,
+                "${info.documentName} is ${if (info.readOnly) "read-only" else "a scratch document"}; nothing was written.")
+        } else try {
+            val pending = info.pendingSidecarSnapshot()
+            SavingContext().save(info.filename, info.boxes.values.toMutableSet().apply { add(info.root) }, inline = true,
+                onComplete = { info.clearSavedSidecars(pending) })
+            AgentSaveDocumentResponse(true, info.documentName, info.filename, "Saved ${info.documentName}.")
+        } catch (e: Exception) {
+            AgentSaveDocumentResponse(false, info.documentName, info.filename, "Could not save ${info.documentName}: ${e.message}")
+        }
+        reply(Message("agent-save-document").payload(response))
+        Handled.yes
+    })
+
     handlers["agent-create-box"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentCreateBox>(message.payload!!)
         val info = thisSessionInfo.get()
