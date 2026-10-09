@@ -1,5 +1,7 @@
 # Gesture board: drawing toward a sound
 
+*To run the examples on this page, open the [audio_ai_gesture_board](agent_transcripts.md#audio_ai_gesture_board) starting point.*
+
 A `gestureBoard` describes a sound you want over time: text prompts for stretches of the piece,
 marked events, and curves for how busy, bright or high it should be. A generator then works toward
 it from a few seconds of an existing recording, producing one candidate per seed.

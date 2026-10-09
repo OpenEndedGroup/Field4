@@ -1798,6 +1798,9 @@ class CanvasGestures(
 	        currentFrontMarkerDefs = null
 	        currentConnectionViewportRect = null
 
+        // The dependency layer draws in the same world coordinates; keep it with the boxes.
+        redrawDependencyLayer()
+
         if (needsFilterFrame && !filterFrameScheduled) {
             filterFrameScheduled = true
             window.requestAnimationFrame {

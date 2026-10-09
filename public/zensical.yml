@@ -349,6 +349,8 @@ nav:
     - Let AI4 Wait for Long Builds: ai4_long_builds.md
     # After the long-builds page: a qualified source's replay is one of those builds.
     - Change a Rule Safely: qualified_sources.md
+    # After the builds pages: a kit carries a document's builders and sources to many documents.
+    - Kits for Many Documents: kits.md
     - AI Tool-Use History: ai_tool_use_history.md
     - Reading Saved AI4 Chats: ai4_chat_archive.md
     - AI Documentation Polish: ai_doc_polish.md

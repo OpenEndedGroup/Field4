@@ -1,5 +1,7 @@
 # Corpus microscope: from recordings to related windows
 
+*To run the examples on this page, open the [audio_ai_corpus_microscope](agent_transcripts.md#audio_ai_corpus_microscope) starting point.*
+
 The corpus microscope finds the stretches of a set of recordings that sound most like a passage you
 pick. It first cuts every recording into overlapping windows of 1.5, 3, 6 and 12 seconds and
 measures each one; the audio files themselves are left unchanged. Distance is made of five

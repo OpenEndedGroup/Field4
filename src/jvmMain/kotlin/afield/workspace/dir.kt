@@ -221,7 +221,19 @@ data class AiToolUseImprovementStatus(
     val message: String = "",
     val logTail: String = "",
     val reportMarkdown: String = "",
-    val dryRunPatch: String = ""
+    val dryRunPatch: String = "",
+    val transcriptPath: String = "",
+    /** Changes whenever the transcript, report or patch does: the page fetches [AiToolUseImprovementView] again then. */
+    val viewStamp: String = ""
+)
+
+/** The run's transcript, report and patch as the AI4 chat panel renders them (aiChatHtml.kt), for `ai-chat-view.html`. */
+@Serializable
+data class AiToolUseImprovementView(
+    val viewStamp: String = "",
+    val transcriptHtml: String = "",
+    val reportHtml: String = "",
+    val patchHtml: String = ""
 )
 
 @Serializable
@@ -918,9 +930,16 @@ fun templatesStartingPointsDir(): File? {
 internal fun documentTemplateRoots(): List<File> = listOfNotNull(
     templatesStartingPointsDir(),
     File(System.getProperty("user.dir"), "src/personal/templates").takeIf { it.isDirectory },
-    File(System.getProperty("afield.personalTemplates.dir")
-        ?: File(System.getProperty("user.home"), ".afield/templates").path).takeIf { it.isDirectory }
+    personalTemplatesDir().takeIf { it.isDirectory }
 ).distinctBy { it.canonicalPath }
+
+/**
+ * Where a person's own starting points live: `~/.afield/templates`, or `-Dafield.personalTemplates.dir`, or
+ * `AFIELD_PERSONAL_TEMPLATES_DIR`. `tools/field_kit.py publish` writes a kit's starting point here.
+ */
+fun personalTemplatesDir(): File = File(System.getProperty("afield.personalTemplates.dir")
+    ?: System.getenv("AFIELD_PERSONAL_TEMPLATES_DIR")?.takeIf { it.isNotBlank() }
+    ?: File(System.getProperty("user.home"), ".afield/templates").path)
 
 internal fun documentTemplateCandidates(): List<WelcomeDirCandidate> = documentTemplateRoots()
     .flatMap { welcomeDirCandidates(it.absolutePath, emptyList()) }

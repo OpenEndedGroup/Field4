@@ -930,6 +930,15 @@ data class AgentGetPropertyResponse(
     val message: String = ""
 )
 
+/** Reply to `agent-save-document`: whether the open document was written to [path] now. */
+@Serializable
+data class AgentSaveDocumentResponse(
+    val ok: Boolean,
+    val documentName: String,
+    val path: String,
+    val message: String = ""
+)
+
 @Serializable
 data class AgentWaitFramesResponse(
     val ok: Boolean,
@@ -2147,6 +2156,52 @@ data class ActorArc(
     val targetUid: String,
     val handlerUid: String,
     val isReply: Boolean = false
+)
+
+/**
+ * The dependency layer's request (`dependency-graph`): `get` the current record, or `clear` it.
+ * Answered with a [DependencyGraph].
+ */
+@Serializable
+data class DependencyGraphRequest(val action: String = "get")
+
+/**
+ * One producer → consumer arrow on the dependency layer: a value [from] holds (or wrote into a shared
+ * box) was read by [to]'s code, under each of [names]. Times are epoch milliseconds on the server.
+ */
+@Serializable
+data class DependencyFlow(
+    val from: String,
+    val to: String,
+    val names: List<String>,
+    val count: Long,
+    /** Reads since the server started; 0 means the arrow is remembered from `dependencies.edn`. */
+    val sessionCount: Long,
+    val lastSeen: Long,
+)
+
+/** A box that asked for [name] and found nothing, with the boxes that supplied it on earlier reads. */
+@Serializable
+data class DependencyMiss(
+    val box: String,
+    val name: String,
+    val count: Long,
+    val sessionCount: Long,
+    val lastSeen: Long,
+    val rememberedSuppliers: List<String> = emptyList(),
+)
+
+/** A document's recorded dependencies, as the dependency layer draws them (`afield.PropertyDependencies`). */
+@Serializable
+data class DependencyGraph(
+    val now: Long,
+    val sessionStartedAt: Long,
+    val enabled: Boolean,
+    val edgeCount: Int,
+    val flows: List<DependencyFlow>,
+    val misses: List<DependencyMiss>,
+    val ok: Boolean = true,
+    val error: String? = null,
 )
 
 // Custom marking menu messages

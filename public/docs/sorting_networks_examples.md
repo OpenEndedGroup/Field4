@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`sorting_networks.kt`](reference/data.md#sorting-networks-kt). Start from [what's already in the box](reference/index.md).*
 
-A sorting network is a fixed list of compare-and-swap steps between wires: the plan is decided ahead of time, and only the data changes. Because the plan is fixed, it can be drawn. This page draws two networks, plots how quickly each one removes disorder from random inputs, and then uses `SortingNetwork.anneal(...)` to search for smaller networks.
+A sorting network is a fixed list of compare-and-swap steps between wires: the plan is decided ahead of time, and only the data changes. Because the plan is fixed, it can be drawn. This page draws two networks, plots how quickly each one removes disorder from random inputs, and then uses `SortingNetwork.anneal(...)` to search for smaller networks. All four examples are boxes in the [sorting_networks](agent_transcripts.md#sorting_networks) starting point.
 
 ## Topology: bubble against odd-even merge
 

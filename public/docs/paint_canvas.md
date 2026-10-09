@@ -334,7 +334,7 @@ Three more tools work the paint without a brush:
   nothing: it cuts the wet paint off down to the dry surface, and the blade keeps what it cut.
 - `canvas.rag(width)` is a cotton rag bunched into a pad. `canvas.wipe(line, rag)` lifts open paint
   along a line in streaks, where the creases of the cloth touch, and `canvas.blot(rag, x, y)` presses
-  it down once. Paint past its gel point no longer comes away. The face of the rag loads up as it
+  it down once. Paint that has begun to set no longer comes away. The face of the rag loads up as it
   works; `canvas.refold(rag)` turns a cleaner face out and `canvas.dampen(rag)` wets it with spirits,
   so that it lifts nearly to the ground.
 - `canvas.spatter(brush, x, y, toward)` flicks a loaded brush. Only the paint the hairs can't hold
@@ -447,12 +447,11 @@ they were.
 - `seed` seeds every brush, pencil mark and crack, and the linen of an oil ground. The same seed and
   the same calls always paint the same picture.
 - `engine` is the version of the simulation to paint with, the newest by default
-  (`PaintCanvas.engine`). An engine never changes: a canvas made with `engine = 2` paints the same
-  calls to the same pixels as Field did before engine 5, and a saved canvas opens with the engine it
-  was painted with. Engine 3 added thinned paint and raw cloth, engine 4 stiff impasto that holds its
-  ridges, hair that clumps in stiff paint, turpentine and oil in the paint, absorbent grounds and a
-  matte or glossy surface, and engine 5 the knife's torn edges. Oil paint dries 2.5 times more slowly
-  from engine 3 on.
+  (`PaintCanvas.engine`). An engine never changes, so the same calls on the same engine always
+  paint the same pixels, and a saved canvas opens with the engine it was painted with. Thinned
+  paint and raw cloth need engine 3 or later; stiff impasto, clumping hair, turpentine, absorbent
+  grounds and matte or glossy surfaces need engine 4; the knife's torn edges need engine 5. Oil
+  paint dries 2.5 times more slowly from engine 3 on.
 
 Looking at it, and keeping it:
 

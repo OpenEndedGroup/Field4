@@ -1,5 +1,7 @@
 # Speech-reactive learned spaces
 
+*To run the examples on this page, open the [audio_ai_speech_embeddings](agent_transcripts.md#audio_ai_speech_embeddings) starting point.*
+
 A field recording of someone talking gives a beat tracker almost nothing to hold onto. What moves
 in it is voice activity, vocal timbre, prosody and phonetic motion, and that is what
 `analysis.embed_speech` measures. Two speech models sit behind that one operation, and which of

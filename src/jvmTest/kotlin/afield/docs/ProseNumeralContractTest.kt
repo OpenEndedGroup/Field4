@@ -804,7 +804,8 @@ class ProseNumeralContractTest {
      * `AFIELD_WRITE_DERIVED_COUNTS=1`: set every marked numeral to what its derivation counts, instead
      * of failing. Two branches that each add a call site both edit the number, conflict, and one of
      * them bounces at landing; `tools/merge_regen.py` runs this on the merged tree so the number is
-     * derived there rather than hand-merged. Only the numeral directly before its marker is touched,
+     * derived there rather than hand-merged, and the `field-counts` merge driver
+     * (`tools/merge_derived_counts.py`) keeps the two edits from conflicting before it gets the chance. Only the numeral directly before its marker is touched,
      * and a word numeral that is wrong becomes digits. The other assertions in this class still run.
      */
     private fun rewriteMarkedNumerals(known: Map<String, DerivedCountGuard.Derivation>) {
@@ -943,8 +944,10 @@ class ProseNumeralContractTest {
             wrong.isEmpty(),
             "${wrong.size} number(s) stated in prose disagree with the code they describe:\n" +
                 wrong.joinToString("\n") +
-                "\nRecount by deriving, not by grepping — every recorded failure of this kind was a " +
-                "grep that missed a wrapper."
+                "\nDo not recount by hand. Landing rewrites these on the merged tree " +
+                "(tools/merge_regen.py), so a branch may leave them stale; to fix them here, run " +
+                "AFIELD_WRITE_DERIVED_COUNTS=1 ./gradlew citationGates --tests " +
+                "afield.docs.ProseNumeralContractTest --rerun."
         )
     }
 

@@ -46,6 +46,7 @@ object DocumentShutdownFlush {
     fun flushPendingDocumentSaves(): Int {
         var saved = 0
         documents.forEach { (_, info) ->
+            runCatching { PropertyDependencies.flush(info, force = true) }
             if (!info.writesToDisk || info.loading || info.pendingSidecarSaves.isEmpty()) return@forEach
             val started = System.nanoTime()
             try {

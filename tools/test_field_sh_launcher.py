@@ -77,6 +77,7 @@ import hashlib
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -239,6 +240,11 @@ class FieldShSandbox:
         )
         emulator.chmod(0o755)
 
+        # A port the OS just handed out and nothing has bound since: the preflight's curl is refused.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(("127.0.0.1", 0))
+            self.free_port = probe.getsockname()[1]
+
     @property
     def preference_file(self) -> Path:
         return self.home / ".afield" / "last-workspace.txt"
@@ -258,6 +264,10 @@ class FieldShSandbox:
             "PATH": path,
             "DISPLAY": ":test",
             "HOME": str(self.home),
+            # run_field refuses to start when `https://localhost:$PORT/health` answers `ok`, and
+            # PORT defaults to 9092 — so on a machine whose own Field is up, every case stopped
+            # at "another Field is already listening" before reaching the fake backend.
+            "PORT": str(self.free_port),
             "AFIELD_SKIP_BUILD": "1",
             "AFIELD_SKIP_TOOLCHAIN_PROVISION": "1",
             "AFIELD_CODE_USE_SEMANTIC_SIDECAR": "off",

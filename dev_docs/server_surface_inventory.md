@@ -88,6 +88,7 @@ mutation; it is a different one.
 | --- | --- | --- |
 | `GET /api/agent-worktrees` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
+| `GET /api/ai-tool-use-improvement/view` | `Server.kt` | none |
 | `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/chatlog/lens` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/code-use/failures` | `Server.kt` | none |
@@ -268,7 +269,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-130 command names, in the `handlers` table. This is the real command API, it is roughly twice
+131 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -285,7 +286,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 51 |
-| `agent_backdoor.kt` | 23 |
+| `agent_backdoor.kt` | 24 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 10 |
@@ -300,6 +301,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `ButtonControlHandler.kt` | 1 |
 | `CoroutineProfiling.kt` | 1 |
 | `DocsSearchInstaller.kt` | 1 |
+| `dependencies.kt` | 1 |
 | `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
 | `visualizers.kt` | 1 |
@@ -324,6 +326,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `ButtonControlHandler.kt` | one control-widget callback |
 | `CoroutineProfiling.kt` | starts, latches, and reads bounded in-memory coroutine captures for the attached document; at most one recording process-wide, with a 30-second maximum |
 | `DocsSearchInstaller.kt` | documentation search |
+| `dependencies.kt` | the attached document's box-to-box dependency record (`PropertyDependencies`), for the dependency layer: `get` reads it, `clear` forgets it in memory, and the autosave then writes the empty record to `<document>/dependencies.edn` unless the document is read-only. The client sends no path, code or box id. No guard beyond the `/ws` boundary, decided 2026-10-09: the worst a hostile frame can do is erase that record, which box runs rebuild |
 | `documentGuides.kt` | document-relative guide listing and reading, revision-checked saves, and shared file-proxy creation; writes reject read-only documents |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
 | `visualizers.kt` | one control-widget callback: `array-update` carries a multislider, matrix, range-slider or menu value as a list of doubles to the callback box code registered for that control id, and records it in the control cache. Unguarded beyond the `/ws` boundary, like `slider-update` and `button-update` beside it; guarding the control-message family is one change for all of them |
@@ -359,6 +362,7 @@ in-route same-site check stops a web page.
 | `agent-open-playwright` | `agent_backdoor.kt` |
 | `agent-playwright-input` | `agent_backdoor.kt` |
 | `agent-run-jvm-main` | `agent_backdoor.kt` |
+| `agent-save-document` | `agent_backdoor.kt` |
 | `agent-set-property` | `agent_backdoor.kt` |
 | `agent-snapshot` | `agent_backdoor.kt` |
 | `agent-task` | `agent_backdoor.kt` |
@@ -395,6 +399,7 @@ in-route same-site check stops a web page.
 | `custom-marking-request` | `Server.kt` |
 | `debug-probe` | `Server.kt` |
 | `debug-source-probe` | `Server.kt` |
+| `dependency-graph` | `dependencies.kt` |
 | `diff-history-version` | `history.kt` |
 | `docs_search_input` | `DocsSearchInstaller.kt` |
 | `document-guide` | `documentGuides.kt` |
@@ -520,7 +525,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 130 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 131 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

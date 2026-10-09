@@ -2564,6 +2564,17 @@ class FieldBackdoor:
         self._set_local_string(resolved, property_name, value)
         return value
 
+    async def save_document(self, *, timeout: float = 60.0) -> dict[str, Any]:
+        """Write the open document to disk now, as Field's autosave would; raises if Field could not."""
+        event = await self.call_for_single_reply("agent-save-document", {}, timeout=timeout)
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-save-document returned an invalid payload")
+        if not payload.get("ok"):
+            raise BackdoorError(str(payload.get("message") or "Field did not save the document"))
+        self.logger.log("save_document_complete", path=payload.get("path"))
+        return payload
+
     async def execution_code(
         self, resolved: str, box: dict[str, Any], property_name: str, timeout: float
     ) -> str:

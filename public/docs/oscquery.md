@@ -10,8 +10,7 @@ ossia score and the python and JavaScript libraries all speak it.
 list, show as controls and set. A box can also open another program's OSCQuery service and read,
 set and follow its parameters.
 
-[Open the OSCQuery demo ↗](offline.html?file=assets/oscquery_demo/metadata.edn) to read it, or
-open `public/docs/assets/oscquery_demo/` as a document in Field to run it with nothing else
+The [`oscquery_demo`](agent_transcripts.md#oscquery_demo) starting point runs with nothing else
 running: one box publishes, and two others connect back to it as a remote.
 
 ## Publishing parameters
