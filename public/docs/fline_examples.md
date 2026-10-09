@@ -1858,7 +1858,7 @@ fun FLine.byOneDollarFiltering(
 - `byOneEuroFiltering` adapts smoothing based on speed (good for interactive cursors/gestures; see the [1€ filter](https://cristal.univ-lille.fr/~casiez/1euro/)).
 - `byAlphaBetaFiltering` is a light constant-velocity tracker (good for jitter + latency tradeoffs; [alpha-beta filter](https://en.wikipedia.org/wiki/Alpha_beta_filter)).
 - `byDriverSmoothing` is a pursuit-style smoother: it samples the source, looks ahead on that sampled path, and steers a driver toward the target with bounded angular acceleration and bounded angular velocity. The search policy controls whether the driver can revisit earlier samples when they become closer.
-- `byGaussianProcessInterpolating` does a smooth GP fit along arc length ([Gaussian process regression](https://en.wikipedia.org/wiki/Gaussian_process_regression); book: [GPML](http://www.gaussianprocess.org/gpml/)) and can generate *variations* with `drawSamples=true`.
+- `byGaussianProcessInterpolating` fits a GP along arc length and draws coherent whole-curve samples with `drawSamples=true`. For posterior variances, full XYZ covariance, uncertainty bands, kernel choice, and scalar fields over 1D/2D/3D inputs, use the [Gaussian processes tutorial](gaussian_processes.md) and `FLine.gaussianProcess`.
 - `byOneDollarFiltering` normalizes a gesture (rotate + scale + resample; the [$1 Recognizer](https://depts.washington.edu/madlab/proj/dollar/)) so noisy input becomes more comparable.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/filtering_interpolation_gaussian_process_ema_one_euro_alpha_beta_filters_and_gp.png" embed=true}
@@ -3048,3 +3048,4 @@ lines(listOf(circle, diag, hitPts), w = 420.0, h = 320.0, fitToSize = true)
 ## Reference
 
 Every public declaration used on this page is listed, with its KDoc, in the codebase reference under [`StandardDrawing.kt`](reference/graphics.md#standarddrawing-kt). The rest of the standard library is in [what's already in the box](reference/index.md).
+
