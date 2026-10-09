@@ -45,6 +45,10 @@ class StudyBuildPanelTest {
         assertContains(html, "Request: resume = &lt;job&gt;, budgetSeconds = 60")
         assertFalse(studyBuildStageHtml(StudyStageState("search", "Search", "fp", null, asked.copy(request = emptyMap()), null),
             emptyList(), emptyList()).contains("Request:"))
+        val resumed = asked.copy(resumedFrom = listOf(StudyBuildResume("1c2f3a4b-0000-0000-0000-000000000000",
+            listOf("a", "b", "c", "d", "e").map { StudyBuildArtifact("routing/$it.json", "0", 1) })))
+        assertContains(studyBuildStageHtml(StudyStageState("search", "Search", "fp", null, resumed, null), emptyList(), emptyList()),
+            "Continued from attempt 1c2f3a4b: routing/a.json, routing/b.json, routing/c.json, 2 more")
     }
 
     @Test fun failedAttemptWithoutGeometryStillHasSelectableDiagnosticEvidence() {

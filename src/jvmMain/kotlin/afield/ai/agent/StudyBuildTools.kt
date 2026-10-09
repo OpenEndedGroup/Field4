@@ -9,6 +9,7 @@ import afield.ai.core.ToolEffect
 import afield.ai.core.ToolRegistry
 import afield.ai.core.LlmProgressUpdate
 import afield.stdlib.BoxStudyBuildBinding
+import afield.stdlib.StudyBuildArtifact
 import afield.stdlib.StudyBuildRecord
 import afield.stdlib.StudyBuildStatus
 import afield.stdlib.StudyStageState
@@ -201,6 +202,7 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
             "status" to job.status, "fingerprint" to job.fingerprint, "fromEarlierInputs" to earlier, "progress" to job.progress,
             "message" to job.message, "cancelRequested" to job.cancelRequested, "updated" to job.updated,
             "artifactCount" to job.artifacts.size, "problem" to job.problem, "request" to job.request,
+            "resumedFrom" to job.resumedFrom.map { mapOf("jobId" to it.jobId, "files" to it.files.map(StudyBuildArtifact::path)) },
             "openFindings" to if (earlier) 0 else reviews.count { it.status != "resolved" },
             "reviewFindings" to reviews.map { aiToolMapper.convertValue<Map<String, Any?>>(it) + ("fromEarlierInputs" to earlier) }) +
             view?.let { mapOf("geometryView" to mapOf("box" to it.box, "boxName" to info.boxes[it.box]?.name,
