@@ -586,6 +586,8 @@
   {"doc": "statistics_examples", "box": "stats_summary", "codeSha256": "e6f36ae62029b39e", "codeLines": 55, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "statistics_examples", "box": "stats_warp", "codeSha256": "a4e2859e456d264b", "codeLines": 111, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "stipple_sheet", "box": "stipple_sheet", "codeSha256": "90c2f7933e5b079c", "codeLines": 54, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "stippling", "box": "stipple_hello", "codeSha256": "285ec94b09908822", "codeLines": 18, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "stippling", "box": "stipple_relaxing", "codeSha256": "0609d039aa367767", "codeLines": 24, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "streaming_diffusion", "box": "diffusion_curves", "codeSha256": "1cc1ffa8d65ece79", "codeLines": 91, "receivers": ["afield.Box"], "preamble": "streaming_diffusion__diffusion_curves.preamble.kt"},
   {"doc": "streaming_diffusion", "box": "diffusion_guide", "codeSha256": "6d726150f158af93", "codeLines": 15, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "streaming_diffusion", "box": "diffusion_renderer", "codeSha256": "e5fd29a3d3aa57c6", "codeLines": 15, "receivers": ["afield.Box"], "preamble": "streaming_diffusion__diffusion_renderer.preamble.kt"},

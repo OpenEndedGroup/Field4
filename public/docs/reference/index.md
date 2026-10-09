@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**17015 public symbols across 490 source files**, 10086 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**17030 public symbols across 491 source files**, 10101 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -12,7 +12,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 21 | 1611 | 1225 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 708 | 360 (50%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 34 | 1489 | 1254 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 35 | 1504 | 1269 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 30 | 657 | 314 (47%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 583 | 428 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
@@ -483,6 +483,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Measuring dependence between two signals](../statistics_examples.md) |
 | [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |
 | [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 |  |  |
+| [stippling.kt](graphics.md#stippling-kt) | Graphics | 15 | 15 | Stippling: place exactly N points so that they follow an image's brightness *and* keep an even, low-correlation ("blue-noise-ish") spacing from one another. |  |
 | [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
 | [StudyBuildFindings.kt](workspace.md#studybuildfindings-kt) | Workspace | 0 | 0 |  |  |
 | [StudyBuildHelpers.kt](workspace.md#studybuildhelpers-kt) | Workspace | 5 | 5 |  | [Studies](../studies.md) |
