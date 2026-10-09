@@ -290,7 +290,7 @@ import java.util.Base64
 
 fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
     FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
-fun img(png: ByteArray) = "<img width='32%' src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}'>"
+fun img(png: ByteArray) = "<img width='300' src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}'>"
 
 val sheet = PaintCanvas.paper(300, aspect = 1.0, paper = Paper.ColdPress, sizeMm = 80.0, seed = 8)
 sheet.wet(rect(100.0, 100.0, 900.0, 900.0), microns = 80.0, paint = Watercolors.ultramarine * 1.0)
