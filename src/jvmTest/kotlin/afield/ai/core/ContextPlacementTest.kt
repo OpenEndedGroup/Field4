@@ -3,9 +3,7 @@ package afield.ai.core
 import com.anthropic.client.AnthropicClient
 import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
-import com.anthropic.services.blocking.MessageService
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -32,17 +30,7 @@ class ContextPlacementTest {
         Message::class.java
     )
 
-    private val client: AnthropicClient = run {
-        val messages = Proxy.newProxyInstance(javaClass.classLoader, arrayOf(MessageService::class.java)) { _, method, args ->
-            if (method.name == "create" && args?.firstOrNull() is MessageCreateParams) {
-                sent += args[0] as MessageCreateParams
-                reply
-            } else throw UnsupportedOperationException(method.name)
-        } as MessageService
-        Proxy.newProxyInstance(javaClass.classLoader, arrayOf(AnthropicClient::class.java)) { _, method, _ ->
-            if (method.name == "messages") messages else throw UnsupportedOperationException(method.name)
-        } as AnthropicClient
-    }
+    private val client: AnthropicClient = fakeAnthropicClient { params -> sent += params; reply }
 
     private fun body(params: MessageCreateParams): String = mapper.writeValueAsString(params._body())
 

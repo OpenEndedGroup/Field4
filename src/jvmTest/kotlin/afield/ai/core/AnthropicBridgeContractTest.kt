@@ -1,18 +1,15 @@
 package afield.ai.core
 
-import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
 import com.anthropic.core.http.Headers
 import com.anthropic.errors.BadRequestException
+import com.anthropic.errors.InternalServerException
 import com.anthropic.errors.RateLimitException
 import com.anthropic.models.messages.Message
-import com.anthropic.models.messages.MessageCreateParams
-import com.anthropic.services.blocking.MessageService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.sun.net.httpserver.HttpServer
-import java.lang.reflect.Proxy
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.util.concurrent.CopyOnWriteArrayList
@@ -39,8 +36,9 @@ class AnthropicBridgeContractTest {
     private fun withServer(block: (HttpServer, MutableList<JsonNode>, AnthropicBridge) -> Unit) {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val requests = CopyOnWriteArrayList<JsonNode>()
+        // The SDK's default retries left on, as anthropicClientFromFieldConfig() leaves them: the bridge turns them off.
         val client = AnthropicOkHttpClient.builder().apiKey("protocol-test")
-            .baseUrl("http://127.0.0.1:${server.address.port}").maxRetries(0).build()
+            .baseUrl("http://127.0.0.1:${server.address.port}").build()
         // Fixture turns stay out of ~/.afield/logs/ai4_tool_io, where real Anthropic sessions are counted.
         val priorToolIoLog = System.getProperty("afield.ai4.toolIoLog")
         System.setProperty("afield.ai4.toolIoLog", "off")
@@ -109,17 +107,21 @@ class AnthropicBridgeContractTest {
 
     /**
      * Each Messages API call is one attempt in the machine-wide request ledger, with the OpenAI bridge's attribution
-     * and phase names, so `tools/ai_usage.py` counts Anthropic turns too. A rate-limited attempt and its retry share
-     * one logical request. Input includes the prompt tokens read from and written to the cache, which Anthropic's
-     * `input_tokens` leaves out; a figure the provider did not report is null, not zero.
+     * and phase names, so `tools/ai_usage.py` counts Anthropic turns too. A 429 whose only wait is its `retry-after`
+     * header and a 529 overloaded_error are retried as further attempts of one logical request, with a `retry_wait`
+     * apiece. Input includes the prompt tokens read from and written to the cache, which Anthropic's `input_tokens`
+     * leaves out; a figure the provider did not report is null, not zero.
      */
     @Test
     fun requestLedgerRecordsEveryAttemptWithUsageAndNoConversationContent() {
         val dir = Files.createTempDirectory("ai-usage-anthropic")
         val previousLedger = System.getProperty("afield.ai.usageLog.path")
         val previousToolIoLog = System.getProperty("afield.ai4.toolIoLog")
+        val previousCap = System.getProperty("afield.ai.rateLimitMaxDelayMs")
         System.setProperty("afield.ai.usageLog.path", dir.toString())
         System.setProperty("afield.ai4.toolIoLog", "off")
+        // The smallest backoff cap, so the two waits take about a second together.
+        System.setProperty("afield.ai.rateLimitMaxDelayMs", "250")
         try {
             val sdk = Class.forName("com.anthropic.core.ObjectMappers").getMethod("jsonMapper").invoke(null) as ObjectMapper
             fun reply(json: String): Message = sdk.readValue(json, Message::class.java)
@@ -127,23 +129,21 @@ class AnthropicBridgeContractTest {
                 """[{"type":"tool_use","id":"toolu_$id","name":"Commentary","input":{"text":"PRIVATE_TOOL_ARGUMENT"}}]""", usage))
             fun error(type: String, text: String) = JsonValue.from(mapOf("type" to "error", "error" to mapOf("type" to type, "message" to text)))
             val replies = ArrayDeque(listOf<() -> Message>(
+                // No "try again in" in the message, as in Anthropic's own 429s: the header is the only hint.
                 { throw RateLimitException.builder()
                     .headers(Headers.builder().put("request-id", "req_ledger").put("retry-after", "0.001")
                         .put("anthropic-ratelimit-tokens-remaining", "0").build())
-                    .body(error("rate_limit_error", "Rate limited, try again in 1ms. PRIVATE_ERROR")).build() },
+                    .body(error("rate_limit_error", "This request would exceed your rate limit. PRIVATE_ERROR")).build() },
+                { throw InternalServerException.builder().statusCode(529)
+                    .headers(Headers.builder().put("request-id", "req_overloaded").build())
+                    .body(error("overloaded_error", "Overloaded. PRIVATE_ERROR")).build() },
                 { commentary("msg_1", """{"input_tokens":3,"cache_read_input_tokens":100,"cache_creation_input_tokens":50,"output_tokens":7}""") },
                 { commentary("msg_2", """{"input_tokens":4,"cache_read_input_tokens":150,"cache_creation_input_tokens":0,"output_tokens":8}""") },
                 { reply(message("msg_3", "end_turn", """[{"type":"text","text":"Done.","citations":null}]""", """{"input_tokens":5,"output_tokens":9}""")) },
                 { throw BadRequestException.builder().headers(Headers.builder().put("request-id", "req_bad").build())
                     .body(error("invalid_request_error", "PRIVATE_ERROR")).build() }
             ))
-            val messages = Proxy.newProxyInstance(javaClass.classLoader, arrayOf(MessageService::class.java)) { _, method, args ->
-                if (method.name == "create" && args?.firstOrNull() is MessageCreateParams) replies.removeFirst()()
-                else throw UnsupportedOperationException(method.name)
-            } as MessageService
-            val client = Proxy.newProxyInstance(javaClass.classLoader, arrayOf(AnthropicClient::class.java)) { _, method, _ ->
-                if (method.name == "messages") messages else throw UnsupportedOperationException(method.name)
-            } as AnthropicClient
+            val client = fakeAnthropicClient { replies.removeFirst()() }
             val bridge = AnthropicBridge(client = client, model = "claude-test", log = SilentLog,
                 baseUrl = "https://user:SECRET_KEY@anthropic.test/v1?key=SECRET_KEY")
             val state = bridge.startThread("ledger-key", "")
@@ -157,13 +157,13 @@ class AnthropicBridgeContractTest {
             val events = text.lineSequence().filter { it.isNotBlank() }.map { mapper.readTree(it) }.toList()
             fun of(event: String) = events.filter { it["event"].asText() == event }
             val started = of("attempt_started")
-            assertEquals(listOf("initial", "initial", "followup", "forced_final", "initial"), started.map { it["phase"].asText() })
-            assertEquals(listOf(1, 2, 1, 1, 1), started.map { it["attempt"].asInt() })
+            assertEquals(listOf("initial", "initial", "initial", "followup", "forced_final", "initial"), started.map { it["phase"].asText() })
+            assertEquals(listOf(1, 2, 3, 1, 1, 1), started.map { it["attempt"].asInt() })
             val requestIds = started.map { it["requestId"].asText() }
-            assertEquals(requestIds[0], requestIds[1], "a retry is another attempt of the same request")
+            assertEquals(1, requestIds.take(3).distinct().size, "a retry is another attempt of the same request")
             assertEquals(4, requestIds.distinct().size)
-            assertEquals(1, started.take(4).map { it["turnId"].asText() }.distinct().size)
-            assertNotEquals(started[0]["turnId"].asText(), started[4]["turnId"].asText())
+            assertEquals(1, started.take(5).map { it["turnId"].asText() }.distinct().size)
+            assertNotEquals(started[0]["turnId"].asText(), started[5]["turnId"].asText())
             for (event in events) {
                 assertEquals("anthropic", event["provider"].asText())
                 assertEquals("https://anthropic.test/v1", event["endpoint"].asText())
@@ -176,14 +176,13 @@ class AnthropicBridgeContractTest {
                 assertEquals(ProcessHandle.current().pid(), event["pid"].asLong())
             }
 
-            val retry = of("retry_wait").single()
-            assertEquals(requestIds[0], retry["requestId"].asText())
-            assertEquals(1, retry["retry"].asInt())
-            assertEquals(2, retry["delayMs"].asInt(), "the hinted 1 ms, times the shared 1.5 margin, rounded up")
+            val retries = of("retry_wait")
+            assertEquals(listOf(1, 2), retries.map { it["retry"].asInt() })
+            assertTrue(retries.all { it["requestId"].asText() == requestIds[0] && it["delayMs"].asLong() > 0 })
 
             val usage = of("response_usage")
             assertEquals(listOf("msg_1", "msg_2", "msg_3"), usage.map { it["responseId"].asText() })
-            assertEquals(listOf(2, 1, 1), usage.map { it["attempt"].asInt() })
+            assertEquals(listOf(3, 1, 1), usage.map { it["attempt"].asInt() })
             assertTrue(usage.all { it["usageKnown"].asBoolean() && it["responseModel"].asText() == "claude-test" })
             assertEquals(listOf("tool_use", "tool_use", "end_turn"), usage.map { it["stopReason"].asText() })
             assertEquals(listOf(153, 154, 5), usage.map { it["inputTokens"].asInt() })
@@ -195,14 +194,20 @@ class AnthropicBridgeContractTest {
             assertTrue(usage.all { it["reasoningTokens"].isNull })
 
             val finished = of("attempt_finished")
-            assertEquals(listOf(false, true, true, true, false), finished.map { it["success"].asBoolean() })
-            val (limited, rejected) = finished.filter { !it["success"].asBoolean() }
+            assertEquals(listOf(false, false, true, true, true, false), finished.map { it["success"].asBoolean() })
+            val (limited, overloaded, rejected) = finished.filter { !it["success"].asBoolean() }
             assertEquals("RateLimitException", limited["errorType"].asText())
             assertEquals(429, limited["httpStatus"].asInt())
             assertEquals("rate_limit_error", limited["providerCode"].asText())
             assertTrue(limited["rateLimited"].asBoolean())
             assertEquals("req_ledger", limited["responseHeaders"]["request-id"].asText())
+            assertEquals("0.001", limited["responseHeaders"]["retry-after"].asText())
             assertEquals("0", limited["responseHeaders"]["anthropic-ratelimit-tokens-remaining"].asText())
+            assertEquals("InternalServerException", overloaded["errorType"].asText())
+            assertEquals(529, overloaded["httpStatus"].asInt())
+            assertEquals("overloaded_error", overloaded["providerCode"].asText())
+            assertFalse(overloaded["rateLimited"].asBoolean())
+            assertEquals("req_overloaded", overloaded["responseHeaders"]["request-id"].asText())
             assertEquals("BadRequestException", rejected["errorType"].asText())
             assertEquals(400, rejected["httpStatus"].asInt())
             assertEquals("invalid_request_error", rejected["providerCode"].asText())
@@ -213,6 +218,75 @@ class AnthropicBridgeContractTest {
         } finally {
             if (previousLedger == null) System.clearProperty("afield.ai.usageLog.path") else System.setProperty("afield.ai.usageLog.path", previousLedger)
             if (previousToolIoLog == null) System.clearProperty("afield.ai4.toolIoLog") else System.setProperty("afield.ai4.toolIoLog", previousToolIoLog)
+            if (previousCap == null) System.clearProperty("afield.ai.rateLimitMaxDelayMs") else System.setProperty("afield.ai.rateLimitMaxDelayMs", previousCap)
+            dir.toFile().deleteRecursively()
+        }
+    }
+
+    /**
+     * The bridge, not the SDK, retries, so every HTTP request is an attempt in the ledger. [withServer]'s client keeps
+     * the SDK's two default retries; were they still in force, the server would see more requests than the ledger has
+     * attempts, and the 429 would leave no record. A 429 whose only hint is `retry-after`, a 529 overloaded_error and
+     * a 500 with `retry-after-ms` are each waited out for at least what the header asks, even above the backoff cap;
+     * a 500 the server marks `x-should-retry: false` is not retried.
+     */
+    @Test
+    fun theBridgeOwnsTheRetriesSoEveryHttpRequestIsAnAttempt() {
+        val dir = Files.createTempDirectory("ai-usage-anthropic-retries")
+        val previousLedger = System.getProperty("afield.ai.usageLog.path")
+        val previousCap = System.getProperty("afield.ai.rateLimitMaxDelayMs")
+        System.setProperty("afield.ai.usageLog.path", dir.toString())
+        // The smallest backoff cap: a wait of a second or more can only have come from a header.
+        System.setProperty("afield.ai.rateLimitMaxDelayMs", "250")
+        try {
+            withServer { server, requests, bridge ->
+                val arrivals = CopyOnWriteArrayList<Long>()
+                server.createContext("/v1/messages") { exchange ->
+                    arrivals += System.nanoTime()
+                    requests.add(mapper.readTree(exchange.requestBody))
+                    fun error(type: String, text: String) = """{"type":"error","error":{"type":"$type","message":"$text"}}"""
+                    val (status, headers, body) = when (requests.size) {
+                        1 -> Triple(429, mapOf("retry-after" to "1"), error("rate_limit_error", "This request would exceed the rate limit for your organization."))
+                        2 -> Triple(529, mapOf("x-should-retry" to "true"), error("overloaded_error", "Overloaded"))
+                        3 -> Triple(500, mapOf("retry-after-ms" to "600"), error("api_error", "Internal server error"))
+                        4 -> Triple(200, emptyMap(), text("msg_recovered", "Recovered."))
+                        else -> Triple(500, mapOf("x-should-retry" to "false"), error("api_error", "Internal server error"))
+                    }
+                    headers.forEach { (name, value) -> exchange.responseHeaders.add(name, value) }
+                    exchange.responseHeaders.add("Content-Type", "application/json")
+                    exchange.sendResponseHeaders(status, body.toByteArray().size.toLong())
+                    exchange.responseBody.use { it.write(body.toByteArray()) }
+                }
+                val state = bridge.startThread("retries", "")
+                assertEquals("Recovered.", bridge.send(state, "Inspect").text)
+                assertEquals(4, requests.size)
+                assertTrue((arrivals[1] - arrivals[0]) / 1_000_000 >= 1000, "retry-after: 1 is a minimum, above the 250 ms cap")
+                assertTrue((arrivals[3] - arrivals[2]) / 1_000_000 >= 600, "retry-after-ms: 600 likewise")
+                assertFailsWith<InternalServerException> { bridge.send(state, "Again") }
+                assertEquals(5, requests.size, "x-should-retry: false is not retried")
+            }
+
+            val events = Files.list(dir).use { files -> files.toList().flatMap { Files.readAllLines(it) } }
+                .filter { it.isNotBlank() }.map { mapper.readTree(it) }
+            fun of(event: String) = events.filter { it["event"].asText() == event }
+            val started = of("attempt_started")
+            assertEquals(listOf(1, 2, 3, 4, 1), started.map { it["attempt"].asInt() }, "one attempt per HTTP request")
+            val finished = of("attempt_finished")
+            assertEquals(listOf(429, 529, 500, null, 500), finished.map { it["httpStatus"].takeUnless { n -> n.isNull }?.asInt() })
+            assertEquals(listOf("rate_limit_error", "overloaded_error", "api_error", null, "api_error"),
+                finished.map { it["providerCode"].takeUnless { n -> n.isNull }?.asText() })
+            assertEquals("1", finished[0]["responseHeaders"]["retry-after"].asText())
+            assertEquals("600", finished[2]["responseHeaders"]["retry-after-ms"].asText())
+            assertEquals("false", finished[4]["responseHeaders"]["x-should-retry"].asText())
+            val waits = of("retry_wait")
+            assertEquals(listOf(1, 2, 3), waits.map { it["retry"].asInt() })
+            assertTrue(waits.all { it["requestId"].asText() == started[0]["requestId"].asText() })
+            assertTrue(waits[0]["delayMs"].asLong() >= 1000)
+            assertTrue(waits[1]["delayMs"].asLong() < 1000, "the 529 named no wait, so its backoff stays under the cap and jitter")
+            assertTrue(waits[2]["delayMs"].asLong() >= 600)
+        } finally {
+            if (previousLedger == null) System.clearProperty("afield.ai.usageLog.path") else System.setProperty("afield.ai.usageLog.path", previousLedger)
+            if (previousCap == null) System.clearProperty("afield.ai.rateLimitMaxDelayMs") else System.setProperty("afield.ai.rateLimitMaxDelayMs", previousCap)
             dir.toFile().deleteRecursively()
         }
     }

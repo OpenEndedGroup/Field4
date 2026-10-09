@@ -20,7 +20,7 @@ internal object AiRequestLedger {
     private val instanceId = UUID.randomUUID().toString()
     private val writeLock = Any()
     private val warned = AtomicBoolean()
-    private val diagnosticHeaders = listOf("x-request-id", "request-id", "retry-after", "x-ratelimit-limit-tokens",
+    private val diagnosticHeaders = listOf("x-request-id", "request-id", "retry-after", "retry-after-ms", "x-should-retry", "x-ratelimit-limit-tokens",
         "x-ratelimit-remaining-tokens", "x-ratelimit-reset-tokens", "x-ratelimit-limit-requests", "x-ratelimit-remaining-requests",
         "x-ratelimit-reset-requests") + listOf("requests", "tokens", "input-tokens", "output-tokens").flatMap { bucket ->
             listOf("limit", "remaining", "reset").map { "anthropic-ratelimit-$bucket-$it" } }

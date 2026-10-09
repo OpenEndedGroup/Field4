@@ -52,14 +52,7 @@ class OpenAiIdeCodexBridge(
             .summary(Reasoning.Summary.DETAILED)
             .build()
     private val statelessHistory = ConcurrentHashMap<String, MutableList<ResponseInputItem>>()
-    private val rateLimitRecovery = AiRateLimitRecovery(
-        maxRetries = (System.getenv("AFIELD_AI_RATE_LIMIT_RETRIES") ?: System.getProperty("afield.ai.rateLimitRetries"))
-            ?.toIntOrNull()?.coerceIn(0, 120) ?: 120,
-        budgetMs = (System.getenv("AFIELD_AI_RATE_LIMIT_BUDGET_MS") ?: System.getProperty("afield.ai.rateLimitBudgetMs"))
-            ?.toLongOrNull()?.coerceIn(0, 3_600_000) ?: 600_000,
-        backoffCapMs = (System.getenv("AFIELD_AI_RATE_LIMIT_MAX_DELAY_MS") ?: System.getProperty("afield.ai.rateLimitMaxDelayMs"))
-            ?.toLongOrNull()?.coerceIn(250, 300_000) ?: 30_000
-    )
+    private val rateLimitRecovery = AiRateLimitRecovery.fromConfig()
     // Field owns the retry deadline and visible waiting status; do not multiply attempts in the SDK.
     private val responses = client.responses().withOptions { it.maxRetries(0) }
     private val asyncResponses = client.async().responses().withOptions { it.maxRetries(0) }
