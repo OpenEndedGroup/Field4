@@ -320,17 +320,19 @@ otherwise. Two things it got wrong first, both caught by looking at the page rat
   so the label now gets a strip of its own above the lane;
 * rows were ordered by first appearance — see *Lane layout* above.
 
-### The envelope is derived, not tuned
+### The cards play real samples
 
-One fixed envelope cannot serve a list running from `bd sd` to `hh*8?0.3`. `voiceFor` therefore
-scales the decay to the pattern's **shortest gap between consecutive strikes**, at a fifth of it, so
-that `patRenderStereo`'s `decay * 4` tail lands at four fifths of the gap and consecutive notes
-separate by construction.
+Since 2026-10-09 every card renders through `patRenderStereoDirt` from the pinned Dirt-Samples
+subset, strict, so a missing subset or an unknown token throws rather than falling back to a synth.
+Before that the cards used `patVoice` with a `voiceFor` envelope scaled to a fifth of the pattern's
+shortest gap, which separated consecutive notes by construction and let the gallery assert an exact
+onset count. Real one-shots ring into the next hit (the pinned `hh:0` lasts 0.87 s), so that
+construction, and the exact count, went with the synth.
 
-The first version scaled to the shortest *event arc* instead, and the difference was audible rather
-than theoretical: it gave `bd [sd sd]` a tail nearly twice its own note spacing, and three of that
-clip's six notes disappeared into their neighbours. Arc length and onset spacing are not the same
-number and only one of them is what the ear is resolving.
+The `gain-lfo` and `swing` scenes in `PatSoundDocs` stay on `patVoice` noise bursts (Marc,
+2026-10-09): at sixteen hats a cycle the sampled hat stacks about 28 hits deep and the level the
+scene is about cannot be heard. `voice-leading` stays on a sine, under the pitched-page exception in
+`DOCS_WRITING_RULES.md`.
 
 Coincident onsets count once. `bd sd, hh*4` schedules twelve events over two cycles but **strikes
 eight times**, because the kick and a hat land together twice a cycle and no detector can pull them
@@ -343,21 +345,23 @@ rectangle per event plus one backdrop per lane plus one background, a real RIFF/
 non-silent, all-finite, the expected duration. Then two claims about the audio, of which the first
 is the one a docs figure really rests on:
 
-* **precision, always strict** — nothing is *heard* that the pattern never scheduled. A clip with a
-  note the roll does not draw is the single failure a reader cannot catch by looking. The tolerance
-  is the detector's own bias: a window whose level crossed is reported by its start, so an onset
-  lands up to one full window early and never late.
-* **recall, strict above three analysis windows** — `RESOLVABLE_GAP_WINDOWS`. This boundary was
-  measured on this catalogue, not chosen. Every entry whose gap is an eighth note at `cps = 2`
-  (62 ms, five windows) counts exactly, including `{bd hh cp}%8` at 32 strikes and
-  `bd(3,8), cp(5,8)` at 10. The two that sit at a sixteenth, 31 ms, do not: `hh(k16)` loses one
-  strike of sixteen, and `hh*16?0.3` lost **five of twenty-four**, with a run of four collapsing
-  into a single rising edge. The counter reads 64 *uniform* sixteenths exactly (see the `gain-lfo`
-  scene), so the limit is irregular clustering of stochastic noise bursts, not density alone. Below
-  three windows one merged pair is allowed for and a second is a failure.
+* **precision, always strict**: nothing is *heard* that the pattern never scheduled. A clip with a
+  note the roll does not draw is the single failure a reader cannot catch by looking. An onset may
+  be reported up to one analysis window early (the detector reports a window by its start) or one
+  late (a sample's few milliseconds of lead-in). The detector's floor is a tenth of the clip's
+  peak: overlapping tails beat at about a twentieth of it, and at the old floor of 0.05 one such
+  beat in `bd sd, hh*4` read as a note.
+* **recall, per strike**: at every time the pattern strikes, the window after must be at least
+  `MIN_STRIKE_RISE` (1.3x) louder than the window before, broadband or on the first difference. A
+  counter cannot do this with real samples: a hat under a snare tail is plainly audible yet only a
+  small bump in RMS. The first difference finds a hat under a kick's tail, and broadband finds a
+  kick under a clap's bright tail (`{bd hh cp}%8`, 0.66x on the first difference alone). The
+  quietest strike in the catalogue rises 1.47x, and a strike that did not sound reads below 1.
+  The detector itself was fixed on the way: it released against the level at the rising edge it
+  fired on rather than the peak after it, so a kick's tail never re-armed it for the next hit.
 
-That measurement is why `degrade-p` is `hh*8?0.3` and not the sixteenths it started as. Turning it
-back up makes the clip unverifiable, and holding the density equal to its sibling `bd*8?` leaves the
+The synth-era counter is why `degrade-p` is `hh*8?0.3` and not the sixteenths it started as: it
+lost five of twenty-four strikes at sixteenths. Holding the density equal to its sibling `bd*8?` leaves the
 *probability* as the only thing that differs between the two cards.
 
 ### Two divergences from Tidal this turned up — both now closed

@@ -522,6 +522,10 @@ object PatSoundDocs {
         var armed = true
         var lastPeak = 0.0
         for (k in 0 until windows) {
+            // The peak is the highest level since the trigger, not the level at the trigger: a
+            // window fires on the rising edge, and releasing against that edge re-arms too late
+            // for a sample whose tail never falls below half of it.
+            if (!armed) lastPeak = max(lastPeak, env[k])
             if (!armed && env[k] < releaseFraction * lastPeak) armed = true
             if (!armed) continue
             if (env[k] < level) continue
