@@ -59,7 +59,7 @@ object OscQueryServices {
         }!!
 
     fun remote(host: String, port: Int): OscQueryRemote =
-        remotes.compute("$host:$port") { _, existing -> existing ?: OscQueryRemote(host, port, ::dispatch) }!!
+        remotes.compute("$host:$port") { _, existing -> existing?.refresh() ?: OscQueryRemote(host, port, ::dispatch) }!!
 
     internal fun own(box: Box, server: OscQueryServer, path: String) {
         val key = "${box.id}|${server.httpPort}|$path"
@@ -201,7 +201,9 @@ fun Box.oscQuery(
 
 /**
  * A remote OSCQuery service at [host]:[httpPort], cached so re-running a box reuses its
- * connection. Callbacks (`listen`) run on the main Runloop.
+ * connection. A cached remote re-reads the namespace when it is asked for again, so `params` lists
+ * what the service has now, not what it had when the first box connected. Callbacks (`listen`)
+ * run on the main Runloop.
  */
 fun Box.oscQueryRemote(host: String, httpPort: Int): OscQueryRemote = OscQueryServices.remote(host, httpPort)
 
