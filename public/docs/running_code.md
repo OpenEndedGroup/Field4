@@ -219,13 +219,13 @@ aside("reset") {
 }
 ```
 
-Running the whole box skips the block. Put the cursor inside it and press option/alt-return to run
+Running the whole box skips the block. Put the cursor inside it and press Alt+Enter to run
 just that block. (Running a selection that includes it runs it too.) The name is only a label for
 you; it changes nothing. It saves keeping that code commented out and uncommenting it each time.
 
 ### `flipbox`: a block with a checkbox
 
-Between the two, a stack marker can carry a checkbox. Press Cmd+Shift+. to insert a marker (drawn
+A `flipbox` sits between `once` and `aside`: a block you switch on and off with a checkbox. Press Cmd+Shift+. to insert a marker (drawn
 as a single rune), then write `.flipbox(true) { … }` after it:
 
 ```diffstatic {data-lang=kotlin}
@@ -237,7 +237,7 @@ __m("Zk3q-a1").flipbox(true) {
 The editor draws the `true` as a checkbox. The block runs when the box runs with the box ticked,
 and each run unticks it. With `true` it starts ticked, so it runs on the first run like `once`, and
 later runs skip it. Click the checkbox to run the block again, without running the box, like
-option/alt-return on an `aside`. With `false` it runs only when you click. The tick is not saved
+Alt+Enter on an `aside`. With `false` it runs only when you click. The tick is not saved
 with the document, so `true` applies again after Field restarts.
 
 ### What lasts how long
@@ -419,7 +419,7 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
 - **`once`** and **`cached`** keep a value across runs; `cached` keeps one per type and key, and closes the old one when a key changes (see **What lasts how long**).
-- **`aside { }`** is the reverse: a block a full run skips, run by hand with option/alt-return.
+- **`aside { }`** is the reverse: a block a full run skips, run by hand with Alt+Enter.
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
