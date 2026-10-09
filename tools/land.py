@@ -1030,9 +1030,9 @@ def _fast_forward_main(primary: Path, old: str, new: str) -> str | None:
 
 def _first_error(log: Path) -> str:
     text = log.read_text(errors="replace").splitlines()
-    # Most specific first: a failing test, a compiler error, Gradle's own account, and only then
-    # merge_regen's summary line, which names no cause.
-    for pattern in (r" > .* FAILED$", r"^e: ", r"source conflicts", r"What went wrong", r"FAILED",
+    # Most specific first: the docs builder's own verdict, a failing test, a compiler error, Gradle's
+    # own account, and only then merge_regen's summary line, which names no cause.
+    for pattern in (r"^docs build failed: ", r" > .* FAILED$", r"^e: ", r"source conflicts", r"What went wrong", r"FAILED",
                     r"merge_regen: .*fail", r"[Ee]rror"):
         for i, line in enumerate(text):
             if re.search(pattern, line):
@@ -1463,7 +1463,10 @@ def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     with log.open("w") as out:
         out.write(f"land: building local docs in {checkout} from main {item['built_from'][:9]}\n")
         out.flush()
-        code = _run_watched([sys.executable, str(script)], checkout, env, log, out)
+        # The builder stops a wedged zensical itself within minutes (FIELD_DOCS_ZENSICAL_STALL_SEC),
+        # refuses a site missing pages, and only then replaces public/field4/; --gate-site-links makes
+        # a failing link check fail the job too, so "built" means a site that was checked.
+        code = _run_watched([sys.executable, str(script), "--gate-site-links"], checkout, env, log, out)
     if code == 0:
         item["finished"] = _now()
         _move(queue, item, LANDED)

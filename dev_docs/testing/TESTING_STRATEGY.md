@@ -413,8 +413,10 @@ FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --g
 Zensical currently does not run Python page hooks directly, so the uv command
 enters `tools/build_zensical_docs.py` first. The wrapper preprocesses Markdown
 through `public/docs_hooks.py`, writes generated sources under
-`public/.zensical-generated/`, writes `public/zensical.generated.yml`, and then
-runs `python -m zensical build` using the same interpreter. The docs dependency
+`public/.zensical-generated/`, writes `public/zensical.generated.yml` (and its
+build twin, which renders into `public/.zensical-generated/site/`), and then
+runs `python -m zensical build` using the same interpreter. The finished site
+replaces `public/field4/` whole, and only when its pages are all there. The docs dependency
 group intentionally includes the backdoor dependencies because docs captures
 launch `tools/field_backdoor.py` from that interpreter.
 

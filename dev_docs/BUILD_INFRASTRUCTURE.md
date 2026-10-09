@@ -444,10 +444,24 @@ Entry point: `tools/build_zensical_docs.py`, which holds the verification lock a
 2. `./gradlew generateSourcePages`: line-numbered source pages that citations link into.
 3. Preprocess every page through `docs_hooks.process_markdown`: run its executable fences, rewrite
    citations, check duplicate embeds.
-4. Write `public/zensical.generated.yml`, check assets, run `zensical build`.
-5. Post-process (repo paths to GitHub links), emit the offline viewer, write
-   `field-docs-build.json` (the commit the site was built from, which the notes panel records), and
-   check every rendered link against the `/Field4/` prefix.
+4. Write `public/zensical.generated.yml` (the config to `zensical serve`) and
+   `public/zensical.generated.build.yml` (the same, rendering into the staging dir
+   `public/.zensical-generated/site/`), check assets, run `zensical build`. The build is stopped
+   if it prints nothing and uses under a CPU-second for `FIELD_DOCS_ZENSICAL_STALL_SEC` (120 s),
+   or prints its issue report and never "Build finished"; an interrupted zensical, which exits 0,
+   counts as failed too.
+5. Refuse the staging site if more than 1% of the generated pages have no built page. Post-process
+   it (repo paths to GitHub links), emit the offline viewer, write `field-docs-build.json` (the
+   commit the site was built from, which the notes panel records), then swap it in for
+   `public/field4/` by renaming, so a failed build leaves the previous site whole. Last, check
+   every rendered link against the `/Field4/` prefix (gating under `--strict` or
+   `--gate-site-links`, which the lander's docs job passes).
+
+Zensical watches its inputs with FSEvents even for `build`, and finishes only after its file monitor
+sees 100 ms with no event. A process that keeps writing under the docs, theme or site dir holds the
+build at "Build started" at 0% CPU with no error. On 2026-10-09 that was Finder writing `.DS_Store`
+files into the open `public/field4/`; the staging dir removed that writer, and a stalled build lists
+the files that changed under watched dirs.
 
 **Executable fences.** A `diffstatic_runner` or `diff_runner` fence is box code that the build runs
 against a live Field through the backdoor and captures: `screenshot=`, `video=`, `audio=`, with

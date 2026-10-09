@@ -122,6 +122,7 @@ REGENERABLE = (
     ".pytest_cache", ".nightly-tmp", "electron/node_modules",
     "public/field4", "public/.cache", "public/.zensical-generated", "public/docs-runner-failures",
     "public/docs-runner-failures/*", "public/.field-docs-runner-*", "public/zensical.generated.yml",
+    "public/zensical.generated.build.yml",
     "native/*/build", "native/*/.build", "tools/*/build", "tools/*/.gradle", "tools/*/.kotlin",
     "*__pycache__", "*.pyc", "*.DS_Store", "config/field4-local.p12",
     "hs_err_pid*.log", "java_pid*.hprof",
