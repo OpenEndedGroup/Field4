@@ -15,6 +15,7 @@ import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Executors
+import kotlin.time.Duration
 
 /** A build's execution state. Currency against the design is reported separately by [StudyStageState]. */
 enum class StudyBuildStatus { QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, OBSOLETE, INTERRUPTED }
@@ -32,10 +33,14 @@ data class StudyBuildArtifact(val path: String, val sha256: String, val bytes: L
 /** The successful build of another stage consumed by an attempt. */
 data class StudyBuildDependency(val jobId: String, val fingerprint: String, val artifacts: List<StudyBuildArtifact>)
 
+/** Files an attempt copied from the earlier attempt [jobId] with [StudyBuildContext.resumeFrom], as copied. */
+data class StudyBuildResume(val jobId: String, val files: List<StudyBuildArtifact>)
+
 /**
  * Durable record of one attempt, including the exact named input values and dependency results.
  * [request] is what [StudyBuilds.start] was asked for beyond the design, and is part of [fingerprint].
  * [gates] holds, for each [StudyBuildGate] the stage consumes, the upstream results the gate judged.
+ * [resumedFrom] lists what the attempt copied from earlier attempts.
  */
 data class StudyBuildRecord(
     val id: String, val stage: String, val recipeVersion: String, val fingerprint: String,
@@ -47,6 +52,7 @@ data class StudyBuildRecord(
     val problem: StudyBuildProblem? = null,
     val request: Map<String, Any?> = emptyMap(),
     val gates: Map<String, Map<String, StudyBuildDependency>> = emptyMap(),
+    val resumedFrom: List<StudyBuildResume> = emptyList(),
 )
 
 /** Files produced inside the attempt directory, and verification facts supplied by the recipe. */
@@ -147,6 +153,30 @@ class StudyBuildContext internal constructor(private val store: StudyBuilds, val
         val artifact = dependency.artifacts.firstOrNull { it.path == path } ?: error("No '$path' in dependency '$stage'")
         return store.resultFile(stage, dependency.jobId, artifact)
     }
+
+    /**
+     * Copy [paths] (files, or directories with everything under them) from the finished attempt [jobId]
+     * of this runner into this attempt, at the same paths, and return the copies. Each copy is checked
+     * against its source; a file that was a result of that attempt must also still match its recorded
+     * hash. What was copied, with hashes, is recorded in [StudyBuildRecord.resumedFrom].
+     * With [sameDesign], the default, the earlier attempt must be of this stage and recipe and have
+     * built the same inputs and dependency results, so a checkpoint of a replaced design is refused.
+     */
+    fun resumeFrom(jobId: String, paths: List<String>, sameDesign: Boolean = true): List<File> =
+        store.resume(attempt, jobId, paths, sameDesign)
+
+    /**
+     * Run an external program in this attempt's directory and wait for it, keeping its combined output
+     * in [log]. [progressFile], a file the program rewrites with `{"fraction": 0.4, "message": "..."}`,
+     * becomes this attempt's progress, scaled into [progressSpan]. The program is stopped, with every
+     * process it started, when the build is cancelled, when [deadline] passes, or when [stall] passes
+     * with no change to the progress file (or, without one, no new output). A stop or, with [check],
+     * a non-zero exit fails the attempt with a [StudyBuildFailure] naming the log.
+     */
+    fun runProcess(command: List<String>, progressFile: String? = null, stall: Duration? = null, deadline: Duration? = null,
+        log: String = "process.log", environment: Map<String, String> = emptyMap(),
+        progressSpan: ClosedFloatingPointRange<Double> = 0.0..1.0, check: Boolean = true): StudyBuildProcessResult =
+        store.runProcess(attempt, command, progressFile, stall, deadline, log, environment, progressSpan, check)
 }
 
 /**
@@ -161,6 +191,7 @@ class StudyBuildContext internal constructor(private val store: StudyBuilds, val
  * [gates] add inputs that exist only while a check of other results passes. [upstream] finds another
  * runner by name for a `dependsOn(runner, stage)` dependency; [Box.studyBuilds] supplies the runners
  * of the same document. It is called outside the store lock, and a cycle across runners is refused.
+ * With [exclusive], the runner builds one stage at a time and refuses a start while any build runs.
  *
  * Reading [stages] recomputes currency, so later source edits invalidate downstream results even
  * without an explicit notification. A failed retry preserves a previous result if it still matches.
@@ -173,7 +204,8 @@ class StudyBuildContext internal constructor(private val store: StudyBuilds, val
  */
 class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
     private val readInputs: () -> Map<String, String>, workers: Int = 2,
-    gates: List<StudyBuildGate> = emptyList(), private val upstream: (runner: String) -> StudyBuilds? = { null }) : AutoCloseable {
+    gates: List<StudyBuildGate> = emptyList(), val exclusive: Boolean = false,
+    private val upstream: (runner: String) -> StudyBuilds? = { null }) : AutoCloseable {
     private val monitor = Any()
     private val mapper = jacksonObjectMapper()
     private val specs = definitions.associateBy { it.id }
@@ -281,6 +313,10 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
             check(state.fingerprint != null) { state.reason ?: "Stage is blocked" }
             check(state.fingerprint == expectedFingerprint) { "Build inputs changed; inspect the stages and try again." }
             check(records.values.none { it.stage == stage && it.status in ACTIVE }) { "Stage '$stage' already has a running build." }
+            if (exclusive) records.values.firstOrNull { it.status in ACTIVE }?.let { running ->
+                error("This runner builds one stage at a time, and '${specs[running.stage]?.label ?: running.stage}' is still " +
+                    "${running.status.name.lowercase()}; wait for it or cancel it first.")
+            }
             val spec = specs.getValue(stage)
             val dependencies = spec.dependencies.associateWith { dep ->
                 val r = checkNotNull(evaluation.current(dep))
@@ -295,6 +331,22 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
             persist()
             executor.submit { execute(record, spec) }
             record
+        }
+    }
+
+    /**
+     * Block the calling thread until attempt [id] is no longer queued or running, or until
+     * [timeoutSeconds] pass, and return its record; after a timeout the build keeps running.
+     * For scripts and tests that run stages in sequence. A box that starts a long build should let
+     * its card or an agent's wait follow it instead of blocking the thread it runs on.
+     */
+    fun await(id: String, timeoutSeconds: Double = 600.0): StudyBuildRecord {
+        require(timeoutSeconds.isFinite() && timeoutSeconds >= 0) { "The timeout must be finite and not negative" }
+        val deadline = System.nanoTime() + (timeoutSeconds * 1e9).toLong()
+        while (true) {
+            val record = job(id)
+            if (record.status !in ACTIVE || System.nanoTime() >= deadline) return record
+            Thread.sleep(minOf(20L, ((deadline - System.nanoTime()) / 1_000_000).coerceAtLeast(1L)))
         }
     }
 
@@ -503,6 +555,48 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
         val other = upstream(runner) ?: error("No build runner '$runner' in this document; run the box that defines it.")
         return other.verifiedFile(jobId, artifact)
     }
+
+    /** [StudyBuildContext.resumeFrom]: copy files of a finished attempt into [attempt], checked and recorded. */
+    internal fun resume(attempt: StudyBuildRecord, jobId: String, paths: List<String>, sameDesign: Boolean): List<File> {
+        checkCancelled(attempt.id)
+        require(paths.isNotEmpty()) { "Name the files to resume from" }
+        val source = synchronized(monitor) { records[jobId] } ?: error("No attempt '$jobId' in this runner to resume from")
+        check(source.id != attempt.id) { "An attempt cannot resume from itself" }
+        check(source.status !in ACTIVE) { "Attempt '$jobId' is still ${source.status.name.lowercase()}; resume from it once it has finished" }
+        if (sameDesign) check(source.stage == attempt.stage && source.recipeVersion == attempt.recipeVersion && source.inputs == attempt.inputs &&
+            source.dependencies.mapValues { it.value.jobId } == attempt.dependencies.mapValues { it.value.jobId }) {
+            "Attempt '$jobId' built a different design or recipe; build from the start, or pass sameDesign = false to continue from it anyway"
+        }
+        val root = attemptDirectory(source.id).canonicalFile
+        val copied = paths.flatMap { path ->
+            val origin = artifactFile(source.id, path)
+            when {
+                origin.isFile -> listOf(path)
+                origin.isDirectory -> origin.walkTopDown().onEnter { !Files.isSymbolicLink(it.toPath()) }
+                    .filter { it.isFile && !Files.isSymbolicLink(it.toPath()) }.map { it.relativeTo(root).invariantSeparatorsPath }.sorted().toList()
+                else -> error("Attempt '$jobId' has no '$path'")
+            }
+        }.distinct().map { path ->
+            val from = artifactFile(source.id, path)
+            source.artifacts.firstOrNull { it.path == path }?.let { verifiedFile(source.id, it) }
+            val sha = hashFile(from)
+            val to = artifactFile(attempt.id, path)
+            to.parentFile.mkdirs()
+            Files.copy(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            check(hashFile(to) == sha) { "The copy of '$path' from attempt '$jobId' does not match its source" }
+            StudyBuildArtifact(path, sha, to.length())
+        }
+        synchronized(monitor) {
+            checkCancelled(attempt.id)
+            val r = records.getValue(attempt.id)
+            records[attempt.id] = r.copy(resumedFrom = r.resumedFrom + StudyBuildResume(jobId, copied), updated = now())
+            persist()
+        }
+        return copied.map { artifactFile(attempt.id, it.path) }
+    }
+
+    /** The progress last recorded for [id], so a caller reporting in steps never goes backwards. */
+    internal fun recordedProgress(id: String): Double = synchronized(monitor) { records.getValue(id).progress }
 
     private fun frozenRequest(request: Map<String, Any?>): Map<String, Any?> {
         val bytes = mapper.writeValueAsBytes(request)

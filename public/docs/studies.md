@@ -517,6 +517,112 @@ until both stages are rebuilt. `showStudyBuilds("level")` would show the walls' 
 judge another runner's result the same way, by naming `dependsOn(runner, stage)` in its
 `dependencies`. A cycle of dependencies across runners is refused with an error on the card.
 
+### Continue from an earlier attempt
+
+A long search can stop at its time budget and leave a checkpoint behind. The next attempt should
+continue from it rather than start again. Name the earlier attempt in the request, and copy its
+files in with `context.resumeFrom(jobId, paths)`. This stage adds 100 passes to whatever checkpoint
+it continues from; the box runs it once, then again from the first attempt:
+
+<!--
+FIELD_TEST
+id: docs.studies.resume
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Continued from attempt"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/resume.png" alt="the builds output channel: a card with one stage, 'Relax the route', marked Current with a Rebuild button, and two grey lines: 'Request: resume = ' followed by the first attempt's ID, and 'Continued from attempt' followed by the first eight characters of that ID and 'checkpoint.txt'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Continued from attempt" capture="box" embed=true timeout="90" name="studies-resume" w="760" h="120"}
+:::static
+val builds = studyBuilds("relax", listOf(
+    StudyBuildStage("relax", "Relax the route", "relax-v1", setOf("route")) { c ->
+        (c.request["resume"] as? String)?.let { c.resumeFrom(it, listOf("checkpoint.txt")) }
+        val checkpoint = c.file("checkpoint.txt")
+        val passes = (if (checkpoint.isFile) checkpoint.readText().toInt() else 0) + 100
+        checkpoint.writeText("$passes")
+        StudyBuildProduct(listOf("checkpoint.txt"), mapOf("passes" to passes))
+    })) { mapOf("route" to "spawn to L7") }
+
+val fingerprint = builds.stages().single().fingerprint!!
+val first = builds.await(builds.start("relax", fingerprint).id)
+builds.await(builds.start("relax", fingerprint, mapOf("resume" to first.id)).id)
+showStudyBuilds("relax")
+```
+
+The earlier attempt can be any finished one: a success, a failure or a cancellation keeps its files.
+Each copy is checked against its source, a file that was one of that attempt's results must still
+match its recorded hash, and the attempt records what it copied with the hashes
+(`StudyBuildRecord.resumedFrom`); the card names it. A path can be a directory, which copies
+everything under it. By default the earlier attempt must have built the same inputs and dependency
+results with the same recipe, so an agent cannot continue from a checkpoint of a design it has since
+replaced. Pass `sameDesign = false` when an earlier design is a deliberate starting point.
+
+`builds.await(jobId)` blocks until an attempt finishes, which suits a box that runs stages in order
+like this one. For a long build, let the card or AI4 follow it instead.
+
+### Run an external program
+
+Many builds hand the real work to another program: a solver, a Python script, a mesher. Start it
+with `context.runProcess(command)`. It runs in the attempt's directory with its output kept in
+`process.log`, and a progress file the program rewrites, such as
+`{"fraction": 0.5, "message": "pass 2 of 4"}`, becomes the card's progress. The program is stopped,
+with every process it started, when the build is cancelled, when `deadline` passes, or when `stall`
+passes with no change to its progress. Here a short Python script stands in for the solver:
+
+<!--
+FIELD_TEST
+id: docs.studies.process
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 5.0
+expect:
+  outputContains:
+    - "pass 2 of 4"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/process.png" alt="the builds output channel: a card with one stage, 'Relax in Python', marked Building with a Cancel button, a progress bar half filled, the elapsed time, and the message 'pass 2 of 4' from the script's progress file" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="pass 2 of 4" capture="box" embed=true timeout="90" name="studies-process" w="760" h="120"}
+:::static
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+
+val script = "%document/relax.py".file
+script.writeText("""
+import json, time
+for n in range(1, 5):
+    json.dump({"fraction": n / 4, "message": f"pass {n} of 4"}, open("progress.json", "w"))
+    time.sleep(3)
+open("relaxed.txt", "w").write("relaxed in 4 passes")
+""".trimStart())
+
+val builds = studyBuilds("external", listOf(
+    StudyBuildStage("relax", "Relax in Python", "relax-" + fileIdentity(script), setOf("route")) { c ->
+        c.runProcess(listOf("python3", script.path), progressFile = "progress.json", stall = 30.seconds, deadline = 10.minutes)
+        StudyBuildProduct(listOf("relaxed.txt", "process.log"))
+    })) { mapOf("route" to "spawn to L7") }
+
+builds.start("relax", builds.stages().single().fingerprint!!)
+showStudyBuilds("external")
+```
+
+A stop, or a non-zero exit, fails the attempt with a message that names the log, such as
+"python3 made no progress for 30s (last: pass 2 of 4), so it was stopped." Pass `check = false` to
+read the exit code yourself, and `progressSpan = 0.0..0.8` to leave room for checking the program's
+output afterwards. Without a progress file, `stall` watches for new output in the log.
+
+The recipe version includes `fileIdentity(script)`, a hash of the script's contents, so editing the
+script makes earlier results stale and editing anything else in the document does not.
+`classIdentity(SomeRecipe::class)` does the same for compiled code. Name the files and classes that
+do the build's work rather than a whole provider: a hash of a whole provider changes whenever any
+part of it is edited, and every result goes stale with it.
+
+When stages share something only one of them can use at a time, such as a GPU, a licence or a
+scratch directory, pass `exclusive = true` to `studyBuilds`. The runner then builds one stage at a
+time and refuses a start while another build runs, and the card says which build the others are
+waiting for.
+
 ## The library's studies
 
 StackSL, RectSL and stack.auto are built from the same pieces a `SourceFramesStudy` is, and the

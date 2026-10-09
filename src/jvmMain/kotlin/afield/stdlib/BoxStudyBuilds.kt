@@ -17,10 +17,11 @@ import java.util.concurrent.ConcurrentHashMap
  * [readInputs] must read one immutable snapshot of the existing design authority; agents and mouse
  * controls must edit that authority, not the captured build inputs. It may run on a worker thread.
  * [gates] are inputs that exist only while their checks pass ([StudyBuildGate]). A stage may depend
- * on a stage of another runner in this document, written `dependsOn(runner, stage)`.
+ * on a stage of another runner in this document, written `dependsOn(runner, stage)`. With [exclusive],
+ * the runner builds one stage at a time and refuses a start while another build runs.
  */
 fun Box.studyBuilds(name: String, stages: List<StudyBuildStage>, workers: Int = 2,
-    gates: List<StudyBuildGate> = emptyList(), readInputs: () -> Map<String, String>): StudyBuilds {
+    gates: List<StudyBuildGate> = emptyList(), exclusive: Boolean = false, readInputs: () -> Map<String, String>): StudyBuilds {
     require(name.matches(STUDY_BUILD_NAME)) { "Build runner name must be a simple word" }
     require((stages.flatMap { it.dependencies } + gates.flatMap { it.dependencies }).none { it.startsWith("$name/") }) {
         "A dependency names this runner '$name'; name a stage of the same runner by its ID alone"
@@ -29,7 +30,7 @@ fun Box.studyBuilds(name: String, stages: List<StudyBuildStage>, workers: Int = 
     val key = "_studyBuilds:$name"
     (properties[key] as? BoxStudyBuildBinding)?.close()
     val document = BoxStudies.documentOf(this)
-    val store = StudyBuilds(File(BoxStudies.directory(this), "builds/$name"), stages, readInputs, workers, gates) { runner ->
+    val store = StudyBuilds(File(BoxStudies.directory(this), "builds/$name"), stages, readInputs, workers, gates, exclusive) { runner ->
         studyBuildRunner(document, runner)
     }
     val binding = BoxStudyBuildBinding(this, name, store, document)

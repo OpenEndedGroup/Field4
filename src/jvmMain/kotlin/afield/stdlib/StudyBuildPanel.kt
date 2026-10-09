@@ -49,7 +49,7 @@ internal class StudyBuildPanel(private val binding: BoxStudyBuildBinding, privat
             val runs = shown.mapNotNull { it.latest?.id }.toSet()
             val read = { studyBuildFindings(binding.owner.inside.boxes.values + binding.owner.inside.root, runs) }
             findings = if (Runloop.isMainThread) read() else runBlocking { withContext(Runloop.runLoop.main) { read() } }
-            studyBuildCardHtml(prefix, binding.name, shown, findings, error, ::button)
+            studyBuildCardHtml(prefix, binding.name, shown, findings, error, exclusive = binding.builds.exclusive, button = ::button)
         }
         catch (e: Exception) { "<div class=\"study-build-error\" style=\"color:#ff6969;user-select:text\">${studyBuildEscape(e.message ?: "Build runner unavailable")}</div>" }
         if (html != lastHtml && !closed) { lastHtml = html; BoxStudies.show(binding.owner, channel, html) }
@@ -66,10 +66,15 @@ internal class StudyBuildPanel(private val binding: BoxStudyBuildBinding, privat
 /** Renders one stage's Field button; [StudyBuildPanel] passes the buttons it registered callbacks for. */
 internal typealias StudyBuildButton = (stage: String, action: String, label: String, important: Boolean) -> String
 
-/** The whole card: one section per stage under a style block scoped to [prefix]. */
+/**
+ * The whole card: one section per stage under a style block scoped to [prefix]. In an [exclusive]
+ * runner, a stage that could build waits while another stage's build is running.
+ */
 internal fun studyBuildCardHtml(prefix: String, runner: String, stages: List<StudyStageState>,
-    findings: List<StudyBuildFinding>, error: String? = null, button: StudyBuildButton = { _, _, _, _ -> "" }): String {
-    val cards = stages.joinToString("") { studyBuildStageHtml(it, stages, findings, button) }
+    findings: List<StudyBuildFinding>, error: String? = null, exclusive: Boolean = false,
+    button: StudyBuildButton = { _, _, _, _ -> "" }): String {
+    val busy = stages.firstOrNull { it.latest?.status in setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING) }?.label?.takeIf { exclusive }
+    val cards = stages.joinToString("") { studyBuildStageHtml(it, stages, findings, busy, button) }
     return """
 <style>
 .$prefix{background:#000;color:#ddd;padding:16px;border-radius:12px;font:14px/1.45 Iosevka,monospace;max-width:640px;box-sizing:border-box}
@@ -103,9 +108,12 @@ internal fun studyBuildUsedEarlierInputs(state: StudyStageState, job: StudyBuild
 internal fun studyBuildLatestUsedEarlierInputs(state: StudyStageState): Boolean =
     state.latest != null && studyBuildUsedEarlierInputs(state, state.latest)
 
-/** One stage's section of the card. [stages] names blocking stages by label. */
+/**
+ * One stage's section of the card. [stages] names blocking stages by label. [busyWith] is the label
+ * of the stage an exclusive runner is building, when that is another stage.
+ */
 internal fun studyBuildStageHtml(state: StudyStageState, stages: List<StudyStageState>,
-    findings: List<StudyBuildFinding>, button: StudyBuildButton = { _, _, _, _ -> "" }): String {
+    findings: List<StudyBuildFinding>, busyWith: String? = null, button: StudyBuildButton = { _, _, _, _ -> "" }): String {
     val latest = state.latest
     val running = latest?.status in setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING)
     val earlier = studyBuildLatestUsedEarlierInputs(state)
@@ -132,13 +140,18 @@ internal fun studyBuildStageHtml(state: StudyStageState, stages: List<StudyStage
     val advice = failure?.suggestions?.joinToString(" ").orEmpty()
     val request = latest?.request?.takeIf { it.isNotEmpty() }?.let { asked ->
         "<p class=\"study-build-muted\">Request: ${studyBuildEscape(asked.entries.joinToString { (key, value) -> "$key = $value" })}</p>"
-    }.orEmpty()
+    }.orEmpty() + latest?.resumedFrom.orEmpty().joinToString("") { resumed ->
+        val files = resumed.files.map { it.path }.let { if (it.size > 3) it.take(3) + "${it.size - 3} more" else it }
+        "<p class=\"study-build-muted\">Continued from attempt ${studyBuildEscape(resumed.jobId.take(8))}: ${studyBuildEscape(files.joinToString())}</p>"
+    }
     val geometry = failure?.let(::studyBuildGeometryViewHtml).orEmpty()
     val action = when {
         running && !latest!!.cancelRequested -> button(state.id, "cancel", "Cancel", false)
-        !running && state.fingerprint != null -> button(state.id, "build", if (state.current != null) "Rebuild" else "Build", true)
+        !running && state.fingerprint != null && busyWith == null -> button(state.id, "build", if (state.current != null) "Rebuild" else "Build", true)
         else -> ""
     }
+    val turn = if (!running && state.fingerprint != null && busyWith != null)
+        "<p class=\"study-build-muted\">One build at a time: this can start when ${studyBuildEscape(busyWith)} finishes.</p>" else ""
     val progress = if (running) """<progress max="1" value="${latest!!.progress}" aria-label="${studyBuildEscape(state.label)} progress"></progress><p class="study-build-elapsed">${studyBuildElapsedText(latest)}</p>""" else ""
     val prior = if (failure != null && state.current != null) "<p>Previous checked result is still current.</p>" else ""
     val resultNotes = studyBuildResultNotesHtml(state.resultNotes,
@@ -146,7 +159,7 @@ internal fun studyBuildStageHtml(state: StudyStageState, stages: List<StudyStage
     val reviewLinks = studyBuildFindingsHtml(state, findings)
     val hasReview = !earlier && findings.any { it.runId == latest?.id }
     val diagnostic = latest?.takeIf { it.problem != null }?.let { studyBuildDiagnosticHtml(it, hasReview, currentInputs = !earlier) }.orEmpty()
-    return """<section data-stage="${state.id}"><div class="study-build-title"><span>${studyBuildEscape(state.label)}</span><span class="study-build-state">$label</span>$action</div>$progress<p class="${if (failure != null) "study-build-error" else ""}">${studyBuildEscape(message)}</p>$request${if (advice.isNotEmpty()) "<p class=\"study-build-error\">${studyBuildEscape(advice)}</p>" else ""}$geometry$prior$resultNotes$reviewLinks$diagnostic</section>"""
+    return """<section data-stage="${state.id}"><div class="study-build-title"><span>${studyBuildEscape(state.label)}</span><span class="study-build-state">$label</span>$action</div>$progress<p class="${if (failure != null) "study-build-error" else ""}">${studyBuildEscape(message)}</p>$request$turn${if (advice.isNotEmpty()) "<p class=\"study-build-error\">${studyBuildEscape(advice)}</p>" else ""}$geometry$prior$resultNotes$reviewLinks$diagnostic</section>"""
 }
 
 /**
