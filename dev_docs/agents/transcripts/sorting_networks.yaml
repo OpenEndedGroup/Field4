@@ -288,3 +288,6 @@ operations:
                   height = 360
               }
           }.darkMode())
+  - launch: { box: sorting_topology, property: code }
+  - launch: { box: sorting_disorder, property: code }
+  - await: { wait: pending }

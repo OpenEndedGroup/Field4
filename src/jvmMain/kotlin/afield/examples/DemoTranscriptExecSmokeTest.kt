@@ -433,6 +433,10 @@ object DemoTranscriptExecSmokeTest {
         // CPU only; the Manifold halves print an install message and fall back when it is absent.
         "solidsl_gallery",
         "mesh_repair_demo",
+        // sorting_networks_examples.md's four fences as boxes, pure CPU. Only the two drawing boxes are
+        // launched: the two annealing boxes search for 70 and 90 seconds, and the docs runner executes
+        // them for the page's captures.
+        "sorting_networks",
         // Two pure-CPU boxes on the third track backend: one prints a track's symbolic IR with its
         // free parameters still unsolved, the other fits those parameters against waypoints and
         // rasterises target/seed/fitted with TriMesh.renderPng into display(). `toFn` and the Adam
@@ -689,9 +693,6 @@ object DemoTranscriptExecSmokeTest {
         // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
         // holds the page's fences to the document.
         "sonicpi_pattern_demo",
-        // sorting_networks_examples.md's four fences as boxes. Pure CPU, but the two annealing boxes
-        // search for up to 70 and 90 seconds; the docs runner executes all four for its captures.
-        "sorting_networks",
     )
 
     /**

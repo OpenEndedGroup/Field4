@@ -1478,6 +1478,15 @@ the result. Both build their mesh in the box, so they need no files and no netwo
 
 [Open ↗](offline.html?file=assets/agent_transcripts/mesh_repair_demo/metadata.edn)
 
+### sorting_networks
+
+The four examples from [Sorting networks](sorting_networks_examples.md), one box each: a bubble
+network drawn beside an odd-even merge, how fast each removes disorder from random inputs, one
+`SortingNetwork.anneal` run searching for a smaller network, and annealing across three starting
+networks, three temperature schedules and three seeds. The two annealing boxes take about a minute each.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sorting_networks/metadata.edn)
+
 ### rectsl_glsl_sdf
 
 Two boxes that print. [RectSL](rectsl_cheatsheet.md) scenes lower to a single
@@ -2115,15 +2124,6 @@ Sonic Pi program and prints it, and needs nothing installed; the second plays it
 Sonic Pi from Field's clock.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/sonicpi_pattern_demo/metadata.edn)
-
-### sorting_networks
-
-The four examples from [Sorting networks](sorting_networks_examples.md), one box each: a bubble
-network drawn beside an odd-even merge, how fast each removes disorder from random inputs, one
-`SortingNetwork.anneal` run searching for a smaller network, and annealing across three starting
-networks, three temperature schedules and three seeds. The two annealing boxes take about a minute.
-
-[Open ↗](offline.html?file=assets/agent_transcripts/sorting_networks/metadata.edn)
 
 ### marf_demo
 
