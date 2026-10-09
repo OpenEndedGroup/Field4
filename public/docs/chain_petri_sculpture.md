@@ -10,7 +10,7 @@ renders the result.
 `afield.petri` searches the state space, `tubeMesh` sweeps each firing into geometry, and
 `PathTraceScene` lights it. None of the three knows about the others.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_petri_sculpture/sculpture.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="petri sculpture converged" embed=true hidden=true timeout="400" name="chain-petri-sculpture" alt="Two cage-like sculptures of thin curved tubes in blue, teal and violet, hung over a dark reflective floor with a sunset sea behind. Each starts at a silver bead at the top and spreads downward through layers of small glass beads. In each, one thicker tube glows orange from the top bead down to a bright red bead. The left sculpture is dense; the right one has far fewer tubes" macro-file="../../dev_docs/agents/transcripts/petri_state_space_sculpture.yaml" capture-box="petri_sculpture_trace"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_petri_sculpture/sculpture.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="petri sculpture converged" embed=true hidden=true timeout="400" name="chain-petri-sculpture" alt="Two cage-like sculptures of thin curved tubes in blue, teal and violet, hung over a dark reflective floor that fades into black. Each starts at a silver bead at the top and spreads downward through layers of small glass beads. In each, one thicker tube glows orange from the top bead down to a bright red bead. The left sculpture is dense; the right one has far fewer tubes" macro-file="../../dev_docs/agents/transcripts/petri_state_space_sculpture.yaml" capture-box="petri_sculpture_trace"}
 // Built and launched from dev_docs/agents/transcripts/petri_state_space_sculpture.yaml.
 ```
 
@@ -26,7 +26,7 @@ The right sculpture is the same net searched with `PetriReduction.STUBBORN`, whi
 order of independent firings instead of all of them. It reaches the same deadlock with far fewer
 markings.
 
-Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
+Lighting: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 [Fabricate demo assets](assets/fabricate_demo/ATTRIBUTION.md).
 
 ## The two graphs in numbers
