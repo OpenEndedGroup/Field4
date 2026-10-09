@@ -97,7 +97,7 @@ internal fun studyBuildCardHtml(prefix: String, runner: String, stages: List<Stu
  * not current) counts as changed. The card and the agent's build tools both ask this.
  */
 internal fun studyBuildUsedEarlierInputs(state: StudyStageState, job: StudyBuildRecord): Boolean =
-    job.fingerprint != state.fingerprint
+    !job.ranAgainst(state.fingerprint)
 
 /** [studyBuildUsedEarlierInputs] for the stage's latest attempt, the one the card shows. */
 internal fun studyBuildLatestUsedEarlierInputs(state: StudyStageState): Boolean =
@@ -125,11 +125,14 @@ internal fun studyBuildStageHtml(state: StudyStageState, stages: List<StudyStage
     val message = when {
         running && earlier -> "The design changed. This result will be retained for inspection."
         running -> latest!!.message
-        state.blockedBy.isNotEmpty() -> "Complete ${state.blockedBy.joinToString { id -> stages.first { it.id == id }.label }} first."
+        state.blockedBy.isNotEmpty() -> "Complete ${state.blockedBy.joinToString { id -> stages.firstOrNull { it.id == id }?.label ?: id }} first."
         state.inputHelp != null -> state.inputHelp.message
         else -> failure?.message ?: state.reason.orEmpty()
     }
     val advice = failure?.suggestions?.joinToString(" ").orEmpty()
+    val request = latest?.request?.takeIf { it.isNotEmpty() }?.let { asked ->
+        "<p class=\"study-build-muted\">Request: ${studyBuildEscape(asked.entries.joinToString { (key, value) -> "$key = $value" })}</p>"
+    }.orEmpty()
     val geometry = failure?.let(::studyBuildGeometryViewHtml).orEmpty()
     val action = when {
         running && !latest!!.cancelRequested -> button(state.id, "cancel", "Cancel", false)
@@ -143,7 +146,7 @@ internal fun studyBuildStageHtml(state: StudyStageState, stages: List<StudyStage
     val reviewLinks = studyBuildFindingsHtml(state, findings)
     val hasReview = !earlier && findings.any { it.runId == latest?.id }
     val diagnostic = latest?.takeIf { it.problem != null }?.let { studyBuildDiagnosticHtml(it, hasReview, currentInputs = !earlier) }.orEmpty()
-    return """<section data-stage="${state.id}"><div class="study-build-title"><span>${studyBuildEscape(state.label)}</span><span class="study-build-state">$label</span>$action</div>$progress<p class="${if (failure != null) "study-build-error" else ""}">${studyBuildEscape(message)}</p>${if (advice.isNotEmpty()) "<p class=\"study-build-error\">${studyBuildEscape(advice)}</p>" else ""}$geometry$prior$resultNotes$reviewLinks$diagnostic</section>"""
+    return """<section data-stage="${state.id}"><div class="study-build-title"><span>${studyBuildEscape(state.label)}</span><span class="study-build-state">$label</span>$action</div>$progress<p class="${if (failure != null) "study-build-error" else ""}">${studyBuildEscape(message)}</p>$request${if (advice.isNotEmpty()) "<p class=\"study-build-error\">${studyBuildEscape(advice)}</p>" else ""}$geometry$prior$resultNotes$reviewLinks$diagnostic</section>"""
 }
 
 /**

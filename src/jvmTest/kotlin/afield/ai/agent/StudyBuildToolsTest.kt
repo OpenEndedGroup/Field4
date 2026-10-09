@@ -55,6 +55,37 @@ class StudyBuildToolsTest {
             assertTrue(builds.history().isEmpty())
         }
     }
+    @Test fun anAgentsRequestIsRecordedForOneAttemptAndAClosedGateExplainsTheWait() {
+        val info = session()
+        val box = Box("source").also { info.boxes[it.id] = it }
+        val budget = java.util.concurrent.atomic.AtomicReference("10")
+        val gate = StudyBuildGate("budget allowed", setOf("budget")) { e ->
+            if (e.inputs.getValue("budget").toInt() >= 20) null else "The budget is ${e.inputs["budget"]} steps; the search needs at least 20."
+        }
+        StudyBuilds(Files.createTempDirectory("request-build-tools").toFile(), listOf(
+            StudyBuildStage("search", "Search", "v1", setOf("budget allowed")) { c ->
+                c.file("result").writeText("resumed from ${c.request["resume"] ?: "nothing"}"); StudyBuildProduct(listOf("result"))
+            }), { mapOf("budget" to budget.get()) }, gates = listOf(gate)).use { builds ->
+            box.properties["_studyBuilds:study"] = BoxStudyBuildBinding(box, "study", builds)
+            val waiting = aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study")))
+            assertContains(waiting, "Waiting for budget allowed")
+            assertContains(waiting, "the search needs at least 20.")
+            assertFalse(call(info, StartStudyBuildRequest(box.id, "study", "search", "invented")).success)
+
+            budget.set("30")
+            val fingerprint = builds.stages().single().fingerprint!!
+            val asked = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0, request = mapOf("resume" to "job-1")))
+            assertTrue(asked.success, asked.message)
+            val job = asked.details["job"] as Map<*, *>
+            assertEquals(mapOf("resume" to "job-1"), job["request"])
+            assertEquals(true, (asked.details["currency"] as Map<*, *>)["isCurrent"])
+            assertEquals(false, job["fromEarlierInputs"])
+            val plain = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0))
+            assertEquals(emptyMap<String, Any?>(), (plain.details["job"] as Map<*, *>)["request"])
+            assertEquals("resumed from nothing", builds.currentFile("search", "result").readText())
+        }
+    }
+
     private fun session(readOnly: Boolean = false): SessionInformation {
         val root = Box("root")
         return SessionInformation(Files.createTempDirectory("build-tools-").toString(), "test", root = root, ephemeral = true, readOnly = readOnly)
