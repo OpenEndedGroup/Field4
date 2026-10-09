@@ -4,13 +4,13 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**17030 public symbols across 491 source files**, 10101 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**17032 public symbols across 491 source files**, 10104 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Math](math.md) | 21 | 1611 | 1225 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 21 | 1613 | 1228 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 708 | 360 (50%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 35 | 1504 | 1269 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 30 | 657 | 314 (47%) | Turning a scene into pixels on a Vulkan device. |
@@ -434,7 +434,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [simpleGaussianSplatSupport.kt](renderers.md#simplegaussiansplatsupport-kt) | Renderers | 5 | 5 | A Gaussian-splat shader pair seeded into a box as editable starter source, so the splat shader is live Field code rather than source hidden inside `GaussianSplatRenderer`. |  |
 | [SimulationGeometry.kt](simulation.md#simulationgeometry-kt) | Simulation | 45 | 45 | What a session is told about shape, and the discretisation that shape gets solved on. |  |
 | [SimulationResult.kt](simulation.md#simulationresult-kt) | Simulation | 31 | 27 | One solved revision: the raw fields exactly as Kratos produced them, and the views Field draws. |  |
-| [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
+| [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 23 | 3 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 29 | Classical multidimensional scaling and t-SNE, over equal-length vectors or over a distance matrix you computed yourself, wrapping Smile. | [Projecting a distance matrix](../projection_examples.md) |
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md) |
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
