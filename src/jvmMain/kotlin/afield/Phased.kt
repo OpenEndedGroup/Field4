@@ -344,15 +344,49 @@ class Framer : CoroutineDispatcher() {
     }
 
 
+    /**
+     * The lists the [frame] calls on this thread's stack have taken and not finished, outermost
+     * first. Per thread: nesting is a property of one stack (the runloop's, nearly always; a
+     * `run-jvm-main` smoke pumps from its own thread).
+     */
+    private val drainingHere = ThreadLocal.withInitial { ArrayList<LinkedTransferQueue<Pair<CoroutineContext, Runnable>>>() }
+
+    /**
+     * Runs what was dispatched before this call; what those blocks dispatch waits for the next.
+     *
+     * Re-entrant. Something that pumps the runloop from *inside* a block this is running — a
+     * `propUp` pull (`ReactiveRuns.pull`), the docs UI driver's `idle` — calls [frame] again. That
+     * nested call first finishes the lists the outer calls took, in order, and only then takes new
+     * work. Without that, work already taken by the outer call (a supplier's launch queued just
+     * behind the block now pumping) could never run inside the nested pump, and a pump waiting
+     * for it waited forever. Measured 2026-10-09 by `reactive_props_scenarios.py
+     * up_concurrent_join`: a 120 s hang, every time.
+     */
     @OptIn(ExperimentalAtomicApi::class)
     fun frame(): Int {
+        var c = 0
+        val draining = drainingHere.get()
+        // Outer lists first: they were taken earlier, so their blocks go first.
+        for (outer in draining.toList()) c += drain(outer)
         val currentList = synchronized(queueLock) {
             val current = nextList
             nextList = LinkedTransferQueue()
             current
         }
-        var n = currentList.poll()
+        draining.add(currentList)
+        try {
+            c += drain(currentList)
+        } finally {
+            draining.removeAt(draining.lastIndex)
+        }
+//        if (c == 0) print(".") else print(":")
+        return c
+    }
+
+    @OptIn(ExperimentalAtomicApi::class)
+    private fun drain(list: LinkedTransferQueue<Pair<CoroutineContext, Runnable>>): Int {
         var c = 0
+        var n = list.poll()
         while (n != null) {
             c++
             try {
@@ -363,9 +397,8 @@ class Framer : CoroutineDispatcher() {
             } finally {
                 isMain.store(false)
             }
-            n = currentList.poll()
+            n = list.poll()
         }
-//        if (c == 0) print(".") else print(":")
         return c
     }
 

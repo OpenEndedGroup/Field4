@@ -508,10 +508,19 @@ fun parseLayersList(layersString: String): List<String> {
     return layersString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 }
 
+/**
+ * Run once for each document when it has loaded, beside its autorun boxes ([scheduleAutorunBoxes]). AI4 uses it
+ * to arm the build waits saved with its box chats again after a restart.
+ */
+val documentReadyHooks = java.util.concurrent.CopyOnWriteArrayList<(SessionInformation) -> Unit>()
+
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
     if (autorunTriggered) return
     autorunTriggered = true
     autorunBoxes(boxes.values, delayMs)
+    documentReadyHooks.forEach { hook ->
+        runCatching { hook(this) }.onFailure { lprintln("warning,server", "document-ready hook failed for $documentName: ${it.message}") }
+    }
 }
 
 fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long = 500L) {
@@ -526,7 +535,16 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
             attempts++
         }
 
-        targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }
+        // Each box is judged on its own: one box whose autorun cannot be read must not end autorun
+        // for the rest of the document, which is what a ClassCastException here used to do.
+        targetBoxes.filter { box ->
+            try {
+                box.autorun && box.id != "root" && !box.getPropertyRaw("_tombstone").isTrue()
+            } catch (t: Throwable) {
+                lprintln("warning,autorun", "autorun skipped ${box.name}: ${t.message}")
+                false
+            }
+        }
             .forEach { box ->
                 launch {
                     try {
@@ -2243,6 +2261,8 @@ class Server {
                             if (!info.writesToDisk) return@forEach
                             if (info.loading) return@forEach
                             refreshFileProxyBoxes(info, notifyMissing = false)
+                            // Box-to-box reads recorded since the last tick, beside metadata.edn.
+                            PropertyDependencies.flush(info)
                             // Only persist when we know sidecar-bearing properties changed.
                             if (info.pendingSidecarSaves.isNotEmpty()) {
 //                            lblock(" saving to ${info.filename}")
@@ -2577,7 +2597,8 @@ class Server {
                     }
                     // Monaco view/cursor state should persist with the document, but live rebroadcast
                     // makes multiple clients on the same box fight over their local editor position.
-                    targetBox.setPropertyRaw(set.property, set.value, doResync = !isEditorStateProperty)
+                    // `textPropertyValue`: text spelling a Boolean, for a Boolean property, is stored as one.
+                    targetBox.setPropertyRaw(set.property, textPropertyValue(targetBox, set.property, set.value), doResync = !isEditorStateProperty)
                     OperationTranscript.recordEdit(
                         targetBox,
                         set.property,
@@ -3962,6 +3983,10 @@ class Server {
 
                         get("/api/ai-tool-use-improvement") {
                             call.respond(AiToolUseImprovementMonitor.status())
+                        }
+
+                        get("/api/ai-tool-use-improvement/view") {
+                            call.respond(AiToolUseImprovementMonitor.view())
                         }
 
                         post("/api/ai-tool-use-improvement") {

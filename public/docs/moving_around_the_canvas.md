@@ -1,7 +1,6 @@
 # Moving around the canvas
 
-A Field document is usually bigger than the window. You can pan and
-zoom with the mouse or trackpad; split the canvas so headings or labels stay in view while the rest
+A Field document is usually bigger than the window. You can pan and zoom with the mouse or trackpad; split the canvas so headings or labels stay in view while the rest
 scrolls; step from box to box with the keyboard, by tapping `Cmd` twice and holding it; bring the
 selection into view with `Alt+F`; or jump to one of nine views you have saved. All of them change
 what you are looking at and never the document itself.
@@ -21,8 +20,8 @@ what you are looking at and never the document itself.
 
 ## Splitting the canvas
 
-Like a spreadsheet's split, the canvas can be divided into two or four panes that keep part of a
-document in view while you move around the rest: a row of headings along the top, a column of labels
+Like a spreadsheet's split, the canvas can be divided into panes that keep part of a document in
+view while you move around the rest: a row of headings along the top, a column of labels
 down the side, or both. Here the body of a sequencer-like document has been scrolled right and down.
 The bar headings moved sideways with it, the instrument labels moved up with it, and the corner stayed
 put:
@@ -113,9 +112,8 @@ repeat(40) { scrollBody(-6.0, -4.0); ui.pause(30) }
 ui.pause(2500)
 ```
 
-The drawing
-layer (`Alt+D`) works in every pane: its toolbar is in the bottom-right pane, and the tool you pick
-there follows the pointer into the others.
+The drawing layer (`Alt+D`) works in every pane: its toolbar is in the bottom-right pane, and the
+tool you pick there follows the pointer into the others.
 
 The split is saved with the document. A bookmark saved while the canvas is split restores the split
 and where each pane was scrolled to.
@@ -390,8 +388,8 @@ ui.pause(600)
 Each saved slot shows:
 
 - a small map of the document, with the saved view as a dashed rectangle (one for each pane of a
-  split canvas) and the selected box in the accent colour. The boxes are drawn where they are now, not where they were when the slot
-  was saved
+  split canvas) and the selected box in the accent colour. The boxes are drawn where they are now,
+  not where they were when the slot was saved
 - the view position (and the zoom, when it is not 100%), and the box that was selected or being
   edited, with the cursor line
 - how many output panels were open and closed, and a pill for each open one with its size

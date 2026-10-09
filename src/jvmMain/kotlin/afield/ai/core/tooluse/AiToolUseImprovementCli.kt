@@ -1,6 +1,8 @@
 package afield.ai.core.tooluse
 
+import afield.AiChatModelIdentity
 import afield.ai.core.AgentMemoryState
+import afield.ai.core.AiLiveConversation
 import afield.ai.core.AttachmentResponse
 import afield.ai.core.ContextAttachment
 import afield.ai.core.EditFileRequest
@@ -30,6 +32,18 @@ private val defaultToolLogDir: Path = Paths.get(
         ?: Paths.get(System.getProperty("user.home"), ".afield", "logs", "ai4_tool_io").toString()
 )
 
+private const val IMPROVEMENT_FILE_KEY = "cli://ai-tool-use-improvement"
+
+/**
+ * Whether a tool I/O log is one of this task's own runs (its `session_start` names [IMPROVEMENT_FILE_KEY]). Such logs
+ * are left out of review: the bridge used to write them beside the AI4 logs, and a small window of recent logs then
+ * held mostly the reviewer's earlier runs, so it reviewed itself.
+ */
+fun isToolUseImprovementLog(path: Path): Boolean = runCatching {
+    Files.newBufferedReader(path, StandardCharsets.UTF_8).use { it.readLine().orEmpty() }
+        .contains("\"fileKey\":\"$IMPROVEMENT_FILE_KEY\"")
+}.getOrDefault(false)
+
 private data class ToolUseOptions(
     val logDir: Path = defaultToolLogDir,
     val srcDir: Path = Paths.get("src"),
@@ -44,7 +58,8 @@ private data class ToolUseOptions(
     val maxOutputTokens: Long = 24_000,
     val promptFile: Path? = null,
     val reportFile: Path = Paths.get("build", "ai-tool-use-improvement-report.md"),
-    val diffFile: Path = Paths.get("build", "ai-tool-use-improvement-dry-run.patch")
+    val diffFile: Path = Paths.get("build", "ai-tool-use-improvement-dry-run.patch"),
+    val transcriptFile: Path = Paths.get("build", "ai-tool-use-improvement-transcript.md")
 )
 
 @JsonClassDescription("Patch an allowed AI4 source file by replacing an exact oldText snippet with newText. Prefer this over EditFile for small prompt/tool-description edits.")
@@ -73,11 +88,14 @@ private data class ToolLogFile(
 
 fun main(args: Array<String>) {
     val options = parseOptions(args.toList()) ?: return
+    // This run is recorded by its transcript file; a tool I/O log of it would only land in the next review's input.
+    System.setProperty("afield.ai4.toolIoLog", "off")
     val workspaceRoot = Paths.get("").toAbsolutePath().normalize()
     val logDir = options.logDir.toAbsolutePath().normalize()
     val srcDir = workspaceRoot.resolve(options.srcDir).normalize()
     val reportFile = workspaceRoot.resolve(options.reportFile).normalize()
     val diffFile = workspaceRoot.resolve(options.diffFile).normalize()
+    val transcriptFile = workspaceRoot.resolve(options.transcriptFile).normalize()
     val logFiles = recentToolLogs(logDir, options.maxLogFiles, options.maxLogChars)
     val sourceManifest = buildSourceManifest(workspaceRoot, srcDir)
 
@@ -86,6 +104,7 @@ fun main(args: Array<String>) {
     println("Recent logs: ${logFiles.size}")
     println("Model: ${options.model}")
     println("Report: ${reportFile.absolutePathString()}")
+    println("Transcript: ${transcriptFile.absolutePathString()}")
     if (options.dryRun) {
         println("Dry run: source edits update an in-memory overlay only.")
         println("Dry-run patch: ${diffFile.absolutePathString()}")
@@ -106,6 +125,7 @@ fun main(args: Array<String>) {
     val summary = buildToolLogSummary(logDir, logFiles)
     val overlay = linkedMapOf<Path, String>()
     val dryRunDiffs = mutableListOf<String>()
+    val transcript = TranscriptRecorder(transcriptFile)
 
     val attachments = buildList {
         add(ContextAttachment("tool-log-summary.md", "markdown", summary, "Digest of recent AI4 tool I/O JSONL logs."))
@@ -117,14 +137,18 @@ fun main(args: Array<String>) {
                 "Editable source files under ${workspaceRoot.relativizeOrAbsolute(srcDir)}. Use AttachmentRequest with these paths to read full files."
             )
         )
+        // The log itself, not a pointer to it: AttachmentRequest answers from a listed attachment before it asks
+        // resolveAttachment, so a placeholder here was all the agent could ever read under this ref.
+        // AttachmentRequest hands it out in bounded excerpts; nothing puts attachment text into the prompt.
         logFiles.forEach { log ->
-            add(ContextAttachment(log.ref, "jsonl", "Use AttachmentRequest(\"${log.ref}\") to read this log.", "AI4 tool I/O log ${log.path.fileName}."))
+            add(ContextAttachment(log.ref, "jsonl", log.text, "AI4 tool I/O log ${log.path.fileName}."))
         }
     }
 
-    val bridge = OpenAiIdeCodexBridge(model = options.model, log = CliLog(options.verbose))
+    val bridge = OpenAiIdeCodexBridge(model = options.model, log = CliLog(options.verbose, transcript))
+    transcript.model = bridge.modelIdentity
     bridge.registerTool(ReplaceInFileRequest::class.java) { _, req ->
-        replaceInFile(workspaceRoot, srcDir, overlay, dryRunDiffs, req, options.dryRun)
+        replaceInFile(workspaceRoot, srcDir, overlay, dryRunDiffs, req, options.dryRun, transcript)
     }
 
     val instructions = buildString {
@@ -144,7 +168,7 @@ fun main(args: Array<String>) {
     }.trim()
 
     val state = bridge.startThread(
-        fileKey = "cli://ai-tool-use-improvement",
+        fileKey = IMPROVEMENT_FILE_KEY,
         fileText = "",
         instructions = instructions
     )
@@ -181,7 +205,7 @@ fun main(args: Array<String>) {
             )
         },
         editOtherFile = { req ->
-            applyEdit(workspaceRoot, srcDir, overlay, dryRunDiffs, req, options.dryRun)
+            applyEdit(workspaceRoot, srcDir, overlay, dryRunDiffs, req, options.dryRun, transcript)
         },
         agentMemory = AgentMemoryState()
     )
@@ -191,23 +215,37 @@ fun main(args: Array<String>) {
         ?.takeIf { it.isNotBlank() }
         ?: defaultImprovementPrompt(logDir, logFiles, srcDir, workspaceRoot)
 
-    val result = bridge.send(
-        state = state,
-        userPrompt = prompt,
-        ctx = ctx,
-        maxOutputTokens = options.maxOutputTokens,
-        maxToolRounds = options.maxToolRounds,
-        onTextDelta = {
-            print(it)
-            System.out.flush()
-        },
-        onProgress = if (options.verbose) {
-            { progress ->
-                val body = progress.body.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
-                println("\n[progress] ${progress.title}$body")
-            }
-        } else null
+    // The default prompt is the same boilerplate every run, so the transcript says what it asked in one line.
+    transcript.begin(
+        if (options.promptFile != null) prompt
+        else "Review the ${logFiles.size} most recent AI4 tool I/O logs and prototype a small source fix" +
+            if (options.dryRun) " (dry run)." else "."
     )
+    val result = try {
+        bridge.send(
+            state = state,
+            userPrompt = prompt,
+            ctx = ctx,
+            maxOutputTokens = options.maxOutputTokens,
+            maxToolRounds = options.maxToolRounds,
+            onTextDelta = {
+                transcript.text(it)
+                print(it)
+                System.out.flush()
+            },
+            onProgress = { progress ->
+                transcript.progress(progress)
+                if (options.verbose) {
+                    val body = progress.body.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
+                    println("\n[progress] ${progress.title}$body")
+                }
+            }
+        )
+    } catch (t: Throwable) {
+        transcript.fail(t)
+        throw t
+    }
+    transcript.finish(result.text)
 
     println()
     if (result.commentary.isNotEmpty()) {
@@ -271,6 +309,10 @@ private fun parseOptions(args: List<String>): ToolUseOptions? {
                 options = options.copy(diffFile = Paths.get(args.valueAfter(i, arg)))
                 i++
             }
+            "--transcript-file" -> {
+                options = options.copy(transcriptFile = Paths.get(args.valueAfter(i, arg)))
+                i++
+            }
             else -> error("Unknown argument '$arg'. Use --help.")
         }
         i++
@@ -299,6 +341,7 @@ Options:
   --prompt-file <path>      Use a custom user prompt.
   --report-file <path>      Markdown report. Defaults to build/ai-tool-use-improvement-report.md.
   --diff-file <path>        Dry-run patch output. Defaults to build/ai-tool-use-improvement-dry-run.patch.
+  --transcript-file <path>  The run as an AI4 chat transcript. Defaults to build/ai-tool-use-improvement-transcript.md.
   --max-tool-rounds <n>     Defaults to 32.
   --max-output-tokens <n>   Defaults to 24000.
         """.trimIndent()
@@ -335,6 +378,7 @@ private fun recentToolLogs(logDir: Path, maxFiles: Int, maxChars: Int): List<Too
         stream
             .filter { Files.isRegularFile(it) }
             .filter { it.fileName.toString().endsWith(".jsonl", ignoreCase = true) }
+            .filter { !isToolUseImprovementLog(it) }
             .sorted { a, b ->
                 runCatching { b.getLastModifiedTime().toMillis().compareTo(a.getLastModifiedTime().toMillis()) }
                     .getOrDefault(0)
@@ -498,7 +542,8 @@ private fun replaceInFile(
     overlay: MutableMap<Path, String>,
     dryRunDiffs: MutableList<String>,
     req: ReplaceInFileRequest,
-    dryRun: Boolean
+    dryRun: Boolean,
+    transcript: TranscriptRecorder
 ): ReplaceInFileResponse {
     val path = resolveAllowedPath(workspaceRoot, srcDir, req.file)
         ?: return ReplaceInFileResponse(false, "File is not editable by this task: ${req.file}. Only src/ is writable.", req.file)
@@ -516,7 +561,7 @@ private fun replaceInFile(
         )
     }
     val after = before.replace(req.oldText, req.newText)
-    val response = applyContentChange(workspaceRoot, path, overlay, dryRunDiffs, after, dryRun, if (dryRun) "DRY RUN patch" else "Patched")
+    val response = applyContentChange(workspaceRoot, path, overlay, dryRunDiffs, after, dryRun, if (dryRun) "DRY RUN patch" else "Patched", transcript)
     return ReplaceInFileResponse(
         response.success,
         response.message ?: "",
@@ -532,11 +577,12 @@ private fun applyEdit(
     overlay: MutableMap<Path, String>,
     dryRunDiffs: MutableList<String>,
     req: EditFileRequest,
-    dryRun: Boolean
+    dryRun: Boolean,
+    transcript: TranscriptRecorder
 ): EditFileResponse {
     val path = resolveAllowedPath(workspaceRoot, srcDir, req.file)
         ?: return EditFileResponse(false, "File is not editable by this task: ${req.file}. Only src/ is writable.")
-    return applyContentChange(workspaceRoot, path, overlay, dryRunDiffs, req.newContent, dryRun, if (dryRun) "DRY RUN edit" else "Edited")
+    return applyContentChange(workspaceRoot, path, overlay, dryRunDiffs, req.newContent, dryRun, if (dryRun) "DRY RUN edit" else "Edited", transcript)
 }
 
 private fun applyContentChange(
@@ -546,12 +592,14 @@ private fun applyContentChange(
     dryRunDiffs: MutableList<String>,
     newContent: String,
     dryRun: Boolean,
-    action: String
+    action: String,
+    transcript: TranscriptRecorder
 ): EditFileResponse {
     val file = workspaceRoot.relativizeOrAbsolute(path)
+    val before = readTextWithOverlay(path, overlay)
+    val diff = unifiedDiff(file, before, newContent)
+    transcript.edit(file, diff)
     if (dryRun) {
-        val before = readTextWithOverlay(path, overlay)
-        val diff = unifiedDiff(file, before, newContent)
         overlay[path] = newContent
         println("$action: $file (${newContent.length} chars, overlay updated)")
         if (diff.isNotBlank()) {
@@ -738,8 +786,87 @@ private fun Path.relativizeOrAbsolute(path: Path): String =
         path.absolutePathString()
     }
 
-private class CliLog(private val verbose: Boolean) : LogSink {
+/**
+ * The run as an `ai4_chat_history` transcript — the prompt as `<<you>>`, streamed text as `<<ai>>`, tool activity
+ * as `<<progress>>` — rewritten as it grows, so `/ai-tool-use-improvement.html` renders it with the AI4 chat
+ * panel's own renderer (folded tool rounds, markdown, highlighted code) while the run goes on.
+ *
+ * The bridge's "X finished (n ms)" titles say nothing about what a call touched, so the file a call named
+ * (from the bridge's `tool:` log line, [noteToolCall]) is appended to its title; the title still parses as a
+ * tool call ([afield.toolCall]). Each source edit is its own open block holding the diff.
+ */
+private class TranscriptRecorder(private val file: Path) {
+    var model: AiChatModelIdentity? = null
+    private val live = AiLiveConversation()
+    private var prefix = ""
+    private var lastWriteMs = 0L
+    private val toolTargets = ArrayDeque<String?>()
+
+    @Synchronized
+    fun begin(shownPrompt: String) {
+        prefix = "<<you>>\n${shownPrompt.trim()}\n"
+        write(liveTurn = true)
+    }
+
+    @Synchronized
+    fun text(delta: String) {
+        live.text(delta)
+        val now = System.currentTimeMillis()
+        if (now - lastWriteMs >= 250) write(liveTurn = true)
+    }
+
+    @Synchronized
+    fun progress(update: OpenAiIdeCodexBridge.ProgressUpdate) {
+        update.modelIdentity?.let { model = it }
+        if (update.title.isBlank()) return
+        val target = if (update.phase == "tool_result") toolTargets.removeFirstOrNull() else null
+        live.progress(if (target == null) update else update.copy(title = "${update.title} · $target"))
+        write(liveTurn = true)
+    }
+
+    /** A `tool: name=… callId=… {args}` line from the bridge: remember the file the call is about, if it names one. */
+    @Synchronized
+    fun noteToolCall(message: String) {
+        if (!message.startsWith("tool: name=")) return
+        toolTargets.addLast(jsonFileArgument.find(message)?.groupValues?.get(1))
+    }
+
+    @Synchronized
+    fun edit(file: String, diff: String) {
+        if (diff.isBlank()) return
+        // A phase, so it takes the place of the transient "Running ReplaceInFileRequest" line before it.
+        live.progress(OpenAiIdeCodexBridge.ProgressUpdate("EditFile $file", "```diff\n${diff.trimEnd()}\n```", phase = "edit"))
+        write(liveTurn = true)
+    }
+
+    @Synchronized
+    fun finish(finalText: String) = write(liveTurn = false, finalText = finalText.ifBlank { null })
+
+    @Synchronized
+    fun fail(t: Throwable) {
+        live.progress(OpenAiIdeCodexBridge.ProgressUpdate("Failed", "${t.javaClass.simpleName}: ${t.message.orEmpty()}"))
+        write(liveTurn = false)
+    }
+
+    private fun write(liveTurn: Boolean, finalText: String? = null) {
+        lastWriteMs = System.currentTimeMillis()
+        runCatching {
+            Files.createDirectories(file.parent)
+            // Written aside and moved, so the page never reads half a transcript.
+            val temp = file.resolveSibling("${file.fileName}.tmp")
+            Files.writeString(temp, live.render(prefix, model, live = liveTurn, finalText = finalText), StandardCharsets.UTF_8)
+            Files.move(temp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        }
+    }
+
+    private companion object {
+        val jsonFileArgument = Regex(""""file"\s*:\s*"((?:\\.|[^"\\])+)"""")
+    }
+}
+
+private class CliLog(private val verbose: Boolean, private val transcript: TranscriptRecorder) : LogSink {
     override fun log(event: LogEvent) {
+        transcript.noteToolCall(event.message)
         if (!verbose && !event.channel.startsWith("error") && !event.channel.startsWith("warning")) return
         val channel = if (event.channel.isBlank()) "" else "[${event.channel}] "
         println("[ai-tool-use-improvement] $channel${event.message}")

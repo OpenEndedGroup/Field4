@@ -650,6 +650,8 @@ class PetriStateSpaceTest {
         }
 
         val eleven = philosophers(11, reverseLast = false)
+        // petri_nets.md's stubborn-set table quotes this full count; the Pell values above stop at 9.
+        assertEquals(16_238, eleven.stateSpace().stateCount, "full size at n=11")
         val ratio = eleven.stateSpace().stateCount.toDouble() /
             eleven.stateSpace(reduction = PetriReduction.STUBBORN).stateCount
         assertTrue(ratio > 70.0, "expected better than a 70x reduction at eleven philosophers, got $ratio")

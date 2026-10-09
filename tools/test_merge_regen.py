@@ -60,12 +60,104 @@ class MergeRegenTest(unittest.TestCase):
 
     def test_generated_conflict_merges_clean_and_source_conflict_stops(self) -> None:
         git(self.repo, "config", "merge.field-generated.driver", "true")
+        git(self.repo, "config", "merge.field-counts.driver", COUNTS_DRIVER)
         self._commit_both("ours")
         result = self._run("other")
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertIn("notes.txt", result.stderr)
         self.assertNotIn("kdoc_worklist", result.stderr)
         self.assertEqual(self.generated.read_text(), "ours\n")
+
+
+COUNTS_SCRIPT = SCRIPT.parent / "merge_derived_counts.py"
+COUNTS_DRIVER = f"{sys.executable} {COUNTS_SCRIPT} %O %A %B %L %P"
+
+LOGGING_BASE = """# Logging
+
+There are **1019**<!--count:lprintlnChannelCallSites--> places that call `lprintln`, spelling
+**238**<!--count:logChannelStrings--> distinct channel strings.
+
+A paragraph nobody touches.
+
+The last paragraph.
+"""
+
+
+class DerivedCountMergeTest(unittest.TestCase):
+    """The `field-counts` driver: two branches that each moved a `<!--count:-->` numeral merge clean.
+
+    The case it was built for, 2026-10-09: two branches each added `lprintln` calls and each bumped
+    logging.md's count (1019 -> 1023, 1019 -> 1025); the text merge stopped on that line and the
+    landing bounced before merge_regen could rewrite the number.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self._tmp.name)
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.com")
+        git(self.repo, "config", "user.name", "t")
+        git(self.repo, "config", "core.hooksPath", "/dev/null")
+        lines = [line for line in ATTRIBUTES.splitlines() if "filter=lfs" not in line]
+        (self.repo / ".gitattributes").write_text("\n".join(lines) + "\n")
+        self.page = self.repo / "public/docs/logging.md"
+        self.page.parent.mkdir(parents=True)
+        self._commit(LOGGING_BASE)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _commit(self, text: str) -> None:
+        self.page.write_text(text)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "-m", "edit")
+
+    def _branches(self, ours: str, theirs: str) -> subprocess.CompletedProcess[str]:
+        git(self.repo, "checkout", "-q", "-b", "other")
+        self._commit(theirs)
+        git(self.repo, "checkout", "-q", "main")
+        self._commit(ours)
+        return subprocess.run(["git", "merge", "-q", "--no-edit", "other"], cwd=self.repo,
+                              capture_output=True, text=True)
+
+    def test_both_sides_moving_a_count_merge_clean_and_keep_both_prose_edits(self) -> None:
+        git(self.repo, "config", "merge.field-counts.driver", COUNTS_DRIVER)
+        ours = LOGGING_BASE.replace("1019", "1023").replace("The last paragraph.", "The last paragraph, ours.")
+        theirs = (LOGGING_BASE.replace("1019", "1025").replace("238", "239")
+                  .replace("A paragraph nobody touches.", "A paragraph they touched."))
+        result = self._branches(ours, theirs)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        merged = self.page.read_text()
+        # Both moved it: ours. Only they moved it: theirs. merge_regen derives the real value after.
+        self.assertIn("**1023**<!--count:lprintlnChannelCallSites-->", merged)
+        self.assertIn("**239**<!--count:logChannelStrings-->", merged)
+        self.assertIn("A paragraph they touched.", merged)
+        self.assertIn("The last paragraph, ours.", merged)
+
+    def test_a_prose_conflict_beside_a_count_still_stops(self) -> None:
+        git(self.repo, "config", "merge.field-counts.driver", COUNTS_DRIVER)
+        ours = LOGGING_BASE.replace("1019", "1023").replace("places that call", "call sites of")
+        theirs = LOGGING_BASE.replace("1019", "1025").replace("places that call", "sites calling")
+        result = self._branches(ours, theirs)
+        self.assertNotEqual(result.returncode, 0)
+        merged = self.page.read_text()
+        self.assertIn("<<<<<<< ours", merged)
+        self.assertIn("call sites of", merged)
+        self.assertIn("sites calling", merged)
+
+    def test_registered_command_falls_back_to_a_text_merge_without_the_script(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        from install_git_hooks import FIELD_COUNTS_DRIVER
+
+        # The temp repo has no tools/merge_derived_counts.py: the state of a branch older than it.
+        git(self.repo, "config", "merge.field-counts.driver", FIELD_COUNTS_DRIVER)
+        result = self._branches(LOGGING_BASE.replace("1019", "1023"), LOGGING_BASE.replace("1019", "1025"))
+        self.assertNotEqual(result.returncode, 0)
+        merged = self.page.read_text()
+        # A real conflict with both sides in it, never a silent "ours".
+        self.assertIn("<<<<<<< ours", merged)
+        self.assertIn("1023", merged)
+        self.assertIn("1025", merged)
 
 
 class RegeneratorWritesAreAuthorizedTest(unittest.TestCase):

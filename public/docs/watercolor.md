@@ -40,8 +40,6 @@ sheet.dry()
 display("main", sheet.png())
 ```
 
-![a watercolour sky in overlapping blue strokes over cold-pressed paper, with warm grey hills painted over it once dry](assets/watercolor/first.png)
-
 What is new compared with oil:
 
 - **Paint is pigment in water.** `Watercolors.ultramarine * 3.0` is ultramarine at 3 µg of pigment
@@ -75,8 +73,6 @@ val sheets = Paper.entries.map { paper ->
 }
 display("main", pngRow(sheets))
 ```
-
-![one drop of sumi ink dried on cold press, hot press, rough, xuan and blotting paper](assets/watercolor/papers.png)
 
 `sheet.paper` reports the make-up: how much water the sheet holds saturated (`capacityMicrons`),
 how fast dry paper takes up standing water (`absorbMicronsPerSecond`), how fast water wicks through
@@ -124,8 +120,6 @@ sheet.dry()
 display("main", sheet.png())
 ```
 
-![blue and rose drops bloomed into a wet passage, and a backrun in a damp brown wash](assets/watercolor/blooms.png)
-
 ## Tilting the board
 
 `tilt(degrees, direction)` tilts the sheet, and wet washes run downhill and gather in a bead at
@@ -146,8 +140,6 @@ sheet.wet(wash, microns = 60.0, paint = Watercolors.ultramarine * 2.0 + Watercol
 sheet.dry()
 display("main", sheet.png())
 ```
-
-![a lilac wash on a tilted sheet, deepening to its lower edge, with drips run down from it](assets/watercolor/tilt.png)
 
 ## The brush
 
@@ -179,8 +171,6 @@ val sheets = listOf(Paper.Rough, Paper.HotPress).map { paper ->
 display("main", pngRow(sheets))
 ```
 
-![full, a third full and nearly dry strokes on rough paper, breaking up into the tooth, and on hot press, staying whole](assets/watercolor/drybrush.png)
-
 A brush also takes water back up. A clean, damp brush stroked through a wet wash drinks colour
 out of it; squeezed out (`load(WaterPaint.Clear, fill = 0.05)`) it is thirsty and lifts more.
 On dried paint the water from a damp brush redissolves the gum the pigment dried in, and scrubbing
@@ -211,8 +201,6 @@ repeat(6) {
 sheet.dry()
 display("main", sheet.png())
 ```
-
-![a band scrubbed with a damp brush lifts ultramarine back towards the paper and barely touches phthalo blue](assets/watercolor/lift.png)
 
 To come back to a brush later, with the water and pigment still in it, keep it in a
 `PaintToolbox` as you would an oil brush: `tools["wash"] = sheet.waterBrush(50.0)`, then
@@ -255,8 +243,6 @@ sheet.dry()
 display("main", sheet.png(relief = 0.4))
 ```
 
-![dried washes of ultramarine, phthalo blue and the two mixed](assets/watercolor/pigments.png)
-
 ## Oil, pencil and the knife on paper
 
 A sheet of paper is a canvas like any other, so `stroke`, `draw`, `knife` and the rest work on it,
@@ -285,8 +271,6 @@ sheet.dry()
 display("main", sheet.png())
 ```
 
-![a blue wash crossed by cream oil strokes, and a brown wash below that soaks in around the oil and stands off it](assets/watercolor/oil.png)
-
 ## Watching the water
 
 `waterMap(map)` reads one value per pixel of what the water is doing, and `waterMapPng(map)` draws
@@ -306,7 +290,7 @@ import java.util.Base64
 
 fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
     FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
-fun img(png: ByteArray) = "<img width='32%' src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}'>"
+fun img(png: ByteArray) = "<img width='300' src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}'>"
 
 val sheet = PaintCanvas.paper(300, aspect = 1.0, paper = Paper.ColdPress, sizeMm = 80.0, seed = 8)
 sheet.wet(rect(100.0, 100.0, 900.0, 900.0), microns = 80.0, paint = Watercolors.ultramarine * 1.0)
@@ -317,8 +301,6 @@ sheet.waitSeconds(20.0)
 display("main", img(sheet.png(wet = true)) + " " + img(sheet.waterMapPng(WaterMap.SurfaceWater)) + " " +
     img(sheet.waterMapPng(WaterMap.AbsorbedWater)))
 ```
-
-![a wet wash with a stroke in it, the water standing on the paper, and the water in the paper](assets/watercolor/maps.png)
 
 ## The books
 
@@ -360,8 +342,6 @@ markdown("""
     "| ${p.name} | ${f(p.added)} | ${f(p.runoff)} | ${f(p.glued)} | ${f(p.bound)} | ${f(p.deposited)} | ${"%.1e".format(p.imbalance)} |"
 })
 ```
-
-![the water and pigment books of the tilted wash](assets/watercolor/books.png)
 
 ## The sheet, the air and time
 

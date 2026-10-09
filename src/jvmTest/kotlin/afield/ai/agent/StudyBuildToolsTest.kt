@@ -23,7 +23,7 @@ class StudyBuildToolsTest {
         val reads = listOf("ListStudyBuildsRequest", "InspectStudyBuildsRequest", "WaitStudyBuildRequest",
             "ListGeometryViewsRequest", "ReadGeometryReviewsRequest", "ReadGeometryNoteRequest", "InspectGeometryViewRequest")
         reads.forEach { assertTrue(all.getValue(it).readOnly, it) }
-        val writes = listOf("StartStudyBuildRequest", "CancelStudyBuildRequest", "StyleGeometryPartsRequest",
+        val writes = listOf("StartStudyBuildRequest", "CancelStudyBuildRequest", "PruneStudyBuildsRequest", "StyleGeometryPartsRequest",
             "ReplyGeometryNoteRequest", "ReviewGeometryNoteRequest", "ReportGeometryFindingRequest")
         writes.forEach { assertTrue(all.getValue(it).mutates, it) }
         assertTrue(ToolEffect.EXECUTE_CODE in all.getValue("StartStudyBuildRequest").effects)
@@ -55,6 +55,68 @@ class StudyBuildToolsTest {
             assertTrue(builds.history().isEmpty())
         }
     }
+    @Test fun anAgentsRequestIsRecordedForOneAttemptAndAClosedGateExplainsTheWait() {
+        val info = session()
+        val box = Box("source").also { info.boxes[it.id] = it }
+        val budget = java.util.concurrent.atomic.AtomicReference("10")
+        val gate = StudyBuildGate("budget allowed", setOf("budget")) { e ->
+            if (e.inputs.getValue("budget").toInt() >= 20) null else "The budget is ${e.inputs["budget"]} steps; the search needs at least 20."
+        }
+        StudyBuilds(Files.createTempDirectory("request-build-tools").toFile(), listOf(
+            StudyBuildStage("search", "Search", "v1", setOf("budget allowed")) { c ->
+                c.file("result").writeText("resumed from ${c.request["resume"] ?: "nothing"}"); StudyBuildProduct(listOf("result"))
+            }), { mapOf("budget" to budget.get()) }, gates = listOf(gate)).use { builds ->
+            box.properties["_studyBuilds:study"] = BoxStudyBuildBinding(box, "study", builds)
+            val waiting = aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study")))
+            assertContains(waiting, "Waiting for budget allowed")
+            assertContains(waiting, "the search needs at least 20.")
+            assertFalse(call(info, StartStudyBuildRequest(box.id, "study", "search", "invented")).success)
+
+            budget.set("30")
+            val fingerprint = builds.stages().single().fingerprint!!
+            val asked = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0, request = mapOf("resume" to "job-1")))
+            assertTrue(asked.success, asked.message)
+            val job = asked.details["job"] as Map<*, *>
+            assertEquals(mapOf("resume" to "job-1"), job["request"])
+            assertEquals(true, (asked.details["currency"] as Map<*, *>)["isCurrent"])
+            assertEquals(false, job["fromEarlierInputs"])
+            val plain = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0))
+            assertEquals(emptyMap<String, Any?>(), (plain.details["job"] as Map<*, *>)["request"])
+            assertEquals("resumed from nothing", builds.currentFile("search", "result").readText())
+        }
+    }
+
+    @Test fun pruningPreviewsBeforeItDeletesAndRefusesReadOnlyDocuments() {
+        val info = session()
+        val box = Box("source").also { info.boxes[it.id] = it }
+        val plan = java.util.concurrent.atomic.AtomicReference("a")
+        StudyBuilds(Files.createTempDirectory("prune-build-tools").toFile(), listOf(StudyBuildStage("mesh", "Mesh", "v1", setOf("plan")) { c ->
+            c.file("walls").writeText(c.inputs.getValue("plan").repeat(1000)); StudyBuildProduct(listOf("walls"))
+        }), { mapOf("plan" to plan.get()) }).use { builds ->
+            box.properties["_studyBuilds:study"] = BoxStudyBuildBinding(box, "study", builds)
+            val old = builds.await(builds.start("mesh", builds.stages().single().fingerprint!!).id)
+            plan.set("b"); builds.await(builds.start("mesh", builds.stages().single().fingerprint!!).id)
+
+            val preview = call(info, PruneStudyBuildsRequest(pins = listOf("not-a-job")))
+            assertTrue(preview.success, preview.message)
+            assertContains(preview.message, "Would delete 1 attempts")
+            assertEquals(listOf("not-a-job"), preview.details["unknownPins"])
+            assertEquals(2, builds.history().size)
+            val readOnly = session(readOnly = true).also { it.boxes[box.id] = box }
+            assertContains(assertFailsWith<IllegalStateException> { call(readOnly, PruneStudyBuildsRequest(apply = true)) }.message.orEmpty(), "read-only")
+            // A direct non-agent caller is also refused by the build adapter itself.
+            assertFalse(StudyBuildTools(readOnly, { listOf(BoxStudyBuildBinding(box, "study", builds)) }).prune(PruneStudyBuildsRequest(apply = true)).success)
+            assertEquals(2, builds.history().size)
+
+            val applied = call(info, PruneStudyBuildsRequest(apply = true))
+            assertContains(applied.message, "Deleted 1 attempts")
+            val runner = (applied.details["runners"] as List<*>).single() as Map<*, *>
+            assertEquals<Map<*, *>>(mapOf("boxId" to box.id, "name" to "study", "kept" to 1, "deleted" to 1), runner.filterKeys { it != "freedBytes" })
+            assertTrue((runner["freedBytes"] as Long) >= 1000)
+            assertFalse(builds.history().any { it.id == old.id })
+        }
+    }
+
     private fun session(readOnly: Boolean = false): SessionInformation {
         val root = Box("root")
         return SessionInformation(Files.createTempDirectory("build-tools-").toString(), "test", root = root, ephemeral = true, readOnly = readOnly)
@@ -79,7 +141,7 @@ class StudyBuildToolsTest {
             assertFalse(call(a, InspectStudyBuildsRequest(box.id, "study")).success)
         }
         val context = ToolExecutionContext(fieldGraph = FieldGraphTools(a, host))
-        for (name in listOf("ListStudyBuildsRequest", "InspectStudyBuildsRequest", "WaitStudyBuildRequest", "StartStudyBuildRequest", "CancelStudyBuildRequest")) {
+        for (name in listOf("ListStudyBuildsRequest", "InspectStudyBuildsRequest", "WaitStudyBuildRequest", "StartStudyBuildRequest", "CancelStudyBuildRequest", "PruneStudyBuildsRequest")) {
             assertTrue(registry.isAvailable(context, name))
             assertTrue(Ai4BackdoorTools.registry.isAvailable(context, name))
             assertFalse(registry.isAvailable(ToolExecutionContext(), name))

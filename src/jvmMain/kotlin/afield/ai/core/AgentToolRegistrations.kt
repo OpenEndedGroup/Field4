@@ -53,6 +53,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         }
         afield.ai.agent.registerGeometryReviewTools(tools)
         afield.ai.agent.registerStudyBuildTools(tools)
+        afield.ai.agent.registerKitTools(tools)
 
 
         // Commentary: handler can be a no-op acknowledgement; we extract text from call args anyway.

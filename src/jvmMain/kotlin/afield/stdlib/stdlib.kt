@@ -219,7 +219,7 @@ class MissingInheritedPropertyException(message: String) : IllegalStateException
 
 private fun Box.isMetarootBox(): Boolean = id == METAROOT_ID
 
-private fun missingInheritedPropertyMessage(box: Box, propertyName: String, parentCount: Int): String {
+internal fun missingInheritedPropertyMessage(box: Box, propertyName: String, parentCount: Int): String {
     val boxName = box.name.ifBlank { box.id }
     if (box.isMetarootBox()) {
         return "Can't find a value for inherited property '$propertyName' in metaroot. " +
@@ -306,8 +306,15 @@ class Inheritance<T>(val defaultValue: T? = null) {
         return null as T
     }
 
-    /** Writes the value **locally**, shadowing any ancestor's value rather than modifying it. */
-    operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T) = f.setPropertyRaw(property.name, v as Any)
+    /**
+     * Writes the value **locally**, shadowing any ancestor's value rather than modifying it. A write
+     * into a box other than the executing one (`root.speed = 3.0` under `rootProp`) is recorded in
+     * [PropertyDependencies], which is how a later reader's producer is known.
+     */
+    operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T) {
+        f.setPropertyRaw(property.name, v as Any)
+        PropertyDependencies.recordWrite(f, property.name, ContextResolution.Mechanism.INHERITANCE)
+    }
 }
 
 /**
@@ -356,8 +363,14 @@ class InheritanceFromContext<T>(val defaultValue: T? = null) {
         return null as T
     }
 
-    /** Writes the value **locally** as a raw property, shadowing whatever an ancestor had. */
-    operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T) = f.setPropertyRaw(property.name, v as Any)
+    /**
+     * Writes the value **locally** as a raw property, shadowing whatever an ancestor had; a write into
+     * another box is recorded as [Inheritance.setValue]'s is.
+     */
+    operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T) {
+        f.setPropertyRaw(property.name, v as Any)
+        PropertyDependencies.recordWrite(f, property.name, ContextResolution.Mechanism.INHERITANCE_FROM_CONTEXT)
+    }
 }
 
 /**

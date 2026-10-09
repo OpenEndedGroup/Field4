@@ -1,5 +1,8 @@
 package afield.ai.core
 
+import com.anthropic.errors.AnthropicIoException
+import com.anthropic.errors.AnthropicRetryableException
+import com.anthropic.errors.AnthropicServiceException
 import com.openai.errors.OpenAIServiceException
 import com.openai.errors.OpenAIIoException
 import com.openai.errors.OpenAIRetryableException
@@ -69,6 +72,33 @@ internal class AiRateLimitRecovery(
             }
         }
     }
+
+    companion object {
+        /** The limits every bridge reads, so one setting governs OpenAI and Anthropic requests alike. */
+        fun fromConfig() = AiRateLimitRecovery(
+            maxRetries = (System.getenv("AFIELD_AI_RATE_LIMIT_RETRIES") ?: System.getProperty("afield.ai.rateLimitRetries"))
+                ?.toIntOrNull()?.coerceIn(0, 120) ?: 120,
+            budgetMs = (System.getenv("AFIELD_AI_RATE_LIMIT_BUDGET_MS") ?: System.getProperty("afield.ai.rateLimitBudgetMs"))
+                ?.toLongOrNull()?.coerceIn(0, 3_600_000) ?: 600_000,
+            backoffCapMs = (System.getenv("AFIELD_AI_RATE_LIMIT_MAX_DELAY_MS") ?: System.getProperty("afield.ai.rateLimitMaxDelayMs"))
+                ?.toLongOrNull()?.coerceIn(250, 300_000) ?: 30_000
+        )
+    }
+}
+
+/**
+ * The provider's HTTP error in a failure chain, from either SDK. [shouldRetry] is Anthropic's `x-should-retry`,
+ * which its SDK obeyed before the bridge took the retries over; the OpenAI path has never read it.
+ */
+private class HttpFailure(val status: Int, val errorType: String?, val shouldRetry: Boolean?, val header: (String) -> List<String>)
+
+private fun httpFailure(chain: List<Throwable>): HttpFailure? = chain.firstNotNullOfOrNull { e ->
+    when (e) {
+        is OpenAIServiceException -> HttpFailure(e.statusCode(), null, null) { e.headers().values(it) }
+        is AnthropicServiceException -> HttpFailure(e.statusCode(), runCatching { e.errorType().orElse(null)?.asString() }.getOrNull(),
+            e.headers().values("x-should-retry").firstOrNull()?.trim()?.lowercase()?.toBooleanStrictOrNull()) { e.headers().values(it) }
+        else -> null
+    }
 }
 
 /** Null means a different failure; zero means a temporary limit without a server delay hint. */
@@ -79,8 +109,11 @@ internal fun temporaryRateLimitDelay(failure: Throwable): Long? {
     val message = chain.joinToString("\n") { it.message.orEmpty() }
     val lower = message.lowercase()
     if (listOf("insufficient_quota", "exceeded your current quota", "billing", "spend limit", "request too large", "context_length_exceeded", "maximum context length").any { it in lower }) return null
-    val http = chain.filterIsInstance<OpenAIServiceException>().firstOrNull()
-    if (http?.statusCode() != 429 && !Regex("(?i)rate[ _-]?limit|\\b429\\b|slow_down|server_is_overloaded").containsMatchIn(message)) return null
+    val http = httpFailure(chain)
+    if (http?.shouldRetry == false) return null
+    // Anthropic's 529 overloaded_error is the Responses API's server_is_overloaded: wait it out like a rate limit.
+    val overloaded = http?.status == 529 || http?.errorType == "overloaded_error"
+    if (http?.status != 429 && !overloaded && !Regex("(?i)rate[ _-]?limit|\\b429\\b|slow_down|server_is_overloaded").containsMatchIn(message)) return null
     // Some TPM errors state a request larger than the whole minute's capacity: waiting cannot help.
     val limit = Regex("(?i)\\blimit\\s*:?\\s*(\\d+)").find(message)?.groupValues?.get(1)?.toLongOrNull()
     val requested = Regex("(?i)\\brequested\\s*:?\\s*(\\d+)").find(message)?.groupValues?.get(1)?.toLongOrNull()
@@ -93,16 +126,24 @@ private fun temporaryTransportDelay(failure: Throwable): Long? {
     val seen = mutableSetOf<Throwable>()
     val chain = generateSequence(failure) { it.cause }.takeWhile { seen.add(it) }.toList()
     if (chain.any { it is PartialModelResponseException }) return null
-    val http = chain.filterIsInstance<OpenAIServiceException>().firstOrNull()
+    val http = httpFailure(chain)
     if (http != null) {
-        if (http.statusCode() !in listOf(408, 409) && http.statusCode() !in 500..599) return null
+        if (http.shouldRetry == false) return null
+        if (http.shouldRetry != true && http.status !in listOf(408, 409) && http.status !in 500..599) return null
         return retryAfterDelay(http)
     }
-    return if (chain.any { it is OpenAIIoException || it is OpenAIRetryableException }) 0L else null
+    return if (chain.any { it is OpenAIIoException || it is OpenAIRetryableException || it is AnthropicIoException || it is AnthropicRetryableException }) 0L else null
 }
 
-private fun retryAfterDelay(http: OpenAIServiceException?): Long =
-    http?.headers()?.values("retry-after")?.mapNotNull { value ->
+/** The server's minimum wait: `retry-after-ms`, or `retry-after` in seconds or as an HTTP date; the longer when both are sent. */
+private fun retryAfterDelay(http: HttpFailure?): Long {
+    if (http == null) return 0L
+    val ms = http.header("retry-after-ms").mapNotNull { value ->
+        value.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }?.let { ceil(it).toLong() }
+    }
+    val after = http.header("retry-after").mapNotNull { value ->
         value.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }?.let { ceil(it * 1000).toLong() }
             ?: runCatching { (ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() - System.currentTimeMillis()).coerceAtLeast(0) }.getOrNull()
-    }?.maxOrNull() ?: 0L
+    }
+    return (ms + after).maxOrNull() ?: 0L
+}

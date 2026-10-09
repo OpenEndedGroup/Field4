@@ -561,11 +561,13 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DrawnScoreDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DrawnMorphDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/OrcaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/FnSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SubharmonicSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/four/synth/PetriSparksDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
                 // The only producer here that cannot render the path it belongs to. It publishes
                 // the *mono source* pat-spatial hands Steam Audio, because the spatialisation is

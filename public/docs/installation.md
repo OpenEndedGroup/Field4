@@ -10,15 +10,14 @@ Install **Git and Git LFS**, and run `git lfs install` before cloning. The compi
 in LFS: without it, Git leaves a small text pointer where the compiler JAR should be. GitHub's
 **Download ZIP** is not the recommended installation route.
 
-Allow several gigabytes for the checkout, downloaded runtimes, dependency caches and build output.
-The tracked checkout alone is about 1.3 GB. Start with at least **10 GB of free space**; this is a
-planning allowance, not a measured minimum. For this beta, **16 GB RAM is recommended** for the
-source build. The Kotlin compiler is allowed a 10 GB heap. CI checks cover server-only startup;
-desktop and graphics workloads on 8 GB machines have not been qualified.
-The first launch needs internet access to download dependencies and compile the project.
-Fresh Windows and Apple-silicon macOS CI launches took about 20–25 minutes; your machine
-and connection will affect that time. Later launches reuse the download and compiler caches.
-A long-running Gradle task is normal; `BUILD FAILED` is not.
+Start with at least **10 GB of free space** for the checkout, downloaded runtimes, dependency
+caches and build output, and **16 GB of RAM**. The Kotlin compiler is allowed a 10 GB heap, and
+desktop and graphics work on 8 GB machines has not been tested.
+
+The first launch needs internet access to download dependencies and compile the project; allow
+20–25 minutes, depending on your machine and connection. Later launches reuse the
+downloads and compiled code. A Gradle task that runs for a long time is normal; `BUILD FAILED` is
+not.
 
 <div class="field-data-table" markdown>
 
@@ -99,8 +98,9 @@ On the first **interactive** launch, a small Kotlin welcome tool runs before Fie
 Choose the recommended desktop app or browser/server mode, then select optional features from
 the checkbox list: **Up/Down** moves, **Space** toggles and **Enter** reviews your choices.
 Prerequisites appear at the right. Features with missing tools are disabled unless Windows
-setup can install every missing tool through winget. Install other prerequisites and rerun setup. Unsupported platform features and NVIDIA-only
-features without a working `nvidia-smi` are omitted. Limited terminals use numbered checkboxes:
+setup can install every missing tool through winget; install the other prerequisites and rerun
+setup. Features your platform does not support, and NVIDIA-only features without a working
+`nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
 type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
 It shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
@@ -128,18 +128,16 @@ that task and checks its build tools. Type **BUILD** to run it, or leave it for 
 approves the displayed system packages only. Windows native-library builds need Visual Studio
 C++ Build Tools and a Developer PowerShell; the default Windows app launch does not.
 
-Large model environments and downloads, GPU SDKs, containers, Python interpreter selection and
-permissions remain explicit steps in each feature’s guide. Setup shows those steps and platform
-limits. A completed build or saved selection does not establish that a model, GPU or device works;
-use the feature’s runtime probe or example after preparation.
+Large model downloads, GPU SDKs, containers, choosing a Python interpreter and granting
+permissions are steps in each feature's own guide; setup lists them. Once a feature is prepared,
+run its example to check that it works on your machine.
 
 Your choices live in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
 (Windows: `.\field.bat --setup`); this command configures setup and exits. Noninteractive launches
 skip the questionnaire. Automation may also set `AFIELD_FIRST_RUN=skip`; prerequisite checks still
 apply. The helper builds on the wrapper's Java 17, independently of Field's compiler fork.
 
-The terminal shows startup progress and server URLs. This older screenshot illustrates the console;
-current launches use HTTPS:
+The terminal shows startup progress and server URLs:
 
 ![A dark terminal filling the window with the word FIELD drawn very large in ASCII art, each letter built from slashes and dots. Beneath it three lines each tagged with a dim "welcome" marker read "welcome to Field, ß-023" and "http://localhost:9092/index.html?file=helloVideo". Below those, the server's own log: Ktor reporting "Application started in 0.206 seconds" and "Responding at http://0.0.0.0:9092", the filestore persisting its cache, "indexed 243 files, 3617 definitions", "found 54429 classes on classpath in 1.851s", and at the bottom a Gradle progress line reading "96% EXECUTING" against the still-running `:runJvm` task](assets/screenshot_22.png)
 
@@ -274,20 +272,17 @@ for the deliberate cross-origin exceptions and integration settings.
   set `$env:PORT = "9477"` first. The launcher does not attach to someone else's Field.
 - **Download or checksum failure**: correct the connection/proxy problem and rerun. An incomplete
   GraalVM download is discarded.
-- **Out of memory during compilation**: close memory-heavy applications and include available RAM,
-  swap, and the first compiler error in your report. Lowering the compiler heap may make the build
-  fail sooner; it is not a verified low-memory installation recipe.
+- **Out of memory during compilation**: close memory-heavy applications and try again. If it still
+  fails, report your available RAM and swap with the first compiler error.
+- **macOS permissions**: accept the permission prompt for the folder you chose, and install the
+  Command Line Tools when asked. Field does not need Gatekeeper, FileVault or other protections
+  turned off.
 - **An error after startup**: include the first error and its context, OS/architecture, and the
   exact launch command. Review logs before posting them; paths and document output may be private.
 
 
 _Field·4_ is still beta software. Report reproducible problems through the public repository's
 [GitHub issue tracker](https://github.com/OpenEndedGroup/Field4/issues).
-
-On macOS, use the specific permission prompt shown for the folder you chose, and install Command
-Line Tools when requested. Field does not require disabling Gatekeeper, FileVault or other system
-protections. A report should contain the actual error rather than screenshots of unrelated
-Privacy & Security settings.
 
 ## Updating
 

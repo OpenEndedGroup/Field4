@@ -1,5 +1,7 @@
 # Beat and pitch analysis
 
+*To run the examples on this page, open the [audio_ai_analysis](agent_transcripts.md#audio_ai_analysis) starting point.*
+
 Where the beats are and what note is sounding are separate questions here, and they arrive as
 separate jobs. `analysis.beats` takes the first at several window lengths at once, since a tempo
 figure means little apart from the window it was measured over. For the second, how much is

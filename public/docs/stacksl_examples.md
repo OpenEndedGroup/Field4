@@ -1380,6 +1380,12 @@ Volumetric noise:
 noise3 noise4 fbm3 fbm4 curl3 fbmd3 warp3 worley3 voronoi3
 ```
 
+Phase noise:
+
+```diffstatic {data-lang=stacksl}
+qnoise phnoise phrot
+```
+
 Word references:
 
 ```diffstatic {data-lang=stacksl}

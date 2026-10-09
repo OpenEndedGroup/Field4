@@ -35,7 +35,7 @@ class WorkspaceSearchScopeDeserializer : JsonDeserializer<WorkspaceSearchScope>(
     }
 }
 
-@JsonClassDescription("Search saved UTF-8 files for literal text in exactly one scope. Does not search unsaved editor state. Results can be partial; check complete, stopReason and skipped. No regex or shell syntax.")
+@JsonClassDescription("Search saved UTF-8 files for literal text in exactly one scope. Returns the matches (path, line, text) plus complete, stopReason and skipped; results can be partial, so check them. Use it when you need where text occurs in saved files or Field's Kotlin source; for unsaved editor state read the box instead. No regex or shell syntax. An invalid scope, query or pathPrefix fails with success=false and the reason. e.g. scope = `FIELD_KOTLIN_SOURCE`, query = `fun fromContext`.")
 @AgentToolMeta("search", effects = [ToolEffect.FILESYSTEM_READ])
 data class WorkspaceSearchRequest(
     @param:JsonPropertyDescription("Required: DOCUMENT_FILES, DOCUMENT_HISTORY, WORKSPACE_FILES, or FIELD_KOTLIN_SOURCE. Never combines roots. Workspace/document files exclude backups.")

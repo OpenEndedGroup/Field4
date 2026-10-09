@@ -2,9 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
 
-Boolean networks become musically useful once their states acquire time. Give each network step a duration and the state stream can be read as notes, labels, triggers, and sample hits. The bridge lives inside `afield.four.synth`.
-
-The bridge is a handful of extension functions on `BooleanNetwork`, all in `BooleanNetworkSequencing.kt`:
+Give each step of a Boolean network a duration and its stream of states can be read as notes, sample names or triggers. These extension functions on `BooleanNetwork` do it:
 
 - `scheduledSteps(...)` for timed Boolean states.
 - `scheduledNotes(...)` for direct `Iterator<ScheduledNote>` mapping.
@@ -65,7 +63,7 @@ $preview
 :::endfold
 ```
 
-The seed in the heading is found rather than chosen: the fence sweeps seeds 0 to 80 looking for a `kauffmanNetwork(n = 5, k = 2)` with an attractor of period 6 or more and takes the first that qualifies. What comes back is an ordinary `NoteProcess`, so `notesBetween` and `pianoRollSvg` work on it exactly as they do on a hand-written one.
+The fence picks its seed by sweeping seeds 0 to 80 for a `kauffmanNetwork(n = 5, k = 2)` with an attractor of period 6 or more and takes the first that qualifies. What comes back is an ordinary `NoteProcess`, so `notesBetween` and `pianoRollSvg` work on it exactly as they do on a hand-written one.
 
 ![a piano roll headed "seed 4, period 6, initial 00110" and running from now to just past six seconds. Four lanes of coloured note bars repeat on a steady grid: pale yellow near the top of the range, pink below it, green at C3 and blue at the bottom near B1. The header strip reads 2 on, 37 notes, B1 to C#4](assets/boolean_network_music_examples/noteprocess_roll.png)
 
@@ -130,7 +128,7 @@ that was on at step zero and never again.
 
 ## Braiding several Boolean rhythms together
 
-This example braids three Boolean attractors at different temporal resolutions: a kick-like layer on eighths, a change-trigger layer on dotted eighths, and a high-density active-state shimmer on sixteenths. The three grids are 2, 3 and 1 sixteenths wide, so they all coincide every six sixteenths — 0.375 s — and the braid relocks rather than drifting.
+This example braids three Boolean attractors at different temporal resolutions: a kick-like layer on eighths, a change-trigger layer on dotted eighths, and a high-density active-state shimmer on sixteenths. The three grids are 2, 3 and 1 sixteenths wide, so they all line up again every six sixteenths (0.375 s) and stay in step.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/braided_rhythm.png" wait="1.0" capture="box"}
 :::static
@@ -222,11 +220,11 @@ $summary
 :::endfold
 ```
 
-Only one of the three layers behaves like an ensemble member. The kick runs the full eight seconds; the shimmer's 64 sixteenth-steps are four seconds long, so it stops dead at the halfway mark; and the snare fires once, at time zero, and then not again. That last one is a consequence of how the layers are picked — `maxByOrNull { it.period }` with no minimum, unlike the fence above, which insists on period 6. A `CHANGE` trigger at step zero and silence after is the signature of a network started on a fixed point: with nothing changing, `active != previous` can only be true on the first step, where there is no previous state to compare against. If you want three live layers, filter the seeds by period the way the first example does.
+As written, only the kick runs the full eight seconds. The shimmer's 64 sixteenth-steps last four seconds, so it stops halfway. The snare fires once, at time zero: its layer is picked with `maxByOrNull { it.period }` and no minimum, so it can land on a fixed point, and a `CHANGE` trigger on a network that never changes fires only on the first step. To get three live layers, filter the seeds by period the way the first example does.
 
 ![a piano roll headed "three attractors, three clocks, one shared note space", eight seconds wide. A dense scatter of small yellow-green marks crowds the top of the range but stops dead halfway across, at about four seconds. Two blue lanes at the bottom of the range run the full eight seconds on a regular grid. A single orange bar sits at B3 at time zero and never recurs. The header strip reads 4 on, 140 notes, B1 to B5](assets/boolean_network_music_examples/braided_rhythm.png)
 
-Played through Dirt-Samples, the braid's faults are easy to hear. The kick's eighths run the whole
+Played through Dirt-Samples, the kick's eighths run the whole
 eight seconds. The snare is a single hit at time zero. The shimmer is a wash rather than a ticking hat,
 because in Dirt-Samples `hh:1` to `hh:4` are a crash and three long hits, and it stops at four seconds.
 
@@ -314,7 +312,7 @@ The upper grid is the raw Boolean state and the piano roll underneath is the sam
 
 ![two output panels. The upper one is a five-lane step grid: the blue top lane fires in even alternating blocks the whole way across, and the orange, green, pink and yellow lanes beneath it carry busier, irregular patterns that repeat with the same long period. The lower one is a piano roll of the same run headed "lane 0 is a sine-derived square wave; lanes 1-4 are the network's response", where the five lanes have become note bars at five pitches from F1 to D#5, firing in pairs and recurring every two seconds or so. Its header strip reads 0 on, 49 notes](assets/boolean_network_music_examples/oscillator_driven.png)
 
-Heard, the forced lane is the quiet `click` (no Dirt folder is called `clk`), and the network's
+Heard, the forced lane is the quiet `click`, and the network's
 answer comes in bursts of kick, snare, clap and hat that repeat every 1.5 seconds, twelve steps,
 the oscillator's period. Each cycle has a gap of about half a second in which nothing fires.
 

@@ -60,7 +60,7 @@ Both accept `editable = true`. With `editable = false` they are viewers. With `e
 
 ### 2D output: `lines(...)`
 
-Use plain `lines(...)` when you want the usual fast 2D display. It is ideal for diagrams, plotted curves, path debugging, and anything that fundamentally lives in screen space.
+Use plain `lines(...)` when you want the usual fast 2D display: diagrams, plotted curves, path debugging, anything that lives in screen space.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -137,7 +137,7 @@ This is not editing a copy of the SVG: it mutates the `FLine` you passed in, so 
 
 ### 3D output: `threeLines(...)`
 
-Use `threeLines(...)` when depth matters or when you want to orbit around the geometry instead of looking at a projected SVG. It is still very happy with ordinary 2D paths, but it also handles 3D points directly.
+Use `threeLines(...)` when depth matters or when you want to orbit around the geometry instead of looking at a projected SVG. It draws ordinary 2D paths too, and takes 3D points directly.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -720,11 +720,11 @@ lines(listOf(filledOnly, strokedOnly, debugPoints), w = 420.0, h = 320.0, fitToS
 
 ## Building paths: `moveTo`, `lineTo`, `cubicTo`, `close`
 
-This is the “core vocabulary” of `FLine`: you `moveTo` to place the pen, then add segments (`lineTo` / `cubicTo`), and optionally `close()` to seal a shape. Most other helpers ultimately build on these four calls.
+These four calls are the core of `FLine`: you `moveTo` to place the pen, then add segments (`lineTo` / `cubicTo`), and optionally `close()` to seal a shape. Most other helpers ultimately build on these four calls.
 
 ### `moveTo(...)` overloads
 
-Moves the “pen” without drawing; starts a new subpath when followed by segments.
+Moves the pen without drawing; starts a new subpath when followed by segments.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -782,7 +782,7 @@ lines(poly, w = 420.0, h = 260.0, fitToSize = true)
 
 ### `cubicTo(...)` (Bézier curves)
 
-Adds a cubic [Bézier curve](https://en.wikipedia.org/wiki/B%C3%A9zier_curve) segment (two control points plus an end point). Cubics are the workhorse for smooth vector shapes.
+Adds a cubic [Bézier curve](https://en.wikipedia.org/wiki/B%C3%A9zier_curve) segment (two control points plus an end point). Most smooth vector shapes are made of cubics.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -984,7 +984,7 @@ One `FLine` can contain multiple disjoint strokes (multiple `moveTo`-initiated s
 
 ### `breakNext()`
 
-Forces the next segment call (`lineTo`, `cubicTo`) to start a new subpath (internally inserts a `moveTo`). Useful for “multi-stroke” FLines.
+Forces the next segment call (`lineTo`, `cubicTo`) to start a new subpath (internally inserts a `moveTo`). Use it to build an FLine out of several separate strokes.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1218,7 +1218,7 @@ lines(listOf(left, top, right, flow, feedback, sync), w = 420.0, h = 260.0, fitT
 
 ### Smooth polylines: cubic splines
 
-This turns a list of points into a smooth cubic spline ([Catmull–Rom spline](https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline)-ish under the hood). It’s a great default if you have gesture data and want a pleasing curve.
+This turns a list of points into a smooth cubic spline ([Catmull–Rom spline](https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline), approximately). Reach for it first when you have gesture data and want a smooth curve through it.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1252,7 +1252,7 @@ lines(listOf(poly2, spline), w = 420.0, h = 260.0, fitToSize = true)
 
 ### Incremental smoothing: `smoothTo(...)` and `tcbTo(...)`
 
-These are “streaming” builders: you call them point-by-point (like `lineTo`), but they try to maintain smooth tangents. `tcbTo` gives you explicit control over the feel of the spline via [Kochanek–Bartels (TCB) spline](https://en.wikipedia.org/wiki/Kochanek%E2%80%93Bartels_spline) parameters.
+You call these builders point-by-point (like `lineTo`), but they try to maintain smooth tangents. `tcbTo` gives you explicit control over the feel of the spline via [Kochanek–Bartels (TCB) spline](https://en.wikipedia.org/wiki/Kochanek%E2%80%93Bartels_spline) parameters.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1291,7 +1291,7 @@ lines(listOf(s1, s2), w = 420.0, h = 260.0, fitToSize = true)
 
 ### Biarcs: `biarcTo(...)` and `biarcBetween(...)`
 
-A biarc is two circular arcs joined together. It’s a nice option when you want “arc-like” smoothness without going full cubic Bézier.
+A biarc is two circular arcs joined together. Use one when you want the smoothness of circular arcs without a cubic Bézier.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1395,7 +1395,7 @@ lines(rounded, w = 420.0, h = 260.0, fitToSize = true)
 
 ### Circular arc through a point: `circleThroughTo(...)`
 
-Creates an arc that passes through a “through” point and ends at `end`.
+Creates an arc that passes through a given point and ends at `end`.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1420,7 +1420,7 @@ lines(f, w = 420.0, h = 260.0, fitToSize = true)
 
 ## 2D transformations (geometry-aware)
 
-These are convenience transforms specialized for “2D shapes living in the XY plane” (rotate around a center, reflect across a line, shear, etc.). They’re often nicer than writing a custom `transform { p -> ... }` when you’re doing design-y operations.
+These transforms are for 2D shapes in the XY plane: rotate around a centre, reflect across a line, shear. They save writing a custom `transform { p -> ... }`.
 
 ### Rotate / scale / reflect / shear
 
@@ -1436,7 +1436,7 @@ These are convenience transforms specialized for “2D shapes living in the XY p
 
 </div>
 
-These are “2D-plane” transforms (as opposed to the generic point-wise `transform`). They’re convenient for design-y operations.
+These also work in the XY plane, rather than point by point like the generic `transform`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rotate_scale_reflect_shear.png" embed=true}
 :::static
@@ -1477,7 +1477,7 @@ lines(listOf(base, rot, shear), w = 420.0, h = 260.0, fitToSize = true)
 
 </div>
 
-Field’s `FLine` nodes are 3D, so you can do “real” 3D transforms and then project down into 2D for drawing.
+Field’s `FLine` nodes are 3D, so you can transform them in 3D and then project down into 2D for drawing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/3d_transforms_and_projections.png" embed=true}
 :::static
@@ -1517,7 +1517,7 @@ Sampling turns a path into a list of points, which is the bridge to lots of proc
 
 ### Cursor: continuous traversal over segments
 
-A `Cursor` walks along an `FLine` by node index (`t`) or arc-length distance (`d`). It’s the basis for “sample at fixed distance” and many geometry ops.
+A `Cursor` walks along an `FLine` by node index (`t`) or arc-length distance (`d`). Sampling at a fixed distance, and many other geometry operations, are built on it.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1565,7 +1565,7 @@ class Cursor {
 }
 ```
 
-Here’s a “Cursor-driven sampler” that spaces dots by distance, and also draws short tangent tick-marks so you can see direction:
+This example uses a `Cursor` to space dots by distance, and also draws short tangent tick-marks so you can see direction:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/cursor_continuous_traversal_over_segments.png" embed=true}
 :::static
@@ -1652,11 +1652,11 @@ lines(listOf(f, dots), w = 420.0, h = 260.0, fitToSize = true)
 
 ## Geometry operations (simple → complex)
 
-These functions take an existing `FLine` and return new geometry: smoothing/simplifying (cleanup), offsetting (stroke outlines), and dashing (segmenting). They’re great for turning raw input into clean, stylized shapes. For all of the gesture-style filters (EMA / One Euro / alpha-beta / One-Dollar) and Gaussian-process interpolation, see [Filtering + interpolation](#filters-and-gp).
+These functions take an existing `FLine` and return new geometry: smoothing/simplifying (cleanup), offsetting (stroke outlines), and dashing (segmenting). For all of the gesture-style filters (EMA / One Euro / alpha-beta / One-Dollar) and Gaussian-process interpolation, see [Filtering + interpolation](#filters-and-gp).
 
 ### Simplify and smooth
 
-Smoothing reduces jitter; simplifying removes points while keeping the shape within a tolerance. Together they’re great for turning noisy polylines into clean strokes.
+Smoothing reduces jitter; simplifying removes points while keeping the shape within a tolerance. Together they turn a noisy polyline into a clean stroke.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1693,7 +1693,7 @@ lines(listOf(noisy, smooth, simple), w = 420.0, h = 260.0, fitToSize = true)
 
 ### Cleanup and resampling
 
-These are the current “make it usable” tools for raw input: simplify away redundant detail, then rebuild the line with evenly spaced samples along arc length. If you need the raw samples themselves, `sampleByNumber(...)` and `sampleByDistance(...)` expose them directly.
+For raw input: simplify away redundant detail, then rebuild the line with evenly spaced samples along arc length. If you need the raw samples themselves, `sampleByNumber(...)` and `sampleByDistance(...)` expose them directly.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1737,7 +1737,7 @@ lines(listOf(raw, simplified, resampled), w = 420.0, h = 260.0, fitToSize = true
 
 ### Noise utilities (make it organic)
 
-These reconstruct a new polyline by sampling your curve, perturbing the samples, and stitching them back together. `byOrientedGaussianNoising` and `byPerlinNoising` try to push mostly along the curve’s normal, which often looks more “hand-drawn”.
+These reconstruct a new polyline by sampling your curve, perturbing the samples, and stitching them back together. `byOrientedGaussianNoising` and `byPerlinNoising` try to push mostly along the curve’s normal, which often looks more hand-drawn.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1779,7 +1779,7 @@ lines(listOf(clean, gauss, oriented, perlin), w = 420.0, h = 260.0, fitToSize = 
 
 ### Filtering + interpolation (Gaussian process / EMA / One Euro / alpha-beta / driver pursuit) {#filters-and-gp}
 
-These all take a sampled version of your path and return a “regularized” polyline:
+These all take a sampled version of your path and return a regularized polyline:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1953,7 +1953,7 @@ val sweep = 10.alphas { t ->
 lines(sweep, w = 720.0, h = 220.0, fitToSize = true)
 ```
 
-This is the “same path, different steering envelope” view. On the left the driver can turn quickly, so it hugs the source. As `maxAngularVelocity` drops, the chased line has to commit earlier and sweep wider.
+Here one path is chased with different turning limits. On the left the driver can turn quickly, so it hugs the source. As `maxAngularVelocity` drops, the chased line has to commit earlier and sweep wider.
 
 #### Driver smoothing in 3D
 
@@ -2005,7 +2005,7 @@ This is the same sweep idea as the 2D version, but the source curve itself bends
 
 </div>
 
-Offsetting creates a curve “parallel” to the original at a given distance. This is useful for stroke outlines and “tubing”.
+Offsetting creates a curve parallel to the original at a given distance, for stroke outlines and tubes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/offsetting_parallel_curves.png" embed=true}
 :::static
@@ -2059,7 +2059,7 @@ lines(dashes, w = 420.0, h = 260.0, fitToSize = true)
 
 ### Intersections
 
-For “where do these two curves cross?”, use `findIntersectionsWith`. `findSelfIntersections` is handy for detecting loops and crossings inside a single stroke.
+To find where two curves cross, use `findIntersectionsWith`. `findSelfIntersections` is handy for detecting loops and crossings inside a single stroke.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2098,7 +2098,7 @@ lines(listOf(a, b, hitDots), w = 420.0, h = 260.0, fitToSize = true)
 
 ### Curvature + tangents/normals
 
-Curvature is “how fast the direction is turning”. These helpers are great for debugging, stylization, and for finding corners/interesting points.
+Curvature is how fast the direction is turning. These helpers find corners and other features, and are useful for debugging and stylization.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2146,7 +2146,7 @@ lines(listOf(f) + tangents + normals + corners, w = 420.0, h = 260.0, fitToSize 
 
 ### Convex hull + inflections
 
-`byConvexHull2D()` wraps a stroke’s points with a tight convex polygon (useful for quick “envelopes” and coarse collision). Splitting at inflections is a good way to break a cubic-heavy curve into “monotone-ish” pieces.
+`byConvexHull2D()` wraps a stroke’s points with a tight convex polygon (useful for quick outlines and coarse collision). Splitting at inflections breaks a curve into pieces that each bend one way.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2184,7 +2184,7 @@ lines(listOf(hull, scribble) + pieces, w = 420.0, h = 260.0, fitToSize = true)
 
 ## Parameterized operations (vary along the curve)
 
-Sometimes you want an effect that changes along the path: offset more near one end, add noise only in the middle, or scale based on curvature. `ParameterFunction` lets you define “a number as a function of position along the curve”.
+Sometimes you want an effect that changes along the path: offset more near one end, add noise only in the middle, or scale based on curvature. A `ParameterFunction` is a number that varies with position along the curve.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2261,7 +2261,7 @@ lines(listOf(clean, breathing, flared, qp), w = 900.0, h = 520.0, fitToSize = tr
 
 ### Curve combination utilities
 
-These are “curve algebra” helpers: sample two curves and combine their points, or map one curve onto another using closest-point projection.
+These helpers sample two curves and combine their points, or map one curve onto another using closest-point projection.
 
 ```diffstatic {data-lang=kotlin}
 :::static

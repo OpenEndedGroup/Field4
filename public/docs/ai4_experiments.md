@@ -140,7 +140,9 @@ work before relying on them.
 - A check that must hold, such as a design revision, belongs in the tool that does the work. A
   `beforeTool` guard is a second line, and it sees only calls that go through the chat's tools.
 - The chat is not a place for long jobs. A tool call waits at most as long as the program it is in
-  has left, so a tool for a minutes-long job should start it and return a handle.
+  has left, so a tool for a minutes-long job should start it and return a handle. For a
+  [derived build](studies.md#build-derived-results-without-blocking-edits), the agent can then end
+  its turn and let Field wait: see [Let AI4 Wait for Long Builds](ai4_long_builds.md).
 
 See also: [AI4 Paints](ai4_painting.md), [AI Overview](aiFeatures.md),
 [Automating Field](automating_field.md).

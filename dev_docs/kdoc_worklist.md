@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9972 of 16871 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 10134 of 17123 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**816 undocumented entry points** (types, top-level functions and values) and 5735 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**821 undocumented entry points** (types, top-level functions and values) and 5819 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -36,7 +36,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FunctionStudyTools.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudyTools.kt) | Function | function_conversation | 9 | 14 | 41% |
 | [NanoInterface.kt](../src/jvmMain/kotlin/afield/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
 | [LorisTransforms.kt](../src/jvmMain/kotlin/afield/stdlib/loris/LorisTransforms.kt) | Audio | loris, audio_ai_corpus_microscope, audio_ai_gesture_board | 8 | 0 | 50% |
-| [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 7 | 42 | 6% |
+| [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples, chain_petri_sparks | 7 | 42 | 6% |
 | [Model.kt](../src/jvmMain/kotlin/afield/four/physics/pressure/Model.kt) | Simulation | pressure_membranes | 6 | 26 | 17% |
 | [Solver.kt](../src/jvmMain/kotlin/afield/four/physics/pressure/Solver.kt) | Simulation | pressure_membranes | 6 | 12 | 9% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
@@ -47,9 +47,12 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
+| [GaussianProcessField.kt](../src/jvmMain/kotlin/afield/stdlib/GaussianProcessField.kt) | Math | gaussian_processes | 3 | 0 | 33% |
 | [LorisVisualizer.kt](../src/jvmMain/kotlin/afield/stdlib/loris/LorisVisualizer.kt) | Visualization | loris | 2 | 6 | 27% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
+| [GaussianProcess.kt](../src/jvmMain/kotlin/afield/stdlib/GaussianProcess.kt) | Math | gaussian_processes | 1 | 31 | 47% |
 | [FunctionStudy.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudy.kt) | Function | function_conversation | 1 | 12 | 51% |
+| [GaussianProcessPaths.kt](../src/jvmMain/kotlin/afield/stdlib/GaussianProcessPaths.kt) | Math | gaussian_processes | 1 | 10 | 31% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts, dataframe | 1 | 1 | 80% |
 | [FabricatePostEffects.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePostEffects.kt) | Renderers | fabricate_renderer | 1 | 0 | 75% |
@@ -79,13 +82,13 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
 | [MorphoSpec.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSpec.kt) | Languages | morpho_examples | 0 | 24 | 45% |
 | [StackSLEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/StackSLEvolve.kt) | Search | stacksl_evolve | 0 | 24 | 73% |
+| [StudyBuilds.kt](../src/jvmMain/kotlin/afield/stdlib/StudyBuilds.kt) | Workspace | studies, ai4_long_builds | 0 | 24 | 59% |
 | [Loris.kt](../src/jvmMain/kotlin/afield/stdlib/loris/Loris.kt) | Audio | loris | 0 | 24 | 42% |
 | [typography.kt](../src/jvmMain/kotlin/afield/stdlib/typography.kt) | Graphics | typography_examples, datalog, manifold | 0 | 23 | 71% |
 | [FaustPattern.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPattern.kt) | Synthesis | faust | 0 | 22 | 56% |
 | [keyframeSweep.kt](../src/jvmMain/kotlin/afield/stdlib/keyframeSweep.kt) | Graphics | keyframe_autosweep | 0 | 22 | 78% |
 | [PatSynth.kt](../src/jvmMain/kotlin/afield/four/synth/PatSynth.kt) | Patterns | chain_pattern_particles | 0 | 20 | 51% |
 | [PopulationSearch.kt](../src/jvmMain/kotlin/afield/stdlib/PopulationSearch.kt) | Search | alife_examples | 0 | 20 | 50% |
-| [StudyBuilds.kt](../src/jvmMain/kotlin/afield/stdlib/StudyBuilds.kt) | Workspace | studies | 0 | 20 | 52% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [particlevideo.kt](../src/jvmMain/kotlin/afield/stdlib/particlevideo.kt) | Video | particle_video | 0 | 20 | 45% |
 | [Orca.kt](../src/jvmMain/kotlin/afield/four/synth/Orca.kt) | Patterns | orca | 0 | 19 | 65% |
@@ -97,6 +100,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | osc | 0 | 17 | 39% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | imaging_examples | 0 | 17 | 19% |
 | [TrackedPhaseBank.kt](../src/jvmMain/kotlin/afield/four/synth/TrackedPhaseBank.kt) | Synthesis | subharmonic_sound | 0 | 16 | 26% |
+| [QualifiedSource.kt](../src/jvmMain/kotlin/afield/stdlib/QualifiedSource.kt) | Workspace | qualified_sources | 0 | 15 | 75% |
 | [MusicTranscription.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/MusicTranscription.kt) | Audio AI | audio_ai_muscriptor | 0 | 15 | 25% |
 | [Symmetry.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt) | Polytopes | polytope_examples | 0 | 15 | 53% |
 | [RenderedAudioAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt) | Audio AI | audio_render_analysis, visualizers | 0 | 14 | 50% |
@@ -148,6 +152,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DoughDspSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt) | Synthesis | dough_dsp_sound | 0 | 2 | 87% |
 | [PatMiniNotation.kt](../src/jvmMain/kotlin/afield/four/synth/PatMiniNotation.kt) | Patterns | pattern_language | 0 | 2 | 88% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
+| [GaussianProcessSmile.kt](../src/jvmMain/kotlin/afield/stdlib/GaussianProcessSmile.kt) | Math | gaussian_processes | 0 | 2 | 60% |
 | [autodiff_optimize.kt](../src/jvmMain/kotlin/afield/stdlib/autodiff_optimize.kt) | Math | autodiff_examples | 0 | 2 | 94% |
 | [Canonical.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt) | Polytopes | polytope_examples, chain_ceres_manifold_contours, stackauto_conversation | 0 | 2 | 95% |
 | [FnSignal.kt](../src/jvmMain/kotlin/afield/four/synth/FnSignal.kt) | Synthesis | chain_fn_sound_roundtrip | 0 | 1 | 66% |
@@ -168,7 +173,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ArchitecturalGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt) | Solvers | — | 5 | 62 | 50% |
 | [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 15% |
 | [Spectral.kt](../src/jvmMain/kotlin/afield/four/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
-| [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
+| [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 15 | 13% |
 | [KotlinJs.kt](../src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt) | Languages | — | 5 | 7 | 0% |
 | [KratosSession.kt](../src/jvmMain/kotlin/afield/kratos/KratosSession.kt) | Simulation | — | 4 | 44 | 29% |
 | [DatalogAst.kt](../src/jvmMain/kotlin/afield/datalog/DatalogAst.kt) | Languages | — | 4 | 15 | 41% |
@@ -235,10 +240,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLPattern.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLPattern.kt) | Languages | — | 0 | 11 | 50% |
 | [RectSLStudy.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLStudy.kt) | Languages | — | 0 | 11 | 78% |
 | [TileResidency.kt](../src/jvmMain/kotlin/afield/stdlib/TileResidency.kt) | Simulation | — | 0 | 11 | 26% |
-| [LorisDocs.kt](../src/jvmMain/kotlin/afield/stdlib/loris/LorisDocs.kt) | Audio | — | 0 | 11 | 21% |
+| [LorisDocs.kt](../src/jvmMain/kotlin/afield/stdlib/loris/LorisDocs.kt) | Audio | — | 0 | 11 | 26% |
 | [PdInstance.kt](../src/jvmMain/kotlin/afield/pd/PdInstance.kt) | Synthesis | — | 0 | 9 | 76% |
 | [RectSLStudyRender.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyRender.kt) | Languages | — | 0 | 9 | 64% |
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
+| [GaussianProcessVector.kt](../src/jvmMain/kotlin/afield/stdlib/GaussianProcessVector.kt) | Math | — | 0 | 9 | 25% |
 | [StackSLPrograms.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLPrograms.kt) | Languages | — | 0 | 8 | 79% |
 | [StackSLStudy.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLStudy.kt) | Languages | — | 0 | 8 | 82% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
@@ -261,6 +267,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CSVReader.kt](../src/jvmMain/kotlin/afield/four/physics/CSVReader.kt) | Simulation | — | 0 | 5 | 50% |
 | [MorphoGraal.kt](../src/jvmMain/kotlin/afield/morpho/MorphoGraal.kt) | Languages | — | 0 | 5 | 70% |
 | [NumpyShared.kt](../src/jvmMain/kotlin/afield/python/NumpyShared.kt) | Languages | — | 0 | 5 | 70% |
+| [PhaseNoise.kt](../src/jvmMain/kotlin/afield/stacksl/PhaseNoise.kt) | Languages | — | 0 | 5 | 66% |
 | [StackSLLpipsLoss.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/StackSLLpipsLoss.kt) | Languages | — | 0 | 5 | 44% |
 | [FieldAudioEngine.kt](../src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt) | Synthesis | — | 0 | 4 | 68% |
 | [PatTranscriptionGallery.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt) | Patterns | — | 0 | 4 | 66% |
@@ -268,6 +275,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MorphoCircuit.kt](../src/jvmMain/kotlin/afield/morpho/MorphoCircuit.kt) | Languages | — | 0 | 4 | 73% |
 | [StackSLStudyViewer.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLStudyViewer.kt) | Languages | — | 0 | 4 | 50% |
 | [ContextWhyTools.kt](../src/jvmMain/kotlin/afield/stdlib/ContextWhyTools.kt) | Workspace | — | 0 | 4 | 50% |
+| [Kits.kt](../src/jvmMain/kotlin/afield/stdlib/Kits.kt) | Workspace | — | 0 | 4 | 83% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
 | [FabricatePassChainBuilder.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePassChainBuilder.kt) | Renderers | — | 0 | 3 | 80% |
 | [MarfGallery.kt](../src/jvmMain/kotlin/afield/four/synth/MarfGallery.kt) | Patterns | — | 0 | 3 | 72% |
@@ -277,12 +285,14 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [KotlinToJsCompiler.kt](../src/jvmMain/kotlin/afield/remotejs/KotlinToJsCompiler.kt) | Languages | — | 0 | 3 | 57% |
 | [StackSLFit.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/StackSLFit.kt) | Languages | — | 0 | 3 | 89% |
 | [FunctionOps.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionOps.kt) | Function | — | 0 | 3 | 75% |
+| [GaussianProcessFit.kt](../src/jvmMain/kotlin/afield/stdlib/GaussianProcessFit.kt) | Math | — | 0 | 3 | 50% |
 | [pointing_render.kt](../src/jvmMain/kotlin/afield/stdlib/pointing_render.kt) | Graphics | — | 0 | 3 | 82% |
 | [DatalogParser.kt](../src/jvmMain/kotlin/afield/datalog/DatalogParser.kt) | Languages | — | 0 | 2 | 71% |
 | [BooleanNetworkSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSoundDocs.kt) | Audio | — | 0 | 2 | 85% |
 | [CaSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/CaSoundDocs.kt) | Patterns | — | 0 | 2 | 85% |
 | [LambdaSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/LambdaSoundDocs.kt) | Patterns | — | 0 | 2 | 93% |
 | [PatClock.kt](../src/jvmMain/kotlin/afield/four/synth/PatClock.kt) | Patterns | — | 0 | 2 | 78% |
+| [PetriSparksDocs.kt](../src/jvmMain/kotlin/afield/four/synth/PetriSparksDocs.kt) | Audio | — | 0 | 2 | 77% |
 | [MorphoSim.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSim.kt) | Languages | — | 0 | 2 | 77% |
 | [StackAutoStudy.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudy.kt) | Languages | — | 0 | 2 | 92% |
 | [StudyKnob.kt](../src/jvmMain/kotlin/afield/stdlib/StudyKnob.kt) | Workspace | — | 0 | 2 | 81% |
@@ -430,4 +440,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `CorePattern` | interface | `src/jvmMain/kotlin/afield/ml/core/Core.kt:78` |
 | `CPWildcard` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:82` |
 
-…and **696 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **701 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

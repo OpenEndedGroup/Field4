@@ -7609,6 +7609,7 @@ suspend fun main() {
         registerBuiltinCommands()
         initializeBookmarkSystem()
         initializeDrawingLayer()
+        initializeDependencyLayer()
         registerCanvasZoomActions()
         registerLayersPanelAction()
         initializeDocumentSearch()

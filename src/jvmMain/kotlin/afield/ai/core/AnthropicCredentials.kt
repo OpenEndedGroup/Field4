@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit
 const val ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY"
 const val ANTHROPIC_AUTH_TOKEN_ENV = "ANTHROPIC_AUTH_TOKEN"
 const val ANTHROPIC_BASE_URL_ENV = "ANTHROPIC_BASE_URL"
+/** Where the SDK sends requests when [configuredAnthropicBaseUrl] is null. */
+const val ANTHROPIC_DEFAULT_BASE_URL = "https://api.anthropic.com"
 const val ANTHROPIC_PROFILE_ENV = "ANTHROPIC_PROFILE"
 const val AFIELD_ANT_BIN_ENV = "AFIELD_ANT_BIN"
 
@@ -205,7 +207,7 @@ fun anthropicClientFromFieldConfig(forceRefresh: Boolean = false): AnthropicClie
  * obtain a credential; the token mint is cached so repeat calls are cheap.
  */
 fun anthropicStatus(): AnthropicStatus {
-    val base = configuredAnthropicBaseUrl() ?: "https://api.anthropic.com"
+    val base = configuredAnthropicBaseUrl() ?: ANTHROPIC_DEFAULT_BASE_URL
     val profile = configuredAnthropicProfile() ?: ""
     System.getenv(ANTHROPIC_API_KEY_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let {
         return AnthropicStatus(true, ANTHROPIC_API_KEY_ENV, "API key from environment.", base, profile)

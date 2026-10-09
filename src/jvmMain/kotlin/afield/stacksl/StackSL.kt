@@ -1425,6 +1425,11 @@ private class FunctionCompiler(
             "gradient.r", "gradient.g", "gradient.b", "gradient.a",
             "divergence", "curl" -> neighborhoodFieldWord(word, token, raw, requestedArity)
             "phacelle", "directional-noise", "directionalnoise" -> phacelleNoiseWord(word, token, raw, requestedArity)
+            "qnoise", "phnoise" -> quadratureNoiseWord(word, token, raw, requestedArity)
+            "phrot" -> {
+                requiredHelpers += "phrot"
+                binary(token, "phrot") { q, turns -> "${options.prefix}_phrot(${ref(q)}, ${ref(turns)}.x)" }
+            }
 
             else -> {
                 if (rawWord in localMarks) {
@@ -2031,6 +2036,71 @@ private class FunctionCompiler(
                 return vec4(result, 0.0, 1.0);
             }
         """.trimIndent()
+    }
+
+    /**
+     * `qnoise` and `phnoise`, the quadrature noise words (PhaseNoise.kt). `qnoise` takes the
+     * fractal arguments and an optional quoted phase-response definition, before or after them,
+     * the way `phacelle` takes its pattern. `phnoise` puts a per-octave phase `vec4` second; its
+     * short form reads up to two explicit values, so `p phases phnoise` is the common case.
+     */
+    private fun quadratureNoiseWord(word: String, token: Token, raw: String, requestedArity: Int?) {
+        requiredHelpers += "hash33"
+        val trailingReference = popWordReferenceIfTop()
+        if (word == "phnoise") {
+            val args = consumeArityArgs(
+                token,
+                raw,
+                listOf(
+                    StackSLArg("p", "input"),
+                    StackSLArg("phases", "vec4(0.0)"),
+                    StackSLArg("octaves", "vec4($FRACTAL_OCTAVES_DEFAULT)"),
+                    StackSLArg("lacunarity", "vec4($FRACTAL_LACUNARITY_DEFAULT)"),
+                    StackSLArg("gain", "vec4($FRACTAL_GAIN_DEFAULT)")
+                ),
+                requestedArity ?: explicitStackDepth().coerceIn(1, 2)
+            ) ?: return
+            (trailingReference ?: popWordReferenceIfTop())?.let {
+                errorOrWarning(it.token ?: token, "phnoise takes no phase-response word; use qnoise with '${it.word}.")
+            }
+            val (p, phases, octaves, lacunarity, gain) = args
+            val helper = "${options.prefix}_phnoise"
+            extraHelperSources.getOrPut(helper) {
+                quadratureNoiseFunctionSource(options.prefix, helper, PER_OCTAVE_SHIFT_EXPRESSION, ", vec4 phases", options.wireParamPlaceholder)
+            }
+            push(
+                expr(
+                    "$helper(${ref(p)}, ${ref(octaves)}.x, ${ref(lacunarity)}.x, ${ref(gain)}.x, ${ref(phases)}${options.wireArgPlaceholder})",
+                    args, token, word
+                )
+            )
+            return
+        }
+        val args = fractalArgs(token, raw, requestedArity, "p") ?: return
+        val response = trailingReference ?: popWordReferenceIfTop()
+        val (p, octaves, lacunarity, gain) = args
+        val suffix = response?.word?.let(::sanitizeGlslIdentifier) ?: "default"
+        val helper = "${options.prefix}_qnoise_$suffix"
+        val shift = when {
+            response == null -> "0.0"
+            definitions[response.word] != null -> {
+                calls += response.word
+                "${options.prefix}_${sanitizeGlslIdentifier(definitions.getValue(response.word).name)}(kernel${options.wireArgPlaceholder}).x"
+            }
+            else -> {
+                errorOrWarning(response.token ?: token, "Word reference '${response.word}' cannot be used as a qnoise phase response; use a StackSL definition.")
+                "0.0"
+            }
+        }
+        extraHelperSources.getOrPut(helper) {
+            quadratureNoiseFunctionSource(options.prefix, helper, shift, "", options.wireParamPlaceholder)
+        }
+        push(
+            expr(
+                "$helper(${ref(p)}, ${ref(octaves)}.x, ${ref(lacunarity)}.x, ${ref(gain)}.x${options.wireArgPlaceholder})",
+                args, token, word
+            )
+        )
     }
 
     private fun consumeNeighborhoodArgs(token: Token, word: String, requestedArity: Int?): List<Int>? {
@@ -2689,6 +2759,8 @@ private val stackSLArityVariantArities = mapOf(
     "fbmd3" to (1..3).toSet(),
     "warp3" to (1..3).toSet(),
     "phacelle" to (1..4).toSet(),
+    "qnoise" to (1..4).toSet(),
+    "phnoise" to (1..5).toSet(),
     "directional-noise" to (1..4).toSet(),
     "directionalnoise" to (1..4).toSet(),
     "grade" to (1..4).toSet(),
@@ -3104,6 +3176,7 @@ private val builtinWordsCore = setOf(
     "mix", "lerp", "mix.c", "lerp.c", "mix.sc", "lerp.sc", "select", "if", "step", "smoothstep", "pow.safe",
     "noise", "perlin", "fbm", "pulse", "fm", "fmchirp", "palette", "cos-palette", "cosine-palette",
     "noise3", "noise4", "fbm3", "fbm4", "curl3", "fbmd3", "warp3", "worley3", "voronoi3",
+    "qnoise", "phnoise", "phrot",
     "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb", "ryb.c", "ryb2rgb.c", "from-ryb.c", "rgb2ryb.c", "to-ryb.c",
     "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
     "saturation", "sat-color", "contrast", "grade",
@@ -3807,5 +3880,6 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine()
         }
         append(volumetricNoiseHelperSource(prefix, helpers))
+        append(phaseNoiseHelperSource(prefix, helpers))
     }
 }
