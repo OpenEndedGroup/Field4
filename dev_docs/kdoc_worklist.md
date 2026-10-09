@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 10016 of 16926 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 10041 of 16955 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**816 undocumented entry points** (types, top-level functions and values) and 5746 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**816 undocumented entry points** (types, top-level functions and values) and 5750 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -269,6 +269,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MorphoCircuit.kt](../src/jvmMain/kotlin/afield/morpho/MorphoCircuit.kt) | Languages | — | 0 | 4 | 73% |
 | [StackSLStudyViewer.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLStudyViewer.kt) | Languages | — | 0 | 4 | 50% |
 | [ContextWhyTools.kt](../src/jvmMain/kotlin/afield/stdlib/ContextWhyTools.kt) | Workspace | — | 0 | 4 | 50% |
+| [Kits.kt](../src/jvmMain/kotlin/afield/stdlib/Kits.kt) | Workspace | — | 0 | 4 | 83% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
 | [FabricatePassChainBuilder.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePassChainBuilder.kt) | Renderers | — | 0 | 3 | 80% |
 | [MarfGallery.kt](../src/jvmMain/kotlin/afield/four/synth/MarfGallery.kt) | Patterns | — | 0 | 3 | 72% |
