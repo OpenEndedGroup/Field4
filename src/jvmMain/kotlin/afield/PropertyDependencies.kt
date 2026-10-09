@@ -51,6 +51,12 @@ object PropertyDependencies {
     const val FILE_NAME = "dependencies.edn"
     const val COUNT_FLUSH_INTERVAL_MS = 60_000L
 
+    /**
+     * Orders accesses against each other and against `propDown` changes (`ReactiveRuns`): every
+     * recorded access and every change takes the next value. Milliseconds are too coarse for that.
+     */
+    val clock = AtomicLong()
+
     /** When this process started recording: an edge last seen before this was remembered from disk. */
     val sessionStartedAt: Long = System.currentTimeMillis()
 
@@ -81,6 +87,9 @@ object PropertyDependencies {
         val count = AtomicLong(initialCount)
         /** Accesses since this process started. */
         val sessionCount = AtomicLong(0)
+        /** [clock] at the last access; 0 for an edge only remembered from disk. Not persisted. */
+        @Volatile
+        var lastSeq = 0L
     }
 
     class Store(val documentPath: String) {
@@ -170,6 +179,7 @@ object PropertyDependencies {
             existing.count.incrementAndGet()
             existing.sessionCount.incrementAndGet()
             existing.lastSeen = now
+            existing.lastSeq = clock.incrementAndGet()
             if (matchKind != null) existing.matchKind = matchKind
             if (matchedName != null) existing.matchedName = matchedName
             store.countChange = true
@@ -179,6 +189,7 @@ object PropertyDependencies {
         edge.count.incrementAndGet()
         edge.sessionCount.incrementAndGet()
         edge.lastSeen = now
+        edge.lastSeq = clock.incrementAndGet()
         store.structuralChange = true
     }
 

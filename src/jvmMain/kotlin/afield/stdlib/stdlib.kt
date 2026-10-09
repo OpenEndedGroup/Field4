@@ -219,7 +219,7 @@ class MissingInheritedPropertyException(message: String) : IllegalStateException
 
 private fun Box.isMetarootBox(): Boolean = id == METAROOT_ID
 
-private fun missingInheritedPropertyMessage(box: Box, propertyName: String, parentCount: Int): String {
+internal fun missingInheritedPropertyMessage(box: Box, propertyName: String, parentCount: Int): String {
     val boxName = box.name.ifBlank { box.id }
     if (box.isMetarootBox()) {
         return "Can't find a value for inherited property '$propertyName' in metaroot. " +

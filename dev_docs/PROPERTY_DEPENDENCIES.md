@@ -1,7 +1,7 @@
 # Property dependencies: recording box-to-box reads
 
-Status: recording, persistence and the canvas layer are in (2026-10-09). Re-execution is not; the
-plan for it is at the end.
+Status (2026-10-09): recording, persistence and the canvas layer are in, and so is re-execution
+through `propUp` / `propDown` / `propUpDown` (the last section).
 
 ## What is recorded
 
@@ -93,28 +93,103 @@ pan, zoom and drags. Encoding:
 
 `window.dependencyLayerState()` reports what was received and drawn.
 
-## Toward Marimo-style execution
+## Re-execution: `propUp`, `propDown`, `propUpDown`
 
-The record is what a reactive scheduler needs. Box code is arbitrary Kotlin, so a static
-dependency graph can't be read off the source the way Marimo reads Python cells. The observed
-graph is the substitute, and it is persisted so that it is available before anything has run.
+`afield/stdlib/reactiveProps.kt` (the macros and the `ReactiveInheritance` delegate) and
+`afield/ReactiveRuns.kt` (the scheduling). Each macro declares the same inherited slot `prop` does.
+The preamble line is `var Box.x by ReactiveInheritance<T>(Reactive.UP)` and children gather it.
+On top of that slot:
 
-1. **Upstream on a miss.** `MissingInheritedPropertyException` already reaches the run path.
-   When a box run fails with one, look up `rememberedSuppliers(reader, name)`. Run those boxes
-   (recursively, with a visited set), then retry the reader once. This covers "values missing on
-   startup" without changing anything for documents that already work. The natural seam is the
-   autorun path (`SessionInformation.autorunBoxes`): order the autorun set topologically by
-   `flows` before launching, so that suppliers start first.
-2. **Downstream on change.** This needs a "value changed" event at the supplier. The candidates
-   are `setPropertyRaw` on a property that has recorded readers, or the end of a supplier's run
-   for `@exported` variables. Re-run the readers, debounced, and only those whose recorded reads
-   of that name are recent, so that a stale edge doesn't wake a box that no longer reads it.
-   Per-frame readers (`renderer`, anything read inside `frames {}`) must be excluded; they are
-   already live. A per-box opt-in (an `autorun`-like property) is safer than a global switch.
-3. **Cycles and staleness.** The observed graph can contain cycles (A writes `root.x`, B reads it
-   and writes `root.y`, A reads `y`). The scheduler needs cycle detection and a per-propagation
-   visited set. Edges also go stale when code changes. Ageing out edges that have not been seen
-   for N runs of their reader would keep the graph honest. The record has `lastSeen` per edge,
-   but not yet the reader's last run time, which ageing would need.
+- **Up**: a read that finds no value runs the box that supplies it, then reads again. The reader's
+  declaration decides this.
+- **Down**: a write that changes the value (by `equals`) reruns every box that read the old
+  value, after the writing run has finished. The writer's declaration decides this.
 
-Tests: `PropertyDependenciesTest` (jvmTest).
+### Up is a nested pump
+
+Box code evaluates on the runloop thread, and the delegate getter is not a suspend function. So
+a read cannot suspend while a supplier runs, and blocking it would deadlock: `Framer.dispatch`
+only queues, and the reader's own launch is the launch queue's current entry. Instead,
+`ReactiveRuns.pull` does two things:
+
+1. It launches the supplier **straight onto the runloop**. `launchAll` skips `enqueueLaunch` when
+   `ReactiveRuns.launchImmediately` is set.
+2. It **pumps the runloop from inside the getter** (`Runloop.runLoop.main.frame()`) until the
+   supplier's `executeInBox` has finished.
+
+Ordering is by construction: a supplier runs exactly when, and only if, its value is read.
+C → B → A unwinds as nested pumps.
+
+Suppliers are tried nearest first:
+1. the box being asked, if it isn't the reader (`named("b").q`);
+2. the box the gathered preamble's `/*from:uid*/` tag names;
+3. boxes that supplied the name on earlier reads (`PropertyDependencies`);
+4. ancestors whose preamble or code declares the name.
+
+Guards:
+
+- A box blocked in a pull is never pulled. That case is a cycle, and pulling it would re-enter its
+  engine mid-evaluation (the self-box re-entry failure). The read fails and the message names the
+  cycle.
+- A run of a blocked box that the pump reaches waits until the pull returns
+  (`ReactiveRuns.awaitNotBlocked`). It is called at the top of `executeInBox`, and in
+  `executeAllRequest` before the engine is replaced.
+- A second pull of a supplier already being pulled joins the first, so the supplier doesn't run
+  twice. This happens when another box's animation frame, running inside the first pull's pump,
+  asks for the same value.
+- A supplier is pulled at most once per name per run of the reader. Outside a run, it is not
+  pulled again within 2 s.
+- The thread's `Box.context`, `thisSession` and `thisSessionInfo` are restored after every pumped
+  step.
+- A queued launch with no request id (autorun, `begin()`) is **skipped** if a pull ran that box
+  successfully after the launch was queued. At startup, B's autorun can reach the queue first and
+  pull A. Without the skip, A's own autorun would then set A up a second time (a renderer, its
+  window).
+
+### Down is a cascade after the write
+
+A change made during a run is held until that run finishes; a failed run's changes are dropped.
+A change made outside any run (a `frames {}` loop, a slider callback) goes at once. Bursts are
+coalesced for 15 ms. `ReactiveRuns.Downstream` then drains, off the runloop, through the ordinary
+launch queue, one rerun at a time, each awaited:
+
+- **Who waits.** A reader is waiting while its last read of the value, and its last run, began
+  before the change. This uses the shared `PropertyDependencies.clock`, not milliseconds.
+  - A box that has read the value since (the puller of a `propUpDown` value) is up to date and
+    doesn't rerun.
+  - Only boxes that have *read* the value are rerun, which includes reads remembered in
+    `dependencies.edn`. A box that never read it is not.
+- **Order.** The next box is the first waiting one that no other waiting box can reach through
+  the recorded flows, followed transitively (`ReactiveRuns.orderNext`). A diamond's bottom runs
+  once, after both sides; D that reads x and B's y runs after B.
+- **Cycles.** A box reruns at most 3 times per cascade; at that point the cascade stops and logs
+  on `warning,autorun`. A reader whose rerun fails is not retried in that cascade.
+
+### Testing
+
+- `tools/reactive_props_scenarios.py` drives a live Field through the backdoor: one fresh
+  document per scenario, then a Kotlin check box that asserts on `ReactiveRuns.recentEvents()`
+  (every start, end, pull, join, skip, cascade and cap, in order) and on the boxes' `result`
+  properties. It runs `startup` and `down_after_restart` across a real restart.
+- `ReactivePropsTest` (jvmTest) covers ordering, supplier discovery, change noting, and a pull
+  with no runloop.
+
+### Known limits
+
+- The pump drains `main.frame()` only, not `Runloop.preRun` / `postRun`, which carry the Vulkan
+  renderer's per-frame work. During a pull, `frames {}` loops advance (measured:
+  `up_pump_keeps_others_alive`), but a native window shows no new frames until the pull returns.
+- A supplier that blocks the thread (`Thread.sleep`, a busy loop) blocks the pump. The pull's
+  timeout (`-Dafield.reactiveProps.pullTimeoutMs`, default 120 s) only catches a supplier that
+  never starts or finishes asynchronously.
+- Only Kotlin boxes can be pulled.
+- An explicit launch (with a request id) queued behind a pull of the same box still runs: a chord
+  that includes both the reader and its supplier can set the supplier up twice.
+- Down writes from a `frames {}` loop cascade on every change; that is the contract, but a value
+  changed every frame keeps its readers rerunning.
+- `rootProp` has no reactive variant yet. Telemetry already finds the writer of a root value, so
+  `rootPropUp` would mostly be a macro.
+- Switches: `-Dafield.reactiveProps=false` / `AFIELD_REACTIVE_PROPS=off`.
+
+Tests: `PropertyDependenciesTest`, `ReactivePropsTest` (jvmTest), and
+`tools/reactive_props_scenarios.py` (live).
