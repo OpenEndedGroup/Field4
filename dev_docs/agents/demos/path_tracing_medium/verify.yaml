@@ -34,10 +34,9 @@ operations:
       properties:
         code: |
           import afield.four.fabricated.PathTraceMediumGpuSmoke
-          import afield.four.modules.fromContext
-          val renderer: Renderer = fromContext()
+          val r = renderer
           val verify: suspend () -> Unit = {
-              PathTraceMediumGpuSmoke.run(renderer, "build/medium-check")
+              PathTraceMediumGpuSmoke.run(r, "build/medium-check")
               println("MEDIUM CHECK DONE")
           }
           start(verify)
