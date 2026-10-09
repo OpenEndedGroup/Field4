@@ -217,6 +217,7 @@ public/docs/generated/
 public/.field-docs-runner-cache.json
 public/.zensical-generated/
 public/zensical.generated.yml
+public/zensical.generated.build.yml
 public/edn-parser.js
 public/examples-gallery.html
 public/offline-viewer.js
