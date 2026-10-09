@@ -148,6 +148,16 @@ compare construction with in-place `set` on Field's vectors. See [Profiling](pro
 
 [Open ↗](offline.html?file=assets/agent_transcripts/profiling_timeline/metadata.edn)
 
+### smpte_timecode
+
+**SMPTE timecode**, in four boxes, all pure CPU: drop-frame arithmetic (`00:00:59;29` + 1 frame is
+`00:01:00;02`), four seconds of LTC rendered, made quiet, offset, noisy and played on a 0.9x to 1.1x
+ramp, then decoded with a plot of decoded frame and measured speed against playback time, a MIDI Time
+Code locate and two seconds of quarter frames driving a `TimecodeClock`, and a clock following LTC fed
+in audio-sized blocks. See [SMPTE Timecode](smpte_timecode.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/smpte_timecode/metadata.edn)
+
 ### simulation_clock
 
 The same instrument pointed at *simulation* time rather than wall-clock time, in two

@@ -326,6 +326,9 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_key_discovery",
         "logging_layer",
         "midi_clip",
+        // SMPTE timecode (2026-10-08): drop-frame arithmetic, LTC round trip under gain/noise/speed
+        // ramp, MTC into a TimecodeClock, a clock following LTC. Pure CPU, no audio or MIDI device.
+        "smpte_timecode",
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",
