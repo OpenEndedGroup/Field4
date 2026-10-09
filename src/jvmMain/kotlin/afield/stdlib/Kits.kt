@@ -8,9 +8,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 
 /**
- * # Kits: one machine, many documents
- *
- * A kit is what every document of one kind receives: the code of the boxes that play its roles
+ * Kits: one machine, many documents. A kit is what every document of one kind receives: the code of the boxes that play its roles
  * (providers), the sources those boxes hold in other properties (a rule set, a recipe), and the
  * asset files they read from the document's `files/` folder. It is a directory with a `kit.json`
  * beside those files; `tools/field_kit.py` makes one from a document, rehashes it, installs it in
@@ -36,9 +34,7 @@ import java.io.File
  * kit's `files/palette.json` and lands in the document's `files/palette.json`. The revision is the
  * hash of everything else, so two kits with the same revision install the same bytes.
  *
- * ### The document owns a copy
- *
- * A document on a kit records the manifest it was last installed from in `files/kit.json` (its
+ * **The document owns a copy.** A document on a kit records the manifest it was last installed from in `files/kit.json` (its
  * *record*), with the kit's directory. Nothing changes a document's copy behind its back: a newer
  * kit is only a difference [inspect] reports, until a migration installs it. [inspect] compares
  * three hashes for every property and asset: the record's, the document's, and the kit's.
