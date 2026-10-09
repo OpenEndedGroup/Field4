@@ -172,7 +172,7 @@ class IdeChatHelpers(
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null,
         maxToolRounds: Int = 24,
-        /** A tool may end the turn to wait, because the caller will resume it ([ToolExecutionContext.suspendable]). */
+        // A tool may end the turn to wait, because the caller will resume it (ToolExecutionContext.suspendable).
         suspendable: Boolean = false
     ): OpenAiIdeCodexBridge.SendResult {
         info(

@@ -23,7 +23,8 @@ internal class AiLiveConversation {
     }
 
     /** Whether [text] was already streamed as one of this turn's text blocks. */
-    @Synchronized fun hasText(text: String): Boolean =
+    @Synchronized
+    fun hasText(text: String): Boolean =
         text.isNotBlank() && entries.any { it is Text && it.value.toString().trim() == text.trim() }
 
     @Synchronized fun progress(update: LlmProgressUpdate) {
