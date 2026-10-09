@@ -128,6 +128,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
   IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
+- `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
+  grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
+  gate, the loot rule as a qualified source, and a corpus box that builds seeded variants with the same stages.
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
 - `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five

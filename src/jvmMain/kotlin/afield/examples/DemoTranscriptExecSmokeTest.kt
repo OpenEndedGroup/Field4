@@ -97,6 +97,10 @@ object DemoTranscriptExecSmokeTest {
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
         "particle_video_reader",
+        // The staged-project starting place: a level edited through guarded tools, three study-build
+        // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
+        // when installed and the blockout says so when it is not.
+        "staged_project",
         // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
