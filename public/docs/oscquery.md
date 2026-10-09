@@ -10,8 +10,7 @@ ossia score and the python and JavaScript libraries all speak it.
 list, show as controls and set. A box can also open another program's OSCQuery service and read,
 set and follow its parameters.
 
-[Open the OSCQuery demo ↗](offline.html?file=assets/oscquery_demo/metadata.edn) to read it, or
-open `public/docs/assets/oscquery_demo/` as a document in Field to run it with nothing else
+The [`oscquery_demo`](agent_transcripts.md#oscquery_demo) starting point runs with nothing else
 running: one box publishes, and two others connect back to it as a remote.
 
 ## Publishing parameters
@@ -36,17 +35,23 @@ q.menu("/scene", listOf("dawn", "dusk", "night")) { scene -> markdown("scene: $s
 add an *OSCQuery* COMP; "My piece" appears in its list of servers, with a slider for the cutoff, a
 toggle for `on` and a menu for the scene.
 
-What another program reads is plain JSON. Any HTTP client sees it, including one in a box:
+`oscQuery(name, httpPort = 9030)` uses another port (OSC goes to the one above it), and
+`httpPort = 0` picks a free one; `q.httpPort` and `q.oscPort` say which. Every box asking for the
+same port shares one service.
+
+What another program reads is plain JSON. Any HTTP client sees it, including one in a box. This
+one asks for a free port, so it does not collide with a service already on 9020:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/served_json.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="oscquery-served-json" alt="The JSON the service returns for /synth/cutoff on one line: FULL_PATH /synth/cutoff, TYPE f, ACCESS 3, VALUE [1000.0], RANGE min 20.0 max 20000.0, DESCRIPTION filter cutoff in Hz"}
 import afield.oscquery.*
 import java.net.URI
 import java.net.http.*
 
-oscQuery("My piece").float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
+val q = oscQuery("My piece", httpPort = 0)
+q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
 
 val http = HttpClient.newHttpClient()
-val req = HttpRequest.newBuilder(URI("http://127.0.0.1:9020/synth/cutoff")).build()
+val req = HttpRequest.newBuilder(URI("http://127.0.0.1:${q.httpPort}/synth/cutoff")).build()
 markdown("```json\n" + http.send(req, HttpResponse.BodyHandlers.ofString()).body() + "\n```")
 ```
 
@@ -97,12 +102,13 @@ import afield.oscquery.*
 
 var gain = 0.5
 var mute = false
-oscQuery("My piece").controls("/surface") {
+val q = oscQuery("My piece", httpPort = 0)
+q.controls("/surface") {
     slider("gain", 0.0, 1.0, initialValue = gain) { gain = it }
     checkbox("mute", mute) { mute = it }
 }
 
-val published = oscQueryRemote("127.0.0.1", 9020).params.filter { it.path.startsWith("/surface") }
+val published = oscQueryRemote("127.0.0.1", q.httpPort).params.filter { it.path.startsWith("/surface") }
 markdown(published.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
 ```
 
@@ -133,12 +139,12 @@ Pointed at Field's own service, a remote lists what the publishing box above dec
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/remote_list.png" embed=true w="760" h="50" wait="2.0" timeout="90" name="oscquery-remote-list" alt="Three parameters read back by the remote: /scene of type s with no range, /synth/cutoff of type f with range 20.0 to 20000.0, and /synth/on of type T with no range"}
 import afield.oscquery.*
 
-val q = oscQuery("My piece")
+val q = oscQuery("My piece", httpPort = 0)
 q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
 q.bool("/synth/on", true) { }
 q.menu("/scene", listOf("dawn", "dusk", "night")) { }
 
-val self = oscQueryRemote("127.0.0.1", 9020)
+val self = oscQueryRemote("127.0.0.1", q.httpPort)
 markdown(self.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })
 ```
 

@@ -27,6 +27,8 @@ class AiTurnInbox {
         val assist: AiAssist? = null,
         /** The websocket it came from, so the follow-up turn's notifications go back to it. */
         val session: io.ktor.websocket.WebSocketSession? = null,
+        /** Field wrote it (the outcome of builds a turn awaited), not the person. */
+        val fromField: Boolean = false,
     )
 
     private val pending = mutableListOf<Pending>()
@@ -72,11 +74,20 @@ class AiTurnInbox {
          * a message that arrives between tool calls otherwise reads as if it preceded the work already done.
          */
         fun modelText(messages: List<Pending>): String = buildString {
-            append("[The user sent ")
-            append(if (messages.size == 1) "this message" else "these ${messages.size} messages")
-            append(" while you were working on their request. Take it into account from here on: it can ")
-            append("correct, redirect or stop the work.]\n\n")
-            append(messages.joinToString("\n\n") { it.forModel.trim() })
+            val (field, person) = messages.partition { it.fromField }
+            if (person.isNotEmpty()) {
+                append("[The user sent ")
+                append(if (person.size == 1) "this message" else "these ${person.size} messages")
+                append(" while you were working on their request. Take it into account from here on: it can ")
+                append("correct, redirect or stop the work.]\n\n")
+                append(person.joinToString("\n\n") { it.forModel.trim() })
+            }
+            if (field.isNotEmpty()) {
+                if (person.isNotEmpty()) append("\n\n")
+                append("[Field sent this while you were working, not the user: builds an earlier turn awaited have ")
+                append("finished. Take their outcome into account from here on.]\n\n")
+                append(field.joinToString("\n\n") { it.forModel.trim() })
+            }
         }
 
         /** Several undelivered messages, as the one request their follow-up turn sends. */

@@ -294,6 +294,30 @@ input 1.7 * warp3                  # filaments
 input fbmd3 yzw normalize          # a surface normal from the noise field
 ```
 
+## Phase noise
+
+These words make noise whose phase you can turn, separately for each frequency. Use them when you need several fields that belong together: two eyes of a stereo pair, three colour channels, species of particles, or one field at two moments. Turn the phase of every frequency and the second field correlates with the first by `cos(2π·turns)`: `0` gives the same field, `0.25` an uncorrelated partner with the same character, and `0.5` its negative. Turn only the fine frequencies and the two fields share their large forms exactly while their detail differs.
+
+| Word | Stack | What it does |
+| --- | --- | --- |
+| `qnoise` | `coord octaves lacunarity gain -- quad` | quadrature noise. Short form is five octaves, lacunarity `2`, gain `0.5`. Put a quoted definition before or after the arguments to give every wave a phase offset of your own (see below). |
+| `phnoise` | `coord phases octaves lacunarity gain -- quad` | `qnoise` with a phase per octave: `phases.x` turns octave 0, `.y` octave 1, `.z` octave 2, and `.w` octave 3 and everything finer. The short form reads up to two values, so `coord phases phnoise` is the usual spelling. |
+| `phrot` | `quad turns -- quad` | rotate a pair's phase by `turns.x`: `x` becomes `c·cos θ − s·sin θ`, and `z` and `w` pass through. Works on any `(cos, sin)` pair, including `phacelle`'s. |
+
+```stacksl
+input 8 * qnoise x 0.5 * 0.5 +
+input 8 * qnoise >n <n x <n 0.33 phrot x <n 0.67 phrot x vec3 0.5 * 0.5 +
+input 8 * [0,0,0.1,0.3] t * phnoise x 0.5 * 0.5 +
+```
+
+```stacksl
+: fine >k 0.5 4 <k x smoothstep 0.5 * ;     # no turn at frequency 0.5, half a turn from 4 up
+'fine input 8 * qnoise x
+
+: churn >k <k z 0.5 - <k w * ;              # each wave drifts at its own speed
+'churn input 8 * qnoise x 0.5 * 0.5 +       # noise that changes without sliding
+```
+
 ## Color spaces
 
 | Word | Meaning |

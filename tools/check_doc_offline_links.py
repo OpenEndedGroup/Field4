@@ -120,6 +120,7 @@ CARRIER_PAGES = {
     # `offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn`, no leading slash.
     "public/docs/python_cv.md",
     "public/docs/rectsl_examples.md",
+    "public/docs/rtp_midi.md",
     "public/docs/solid_notation.md",
     "public/docs/sound_paths.md",
     "public/docs/stacksl_examples.md",

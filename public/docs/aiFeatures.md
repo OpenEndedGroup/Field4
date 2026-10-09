@@ -43,6 +43,13 @@ a long task without waiting for it to finish. Once read, the message moves to th
 point in the reply where the model saw it. If the reply finishes first, the queued
 message is sent as your next message; several queued messages go together.
 
+### Waiting for long builds
+
+An agent that starts a long [derived build](studies.md#build-derived-results-without-blocking-edits)
+can end its turn and leave the waiting to Field, which resumes the conversation with the build's
+outcome when it finishes. No model request is made while it waits. See
+[Let AI4 Wait for Long Builds](ai4_long_builds.md).
+
 ### Browsing saved states
 
 When a document registers a `stateTree` provider or an extension uses `branchState`,

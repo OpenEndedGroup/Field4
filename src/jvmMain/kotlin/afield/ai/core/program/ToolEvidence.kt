@@ -76,7 +76,8 @@ object ToolEvidence {
 @JsonClassDescription(
     "Read back a complete tool result that was too large to keep in the conversation: a tool program's call " +
         "record names it as `evidence` (an id starting ai4ev:). Returns the text from `offset`, at most `limit` " +
-        "characters, and whether there is more."
+        "characters, and whether there is more. Use it only when a call record carries an evidence id and you need the full result. " +
+        "An id not in the evidence store fails with success=false. e.g. id = `ai4ev:3f2a`, offset = 16000."
 )
 @afield.ai.core.AgentToolMeta("program", exposure = afield.ai.core.ToolExposure.DEFERRED, effects = [afield.ai.core.ToolEffect.FILESYSTEM_READ])
 data class ReadToolEvidenceRequest(

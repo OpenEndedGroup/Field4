@@ -5,7 +5,7 @@ ESP32 and Arduino sketches, Node-RED, Home Assistant and TouchDesigner all speak
 **broker**; anything subscribed to a matching **topic** (a path such as `sensors/kitchen/temp`)
 receives them. Field includes its own broker, so nothing needs installing to try it.
 
-The demo document `public/docs/assets/mqtt_demo/` puts the pieces of this page together: one box
+The [`mqtt_demo`](agent_transcripts.md#mqtt_demo) starting point puts the pieces of this page together: one box
 plays three pretend sensors, one listens to every temperature, one plots them, and one shows a
 retained message.
 

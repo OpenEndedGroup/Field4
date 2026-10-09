@@ -508,10 +508,19 @@ fun parseLayersList(layersString: String): List<String> {
     return layersString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 }
 
+/**
+ * Run once for each document when it has loaded, beside its autorun boxes ([scheduleAutorunBoxes]). AI4 uses it
+ * to arm the build waits saved with its box chats again after a restart.
+ */
+val documentReadyHooks = java.util.concurrent.CopyOnWriteArrayList<(SessionInformation) -> Unit>()
+
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
     if (autorunTriggered) return
     autorunTriggered = true
     autorunBoxes(boxes.values, delayMs)
+    documentReadyHooks.forEach { hook ->
+        runCatching { hook(this) }.onFailure { lprintln("warning,server", "document-ready hook failed for $documentName: ${it.message}") }
+    }
 }
 
 fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long = 500L) {

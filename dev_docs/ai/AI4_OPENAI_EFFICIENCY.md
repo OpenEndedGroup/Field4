@@ -108,10 +108,11 @@ called the required previously discovered tool afterward. This tests continuatio
 quality of a long conversation's recall. Evidence is retained under
 `build/ai4-live-discovery-compaction` and `build/ai4-geometry-review-compact-20261002`.
 
-Long derived builds now have `WaitStudyBuildRequest`: an observation lasting at most 30 seconds,
+Long derived builds now have `WaitStudyBuildRequest`: an observation lasting at most 900 seconds,
 returning compact status rather than repeated frozen inputs. A timeout leaves the same job
 running. This avoids spending model rounds on rapid polling; success still requires checking
-the stage's current result and its domain-specific evidence.
+the stage's current result and its domain-specific evidence. A build longer than that is waited
+for without the model: see "A turn that waits for its builds" below.
 
 `AgentTaskRequest.maxToolRounds` also reaches the ordinary AI4 panel through `AiAssist` and
 `IdeChatHelpers`, clamped to 1–64. Previously a task could request 64 while the panel silently
@@ -182,6 +183,38 @@ The Responses API documents
 as not inherited through `previous_response_id`. The 2026-10-05 trace shows that the
 response made under them still carries their effect forward, which is why the next turn
 now branches around that response instead of relying on the scoping.
+
+### A turn that waits for its builds
+
+`WaitStudyBuildRequest` returns after at most 900 s, so a 40-minute build cost a model round every
+15 minutes, each resending the whole conversation (about 80k tokens a request on the house machine,
+2026-10-07). Since 2026-10-09 a box chat's general turn can end on `AwaitStudyBuildsRequest`
+instead (`StudyBuildTools.await`, step 3a of `STAGED_PROJECTS_PLAN.md`). Its result implements
+`SuspendsTurn`; when a round's results carry a suspension, every bridge stops after that round:
+
+- Direct OpenAI makes no follow-up request. `previousResponseId` stays on the response that made the
+  round's calls, and `ThreadState.suspendedRound` keeps their outputs. The next turn sends them as
+  `function_call_output` items ahead of its prompt (as a capped turn's "not run" outputs are), and
+  clears them once its first request succeeds.
+- OpenRouter appends the outputs to its local history at once and needs no state.
+- Anthropic keeps the outputs in `suspendedRound` too; the next turn's user message opens with their
+  `tool_result` blocks, then the prompt's text block.
+- A message the person sent during that round is not drained: it stays in the inbox and becomes a
+  turn of its own when the suspended turn closes.
+
+`StudyBuildAwaits` does the waiting. The wait is the chat box's `ai4_chat_suspension` property
+(persisted), polled every 5 s through the runners, and re-armed by `documentReadyHooks` when a
+document loads. When every job is terminal, or `maxHours` pass, it sends `ai-assist` with a
+`continuationId` and the outcomes as the prompt (`queueIfBusy`, so a running turn gets it through its
+inbox, labelled as from Field). The handler reports acceptance; a refused continuation is offered
+again with backoff. `AiBoxChatReply.running` and `.suspendedOn` say what the chat is doing.
+
+Live check, 2026-10-09, `gpt-6.1-sol`, a 5-minute build: the waiting turn made 5 requests and ended
+at the await; the request ledger shows none until Field resumed the chat, which then took 1 request.
+A second run stopped Field (SIGINT) mid-build: on restart the document's wait was re-armed, the
+runner (not relaunched) was read from its directory after the 2-minute grace, and the chat resumed
+with the attempt interrupted. Tests: `TurnSuspensionBridgeTest` (both wires, OpenRouter included),
+`StudyBuildAwaitsTest` (resume, restart, absent runner, cancellation, time limit, stop, refusal).
 
 ## Official guidance
 

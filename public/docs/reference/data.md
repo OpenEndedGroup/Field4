@@ -1391,7 +1391,7 @@ can forbid duplicate points.
 
 `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt` — [read the source](source/jvmMain/afield/stdlib/smile_neighbors/)
 
-**Used in:** [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md)
+**Used in:** [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md)
 
 ### Top-level functions { #smile-neighbors-kt-functions }
 

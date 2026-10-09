@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. path tracing renderer
@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="petri_sculpture_trace" index="1" -->
 
 ```edn [field-box id="petri_sculpture_trace" role="properties"]
-{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 164 "characters" 6904 "sha256" "77487f871d87717f20035a4c4492e01d83f0b116a27d37cccc0943a8baa4ebfa"}]}
+{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 172 "characters" 7256 "sha256" "a4f76e086c448f30a39a99ff8d253dd3db13744eb901634d93b3c2eea0d88aee"}]}
 ```
 
 ```kotlin [field-property box="petri_sculpture_trace" name="code" path="petri_sculpture_trace_code_.kt"]
@@ -193,6 +193,14 @@ tracer.maxBounces = 10
 tracer.exposure = 0.9f
 tracer.environmentRotation = 2.1f
 tracer.indirectClamp = 12f
+// The sky still lights the glass and metal, but the camera sees black behind the
+// sculpture, and the floor fades into black fog past it.
+tracer.showEnvironment = false
+tracer.background = Vector4f(0f, 0f, 0f, 1f)
+tracer.fogColor = Vector3f(0f, 0f, 0f)
+tracer.fogStartDistance = span * 0.95f
+tracer.fogDensity = 4f / span
+tracer.fogBackground = true
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {

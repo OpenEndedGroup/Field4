@@ -302,5 +302,7 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
     `isFillWidthIframe` copies are never compared. The full census is in
     `dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md`.
 
-For an iframe that edits a shared model, use [box-owned requests](output_requests.md) to connect
-its controls to Kotlin through Field's existing WebSocket server.
+## See also
+
+- [Box-owned requests](output_requests.md): connect the controls in an iframe to Kotlin, for an
+  iframe that edits a shared model.

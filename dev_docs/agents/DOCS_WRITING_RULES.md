@@ -85,7 +85,10 @@ This file is about what goes on a page and how it reads.
    management", "Automating Field". The nav label must not wrap.
 19. **Link whatever a reader can open.** A runnable document is a starting point on the welcome
    screen, linked from the page, never a workspace path. A source path links to its file. Links
-   are plain text, not bold. Pages that relate say so with a "see also".
+   are plain text, not bold. Pages that relate say so with a "see also". Every saved document under
+   `public/docs/assets/` and `dev_docs/agents/demos/` is a starting point, linked as
+   `agent_transcripts.md#<name>`; `AgentDemoRegistrationTest` fails on one that is not, apart
+   from a named backlog that may only shrink.
 20. **A fact on a page stays true.** When code changes, the page changes in the same commit, and a
    number that can be derived (a count of call sites, pages, transcripts) is derived by its
    guard, not typed.

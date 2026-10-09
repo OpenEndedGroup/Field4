@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**16880 public symbols across 484 source files**, 9979 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**16926 public symbols across 487 source files**, 10016 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -24,10 +24,10 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Visualization](visualization.md) | 20 | 581 | 495 (85%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 40 | 1424 | 676 (47%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1309 | 715 (54%) | Musical time, as a value. |
-| [Audio](audio.md) | 25 | 1000 | 351 (35%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 25 | 1001 | 352 (35%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 106 | 2863 | 1273 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 27 | 381 | 266 (69%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Languages](languages.md) | 107 | 2878 | 1283 (44%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 29 | 411 | 292 (71%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 5 | 180 | 177 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Video](video.md) | 3 | 54 | 27 (50%) |  |
 
@@ -70,7 +70,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 21 | Gives a `BooleanNetwork`'s states a duration, which is all it takes to read one as music. | [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSoundDocs.kt](audio.md#booleannetworksounddocs-kt) | Audio | 14 | 12 |  |  |
-| [BoxStudyBuilds.kt](workspace.md#boxstudybuilds-kt) | Workspace | 2 | 2 |  | [Studies](../studies.md) |
+| [BoxStudyBuilds.kt](workspace.md#boxstudybuilds-kt) | Workspace | 2 | 2 |  | [Let AI4 Wait for Long Builds](../ai4_long_builds.md), [Studies](../studies.md) |
 | [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
 | [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 |  |  |
@@ -197,7 +197,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [GlslParser.kt](languages.md#glslparser-kt) | Languages | 5 | 5 | A parser for the GLSL that StackSL's emitter actually produces. |  |
 | [GlslScalars.kt](languages.md#glslscalars-kt) | Languages | 0 | 0 | The value type the GLSL interpreter is generic over, so that one interpreter serves both the `Float` reference path and the differentiable one. |  |
 | [GlslValue.kt](languages.md#glslvalue-kt) | Languages | 23 | 12 | The value model for the GLSL-subset interpreter behind StackSL's CPU backend. |  |
-| [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
+| [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
 | [H2DomainAdapters.kt](visualization.md#h2domainadapters-kt) | Visualization | 1 | 1 | `.h2` adapters for the Field types where the *reflective* default in `H2Reflect.kt` reads badly. |  |
 | [H2Reflect.kt](visualization.md#h2reflect-kt) | Visualization | 0 | 0 | The reflective half of `.h2`: what a domain object's *children* are, computed once and shared by every surface that shows them. |  |
@@ -256,7 +256,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [LineNoteTools.kt](workspace.md#linenotetools-kt) | Workspace | 11 | 5 |  |  |
 | [LiveStudy.kt](workspace.md#livestudy-kt) | Workspace | 54 | 23 |  | [Studies](../studies.md) |
 | [Loris.kt](audio.md#loris-kt) | Audio | 42 | 18 |  | [Loris: partial tracks and resynthesis](../loris.md) |
-| [LorisDocs.kt](audio.md#lorisdocs-kt) | Audio | 14 | 3 |  |  |
+| [LorisDocs.kt](audio.md#lorisdocs-kt) | Audio | 15 | 4 |  |  |
 | [LorisStudy.kt](audio.md#lorisstudy-kt) | Audio | 1 | 1 |  |  |
 | [LorisTransforms.kt](audio.md#loristransforms-kt) | Audio | 18 | 9 |  | [Loris: partial tracks and resynthesis](../loris.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [LorisVisualizer.kt](visualization.md#lorisvisualizer-kt) | Visualization | 11 | 3 |  | [Loris: partial tracks and resynthesis](../loris.md) |
@@ -367,6 +367,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PdPatchGraph.kt](synthesis.md#pdpatchgraph-kt) | Synthesis | 15 | 15 |  |  |
 | [PetriSparksDocs.kt](audio.md#petrisparksdocs-kt) | Audio | 9 | 7 |  |  |
 | [pf.kt](math.md#pf-kt) | Math | 38 | 29 | An unscented Kalman filter, and a particle filter whose particles each carry one. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
+| [PhaseNoise.kt](languages.md#phasenoise-kt) | Languages | 15 | 10 |  |  |
 | [Physical.kt](synthesis.md#physical-kt) | Synthesis | 19 | 2 | Two processors over one delay line read at fractional sample positions: `FractionalDelay`, a plain echo, and `KarplusStrong`, the same line closed into a loop and tuned to a pitch. |  |
 | [plotly.kt](visualization.md#plotly-kt) | Visualization | 13 | 13 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Values over time: interpolants & keyframes](../interpolants_examples.md), [Springs, dampers, and a character with mass](../movement_examples.md) |
 | [Point3D.kt](math.md#point3d-kt) | Math | 10 | 10 |  |  |
@@ -385,6 +386,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 53 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Measuring dependence between two signals](../statistics_examples.md), [afield.four Graphics](../afield_four_graphics.md) |
 | [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [Flow Matching](../flow_matching.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [RayTracingGpuAudit.kt](renderers.md#raytracinggpuaudit-kt) | Renderers | 3 | 2 |  |  |
+| [reactiveProps.kt](workspace.md#reactiveprops-kt) | Workspace | 8 | 8 | `propUp`, `propDown` and `propUpDown`: `prop` with re-execution attached. |  |
 | [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Realize.kt](polytopes.md#realize-kt) | Polytopes | 16 | 15 | Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [RectSL.kt](languages.md#rectsl-kt) | Languages | 561 | 46 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
@@ -431,7 +433,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SimulationResult.kt](simulation.md#simulationresult-kt) | Simulation | 31 | 27 | One solved revision: the raw fields exactly as Kratos produced them, and the views Field draws. |  |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 29 | Classical multidimensional scaling and t-SNE, over equal-length vectors or over a distance matrix you computed yourself, wrapping Smile. | [Projecting a distance matrix](../projection_examples.md) |
-| [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
+| [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbours and graphs on a point cloud](../graph_connectivity_examples.md) |
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md) |
 | [Solver.kt](simulation.md#solver-kt) | Simulation | 21 | 2 |  | [Pressure membranes](../pressure_membranes.md) |
 | [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 | Sonic Pi v5 driven from a Field box, in owned mode. | [Sonic Pi](../sonic_pi.md) |
@@ -480,8 +482,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 |  |  |
 | [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
 | [StudyBuildFindings.kt](workspace.md#studybuildfindings-kt) | Workspace | 0 | 0 |  |  |
+| [StudyBuildHelpers.kt](workspace.md#studybuildhelpers-kt) | Workspace | 5 | 5 |  | [Studies](../studies.md) |
 | [StudyBuildPanel.kt](workspace.md#studybuildpanel-kt) | Workspace | 0 | 0 |  |  |
-| [StudyBuilds.kt](workspace.md#studybuilds-kt) | Workspace | 42 | 22 |  | [Studies](../studies.md) |
+| [StudyBuilds.kt](workspace.md#studybuilds-kt) | Workspace | 59 | 35 |  | [Studies](../studies.md), [Let AI4 Wait for Long Builds](../ai4_long_builds.md) |
 | [StudyEvidence.kt](workspace.md#studyevidence-kt) | Workspace | 38 | 25 |  |  |
 | [StudyFrames.kt](workspace.md#studyframes-kt) | Workspace | 5 | 5 |  |  |
 | [StudyKeys.kt](workspace.md#studykeys-kt) | Workspace | 0 | 0 |  |  |

@@ -136,6 +136,9 @@ object DocsAudioProvenance {
         // A Petri net's emits() played through the pinned Dirt-Samples subset, strictly. See
         // chain_petri_sparks.md.
         "afield.four.synth.PetriSparksDocs" to Origin.DIRT_SAMPLES,
+        // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
+        // voices — no samples anywhere on the path. See orca.md.
+        "afield.four.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */

@@ -50,7 +50,9 @@ import kotlin.math.min
 class AnthropicBridge(
     private var client: AnthropicClient = anthropicClientFromFieldConfig(),
     private val model: String = Ai4ModelDefaults.flagshipModel(),
-    private val log: LogSink = StdoutLog
+    private val log: LogSink = StdoutLog,
+    /** Where [client] sends its requests, for the request ledger: the SDK client does not say. */
+    private val baseUrl: String = configuredAnthropicBaseUrl() ?: ANTHROPIC_DEFAULT_BASE_URL
 ) : LlmBridge {
     override val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity("anthropic", model)
     private val tools = ToolRegistry()
@@ -78,6 +80,11 @@ class AnthropicBridge(
     init {
         registerBuiltInAgentTools(tools)
         info("Initialized AnthropicBridge(model=$model)")
+    }
+
+    /** As [OpenAiIdeCodexBridge.registerTool]: one more tool for this bridge only (tests use it for a probe). */
+    fun <T : Any> registerTool(toolClass: Class<T>, handler: (ToolExecutionContext, T) -> Any) {
+        tools.register(toolClass, handler = handler)
     }
 
     override fun startThread(fileKey: String, fileText: String, instructions: String): LlmThreadState {
@@ -144,8 +151,16 @@ class AnthropicBridge(
             }
             appendLine(tc?.durablePrompt() ?: userPrompt)
         }
+        // After a suspended turn, its last round's tool results open this turn's message, ahead of the prompt.
+        val suspendedResults = state.suspendedRound?.outputs.orEmpty()
+        fun turnMessage(text: String): MessageParam = if (suspendedResults.isEmpty()) userText(text) else
+            MessageParam.builder().role(MessageParam.Role.USER).contentOfBlockParams(
+                suspendedResults.map { ContentBlockParam.ofToolResult(toolResultBlock(it.callId, it.outputJson, it.isError, it.outputJson, ::warn)) } +
+                    ContentBlockParam.ofText(TextBlockParam.builder().text(text).build())).build()
         val turnMessageIndex = messages.size
-        messages += userText(if (volatilePrefix.isEmpty()) inputText else "$volatilePrefix\n\n$inputText")
+        messages += turnMessage(if (volatilePrefix.isEmpty()) inputText else "$volatilePrefix\n\n$inputText")
+        // In the history now, so a retry after a failed request does not send the results twice.
+        state.suspendedRound = null
 
         info("convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} maxOutputTokens=$maxOutputTokens")
 
@@ -181,6 +196,20 @@ class AnthropicBridge(
             }
         }
 
+        // The request ledger's attribution, as OpenAiIdeCodexBridge's, so tools/ai_usage.py counts both providers.
+        val requestAttribution = mapOf(
+            "provider" to "anthropic", "endpoint" to AiRequestLedger.endpoint(baseUrl),
+            "model" to model, "reasoningEffort" to "provider-default",
+            "fileKey" to state.fileKey,
+            "documentPath" to (ctx.focus?.document ?: ctx.fieldGraph?.info?.filename),
+            "documentName" to ctx.fieldGraph?.info?.documentName,
+            "conversationId" to state.conversationId, "localThreadId" to state.localThreadId,
+            "turnId" to UUID.randomUUID().toString(), "toolIoSessionId" to toolIoSession?.id
+        )
+        fun requestLedger(phase: String) = AiRequestLedger.request(requestAttribution + mapOf(
+            "phase" to phase, "maxOutputTokens" to maxOutputTokens
+        ))
+
         val callCtx = ctx.copy(
             reportProgress = onProgress ?: ctx.reportProgress,
             promoted = ctx.promoted ?: state.promotedTools,
@@ -208,18 +237,21 @@ class AnthropicBridge(
         var activePhase = "model:initial"
         try {
         var hitToolRoundCap = false
-        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null))
+        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null), requestLedger("initial"))
         countUsage(response)
         onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
         logShape("initial", response)
 
         var rounds = 0
+        var suspension: TurnSuspension? = null
         while (response.stopReason().orElse(null) == StopReason.TOOL_USE) {
             val toolUses = response.content().mapNotNull { it.toolUse().orElse(null) }
             if (toolUses.isEmpty()) break
 
             val resultBlocks = mutableListOf<ContentBlockParam>()
+            val roundResults = mutableListOf<Any>()
+            val roundOutputs = mutableListOf<PendingToolOutput>()
             for (use in toolUses) {
                 val name = use.name()
                 log.toolActivity(name)
@@ -303,7 +335,21 @@ class AnthropicBridge(
                 resultBlocks += ContentBlockParam.ofToolResult(
                     toolResultBlock(use.id(), resultJson, isError, result, ::warn)
                 )
+                roundResults += result
+                roundOutputs += PendingToolOutput(use.id(), name, resultJson, isError)
             }
+
+            // A tool ended the turn (AwaitStudyBuildsRequest): no follow-up request. The results open the next
+            // turn's message instead; what the person wrote meanwhile stays in the inbox for a turn of its own.
+            TurnSuspension.of(roundResults)?.let { awaited ->
+                suspension = awaited
+                state.suspendedRound = SuspendedRound(roundOutputs.toList())
+                rounds++
+                info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
+                toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
+                    "deadlineMs" to awaited.deadlineMs, "pendingCallIds" to roundOutputs.map { it.callId }))
+            }
+            if (suspension != null) break
 
             // What the person wrote while this round ran (AiTurnInbox): a text block after the tool results,
             // which must come first in the message. Their images are dropped, as a turn's own are here.
@@ -331,12 +377,14 @@ class AnthropicBridge(
                 warn("maxToolRounds=$maxToolRounds reached; requesting a final answer with tool_choice none.")
             }
             if (!includeTools) hitToolRoundCap = true
-            activePhase = if (includeTools) "model:followup" else "model:forced_final"
-            response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null, toolsDisabled = !includeTools))
+            val phase = if (includeTools) "followup" else "forced_final"
+            activePhase = "model:$phase"
+            response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null, toolsDisabled = !includeTools),
+                requestLedger(phase))
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
-            logShape(if (includeTools) "followup" else "forced_final", response)
+            logShape(phase, response)
             if (!includeTools) break
         }
 
@@ -350,7 +398,7 @@ class AnthropicBridge(
         info("done id=${response.id()} textChars=${text.length} commentary=${commentary.size} rounds=$rounds (${ms}ms)")
         toolIo("session_end", mapOf(
             "responseId" to response.id(), "textChars" to text.length, "commentaryCount" to commentary.size,
-            "toolCallCount" to transcript.size, "elapsedMs" to ms, "status" to "completed",
+            "toolCallCount" to transcript.size, "elapsedMs" to ms, "status" to if (suspension != null) "suspended" else "completed",
             "toolElapsedMs" to toolElapsedMs, "rounds" to rounds,
             "inputTokens" to inputTokens, "outputTokens" to outputTokens,
             "cacheReadTokens" to cacheReadTokens, "cacheWriteTokens" to cacheWriteTokens))
@@ -365,6 +413,7 @@ class AnthropicBridge(
             modelIdentity = modelIdentity.copy(responseModel = response.model().asString()),
             rounds = rounds,
             hitToolRoundCap = hitToolRoundCap,
+            suspension = suspension,
             inputTokens = inputTokens,
             outputTokens = outputTokens,
             cacheReadTokens = cacheReadTokens,
@@ -385,7 +434,7 @@ class AnthropicBridge(
         } finally {
             // The volatile prefix was for this turn's requests only. Whatever happened, the stored message
             // goes back to the durable text, so the next turn's history does not carry it.
-            if (volatilePrefix.isNotEmpty() && turnMessageIndex < messages.size) messages[turnMessageIndex] = userText(inputText)
+            if (volatilePrefix.isNotEmpty() && turnMessageIndex < messages.size) messages[turnMessageIndex] = turnMessage(inputText)
         }
     }
 
@@ -444,13 +493,16 @@ class AnthropicBridge(
 
     // ---- create with rate-limit + auth-refresh retry -------------------------
 
-    private fun createMessage(params: MessageCreateParams): Message {
+    /** One logical request: each `create` is an attempt in [ledger], recorded before the call and after its outcome. */
+    private fun createMessage(params: MessageCreateParams, ledger: AiRequestLedger.Request): Message {
         var attempt = 0
         var refreshedAuth = false
         while (true) {
+            val recorded = ledger.attempt()
             try {
-                return client.messages().create(params)
+                return client.messages().create(params).also { recorded.response(it); recorded.finish() }
             } catch (e: UnauthorizedException) {
+                recorded.finish(e)
                 if (!refreshedAuth) {
                     warn("401 from Anthropic; refreshing OAuth token and retrying once.")
                     invalidateAnthropicOAuthToken()
@@ -460,15 +512,20 @@ class AnthropicBridge(
                 }
                 throw e
             } catch (e: AnthropicServiceException) {
+                recorded.finish(e)
                 val delay = OpenAiIdeCodexBridge.retryDelayMsForRateLimitMessage(e.message ?: "")
                 if (delay != null && attempt < maxRateLimitRetries) {
                     val wait = min(delay, maxRateLimitDelayMs)
+                    ledger.retry(attempt + 1, wait)
                     warn("rate limited (attempt ${attempt + 1}/$maxRateLimitRetries); waiting ${wait}ms.")
                     log.userNotice("The AI service is busy. Retrying automatically in ${(wait + 999) / 1000}s; completed work is kept.", attention = true)
                     Thread.sleep(wait)
                     attempt++
                     continue
                 }
+                throw e
+            } catch (e: Exception) {
+                recorded.finish(e)
                 throw e
             }
         }
