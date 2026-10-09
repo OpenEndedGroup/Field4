@@ -2141,6 +2141,14 @@ first.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/mqtt_demo/metadata.edn)
 
+### dmx_lighting_demo
+
+The demo for [Driving Lights](dmx_lighting.md), with no lighting hardware: an Art-Net receiver that
+draws the universes it gets, a 200-pixel strip on a curve sent to it, an ArtPoll, and an image on an
+RGBW matrix sent as sACN and received back in the same box. Launch the receiver first.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/dmx_lighting_demo/metadata.edn)
+
 ### oscquery_demo
 
 The demo for [OSCQuery](oscquery.md): one box publishes parameters, others show them as controls,

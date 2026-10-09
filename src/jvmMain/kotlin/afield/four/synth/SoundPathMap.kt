@@ -291,14 +291,13 @@ object SoundPathMap {
 
         SoundPath(
             id = "pat-spatial",
-            // The one source in this map that is REALTIME while sitting on the seam, and the reason
-            // is worth keeping next to the flag: the synthesis is a render thread's, and the audio
-            // thread's whole job is a bounded copy out of a ring. `PatSpatialLaunch.advanceOffline`
-            // looks like an offline half and is not one — it consumes what the render thread has
-            // already produced, in real time, so a caller asking for a second of audio waits a
-            // second. That is what keeps this path off the docs `audio=` fence contract; see
-            // `public/docs/pat_spatial.md#why-there-is-no-clip-of-the-output`.
-            role = Role.MAKES, timing = Timing.REALTIME, onSeam = true,
+            // BOTH, with one entry point: the synthesis is a render thread's, and the audio thread's
+            // whole job is a bounded copy out of a ring. That thread is paced by the ring, not by a
+            // clock, so a loop that pulls the bank with no device drains it as fast as it renders —
+            // `HeadTrackedPatternDemo` measures 7x to 30x realtime — and a pose given as a function
+            // of the render frame (`listenerPoseAt`) makes the render repeat exactly.
+            // `PatSpatialHeadTrackedDocs` is that render behind an `audio=` fence.
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
             needs = "the dough WebAssembly build, plus Steam Audio's libphonon, which is not " +
                 "committed — ./gradlew fetchSteamAudioNatives",
             channels = "binaural stereo: one HRTF-placed mono source per `spat` tag, summed",
@@ -555,7 +554,7 @@ object SoundPathMap {
             roots = listOf("src/jvmMain/kotlin"),
             declaredIn = mapOf(
                 "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt" to "pat-stand-in",
-                "src/jvmMain/kotlin/afield/four/synth/PatMiniNotation.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/PatMiniNotation.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/CaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/LambdaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt" to "pat-stand-in",
@@ -569,10 +568,10 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/PetriSparksDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
-                // The only producer here that cannot render the path it belongs to. It publishes
-                // the *mono source* pat-spatial hands Steam Audio, because the spatialisation is
-                // realtime-only and its binary is not committed; see PatSpatialSoundDocs' KDoc.
+                // The *mono source* pat-spatial hands Steam Audio, which needs no uncommitted binary.
                 "src/jvmMain/kotlin/afield/four/synth/PatSpatialSoundDocs.kt" to "pat-spatial",
+                // The binaural output itself; needs libphonon (./gradlew fetchSteamAudioNatives).
+                "src/jvmMain/kotlin/afield/four/synth/PatSpatialHeadTrackedDocs.kt" to "pat-spatial",
             ),
         ),
         Marker(
