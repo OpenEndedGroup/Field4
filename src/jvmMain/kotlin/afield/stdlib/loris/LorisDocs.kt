@@ -100,12 +100,18 @@ object LorisDocs {
         return Morph(a, b, aligned, morphed)
     }
 
-    fun morphHtml(): String {
+    fun morphHtml(): String = morphPanelHtml(0) + morphPanelHtml(1) + morphPanelHtml(2)
+
+    /** One panel of [morphHtml]: 0 = phrase A, 1 = phrase B aligned, 2 = the morph (each runs the cached pipeline). */
+    fun morphPanelHtml(panel: Int): String {
         val m = morph()
         val view = { label: String -> LorisViewOptions(height = 260, minimumHz = 0.0, maximumHz = 5000.0,
             syncGroup = "loris-morph", label = label) }
-        return m.source.visualizationHtml(view("Phrase A · film 1.6–3.6 s · distilled")) +
-            m.aligned.visualizationHtml(view("Phrase B · film 11.5–13.5 s · distilled, loudest moment dilated onto A's")) +
-            m.morphed.visualizationHtml(view("Morph · A → B between 0.4 and 1.6 s"))
+        return when (panel) {
+            0 -> m.source.visualizationHtml(view("Phrase A · film 1.6–3.6 s · distilled"))
+            1 -> m.aligned.visualizationHtml(view("Phrase B · film 11.5–13.5 s · distilled, loudest moment dilated onto A's"))
+            2 -> m.morphed.visualizationHtml(view("Morph · A → B between 0.4 and 1.6 s"))
+            else -> throw IllegalArgumentException("panel must be 0, 1 or 2")
+        }
     }
 }
