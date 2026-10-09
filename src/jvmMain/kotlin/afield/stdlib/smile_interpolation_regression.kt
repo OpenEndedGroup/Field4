@@ -16,13 +16,13 @@ import smile.regression.GaussianProcessRegression
  * returned [SmileCubicSpline1D] / [SmileGaussianProcess1D] are callable via `invoke` and also
  * expose `predict` for a single `x` or for a whole array.
  *
- * If Smile throws while fitting the GP, [smileGaussianProcess] prints a warning to stderr and
- * substitutes plain linear interpolation between the training points, so holding a
- * [SmileGaussianProcess1D] is not proof that a GP was fitted.
+ * GP fitting failures propagate. No interpolator is substituted for a failed probabilistic model.
+ * For 1D/2D/3D inference, composed kernels, heteroscedastic noise and coherent samples see [GaussianProcess].
  */
 
 data class SmileGpOptions(
     val lengthScale: Double = 0.15,
+    /** Smile uses noise VARIANCE in normalized output units when normalize is enabled. New GP APIs use noiseStd. */
     val noise: Double = 1e-3,
     val normalize: Boolean = true,
     val tol: Double = 1e-4,
@@ -46,9 +46,27 @@ class SmileGaussianProcess1D internal constructor(
     val xs: DoubleArray,
     val ys: DoubleArray,
     val options: SmileGpOptions,
-    private val predictor: (Double) -> Double
+    private val model: GaussianProcessRegression<DoubleArray>
 ) {
-    fun predict(x: Double): Double = predictor(x)
+    fun predict(x: Double): Double = model.predict(doubleArrayOf(x))
+
+    /** Latent posterior uncertainty in the original output units. */
+    fun predictWithVariance(x: Double): GpPrediction {
+        require(x.isFinite())
+        val estimate = DoubleArray(2)
+        model.predict(doubleArrayOf(x), estimate)
+        require(estimate.all { it.isFinite() }) { "Smile returned a non-finite prediction" }
+        return GpPrediction(estimate[0], estimate[1] * estimate[1])
+    }
+
+    /** Seedable coherent draws through Field's semidefinite-aware joint sampler. */
+    fun posterior(xs: DoubleArray): GpJoint {
+        require(xs.isNotEmpty() && xs.size <= 4096 && xs.all { it.isFinite() })
+        val prediction = model.query(Array(xs.size) { doubleArrayOf(xs[it]) })
+        val covariance = Array(xs.size) { i -> DoubleArray(xs.size) { j -> prediction.cov.get(i, j) } }
+        val scale = covariance.indices.maxOf { kotlin.math.abs(covariance[it][it]) }
+        return GpJoint(prediction.mu.copyOf(), covariance, 1e-12, 1e-10 * scale)
+    }
 
     fun predict(xs: DoubleArray): DoubleArray =
         DoubleArray(xs.size) { i -> predict(xs[i]) }
@@ -79,40 +97,19 @@ fun smileGaussianProcess(
     require(options.tol.isFinite() && options.tol > 0.0) {
         "smileGaussianProcess: tol must be > 0, found ${options.tol}"
     }
-    require(options.maxIter > 0) {
-        "smileGaussianProcess: maxIter must be > 0, found ${options.maxIter}"
+    require(options.maxIter >= 0) {
+        "smileGaussianProcess: maxIter must be >= 0, found ${options.maxIter}"
     }
 
     val xCopy = xs.copyOf()
     val yCopy = ys.copyOf()
     val xTrain = Array(xCopy.size) { i -> doubleArrayOf(xCopy[i]) }
     val kernel = GaussianKernel(options.lengthScale)
-    val gpOptions = GaussianProcessRegression.Options(options.noise, options.normalize, options.tol, options.maxIter)
-    val predictor: (Double) -> Double = try {
-        val model = GaussianProcessRegression.fit(xTrain, yCopy, kernel, gpOptions)
-        val modelPredictor: (Double) -> Double = { x -> model.predict(doubleArrayOf(x)) }
-        modelPredictor
-    } catch (t: Throwable) {
-        if (t is VirtualMachineError) throw t
-        System.err.println("smileGaussianProcess: native Smile backend unavailable; falling back to linear interpolation: ${t.message ?: t.javaClass.name}")
-        val fallbackPredictor: (Double) -> Double = { x -> linearPredict(xCopy, yCopy, x) }
-        fallbackPredictor
-    }
-    return SmileGaussianProcess1D(xCopy, yCopy, options, predictor)
-}
-
-private fun linearPredict(xs: DoubleArray, ys: DoubleArray, x: Double): Double {
-    if (x <= xs.first()) return ys.first()
-    if (x >= xs.last()) return ys.last()
-    val upper = xs.binarySearch(x).let { found ->
-        if (found >= 0) return ys[found]
-        -found - 1
-    }
-    val lower = upper - 1
-    val span = xs[upper] - xs[lower]
-    if (span <= 0.0) return ys[lower]
-    val t = (x - xs[lower]) / span
-    return ys[lower] * (1.0 - t) + ys[upper] * t
+    // Smile's normalization divides by sample standard deviation; constant data has zero spread.
+    val normalize = options.normalize && yCopy.any { it != yCopy[0] }
+    val gpOptions = GaussianProcessRegression.Options(options.noise, normalize, options.tol, options.maxIter)
+    val model = GaussianProcessRegression.fit(xTrain, yCopy, kernel, gpOptions)
+    return SmileGaussianProcess1D(xCopy, yCopy, options, model)
 }
 
 private fun validateTrainingSeries(xs: DoubleArray, ys: DoubleArray, fn: String) {
@@ -134,3 +131,4 @@ private fun validateTrainingSeries(xs: DoubleArray, ys: DoubleArray, fn: String)
         }
     }
 }
+

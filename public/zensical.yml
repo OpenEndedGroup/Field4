@@ -118,6 +118,7 @@ nav:
     - Functions & Derivatives:
       - Functions Examples: functions_examples.md
       - Functions Domains: functions_domains.md
+      - Gaussian Processes: gaussian_processes.md
       - Differentiating Functions: autodiff_examples.md
       - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
@@ -484,3 +485,4 @@ extra_javascript:
 site_url: http://openendedgroup.com/Field4/
 site_dir: field4
   
+
