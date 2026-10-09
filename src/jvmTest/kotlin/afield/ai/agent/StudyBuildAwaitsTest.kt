@@ -24,36 +24,38 @@ class StudyBuildAwaitsTest {
     private val registry = ToolRegistry().also(::registerBuiltInAgentTools)
     private val hour = 3_600_000L
 
+    /** [release] lets the build finish; while [hold] is up, the worker does not look for a cancellation. */
     private class Fixture(val info: SessionInformation, val chat: Box, val source: Box, val dir: File,
-        val builds: StudyBuilds, val release: CountDownLatch) : AutoCloseable {
-        override fun close() { release.countDown(); builds.close() }
+        val builds: StudyBuilds, val release: CountDownLatch, val hold: CountDownLatch) : AutoCloseable {
+        override fun close() { release.countDown(); hold.countDown(); builds.close() }
     }
 
     private fun session(): SessionInformation =
         SessionInformation(Files.createTempDirectory("await-builds-").toString(), "test", root = Box("root"), ephemeral = true)
 
-    private fun stages(release: CountDownLatch) = listOf(StudyBuildStage("bake", "Bake the mesh", "v1",
+    private fun stages(release: CountDownLatch, hold: CountDownLatch = CountDownLatch(0)) = listOf(StudyBuildStage("bake", "Bake the mesh", "v1",
         resultNotes = { r -> listOf(StudyBuildNotice("${r.facts["open"]} findings remain; inspect the report.")) }) { c ->
         c.progress(0.25, "Baking")
-        while (!release.await(20, TimeUnit.MILLISECONDS)) c.checkCancelled()
+        while (!release.await(20, TimeUnit.MILLISECONDS)) { hold.await(); c.checkCancelled() }
         c.file("mesh.txt").writeText("baked")
         StudyBuildProduct(listOf("mesh.txt"), facts = mapOf("triangles" to 1200, "open" to 2))
     })
 
-    private fun bind(info: SessionInformation, dir: File, release: CountDownLatch): Pair<Box, StudyBuilds> {
+    private fun bind(info: SessionInformation, dir: File, release: CountDownLatch, hold: CountDownLatch = CountDownLatch(0)): Pair<Box, StudyBuilds> {
         val source = Box("source").also { info.boxes[it.id] = it }
-        val builds = StudyBuilds(dir, stages(release), { emptyMap() })
+        val builds = StudyBuilds(dir, stages(release, hold), { emptyMap() })
         source.properties["_studyBuilds:study"] = BoxStudyBuildBinding(source, "study", builds)
         return source to builds
     }
 
-    private fun fixture(): Fixture {
+    private fun fixture(held: Boolean = false): Fixture {
         val info = session()
         val chat = Box("chat").also { it.name = "Chat"; info.boxes[it.id] = it }
         val dir = Files.createTempDirectory("await-builds-store").toFile()
         val release = CountDownLatch(1)
-        val (source, builds) = bind(info, dir, release)
-        return Fixture(info, chat, source, dir, builds, release)
+        val hold = CountDownLatch(if (held) 1 else 0)
+        val (source, builds) = bind(info, dir, release, hold)
+        return Fixture(info, chat, source, dir, builds, release, hold)
     }
 
     private fun Fixture.start(): String = builds.start("bake", builds.stages().single().fingerprint!!).id
@@ -73,7 +75,7 @@ class StudyBuildAwaitsTest {
         "AwaitStudyBuildsRequest", """{"boxId":"source","name":"study","jobIds":["$job"],"maxHours":$maxHours}""") as StudyBuildAwaitResult
 
     private fun awaits(resume: (SessionInformation, Box, AiAssist) -> Boolean, clock: () -> Long = System::currentTimeMillis) =
-        StudyBuildAwaits(graphFor = { FieldGraphTools(it, host) }, resume = resume, pollMs = hour, clock = clock)
+        StudyBuildAwaits(graphFor = { FieldGraphTools(it, host) }, resume = resume, pollMs = hour, clock = clock, isOpen = { true })
 
     @Test fun aTurnThatAwaitsItsBuildEndsAndResumesOnceWithNoModelCallInBetween() = fixture().use { f ->
         val job = f.start()
@@ -96,6 +98,7 @@ class StudyBuildAwaitsTest {
             val saved = awaits.suspend(f.info, f.chat, suspension, "code", 24)
             assertEquals(saved, StudyBuildAwaits.read(f.chat), "saved with the chat")
             assertContains(saved.row, "Waiting for 1 build · no model calls")
+            assertTrue(afield.parseAiChatBlocks(saved.row).single().isBuildWait, "the panel shows it on its own")
             assertContains(saved.row, "attempt `$job`")
             val transcript = "<<you>>\nBake the mesh\n<<ai>>\nStarted it.\n" + saved.row
             assertEquals(transcript.replace("<<progress>>", "<<progress-open>>"), awaits.shown(f.info, f.chat, transcript),
@@ -114,7 +117,7 @@ class StudyBuildAwaitsTest {
             assertTrue(continuation.queueIfBusy, "a turn already running in the box is given it, like a typed message")
             assertTrue(continuation.continuationId.isNotBlank())
             val text = continuation.extraPrompt
-            assertTrue(text.startsWith("**Field:** the build you awaited has finished"), text)
+            assertTrue(text.startsWith("**Field:** the build you awaited has ended"), text)
             assertContains(text, "No model call was made while it ran.")
             assertContains(text, "`study/bake` (Bake the mesh), attempt `$job`: **succeeded**; current result.")
             assertContains(text, "Facts: triangles=1200, open=2.")
@@ -176,7 +179,7 @@ class StudyBuildAwaitsTest {
         }
     }
 
-    @Test fun aCancelledJobResumesTheChatWithItsCancellation() = fixture().use { f ->
+    @Test fun aCancelledJobResumesTheChatWithItsCancellation() = fixture(held = true).use { f ->
         val job = f.start()
         waitFor(f.builds, job, StudyBuildStatus.RUNNING)
         val resumed = mutableListOf<AiAssist>()
@@ -187,6 +190,7 @@ class StudyBuildAwaitsTest {
             assertTrue(cancel.success, cancel.message)
             awaits.tick()
             assertTrue(resumed.isEmpty(), "a cancellation request is not a stopped build")
+            f.hold.countDown()
             waitFor(f.builds, job, StudyBuildStatus.CANCELLED)
             awaits.tick()
             assertContains(resumed.single().extraPrompt, "attempt `$job`: **cancelled**")
@@ -246,6 +250,26 @@ class StudyBuildAwaitsTest {
             assertEquals(2, offered.size)
             assertEquals(offered[0], offered[1], "the same continuation, not a second one")
             assertNull(StudyBuildAwaits.read(f.chat))
+        }
+    }
+
+    @Test fun aClosedDocumentKeepsItsWaitForWhenItOpensAgain() = fixture().use { f ->
+        val job = f.start()
+        f.release.countDown()
+        waitFor(f.builds, job, StudyBuildStatus.SUCCEEDED)
+        var open = true
+        val resumed = mutableListOf<AiAssist>()
+        StudyBuildAwaits(graphFor = { FieldGraphTools(it, host) }, resume = { _, _, a -> resumed += a; true }, pollMs = hour,
+            isOpen = { open }).use { awaits ->
+            awaits.suspend(f.info, f.chat, TurnSuspension(listOf(AwaitedBuild("source", "study", job, "bake")), System.currentTimeMillis() + hour), "code", 24)
+            open = false
+            awaits.tick()
+            assertTrue(resumed.isEmpty(), "a document nobody has open is not resumed")
+            assertNotNull(StudyBuildAwaits.read(f.chat), "its wait stays saved with it")
+            open = true
+            awaits.rearm(f.info)
+            awaits.tick()
+            assertContains(resumed.single().extraPrompt, "attempt `$job`: **succeeded**")
         }
     }
 

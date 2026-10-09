@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 /** A job a chat waits for, as `ai-chat-history` reports it. [status] is the last one seen, or "" before the first poll. */
 @Serializable
 data class AiChatAwaitedJob(val boxId: String, val name: String, val jobId: String, val stage: String = "",
-    val label: String = "", val directory: String = "", val status: String = "")
+    val label: String = "", val status: String = "")
 
 /** What a box chat is waiting for (`AiBoxChatReply.suspendedOn`): since when, until when at the latest, and the jobs. */
 @Serializable
@@ -55,12 +55,19 @@ class StudyBuildAwaits(
     val pollMs: Long = 5_000,
     val runnerGraceMs: Long = 120_000,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Whether a document is still open in this Field; a closed one's waits are armed again when it reopens. */
+    private val isOpen: (SessionInformation) -> Boolean = { info -> afield.documents.values.any { it === info } },
 ) : AutoCloseable {
 
     /** What [PROPERTY] holds. [row] is the transcript block the suspended turn ended with. */
     @Serializable
     data class SavedSuspension(val id: String, val property: String = "code", val maxToolRounds: Int = 24,
-        val since: Long, val deadline: Long, val jobs: List<AiChatAwaitedJob>, val row: String)
+        val since: Long, val deadline: Long, val jobs: List<SavedJob>, val row: String)
+
+    /** One awaited job as saved: [directory] is the runner's, read when the runner is not running. */
+    @Serializable
+    data class SavedJob(val boxId: String, val name: String, val jobId: String, val stage: String = "",
+        val label: String = "", val directory: String = "")
 
     private class Armed(val info: SessionInformation, val box: Box, @Volatile var saved: SavedSuspension) {
         val status = ConcurrentHashMap<String, String>()
@@ -85,7 +92,7 @@ class StudyBuildAwaits(
         val now = clock()
         val previous = armed[key(info, box)]?.saved ?: read(box)
         val jobs = ((previous?.jobs.orEmpty()) + suspension.jobs.map {
-            AiChatAwaitedJob(it.boxId, it.name, it.jobId, it.stage, it.label, it.directory)
+            SavedJob(it.boxId, it.name, it.jobId, it.stage, it.label, it.directory)
         }).distinctBy { Triple(it.boxId, it.name, it.jobId) }
         val deadline = maxOf(previous?.deadline ?: 0L, suspension.deadlineMs)
         val saved = SavedSuspension(UUID.randomUUID().toString(), property, maxToolRounds, previous?.since ?: now, deadline, jobs, waitingRow(jobs, deadline))
@@ -116,7 +123,7 @@ class StudyBuildAwaits(
         val a = armed[key(info, box)]
         val saved = a?.saved ?: read(box) ?: return null
         return AiChatSuspension(Instant.ofEpochMilli(saved.since).toString(), Instant.ofEpochMilli(saved.deadline).toString(),
-            saved.jobs.map { it.copy(status = a?.status?.get(it.jobId) ?: it.status) })
+            saved.jobs.map { AiChatAwaitedJob(it.boxId, it.name, it.jobId, it.stage, it.label, a?.status?.get(it.jobId).orEmpty()) })
     }
 
     /** [markdown] as a panel should show it: while [box] waits, its waiting row open, like live activity. */
@@ -139,7 +146,9 @@ class StudyBuildAwaits(
     /** One poll of every armed wait. The executor calls it every [pollMs]; tests call it directly. */
     internal fun tick() {
         for ((k, a) in armed) {
-            // A deleted box, or a wait cleared or replaced through the saved property, is no longer this one.
+            // A deleted box, or a wait cleared or replaced through the saved property, is no longer this one; a
+            // closed document's wait stays saved with it, and is armed again when the document opens.
+            if (!isOpen(a.info)) { armed.remove(k, a); continue }
             if (a.info.boxes[a.box.id] !== a.box && a.box !== a.info.root) { armed.remove(k, a); continue }
             if (read(a.box)?.id != a.saved.id) { armed.remove(k, a); continue }
             val now = clock()
@@ -217,17 +226,17 @@ class StudyBuildAwaits(
             AiBoxConversation.markPending(box)
         }
 
-        private fun AiChatAwaitedJob.awaited() = AwaitedBuild(boxId, name, jobId, stage, label, directory)
+        private fun SavedJob.awaited() = AwaitedBuild(boxId, name, jobId, stage, label, directory)
 
-        private fun jobLine(job: AiChatAwaitedJob) =
+        private fun jobLine(job: SavedJob) =
             "- `${job.name}/${job.stage}`${job.label.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}, attempt `${job.jobId}`"
 
         private fun plural(n: Int) = if (n == 1) "1 build" else "$n builds"
 
         /** The closed transcript block a suspended turn ends with; [shown] opens it while the wait lasts. */
-        internal fun waitingRow(jobs: List<AiChatAwaitedJob>, deadline: Long): String = buildString {
+        internal fun waitingRow(jobs: List<SavedJob>, deadline: Long): String = buildString {
             append("<<progress>>\n")
-            append("Waiting for ${plural(jobs.size)} · no model calls\n")
+            append(afield.AiChatBlock.buildWaitTitle(jobs.size)).append('\n')
             jobs.forEach { append(jobLine(it)).append('\n') }
             val at = Instant.ofEpochMilli(deadline).atZone(ZoneId.systemDefault())
             val today = Instant.now().atZone(ZoneId.systemDefault()).toLocalDate() == at.toLocalDate()
@@ -263,9 +272,10 @@ class StudyBuildAwaits(
          */
         internal fun continuationText(outcomes: List<AwaitedJobOutcome>, waitedMs: Long, timedOut: Boolean): String = buildString {
             val running = outcomes.count { it.record?.status in ACTIVE && it.runnerLive }
-            if (timedOut) append("**Field:** the time you allowed for these builds has passed (${duration(waitedMs)}), and " +
+            append(afield.AiChatBlock.FIELD_MESSAGE_PREFIX)
+            if (timedOut) append("the time you allowed for these builds has passed (${duration(waitedMs)}), and " +
                 "${plural(running)} ${if (running == 1) "is" else "are"} still running; they keep running. No model call was made while you waited.\n\n")
-            else append("**Field:** the ${if (outcomes.size == 1) "build" else "builds"} you awaited ${if (outcomes.size == 1) "has" else "have"} finished, " +
+            else append("the ${if (outcomes.size == 1) "build" else "builds"} you awaited ${if (outcomes.size == 1) "has" else "have"} ended, " +
                 "after ${duration(waitedMs)}. No model call was made while ${if (outcomes.size == 1) "it" else "they"} ran.\n\n")
             for (o in outcomes) {
                 val job = o.job
@@ -307,8 +317,8 @@ class StudyBuildAwaits(
             val previousInfo = afield.thisSessionInfo.get()
             val previousSession = afield.thisSession.get()
             afield.thisSessionInfo.set(info)
-            // No websocket: the turn's notices go to every page showing the document.
-            afield.thisSession.remove()
+            // The turn's notices go to a page showing the document; with none open, to every page.
+            info.sessions.firstOrNull()?.let { afield.thisSession.set(it) } ?: afield.thisSession.remove()
             try {
                 afield.handle(afield.Message("ai-assist").payload(continuation)) { }
             } finally {

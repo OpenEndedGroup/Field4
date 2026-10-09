@@ -2278,9 +2278,13 @@ fun installAi4() {
                         .joinToString("\n") { it.trimEnd() }
                     val checklistMarkdown = agentMemory.checklistMarkdown()
                     val suspension = chatResult.suspension
+                    // A turn that ended to wait said its last words before the tool call that ended it, and they
+                    // were streamed there, ahead of that call's activity; they are not repeated after it. It may
+                    // also have said nothing: its waiting row says what it waits for.
+                    val finalText = if (suspension != null && synchronized(liveLock) { liveConversation.hasText(trimmedResponse) }) ""
+                        else trimmedResponse.ifEmpty { if (suspension != null) "" else "_(no response)_" }
                     val responseWithChecklist = buildString {
-                        // A turn that ended to wait may have said nothing; its waiting row says what it waits for.
-                        append(trimmedResponse.ifEmpty { if (suspension != null) "" else "_(no response)_" })
+                        append(finalText)
                         if (checklistMarkdown.isNotBlank()) {
                             if (isNotEmpty()) append("\n\n")
                             append(checklistMarkdown)

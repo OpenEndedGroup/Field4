@@ -22,6 +22,10 @@ internal class AiLiveConversation {
         if (message.isNotBlank()) entries += User(message.trim())
     }
 
+    /** Whether [text] was already streamed as one of this turn's text blocks. */
+    @Synchronized fun hasText(text: String): Boolean =
+        text.isNotBlank() && entries.any { it is Text && it.value.toString().trim() == text.trim() }
+
     @Synchronized fun progress(update: LlmProgressUpdate) {
         if (update.title.isBlank()) return
         val tail = entries.lastOrNull() as? Activity
