@@ -66,21 +66,31 @@ class RtpMidiSession(
 
     /** A remote participant. Times are in 100 µs units, the AppleMIDI clock. */
     class Peer internal constructor(val address: InetAddress, val controlPort: Int, val initiator: Boolean, val token: Int) {
-        @Volatile var name: String = ""; internal set
-        @Volatile var ssrc: Int = 0; internal set
-        @Volatile var state: State = State.INVITING_CONTROL; internal set
+        @Volatile
+        var name: String = ""; internal set
+        @Volatile
+        var ssrc: Int = 0; internal set
+        @Volatile
+        var state: State = State.INVITING_CONTROL; internal set
         val dataPort get() = controlPort + 1
         /** The peer's clock minus ours, from the last CK exchange; null until one has run. */
-        @Volatile var offset: Long? = null; internal set
+        @Volatile
+        var offset: Long? = null; internal set
         /** Round-trip time of the last CK exchange. */
-        @Volatile var roundTrip: Long? = null; internal set
+        @Volatile
+        var roundTrip: Long? = null; internal set
         internal val rtts = ArrayDeque<Long>()
-        @Volatile var received = 0L; internal set
-        @Volatile var sent = 0L; internal set
-        @Volatile var lastSequence: Int = -1; internal set
+        @Volatile
+        var received = 0L; internal set
+        @Volatile
+        var sent = 0L; internal set
+        @Volatile
+        var lastSequence: Int = -1; internal set
         @Volatile internal var feedbackDue = false
-        @Volatile var acknowledged: Int = -1; internal set
-        @Volatile var syncs = 0; internal set
+        @Volatile
+        var acknowledged: Int = -1; internal set
+        @Volatile
+        var syncs = 0; internal set
         internal var attempts = 0
         internal var sysexPending: ByteArray? = null
 
@@ -104,10 +114,13 @@ class RtpMidiSession(
     private val listeners = CopyOnWriteArrayList<(MidiMessage, Long, Peer) -> Unit>()
     private val stateListeners = CopyOnWriteArrayList<(Peer) -> Unit>()
     private var sequence = Random.nextInt(0, 0xFFFF)
-    @Volatile var closed = false; private set
-    @Volatile var lastError: String? = null; private set
+    @Volatile
+    var closed = false; private set
+    @Volatile
+    var lastError: String? = null; private set
     /** Packets that did not parse; they are dropped and counted. */
-    @Volatile var malformed = 0L; private set
+    @Volatile
+    var malformed = 0L; private set
 
     private val timer: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "rtpmidi-timer-$port").apply { isDaemon = true }
