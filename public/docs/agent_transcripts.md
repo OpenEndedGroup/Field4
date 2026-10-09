@@ -89,6 +89,16 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### staged_project
+
+**A level built in stages.** The starting place of [Start a staged project](staged_projects.md): a
+level of rooms and doors that changes only through `level.inspect` and `level.edit`, a blockout, the
+paths to every loot point and the loot placement as builds, a gate that holds placement until every
+loot point is in reach, the placement rule as a [qualified source](qualified_sources.md), and a
+corpus of seeded variants built by the same stages. Open it and press **Build** on each stage.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/staged_project/metadata.edn)
+
 ### stipple_sheet
 
 **A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one

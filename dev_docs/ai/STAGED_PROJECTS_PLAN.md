@@ -235,6 +235,34 @@ Public docs: `public/docs/staged_projects.md` ("Start a staged project"), the en
 explains the strategy, opens the starting point, walks one edit through every stage, shows a gate holding and
 clearing, runs the corpus, and links the long-builds, studies, qualified-sources and kits pages.
 
+**Status (2026-10-10): done, in one landing** (`staged-project`). The page is `public/docs/staged_projects.md`, in the
+nav before Studies, with five runner captures (`capture="ui"`): the document as it opens, the plan, the gate holding,
+the state after one `level.edit`, and the corpus after that edit. Where it differs from the wording above:
+
+- The starting point is an agent transcript, `dev_docs/agents/transcripts/staged_project.yaml`, materialized into the
+  Welcome starting points (`public/docs/assets/agent_transcripts/staged_project/`), not a hand-saved
+  `templates/staged-project/`. One YAML is then the document, the CI replay (`DemoTranscriptExecSmokeTest`'s EXECUTE
+  bucket runs all five boxes headless) and the page's capture setup, and the materializer's drift guard keeps the
+  three in step. It is listed in `agent_transcripts.md`.
+- Five boxes: Start here, Level, Loot rule, Builds, Corpus. They share values through box properties read when they
+  are needed (`drawLevel`, `editLevel` and `levelPlan` on Level; `levelStages` and `levelGates` on Builds; the `level`
+  and `lootRule` properties), because autorun starts a document's boxes in no fixed order. The corpus builds each
+  variant with Builds' own stage objects and gate, in runners of its own.
+- `level.edit(expectedRevision, operations, description)`; the operations are room, door and loot (add or replace)
+  and their removals, and spawn. The Level box's `problems` refuses overlapping rooms, a door not between two rooms,
+  and the spawn or loot outside a room.
+- Blockout builds its meshes from `boxMesh` and joins them into a `Solid` only when Manifold is installed, so the
+  starting point runs without it. Traversal is a grid walk pulled tight by line of sight; its notes compare each
+  relaxed path's length and turning with its rough walk (the route-shape measure, written again for a grid), and
+  count doors and sightlines (how many other points see each loot point; zero everywhere in the starting level).
+- The gate's demonstration is a room with no door: L2 has no path until the edit adds door d5.
+- The loot rule's three fixtures are recorded in the box; `retain` keeps a real placement attempt
+  (`rule-input.txt` and its placements). Placement compiles each rule text once, so the corpus stays quick.
+- The corpus runs when the Corpus box runs (it is not autorun). On the page's capture, seed 3 fails the rule's own
+  "every level has an epic point" check, which the page shows as the reason to run it.
+- The brief is written to `guides/start-here.md` (a document guide every agent can read) on the first run, and shown
+  by the Start here box.
+
 ## Order and landing
 
 1. 3b StudyBuilds additions with the `studies.md` section; one branch per two or three features.
