@@ -31,7 +31,8 @@ class TimecodeClock(val rate: TimecodeRate, private val nanoTime: () -> Long = S
     var freewheelSeconds: Double = 0.5
 
     /** Where the clock's time came from most recently: "generate", "ltc", "mtc" or "none". */
-    @Volatile var source: String = "none"
+    @Volatile
+    var source: String = "none"
         private set
 
     /** Playback speed of the source as last measured (1.0 = real time, negative = reverse). */
@@ -78,7 +79,8 @@ class TimecodeClock(val rate: TimecodeRate, private val nanoTime: () -> Long = S
     private var ltcSampleRate = 48000
 
     /** The last LTC frame decoded, for display. */
-    @Volatile var lastLtcFrame: LtcDecodedFrame? = null
+    @Volatile
+    var lastLtcFrame: LtcDecodedFrame? = null
         private set
 
     /** Follow LTC audio delivered to [feedLtc] at [sampleRate]. */
