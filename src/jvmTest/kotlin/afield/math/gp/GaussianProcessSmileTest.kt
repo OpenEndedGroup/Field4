@@ -1,5 +1,7 @@
-package afield.stdlib
+package afield.math.gp
 
+import afield.stdlib.SmileGpOptions
+import afield.stdlib.smileGaussianProcess
 import kotlin.math.*
 import kotlin.test.*
 import smile.math.kernel.GaussianKernel

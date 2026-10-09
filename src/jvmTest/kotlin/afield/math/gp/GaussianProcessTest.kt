@@ -1,4 +1,4 @@
-package afield.stdlib
+package afield.math.gp
 
 import kotlin.math.*
 import kotlin.test.*

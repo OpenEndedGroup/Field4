@@ -1,5 +1,7 @@
 # Drawing with Gaussian processes
 
+*In memory of David J. C. MacKay.*
+
 Pin a curve at a few places, then draw several ways it could pass between them. Or pin a scalar
 field at points in a plane or volume, and draw a whole field that respects those observations.
 A Gaussian process gives you a distribution over these possibilities: a mean, uncertainty, and
@@ -83,6 +85,7 @@ Look at prior samples before fitting: they show the assumptions you are imposing
 | `GpKernels.matern(1.5, lengthScale, variance)` | Rougher curves; once mean-square differentiable. |
 | `GpKernels.matern(0.5, lengthScale, variance)` | Continuous but rough fluctuations. |
 | `GpKernels.periodic(period, lengthScale, variance)` | Exact repetition, including the connection across a loop boundary. |
+| `GpKernels.octavePeriodic(centerPeriod)` | Repetition whose period is uncertain within an octave; `periodicMixture` for your own candidates. |
 | `GpKernels.rationalQuadratic(lengthScales, alpha, variance)` | A mixture of RBF length scales. |
 | `GpKernels.linear(variance, origin)` | A random linear trend through an origin. |
 | `GpKernels.constant(variance)` | An uncertain offset shared by every position. |
@@ -284,24 +287,96 @@ control points, use `gpCurve` on those points rather than resampling the stroke 
 For a closed path, use `GpKernels.periodic(period = 1.0, ...)`; identical endpoints then represent
 the same random value. Contradictory exact endpoint values are not a consistent periodic model.
 
-## Differences, slopes and integrals
+### Tangents, frames and curvature
 
-A linear combination of jointly Gaussian values is also Gaussian. `linearTransform` keeps the
-covariance terms when forming weighted averages, finite differences or quadrature estimates.
-This computes the distribution of a central-difference slope, not an analytic derivative:
+A curve model also knows its velocity. `curve.velocity(t)` is the mean of d(position)/dt, in
+coordinate units per unit of parameter; `curve.velocities(ts)` is the joint over a grid.
+`curve.frames(ts)` gives a moving frame along the mean curve: position, unit tangent, normal
+(and binormal in 3D), speed, and `tangentAngleStd`, the standard deviation of the tangent's
+direction in radians. Use it to orient strokes, glyphs or brushes along the curve, and to make
+them hesitate where the direction is uncertain.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val h = 0.01
-val nearby = gp.posterior(doubleArrayOf(0.5 - h, 0.5 + h))
-val slope = nearby.linearTransform(arrayOf(doubleArrayOf(-1.0 / (2*h), 1.0 / (2*h))))
-val slopeMean = slope.mean[0]
-val slopeVariance = slope.variance[0]
+val frames = curve.frames(DoubleArray(40) { it / 39.0 })
+val ticks = frames.map { f ->
+    val w = 0.03 + 0.3 * f.tangentAngleStd.coerceAtMost(1.0)  // wider where the direction is uncertain
+    val p = f.position; val n = f.normal!!
+    FLine().moveTo(p.x - n.x * w, p.y - n.y * w).lineTo(p.x + n.x * w, p.y + n.y * w)
+}
 ```
 
-The derivative interpretation depends on the kernel: shrinking `h` does not turn a rough Matérn
-1/2 process into a differentiable one. General linear-functional **observations**, analytic
-input-derivative kernels and non-Gaussian likelihoods are not provided by this API.
+A planar normal is the tangent turned a quarter to the left. A spatial curve's normal is the
+Frenet normal, and is null where the mean curve is straight.
+
+`curve.curvature(ts)` draws whole velocity fields and returns, per parameter, the curvature of
+the mean curve (`ofMean`) and the mean and standard deviation of the curvature of the draws.
+These differ: a straight mean between two loose pins has zero curvature, while every draw from
+it bends. Planar curvature is signed, positive turning left.
+
+Velocities can be pinned too. This curve leaves its start going up and arrives at its end going
+down, a bulge the two positions alone could not ask for:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val arch = gpCurve(doubleArrayOf(0.0, 1.0), listOf(vec(0, 0, 0), vec(1, 0, 0)),
+    GpKernels.rbf(0.4), dimensions = 2,
+    velocities = listOf(0.0 to vec(0, 3, 0), 1.0 to vec(0, -3, 0)))
+```
+
+`sampleLine(seed, spread)` scales a draw's departure from the mean: `0.0` is the mean line,
+`1.0` an honest sample, `2.0` the same variation exaggerated. The same seed keeps the same shape
+of departure as the spread changes.
+
+## Slopes, gradients and integrals
+
+The derivative of a Gaussian process is another Gaussian process, jointly Gaussian with the
+function itself. Ask for it directly: `derivative(axis, ...)` at one point, `gradient(...)` for
+every axis with the covariance between them, or `derivativePosterior(grid)` for a whole slope
+curve whose draws belong to the same functions as `posterior(grid)`.
+
+```diffstatic {data-lang=kotlin}
+:::static
+val slope = gp.derivative(0, 0.5)              // ∂f/∂x at x = 0.5
+val slopeMean = slope.mean
+val slopeStd = slope.std
+val slopes = gp.derivativePosterior(grid)       // a GpJoint, like posterior(grid)
+val steepest = slopes.sampleFLine(grid, seed = 3)
+```
+
+Slopes can also be **observations**. Pin a value and a slope and the function leaves that point
+in the direction you chose, with whatever uncertainty you give the slope:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val launched = gp1D(doubleArrayOf(0.0, 2.0), doubleArrayOf(0.0, 0.0),
+    GpKernels.rbf(lengthScale = 0.6),
+    slopes = listOf(GpDerivativeObservation.slope(0.0, value = 1.5, noiseStd = 0.1)))
+```
+
+In higher dimensions, `GpDerivativeObservation(point, axis, value, noiseStd)` measures one
+partial derivative, and `posterior(listOf(GpFunctional.value(...), GpFunctional.derivative(axis, ...)))`
+returns one joint over any mix of values and slopes.
+
+Derivatives need a kernel that has them. RBF, rational quadratic, periodic, linear, constant and
+Matérn ν = 3/2 and 5/2 do, and so do their sums, products and scalings; Matérn ν = 1/2 describes
+functions with no slope, so asking for one fails. The slope of Matérn 3/2 exists but is itself
+rough. A mean function's slope is taken by central difference.
+
+A linear combination of jointly Gaussian values is also Gaussian. `linearTransform` keeps the
+covariance terms when forming weighted averages, differences between positions or quadrature
+estimates of an integral:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val nodes = DoubleArray(21) { it / 20.0 }
+val area = gp.posterior(nodes).linearTransform(
+    arrayOf(DoubleArray(21) { if (it == 0 || it == 20) 0.025 else 0.05 }))  // trapezoid rule
+val areaMean = area.mean[0]
+val areaStd = sqrt(area.variance[0])
+```
+
+Non-Gaussian likelihoods are not provided by this API.
 
 ## Fit the assumptions, or choose them
 
@@ -328,6 +403,25 @@ Try several initial settings and inspect the fitted functions. Periodic models i
 have different plausible periods. A small projected gradient is a local stationarity diagnostic,
 not proof of a global best fit. `fitGpHyperparameters` is a portable bounded pattern-search
 alternative with a `converged` flag; it needs no Smile optimizer. Both propagate fitting failures.
+
+When one assumption matters most, such as a period, look at the evidence for each candidate
+instead of searching for a single best. `scanGpEvidence` fits once per candidate and returns
+their log evidence and the posterior weights over the candidates under a uniform prior on the
+grid. A broad set of weights is the honest answer when the data cannot decide:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val periods = DoubleArray(41) { 0.5 * 2.0.pow(it / 40.0) }   // one octave, log spaced
+val scan = scanGpEvidence(periods) { p ->
+    gp1D(xs, ys, GpKernels.periodic(period = p, lengthScale = 0.8), noiseStd = 0.05)
+}
+val likeliest = scan.best
+val weights = scan.posteriorWeights
+```
+
+To keep that uncertainty in the model rather than choosing, mix the candidates:
+`GpKernels.periodicMixture(periods, weights)` sums periodic kernels with the given weights, and
+`GpKernels.octavePeriodic(centerPeriod)` spreads equally weighted candidates over an octave.
 
 Hyperparameter fitting selects one set of assumptions; it does not integrate uncertainty over
 them. The returned variance is conditional on those settings. `leaveOneOut()` supplies held-out

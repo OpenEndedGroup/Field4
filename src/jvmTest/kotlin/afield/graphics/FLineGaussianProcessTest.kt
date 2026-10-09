@@ -1,5 +1,6 @@
 package afield.graphics
 
+import afield.math.gp.*
 import afield.stdlib.*
 import kotlin.test.*
 

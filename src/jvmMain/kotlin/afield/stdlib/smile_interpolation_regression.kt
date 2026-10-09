@@ -2,6 +2,8 @@
 
 package afield.stdlib
 
+import afield.math.gp.GpJoint
+import afield.math.gp.GpPrediction
 import smile.interpolation.CubicSplineInterpolation1D
 import smile.math.kernel.GaussianKernel
 import smile.regression.GaussianProcessRegression
@@ -17,7 +19,7 @@ import smile.regression.GaussianProcessRegression
  * expose `predict` for a single `x` or for a whole array.
  *
  * GP fitting failures propagate. No interpolator is substituted for a failed probabilistic model.
- * For 1D/2D/3D inference, composed kernels, heteroscedastic noise and coherent samples see [GaussianProcess].
+ * For 1D/2D/3D inference, composed kernels, heteroscedastic noise and coherent samples see [afield.math.gp.GaussianProcess].
  */
 
 data class SmileGpOptions(

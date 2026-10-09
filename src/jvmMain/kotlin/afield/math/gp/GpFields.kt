@@ -1,5 +1,8 @@
 @file:afield.CompletionCategory("Math")
-package afield.stdlib
+package afield.math.gp
+
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
 
 /** Scalar values over the plane. Kernel length scales are measured in Vec2 coordinate units. */
 fun gp2D(points: List<Vec2>, values: DoubleArray, kernel: GpKernel = GpKernels.rbf(), noiseStd: Double = 0.0,

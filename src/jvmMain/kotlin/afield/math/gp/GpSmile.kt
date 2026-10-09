@@ -1,5 +1,5 @@
 @file:afield.CompletionCategory("Math")
-package afield.stdlib
+package afield.math.gp
 
 import smile.math.kernel.MercerKernel
 

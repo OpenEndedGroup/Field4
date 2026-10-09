@@ -1,5 +1,5 @@
 @file:afield.CompletionCategory("Math")
-package afield.stdlib
+package afield.math.gp
 
 import kotlin.math.*
 
@@ -56,4 +56,33 @@ fun fitGpHyperparameters(
     }
     return GpFitResult(best, parameters.indices.associate { parameters[it].name to exp(pos[it]).coerceIn(parameters[it].lower, parameters[it].upper) },
         evaluations, iterations, step.max() <= logTolerance, initial)
+}
+
+/**
+ * Evidence for each candidate value of one parameter, with every other choice fixed by [build].
+ * [posteriorWeights] normalise exp(log evidence): the posterior over the candidates under a
+ * uniform prior on the grid. Spread candidates in log space for a scale such as a period or
+ * length scale. A broad posterior is the honest answer when the data cannot decide.
+ */
+class GpEvidenceScan internal constructor(candidates: DoubleArray, logEvidence: DoubleArray) {
+    private val c = candidates.copyOf()
+    private val e = logEvidence.copyOf()
+    val candidates: DoubleArray get() = c.copyOf()
+    val logEvidence: DoubleArray get() = e.copyOf()
+    val posteriorWeights: DoubleArray get() {
+        val top = e.max()
+        val w = DoubleArray(e.size) { exp(e[it] - top) }
+        val total = w.sum()
+        return DoubleArray(w.size) { w[it] / total }
+    }
+    val best: Double get() = c[e.indices.maxBy { e[it] }]
+}
+
+fun scanGpEvidence(candidates: DoubleArray, build: (Double) -> GaussianProcess): GpEvidenceScan {
+    require(candidates.isNotEmpty() && candidates.all { it.isFinite() })
+    return GpEvidenceScan(candidates, DoubleArray(candidates.size) {
+        val model = build(candidates[it])
+        require(model.trainingSize > 0) { "Evidence needs observations" }
+        model.logMarginalLikelihood
+    })
 }
