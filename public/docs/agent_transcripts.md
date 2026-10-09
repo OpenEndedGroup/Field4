@@ -922,6 +922,28 @@ ids get unrelated colours.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/imaging_visualizers_demo/metadata.edn)
 
+### stippling
+
+Two boxes for `stippling.kt`, which places exactly N dots so that they follow an image's tone and
+keep an even spacing from their neighbours. The first draws a shaded sphere as an `Img` and turns it
+into 6000 dots with `sphere.stipple(6000, invert = true)`; `invert` puts the ink where the picture is
+dark. The second shows how that works. It starts from what `stipple` starts from: a Hilbert curve
+through the image, cut into 6000 stretches of equal darkness, with one dot dropped in each, so every
+region already holds the right number of dots. Beside that it takes one Lloyd step a frame: every
+pixel finds its nearest dot by a distance transform, and every dot moves to the weighted centroid of
+the pixels it owns. The plot under the two pictures is how far the dots moved at each step.
+Relaxation keeps each region's count and evens out the spacing, and it moves almost no dots from one
+region to another, which is why the start has to get the counts right. An independent random start
+leaves its clumps in the result as blotches in the mid tones. Both boxes draw with `stipplesToImg`
+and `showImg`. `stipplesToFLine` gives you the same dots as geometry, for `lines(...)` or a plotter,
+but 6000 dots come to 15 MB of SVG, which is too much for a box that redraws every frame.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/stippling/sphere.png" wait="1.0" wait-output=true wait-output-kind="display" capture="box" padding="16" embed=true hidden=true name="stippling-sphere" alt="A sphere lit from the upper left, drawn in 6000 black dots on white: sparse across the highlight, dense in the shadowed lower right, and thinning out across the cast shadow on the floor" macro-file="../../dev_docs/agents/transcripts/stippling.yaml" capture-box="stipple_hello"}
+// The transcript builds both boxes and runs them; this capture is its stipple_hello box.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stippling/metadata.edn)
+
 ### viz_showheatmap
 
 Four small boxes for the one-line helpers, and the shortest thing on this page.

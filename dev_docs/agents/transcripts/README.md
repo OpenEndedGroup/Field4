@@ -127,6 +127,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
 - `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
   IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
+- `stippling.yaml`: two pure-CPU boxes for `stippling.kt`. `stipple_hello` turns a shaded-sphere
+  `Img` into 6000 evenly spaced dots in two statements; `stipple_relaxing` is a launched `loop { }`
+  that shows the weighted random start beside one Lloyd step a frame, with `showSignals` plotting how
+  far the dots moved.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
 - `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
