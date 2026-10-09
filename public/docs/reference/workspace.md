@@ -12,7 +12,7 @@ The box's own surroundings: properties, persistence, and the handful of names ev
 
 `src/jvmMain/kotlin/afield/stdlib/BoxStudyBuilds.kt` — [read the source](source/jvmMain/afield/stdlib/BoxStudyBuilds/)
 
-**Used in:** [Studies](../studies.md)
+**Used in:** [Let AI4 Wait for Long Builds](../ai4_long_builds.md), [Studies](../studies.md)
 
 ### Top-level functions { #boxstudybuilds-kt-functions }
 
@@ -507,7 +507,7 @@ What `StudyBuildContext.runProcess` saw: the exit code, the retained `log`, and 
 
 `src/jvmMain/kotlin/afield/stdlib/StudyBuilds.kt` — [read the source](source/jvmMain/afield/stdlib/StudyBuilds/)
 
-**Used in:** [Studies](../studies.md)
+**Used in:** [Studies](../studies.md), [Let AI4 Wait for Long Builds](../ai4_long_builds.md)
 
 ### Top-level functions { #studybuilds-kt-functions }
 

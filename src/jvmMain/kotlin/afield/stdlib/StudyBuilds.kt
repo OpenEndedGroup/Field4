@@ -708,6 +708,16 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
         private fun now(): String = Instant.now().toString()
 
         /**
+         * The attempt [id] as [directory]'s manifest last recorded it, read without opening (or locking) the
+         * runner; null when there is no such record. A record still queued or running here belongs to a runner
+         * that stopped without closing: reopening it would mark the attempt interrupted.
+         */
+        internal fun retainedRecord(directory: File, id: String): StudyBuildRecord? = runCatching {
+            val saved = File(directory, "builds.json").takeIf { it.isFile } ?: return null
+            jacksonObjectMapper().readValue<Manifest>(saved).records.firstOrNull { it.id == id }
+        }.getOrNull()
+
+        /**
          * [StudyBuilds.prune] several runners together, so an attempt one runner keeps also keeps the
          * attempts it names in another (a `dependsOn` result, a job ID in an input). One report per runner.
          */

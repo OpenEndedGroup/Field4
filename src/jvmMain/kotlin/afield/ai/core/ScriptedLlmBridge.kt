@@ -22,7 +22,8 @@ import java.util.UUID
  *
  * # Script
  *
- * [Step.Call] runs one tool; [Step.Final] ends the turn with text. Arguments are JSON with
+ * [Step.Call] runs one tool; [Step.Final] ends the turn with text. A call whose result suspends the turn
+ * ([SuspendsTurn]) ends it too, and the next [send] carries on with the step after it. Arguments are JSON with
  * `${Tool.field}` placeholders, replaced by `field` of the most recent result of the tool whose
  * simple name is `Tool` — `${NewBoxRequest.uid}` is the uid of the box the script just made. Each
  * [Step.Call] is one tool round. A script with no [Step.Final] ends with an empty answer; one that
@@ -47,6 +48,8 @@ class ScriptedLlmBridge(
         val availableTools: List<String>,
         /** The turn in parts, when the caller built one; [prompt] is then its legacy one-string form. */
         val turnContext: TurnContext? = null,
+        /** The suspended round this turn opened with, when it resumed a suspended one. */
+        val resumedRound: SuspendedRound? = null,
     )
 
     private val tools = ToolRegistry().also(::registerBuiltInAgentTools)
@@ -82,7 +85,8 @@ class ScriptedLlmBridge(
         val available = tools.describe(ctx).mapNotNull {
             ((it as? kotlinx.serialization.json.JsonObject)?.get("name") as? kotlinx.serialization.json.JsonPrimitive)?.content
         }
-        received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available, turnContext)
+        received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available, turnContext, state.suspendedRound)
+        state.suspendedRound = null
 
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
         val callCtx = ctx.copy(
@@ -94,7 +98,8 @@ class ScriptedLlmBridge(
         var rounds = 0
         var hitCap = false
         var text = ""
-        while (cursor < script.size) {
+        var suspension: TurnSuspension? = null
+        while (cursor < script.size && suspension == null) {
             when (val step = script[cursor]) {
                 is Step.Final -> { text = step.text; cursor++; break }
                 is Step.Call -> {
@@ -119,6 +124,13 @@ class ScriptedLlmBridge(
                     transcript += afield.ai.core.program.nestedTranscriptEntries("scripted-$rounds", result)
                     onProgress?.invoke(LlmProgressUpdate("${step.tool} finished",
                         afield.ai.core.program.nestedTraceMarkdown(result) ?: json.take(300), phase = "tool_result"))
+                    // A suspending tool ends this turn, as on the provider bridges; the script carries on in the
+                    // turn that resumes it, and the inbox is left for a turn of its own.
+                    suspension = (result as? SuspendsTurn)?.suspension
+                    if (suspension != null) {
+                        state.suspendedRound = SuspendedRound(listOf(PendingToolOutput("scripted-$rounds", step.tool, json)))
+                        continue
+                    }
                     // As the provider bridges do after a round; the script does not change, it is only recorded.
                     callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { interjections += AiTurnInbox.modelText(it) }
                 }
@@ -133,6 +145,7 @@ class ScriptedLlmBridge(
             modelIdentity = modelIdentity,
             rounds = rounds,
             hitToolRoundCap = hitCap,
+            suspension = suspension,
             inputTokens = 0,
             outputTokens = 0
         )

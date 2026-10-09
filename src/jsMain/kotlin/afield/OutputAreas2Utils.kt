@@ -336,7 +336,13 @@ fun aiChatHistoryToHtml(history: String?): String {
     while (i < turns.size) {
         val turn = turns[i]
         if (turn.isProgress) {
-            val end = (i until turns.size).firstOrNull { !turns[it].isProgress } ?: turns.size
+            // A build wait stands on its own: it is what the conversation is doing now, not one more tool call.
+            if (turn.isBuildWait) {
+                html.append(renderProgressTurn(turn))
+                i++
+                continue
+            }
+            val end = (i until turns.size).firstOrNull { !turns[it].isProgress || turns[it].isBuildWait } ?: turns.size
             val run = turns.subList(i, end)
             html.append(if (AiChatRound.folds(run)) renderRound(run, roundOrdinal++) else renderProgressRun(run))
             i = end
@@ -350,7 +356,9 @@ fun aiChatHistoryToHtml(history: String?): String {
                 "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
                 aiChatMarkdownToHtml(turn.content) + "</div>")
         } else {
-            val badge = if (turn.role == "ai" || turn.role == "summary") {
+            val badge = if (turn.isFieldMessage) {
+                "<div class=\"ai-chat-model\" title=\"Written by Field, not by you: the outcome of the builds the last turn waited for.\">Field</div>"
+            } else if (turn.role == "ai" || turn.role == "summary") {
                 // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
                 val lens = turn.model == null && turn.sources.isNotEmpty()
                 val label = turn.model?.label() ?: if (lens) "Lens" else "Model not recorded"
@@ -370,7 +378,11 @@ fun aiChatHistoryToHtml(history: String?): String {
             } else ""
             // A lens block's citations, for the viewer that draws a line from it to the chat it summarizes.
             val sourceAttr = if (turn.sources.isNotEmpty()) " data-ai-sources=\"${escapeHtml(turn.sources.joinToString(","))}\"" else ""
-            html.append("<div class=\"ai-chat-turn ${turn.role}\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + aiChatMarkdownToHtml(turn.content) + actions + "</div>")
+            val roleClass = if (turn.isFieldMessage) "you field" else turn.role
+            // The badge says Field wrote it; the model reads the prefix, the panel need not show it twice.
+            val shown = if (turn.isFieldMessage) turn.content.removePrefix(AiChatBlock.FIELD_MESSAGE_PREFIX).replaceFirstChar { it.uppercase() }
+                else turn.content
+            html.append("<div class=\"ai-chat-turn $roleClass\"$turnAttrs$sourceAttr${addressAttr(turn)}>" + badge + aiChatMarkdownToHtml(shown) + actions + "</div>")
         }
     }
     return "<div class=\"ai-chat-thread\">$html</div>"

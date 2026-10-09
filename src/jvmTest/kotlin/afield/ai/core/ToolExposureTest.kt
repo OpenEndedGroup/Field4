@@ -189,6 +189,8 @@ class ToolMetaPinTest {
                 "StartStudyBuildRequest",
                 "CancelStudyBuildRequest",
                 "PruneStudyBuildsRequest",
+                // New on 2026-10-09: ends a box chat's turn to wait for builds without the model.
+                "AwaitStudyBuildsRequest",
                 "StyleGeometryPartsRequest",
                 "ReadGeometryReviewsRequest",
                 "ReadGeometryNoteRequest",

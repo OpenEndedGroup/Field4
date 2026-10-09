@@ -946,6 +946,12 @@ data class ToolExecutionContext(
      * send what it held as a user message alongside the tool results; null where nobody can write in.
      */
     val inbox: AiTurnInbox? = null,
+    /**
+     * Whether a tool may end this turn to wait ([SuspendsTurn]). Only a conversation that something will
+     * resume says so: the box chat's general turn, which saves the suspension with the chat. Elsewhere
+     * (the editor kinds, the document chat, a headless task, MCP) the waiting tools are not offered.
+     */
+    val suspendable: Boolean = false,
 ) {
     /** Whether the document this conversation acts on refuses edits: the session's flag, or Field's global one. */
     fun documentReadOnly(): Boolean = afield.ReadOnlyDocuments.global || fieldGraph?.info?.readOnly == true

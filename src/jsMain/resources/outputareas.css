@@ -343,6 +343,28 @@
 }
 
 .ai-chat-turn.ai::before,
+/* A request Field wrote itself (AiChatBlock.isFieldMessage): the outcome of builds a turn waited for. The model
+   reads it as the next request; it sits on the agent's side, unslanted, so it does not read as yours. */
+.ai-chat-turn.you.field {
+    align-self: flex-start;
+    text-align: left;
+    margin-left: 0;
+    margin-right: auto;
+    border-right: none;
+    border-left: 2px solid var(--ai-chat-summary-rule, var(--field-border));
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
+    font-style: normal;
+}
+
+.ai-chat-turn.you.field .ai-chat-markdown {
+    text-align: left;
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
+}
+
+.ai-chat-turn.you.field .ai-chat-turn-actions {
+    justify-content: flex-start;
+}
+
 .ai-chat-turn.you::before {
     display: block;
     font-size: 9px;

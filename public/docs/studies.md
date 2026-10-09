@@ -306,6 +306,11 @@ an attempt against earlier inputs is marked `fromEarlierInputs`, and its finding
 `openFindings`, so the agent does not report them as current errors. The geometry notes behind
 those findings carry the same mark when the agent reads them with `ReadGeometryReviewsRequest`.
 
+A build that takes longer than a few minutes is better left to Field. In a box's AI4 chat the agent
+can end its turn with `AwaitStudyBuildsRequest`; Field watches the job without the model and resumes
+the conversation with its outcome when it finishes. See
+[Let AI4 Wait for Long Builds](ai4_long_builds.md).
+
 Name upstream stages in `dependencies`. The worker reads their captured files through
 `context.dependencyFile(stage, path)`. Until those stages have current results, the dependent stage
 cannot start. `inputKeys` selects the authored inputs that affect this stage, so an unrelated edit

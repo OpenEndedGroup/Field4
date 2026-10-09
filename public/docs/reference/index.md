@@ -70,7 +70,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 21 | Gives a `BooleanNetwork`'s states a duration, which is all it takes to read one as music. | [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSoundDocs.kt](audio.md#booleannetworksounddocs-kt) | Audio | 14 | 12 |  |  |
-| [BoxStudyBuilds.kt](workspace.md#boxstudybuilds-kt) | Workspace | 2 | 2 |  | [Studies](../studies.md) |
+| [BoxStudyBuilds.kt](workspace.md#boxstudybuilds-kt) | Workspace | 2 | 2 |  | [Let AI4 Wait for Long Builds](../ai4_long_builds.md), [Studies](../studies.md) |
 | [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
 | [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 |  |  |
@@ -483,7 +483,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [StudyBuildFindings.kt](workspace.md#studybuildfindings-kt) | Workspace | 0 | 0 |  |  |
 | [StudyBuildHelpers.kt](workspace.md#studybuildhelpers-kt) | Workspace | 5 | 5 |  | [Studies](../studies.md) |
 | [StudyBuildPanel.kt](workspace.md#studybuildpanel-kt) | Workspace | 0 | 0 |  |  |
-| [StudyBuilds.kt](workspace.md#studybuilds-kt) | Workspace | 59 | 35 |  | [Studies](../studies.md) |
+| [StudyBuilds.kt](workspace.md#studybuilds-kt) | Workspace | 59 | 35 |  | [Studies](../studies.md), [Let AI4 Wait for Long Builds](../ai4_long_builds.md) |
 | [StudyEvidence.kt](workspace.md#studyevidence-kt) | Workspace | 38 | 25 |  |  |
 | [StudyFrames.kt](workspace.md#studyframes-kt) | Workspace | 5 | 5 |  |  |
 | [StudyKeys.kt](workspace.md#studykeys-kt) | Workspace | 0 | 0 |  |  |
