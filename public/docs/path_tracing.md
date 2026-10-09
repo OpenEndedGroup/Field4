@@ -947,8 +947,8 @@ checks; `--all` adds the statistical emitter/medium suites and a GPU timing swee
 records the actual device and enabled backends. From a launched renderer child:
 
 ```diffstatic {data-lang=kotlin}
-val renderer: Renderer = fromContext()
-val verify: suspend () -> Unit = { PathTraceGpuSmoke.run(renderer) }
+val r = renderer
+val verify: suspend () -> Unit = { PathTraceGpuSmoke.run(r) }
 start(verify)
 ```
 

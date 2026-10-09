@@ -32,10 +32,9 @@ operations:
       properties:
         code: |
           import afield.four.fabricated.PathTraceEmitterGpuSmoke
-          import afield.four.modules.fromContext
-          val renderer: Renderer = fromContext()
+          val r = renderer
           val verify: suspend () -> Unit = {
-              PathTraceEmitterGpuSmoke.run(renderer, "build/emitter-check")
+              PathTraceEmitterGpuSmoke.run(r, "build/emitter-check")
               println("EMITTER CHECK DONE")
           }
           start(verify)

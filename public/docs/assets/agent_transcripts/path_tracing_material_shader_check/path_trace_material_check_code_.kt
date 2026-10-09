@@ -4,7 +4,6 @@ import afield.stdlib.linalg.Vector3f
 import afield.stdlib.reloadComputeShader
 import kotlinx.coroutines.delay
 
-val renderer: Renderer = fromContext()
 val scene = PathTraceScene().apply {
     val m = material(PathTraceMaterial.emissive(0f,0f,0f))
     quad(Vector3f(-20f,-20f,0f),Vector3f(20f,-20f,0f),Vector3f(20f,20f,0f),Vector3f(-20f,20f,0f),m)

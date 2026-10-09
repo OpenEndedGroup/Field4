@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="path_trace_material_check" index="1" -->
 
 ```edn [field-box id="path_trace_material_check" role="properties"]
-{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 111 "sha256" "3f35ab62c9062e7520cf50e53f2facce58f272fe9bdba7fb8da6ec9b6d6539a1"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 48 "characters" 2313 "sha256" "1f7ef7229af07eaee31376ba105ec1fbb54664e7f26cc549f1073f2bf8da7bfe"}]}
+{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 111 "sha256" "3f35ab62c9062e7520cf50e53f2facce58f272fe9bdba7fb8da6ec9b6d6539a1"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 47 "characters" 2274 "sha256" "fd448c7e544dcc8203a47167108fbb99ddf41bb3257053f223d1e78b26cf4b5f"}]}
 ```
 
 ```glsl [field-property box="path_trace_material_check" name="compute" path="path_trace_material_check_compute_.glsl"]
@@ -47,7 +47,6 @@ import afield.stdlib.linalg.Vector3f
 import afield.stdlib.reloadComputeShader
 import kotlinx.coroutines.delay
 
-val renderer: Renderer = fromContext()
 val scene = PathTraceScene().apply {
     val m = material(PathTraceMaterial.emissive(0f,0f,0f))
     quad(Vector3f(-20f,-20f,0f),Vector3f(20f,-20f,0f),Vector3f(20f,20f,0f),Vector3f(-20f,20f,0f),m)
