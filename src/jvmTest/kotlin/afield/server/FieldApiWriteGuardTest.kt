@@ -2,6 +2,7 @@ package afield.server
 
 import afield.FIELD_API_REQUIRE_SAME_SITE_ENV
 import afield.FIELD_API_REQUIRE_SAME_SITE_PROPERTY
+import afield.fieldApiWriteNeedsSameSite
 import afield.installFieldApiCors
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -10,6 +11,7 @@ import io.ktor.client.request.options
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -18,24 +20,13 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The opt-in refusal of cross-site writes across the whole API.
- *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` establishes the number:
- * 49 of 56 state-changing HTTP routes have no route-specific access control at all, and Field's CORS config
- * says `anyHost()`, so any website you have open can call every one of them. That number is
- * not something a nightly agent gets to fix by changing a default — turning a refusal on
- * across 49 routes is exactly how you find out which of them the human's own tooling was
- * quietly using, at 4am, with nobody awake.
- *
- * So the switch exists, the default is the old behaviour, and there is a loud line at
- * startup either way. What this file is for is making sure the switch is real: that it
- * refuses what it claims to, that it does not touch the one route that legitimately needs
- * to work cross-origin, and — the part worth writing a test for even though it is a
- * *limitation* — that it does nothing whatsoever about the network exposure, which is the
- * thing someone reading "same-site guard" in a release note would assume it fixed.
+ * Browser-origin protection for the API. Enabled by default for public desktop installs.
+ * An explicit opt-out remains for integrations that need cross-origin access. This guard
+ * does not authenticate remote clients; the server separately binds loopback by default.
  *
  * ## Red-first
  *
@@ -60,7 +51,26 @@ import kotlin.test.assertTrue
 class FieldApiWriteGuardTest {
 
     @Test
-    fun theDefaultIsTheOldBehaviourBecauseNobodyIsAwakeToNoticeOtherwise() = guardedApp(on = false) {
+    fun onlyTheRouteGuardedAnnotationWritesAreDeferred() {
+        assertFalse(fieldApiWriteNeedsSameSite(HttpMethod.Post, "/api/docs-annotations"))
+        assertFalse(fieldApiWriteNeedsSameSite(HttpMethod.Put, "/api/docs-annotations/x/resolve"))
+        assertFalse(fieldApiWriteNeedsSameSite(HttpMethod.Delete, "/api/docs-annotations/x"))
+
+        for ((method, path) in listOf(
+            HttpMethod.Post to "/api/docs-annotations/x",
+            HttpMethod.Post to "/api/docs-annotations-extra",
+            HttpMethod.Put to "/api/docs-annotations/x",
+            HttpMethod.Put to "/api/docs-annotations/x/resolve/extra",
+            HttpMethod.Delete to "/api/docs-annotations",
+            HttpMethod.Delete to "/api/docs-annotations/x/resolve",
+            HttpMethod.Post to "/api/docs-improvement/pass",
+        )) {
+            assertTrue(fieldApiWriteNeedsSameSite(method, path), "$method $path must keep the global guard")
+        }
+    }
+
+    @Test
+    fun anExplicitOptOutAllowsCrossSiteWrites() = guardedApp(on = false) {
         assertEquals(HttpStatusCode.OK, post("/api/anything") { fromEvilPage() }.status)
     }
 
@@ -132,7 +142,7 @@ class FieldApiWriteGuardTest {
      * fully on, still leaves all 36 unguarded mutating HTTP routes reachable from the network.
      *
      * Closing *that* means an authentication scheme or a narrower bind address, and the bind
-     * address is `0.0.0.0` because the visionOS shell reaches Field over Wi-Fi.
+     * address is explicitly set with `AFIELD_BIND_HOST=0.0.0.0` for visionOS over Wi-Fi.
      */
     @Test
     fun theGuardDoesNothingAboutTheNetworkAndThisTestSaysSoOutLoud() = guardedApp(on = true) {

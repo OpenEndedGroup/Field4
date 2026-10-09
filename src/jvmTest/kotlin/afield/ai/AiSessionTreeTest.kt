@@ -99,6 +99,39 @@ class AiSessionTreeTest {
         assertTrue(AiSessionTree.branches(box).contains("**current**"))
     }
 
+    @Test fun branchStatesFollowRewindsAndBranchSwitches() {
+        val box = Box("tree-branch-state")
+        fun sayWith(user: String, before: String, after: String) {
+            val prior = AiBoxConversation.read(box)
+            val now = (if (prior.isBlank()) "" else "$prior\n") + turn(user, "ok")
+            AiBoxConversation.write(box, now)
+            AiSessionTree.recordTurn(box, prior, now, meta().copy(branchBefore = mapOf("studio/canvas" to before), branchAfter = mapOf("studio/canvas" to after)))
+        }
+        sayWith("sky", "blank", "s1")
+        sayWith("hills", "s1", "s2")
+        sayWith("tree", "s2", "s3")
+
+        // Rewinding to a request restores the state from just before it.
+        assertEquals(mapOf("studio/canvas" to "s1"), AiSessionTree.rewind(box, ordinal = 1, expectedText = "hills").branchStates)
+        sayWith("sea", "s1", "s2b")
+        // Switching branch restores the state at that branch's end.
+        assertEquals(mapOf("studio/canvas" to "s3"), AiSessionTree.switchTo(box, 0).branchStates)
+        assertTrue(AiBoxConversation.read(box).contains("<<you>>\ntree"))
+        // A rewind to the very first request restores the blank canvas.
+        assertEquals(mapOf("studio/canvas" to "blank"), AiSessionTree.rewind(box, ordinal = 0, expectedText = "sky").branchStates)
+    }
+
+    @Test fun theLastKnownStateIsTheLatestTurnEndOrRestore() {
+        val box = Box("tree-known-state")
+        val prior = AiBoxConversation.read(box)
+        val now = turn("sky", "ok")
+        AiBoxConversation.write(box, now)
+        AiSessionTree.recordTurn(box, prior, now, meta().copy(branchAfter = mapOf("k" to "after-1")))
+        assertEquals(mapOf("k" to "after-1"), AiSessionTree.lastKnownStates(box))
+        AiSessionTree.noteStates(box, mapOf("k" to "restored-0"))
+        assertEquals(mapOf("k" to "restored-0"), AiSessionTree.lastKnownStates(box), "a restore is later than the turn")
+    }
+
     @Test fun rewindingToTheFirstTurnEmptiesTheTranscript() {
         val box = Box("tree-first")
         say(box, "one", "a")

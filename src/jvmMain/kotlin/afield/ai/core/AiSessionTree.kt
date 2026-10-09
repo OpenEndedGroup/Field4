@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.io.File
@@ -193,6 +194,12 @@ object AiSessionTree {
         val opTo: Int = -1,
         val origin: String = "",
         val createdBoxes: List<String> = emptyList(),
+        /** [AiWorldUndo.fingerprint] of each box this conversation has created, as the turn started and ended. */
+        val createdBefore: Map<String, String> = emptyMap(),
+        val createdAfter: Map<String, String> = emptyMap(),
+        /** Extension branch states (hook key to snapshot hash) before and after the turn ([AgentExtensionBuilder.branchState]). */
+        val branchBefore: Map<String, String> = emptyMap(),
+        val branchAfter: Map<String, String> = emptyMap(),
     )
 
     /**
@@ -240,6 +247,12 @@ object AiSessionTree {
             if (meta.opFrom >= 0) put("op", buildJsonObject {
                 put("from", meta.opFrom); put("to", meta.opTo); put("origin", meta.origin)
                 put("createdBoxes", buildJsonArray { meta.createdBoxes.forEach { add(JsonPrimitive(it)) } })
+                if (meta.createdBefore.isNotEmpty()) put("fpBefore", buildJsonObject { meta.createdBefore.forEach { (k, v) -> put(k, v) } })
+                if (meta.createdAfter.isNotEmpty()) put("fpAfter", buildJsonObject { meta.createdAfter.forEach { (k, v) -> put(k, v) } })
+            })
+            if (meta.branchBefore.isNotEmpty() || meta.branchAfter.isNotEmpty()) put("branch", buildJsonObject {
+                put("before", buildJsonObject { meta.branchBefore.forEach { (k, v) -> put(k, v) } })
+                put("after", buildJsonObject { meta.branchAfter.forEach { (k, v) -> put(k, v) } })
             })
             meta.memory?.let { mem ->
                 put("memory", buildJsonObject { put("scratchpad", mem.scratchpad); put("checklist", mem.checklistJson) })
@@ -303,7 +316,24 @@ object AiSessionTree {
         return out
     }
 
-    data class Rewind(val markdown: String, val restoredMemory: AgentMemoryState.Snapshot?, val abandoned: List<JsonObject>, val userText: String)
+    data class Rewind(
+        val markdown: String,
+        val restoredMemory: AgentMemoryState.Snapshot?,
+        val abandoned: List<JsonObject>,
+        val userText: String,
+        /** Extension branch states at the new head: hook key to snapshot hash ([AgentExtensionRegistry.restoreBranchStates]). */
+        val branchStates: Map<String, String> = emptyMap(),
+    )
+
+    private fun branchOf(node: JsonObject?, which: String): Map<String, String> =
+        ((node?.get("branch") as? JsonObject)?.get(which) as? JsonObject)?.mapValues { (it.value as JsonPrimitive).content }.orEmpty()
+
+    /** The latest `after` snapshot of each branch state along [path]. */
+    private fun branchAfterAlong(path: List<JsonObject>): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        path.forEach { out.putAll(branchOf(it, "after")) }
+        return out
+    }
 
     /**
      * Move the head to just before user turn [ordinal] on the active path, keeping everything after it as a
@@ -339,7 +369,67 @@ object AiSessionTree {
         val keptIds = session.path(newHead).map { (it["id"] as JsonPrimitive).content }.toSet()
         val restored = session.path(newHead).lastOrNull { it["memory"] != null }?.let { memoryOf(it) }
         AiBoxConversation.write(box, markdown)
-        Rewind(markdown, restored, oldPath.filter { (it["id"] as JsonPrimitive).content !in keptIds && it["t"]?.jsonPrimitive?.contentOrNull == "turn" }, target.text)
+        // The state from before the rewound turn, exactly; where it has none, the latest the new path recorded.
+        val states = branchAfterAlong(session.path(newHead)) + branchOf(node.takeIf { survivingPrefix.isBlank() }, "before")
+        Rewind(markdown, restored, oldPath.filter { (it["id"] as JsonPrimitive).content !in keptIds && it["t"]?.jsonPrimitive?.contentOrNull == "turn" },
+            target.text, states)
+    }
+
+    /**
+     * The branch states at the head of the most recently active conversation among [boxes] (the one whose
+     * head node is newest), as [AgentExtensionRegistry.resumeBranchState] restores them when a document opens.
+     */
+    fun currentBranchStates(boxes: Collection<Box>): Map<String, String> = synchronized(lock) {
+        boxes.asSequence()
+            .filter { !(it.getPropertyRaw(PROPERTY) as? String).isNullOrBlank() }
+            .mapNotNull { box ->
+                val session = load(box)
+                val head = session.head() ?: return@mapNotNull null
+                val ts = (session.nodes()[head]?.get("ts") as? JsonPrimitive)?.longOrNull ?: 0L
+                ts to branchAfterAlong(session.path(head))
+            }
+            .filter { it.second.isNotEmpty() }
+            .maxByOrNull { it.first }?.second.orEmpty()
+    }
+
+    /**
+     * The extension branch states as this conversation last left them: in the order things happened, each
+     * turn's `after` and each restore's `state` line, the latest per key. What a restore checks the current
+     * state against ([AgentExtensionRegistry.restoreBranchStates]).
+     */
+    fun lastKnownStates(box: Box): Map<String, String> = synchronized(lock) {
+        val out = LinkedHashMap<String, String>()
+        for (line in load(box).lines) {
+            when ((line["t"] as? JsonPrimitive)?.contentOrNull) {
+                "turn" -> out.putAll(branchOf(line, "after"))
+                "state" -> out.putAll((line["states"] as? JsonObject)?.mapValues { (it.value as JsonPrimitive).content }.orEmpty())
+            }
+        }
+        out
+    }
+
+    /** Record the branch states a rewind or switch left the document in, for the next [lastKnownStates]. */
+    fun noteStates(box: Box, states: Map<String, String>) = synchronized(lock) {
+        if (states.isEmpty()) return@synchronized
+        val session = load(box)
+        session.lines += buildJsonObject {
+            put("t", "state"); put("ts", System.currentTimeMillis())
+            put("states", buildJsonObject { states.forEach { (k, v) -> put(k, v) } })
+        }
+        save(box, session)
+    }
+
+    /** Add a named, empty child of an exact saved state. Does not move the active head or restore anything. */
+    fun fork(box: Box, id: String, name: String): String = synchronized(lock) {
+        require(name.isNotBlank() && name.length <= 120 && name.none { it.isISOControl() }) { "Use a branch name of 1–120 printable characters" }
+        val session = load(box)
+        require(id in session.nodes()) { "Saved conversation state is unavailable" }
+        require(session.nodes().values.none { (it["branchName"] as? JsonPrimitive)?.contentOrNull == name }) { "Branch name already exists: $name" }
+        // An empty append is understood by older readers and inherits transcript, memory and registered state.
+        val added = node("append", id, "", mapOf("branchName" to JsonPrimitive(name)))
+        session.lines += added
+        save(box, session)
+        (added["id"] as JsonPrimitive).content
     }
 
     /** Make branch tip [index] (as [branches] numbers them) the head. */
@@ -352,7 +442,8 @@ object AiSessionTree {
         setHead(session, id, markdown)
         save(box, session)
         AiBoxConversation.write(box, markdown)
-        Rewind(markdown, session.path(id).lastOrNull { it["memory"] != null }?.let { memoryOf(it) }, emptyList(), "")
+        Rewind(markdown, session.path(id).lastOrNull { it["memory"] != null }?.let { memoryOf(it) }, emptyList(), "",
+            branchAfterAlong(session.path(id)))
     }
 
     /** The branches as `/branches` lists them: tip, turn count, last request, whether it is the head. */
@@ -371,7 +462,8 @@ object AiSessionTree {
                     val md = (n["markdown"] as? JsonPrimitive)?.contentOrNull.orEmpty()
                     Regex("(?m)^<<you>>\\n").findAll(md).map { userText(md.substring(it.range.first)) }.toList()
                 }
-                val last = requests.lastOrNull().orEmpty().replace('\n', ' ').replace("|", "\\|").take(80)
+                val branchName = path.lastOrNull { it["branchName"] != null }?.get("branchName")?.jsonPrimitive?.contentOrNull
+                val last = (branchName ?: requests.lastOrNull().orEmpty()).replace('\n', ' ').replace("|", "\\|").take(80)
                 appendLine("| $i | ${requests.size} | $last | ${if ((tip["id"] as? JsonPrimitive)?.contentOrNull == head) "**current**" else ""} |")
             }
             append("\nSwitch with `/branch <#>`.")
@@ -391,6 +483,18 @@ object AiSessionTree {
         val op = node["op"] as? JsonObject ?: return null
         return Triple((op["from"] as JsonPrimitive).content.toInt(), (op["to"] as JsonPrimitive).content.toInt(),
             (op["origin"] as? JsonPrimitive)?.contentOrNull.orEmpty())
+    }
+
+    /** Every box the turns on the current path created. */
+    fun createdAlongHead(box: Box): List<String> = synchronized(lock) {
+        val session = load(box)
+        session.path(session.head()).flatMap { createdBoxesOf(it) }.distinct()
+    }
+
+    /** [ids] (turn node ids) as nodes, in the order they were recorded. */
+    fun nodesInOrder(box: Box, ids: Collection<String>): List<JsonObject> {
+        val wanted = ids.toSet()
+        return load(box).lines.filter { (it["id"] as? JsonPrimitive)?.contentOrNull in wanted && (it["t"] as? JsonPrimitive)?.contentOrNull == "turn" }
     }
 
     fun createdBoxesOf(node: JsonObject): List<String> =

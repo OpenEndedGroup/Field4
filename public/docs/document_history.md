@@ -88,7 +88,7 @@ ui.moveMouse(5.0, 5.0, 2)
 ui.pause(800)
 ```
 
-It is for document-level recovery rather than for undoing single edits. To scrub one line back through its versions without leaving the editor, see the [History Lens](history_lens.md).
+Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it differs from the current code. To scrub one line back through its versions without leaving the editor, use the [History Lens](history_lens.md) instead.
 
 ## Open the history view
 
@@ -97,7 +97,7 @@ You can open history in two ways:
 - run `Show Document History` from the command palette
 - open `/history?file=<document-name>` directly on the Field server
 
-There is no keyboard shortcut. The history view opens in a dedicated iframe layered over the document, rather than inside a box.
+There is no keyboard shortcut. The history view opens over the document.
 
 ## What the timeline shows
 
@@ -134,9 +134,7 @@ You do not have to take a whole version. Select the boxes you care about and cho
 
 ## What restore does
 
-Restore rebuilds document state from the target version rather than copying a file over the current one.
-
-Boxes that exist in the chosen version are restored with their saved properties. Boxes that do **not** exist in that older version are **tombstoned** rather than deleted, so the restore stays reversible. Each restore records its own transition, so the jump is itself part of the history.
+Boxes that exist in the chosen version are restored with their saved properties. Boxes that do **not** exist in that older version are marked as removed but kept in the history, so you can undo the restore. Each restore records its own transition, so the jump is itself part of the history.
 
 ## Search, blame and named versions
 

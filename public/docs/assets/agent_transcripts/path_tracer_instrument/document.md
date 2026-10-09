@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. path tracing renderer
@@ -51,7 +51,7 @@ it costs no frames. This replaces the shape four scratch boxes were written in l
 to learn what the log already knows.
 
 ```edn [field-box id="pt_tracer" role="properties"]
-{"id" "pt_tracer" "index" 1 "name" "The tracer, with a log" "parents" ["root" "pt_renderer"] "children" ["pt_instrument" "pt_plot" "pt_swap" "pt_restore"] "properties" {"children" #{#afield/box "pt_instrument" #afield/box "pt_plot" #afield/box "pt_swap" #afield/box "pt_restore"} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "The tracer, with a log" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_tracer_code_.kt" "lines" 24 "characters" 990 "sha256" "29eb773b9e6223a63bbe865661d96ce5af09962d0b2dc5c8c92a61a5b152436f"}]}
+{"id" "pt_tracer" "index" 1 "name" "The tracer, with a log" "parents" ["root" "pt_renderer"] "children" ["pt_instrument" "pt_plot" "pt_swap" "pt_restore"] "properties" {"children" #{#afield/box "pt_instrument" #afield/box "pt_plot" #afield/box "pt_swap" #afield/box "pt_restore"} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "The tracer, with a log" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_tracer_code_.kt" "lines" 22 "characters" 912 "sha256" "1d52c766d77d020b00c8c3a67573a341fe8bd2488093f03808cd568d5a0ef001"}]}
 ```
 
 ```kotlin [field-property box="pt_tracer" name="code" path="pt_tracer_code_.kt"]
@@ -62,10 +62,8 @@ to learn what the log already knows.
 // `frames { repeat(180) { frame() } }` with a `println` inside -- which spends 180 real frames
 // to learn what the log already knows.
 import afield.four.fabricated.*
-import afield.four.modules.fromContext
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 prop<PathTraceConvergence>(log)
 

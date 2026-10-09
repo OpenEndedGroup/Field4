@@ -1,0 +1,20 @@
+[package]
+name = "field_paint_jvm"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "claude-paint's `paint` crate behind a flat C ABI, for afield.paint"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Vendored at a pinned upstream revision, with Field's additions (vendor/paint/VENDORED.md): a
+# painting replays with the engine it was painted with, and so should ours.
+# MIT, https://github.com/aliceisjustplaying/claude-paint/tree/main/crates/paint
+paint = { path = "vendor/paint" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+panic = "unwind"

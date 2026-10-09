@@ -26,7 +26,7 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 | Tab | What it controls |
 | --- | --- |
 | **Pad** | A large touch surface, sending Y, X or XY in absolute, delta or both modes, with shortcuts for save, restore, lock, unlock, launch, and stop. |
-| **Group** | Phone-sized sliders, toggles, text inputs, vector pads, and color controls published by the selected box's `controlGroup(...)`. |
+| **Group** | Phone-sized sliders, toggles, text inputs, vector pads, color controls, multisliders, matrices, range sliders and menus published by the selected box's `controlGroup(...)`, with their playheads. |
 | **Outputs** | The selected box's output areas, reformatted into a narrow scrolling column. Native controls remain interactive. |
 | **Chat** | The real AI4 conversation for the selected box and property, including attachments, code, and expandable tool-use summaries. File edits are called out by filename. |
 | **Select** | Field's **Open Anything** panel, adapted for touch. Search boxes, properties, commands, and document text. Choosing a result updates every other phone tab. |
@@ -88,6 +88,66 @@ ui.eval("""
 ui.waitForSelector("#docs-mobile-controller-group", 8000.0)
 ui.pause(6000)
 ```
+
+```diffstatic_runner {data-lang=kotlin capture="window" with-editor="true" viewport="1440x900" execution="launch" open-outputs="true" wait-output="true" wait-output-kind="display" screenshot="assets/mobile_controllers/desktop-sequencer.png" alt="The Field desktop app: on the canvas, a box named sequencer with its output panel open, showing a sixteen-bar velocity multislider, a four-row pattern grid with cells in red, green and blue, a band range slider and a wave menu, with an orange playhead on one column; beside it the code editor open on the box's Kotlin, the controlGroup declaring those four controls and the loop that drives the playheads" wait="1.5" timeout="180" w="220" h="80" embed=true hidden=true name="sequencer"}
+var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
+var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }
+var band = 200.0..900.0
+var wave = "saw"
+
+lateinit var steps: ArrayControlHandle<List<Double>>
+lateinit var grid: ArrayControlHandle<List<List<Int>>>
+lateinit var range: ArrayControlHandle<ClosedFloatingPointRange<Double>>
+
+controlGroup("sequencer") {
+    steps = multiSlider("velocity", count = 16, initialValues = velocity) { velocity = it }
+    grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern) {
+        pattern = it
+        print(it.h)
+    }
+    range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band) {
+        band = it
+        print(it.h)
+    }
+    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+        wave = name
+    }
+}
+
+// Eight steps a second, read off the clock every frame.
+val start = System.nanoTime()
+loop {
+    val step = ((System.nanoTime() - start) / 125_000_000L).toInt()
+    steps.playhead(step % 16)
+    grid.playhead(step % 16)
+    range.playhead(20.0 + (step % 64) / 63.0 * 1980.0)
+}
+```
+
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-sequencer" transcript="../../dev_docs/agents/transcripts/docs_capture/phone_sequencer.yaml" screenshot="assets/mobile_controllers/group-sequencer.png" alt="The Group tab of the Field mobile controller at iPhone size showing the box named sequencer: a velocity multislider of sixteen bars, a four-row pattern grid with cells in red, green and blue and an orange playhead on one column, a band range slider and a wave menu reading saw, with the six tabs along the bottom" padding="0" wait="0" timeout="180" embed=true hidden=true name="mobile-controller-sequencer"}
+ui.eval("""
+    document.getElementById("docs-mobile-controller-sequencer")?.remove()
+    const seq = [...document.querySelectorAll(".box")].find(box => box.uid === "seq_box" || box.name === "sequencer")
+    if (seq && typeof window.selectBox === "function") {
+        ;(window.selectedList || []).slice().forEach(box => window.deselectBox(box))
+        window.selectBox(seq)
+        window.selectionContextChanged?.()
+    }
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", "controls")
+    const frame = document.createElement("iframe")
+    frame.id = "docs-mobile-controller-sequencer"
+    frame.setAttribute("title", "Field mobile controller step sequencer")
+    frame.setAttribute("src", "/controllers?" + params.toString())
+    frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
+    document.body.appendChild(frame)
+    return frame.getAttribute("src")
+""".trimIndent())
+ui.waitForSelector("#docs-mobile-controller-sequencer", 8000.0)
+ui.pause(6000)
+```
+
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-outputs" screenshot="assets/mobile_controllers/outputs.png" alt="The Outputs tab of the Field mobile controller showing a box's output areas at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-outputs"}
 controlGroup("controls") {
@@ -189,7 +249,7 @@ AI4 still needs the same provider credentials and configuration it uses on the d
 
 ## Select, then edit
 
-Open **Select** whenever you want to move elsewhere in the document. The search field's font is 16 pixels, which is the size at which mobile Safari stops zooming the page as you focus an input; rows have touch-sized targets, and the desktop preview column is omitted so results have room beside the on-screen keyboard.
+Open **Select** whenever you want to move elsewhere in the document. It searches the same things as the desktop panel, with larger rows and no preview column, so the results fit above the on-screen keyboard.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-select" screenshot="assets/mobile_controllers/select.png" alt="Open Anything in the Field mobile controller at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-select"}
 ui.eval("""
@@ -225,4 +285,4 @@ Tap a result to select its box and property. The controller switches to **Edit**
 5. Adjust live parameters in **Group**, check the result in **Outputs**, or use **Chat** for a larger change.
 6. Use **Edit** for a small direct correction, then **Pad** to launch or stop the selected box.
 
-Landscape works, but portrait is the primary layout, and it is laid out for the short viewport a raised keyboard leaves as well as for a whole phone screen. `tools/run_ui_regressions.py` is what holds it to all three.
+Landscape works, but the controller is laid out for portrait, and it stays usable with the keyboard raised.

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. frame history renderer
@@ -35,32 +35,26 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-argument is written out in full on purpose: `prop<>` rewrites the box's code and the
-rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
-under an `import ...StandardRenderer` fails against the *import* line.
+`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 
 ```edn [field-box id="rp_bundle" role="properties"]
-{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 52 "characters" 2556 "sha256" "541d91a412f681ce7ea116f37557c6fdc0533b0dc3d759191da3e980ab4df06f"}]}
+{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 49 "characters" 2260 "sha256" "d23634963a5de11f7026f5785c40c01021bd56ab2146e7059c8a1a4481290b2a"}]}
 ```
 
 ```kotlin [field-property box="rp_bundle" name="code" path="rp_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-// argument is written out in full on purpose: `prop<>` rewrites the box's code and the
-// rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
-// under an `import ...StandardRenderer` fails against the *import* line.
+// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 // The registration handles, kept so the next box can move each ball independently.
 // `registerSphere` returns the `PullingMeshPair` it registered and there is no by-name
 // lookup on a bundle, so the handle is the only way back to an object once it is in the
 // scene — hold it at registration or you cannot animate it at all.
-prop<MutableList<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>>(balls)
+prop<MutableList<StandardRenderer.Bundle.PullingMeshPair>>(balls)
 
 // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
 // so re-running it would strand the bundle the chain is appended to.

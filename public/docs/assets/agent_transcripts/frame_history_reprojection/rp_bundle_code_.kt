@@ -1,19 +1,16 @@
-// `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-// argument is written out in full on purpose: `prop<>` rewrites the box's code and the
-// rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
-// under an `import ...StandardRenderer` fails against the *import* line.
+// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 // The registration handles, kept so the next box can move each ball independently.
 // `registerSphere` returns the `PullingMeshPair` it registered and there is no by-name
 // lookup on a bundle, so the handle is the only way back to an object once it is in the
 // scene — hold it at registration or you cannot animate it at all.
-prop<MutableList<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>>(balls)
+prop<MutableList<StandardRenderer.Bundle.PullingMeshPair>>(balls)
 
 // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
 // so re-running it would strand the bundle the chain is appended to.

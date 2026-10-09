@@ -1,5 +1,6 @@
 import afield.four.Renderer
 import afield.four.util.Window
+import afield.stdlib.ShaderNeuralParticles
 var Box.particles by Inheritance<afield.stdlib.ShaderNeuralParticles>() /**/
 val Once.particles by Onceing<afield.stdlib.ShaderNeuralParticles>() /**/
 val Why.particles by Whying() /**/

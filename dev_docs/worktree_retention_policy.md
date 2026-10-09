@@ -10,20 +10,81 @@ A worktree is a candidate only if some **enabled retention family** claims it. A
 rule pairing a set of worktree **roots** with a set of **branch prefixes**, and it claims a worktree
 only when both match.
 
-| family | on by default | roots | branch prefixes |
+| family | roots | branch prefixes | branch after removal |
 |---|---|---|---|
-| `nightly` | yes | `<repo>-worktrees` | `nightly/` `review/` `integration/nightly` |
-| `docs-blast` | no, `--family docs-blast` | both roots | `docs/language-` |
-| `agent-session` | no, `--family agent-session` | `<repo>/.claude/worktrees` | `claude/` |
+| `nightly` | `<repo>-worktrees` | `nightly/` `review/` `integration/nightly` | deleted |
+| `docs-blast` | both roots | `docs/language-` `docs/voice-` `docs-pass/` `docs/kdoc-` | deleted |
+| `agent-session` | `<repo>/.claude/worktrees` | `claude/` | kept |
+| `any-merged` | both roots, and `~/.codex/worktrees/*/` | any branch, or a detached HEAD | kept |
 
-`--family` is additive. Naming one can widen the population; nothing on the command line narrows a
-protection. `nightly/journal` and `nightly/ci-journal` are checked above every family, so no family,
-however it is written, reaches them — and `--completed` on one of them says so rather than hinting
-at a flag.
+All four are on by default since 2026-10-03; until then only `nightly` was, and every cull went by
+hand. The 2026-10-02 hand cull found 16 merged, clean trees — 45 GiB of free space — on `codex/`,
+`viewers/`, `arch/`, `fix/` and detached HEADs, which no prefix list would ever have finished
+covering. So the safety moved from *which branch names may be touched* to the guards below, which
+apply to every family. `--only-family` narrows a run to the named families; `--family` adds one.
+`nightly/journal` and `nightly/ci-journal` are checked above every family, so no family, however it
+is written, reaches them — and `--completed` on one of them says so rather than hinting at a flag.
+
+Agent-session and catch-all branches are kept because the desktop app checks a resumed session's
+branch out again; the ref is what lets the session come back.
 
 Matching a family is necessary, not sufficient. A candidate must also be clean, merged into main, be
-free of any live process cwd, and be **idle**. There is still no force mode and no dirty tier, and
-dry run is still the default.
+free of any live process cwd, be **idle**, hold **no ignored work**, and have **no submodule commit
+that exists only in the checkout**. There is still no force mode and no dirty tier, and dry run is
+still the default.
+
+## Ignored work
+
+"Clean" used to mean `git status --porcelain` printed nothing, and that is blind to gitignored files.
+`src/personal/` is gitignored and holds real hand-written source. On 2026-10-02 a merged, clean tree,
+`codex-inflatable-tapes-2026-09-28`, held 1,205 files of it that main lacked — a whole package, all
+edited that week — and the reaper as it stood would have deleted them.
+
+So every ignored entry (`git status --porcelain --ignored=matching`) is matched against
+`REGENERABLE`: build output, caches and logs. A directory that matches covers everything under it,
+which matters because caches that carry their own `.gitignore` (`public/.cache`, `.pytest_cache`) are
+reported file by file. Anything that does not match refuses the tree, and the refusal names it. The
+list is deliberately short; adding a pattern is a decision that the files it matches are worthless.
+
+Two expected precious files, `ARCHIVED_FILES`, are copied out instead of refusing:
+`NIGHTLY_WORKLOG.md` (deliberately untracked, so it exists only on that disk) to
+`<repo>-archive/worklogs/`, and `.claude/settings.local.json` to `<repo>-archive/settings/`.
+
+`.nightly-tmp/`, the nightly agents' scratch directory, used to make every nightly tree read as dirty
+— it was untracked, not ignored. It is now in `.gitignore`, and is also skipped by the dirty check for
+trees checked out before that.
+
+## Submodules
+
+`services/field-audio-ai` made every fresh tree fail removal with "working trees containing
+submodules cannot be moved or removed". A worktree's submodule git dir lives under
+`.git/worktrees/<name>/modules` and is deleted with it, so `submodule_problem` requires each
+initialized submodule to be at its recorded commit (`git submodule status` shows no `+` or `U`) and
+that commit to exist in the primary checkout's submodule or on a fetched remote branch. `--apply`
+then runs `git submodule deinit -f --all` and `git worktree remove --force`.
+
+## Cleaning build output: `--clean-builds`
+
+Most of a worktree is regenerable build output, and deleting it from a tree nobody is using is safe
+whether or not the branch is merged. `--clean-builds` (dry run unless `--apply`) runs
+`git clean -xdff -q -- <CLEAN_PATHS>` in each registered tree, as literal paths and never a bare
+clean, repeating until git prints nothing (`-xdff` needs a second pass about half the time). It never
+touches a tracked file, untracked source, or `src/personal`, and it fails loudly if
+`git status --porcelain` differs afterwards.
+
+A tree is skipped when it has a live cwd, when its branch (or detached HEAD) moved inside the idle
+window, or when any file under `src`, `tools`, `dev_docs`, `public/docs`, `build` or `.gradle` was
+modified inside it. Both age signals are needed: a landing tree's branch moves with few file writes,
+and a session that never commits writes files on a branch that reads as ancient.
+
+The modification check uses `/usr/bin/find -newermt "<local date>"`. The first cut passed
+`@<epoch>`, which `bfs` and GNU find accept and macOS find rejects; the error printed nothing on
+stdout, so every tree read as quiet. It now fails closed on a `find` error, and
+`test_a_find_that_cannot_answer_reads_as_active` pins that.
+
+First run, 2026-10-03: 23 quiet trees, 28 GiB by `du`, free space 18 → 42 GiB, `git status`
+unchanged in all 23, and the 1,206 files under one tree's `src/personal` byte-identical before and
+after.
 
 Note that the policy keys on the branch, never on the directory name. On 2026-09-09 the machine held
 a directory called `.claude/worktrees/docs-language-blast` whose branch was `docs/nav-dissolve-
@@ -133,15 +194,29 @@ checkout left, the family having already been cleaned up by hand. That is the ho
 night rather than a defect. The harness that produces them runs 45 units 8-wide and reaps none, so
 the family recurs in bursts, and naming it means the next burst is reachable without editing code.
 
+## Worktrees whose directory was deleted by hand
+
+The reverse of an orphan: git still lists the worktree (`git worktree list --porcelain` marks it
+`prunable`), but its directory is gone. On 2026-10-08 four of these had built up in one day, and
+the first `git status` inside one exited 128 and stopped the whole run, including the build clean.
+`classify_worktree` now checks for the directory before running anything in it, and calls the
+tree `prunable`. `--apply` runs `git worktree prune` first, which is lossless: it drops only the
+admin entries of worktrees whose directories no longer exist, and their branches and commits stay.
+A dry run lists them and leaves them alone. `--clean-builds` skips them.
+
 ## Running it
 
 ```
 tools/reap_merged_worktrees.py --explain-policy          # the policy, no scan
 tools/reap_merged_worktrees.py --disk-floor-gib 19       # dry run + ranked report
-tools/reap_merged_worktrees.py --disk-floor-gib 19 --family agent-session
+tools/reap_merged_worktrees.py --apply                   # remove merged, clean, idle trees
+tools/reap_merged_worktrees.py --clean-builds --apply    # strip build output from quiet trees
+tools/reap_merged_worktrees.py --only-family nightly     # the old, nightly-only scope
 ```
 
 Tests are `tools/test_reap_merged_worktrees.py`, run with pytest from the repository root with
 `PYTHONPATH=.`. They build throwaway repos with real `git worktree add` and set `GIT_COMMITTER_DATE`
 so reflog timestamps, and therefore idle times, are deterministic. No test invokes `--apply`; one
-asserts that a full dry run leaves the directory listing byte-identical.
+asserts that a full dry run leaves the directory listing byte-identical. `CleanBuildsTests` calls
+`clean_builds(apply=True)` directly, against a throwaway tree holding a `src/personal` file,
+untracked notes and an uncommitted edit, and asserts that only build output went.

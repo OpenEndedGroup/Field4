@@ -68,9 +68,11 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
+        inbox: AiTurnInbox? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -99,9 +101,11 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
-            fieldGraph = fieldGraph
+            fieldGraph = fieldGraph,
+            inbox = inbox
         )
 
         val tc = turn(
@@ -159,12 +163,15 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
+        inbox: AiTurnInbox? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
-        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
+        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null,
+        maxToolRounds: Int = 24
     ): OpenAiIdeCodexBridge.SendResult {
         info(
             "chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size} " +
@@ -193,13 +200,15 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
-            fieldGraph = fieldGraph
+            fieldGraph = fieldGraph,
+            inbox = inbox
         )
 
         return chatGeneral(state, code, lang, userPrompt, ctx, imageUrls, vectorStoreIds,
-            onTextDelta = onTextDelta, onProgress = onProgress)
+            maxToolRounds = maxToolRounds.coerceIn(1, 64), onTextDelta = onTextDelta, onProgress = onProgress)
     }
 
     /**
@@ -268,9 +277,11 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
+        inbox: AiTurnInbox? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -299,9 +310,11 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
-            fieldGraph = fieldGraph
+            fieldGraph = fieldGraph,
+            inbox = inbox
         )
 
         val fragments = buildInstructionFragments(InstructionMode.Inline, lang, userPrompt, null, lineNumber, ctx)
@@ -362,9 +375,11 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
+        inbox: AiTurnInbox? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -393,9 +408,11 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
-            fieldGraph = fieldGraph
+            fieldGraph = fieldGraph,
+            inbox = inbox
         )
 
         val tc = turn(buildInstructionFragments(InstructionMode.Error, lang, null, errorMessage, null, ctx), lang.wrap(code))
@@ -423,3 +440,4 @@ class IdeChatHelpers(
         )
     }
 }
+

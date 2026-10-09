@@ -96,6 +96,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "particle_video_reader",
         // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
@@ -105,6 +106,9 @@ object DemoTranscriptExecSmokeTest {
         // and measure onsets and pitches in the renders. No
         // audio device is opened; the audio is an offline buffer displayed as a data: URI.
         "drawn_score",
+        // Five CPU boxes: two strokes drawn from code, read back, resampled and paired with
+        // matchPoints, morphed, and the morph played as pitch into audio players. Offline buffers only.
+        "drawn_morph",
         // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.
@@ -138,6 +142,15 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
+        // The keyframe editor: a launched loop playing a curve into a meter, and three executed boxes
+        // (typed keys; an onChange overlay; key types of its own with interpolant(...)). Pure CPU — the editor is an iframe in `display` — so what
+        // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
+        // through the real box path.
+        "keyframe_editor",
+        // A gesture take baked into two keyframe lanes: one launched loop that bakes on first run and
+        // plays the pad, its playhead and both lanes, stopped after 90 frames. Pure CPU; what running it
+        // buys is bakeGesture, toKeyframes and setTake through the real box path.
+        "gesture_to_keyframes",
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",
@@ -161,6 +174,7 @@ object DemoTranscriptExecSmokeTest {
         "linalg_thumbnails_demo",
         "hello_display",
         "hello_display_capture",
+        "ai4_iframe_hello",
         "two_box_context",
         // Compiles a data class onto the shared classloader and uses it from three other boxes, one
         // of them through @rootExported. Slower than its neighbours — box 1 shells out to
@@ -359,6 +373,24 @@ object DemoTranscriptExecSmokeTest {
         // ends in `animate { }`, which registers an animation rather than blocking, as with the two
         // parameter sweeps in spatial_geometry_examples.
         "typography_worked_example",
+        // The companion to animation_time_model.md: four pure-CPU boxes that start, stop, re-run and
+        // clean up a frame loop through lines() and markdown(). The three it launches end in
+        // `animate { }`, which registers an animation rather than blocking; box 4 is left for the
+        // reader to drive.
+        "frames_lifecycle",
+        // The two fline_examples.md documents, promoted from saved documents in public/docs/assets.
+        // threeInspect writes a three.js viewer into an output and inspect() writes an SVG with
+        // click handlers; neither needs a Window or a Renderer. three_inspector_wall's code is also
+        // that page's captured fence, which ThreeInspectorDemoDriftTest holds character for character.
+        "three_inspector_wall",
+        // stipple_transport.md's live sheet: a committed JSON model evaluated in plain Kotlin,
+        // drawn through lines() and controlGroup sliders. CPU only.
+        "stipple_sheet",
+        "fline_hit_records",
+        // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
+        // into inline players, so no audio device; with no Dirt-Samples on the build machine every
+        // token falls back to patVoice, which is box 3's subject anyway.
+        "sound_render_path",
         // Two pure-CPU Ceres boxes: a canonical realization whose per-face planes are free variables in
         // the residual expression VM, and a sphere fit whose unknowns are not points at all. Both are
         // FFM calls into the native wrapper plus threeLines(), so no Window and no Renderer. Both
@@ -372,6 +404,25 @@ object DemoTranscriptExecSmokeTest {
         // — and the first one draws the same shape through Field's own marchingCubes instead, with the
         // difference named, rather than failing.
         "manifold_solids",
+        // Three pure-CPU boxes that paint and draw FLines through afield.paint (FFM into the optional
+        // Rust wrapper over claude-paint's `paint` crate) and display a PNG, so no Window and no
+        // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
+        // takes — they print where they looked and stop, rather than failing.
+        "paint_canvas",
+        // Two pure-CPU boxes over the same paint canvas: one registers an agentExtension (paint tools,
+        // context, commands, the canvas as branch state) and shows the bare canvas, the other adds a
+        // scribble aiTool that paints on it. No model is called; without the paint library the Studio
+        // says so and stops, like paint_canvas.
+        "ai4_paint_studio",
+        // One pure-CPU box that keeps a StackSLEvolution on itself and registers an agentExtension over
+        // it (evolve_* tools, context, commands, the population as branch state). Executing it renders
+        // only the target: the search, LPIPS and the watchmaker start at the first evolve_step, which
+        // needs a chat. No model is called.
+        "stacksl_evolve_studio",
+        // Three CPU boxes: pen strokes with pressure drawn on the drawing layer and read back with
+        // notation, then painted (brush swell from the pen) and drawn in pencil through afield.paint.
+        // The paint boxes check PaintCanvas.isAvailable first, like paint_canvas.
+        "drawn_paint",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the
@@ -402,6 +453,26 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio
+        // device; and ORCA itself only plays in a browser. `run_ui_regressions.py --id orca-io` runs
+        // the same calls in a real page, and OrcaTest feeds the Kotlin side the page's reports.
+        "orca_hello",
+        // Two of them and a frames loop between: the same reasons. OrcaHeadlessTest runs its exchange
+        // on ORCA's own operators in the JVM, and pins it to this transcript.
+        "orca_duet",
+        // ORCA with AI4 on the board: the same reasons as orca_hello. Its tools run in the orca-io regression.
+        "orca_jam",
+        // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
+        // measuring box whose numbers SceneOnARigTest already pins.
+        "chain_scene_to_light",
+        // Syphon (macOS frame sharing) through the optional native/field-syphon library: two of the
+        // three boxes are `loop { }`s that publish and receive frames across Syphon's shared GPU
+        // surface. Not evaluated here (a Mac, Metal and `./gradlew buildSyphonNative`);
+        // afield.syphon.SyphonTest runs the cross-process round trip with exact pixels instead.
+        "syphon_bridge",
+        // The same over the Vulkan renderer: followOnGpu (GPU copy into an IOSurface) and a Syphon
+        // client as a texture. Needs a Window, a Renderer and the library; verified live by hand.
+        "syphon_gpu",
         // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
         "flow_grain",
         "aperture_playground",
@@ -416,11 +487,18 @@ object DemoTranscriptExecSmokeTest {
         // Every box is compiled through Field's real K2/preamble path, but none is evaluated: four
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",
+        // Real optional offline Loris worker: compile complete async workflows without a native download.
+        "loris_partial_explorer",
         // Imports a local source and reaches the optional Underfit/Stable Audio worker; compile the
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
+        // Reader is portable; the optional third box reaches prepared Torch/CUDA through a cached subprocess.
+        "particle_video",
+        "streaming_diffusion", // Optional Linux/NVIDIA worker and a Vulkan renderer.
         "graphics_renderer_launch",
         "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
+        "open_dlss_nr", // Optional native network; live transcript and GPU recording verified separately.
+        "open_dlss_nr_cubes", // Same native pass, with editable raster geometry and its GPU recorder.
         "neural_reconstruction", // Optional NGX evaluation is covered by ReconstructionSmoke on the NVIDIA machine.
         "ray_reconstruction", // Real NGX/RTXDI evaluation: RayReconstructionSmoke.
         "path_traced_reconstruction", // PathTracedReconstructionSmoke; optional NGX.
@@ -451,14 +529,20 @@ object DemoTranscriptExecSmokeTest {
         // left here is the window, so they classify with the rest of the tracer group.
         "polytope_path_trace_lineage",
         "polytope_manifold_path_trace",
+        "polytope_layer_stack_path_trace",
+        "photo_mount_path_trace",
         "physics_manifold_path_trace",
         // Also a window, and additionally a compute dispatch whose push constants are bound to
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
         // synth.pat.seam, which needs no device at all.
         "pattern_particles",
+        // A window and a per-frame burst buffer; the net and the three run queries the sparks box
+        // makes each frame (firingsOver, markingAt, countAt) are covered by PetriSparksDocsTest.
+        "petri_sparks",
         "life3d_manifold_path_trace",
         "rectsl_spacetime_path_trace",
         "skinned_volume_path_trace",
+        "petri_state_space_sculpture",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
@@ -500,9 +584,17 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_emitters",
         "path_tracing_medium",
         "python_cells",
+        // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin
+        // graphics boxes are compiled.
+        "fieldcv_webcam",
         // Pure Data: the Kotlin boxes need libpd built to run, which the build does not own, so their
         // Kotlin is compiled; the three Pd boxes are a guest language and skipped, as Python's are.
         "pure_data_demo",
+        // Csound: the Kotlin root and five Kotlin boxes need libcsound built (./gradlew
+        // buildCsoundNative), which the build does not own, so they are compiled; the three Csound
+        // boxes are a guest language and skipped, as Pd's are. afield.csound.* tests run the calls
+        // against a real Csound when one is built. Every box was run by hand on 2026-10-02.
+        "csound_demo",
         "four_summary_pyramid",
         "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen
@@ -545,6 +637,9 @@ object DemoTranscriptExecSmokeTest {
         // KosmicKrisp (host-pointer buffers). Needs a Vulkan window and the helper binary, so CI
         // compiles it; the backdoor replay runs it live.
         "iosurface_ring_roundtrip_smoke",
+        // Zero-copy Syphon receive against field_syphon_probe, read back exactly. Needs a Vulkan
+        // window and the optional Syphon library, so CI compiles it; the backdoor replay runs it live.
+        "syphon_zero_copy_receive_smoke",
         // Needs a camera, which CI does not have. Compiling without evaluating is also what keeps this
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.
@@ -674,7 +769,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- KOTLINJS: build the graph, then compile each kotlinjs box body Kotlin -> JS for real ----
 
-    private fun runKotlinJsDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runKotlinJsDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val ops = loadOps(yaml)
         val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
@@ -757,7 +852,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- EXECUTE: run the whole transcript through the real runner and assert no error output ----
 
-    private fun runExecuteDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runExecuteDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val macrosDir = File(document, "macros").also { it.mkdirs() }
         File(macrosDir, "$name.yaml").writeText(yaml.readText())
@@ -800,10 +895,15 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- COMPILE-ONLY: build the graph, then compile each box's Kotlin with eval skipped ----
 
-    private fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val ops = loadOps(yaml)
-        val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+        val ownOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+        // A transcript that connects under a stable parent another transcript creates (the
+        // graphics context) gets that transcript's graph first, so its boxes resolve `renderer`
+        // the way they do in Field, through the parent's prop<Renderer>, rather than needing a
+        // local lookup that exists only to make this harness compile them.
+        val graphOps = stableParentOps(ownOps) + ownOps
 
         // Build the box graph with the real apply path — create/connect/edit/move only, no launch.
         val macrosDir = File(document, "macros").also { it.mkdirs() }
@@ -848,6 +948,14 @@ object DemoTranscriptExecSmokeTest {
                 println("[compile]   $id: code_language=$codeLanguage, not Kotlin — skipped")
                 continue
             }
+            // The other way a box becomes a guest one: it sits beneath a `mainLanguage` root
+            // (`fieldcv_webcam`'s cells hang off a `mainLanguage: python` box rather than carrying
+            // `code_language` themselves).
+            val guestRoot = guestLanguageRoot(target)
+            if (guestRoot != null) {
+                println("[compile]   $id: beneath mainLanguage=$guestRoot root, not Kotlin — skipped")
+                continue
+            }
             val diags = compileBoxOnly(target)
             if (diags.isEmpty()) {
                 println("[compile]   $id: PASS")
@@ -861,6 +969,26 @@ object DemoTranscriptExecSmokeTest {
             }
         }
         if (demoOk) println("[compile] PASS $name")
+    }
+
+    /**
+     * The guest `mainLanguage` of the nearest ancestor language root, or null when [box] is Kotlin.
+     * `kotlinjs` roots are not guest here: their heads go through the KotlinJS pass above.
+     */
+    private fun guestLanguageRoot(box: Box): String? {
+        val seen = HashSet<Box>()
+        var frontier = box.parents.toList()
+        while (frontier.isNotEmpty()) {
+            val next = ArrayList<Box>()
+            for (p in frontier) {
+                if (!seen.add(p)) continue
+                val lang = p.getPropertyRaw("mainLanguage")?.toString()?.trim().orEmpty()
+                if (lang.isNotEmpty() && !lang.equals("kotlin", true) && !lang.equals("kotlinjs", true)) return lang
+                next.addAll(p.parents)
+            }
+            frontier = next
+        }
+        return null
     }
 
     /**
@@ -878,7 +1006,7 @@ object DemoTranscriptExecSmokeTest {
             // Then substitute the `__line__` sentinel the print macros emit — standardExecutionPractice
             // (the real path) does this between applyMacros and eval; skipping it leaves an unresolved
             // `__line__` reference. The exact number is irrelevant to compilation.
-            val expanded = box.ki.applyMacros(box, box.code)
+            val expanded = box.ki.applyMacros(box, requireNotNull(box.code) { "${box.name} has no Kotlin code to compile" })
                 .split("\n")
                 .mapIndexed { i, line -> line.replace("__line__", "$i") }
                 .joinToString("\n")
@@ -902,6 +1030,26 @@ object DemoTranscriptExecSmokeTest {
             }
         }
         errors
+    }
+
+    /** Stable parents a transcript may connect under without creating, and the transcript that creates each. */
+    private val STABLE_PARENTS = mapOf("agent_graphics_context" to "graphics_renderer_launch")
+
+    private fun createdId(op: Map<String, Any?>): String? {
+        if ((op.keys.firstOrNull()?.lowercase() ?: "") !in setOf("create", "new-box", "box")) return null
+        val p = op.values.firstOrNull() as? Map<*, *>
+        return (p?.get("box") ?: p?.get("uid") ?: p?.get("id") ?: p?.get("target"))?.toString()
+    }
+
+    private fun stableParentOps(ops: List<Map<String, Any?>>): List<Map<String, Any?>> {
+        val created = ops.mapNotNull(::createdId).toSet()
+        val text = ops.toString()
+        return STABLE_PARENTS
+            .filter { (parent, _) -> parent !in created && parent in text }
+            .flatMap { (_, source) ->
+                loadOps(File(locateTranscriptsDir(), "$source.yaml"))
+                    .filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+            }
     }
 
     // ---- shared setup ----
@@ -937,7 +1085,7 @@ object DemoTranscriptExecSmokeTest {
         return raw.mapNotNull { it as? Map<String, Any?> }
     }
 
-    private fun startRunloopDaemon() {
+    internal fun startRunloopDaemon() {
         val t = Thread({ afield.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()
@@ -949,7 +1097,7 @@ object DemoTranscriptExecSmokeTest {
         println("DemoTranscriptExecSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
     }
 
-    private fun locateTranscriptsDir(): File {
+    internal fun locateTranscriptsDir(): File {
         val rel = "dev_docs/agents/transcripts"
         val candidates = buildList {
             System.getProperty("afield.repo")?.let { add(File(it, rel)) }

@@ -3,13 +3,11 @@
     const fadeDurationMs = 5000;    // Fade-out time for the label
     const maxCharacters = 10;       // Max length of the on-screen string before clearing
 
-    const modifierSymbols = {
-        Meta: "⌘",
-        Control: "⌃",
-        Alt: "⌥",
-        AltGraph: "⌥",
-        Shift: "⇧",
-    };
+    const isMac = /mac/i.test(navigator.userAgentData?.platform || navigator.platform || "");
+    const modifierSymbols = isMac
+        ? { Meta: "⌘", Control: "⌃", Alt: "⌥", AltGraph: "⌥", Shift: "⇧" }
+        : { Meta: "Meta", Control: "Ctrl", Alt: "Alt", AltGraph: "Alt", Shift: "Shift" };
+    const chordSeparator = isMac ? "" : "+";
 
     const specialKeys = {
         " ": "␣",
@@ -44,6 +42,7 @@
     let enabled = false;
     let buffer = "";
     let lastStamp = 0;
+    let lastWasText = false;
     let fadeTimer = null;
     let overlay = null;
     let textEl = null;
@@ -82,9 +81,7 @@
         if (!key) return "";
 
         const isModifier = key === "Shift" || key === "Control" || key === "Meta" || key === "Alt" || key === "AltGraph";
-        if (isModifier) {
-            return modifierSymbols[key] || key;
-        }
+        if (isModifier) return "";
 
         const parts = [];
         if (event.metaKey) parts.push(modifierSymbols.Meta);
@@ -110,7 +107,7 @@
             base = event.code;
         }
         if (!base) base = event.code || "";
-        return (parts.join("") + base).trim();
+        return [...parts, base].join(chordSeparator).trim();
     }
 
     function resolveButton(event) {
@@ -131,7 +128,13 @@
         const button = resolveButton(event);
         if (button === null) return "";
         const label = mouseButtons[button];
-        return label || "";
+        if (!label) return "";
+        const parts = [];
+        if (event.metaKey) parts.push(modifierSymbols.Meta);
+        if (event.ctrlKey) parts.push(modifierSymbols.Control);
+        if (event.altKey) parts.push(modifierSymbols.Alt);
+        if (event.shiftKey) parts.push(modifierSymbols.Shift);
+        return [...parts, label].join(chordSeparator);
     }
 
     function restartFade() {
@@ -148,51 +151,31 @@
         }, 40);
     }
 
-    function handleKey(event) {
-        if (!enabled) return;
-        if (event.repeat) return;
-
+    function show(label, concatenateText) {
         const now = Date.now();
-        if (now - lastStamp > joinWindowMs) {
-            buffer = "";
-        }
+        if (!concatenateText || !lastWasText || now - lastStamp > joinWindowMs) buffer = "";
+        if (concatenateText && buffer.length + label.length > maxCharacters) buffer = "";
+        buffer += label;
         lastStamp = now;
-
-        const label = formatKey(event);
-        if (!label) return;
-
-        if (buffer.length + label.length > maxCharacters) {
-            buffer = "";
-        }
-        const next = buffer + label;
-        buffer = next.length > maxCharacters ? next.slice(-maxCharacters) : next;
+        lastWasText = concatenateText;
         ensureElements();
         alignOverlay();
         textEl.textContent = buffer;
         restartFade();
     }
 
+    function handleKey(event) {
+        if (!enabled || event.repeat) return;
+        const label = formatKey(event);
+        if (!label) return;
+        const typing = event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+        show(label, typing);
+    }
+
     function handleMouse(event) {
         if (!enabled) return;
-
-        const now = Date.now();
-        if (now - lastStamp > joinWindowMs) {
-            buffer = "";
-        }
-        lastStamp = now;
-
         const label = formatMouse(event);
-        if (!label) return;
-
-        if (buffer.length + label.length > maxCharacters) {
-            buffer = "";
-        }
-        const next = buffer + label;
-        buffer = next.length > maxCharacters ? next.slice(-maxCharacters) : next;
-        ensureElements();
-        alignOverlay();
-        textEl.textContent = buffer;
-        restartFade();
+        if (label) show(label, false);
     }
 
     // `quiet` skips the toast, for a docs capture that switches the display on and off itself
@@ -209,6 +192,7 @@
         if (!enabled) return;
         enabled = false;
         buffer = "";
+        lastWasText = false;
         if (fadeTimer) window.clearTimeout(fadeTimer);
         if (textEl) {
             textEl.textContent = "";
@@ -248,10 +232,10 @@
     function attachListenersOnce() {
         if (listenersAttached) return;
         window.addEventListener("keydown", handleKey, { capture: true });
-        // Support both Pointer and Mouse events to cover older browsers/iframes
-        const targets = [window, document];
-        const events = ["pointerdown", "pointerup", "mousedown", "mouseup", "auxclick", "click", "contextmenu"];
-        targets.forEach((t) => events.forEach((ev) => t.addEventListener(ev, handleMouse, { capture: true })));
+        // One press, once: compatibility mouse events and bubbling through document used to
+        // record the same click repeatedly. Capture on window covers its whole document.
+        window.addEventListener(typeof window.PointerEvent === "function" ? "pointerdown" : "mousedown",
+            handleMouse, { capture: true });
         window.addEventListener("resize", alignOverlay);
         listenersAttached = true;
     }

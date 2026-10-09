@@ -27,6 +27,9 @@ Top-level layout:
 - `metadata_store/`, `templates/`: example and template documents (`metadata.edn`).
 - `server/`: optional Python services — `metadata_server.py` serves templates from
   `metadata_store/`, `guide_chat_server.py` backs slideshow chat (see `server/README.md`).
+- `python/`: Python that ships with Field, appended to `sys.path` in Python boxes — `fieldcv`
+  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.python.NumpyShared`;
+  optional `cv` dependency group, see `python/fieldcv/README.md`).
 - `dev_docs/`: internal design notes, grouped in topical folders (`agents/`, `animation/`,
   `workspace/`, `physics/`, `testing/`, ...).
 - `field-user-dir/`: local user workspace artifacts — mutable user data.
@@ -103,6 +106,7 @@ The crib:
 | Docs native prerequisites | `./gradlew buildDocsNativePrerequisites` (Ceres, TetGen, the pinned Dirt-Samples subset; checks Manifold and JEP; checksummed downloads shared across worktrees) |
 | Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` |
 | Docs author loop | `FIELD_DOCS_RUNNER_MODE=incremental uv run --project . --group docs python tools/build_zensical_docs.py` |
+| Recapture one page | `FIELD_DOCS_RUNNER_MODE=always uv run --project . --group docs python tools/build_zensical_docs.py --page <page.md>` (repeatable; other pages build with captures off) |
 | Runner/API change | `FIELD_DOCS_RUNNER_MODE=strict uv run --project . --group docs python tools/build_zensical_docs.py` |
 | Full recapture | `FIELD_DOCS_RUNNER_MODE=always uv run --project . --group docs python tools/build_zensical_docs.py --clean` |
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` |
@@ -122,6 +126,25 @@ corrupt shared Kotlin class output and incremental-compiler backups.
 Accepted reds live only in `dev_docs/testing/expected_test_failures.json` (JVM) and
 `dev_docs/testing/expected_smoke_failures.json` (smoke), enforced in both directions. Never
 describe a red as expected only in prose, and never use wildcards in either register.
+
+### Landing on `main`
+
+Never merge into `main` yourself. Commit on your topic branch, then
+`uv run python tools/land.py enqueue` and stop: the lander merges it, regenerates the generated
+artifacts, runs the full guard once and fast-forwards `main`, one branch at a time. A failure comes
+back as a bounce with its reason; fix the branch and enqueue again. When you need the outcome, run
+the `tools/land.py wait <id>` that `enqueue` prints as a background command (exit 0 landed, 1
+bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
+happened to every attempt to land it. To push, `enqueue --push` (pushes `main` once that item lands);
+to bring in work from `origin`, `tools/land.py sync [--push]` lands `origin/main` through the queue.
+`uv run python tools/land.py doc` adds a documentation build at that point in the queue: earlier
+landings finish first, then the lander refreshes `public/field4/` in the checkout holding `main`
+using existing captures, before later landings proceed. Use the printed `status`/`wait` id to see
+whether that build finished; a doc failure reports its own error and does not undo a landing.
+Never `git pull` or push `main` by hand.
+The hooks only report which guards a commit affects, so commits take seconds; do not use
+`--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
+branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.
 
 ### Gradle hygiene
 
@@ -154,6 +177,10 @@ describe a red as expected only in prose, and never use wildcards in either regi
   mode. Regenerating them needs Linux, `FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia`, and the GPU
   features; macOS always retains them, and a missing retained asset fails the build. Neural-tool
   pages use committed media and their own scripts (`dev_docs/lighting/NEURAL_TOOLS.md`).
+- `capture-profile="macos-electron"` works the same way for output that only exists in the Field
+  Electron app (the RTT view): with `FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS the
+  runner captures through this checkout's Electron over CDP (`playwright-open --electron`);
+  everywhere else the committed capture is retained.
 - **A capture exercises the real code, or it does not exist.** Never fake, synthesize, hardcode,
   mock, or hand-edit a capture — no CPU stand-in for a GPU render, no hand-written string for a
   computed value, no scripted placeholder for a live panel. If the real capture will not come
@@ -348,7 +375,7 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 ### Drawing layer (Excalidraw)
 
 - An Excalidraw scene laid over the whole canvas for notation: `src/jsMain/kotlin/afield/drawingLayer.kt`, toggled by `toggle-drawing-layer` (Alt+D). Off, it is visible but inert; on, it owns mouse and keyboard until toggled back.
-- Scene coordinates are Field world coordinates. The canvas camera is `screen = world * mainZoom + mainTranslation` (`mainCanvasTransform()`), so Excalidraw's zoom is `mainZoom` and its scroll is `mainTranslation / mainZoom`. Every writer of `mainTranslation` must call `drawingLayerViewportChanged` (there are four: `applyViewportTranslation`, the wheel and middle-drag pans in `Main.kt`, and bookmark restore).
+- Scene coordinates are Field world coordinates. The canvas camera is `screen = world * mainZoom + mainTranslation`, so Excalidraw's zoom is `mainZoom` and its scroll is `mainTranslation / mainZoom`. The camera state lives in `CanvasCamera` (`canvasCamera.kt`, held per pane for the planned split canvas, `dev_docs/workspace/SPLIT_PANES_PLAN.md`); `mainTranslation` and `mainZoom` are read-only views of it, and `applyViewportTranslation` in `Main.kt` is its only writer, which brings the drawing layer, grid, connections and `set-viewport` along. Outside `Main.kt`, move it with `moveCanvasCamera`.
 
 ### Notation: box code ↔ the drawing
 
@@ -359,10 +386,19 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 ### Canvas zoom
 
 - Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
-- Anything that turns a screen measurement into a world one must divide by `mainZoom`: box drag/resize deltas, `boxWorldRect`, the connection-layer snapshot in `gestures.kt`, `lastMouse` in `commands.kt`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
-- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`), bookmarks (they restore translation, not zoom), and the server's `viewport` rect (still translation + window size).
+- Anything that turns a screen measurement into a world one goes through a pane: `CanvasCamera.paneAt(x, y)` for a pointer, `CanvasCamera.paneOf(element)` for a box, then `worldX`/`worldY`/`worldRect` (box drag/resize deltas still divide by `mainZoom`). Rectangles that mean "the visible canvas" are `pane.rect`, not `window.innerWidth/innerHeight`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
+- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`) and the server's `viewport` rect (still translation + window size). Bookmarks record zoom; ones saved before that keep the current zoom.
+- **Split panes** (palette: **Split Canvas Here**, **... Columns Here**, **... Rows Here** add dividers, up to two per axis; **Unlink Pane** (and **... Horizontally/Vertically**), **Relink Pane**; **Remove Canvas Split**; `canvasCamera.kt`, thumbnails in `canvasSplitPreview.kt`): each pane shows its own world band and holds the DOM of the boxes whose frame origin is in it; panes in a row share Y scroll, panes in a column share X, zoom is shared. The split is the root `panes` property, written through the marked `send("set-string", payload)` so stale echoes are dropped. Dividers move by their handles (release at the edge or double-click to remove one); the top-left grip splits. Connection, hint and arc layers draw through the bottom-right pane's camera from each box's on-screen rect, so they reach every pane. The drawing layer has one Excalidraw per pane (`syncPaneMounts` in `drawingLayer.kt`); only the main pane's shows a toolbar. A box dragged across a divider rides an unclipped drag canvas and is re-expressed in the destination pane's camera on drop (`beginBoxDrag`/`endBoxDrag`). Status and gaps are in `dev_docs/workspace/SPLIT_PANES_PLAN.md`.
+- **Frame Selected** (`alt+f`, `frameSelected` in `Main.kt`) fits the selection and its open output panels into the largest window region not covered by the editor, docs or Field panels (`FRAME_OCCLUDERS`), zooming out only as needed.
 - One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
 - The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
+
+### Canvas panels
+
+Floating panels over the canvas are built on `FieldPanel` (`src/jsMain/kotlin/afield/fieldPanel.kt`,
+`.field-panel` in `field.css`): title, status line, close, Escape, and keys/mouse-downs kept off the
+canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt+l`,
+`layersPanel.kt`) use it; build the next one on it rather than copying the macro recorder's CSS.
 
 ### FLine
 
@@ -408,8 +444,11 @@ call sequence. The prose walkthrough with captured images is
 Renderer access is graph topology. For automation: run
 `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, wait with
 `wait-native-renderer agent_graphics_context --frames 3`, create the example box, connect
-`agent_graphics_context -> example_box`, then run it. Code that starts coroutine work with
-`start(...)` resolves `val renderer: Renderer = fromContext()` first and passes it in.
+`agent_graphics_context -> example_box`, then run it. A box beneath the renderer already has
+`renderer` (the renderer box publishes `prop<Renderer>(renderer)`), so do not look it up; only code
+that starts coroutine work with `start(...)` captures it first (`val r = renderer`) and passes it in.
+`./gradlew checkBoxIdioms` (`tools/check_box_idioms.py`) flags the redundant lookup in published box
+code, and a landing runs it on what it changed.
 
 ---
 

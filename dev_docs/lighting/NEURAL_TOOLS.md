@@ -11,7 +11,7 @@ User walkthroughs and Starting Points are `ray_reconstruction`, `optical_flow`, 
 - DLSS 310.9.1, commit `374959484e79a640feaba44c93ac8cfb0a03f5b5`, NGX API 0x15.
 - RR reference sample `nvpro-samples/vk_denoise_dlssrr` at `f8113a84fa952278bb1286e7899f81b7afe8f41e`.
   Its wrapper and guide contracts were inspected; Field's own RR scene is the executed integration.
-- RTX Neural Shading SDK `f309ae68677a67060cc6ded2d0af925a3931435f`; its sample CMake fetch pins Slang 2026.10. Field now independently pins shared Slang 2026.18.3; see `ADVANCED_VULKAN.md`.
+- RTX Neural Shading SDK `f309ae68677a67060cc6ded2d0af925a3931435f`; its sample CMake fetch pins Slang 2026.10. Field now independently pins shared Slang 2026.19; see `ADVANCED_VULKAN.md`.
   `results/neural-tools/learned-build.json` records compiler/source/binary SHA-256 hashes.
 - No separate optical-flow SDK: LWJGL already exposes `VK_NV_optical_flow`.
 
@@ -332,7 +332,7 @@ raw full-path-tracer guides into the existing RR adapter, general Field-computed
 and cooperative-vector GPU training from an actual render target. These reuse the existing command,
 optional-library and frozen-weight interfaces. Their three new Starting Points are compile-only in
 portable transcript checks; explicit NVIDIA checks own capture regeneration. The shared Slang pin is
-2026.18.3; the RTXNS source/sample pin is unchanged. Ordinary docs builds keep the committed media.
+2026.19; the RTXNS source/sample pin is unchanged. Ordinary docs builds keep the committed media.
 
 ## Discontinuous stripe studies — 27 September 2026
 

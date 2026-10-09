@@ -1,6 +1,5 @@
 package afield
 
-import handleOutputAreaRequest
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.html.dom.append
@@ -1477,9 +1476,8 @@ private fun downloadTextFile(filename: String, text: String, type: String) {
 fun registerMouseBug() {
     document.addEventListener("mousemove", { event ->
         val mouseEvent = event as MouseEvent
-        val x = (mouseEvent.pageX - (mainCanvas.unsafeCast<dynamic>().data_x as Double)) / mainZoom
-        val y = (mouseEvent.pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)) / mainZoom
-        lastMouse = x to y
+        val pane = CanvasCamera.paneAt(mouseEvent.pageX, mouseEvent.pageY)
+        lastMouse = pane.worldX(mouseEvent.pageX) to pane.worldY(mouseEvent.pageY)
     })
 }
 
@@ -1931,20 +1929,7 @@ fun moveSelectedBoxesForward() {
 fun showAllLayers() {
     val layers = getAllLayers().filter { it.isNotBlank() }.toSet().ifEmpty { setOf("default") }
     setVisibleLayers(layers, animated = true, duration = 450.0)
-
-    val hostBox = selected.firstOrNull() ?: allBoxesOnCanvas().firstOrNull()
-    val hostUid = hostBox?.unsafeCast<dynamic>()?.uid as? String
-    if (hostBox != null && hostUid != null) {
-        handleOutputAreaRequest(
-            hostBox,
-            Set_output(
-                uid = hostUid,
-                property = "outputarea",
-                channel = "layers",
-                value = ""
-            )
-        )
-    }
+    showLayersPanel()
 
     notify("Showing all ${layers.size} layer${if (layers.size == 1) "" else "s"}", "command")
 }
@@ -2661,7 +2646,7 @@ fun registerBuiltinCommands() {
         },{
             id:'show-all-layers',
             label:"Show All Layers",
-            detail:"Restore visibility for every layer and reopen the layers palette",
+            detail:"Restore visibility for every layer and open the layers panel",
             run: () => {
                 showAllLayers()
             }
@@ -2766,6 +2751,22 @@ fun registerBuiltinCommands() {
             detail:"Profile box coroutines, CPU and allocations; inspect sampled classes, methods and lines",
             run: () => {
                 window.showProfilingTimeline();
+            }
+        },{
+            id:'disable-auto-displaying-editor',
+            label:"Disable Auto-displaying Editor",
+            detail:"Hide the editor and stop selection changes from opening it; remember this preference",
+            isAvailable: () => window.fieldAutoDisplayEditor !== false,
+            run: () => {
+                window.setAutoDisplayEditor(false);
+            }
+        },{
+            id:'auto-display-editor',
+            label:"Auto-display Editor",
+            detail:"Automatically show the editor when selecting a box; remember this preference",
+            isAvailable: () => window.fieldAutoDisplayEditor === false,
+            run: () => {
+                window.setAutoDisplayEditor(true);
             }
         },{
             id:'switch-to-monaco-editor',

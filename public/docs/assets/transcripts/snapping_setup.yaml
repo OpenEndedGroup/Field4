@@ -1,0 +1,22 @@
+name: snapping_setup
+description: >
+  Setup for the snapping video: two boxes in a row with a wide gap (left and right), a third
+  (mover) below them that the drive drags into alignment and then into the gap, and a fourth
+  (narrow) whose right edge the drive resizes to the mover's. The capture=ui drive does the rest.
+operations:
+  - create:
+      box: snap_left
+      name: left
+      frame: { x: 40, y: 40, w: 100, h: 50 }
+  - create:
+      box: snap_right
+      name: right
+      frame: { x: 320, y: 40, w: 100, h: 50 }
+  - create:
+      box: snap_mover
+      name: mover
+      frame: { x: 200, y: 160, w: 100, h: 50 }
+  - create:
+      box: snap_narrow
+      name: narrow
+      frame: { x: 40, y: 250, w: 70, h: 50 }

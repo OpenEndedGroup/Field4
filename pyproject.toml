@@ -21,12 +21,33 @@ docs = [
     # `plotly` are what `python-first-cell` and `python-plotly-embed` import; without them
     # both captures fail with ModuleNotFoundError on any clean checkout.
     "numpy>=1.26",
+    # `python_cv.md` runs fieldcv's detectors on sample clips, so the cv group's two libraries too
+    # (same pins, same reason as in `cv` below).
+    "opencv-contrib-python>=4.10",
+    "mediapipe>=0.10.14,<1.0",
     "pillow>=10.0.0",
     "plotly>=5.20.0",
     "pymdown-extensions>=11.0.0",
     "pyyaml>=6.0.0",
     "websockets>=15.0.0",
     "zensical>=0.0.47",
+]
+cv = [
+    # Optional computer vision for Python boxes (`python/fieldcv`). Not part of any default
+    # gate: install with `uv sync --inexact --group cv` into the venv Field's JEP is bound to.
+    "numpy>=1.26",
+    "opencv-contrib-python>=4.10",
+    # 1.0.x aborts the process on macOS (`graph_service.h: Check failed: service_`, from its Metal
+    # helper) when any landmarker is created, CPU delegate or not; inside Field that kills the JVM.
+    "mediapipe>=0.10.14,<1.0",
+]
+voice = [
+    # Optional local speech-to-text for AI4 push-to-talk (`python/fieldvoice`). Not part of any
+    # default gate: install with `uv sync --inexact --group voice` into the venv Field's JEP is
+    # bound to. mlx-whisper runs large-v3-turbo on the Apple-silicon GPU; elsewhere faster-whisper.
+    "numpy>=1.26",
+    "mlx-whisper>=0.4; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "faster-whisper>=1.1; sys_platform != 'darwin' or platform_machine != 'arm64'",
 ]
 
 [tool.uv]

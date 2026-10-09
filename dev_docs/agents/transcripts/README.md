@@ -92,6 +92,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   relaunch the workloads to compare allocation with Field's in-place linalg operations.
 
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
+- `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
+- `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
+- `orca_jam.yaml`: one ORCA with four voiced channels and `exposeTools(about = ...)`: AI4 plays it with `orca_write`/`orca_look` while it runs, and its board and tempo follow the chat (`branchState`). Compiled only, like `orca_hello`.
+- `orca_duet.yaml`: two ORCAs in one box, `lead` and `echo`, with a `frames { }` loop that copies lead's notes into echo's track and nudges lead's tune from echo's; ends with `synth + frames { }`, so launch it. Compiled only, like `orca_hello`; `OrcaHeadlessTest` runs the same exchange headless and fails if the transcript drifts from `OrcaSoundDocs`.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
@@ -101,7 +105,31 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   **launched** morph loop, matched beside unmatched; `million_pixels` matches every pixel of a
   1024 x 1024 square onto a million points in three discs and paints each pixel by its target.
   The two still boxes execute and the morph is launched for 90 frames and stopped.
+- `paint_canvas.yaml`: three pure-CPU boxes that paint and draw FLines through
+  `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
+  blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
+  without it every box says so and stops.
+- `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
+  `agentExtension` with twenty `paint.*` tools (among them named tools kept between requests, a
+  knife, a rag, spatter, and watercolour and ink on paper), canvas and craft context, `/canvas`, `/palette`, `/tools` and
+  `/gallery`, and the canvas and the kept tools as `branchState`, so a chat rewind restores both;
+  and a Scribbler box whose
+  `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
+  needs a person (or `agent-task --chat-box Studio`) and a provider.
+- `stacksl_evolve_studio.yaml`: one box that makes a StackSL search toward a picture a world for
+  AI4 — an `agentExtension` with `evolve_*` tools (step, look, propose, watchmaker, fit, configure,
+  states, crossbreed, render, guide), context on the search, `/population` and `/sheet`, and the
+  population as `branchState`, so a chat rewind rewinds the search and `evolve_crossbreed` can breed
+  with a branch left behind. The transcript only runs the box, which renders the target and nothing
+  else; searching needs a person (or `agent-task --chat-box Evolve`) and a provider.
+- `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
+  machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
+  a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
+- `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
+  IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
+- `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
+- `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
   `inertial_vs_restarting` adds a `startAt` per frame, so the restarted arm and the re-solving one
@@ -122,6 +150,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `mega_texture_wall.yaml`: a directory of images as one instanced wall, behind a *real* virtual texture — the fragment shader measures its own screen footprint from the UV derivatives, asks for that resolution through a feedback buffer, and the CPU decodes, caches and evicts to serve it. The CPU is told nothing about the scene; fly in and the 15×7 base pages are replaced by full 1920×798 source frames ahead of you, fly out and they are evicted. Each arrival fades in over the page it replaces, or over the image's mean colour if it had none (`config.crossfadeFrames`). Worth reading for the *shape* as much as the subject: the wall's geometry is arithmetic on `gl_InstanceIndex` with no vertex buffer at all, the shaders are box properties with `{{ mega.all }}` interpolated into them, and the Kotlin is five lines plus a camera. Needs a graphics parent, so run `graphics_renderer_launch.yaml` first, and point the `folder(...)` line at your own images. Flip `showResidentLevel` in the fragment shader and reload (alt-r) to watch residency directly. The library is `afield/four/texture/mega/`.
 - `afield_four_traditional_triangle.yaml`: creates a graphics child box for the stable backdoor graphics parent `agent_graphics_context` and draws a native Vulkan triangle.
 - `keyframe_autosweep.yaml`: a self-contained overnight sweep of a keyframe space — a renderer, a rig whose live state is ten `KeyframeScope` lanes, the sweep itself (twelve renders at ~8,300/hour, each a random blend of two or three saved keys, sometimes extrapolated past the hull), and a morning box that reads the archive back with no renderer at all. Every render leaves a directory holding a still, a short mp4, the blended key as ordinary key JSON, and a manifest of which keys went in at what weight. Builds its own `Window` + `Renderer`, so run it on its own rather than under `graphics_renderer_launch.yaml`. Companion page `public/docs/keyframe_autosweep.md`; the same layer with assertions on the pixels is `tools/run_field_tests.py --id keyframe.sweep.smoke`.
+- `syphon_zero_copy_receive_smoke.yaml`: macOS, either Vulkan driver. `field_syphon_probe` publishes a known pattern from another process; `SyphonClient.texture()` imports the IOSurface without a copy, a shader samples it into a RenderToTexture, and the box checks exact pixels (colour order, orientation), a re-import on a size change, and zero CPU copies. Needs `./gradlew buildSyphonNative`. Prints `syphon-zero-copy PASS`; run it with `AFIELD_VULKAN_DRIVER=moltenvk` too.
 - `iosurface_ring_roundtrip_smoke.yaml`: macOS, either Vulkan driver — both IOSurface paths end to end. `FieldRTTStreamer` renders a known colour into the real `field-encode` ring, the box checks each ring IOSurface on the CPU, then hands slot 0 to `MacExternalBrowserSurface` as a Mach port and checks the resident image. Builds its own `Window` + `Renderer`; needs `native/field-encode` built (`swift build -c release`). Prints `iosurface-ring PASS`. Run it once with `AFIELD_VULKAN_DRIVER=moltenvk` as well as on the default KosmicKrisp, since the two take different routes (`dev_docs/KOSMICKRISP.md`).
 - `linalg_thumbnails_demo.yaml`: four blank-canvas boxes that evaluate a `vec2`, `vec3`, `mat3`, and `mat4`; on execute each box's output shows the terse text head plus the inline SVG thumbnail `ValueVisualizer` draws (auto-scaled arrow for vectors, isometric for `vec3`, diverging heatmap grid for matrices).
 - `wfc_worked_example.yaml`: eight independent pure-CPU **Wave Function Collapse** boxes, one per section of `public/docs/wfc_examples.md` — hand-authored adjacency (`wfcRules { }`) with both phases pinned via `solveWithRetries`' `prepare` block, the simple-tiled model learned from a generated terrain image (printing the band histogram that shows the learned weights dropping the water bands, and the sand-boost that restores them), an eight-tile edge-socket circuit set, the overlapping model with and without the `forceTile` ground constraint, von Neumann vs Moore on diagonal stripes (473 breaks against 0), the collapse sampled through `step()` into `waveToImg` / `possibilityCountImg` frames, and both `FloatArray` paths (`sliceIntoUniqueTiles2D` / `sliceIntoOverlappingPatterns2D`) ending in iso-contour `FLine`s, and the solver's own inline `ToHTML` view of a 45%-collapsed solver beside a contradicted one (three one-pixel-per-cell panels — possibilities left, entropy in nats, tiles decided — each captioned with its colour scale). No Window, no Renderer; every box prints the numbers the docs page quotes.
@@ -181,6 +210,22 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   samples so the two estimators are always compared at the same budget. Needs a GPU.
 - `path_tracing_medium.yaml`: **shafts of light through haze**, with `mediumDensity` cycling through
   four values over fixed geometry. Needs a GPU.
+- `three_inspector_wall.yaml`: **the three.js output as an instrument** — ruler, section plane and
+  explode slider on a wall detail. Its code is `fline_examples.md`'s captured fence, held equal by
+  `ThreeInspectorDemoDriftTest` against the materialized sidecar. Promoted from
+  `public/docs/assets/three_inspector_demo/metadata.edn` on 2026-10-02.
+- `fline_hit_records.yaml`: **what a click on a figure returns** — `Box.inspect` on a wall of panels.
+  Promoted from `public/docs/assets/fline_hit_records_demo/` on 2026-10-02.
+- `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
+  samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
+  `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
+- `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
+  `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
+  under transport-time, movie-time and step sliders. Pure CPU.
+- `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
+  `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
+  fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
+  Pure CPU. Moved up from `docs_capture/` on 2026-10-02 to become a starting point.
 - `kolakoski_euclid.yaml`: **Kolakoski counts, Euclid places** — the word says how many hits a group
   gets, `bjorklund` says where inside it they sit. A flat bar of twelve onsets rolled against
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
@@ -281,6 +326,9 @@ until you do, and the classification you pick here is what it checks the page ag
 `dev_docs/agent_transcript_index.md` for the contract and for why that page is hand-written rather
 than generated.
 
+- `open_dlss_nr_cubes.yaml`: editable raster cubes/plane, optional native NR, grading and frame recorder.
+- `open_dlss_nr.yaml`: optional Linux/NVIDIA native NR image study. An editable animated ink shader feeds source / NR / graded views at 768 × 768 each. The record clip child exports 180 consecutive GPU frames; the source and grade remain usable without weights. See `public/docs/open_dlss_nr.md`.
+
 ## Starting points and the docs gallery
 
 Each transcript here is also **materialized into an openable Field document** so it can surface as a
@@ -310,6 +358,11 @@ not offer an `Open ↗` link, and should say in prose why it is agent-only; the 
 directions.
 
 ## Growth Rules
+
+`loris_partial_explorer.yaml` contains complete async analysis/edit/resynthesis boxes and a
+two-resolution comparison. It needs the opt-in `./gradlew buildLorisNative` executable, uses
+committed public-domain film dialogue, and requires neither an audio device nor the ML server.
+CI compiles its boxes without building/downloading Loris; native validation is separate.
 
 Keep examples small and agent-useful:
 

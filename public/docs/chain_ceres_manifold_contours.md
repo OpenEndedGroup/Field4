@@ -1,25 +1,28 @@
 # A polytope, canonicalised, and sliced into layers
 
-Three parts of Field, one object, and none of the three knows the other two exist.
-`afield.stdlib.polytope` holds the Conway operator algebra, the canonicalisation iteration and a
-second-order realizer over Ceres. `afield.manifold` does exact geometry on closed solids over
-Manifold's C ABI. `Solid.slice` is the single call that crosses from 3D down to 2D, and a stack of
-those is a print.
+This page builds a polytope from Conway notation, makes it canonical, turns it into a closed solid,
+and slices it into the layers a 3D printer would print. `afield.stdlib.polytope` holds the Conway
+operator algebra and the two ways of making a form canonical (an iteration, and a solver built on
+Ceres). `afield.manifold` does exact geometry on closed solids. `Solid.slice` cuts a solid with a
+plane and returns the 2D contours.
 
-[A polytope, cut open, and traced](chain_polytope_render.md) is this page's sibling: it branches off
-the same trunk one stage later and ends in pixels. This one ends in contours, which are harder to
-fake, because a contour has an area and the areas have to add up.
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/stack.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="layer_stack_trace study converged" embed=true hidden=true timeout="300" requires="manifold" name="elsewhere-layer_stack_trace" alt="Forty-eight extruded slices of canonical `gC`, scaled to volume one. Colour follows height; the small gaps make the individual layers visible." macro-file="../../dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml" capture-box="layer_stack_trace" capture-profile="linux-nvidia"}
+// Built and launched from dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml.
+```
 
-The question the page is here to answer is whether canonicalising a polytope changes the layers you
-would print. It does — by up to 99.8% on a single layer, while moving no contour into or out of
-existence. **The layer stack is also a check on the first stage of the chain**, and it catches
-something the realizer's own diagnostics report as a success.
+Forty-eight extruded slices of canonical `gC`, scaled to volume one. Colour follows height; the small gaps make the individual layers visible.
+
+Canonicalising a polytope can change its layers a great deal while leaving the number of contours
+on each layer alone. The layer stack also checks the polytope itself: its areas have to add up to
+the solid's volume, and when they do not, the surface passes through itself.
+
+[A polytope, cut open, and traced](chain_polytope_render.md) starts from the same polytopes and ends
+in a path-traced picture instead.
 
 ## Cutting exactly on a face, a vertex, or the top
 
-Before any of that, the case a slicer hits on every part with a flat top. What does `slice` return
-when the cutting plane is exactly a face plane, exactly a vertex, exactly the top of the bounding
-box?
+A slicer meets this case on every part with a flat top. This box asks what `slice` returns when the
+cutting plane is exactly a face plane, exactly a vertex, or exactly the top of the bounding box.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/degenerate.png" wait="8" capture="box" open-outputs="true" w="1100" h="560" padding="16" timeout="180" name="chain-contours-degenerate" requires="manifold" alt="A thirteen-row table of cuts: each named cut with its z to nine decimals, the area the slice returned, and how many contours it had" embed=true}
 :::static
@@ -80,20 +83,15 @@ Solid.scope {
 markdown("cuts", Table(listOf("the cut", "z", "area", "contours")).rows(rows).h, width = 1040)
 ```
 
-The rule those thirteen cuts agree on:
+The cuts all follow one rule:
 
 > `slice(z)` returns the cross-section of the material **at and above** `z`. A face lying in the
 > cutting plane counts when the solid is above it and does not count when the solid is below it.
 
-That is half-open in z, and the half is not the one most readers would guess. A cube spanning
-`[−1, 1]` hands back its whole bottom face at `z = −1` and **nothing** at `z = +1`, though the face
-it declined to return also has area 4; one part in a billion lower and the 4 is back. The step is
-the cleanest statement of it: at `z = 0.999999` the cut is the slab's `16.0`, and at `z = 1.0`
-exactly it is the block's `4.0` — the slab, entirely below the plane, has stopped contributing.
-
-The two touching cubes are the check rather than another example. The rule predicts, before running,
-that exactly one of the two squares answers and that it is the upper one; the capture reads area
-`1.0000` centred at `x = 1.0000`, on a geometry that shares nothing with the cube the rule came from.
+So a cube spanning `[−1, 1]` returns its whole bottom face at `z = −1` and nothing at `z = +1`. Cut
+a hair below the top and the top face is back. On the step, a cut just below `z = 1` returns the
+wide slab, and a cut at exactly `z = 1` returns only the narrow block above it. Two cubes stacked
+corner to corner return only the upper one's square at the plane where they touch.
 
 Zero-area contacts return nothing: a cone cut through its apex, and a tetrahedron cut on either of
 its two horizontal edges. A point and a segment have no area, so there is no region to hand back.
@@ -110,16 +108,15 @@ its two horizontal edges. A point and a segment have no area, so there is no reg
 `canonicalize()` seeks the representative with every edge tangent to one common sphere, the centroid
 of those tangency points at the origin, and every face planar
 ([Polytopes & the Conway Algebra](polytope_examples.md) has the guarantees). Getting there involves
-a **gauge**: the mean tangency radius is driven to one. So the canonical form comes out at a scale
-the raw per-operator realization never had, and comparing their slice areas as they arrive measures
-that normalisation rather than the shape.
+a fixed scale: the mean tangency radius is driven to one. So the canonical form comes out at a
+different size from the raw form, and comparing their slices as they are would mostly compare sizes.
 
-The fix is the one a print farm would use anyway. Scale each form to **enclosed volume exactly 1**
-and translate it so `z = 0` is its lowest point: the same amount of material, sitting on the bed.
+So the box scales each form to enclosed volume exactly 1 and moves it so `z = 0` is its lowest
+point: the same amount of material, sitting on the print bed.
 
-Orientation is the second confound, and it is measured rather than argued away. Vertex indexing
-survives canonicalisation, so the angle each vertex's direction from the centroid turns through is
-a per-vertex number, and the largest of them says whether one z-ladder cuts both forms comparably.
+Orientation matters too. Vertex indexing survives canonicalisation, so the box measures how far each
+vertex's direction from the centroid turns. If the largest turn is small, one set of cutting planes
+cuts both forms comparably.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/gyro.png" wait="14" capture="box" open-outputs="true" w="1240" h="980" padding="16" timeout="360" name="chain-contours-gyro" requires="manifold" alt="Two plan views of a 48-layer stack seen from overhead: on the left one orange square, because all of raw gC's layers are the same square; on the right the canonical form's forty-eight nested rings twisting from cyan at the bed to orange at the top. Below them a table of the four forms and a plot of layer area against height, in which gC raw is a flat line at 1 and the other three are domes peaking near 1.25" embed=true}
 :::static
@@ -290,45 +287,37 @@ showSignals(
 )
 ```
 
-The left panel is a single square, forty-eight times. That is not a drawing error.
+In the left panel every layer of raw `gC` is the same square. Gyro applied to the cube adds new
+vertices, but before canonicalisation every one of them lies on the cube's own surface, so the solid
+that comes out is still a unit cube. The new faces are there in the topology and not yet in the
+shape.
 
-**`gC`'s raw realization is a cube, exactly.** Gyro applied to the cube adds 6 face-centre vertices
-and 2 per edge to the cube's 8, giving the 38 vertices of the pentagonal icositetrahedron's
-combinatorics — and every one of those new vertices lands *on the cube's own surface*. So the solid
-that comes out of the operator has surface `6.000000` at volume 1, height `1.000000`, and all
-forty-eight layer areas equal to `1.000000`. The gyro is real, and until you canonicalise it is
-entirely combinatorial.
+Canonicalised, the same topology becomes the pentagonal icositetrahedron: taller, with less surface
+at the same volume, and with layers that start almost at zero area on the bed and swell in the
+middle. `gD` changes less, but its layers still differ noticeably.
 
-Canonicalised, the same topology is the pentagonal icositetrahedron: `1.394283` tall, surface
-`5.060666` at the same volume, and layers running from `0.002203` at the bed through `1.257946` and
-back down. The worst per-layer area disagreement is 99.8%. `gD` is the less theatrical case and
-still disagrees by 44.4% at its worst layer.
+The table shows two more things:
 
-Two things the table says that the picture does not:
+* **The number of contours does not change.** Both forms of each polytope have one island per
+  layer and no holes. Canonicalisation moves every contour and splits none, so the questions a
+  slicer cares most about (how many islands, does this layer need support) get the same answers.
+* **Canonicalisation rounds the form.** At equal volume the canonical forms have less surface than
+  the raw ones, and the canonical `gD` comes within a few percent of a sphere, which no solid can
+  beat.
 
-* **The layer *topology* is untouched.** Both forms of `gC` give 48 contours over 48 layers, 48
-  islands, no holes; `gD` likewise. Canonicalisation moved every contour and split none of them.
-  A slicer's hardest questions — how many islands, does this layer need support — get the same
-  answers from both.
-* **The surface ratio is an isoperimetric reading with no free parameter.** At equal volume the
-  canonical `gC` has `0.843444` of the raw one's surface, and the canonical `gD` reaches
-  `4.926473` against the `4.835976` of a unit-volume sphere: 1.87% above the bound that no solid
-  beats. Canonicalisation is, among other things, a rounding.
-
-The vertex turns — at most `9.581°` for `gC` and `5.388°` for `gD` — are why the layer comparison is
-allowed. Had they been large, the two stacks would have been cut along different axes and every
-difference above would have been a rotation wearing a shape's clothes.
+The vertex turns are small for both polytopes, so the two stacks are cut along nearly the same axis
+and the differences in the plot come from the shape, not from a rotation.
 
 ## `kkC`, and the solver that reaches it
 
 A midpoint Riemann sum over the layer areas has to return the volume the layers came from, and the
 two numbers share no code: the area integral works on regions in 2D, Manifold's `volume` on the
-surface in 3D. So a stack that sums to the right volume is telling you something about the form it
-was cut from, not just about the slicer.
+surface in 3D. When the sum comes out wrong, the fault is in the solid, not the slicer.
 
-Every form above sums correctly. `kkC` — kis applied twice to the cube — does not. It is the input
-`dev_docs/POLYTOPE_ALGEBRA.md` has on record as the one neither iteration in `canonicalize()`
-solves, and reaching it needs the other solver: `relaxWithCeres` gets there in twelve iterations.
+Every form above sums correctly. `kkC` (kis applied twice to the cube) is a polytope that
+`canonicalize()` cannot make canonical, and
+[Polytopes & the Conway Algebra](polytope_examples.md) uses it as its counter-example. The Ceres
+solver, `relaxWithCeres`, does reach a canonical form. This box tries both and slices each result.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
 :::static
@@ -430,55 +419,38 @@ showSignals(
 )
 ```
 
-The middle row fails outright. `canonicalize()` takes `kkC`'s signed volume of `+26.3032` to
-**`−254.0791`**, having moved vertex directions by up to `151.6°` on the way.
-Manifold reports `NO_ERROR` and genus 0 throughout — a self-intersecting surface is still a
-combinatorial manifold, and `status` is not asked to notice. The sign is enough to refuse it, and
-this page refuses it rather than taking a cube root of a negative number and getting a mirrored
-solid that looks plausible.
+In the middle row, `canonicalize()` turns `kkC` inside out: its signed volume goes negative.
+Manifold still reports `NO_ERROR` and genus 0, because a surface that passes through itself can
+still be a valid manifold as far as `status` is concerned. A negative volume is reason enough to
+refuse the result, so the box does.
 
-In the bottom row, `relaxWithCeres(RelaxationPlan.canonicalConditions())` reaches
-a tangency-radius spread of `2.682e-08` in 12 iterations and about 5 ms on
-`SPARSE_NORMAL_CHOLESKY`, and comes back with signed volume `+12.4853`, `NO_ERROR`, genus 0.
-**Every canonical diagnostic reports a success.** Its layer stack does not agree.
+In the bottom row, `relaxWithCeres(RelaxationPlan.canonicalConditions())` converges in a few
+milliseconds and returns a positive volume, `NO_ERROR` and genus 0. Every canonical diagnostic
+reports success, but the layer stack does not agree:
 
-* The Riemann sum settles at **`0.90029`** and stays there — `0.88300`, `0.89592`, `0.89935`,
-  `0.90006`, `0.90023`, `0.90028`, `0.90029` across 12 to 768 layers. A sum that is short because
-  the layers are too coarse keeps climbing; this one converges to the wrong number, so the layer
-  height is not the explanation. (`kkC` as built converges the other way, `0.99150` to `1.00000`
-  over the same sweep, which is the control that the sweep works.)
-* `FillRule.POSITIVE` and `FillRule.EVEN_ODD` disagree on **130 of 192 layers**, for an implied
-  overlapped volume of **`0.049855`**. On every other form on this page — `gC` and `gD`, raw and
-  canonical, and `kkC` as built — they disagree on **0 of 192** and the overlap is exactly
-  `0.000000`.
-* And **`1 − 2(0.049855) = 0.90029`**, which is the plateau, to five decimal places, from a second
-  measurement that shares no code with the first.
+* The Riemann sum levels off below 1 and stays there as the layers get thinner. A sum that is short
+  only because the layers are coarse keeps climbing, as `kkC` as built does in the same plot.
+* `FillRule.POSITIVE` and `FillRule.EVEN_ODD` disagree on most of the layers. On every other form on
+  this page they agree on every layer.
+* The overlap the fill rules imply accounts exactly for the missing volume.
 
-So the surface passes through itself. `volume` integrates the boundary and counts the overlapped
-region twice; the slicer resolves each layer into a region and counts it once; the gap between them
-is exactly twice the overlap, which is what the arithmetic above says and what the two independent
-numbers confirm.
+So the surface passes through itself. `volume` integrates over the boundary and counts the
+overlapping region twice; the slicer resolves each layer into a region and counts it once. The
+`riemann` and `overlap` lines in the box are a self-intersection test you can run on any solid,
+which the canonical diagnostics do not include.
 
-`dev_docs/POLYTOPE_ALGEBRA.md` lists this as an open item, in these words: *`CanonicalDiagnostics`
-reports tangency, planarity, centring and dihedral spread; it does not detect a face passing through
-another face. Adding it would let `canonicalize` distinguish "did not converge" from "converged to
-something self-intersecting", which is currently the reader's job.* That paragraph is what this
-section is: a detector for it, assembled out of the slicer, in the two lines `riemann` and `overlap`
-above. It costs a few hundred `slice` calls on a 72-triangle solid.
+!!! note "A Boolean will not find the crossings for you"
 
-??? aside "A Boolean will not find the crossings for you"
-
-    Intersecting the solid with a box that already contains it returns `1.000000` — the same signed
-    volume it went in with, not the smaller re-meshed body a resolved self-intersection would give.
-    Manifold's Boolean takes its input's manifoldness as given and does not resolve crossings, so
-    the identity Boolean reports nothing. The fill-rule comparison is the route that works.
+    Intersecting the solid with a box that already contains it returns the same volume it went in
+    with. Manifold's Booleans assume their input does not intersect itself and do not resolve
+    crossings. Compare fill rules instead.
 
 ## What crosses each hop
 
 | hop | the call | what crosses | what stops here |
 | --- | --- | --- | --- |
 | notation to topology | [`conway`](reference/polytopes.md) | the ranked incidence structure, a realization from the operator's own policy, and the lineage | nothing; this hop only adds |
-| realization to realization | [`canonicalize`](reference/polytopes.md) / [`relaxWithCeres`](reference/polytopes.md) | the same vertex indexing, so a per-vertex before/after comparison is meaningful | the scale and the centring, both replaced by the canonical gauge — which is why every form here is re-gauged to volume 1 before anything is compared |
+| realization to realization | [`canonicalize`](reference/polytopes.md) / [`relaxWithCeres`](reference/polytopes.md) | the same vertex indexing, so a per-vertex before/after comparison is meaningful | the scale and the centring, both replaced by the canonical scale, which is why every form here is rescaled to volume 1 before anything is compared |
 | topology to triangles | [`triangulate`](reference/polytopes.md) | positions, indices, and a map from each triangle back to its polygon | shared corners: each polygon is cut on its own, so `weld` comes next or the surface has no edges |
 | triangles to a solid | [`toSolid`](manifold.md#the-bridges-both-ways) | positions and indices | every attribute, and any guarantee about self-intersection — `status` checks that the indices describe a manifold, not that the surface avoids itself |
 | a solid to a contour | [`slice`](manifold.md#back-down-to-2d-slicing) | a `Section`: contours wound so holes are negative, with an area, a count and `decompose()` | the third dimension, and any material strictly below the cutting plane, including a coplanar face the solid sits on top of |
@@ -492,6 +464,5 @@ above. It costs a few hundred `slice` calls on a 72-triangle solid.
   model.
 * [A polytope, cut open, and traced](chain_polytope_render.md) is the sibling chain: the same first
   two hops, then Booleans and a path tracer instead of a slicer.
-* `src/jvmMain/kotlin/afield/examples/manifold/PolytopeLayerContours.kt` is the whole measurement as
-  one runnable smoke — `FIELD_TEST` id `manifold.polytope.contours`, 37 checks, and it skips
-  cleanly when Manifold or the Ceres wrapper is not installed.
+* [`PolytopeLayerContours.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/manifold/PolytopeLayerContours.kt)
+  runs everything on this page as a single program.

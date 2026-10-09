@@ -1,0 +1,34 @@
+name: keyframe_two_lanes
+description: >
+  The two-curves example from `public/docs/keyframe_editor.md` (x and y editors moving an XY pad),
+  launched, for the video of linked lanes: a time cursor across both, a zoom and a pan in one that
+  the other follows, and Frame curve.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: kf_lanes
+      name: lanes
+      frame: { x: 40.0, y: 30.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          val x = keyframes(name = "x", defaults = listOf(vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)))
+          val y = keyframes(name = "y", defaults = listOf(vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)))
+
+          lateinit var spot: ControlValueHandle<Vector2f>
+          controlGroup("spot") { spot = vec2Control("spot") { } }
+          displayOpen("spot")
+
+          val start = System.nanoTime()
+          loop {
+              val t = ((System.nanoTime() - start) / 1e9) % 3.0
+              x.setTime(t)
+              y.setTime(t)
+              spot.set(Vector2f(x.evaluateValueAt(t).toFloat(), y.evaluateValueAt(t).toFloat()))
+          }
+  - launch: { box: kf_lanes }
+  # Before the recording starts: time for a cold compile and both editors to receive their keys.
+  - wait:
+      millis: 12000

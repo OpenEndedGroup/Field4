@@ -160,8 +160,11 @@ MoltenVK-only and refuses on KosmicKrisp by name; nothing in Field uses the expo
 
 ## Still to do
 
-1. **IOSurface zero-copy on KosmicKrisp.** Today it is one GPU copy per frame, since
-   `MTLTEXTURE` import is not offered. Revisit if a later KosmicKrisp adds it, or `VK_EXT_metal_objects`.
+1. **IOSurface zero-copy on KosmicKrisp.** The streamer and browser paths still make one GPU copy per
+   frame. For *sampling*, KosmicKrisp accepts host memory under a LINEAR `VkImage`
+   (`VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT`, B8G8R8A8_SRGB, SAMPLED), with a row pitch
+   that matched Syphon's IOSurfaces. `afield.syphon.SyphonTexture` (HOST_LINEAR_IMAGE) samples an IOSurface that way
+   with no copy (2026-10-03). The browser surface could do the same.
 2. **Wireframe.** No `fillModeNonSolid`: `fillMode = LINE` would fail at pipeline creation. Marc
    does not use it (lines are drawn as a line *topology*, which KosmicKrisp supports), so this is
    only a clearer error, not a fallback.

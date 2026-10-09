@@ -47,7 +47,10 @@ internal class DocumentGuideFiles(root: File) {
                 require(target.length() <= MAX_BYTES)
                 val title = target.bufferedReader().use { headingTitle(it.lineSequence()) }
                     ?: file.nameWithoutExtension.replace('_', ' ')
-                DocumentGuideEntry(path, title)
+                // Older Fields seeded this README into every workspace. It describes the on-disk
+                // format for agents (now in AGENTS.md); listing it made it read as the document's docs.
+                if (path.equals("README.md", true) && title == SEEDED_WORKSPACE_README_TITLE) null
+                else DocumentGuideEntry(path, title)
             }.getOrNull()
         }.sortedWith(compareBy<DocumentGuideEntry> { !it.path.equals("README.md", true) }.thenBy { it.path.lowercase() })
             .take(128).toList()
@@ -152,6 +155,9 @@ internal class DocumentGuideFiles(root: File) {
 
     companion object {
         private val writeLock = Any()
+        /** The heading of the `README.md` older Fields seeded into every workspace they opened. */
+        internal const val SEEDED_WORKSPACE_README_TITLE = "A Field workspace"
+
         internal fun isGuideName(name: String): Boolean =
             name.substringAfterLast('.', "").lowercase() in setOf("md", "markdown") &&
                 !name.startsWith('.') && !name.substringBeforeLast('.').endsWith('_') &&
@@ -199,7 +205,12 @@ internal class DocumentGuideNotes(private val boxes: Collection<Box>) {
 @RunsAt(installHandlers)
 fun documentGuideHandlers() {
     handlers["document-guide"] = mutableSetOf({ message, reply ->
-        val info = thisSessionInfo.get()
+        // A reconnecting page polls for guides before its session is re-established; answer so it retries.
+        val info: SessionInformation? = thisSessionInfo.get()
+        if (info == null) {
+            reply(Message(message.replyTo ?: "document-guide").payload(DocumentGuideResponse(ok = false, error = "This page has no document session yet")))
+            return@mutableSetOf Handled.yes
+        }
         val readOnly = ReadOnlyDocuments.blocksWritesFromCurrentSession()
         val result = try {
             val request = Json.decodeFromJsonElement<DocumentGuideRequest>(message.payload!!)

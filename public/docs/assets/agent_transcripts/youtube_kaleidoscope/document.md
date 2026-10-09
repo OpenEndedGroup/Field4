@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. kaleidoscope window + renderer
@@ -42,18 +42,16 @@ start(renderer::run)
 <!-- field-box id="youtube_kaleidoscope_shards" index="1" -->
 
 ```edn [field-box id="youtube_kaleidoscope_shards" role="properties"]
-{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 104 "characters" 3983 "sha256" "cd0aeac7cfef58e9aa0943e30e88196dfc393808cc5e539efa6c01ef15ad4ac1"}]}
+{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 102 "characters" 3905 "sha256" "dbac69b1bb401758d5be07d83bee568631bffc837f55aee4ded8d2a152a65c94"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_shards" name="code" path="youtube_kaleidoscope_shards_code_.kt"]
 import afield.four.Target
 import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowserKaleidoscope
-import afield.four.modules.fromContext
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-val renderer: Renderer = fromContext()
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(

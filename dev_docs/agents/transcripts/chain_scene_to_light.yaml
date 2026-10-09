@@ -1,0 +1,109 @@
+name: chain_scene_to_light
+description: >
+  A RectSL scene on a light rig, with no lighting hardware: the rig's universes go out as sACN over
+  UDP to this machine and come back. Launch box 1: it draws a RectSL scene on the CPU, shrinks it to
+  one pixel per fixture, maps it onto a 16 x 8 grid of RGB pixels and four RGBWA washes, and sends it
+  on the sender's 44 Hz clock, drawing the look it sends. Launch box 2: Field as an sACN node on the
+  same port (35690, fixed so the two agree), drawing the rig lit by what arrived and universe 1 in
+  wire order. Run box 3 to repeat the page's measurements: a round trip of nine frames, and a thin
+  line sampled two ways. Edit the scene in box 1 and launch it again; box 2 follows.
+
+  Companion to public/docs/chain_scene_to_light.md. CI compiles the boxes but does not launch them:
+  they open UDP sockets and run until stopped.
+operations:
+  - create:
+      box: scene_sender
+      name: "1. Scene on the rig: RectSL to sACN (launch)"
+      frame: { x: 60.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.dmx.*
+          import afield.rectsl.*
+
+          // A RectSL scene, drawn on the CPU, on a light rig. Edit the scene and launch again: the receiver
+          // box shows what arrives. (Try the line's width, 0.25 ->wh below, or area = false further down.)
+          val scene = RectSLImager("""
+          #rectsl
+          ->wall 16 8 abstract
+          ->background 0x0c1024
+          ->duration 4
+          ->fps 30
+
+          "sun" rect
+            4 4 ->wh
+            0xff7a1a solid ->fill
+            '( 0=-5  2=5  4=-5 ) ->x
+            '( 0=0  4=3.14159 ) ->rot
+          ;
+
+          "band" rect
+            16 1.5 ->wh
+            0 -3.25 ->xy
+            0x2a9df4 solid ->fill
+            '( 0=0.15  2=1  4=0.15 ) ->alpha
+          ;
+
+          "sweep" rect
+            0.25 8 ->wh
+            0xffffff solid ->fill
+            '( 0=-8  4=8 ) linear ->x
+          ;
+          """)
+
+          // 16 x 8 RGB pixels in universe 1 and four RGBWA washes in universe 2: one fixture per wall unit.
+          val rig = SceneOnARig.Rig()
+
+          // sACN, unicast to this machine. The port is fixed at 35690 on purpose, so that box 2 can listen on
+          // the same number without the two boxes having to find each other; change both if it is taken.
+          val out = sacnOut("127.0.0.1", port = 35690)
+
+          // On the sender's own 44 Hz clock: draw the scene at t, shrink it to one pixel per fixture
+          // (area averaging), colour the fixtures, send. area = false samples the full frame at each
+          // fixture instead, and the thin line flickers as it crosses the rig.
+          rig.patch.animate(out) { t ->
+              rig.show(scene.frame(t % scene.duration, 256, 128), area = true)
+          }
+
+          // The look that is being sent, in the rig's layout, redrawn ten times a second.
+          loop {
+              showPatch(rig.patch, channel = "sent", w = 480.0, h = 300.0)
+              delay(100)
+          }
+  - create:
+      box: rig_receiver
+      name: "2. Receiver: the rig lit by what arrived (launch)"
+      frame: { x: 1120.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.dmx.*
+
+          // Field as an sACN node on the sender's port (35690, fixed so the two boxes agree; change both
+          // together). It knows where the fixtures are (the same layout),
+          // and nothing else: every colour drawn here was decoded from the universes that arrived.
+          val node = sacnIn(port = 35690)
+          val layout = SceneOnARig.Rig()
+
+          // Redrawn ten times a second: the rig lit by what arrived, then universe 1 in wire order
+          // (128 RGB pixels, then the unused slots).
+          loop {
+              showReceived(layout.patch, node, channel = "received", w = 480.0, h = 300.0)
+              showUniverse(node, 1, cols = 16, w = 480.0, h = 300.0)
+              delay(100)
+          }
+  - create:
+      box: rig_measure
+      name: "3. Measure: round trip and aliasing (run)"
+      frame: { x: 60.0, y: 560.0, w: 380.0, h: 70.0 }
+      properties:
+        code: |
+          import afield.dmx.*
+
+          // The page's measurements, on this machine: nine frames sent and received back on a free port the
+          // system picks (so this can run beside boxes 1 and 2), and a thin line swept across the rig,
+          // sampled two ways.
+          val trip = SceneOnARig.roundTrip()
+          println(trip)
+
+          val (point, area) = SceneOnARig.aliasing()
+          println("point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${"%.2f".format(point.min)}..${"%.2f".format(point.max)}")
+          println("area average:  dark in ${area.darkFrames} frames, light on the rig ${"%.3f".format(area.min)}..${"%.3f".format(area.max)} (the line is worth ${SceneOnARig.LINE_TRUTH})")

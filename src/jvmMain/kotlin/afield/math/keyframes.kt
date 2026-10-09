@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.lprintln
 import afield.stdlib.Vec2
 import afield.stdlib.Functions.Fn
 import io.ktor.websocket.*
@@ -35,8 +36,11 @@ class KeyframeEvaluator(jsonString: String) {
     var associatedBoxId: String? = null
     var associatedName: String? = null
 
+    // The box itself, so an edit arriving on the editor's websocket — where no session is current —
+    // can still be written back to it.
+    @Volatile internal var associatedBox: Box? = null
+
     private var keyframes: List<Keyframe>
-    private var cachedSamples: List<Sample>? = null
 
     fun isEmpty(): Boolean = keyframes.isEmpty()
 
@@ -48,19 +52,84 @@ class KeyframeEvaluator(jsonString: String) {
     fun set(jsonString: String) {
         val json = Json { ignoreUnknownKeys = true }
         keyframes = json.decodeFromString<List<Keyframe>>(jsonString).sortedBy { it.time }
-        cachedSamples = null
     }
 
+    // The playhead and overlays a box last asked for. The editor may not have connected yet, and it
+    // reconnects whenever its output panel is redrawn, so these are replayed on every hello rather
+    // than sent once and lost.
+    @Volatile private var playhead: Double? = null
+    private val overlays = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun sendIfLive(message: String) {
+        if (!hasLiveSession) return
+        inMain {
+            session.send(message)
+        }
+    }
+
+    /** Moves the editor's playhead to [t]: an orange line, and a dot where it crosses the curve. */
     fun setTime(t: Double) {
-        inMain {
-            session.send("""{"type":"playhead", "time":${t}}""")
+        if (playhead == t) return
+        playhead = t
+        sendIfLive("""{"type":"playhead", "time":${t}}""")
+    }
+
+    /** Sends the current keys to the editor, with this box's custom key types and their segments. */
+    fun send() {
+        sendIfLive("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}, "types":${customTypesJson()}, "segments":${customSegmentsJson()}}""")
+    }
+
+    /**
+     * The shapes of the custom segments for [keysJson], keys being dragged that are not this
+     * evaluator's yet: computed on a throwaway copy, so nothing is saved and nothing else changes.
+     */
+    internal fun sendPreviewSegments(keysJson: String) {
+        val preview = KeyframeEvaluator(keysJson).also { it.associatedBox = associatedBox }
+        sendIfLive("""{"type":"segments", "segments":${preview.customSegmentsJson()}}""")
+    }
+
+    /** Sends only the shapes of the custom segments, after an edit in the editor changed the keys. */
+    internal fun sendCustomSegments() {
+        if (keyframes.zipWithNext().none { (a, _) -> segmentKind(a.type) == "custom" }) return
+        sendIfLive("""{"type":"segments", "segments":${customSegmentsJson()}}""")
+    }
+
+    // Every type beyond the built-in five — the library's, then this box's — with where it sits in
+    // the menu and a small drawing of it (0 to 1 across, 0 to 1 up), between made-up neighbours.
+    private fun customTypesJson(): String {
+        val types = libraryInterpolants.values + interpolantsFor(associatedBox).values
+        return types.joinToString(",", "[", "]") { it ->
+            val icon = (0..24).joinToString(",", "[", "]") { i ->
+                val u = i / 24.0
+                val v = it.evaluate(KeySegment(u, u, 0.0, 1.0, 0.0, 1.0, ICON_BEFORE, ICON_AFTER))
+                "[${fmt(u)},${fmt(v)}]"
+            }
+            val e = it.entry
+            val meta = if (e == null) """"label":${Json.encodeToString(it.name)},"group":"This box""""
+            else """"label":${Json.encodeToString(e.label)},"group":${Json.encodeToString(e.group)}""" +
+                (e.family?.let { f -> ""","family":${Json.encodeToString(f)},"variant":${Json.encodeToString(e.variant)}""" } ?: "")
+            """{"name":${Json.encodeToString(it.name)},$meta,"icon":$icon}"""
         }
     }
 
-    fun send() {
-        inMain {
-            session.send("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}}""")
+    // The shape of every custom segment, sampled, so the editor (which cannot run Kotlin) can draw it.
+    private fun customSegmentsJson(): String = keyframes.zipWithNext()
+        .filter { (a, _) -> segmentKind(a.type) == "custom" }
+        .joinToString(",", "[", "]") { (a, b) ->
+            val pts = (0..64).joinToString(",", "[", "]") { i ->
+                val time = a.time + (b.time - a.time) * i / 64.0
+                "[${fmt(time)},${fmt(customValue(a, b, time))}]"
+            }
+            """{"t0":${fmt(a.time)},"v0":${fmt(a.value)},"t1":${fmt(b.time)},"v1":${fmt(b.value)},"type":${Json.encodeToString(a.type)},"samples":$pts}"""
         }
+
+    private fun fmt(d: Double): String = if (d.isFinite()) d.toString() else "0.0"
+
+    /** Everything the editor should show on (re)connecting: keys, overlays, playhead. */
+    internal fun sendAll() {
+        send()
+        overlays.values.forEach(::sendIfLive)
+        playhead?.let { sendIfLive("""{"type":"playhead", "time":${it}}""") }
     }
 
     /**
@@ -69,46 +138,49 @@ class KeyframeEvaluator(jsonString: String) {
      * @return The interpolated value at the given time
      */
     fun evaluateValueAt(time: Double): Double {
-        if (cachedSamples == null) {
-            cachedSamples = sampleCurve(stepsPerSegment = 96)
+        val keys = keyframes
+        if (keys.isEmpty()) return 0.0
+        if (time <= keys.first().time) return keys.first().value
+        if (time >= keys.last().time) return keys.last().value
+        val (prev, next) = segmentAt(keys, time)
+        return segmentValue(prev, next, time)
+    }
+
+    // The value at [time] of the segment from [prev] to [next].
+    private fun segmentValue(prev: Keyframe, next: Keyframe, time: Double): Double = when (segmentKind(prev.type)) {
+        "hold" -> prev.value
+        "linear" -> {
+            val span = next.time - prev.time
+            if (span < EPSILON) next.value else prev.value + (next.value - prev.value) * (time - prev.time) / span
         }
-
-        val samples = cachedSamples ?: return 0.0
-
-        if (samples.isEmpty()) return 0.0
-        if (time <= samples.first().time) return samples.first().value
-
-        val last = samples.last()
-        if (time >= last.time) return last.value
-
-        // Binary search for the sample
-        var low = 0
-        var high = samples.size - 1
-
-        while (low <= high) {
-            val mid = (low + high) / 2
-            val sample = samples[mid]
-
-            if (abs(sample.time - time) < EPSILON) {
-                return sample.value
-            }
-
-            if (sample.time < time) {
-                low = mid + 1
-            } else {
-                high = mid - 1
-            }
+        "custom" -> customValue(prev, next, time)
+        else -> {
+            val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
+            rationalBezierPoint(controls, solveBezierParameter(controls, time)).y
         }
+    }
 
-        // Interpolate between samples
-        val left = max(0, high)
-        val right = min(samples.size - 1, low)
-        val segment = samples[right].time - samples[left].time
+    // The two keys either side of [time], which lies strictly inside the keys' range.
+    private fun segmentAt(keys: List<Keyframe>, time: Double): Pair<Keyframe, Keyframe> {
+        var lo = 0
+        var hi = keys.size - 1
+        while (hi - lo > 1) {
+            val mid = (lo + hi) / 2
+            if (keys[mid].time <= time) lo = mid else hi = mid
+        }
+        return keys[lo] to keys[hi]
+    }
 
-        if (segment < EPSILON) return samples[left].value
-
-        val t = (time - samples[left].time) / segment
-        return samples[left].value + (samples[right].value - samples[left].value) * t
+    // The curve parameter at which a bezier segment reaches [time]. Its control points' times are
+    // kept in order, so time rises monotonically along the segment and bisection converges.
+    private fun solveBezierParameter(controls: BezierControls, time: Double): Double {
+        var lo = 0.0
+        var hi = 1.0
+        repeat(52) {
+            val mid = (lo + hi) / 2
+            if (rationalBezierPoint(controls, mid).x < time) lo = mid else hi = mid
+        }
+        return (lo + hi) / 2
     }
 
     /**
@@ -150,7 +222,8 @@ class KeyframeEvaluator(jsonString: String) {
     /**
      * Callback invoked whenever the keyframe data changes (e.g. user edits in the UI).
      * Receives the updated list of [Keyframe]s.
-     * If it returns an [Fn], that function is displayed as an overlay on the editor.
+     * If it returns an [Fn], that function replaces the editor's overlay (the one [setOverlay] draws
+     * with its default id).
      * Return `null` to leave the overlay unchanged, or clear it explicitly with [clearOverlay].
      */
     var onChange: ((List<Keyframe>) -> Fn?)? = null
@@ -158,55 +231,104 @@ class KeyframeEvaluator(jsonString: String) {
     // ── Derivative ───────────────────────────────────────────────────
 
     /**
-     * Evaluates the numerical derivative (rate of change) of the curve at the given time.
+     * The rate of change of the curve at [time], in value per unit of time: exact, from the shape of
+     * the segment [time] falls in. Zero outside the keys and along a hold. At a key it is the slope
+     * of the segment leaving it (arriving, at the last key).
      *
-     * Uses a central-difference scheme at the given [time], with an adaptive step size
-     * based on the local sample spacing. At the boundaries of the keyframe range the
-     * derivative is one-sided (forward or backward difference).
-     *
-     * @param time the time at which to compute the derivative
-     * @param h    half-width of the finite-difference stencil (default: auto from sample density)
-     * @return     approximate dValue/dTime at [time]
+     * @param h    a half-width for a central difference instead; `0.0` (the default) is exact
      */
     fun evaluateDerivativeAt(time: Double, h: Double = 0.0): Double {
-        if (keyframes.isEmpty()) return 0.0
-
-        // Auto step: use ~1/4 of the smallest segment gap or a fixed small value
-        val step = if (h > 0.0) h else {
-            if (keyframes.size < 2) 1e-4
-            else {
-                var minGap = Double.MAX_VALUE
-                for (i in 1 until keyframes.size) {
-                    val gap = keyframes[i].time - keyframes[i - 1].time
-                    if (gap > EPSILON && gap < minGap) minGap = gap
-                }
-                (minGap * 0.25).coerceIn(1e-6, 0.01)
+        val keys = keyframes
+        if (keys.size < 2) return 0.0
+        if (h > 0.0) return (evaluateValueAt(time + h) - evaluateValueAt(time - h)) / (2.0 * h)
+        if (time < keys.first().time || time > keys.last().time) return 0.0
+        val t = time.coerceAtMost(keys.last().time - EPSILON)
+        val (prev, next) = segmentAt(keys, t)
+        return when (segmentKind(prev.type)) {
+            "hold" -> 0.0
+            "linear" -> {
+                val span = next.time - prev.time
+                if (span < EPSILON) 0.0 else (next.value - prev.value) / span
             }
-        }
-
-        val (tMin, tMax) = getTimeRange()
-
-        // Central difference, falling back to one-sided at boundaries
-        return when {
-            time - step < tMin -> {
-                // Forward difference
-                val f0 = evaluateValueAt(time)
-                val f1 = evaluateValueAt(time + step)
-                (f1 - f0) / step
-            }
-            time + step > tMax -> {
-                // Backward difference
-                val f0 = evaluateValueAt(time - step)
-                val f1 = evaluateValueAt(time)
-                (f1 - f0) / step
+            // A Kotlin lambda has no derivative to read off, so: a central difference inside the segment.
+            "custom" -> {
+                val hh = max((next.time - prev.time) * 1e-4, 1e-9)
+                val a = (t - hh).coerceAtLeast(prev.time)
+                val b = (t + hh).coerceAtMost(next.time)
+                if (b - a < 1e-12) 0.0 else (customValue(prev, next, b) - customValue(prev, next, a)) / (b - a)
             }
             else -> {
-                // Central difference (2nd-order accurate)
-                val fMinus = evaluateValueAt(time - step)
-                val fPlus = evaluateValueAt(time + step)
-                (fPlus - fMinus) / (2.0 * step)
+                val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
+                val (dx, dy) = rationalBezierTangent(controls, solveBezierParameter(controls, t.coerceAtLeast(prev.time)))
+                if (abs(dx) < 1e-12) 0.0 else dy / dx
             }
         }
+    }
+
+    // ── Editing from code ────────────────────────────────────────────
+
+    /**
+     * Replaces the keys with [keys], as an edit would: the editor shows them and they are saved with
+     * the box. A bezier key without handles gets the ones the editor derives from its neighbours.
+     * [onChange] is not called; it is for edits made in the editor.
+     */
+    fun setKeys(keys: List<Keyframe>) {
+        keyframes = keys.sortedBy { it.time }
+        persist()
+        send()
+    }
+
+    /** Adds a key at [time] with [value] and [type]; see [setKeys]. Returns the new key. */
+    fun add(time: Double, value: Double, type: String = "linear"): Keyframe =
+        Keyframe(time, value, type).also { setKeys(keyframes + it) }
+
+    /** Removes [key] (compared by value); see [setKeys]. */
+    fun remove(key: Keyframe) = setKeys(keyframes - key)
+
+    /** Removes the key at [index], in time order; see [setKeys]. */
+    fun removeAt(index: Int) = setKeys(keyframes.filterIndexed { i, _ -> i != index })
+
+    /** Removes every key; see [setKeys]. */
+    fun clear() = setKeys(emptyList())
+
+    /**
+     * Edits the keys as a list, then saves and shows the result; see [setKeys].
+     *
+     * ```kotlin
+     * curve.edit {
+     *     replaceAll { it.copy(value = it.value * 0.5) }   // halve every value
+     *     add(Keyframe(6.0, 0.0, "bezierFlat"))
+     * }
+     * ```
+     */
+    fun edit(block: MutableList<Keyframe>.() -> Unit) = setKeys(keyframes.toMutableList().apply(block))
+
+    /**
+     * Removes every key it can while the curve stays within [tolerance] of where it is now, in the
+     * curve's own units, so a dense take becomes a few smooth keys. Keys that stay become
+     * `bezierContinuous`, with handles that follow the curve's slope; locked, hold and custom keys
+     * stay as they are. The editor's Simplify slider does the same. See [setKeys].
+     *
+     * ```kotlin
+     * curve.simplify(0.01)   // within 0.01 of the take, everywhere
+     * ```
+     */
+    fun simplify(tolerance: Double) = setKeys(
+        simplifyKeys(keyframes, tolerance, ::segmentKind, ::evaluateValueAt, ::segmentValue)
+    )
+
+    /**
+     * Smooths the keys' values with a Gaussian [width] wide in time (its standard deviation), so the
+     * jitter in a recorded take goes and its shape stays. The first and last keys and locked keys
+     * keep their values, and no key moves in time. The editor's Smooth slider does the same. See
+     * [setKeys].
+     */
+    fun smooth(width: Double) = setKeys(smoothKeys(keyframes, width))
+
+    private fun persist() {
+        val box = associatedBox ?: return
+        val name = associatedName ?: return
+        saveKeyframeData(box, name, Json.encodeToString(keyframes))
     }
 
     // ── Overlay graph ────────────────────────────────────────────────
@@ -216,7 +338,7 @@ class KeyframeEvaluator(jsonString: String) {
      * the main keyframe graph as a non-interactive visual reference.
      *
      * @param samples list of (time, value) points defining the overlay curve
-     * @param color   CSS color string for the overlay stroke (default: cyan)
+     * @param color   CSS color string for the overlay stroke (default: orange, `#ff9800`)
      * @param strokeWidth SVG stroke width (default: 1.5)
      * @param dashArray optional SVG dash pattern string (e.g. "4 2"), null for solid
      * @param id      unique id for this overlay; allows updating/replacing specific overlays
@@ -233,9 +355,8 @@ class KeyframeEvaluator(jsonString: String) {
         }
         val dashPart = if (dashArray != null) ""","dashArray":"$dashArray"""" else ""
         val json = """{"type":"overlay","id":"$id","samples":$pointsJson,"color":"$color","strokeWidth":$strokeWidth$dashPart}"""
-        inMain {
-            session.send(json)
-        }
+        overlays[id] = json
+        sendIfLive(json)
     }
 
     /**
@@ -243,7 +364,7 @@ class KeyframeEvaluator(jsonString: String) {
      *
      * @param fn        the function to sample
      * @param sampleCount number of sample points (default: 200)
-     * @param color     CSS color string for the overlay stroke (default: cyan)
+     * @param color     CSS color string for the overlay stroke (default: orange, `#ff9800`)
      * @param strokeWidth SVG stroke width (default: 1.5)
      * @param dashArray optional SVG dash pattern string (e.g. "4 2"), null for solid
      * @param id        unique id for this overlay; allows updating/replacing specific overlays
@@ -270,75 +391,39 @@ class KeyframeEvaluator(jsonString: String) {
      * @param id the overlay id to remove (default: "default")
      */
     fun clearOverlay(id: String = "default") {
-        inMain {
-            session.send("""{"type":"clearOverlay","id":"$id"}""")
-        }
+        overlays.remove(id)
+        sendIfLive("""{"type":"clearOverlay","id":"$id"}""")
     }
 
     /**
      * Remove all overlay curves from the editor.
      */
     fun clearAllOverlays() {
-        inMain {
-            session.send("""{"type":"clearAllOverlays"}""")
-        }
+        overlays.clear()
+        sendIfLive("""{"type":"clearAllOverlays"}""")
     }
 
     // ── Sampling ─────────────────────────────────────────────────────
 
-    /**
-     * Samples the entire curve into discrete points
-     */
-    private fun sampleCurve(stepsPerSegment: Int = 48): List<Sample> {
-        if (keyframes.isEmpty()) return emptyList()
+    // How a segment leaving a key of [type] is shaped. The editor draws a type it does not know as
+    // linear, so evaluation does too, rather than guessing bezier.
+    private fun segmentKind(type: String): String = when (type) {
+        "hold" -> "hold"
+        "bezierFree", "bezierFlat", "bezierContinuous" -> "bezier"
+        "linear" -> "linear"
+        else -> if (custom(type) != null) "custom" else "linear"
+    }
 
-        val samples = mutableListOf(Sample(keyframes[0].time, keyframes[0].value))
+    // A key type defined with interpolant(...) in this editor's box.
+    private fun custom(type: String): KeyInterpolant? = interpolantNamed(associatedBox, type)
 
-        for (i in 1 until keyframes.size) {
-            val prev = keyframes[i - 1]
-            val next = keyframes[i]
-
-            when (prev.type) {
-                "hold" -> {
-                    val span = max(next.time - prev.time, EPSILON)
-                    for (step in 1..stepsPerSegment) {
-                        val t = step.toDouble() / stepsPerSegment
-                        val time = prev.time + span * t
-                        val value = if (step == stepsPerSegment) next.value else prev.value
-                        samples.add(Sample(time, value))
-                    }
-                }
-
-                "linear" -> {
-                    val span = max(next.time - prev.time, EPSILON)
-                    for (step in 1..stepsPerSegment) {
-                        val t = step.toDouble() / stepsPerSegment
-                        val time = prev.time + span * t
-                        val value = prev.value + (next.value - prev.value) * t
-                        samples.add(Sample(time, value))
-                    }
-                }
-
-                else -> { // bezier types
-                    val span = max(next.time - prev.time, EPSILON)
-                    val controls = buildRationalControls(prev, next, span)
-
-                    for (step in 1..stepsPerSegment) {
-                        val u = step.toDouble() / stepsPerSegment
-                        val point = rationalBezierPoint(controls, u)
-
-                        // Skip if time goes backwards
-                        if (point.x <= samples.last().time) {
-                            continue
-                        }
-
-                        samples.add(Sample(point.x, point.y))
-                    }
-                }
-            }
-        }
-
-        return samples
+    private fun customValue(prev: Keyframe, next: Keyframe, time: Double): Double {
+        val span = max(next.time - prev.time, EPSILON)
+        val u = ((time - prev.time) / span).coerceIn(0.0, 1.0)
+        val i = keyframes.indexOf(prev)
+        val before = if (i > 0) keyframes[i - 1] else null
+        val after = if (i >= 0) keyframes.getOrNull(i + 2) else null
+        return custom(prev.type)!!.evaluate(KeySegment(time, u, prev.time, next.time, prev.value, next.value, before, after))
     }
 
     private fun buildRationalControls(prev: Keyframe, next: Keyframe, span: Double): BezierControls {
@@ -419,6 +504,21 @@ class KeyframeEvaluator(jsonString: String) {
         return Point(x, y)
     }
 
+    // d(x, y)/du of the rational segment at [u], by the quotient rule on N(u) / D(u).
+    private fun rationalBezierTangent(c: BezierControls, u: Double): Point {
+        val mt = 1 - u
+        val b = doubleArrayOf(mt * mt * mt, 3 * mt * mt * u, 3 * mt * u * u, u * u * u)
+        val db = doubleArrayOf(-3 * mt * mt, 3 * mt * mt - 6 * mt * u, 6 * mt * u - 3 * u * u, 3 * u * u)
+        val p = arrayOf(c.p0, c.p1, c.p2, c.p3)
+        var d = 0.0; var dd = 0.0; var nx = 0.0; var dnx = 0.0; var ny = 0.0; var dny = 0.0
+        for (i in 0..3) {
+            d += b[i] * p[i].w; dd += db[i] * p[i].w
+            nx += b[i] * p[i].w * p[i].x; dnx += db[i] * p[i].w * p[i].x
+            ny += b[i] * p[i].w * p[i].y; dny += db[i] * p[i].w * p[i].y
+        }
+        return Point((dnx * d - nx * dd) / (d * d), (dny * d - ny * dd) / (d * d))
+    }
+
     private fun clamp(value: Double, min: Double, max: Double): Double {
         return when {
             value < min -> min
@@ -429,6 +529,11 @@ class KeyframeEvaluator(jsonString: String) {
 
     companion object {
         private const val EPSILON = 1e-6
+
+        // The neighbours a menu icon is drawn between, so the splines have something to look at.
+        // Chosen to pull against the segment, so tension, bias and monotonicity look different.
+        private val ICON_BEFORE = Keyframe(-1.0, 0.9, "linear")
+        private val ICON_AFTER = Keyframe(2.0, 0.1, "linear")
     }
 }
 
@@ -456,11 +561,6 @@ data class Handle(
 )
 
 // Internal data classes
-
-private data class Sample(
-    val time: Double,
-    val value: Double
-)
 
 private data class ControlPoint(
     val x: Double,
@@ -519,7 +619,14 @@ fun installKeyframeHandler() {
             val t = JSONObject(text)
             if (t.has("debug_uid") && t.has("type") && t.getString("type") == "hello") {
                 knownKeyframeTargets[t.getString("debug_uid")]?.session = s
-                knownKeyframeTargets[t.getString("debug_uid")]?.send()
+                knownKeyframeTargets[t.getString("debug_uid")]?.sendAll()
+            }
+            if (t.has("debug_uid") && t.has("type") && t.getString("type") == "preview") {
+                val evaluator = knownKeyframeTargets[t.getString("debug_uid")]
+                if (evaluator != null) {
+                    evaluator.session = s
+                    evaluator.sendPreviewSegments(t.getJSONArray("keyframes").toString())
+                }
             }
             if (t.has("debug_uid") && t.has("type") && t.getString("type") == "keyframes") {
                 val debugUid = t.getString("debug_uid")
@@ -527,27 +634,27 @@ fun installKeyframeHandler() {
                 val keyframesJsonStr = t.getJSONArray("keyframes").toString()
                 val evaluator = knownKeyframeTargets[debugUid]
                 evaluator?.set(keyframesJsonStr)
+                evaluator?.sendCustomSegments()
 
                 // Fire the change callback; if it returns an Fn, show it as an overlay
                 if (evaluator != null) {
                     val overlayFn = evaluator.onChange?.invoke(evaluator.getKeyframes())
                     if (overlayFn != null) {
-                        evaluator.setOverlay(overlayFn, id = "_onChange")
+                        // The same overlay setOverlay(fn) draws, so a box can draw it at start and
+                        // let onChange keep it up to date: `k.setOverlay(f(keys)); k.onChange = f`.
+                        evaluator.setOverlay(overlayFn)
                     }
                 }
 
-                // Persist to box property
-                if (evaluator != null && evaluator.associatedBoxId != null && evaluator.associatedName != null) {
-                    val boxId = evaluator.associatedBoxId!!
-                    val kfName = evaluator.associatedName!!
+                // Persist to the box. Not through thisSessionInfo: it is not set on this socket's
+                // thread, which is how every edit used to be dropped without a word.
+                val box = evaluator?.associatedBox
+                val kfName = evaluator?.associatedName
+                if (box != null && kfName != null) {
                     try {
-                        val si = thisSessionInfo.get()
-                        val box = si?.boxes?.get(boxId)
-                        if (box != null) {
-                            saveKeyframeData(box, kfName, keyframesJsonStr)
-                        }
+                        saveKeyframeData(box, kfName, keyframesJsonStr)
                     } catch (e: Exception) {
-                        // silently ignore persistence errors
+                        lprintln("warning,keyframes", "could not save keyframes '$kfName' on ${box.id}: ${e.message}")
                     }
                 }
             }
@@ -566,11 +673,17 @@ fun installKeyframeHandler() {
  * @param defaultKeyframesJson  a JSON array string (e.g. `[{"time":0,"value":0,"type":"linear"}]`)
  *                              used to seed the editor when no persisted data exists. Pass `"[]"` for no defaults.
  */
-private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJson: String): KeyframeEvaluator {
-    val uid = this.id + "_" + name
+private fun Box.keyframesImpl(channel: String?, name: String, defaultKeyframesJson: String): KeyframeEvaluator {
+    // Per document as well as per box: box ids repeat across documents (a starting point opened twice,
+    // a copied document), and two documents must not share one editor.
+    val document = if (isInsideInitialized()) inside.filename else ""
+    val uid = this.id + "_" + name + if (document.isEmpty()) "" else "_" + Integer.toHexString(document.hashCode())
     // Use a channel that includes the name so multiple keyframes on the same
     // channel don't overwrite each other's iframes.
-    val displayChannel = if (channel == name) channel else "$channel/$name"
+    // The lanes that share a time axis: this box's editors, or one channel group of them.
+    val group = this.id + "/" + (channel ?: "") + if (document.isEmpty()) "" else "@" + Integer.toHexString(document.hashCode())
+    // With no channel the panel is named after the curve, which is what a reader wants to see.
+    val displayChannel = if (channel == null || channel == name) name else "$channel/$name"
 
     // Only send the display/iframe if the evaluator isn't already live —
     // re-sending it would replace the renderer causing flicker and zoom reset.
@@ -580,9 +693,14 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
     if (!alreadyLive) {
         display(
             displayChannel, """
-<iframe src='/keyframe?uid=${uid}' style='border:none;padding:0;margin:0;width:100%;height:100%'>
+<iframe src='/keyframe?uid=${uid}&group=${java.net.URLEncoder.encode(group, "UTF-8")}' data-afield-intrinsic-width='560' data-afield-intrinsic-height='232' style='border:none;padding:0;margin:0;width:100%;min-width:560px;height:232px !important;display:block'>
 """
         )
+        // The editor is a fixed 200 px tall, hence `height … !important`: field.css stretches panel
+        // iframes to 100% !important, and a panel whose content reaches its bottom never shrinks.
+        // An editor exists to be drawn in, so show it. Only when it is first shown: an editor the
+        // person collapsed stays collapsed across reruns, because a live one is not re-sent.
+        if (existing == null) displayOpen(displayChannel)
     }
 
     // Load persisted keyframe data if available
@@ -600,13 +718,18 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
     // Track association for persistence
     eval.associatedBoxId = this.id
     eval.associatedName = name
+    eval.associatedBox = this
+    // Each run says afresh what happens on an edit: a callback a previous run set, and this run
+    // no longer does, must not keep firing.
+    eval.onChange = null
     return eval
 }
 
 /**
  * Creates (or reconnects to) a keyframe curve editor displayed in the given output [channel].
  *
- * @param channel  the output-area channel in which to embed the editor iframe (default `"debug"`)
+ * @param channel  the output-area channel in which to embed the editor; by default the panel is named
+ *                 [name]. Give one to group editors: `keyframes("motion", "x")` shows in `motion/x`
  * @param name     a unique name for this set of keyframes within the box (used as persistence key)
  * @param defaultTimes  optional list of time positions (e.g. `listOf(0, 10, 30)`) used to seed
  *                      the editor with initial keyframes when no persisted data exists for [name].
@@ -614,7 +737,7 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
  *                      Once the user edits the curve the persisted data takes precedence.
  * @return a [KeyframeEvaluator] that can be queried with [KeyframeEvaluator.evaluateValueAt]
  */
-fun Box.keyframes(channel: String = "debug", name: String, defaultTimes: List<Number>? = null): KeyframeEvaluator {
+fun Box.keyframes(channel: String? = null, name: String, defaultTimes: List<Number>? = null): KeyframeEvaluator {
     val json = if (!defaultTimes.isNullOrEmpty()) {
         defaultTimes.joinToString(",", "[", "]") { t ->
             """{ "time": ${t.toDouble()}, "value": 0.0, "type": "linear" }"""
@@ -632,13 +755,13 @@ fun Box.keyframes(channel: String = "debug", name: String, defaultTimes: List<Nu
  * val n = keyframes("out", "n", listOf(Vec2(0.0, 0.0), Vec2(5.0, 1.0), Vec2(10.0, 0.0)))
  * ```
  *
- * @param channel  the output-area channel (default `"debug"`)
+ * @param channel  the output-area channel; by default the panel is named [name]
  * @param name     unique persistence key for this keyframe set
  * @param defaults list of [Vec2] where `x` = time, `y` = value; used only when no persisted data exists
  * @return a [KeyframeEvaluator] that can be queried with [KeyframeEvaluator.evaluateValueAt]
  */
 @JvmName("keyframesVec2")
-fun Box.keyframes(channel: String = "debug", name: String, defaults: List<Vec2>): KeyframeEvaluator {
+fun Box.keyframes(channel: String? = null, name: String, defaults: List<Vec2>): KeyframeEvaluator {
     val json = if (defaults.isNotEmpty()) {
         defaults.joinToString(",", "[", "]") { v ->
             """{ "time": ${v.x}, "value": ${v.y}, "type": "linear" }"""
@@ -646,3 +769,28 @@ fun Box.keyframes(channel: String = "debug", name: String, defaults: List<Vec2>)
     } else "[]"
     return keyframesImpl(channel, name, json)
 }
+
+/**
+ * Creates (or reconnects to) a keyframe curve editor, seeded with [keys] — keys with their types,
+ * so a curve can start with a held step or an eased segment rather than straight lines.
+ *
+ * ```kotlin
+ * val gain = keyframes(name = "gain", keys = listOf(
+ *     Keyframe(0.0, 0.0, "bezierFlat"),
+ *     Keyframe(1.0, 1.0, "hold"),
+ *     Keyframe(2.0, 0.3, "linear"),
+ *     Keyframe(3.0, 0.8, "linear"),
+ * ))
+ * ```
+ *
+ * A key's type shapes the segment that leaves it: `"linear"`, `"hold"`, `"bezierFree"`,
+ * `"bezierFlat"` or `"bezierContinuous"`. Bezier keys with no handles start with handles the
+ * editor derives from their neighbours.
+ *
+ * @param channel  the output-area channel; by default the panel is named [name]
+ * @param name     unique persistence key for this keyframe set
+ * @param keys     used only when no persisted data exists for [name]
+ */
+@JvmName("keyframesKeys")
+fun Box.keyframes(channel: String? = null, name: String, keys: List<Keyframe>): KeyframeEvaluator =
+    keyframesImpl(channel, name, if (keys.isEmpty()) "[]" else Json.encodeToString(keys))

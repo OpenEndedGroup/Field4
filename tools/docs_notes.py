@@ -20,6 +20,10 @@ half, for agents and for the human driving them:
             pass, `handoff-close` finishes one
   revise    the harness: sync, partition the queue per page, run one agent per page in
             parallel, apply what they recorded, optionally commit one commit per page
+  import-drafts
+            turn the KDoc a fast model drafted for undocumented declarations (completion's
+            generated_completion_docs.json) into `kdoc-draft` notes on their Kotlin lines, so the
+            same agents, memories, review and landing handle them as handle the human's notes
 
 Design notes, in the order they bite:
 
@@ -89,6 +93,14 @@ HISTORY_LIMIT = 12
 WRITTEN_KEYS = frozenset({"id", "pageUrl", "note", "tags", "anchor", "kind", "thread", "source",
                           "resolvedAtEpochMs", "resolution", "updatedAtEpochMs", "createdAtEpochMs",
                           "recordedInCheckout", "recordedAtCommit", "handoff"})
+
+# The kinds of note that ask for work. A `kdoc-draft` is a model's KDoc for an undocumented
+# declaration, imported by `import-drafts`; it is worked exactly like a human's note.
+DRAFT_KIND = "kdoc-draft"
+REQUEST_KINDS = ("note", DRAFT_KIND)
+DRAFT_CACHE_FILE = "generated_completion_docs.json"
+DRAFT_DECLINED_FILE = "generated_completion_docs.declined.json"
+FILESTORE_ENV = "AFIELD_FILESTORE_DIR"
 
 ENTRY_KINDS = ("comment", "memory", "question", "reply", "resolution", "reopen", "run", "handoff", "blocked", "unblocked")
 HANDOFF_DIR = "dev_docs/handoffs"
@@ -931,6 +943,8 @@ def sync_note(note: dict[str, Any], git: Git, *, page_cache: dict[str, PageSourc
     note that was anchored wrongly in the first place (forward tracking would faithfully carry
     the mistake along).
     """
+    if note.get("kind") == DRAFT_KIND:
+        return sync_draft(note, git)
     page_cache = {} if page_cache is None else page_cache
     url = note.get("pageUrl", "")
     if url not in page_cache:
@@ -1030,6 +1044,207 @@ def sync_store(store: Store, git: Git, *, ids: Iterable[str] = (), include_resol
 
     store.mutate(merge)
     return results
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# KDoc drafts: completion's generated docs, as notes
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# When completion shows a declaration that has no KDoc, a fast model drafts some
+# (`Ai4CompletionDoc`) and caches it in `generated_completion_docs.json`. Those drafts used to be
+# moved into the source by a separate agent run of their own. Now `import-drafts` makes each one a
+# note anchored to its declaration's line, so it goes through the same harness as everything else:
+# one agent per file, with DOCS_WRITING_RULES.md, the file's memories, and the human's own notes on
+# the same KDoc in the same brief, edits in a pass worktree, review, and `tools/land.py`.
+#
+# The cache stays owned by the Field server, which holds it in memory and rewrites it whole, so
+# nothing here writes it. A draft the agent did not use (its note resolved, the declaration still
+# without KDoc) is listed in the `.declined.json` file beside it instead, which completion reads so
+# it neither shows nor regenerates that draft.
+
+_DECLARATION_KEYWORDS = r"(?:fun|val|var|class|interface|object|typealias|enum\s+class|data\s+class|annotation\s+class)"
+
+
+def draft_cache_path(git: Git, explicit: str | None = None) -> Path:
+    """Where Field keeps the drafts: `$AFIELD_FILESTORE_DIR`, else `.field/filestore/` in the checkout."""
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    configured = os.environ.get(FILESTORE_ENV, "").strip()
+    base = Path(configured).expanduser() if configured else git.root / ".field" / "filestore"
+    return (base / DRAFT_CACHE_FILE).resolve()
+
+
+def in_our_tree(source_path: str) -> bool:
+    """Mirrors `Ai4CompletionDoc.isInOurTree`: a repo-relative `src/` path, never a dependency jar."""
+    return source_path.startswith("src/") and ".." not in source_path
+
+
+def source_page_url(kotlin_path: str) -> str | None:
+    """The `reference/source/…` page `resolve_page_source` maps back to *kotlin_path*, as a URL."""
+    match = re.fullmatch(r"src/([^/]+)/kotlin/(.+)\.kt", kotlin_path)
+    if not match:
+        return None
+    return f"{DOCS_ORIGIN}{DOCS_ROOT}reference/source/{match.group(1)}/{match.group(2)}/"
+
+
+def simple_name(source_name: str) -> str:
+    return source_name.rsplit(".", 1)[-1].strip("`")
+
+
+def locate_declaration(text: str, name: str, near: int) -> int | None:
+    """The 1-based line declaring *name* closest to line *near*, or None."""
+    pattern = re.compile(rf"\b{_DECLARATION_KEYWORDS}\b[^\n=]*?\b{re.escape(name)}\b")
+    hits = [i + 1 for i, line in enumerate(text.split("\n")) if pattern.search(line)]
+    return min(hits, key=lambda n: abs(n - near)) if hits else None
+
+
+def has_kdoc_above(text: str, line: int) -> bool:
+    """Whether the declaration on 1-based *line* carries a KDoc block (annotations may sit between)."""
+    lines = text.split("\n")
+    if not 1 <= line <= len(lines):
+        return False
+    if "/**" in lines[line - 1].split("//")[0]:
+        return True
+    i = line - 2
+    while i >= 0 and lines[i].strip().startswith("@"):
+        i -= 1
+    if i < 0 or not lines[i].rstrip().endswith("*/"):
+        return False
+    while i >= 0:
+        if "/**" in lines[i]:
+            return True
+        if "/*" in lines[i]:
+            return False
+        i -= 1
+    return False
+
+
+def read_declined(cache: Path) -> set[str]:
+    path = cache.with_name(DRAFT_DECLINED_FILE)
+    with contextlib.suppress(FileNotFoundError, json.JSONDecodeError):
+        return set(json.loads(path.read_text(encoding="utf-8")).get("keys", []))
+    return set()
+
+
+def write_declined(cache: Path, keys: Iterable[str]) -> None:
+    keys = set(keys)
+    if not keys:
+        return
+    path = cache.with_name(DRAFT_DECLINED_FILE)
+    merged = sorted(read_declined(cache) | keys)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(json.dumps({"version": 1, "keys": merged}, indent=2) + "\n", encoding="utf-8")
+    os.replace(temp, path)
+
+
+def _draft_source(git: Git, path: str, line: int, draft: dict[str, Any], status: str,
+                  previous: dict[str, Any] | None = None) -> dict[str, Any]:
+    text = git.show(None, path) or ""
+    url = source_page_url(path) or ""
+    head = git.head()
+    source = {"page": page_relative_candidates(url)[0] if url else "", "pageKind": "generated",
+              "trackedAtEpochMs": now_ms(), "trackedHead": head, "path": path, "startLine": line, "endLine": line,
+              "status": status, "origins": origins_for(git, None, path, line, line), "anchoredAt": head,
+              "method": "declaration", "excerpt": excerpt(text, line, line),
+              "generated": {"generator": "afield.docs.SourcePageGenerator", "from": path,
+                            "regenerate": "./gradlew generateSourcePages"},
+              "draft": draft}
+    if previous and previous.get("firstAnchoredAt"):
+        source["firstAnchoredAt"] = previous["firstAnchoredAt"]
+    return source
+
+
+def sync_draft(note: dict[str, Any], git: Git) -> dict[str, Any]:
+    """A draft's `source`: followed by blame like any note, and found again by name when that fails."""
+    previous = dict(note.get("source") or {})
+    draft = previous.get("draft") or {}
+    tracked = track_forward(git, previous) if previous.get("origins") else None
+    if tracked:
+        return _draft_source(git, tracked.path, tracked.start_line, draft, tracked.status, previous)
+    path = previous.get("path") or ""
+    text = git.show(None, path) if path else None
+    line = locate_declaration(text, simple_name(draft.get("symbol", "")), int(previous.get("startLine") or 0)) if text else None
+    if line is None:
+        return {**previous, "status": "orphaned", "trackedAtEpochMs": now_ms(),
+                "reason": f"no declaration of `{draft.get('symbol', '?')}` in {path or 'its file'} any more"}
+    return _draft_source(git, path, line, draft, "reanchored", previous)
+
+
+def draft_note_id(key: str) -> str:
+    return "draft-" + key[:24]
+
+
+def import_drafts(store: Store, git: Git, cache: Path, *, limit: int = 0,
+                  log: Callable[[str], None] = lambda _m: None) -> dict[str, int]:
+    """Add a `kdoc-draft` note for every cached draft that is ours to edit and not yet a note."""
+    counts = {"imported": 0, "known": 0, "outside": 0, "declined": 0, "documented": 0, "stale": 0}
+    if not cache.is_file():
+        log(f"no draft cache at {cache}")
+        return counts
+    records = (json.loads(cache.read_text(encoding="utf-8") or "{}").get("records") or {})
+    declined = read_declined(cache)
+    existing = {n.get("id") for n in store.notes()}
+    created: list[dict[str, Any]] = []
+    for key, record in sorted(records.items(), key=lambda kv: (kv[1].get("sourcePath", ""), kv[1].get("sourceLine", 0))):
+        path, documentation = str(record.get("sourcePath", "")), str(record.get("documentation", "")).strip()
+        if not documentation:
+            continue
+        if not in_our_tree(path) or not source_page_url(path) or not (git.root / path).is_file():
+            counts["outside"] += 1
+            continue
+        if draft_note_id(key) in existing:
+            counts["known"] += 1
+            continue
+        if key in declined:
+            counts["declined"] += 1
+            continue
+        symbol = str(record.get("sourceName", ""))
+        text = git.show(None, path) or ""
+        line = locate_declaration(text, simple_name(symbol), int(record.get("sourceLine") or 0))
+        if line is None:
+            counts["stale"] += 1
+            log(f"  stale: {symbol} is no longer declared in {path}")
+            continue
+        if has_kdoc_above(text, line):
+            counts["documented"] += 1
+            continue
+        draft = {"key": key, "symbol": symbol, "model": record.get("model", ""), "cache": str(cache),
+                 "cachedLine": record.get("sourceLine")}
+        created_ms = now_ms()
+        created.append({"id": draft_note_id(key), "pageUrl": source_page_url(path), "note": documentation,
+                        "kind": DRAFT_KIND, "tags": [DRAFT_KIND], "anchor": {}, "thread": [],
+                        "createdAtEpochMs": created_ms, "updatedAtEpochMs": created_ms,
+                        "recordedInCheckout": str(git.root),
+                        "source": _draft_source(git, path, line, draft, "anchored")})
+        log(f"  {path}:{line} {symbol}")
+        if limit and len(created) >= limit:
+            break
+    counts["imported"] = len(created)
+    if created:
+        def add(notes: list[dict[str, Any]]) -> None:
+            ids = {n.get("id") for n in notes}
+            notes.extend(n for n in created if n["id"] not in ids)
+        store.mutate(add)
+    return counts
+
+
+def declined_drafts(git: Git, result: "RunResult") -> list[dict[str, Any]]:
+    """Drafts this run resolved without the declaration gaining KDoc: the agent chose not to use them."""
+    resolved = {op.get("id") for op in result.ops if op.get("op") == "resolve"}
+    out = []
+    for note in result.partition.notes:
+        if note.get("kind") != DRAFT_KIND or note["id"] not in resolved:
+            continue
+        source = note.get("source") or {}
+        draft = source.get("draft") or {}
+        # The file as the agent left it; `git.show` would answer from its cache of the text before the run.
+        file = git.root / source.get("path", "")
+        text = file.read_text(encoding="utf-8", errors="replace") if file.is_file() else ""
+        line = locate_declaration(text, simple_name(draft.get("symbol", "")), int(source.get("startLine") or 0))
+        if line is None or not has_kdoc_above(text, line):
+            out.append(note)
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1156,7 +1371,13 @@ def render_note(note: dict[str, Any], git: Git | None, *, context: int = 3) -> s
                    f"edit the source, not the page (regenerate: {gen.get('regenerate') or 'see header'}).")
     if source.get("heading"):
         out.append(f"Section: {source['heading']}")
-    out.append("Note:\n" + indent(note.get("note", "").strip()))
+    if note.get("kind") == DRAFT_KIND:
+        draft = source.get("draft") or {}
+        out.append(f"Draft KDoc for `{draft.get('symbol', '?')}`, written by {draft.get('model') or 'a fast model'} for a "
+                   "declaration with none. Not the human's words, and not checked: see \"KDoc drafts\" above.")
+        out.append("Draft:\n" + indent(note.get("note", "").strip()))
+    else:
+        out.append("Note:\n" + indent(note.get("note", "").strip()))
     if anchor.get("exact"):
         out.append("Quote (as rendered):\n" + indent(anchor["exact"].strip()))
     if git and source.get("startLine"):
@@ -1312,7 +1533,7 @@ def _apply_handoff(notes: list[dict[str, Any]], op: dict[str, Any], author: str,
     # The notes a handoff came from wait on it either way, and return to the queue when it closes
     # so the page can follow whatever was done. A blocking handoff holds the rest of its page too.
     for note in notes:
-        if note.get("kind") != "note" or note_state(note) not in ("open", "question"):
+        if note.get("kind") not in REQUEST_KINDS or note_state(note) not in ("open", "question"):
             continue
         on_page = bool(op.get("blocking")) and ((page and _page_key(note) == page) or note.get("pageUrl") == op["pageUrl"])
         if note["id"] in op.get("notes", []) or on_page:
@@ -1429,6 +1650,15 @@ How to work:
 - Text inside a code fence is executed and captured by the docs runner; edit a fence only if the
   note is about that code, and keep it runnable.
 - A generated page ("DO NOT EDIT") is fixed in the Kotlin/KDoc it is generated from.
+
+KDoc drafts: a note shown as "Draft KDoc for `name`" is not from the human. A fast model wrote it
+for a declaration with no KDoc, from the declaration's source alone, and nobody has checked it.
+Treat it as a suggestion. Read the declaration and what calls it. Then write KDoc that is true and
+follows the rules: integrate the parts that hold up, correct the ones that do not, and leave out
+whatever only restates the signature. Resolve the draft saying what you wrote. If the declaration
+needs no KDoc (it is private, or obvious from its name and type), resolve it saying why and add
+nothing; the harness then tells completion to stop offering that draft. Ask a question if the
+behaviour cannot be settled from source. A human note on the same lines comes first.
 
 Record an outcome for EVERY note, with this command (it writes to your run journal, not the store):
 
@@ -1943,6 +2173,11 @@ def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl
                     partition = running.pop(future)
                     result = future.result()
                     apply_run(store, result, run_id, agent.name)
+                    for note in declined_drafts(git, result):
+                        draft = (note.get("source") or {}).get("draft") or {}
+                        if draft.get("cache") and draft.get("key"):
+                            write_declined(Path(draft["cache"]), [draft["key"]])
+                            log(f"  declined draft {draft.get('symbol')}: completion will no longer offer it")
                     remaining = untouched_notes(result) if result.limited else []
                     if result.limited and remaining and not any(op.get("op") == "handoff" and op.get("blocking") for op in result.ops):
                         # What it recorded is applied; the notes it did not reach go back to the front
@@ -2266,6 +2501,8 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
     for note in notes:
         state = note_state(note)
         counts[state] = counts.get(state, 0) + 1
+        if note.get("kind") == DRAFT_KIND and state == "open":
+            counts["drafts-open"] = counts.get("drafts-open", 0) + 1
     handoffs = []
     for item in notes:
         if item.get("kind") != "handoff":
@@ -2310,6 +2547,9 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
             "baseAdvanced": _int(wt.run("rev-list", "--count", f"HEAD..{base}", check=False).strip()),
             "landed": subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", base], cwd=wt.root).returncode == 0
                       and wt.head() != state["baseCommit"],
+            # The landing queue's view: queued, landing now, landed, or bounced with its reason.
+            "landing": land_status(git, branch=state["branch"]),
+            "landerRunning": lander_running(git),
             "changed": changed_files(wt, pass_fork_point(wt, state)),
             "uncommitted": len([p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]),
             "handoffDocuments": sorted(p.relative_to(wt.root).as_posix() for p in (wt.root / HANDOFF_DIR).glob("*.md")
@@ -2454,7 +2694,7 @@ def pass_commit_message(state: dict[str, Any], notes: list[dict[str, Any]], file
     runs = set(state.get("runs", []))
     resolved: dict[str, list[dict[str, Any]]] = {}
     for note in notes:
-        if not is_resolved(note) or note.get("kind") != "note":
+        if not is_resolved(note) or note.get("kind") not in REQUEST_KINDS:
             continue
         last = next((e for e in reversed(note.get("thread", [])) if e.get("kind") == "resolution"), None)
         if last and last.get("runId") in runs:
@@ -2513,29 +2753,171 @@ def pass_commit(git: Git, store: Store) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------- the landing queue
+#
+# Only tools/land.py's lander writes main (a reference-transaction hook refuses everyone else). A pass
+# or a session enqueues its branch and stops; the lander merges it, regenerates, runs the full guard
+# once and fast-forwards main, or bounces it with a reason. The queue is JSON files in the clone's
+# common git dir, which is all this reads.
+
+LAND_STATES = ("pending", "landed", "bounced")
+
+
+def land_queue_dir(git: Git) -> Path:
+    common = Path(git.run("rev-parse", "--path-format=absolute", "--git-common-dir").strip())
+    return common / "field-land-queue"
+
+
+def land_items(git: Git) -> list[tuple[str, dict[str, Any]]]:
+    queue, found = land_queue_dir(git), []
+    for state in LAND_STATES:
+        for path in sorted((queue / state).glob("*.json")) if (queue / state).is_dir() else []:
+            with contextlib.suppress(OSError, json.JSONDecodeError):
+                found.append((state, json.loads(path.read_text())))
+    return found
+
+
+def land_status(git: Git, branch: str = "", item_id: str = "") -> dict[str, Any] | None:
+    """The newest queue item for a branch (or the item with this id), flattened for the page."""
+    matches = [(state, item) for state, item in land_items(git)
+               if (item_id and item.get("id") == item_id) or (not item_id and item.get("branch") == branch)]
+    if not matches:
+        return None
+    state, item = max(matches, key=lambda m: m[1].get("enqueued", ""))
+    return {"state": state, "id": item.get("id"), "sha": item.get("sha", ""), "reason": item.get("reason", ""),
+            "log": item.get("log", ""), "landedAs": item.get("landed_as", ""), "finished": item.get("finished", ""),
+            "landingNow": state == "pending" and bool(item.get("started")), "enqueued": item.get("enqueued", "")}
+
+
+def lander_running(git: Git) -> bool:
+    # The lander holds this lock while it runs; ask the lock, as land.py's own status does.
+    path = land_queue_dir(git) / "lander.lock"
+    if not path.exists():
+        return False
+    with path.open("a") as probe:
+        try:
+            fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(probe, fcntl.LOCK_UN)
+        return False
+
+
+def ensure_lander(git: Git) -> bool:
+    """Start a one-shot lander (`land.py run --once`) when none is running; it drains and exits.
+
+    Starting one while another runs is harmless (the second cannot take the lock), so this only
+    saves a process. It is detached, so it outlives Field and this command. Returns whether one
+    is running now.
+    """
+    if lander_running(git):
+        return True
+    primary = Path(git.run("worktree", "list", "--porcelain").splitlines()[0].split(" ", 1)[1])
+    log = land_queue_dir(git) / "logs" / f"lander-{time.strftime('%Y%m%d-%H%M%S')}.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with open(log, "ab") as out:
+        subprocess.Popen(uv_command() + ["run", "--project", str(primary), "python", str(primary / "tools" / "land.py"),
+                                         "run", "--once"], cwd=primary, stdin=subprocess.DEVNULL, stdout=out,
+                         stderr=subprocess.STDOUT, start_new_session=True)
+    print(f"started a lander (land.py run --once); its log: {log}", flush=True)
+    return True
+
+
+def land_enqueue(git: Git, worktree: Path, branch: str, note: str, by: str) -> dict[str, Any] | None:
+    """`land.py enqueue <branch>` from the branch's worktree, then make sure a lander will take it."""
+    result = subprocess.run([sys.executable, str(worktree / "tools" / "land.py"), "enqueue", branch, "--note", note, "--by", by],
+                            cwd=worktree, capture_output=True, text=True, check=False)
+    print((result.stdout + result.stderr).strip(), flush=True)
+    if result.returncode != 0:
+        raise SystemExit(f"enqueueing {branch} failed (exit {result.returncode}); see above")
+    queued = re.search(r"queued (\S+) \(", result.stdout)
+    if not queued:  # "already on main; nothing to land"
+        return None
+    ensure_lander(git)
+    return land_status(git, item_id=queued.group(1))
+
+
 def pass_land(git: Git) -> int:
-    """Merge the base into the pass branch (in the worktree), then fast-forward the base to it."""
+    """Enqueue the pass branch for the lander. The lander merges main in, regenerates, checks and
+    fast-forwards main; `pass status` reports landed or the bounce and its reason."""
     state = require_pass(git.root)
     wt = Git(Path(state["worktree"]))
-    base, branch = state["base"], state["branch"]
     if [p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]:
         raise SystemExit("The worktree has uncommitted changes; commit them first.")
-    if git.run("branch", "--show-current", check=False).strip() != base:
-        raise SystemExit(f"{git.root} is not on {base}; landing fast-forwards {base} there.")
-    if subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=wt.root).returncode != 0:
-        print(f"{base} has moved on; merging it into {branch} first (in the worktree) …", flush=True)
-        merge = subprocess.run(["git", "merge", "--no-ff", "--no-edit", base], cwd=wt.root, check=False)
-        if merge.returncode != 0:
-            conflicts = wt.run("diff", "--name-only", "--diff-filter=U", check=False).split()
-            subprocess.run(["git", "merge", "--abort"], cwd=wt.root, check=False)
-            print(f"merge failed and was aborted; conflicts in: {', '.join(conflicts) or '(see above)'}", flush=True)
-            return 1
-    result = subprocess.run(["git", "merge", "--ff-only", branch], cwd=git.root, check=False)
-    if result.returncode != 0:
-        print(f"fast-forward of {base} failed (see above); nothing was changed in {git.root}", flush=True)
-        return result.returncode
-    print(f"{base} is now {git.head()[:10]} in {git.root}. Not pushed.", flush=True)
+    if wt.head() == state["baseCommit"]:
+        raise SystemExit("The pass has no commits to land; commit first.")
+    item = land_enqueue(git, wt.root, state["branch"], f"docs revision pass {state['branch']}", "docs revision pass")
+    if item:
+        state["landing"] = item["id"]
+        save_pass(git.root, state)
+        print(f"queued {item['id']}. Not pushed. The page shows when it lands or bounces.", flush=True)
     return 0
+
+
+# Files a removed worktree's directory can be left holding that are nobody's work: Finder writes
+# .DS_Store into any folder it has shown, and a session brief is regenerated on demand.
+_LEFTOVER_NAMES = {".DS_Store", "HANDOFF_SESSION.md"}
+
+
+def is_registered_worktree(git: Git, worktree: Path) -> bool:
+    out = git.run("worktree", "list", "--porcelain", check=False)
+    wanted = {str(worktree), str(worktree.resolve())}
+    return any(line[len("worktree "):] in wanted for line in out.splitlines() if line.startswith("worktree "))
+
+
+def files_not_on_branch(git: Git, worktree: Path, branch: str) -> list[str]:
+    """Files in an unregistered worktree directory that the branch does not account for.
+
+    Git-ignored files (build output, `.field/` caches, `.venv`) are regenerable and do not count,
+    nor do Finder's leftovers. Every other file must be byte-identical to the branch tip; one that
+    differs, or that the branch does not have, is someone's work.
+    """
+    rel = [str(f.relative_to(worktree)) for f in worktree.rglob("*")
+           if f.is_file() and not f.is_symlink() and f.name not in _LEFTOVER_NAMES and f.name != ".git"]
+    if not rel:
+        return []
+    ignored = set(subprocess.run(["git", "check-ignore", "--no-index", "--stdin"], input="\n".join(rel),
+                                 capture_output=True, text=True, cwd=git.root).stdout.splitlines())
+    tracked = {}
+    for line in git.run("ls-tree", "-r", "--format=%(objectname) %(path)", branch, check=False).splitlines():
+        sha, _, path = line.partition(" ")
+        tracked[path] = sha
+    candidates = [r for r in rel if r not in ignored]
+    hashes = subprocess.run(["git", "hash-object", "--stdin-paths"], input="\n".join(str(worktree / r) for r in candidates),
+                            capture_output=True, text=True, cwd=git.root).stdout.split() if candidates else []
+    return sorted(r for r, h in zip(candidates, hashes) if tracked.get(r) != h)
+
+
+def refuse_if_occupied(worktree: Path, what: str) -> None:
+    """An agent still working in the worktree would have it deleted from under it.
+
+    That is how a removal ends half done: git drops its record, then cannot delete the files a
+    running process holds or rewrites, and the directory is left looking like nobody's.
+    """
+    running = session_occupants(str(worktree))
+    if running:
+        raise SystemExit(f"{', '.join(running)} is still working in {worktree}. Quit it first, then end the {what}.")
+
+
+def remove_worktree(git: Git, worktree: Path, force: bool, branch: str = "", abandon: bool = False) -> None:
+    """Remove a pass or session worktree, including one git has already let go of.
+
+    The directory can outlive its registration: Finder writes .DS_Store into a folder open in a
+    window, and a removal run under a live agent drops git's record and then leaves the files.
+    Then `git worktree remove` says "is not a working tree". Such a directory is deleted when
+    nothing in it is work the branch lacks: only git-ignored files and files byte-identical to
+    the branch tip (or anything at all, when abandoning). Otherwise it is refused, naming files.
+    """
+    if is_registered_worktree(git, worktree):
+        git.run(*(["worktree", "remove"] + (["--force"] if force else []) + [str(worktree)]))
+    elif worktree.is_dir():
+        kept = [] if abandon else files_not_on_branch(git, worktree, branch or "HEAD")
+        if kept:
+            raise SystemExit(f"{worktree} is no longer a git worktree, and holds files that are not on {branch}: "
+                             + ", ".join(kept[:5]) + (f" and {len(kept) - 5} more" if len(kept) > 5 else "")
+                             + ". Move or commit them elsewhere, then try again.")
+        shutil.rmtree(worktree)
+    git.run("worktree", "prune", check=False)
 
 
 def pass_finish(git: Git, abandon: bool) -> int:
@@ -2545,14 +2927,16 @@ def pass_finish(git: Git, abandon: bool) -> int:
         return 0
     worktree, branch = Path(state["worktree"]), state["branch"]
     landed = subprocess.run(["git", "merge-base", "--is-ancestor", branch, state["base"]], cwd=git.root).returncode == 0
-    dirty = worktree.is_dir() and any(not p.startswith(".field-backdoor/") for p in Git(worktree).status_paths())
+    dirty = is_registered_worktree(git, worktree) and any(not p.startswith(".field-backdoor/") for p in Git(worktree).status_paths())
     if (not landed or dirty) and not abandon:
-        why = "has uncommitted changes" if landed else f"has not landed on {state['base']}"
-        raise SystemExit(f"The pass {why}; commit and land it first, or finish with --abandon to throw it away.")
-    if worktree.is_dir():
-        remove = ["worktree", "remove"] + (["--force"] if abandon else []) + [str(worktree)]
-        git.run(*remove)
-    git.run("worktree", "prune", check=False)
+        queued = land_status(git, branch=branch)
+        why = ("has uncommitted changes" if landed
+               else f"is queued for landing ({queued['id']}) and has not landed yet" if queued and queued["state"] == "pending"
+               else f"bounced from the landing queue: {queued['reason']}" if queued and queued["state"] == "bounced"
+               else f"has not landed on {state['base']}")
+        raise SystemExit(f"The pass {why}; land it first, or finish with --abandon to throw it away.")
+    refuse_if_occupied(worktree, "pass")
+    remove_worktree(git, worktree, force=abandon, branch=branch, abandon=abandon)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
     save_pass(git.root, None)
     print(f"pass closed: removed {worktree} and {branch}" + (" (abandoned)" if abandon else ""), flush=True)
@@ -2733,6 +3117,26 @@ def on_base(git: Git, path: str, base: str = "main") -> bool:
     return subprocess.run(["git", "cat-file", "-e", f"{base}:{path}"], cwd=git.root, capture_output=True).returncode == 0
 
 
+def branches_carrying(git: Git, path: str) -> list[str]:
+    """Local branches whose tip has the file, for a handoff document that is not on main yet.
+
+    A document lands on main only with the branch that wrote it (a revision pass, a session, or the
+    nightly language sweep), so naming that branch is the useful half of "not on main".
+    """
+    if not path:
+        return []
+    out = git.run("for-each-ref", "--format=%(refname:short)", "refs/heads/", check=False)
+    branches = [b for b in out.split() if b != "main"]
+    if not branches:
+        return []
+    # One cat-file for every branch: a process per branch made `pass status` outlast the server's
+    # 60 s timeout once the checkout held hundreds of branches.
+    checked = subprocess.run(["git", "cat-file", "--batch-check=%(objecttype)"], cwd=git.root, capture_output=True, text=True,
+                             input="".join(f"{b}:{path}\n" for b in branches))
+    answers = checked.stdout.splitlines()
+    return [b for b, answer in zip(branches, answers) if not answer.endswith("missing")]
+
+
 def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Each batch, in order, with its open handoffs and why its session can or cannot start yet."""
     open_items = open_handoffs(notes)
@@ -2742,10 +3146,19 @@ def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]
         items = sorted((h for h in open_items if handoff_batch(h) == batch["key"]),
                        key=lambda h: (not (h.get("handoff") or {}).get("blocking"), h.get("createdAtEpochMs", 0)))
         not_landed = [h["id"] for h in items if not on_base(git, (h.get("handoff") or {}).get("path", ""))]
+        not_landed_detail = []
+        for h in items:
+            if h["id"] not in not_landed:
+                continue
+            carried = branches_carrying(git, (h.get("handoff") or {}).get("path", ""))
+            not_landed_detail.append({"id": h["id"], "title": h.get("note", ""), "path": (h.get("handoff") or {}).get("path", ""),
+                                      "branches": carried,
+                                      "queue": next((q for q in (land_status(git, branch=b) for b in carried) if q), None)})
         earlier = [b["title"] for b in BATCHES if b["order"] < batch["order"]
                    and any(handoff_batch(h) == b["key"] for h in open_items)]
         overview.append({**{k: batch[k] for k in ("key", "order", "title", "how")},
-                         "handoffs": [h["id"] for h in items], "notLanded": not_landed, "earlierOpen": earlier,
+                         "handoffs": [h["id"] for h in items], "notLanded": not_landed,
+                         "notLandedDetail": not_landed_detail, "earlierOpen": earlier,
                          "session": ({**sessions[batch["key"]], "occupants": session_occupants(sessions[batch["key"]]["worktree"])}
                                      if batch["key"] in sessions else None)})
     return overview
@@ -2764,8 +3177,11 @@ def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: lis
              f"    {cli} handoff-close <id> \"what happened, in a sentence the page's next agent can use\"",
              f"    {cli} handoff-close <id> --state dropped \"why not\"", "",
              "Closing releases the notes the handoff held; the next revision pass finishes those pages with your "
-             "sentence in their brief. Commit here as you go. To land, merge `main` into this branch, then in "
-             f"`{root}` run `git merge --no-ff {branch}`. Do not push.", "", "## Handoffs", ""]
+             "sentence in their brief. Commit here as you go (the hooks only report, so a commit takes seconds; "
+             "never `--no-verify`). To land, run `uv run python tools/land.py enqueue` here and stop: the lander "
+             "merges, regenerates, runs the full guard once and fast-forwards main, or bounces the branch with "
+             "a reason (`uv run python tools/land.py status`). Never merge into main yourself; a hook refuses it. "
+             "To bring main in, `uv run python tools/merge_regen.py main`. Do not push.", "", "## Handoffs", ""]
     for number, item in enumerate(items, 1):
         info = item.get("handoff") or {}
         held = sum(1 for n in notes if blocked_by(n) == item["id"])
@@ -2800,13 +3216,23 @@ def session_occupants(worktree: str) -> list[str]:
     except (OSError, subprocess.SubprocessError):
         return []
     roots = {worktree.rstrip("/"), str(Path(worktree).resolve())}  # lsof reports /private/var for /var
+    # lsof's command name is the executable's own: Claude Code's is its version ("2.1.288").
+    # The program it was started as is argv[0], which ps reports.
+    try:
+        listing = subprocess.run(["ps", "-axo", "pid=,args="], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        listing = ""
+    program = {}
+    for row in listing.splitlines():
+        pid_text, _, args = row.strip().partition(" ")
+        program[pid_text] = os.path.basename(args.split(" ", 1)[0]) if args else ""
     found, pid, name = [], "", ""
     for line in out.splitlines():
         tag, value = line[:1], line[1:]
         if tag == "p":
             pid, name = value, ""
         elif tag == "c":
-            name = value
+            name = value if value in ("claude", "codex") else program.get(pid, value)
         elif tag == "n" and name in ("claude", "codex") and any(value == r or value.startswith(r + "/") for r in roots):
             found.append(f"{name} (pid {pid})")
     return found
@@ -2820,10 +3246,18 @@ def start_session(git: Git, store: Store, batch_key: str, driver: str = "") -> d
     items = [h for h in open_handoffs(notes) if handoff_batch(h) == batch_key and (h.get("handoff") or {}).get("state", "open") == "open"]
     if not items:
         raise SystemExit(f"no open handoffs in {batch['title']}")
+    # A handoff whose document is not on main stays open for a later session; the rest start now.
+    # The session works from main, so a document still on its branch is not there to read.
     missing = [h for h in items if not on_base(git, (h.get("handoff") or {}).get("path", ""))]
-    if missing:
-        raise SystemExit(f"{len(missing)} of these handoffs' documents are not on main yet: land the revision pass first "
-                         "(Commit, then Land on main), so the session starts from the pages the pass rewrote.")
+    items = [h for h in items if h not in missing]
+    if not items:
+        where = "; ".join(f"{h.get('note', '').strip()} is on {', '.join(branches_carrying(git, (h.get('handoff') or {}).get('path', ''))) or 'no local branch'}"
+                          for h in missing)
+        raise SystemExit(f"none of these handoffs' documents are on main yet: land the branch that wrote them first ({where}).")
+    for h in missing:
+        carried = branches_carrying(git, (h.get("handoff") or {}).get("path", ""))
+        print(f"left for a later session (its document is not on main yet{': on ' + ', '.join(carried) if carried else ''}): "
+              f"{h.get('note', '').strip()}", flush=True)
     stamp = time.strftime("%Y%m%d-%H%M")
     branch = f"handoffs/{batch_key}-{stamp}"
     worktree = default_pass_path(git.root, stamp).with_name(f"handoffs-{batch_key}-{stamp}")
@@ -2864,13 +3298,16 @@ def end_session(git: Git, store: Store, batch_key: str, abandon: bool) -> int:
         raise SystemExit(f"no {batch_key} session")
     worktree, branch = Path(session["worktree"]), session["branch"]
     merged = subprocess.run(["git", "merge-base", "--is-ancestor", branch, "main"], cwd=git.root).returncode == 0
-    dirty = worktree.is_dir() and any(p != "HANDOFF_SESSION.md" for p in Git(worktree).status_paths())
+    dirty = is_registered_worktree(git, worktree) and any(p != "HANDOFF_SESSION.md" for p in Git(worktree).status_paths())
     if (dirty or not merged) and not abandon:
-        raise SystemExit("The session " + ("has uncommitted changes" if dirty else f"branch {branch} has not been merged into main")
-                         + "; land it first, or end it with --abandon to throw it away.")
-    if worktree.is_dir():
-        git.run(*(["worktree", "remove", "--force", str(worktree)]))
-    git.run("worktree", "prune", check=False)
+        queued = land_status(git, branch=branch)
+        why = ("has uncommitted changes" if dirty
+               else f"branch {branch} is queued for landing ({queued['id']}) and has not landed yet" if queued and queued["state"] == "pending"
+               else f"branch {branch} bounced from the landing queue: {queued['reason']}" if queued and queued["state"] == "bounced"
+               else f"branch {branch} is not on main: enqueue it with `uv run python tools/land.py enqueue`")
+        raise SystemExit(f"The session {why}; land it first, or end it with --abandon to throw it away.")
+    refuse_if_occupied(worktree, "session")
+    remove_worktree(git, worktree, force=True, branch=branch, abandon=abandon)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
 
     def release(current: list[dict[str, Any]]) -> None:
@@ -2979,6 +3416,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--state", choices=("done", "dropped", "taken"), default="done",
                    help="taken: someone is working on it (still blocks); dropped: abandoned (releases the notes)")
 
+    p = sub.add_parser("import-drafts", help="turn completion's generated KDoc drafts into kdoc-draft notes")
+    p.add_argument("--cache", help=f"the drafts (default: ${FILESTORE_ENV} or .field/filestore/{DRAFT_CACHE_FILE})")
+    p.add_argument("--limit", type=int, default=0, help="import at most this many")
+    p.add_argument("--json", action="store_true")
+
     p = sub.add_parser("revise", help="run one agent per page over the queue, in parallel")
     add_revise_arguments(p)
 
@@ -3006,7 +3448,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="FIELD_DOCS_RUNNER_MODE; `never` builds HTML without re-running any capture")
     q.add_argument("--all", action="store_true", help="run captures on every page, not only changed ones")
     pass_sub.add_parser("commit", help="commit the worktree, with the resolved notes in the message")
-    pass_sub.add_parser("land", help="merge the base in, then fast-forward the base in the primary checkout")
+    pass_sub.add_parser("land", help="enqueue the pass branch for the lander (tools/land.py), which puts it on main")
     q = pass_sub.add_parser("finish", help="remove the worktree and branch once landed")
     q.add_argument("--abandon", action="store_true", help="remove them even though they never landed")
     return parser
@@ -3133,6 +3575,16 @@ def main(argv: list[str] | None = None) -> int:
         result = record(store, {"op": "handoff-close", "id": find_note(store.notes(), args.id)["id"],
                                 "text": args.text, "state": args.state})
         print(f"handoff {result.get('id', '')[:8]}: {args.state}")
+        return 0
+    if args.command == "import-drafts":
+        cache = draft_cache_path(git, args.cache)
+        counts = import_drafts(store, git, cache, limit=args.limit, log=(lambda _m: None) if args.json else print)
+        if args.json:
+            print(json.dumps({"cache": str(cache), **counts}))
+        else:
+            print(f"{counts['imported']} draft(s) imported from {cache}; {counts['known']} already notes, "
+                  f"{counts['documented']} already documented, {counts['declined']} declined before, "
+                  f"{counts['stale']} stale, {counts['outside']} outside src/")
         return 0
     if args.command == "revise":
         return revise(args, store, git)

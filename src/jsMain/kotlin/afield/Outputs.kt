@@ -851,13 +851,22 @@ fun afieldToggleLazyOutput(buttonLike: dynamic) {
     scheduleKnownOutputRecompute(wrapper)
 }
 
+// Output iframes have their own HTMLElement constructor. Check the node's realm so
+// the same value inspector can handle links passed up from a same-origin iframe.
+private fun lazyValueElement(value: dynamic): HTMLElement? {
+    if (value == null) return null
+    val constructor = value.ownerDocument?.defaultView?.HTMLElement ?: return null
+    if (!(js("value instanceof constructor") as Boolean)) return null
+    return value.unsafeCast<HTMLElement>()
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun afieldExpandLazyValue(linkLike: dynamic) {
-    val link = linkLike as? HTMLElement ?: return
+    val link = lazyValueElement(linkLike) ?: return
     val src = link.getAttribute("data-afield-lazy-src")?.takeIf { it.isNotBlank() } ?: return
-    val wrapper = link.parentElement as? HTMLElement ?: return
-    val parent = wrapper.parentElement as? HTMLElement
+    val wrapper = lazyValueElement(link.parentElement) ?: return
+    val parent = lazyValueElement(wrapper.parentElement)
     val ds = link.dataset.asDynamic()
     if ((ds.afieldLazyLoading as? String) == "1") return
 
@@ -941,7 +950,7 @@ private fun upsertLazyValueViewer(boxUid: String, title: String, src: String) {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun afieldOpenLazyValueInOutputArea(linkLike: dynamic) {
-    val link = linkLike as? HTMLElement ?: return
+    val link = lazyValueElement(linkLike) ?: return
     val boxUid = link.getAttribute("data-afield-box-uid")?.takeIf { it.isNotBlank() } ?: return
     val src = link.getAttribute("data-afield-view-src")?.takeIf { it.isNotBlank() } ?: return
     val title = link.getAttribute("data-afield-view-title")?.takeIf { it.isNotBlank() } ?: "Columns"
@@ -1109,6 +1118,21 @@ fun clearAllDecorations() {
         ed.contents.clear()
     }
     perEditorDecorations.clear()
+}
+
+/**
+ * An output message as the plain text a beside-the-line chip shows.
+ *
+ * Output is HTML — Python escapes `<`, `>` and `&` so that its multi-line `<pre>` blocks render —
+ * but the chip is a Monaco `after` decoration, which only takes text, so `print(p)` of a
+ * `<Pipeline ...>` showed as `&lt;Pipeline ...&gt;`. Decoding through a textarea turns entities back
+ * into characters and leaves already-plain text, such as Kotlin's, exactly as it was.
+ */
+private fun inlineChipText(text: String): String {
+    if (!text.contains('&')) return text
+    val decoder = document.createElement("textarea") as org.w3c.dom.HTMLTextAreaElement
+    decoder.innerHTML = text
+    return decoder.value
 }
 
 private fun looksLikeHTML(text: String): Boolean {
@@ -1719,7 +1743,7 @@ fun addOutput(
     }
 
     if (allowInline && canInline) {
-        addInlineOutput(editor, belowLine, textClean, extraClass, frameMarker, shouldFlash = repeatedInlineOutput)
+        addInlineOutput(editor, belowLine, inlineChipText(textClean), extraClass, frameMarker, shouldFlash = repeatedInlineOutput)
     } else {
         editor.changeViewZones { changeAccessor: dynamic ->
             val domNode = document.createElement("div") as HTMLElement

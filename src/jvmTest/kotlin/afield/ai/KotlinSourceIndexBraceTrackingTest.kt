@@ -146,6 +146,31 @@ class KotlinSourceIndexBraceTrackingTest {
     }
 
     @Test
+    fun `an init block is not the body of a bodyless class declared above it`() {
+        // `data class SecondaryInheritance(…)` then `init { val vkDevice = … }` in CommandBuffer.kt,
+        // and the same shape in JoltPhysicsWorld.kt and StudyBuilds.kt. A class with no body stays
+        // pending until a `{` arrives, so the enclosing class's `init {` was taken for the nested
+        // class's body, and the locals inside it were published as that class's members.
+        val source = """
+            class Buffer {
+                data class Inheritance(val pass: Long, val subpass: Int = 0)
+
+                init {
+                    val device = 1
+                    fun visit(id: String) = id
+                }
+
+                fun record() = 1
+            }
+        """
+        assertEquals(
+            listOf("class Buffer", "class Buffer.Inheritance", "fun Buffer.record"),
+            indexed(source),
+            "the init block's locals belong to nobody",
+        )
+    }
+
+    @Test
     fun `the shapes it already handled still work`() {
         // A characterisation guard on the rest of the lexer: comments, raw strings, character
         // literals holding braces, and escaped quotes were never the bug, and must not become one.

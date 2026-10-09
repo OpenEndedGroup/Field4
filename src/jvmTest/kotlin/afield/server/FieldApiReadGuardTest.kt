@@ -128,13 +128,9 @@ class FieldApiReadGuardTest {
         assertTrue(FIELD_API_REQUIRE_SAME_SITE_ENV in body, "was: $body")
     }
 
-    /**
-     * The default is still the old behaviour, for the reason the write guard states: turning a
-     * refusal on across three dozen routes is how you discover which of them your own tooling
-     * was quietly using. This test is what makes the read guard opt-in rather than a surprise.
-     */
+    /** Integrations may explicitly opt out, while fresh desktop installs keep the guard. */
     @Test
-    fun theDefaultIsStillTheOldBehaviourAndThereforeStillTheExposure() = guardedApp(on = false) {
+    fun anExplicitOptOutAllowsCrossSiteReads() = guardedApp(on = false) {
         assertEquals(HttpStatusCode.OK, get("/api/instance-info") { fromEvilPage() }.status)
     }
 

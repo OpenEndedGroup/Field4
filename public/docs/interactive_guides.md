@@ -1,9 +1,8 @@
 # Interactive Guides
 
-Guides exist for teaching: leading someone through a document they have not seen before. A guide
-is a box that walks them through it. You write it in the box; the person following it gets notes,
-moving selections and callout lines over the live document rather than a recording of one. A guide
-can:
+A guide is a box that walks someone through a document they have not seen before. You write it
+in the box, and the person following it gets notes, moving selections and callout lines over the
+live document itself. A guide can:
 
 - show a note next to a box,
 - move the editor to a property and line,
@@ -12,7 +11,7 @@ can:
 - attach a discussion thread,
 - draw callout lines to boxes or exact code locations.
 
-The core API lives in `slideShow { ... }`. Each `step("...")` defines one stage of the guide, and `markdownNote(...)` or `note(...)` renders the overlay.
+A guide is a `slideShow { ... }` block. Each `step("...")` defines one stage of the guide, and `markdownNote(...)` or `note(...)` renders the overlay.
 
 A guide's notes and callout lines come and go with its steps. For marks that stay on the canvas,
 such as a hand-drawn diagram beside the boxes it explains or arrows a box draws for itself, see
@@ -21,7 +20,7 @@ the document.
 
 ## Start with a single-step guide
 
-You need five things for the smallest guide that does anything:
+The smallest guide that does anything needs:
 
 - a host box to write it in,
 - a `slideShow { ... }` block,
@@ -64,9 +63,9 @@ That is already a working guide. It opens a note, selects a box, and leaves the 
 
 ## Focus the reader on the right box and property
 
-A step usually explains the current stage with a note and moves the UI to the place it is talking about in the same breath. Use `selectBox(box, property = "code")` when you already have the target box in scope, and `selectBoxByName(...)` when the guide is driving another named box in the document.
+A step usually explains the current stage with a note and moves the UI to the place the note is talking about. Use `selectBox(box, property = "code")` when you already have the target box in scope, and `selectBoxByName(...)` when the guide is driving another named box in the document.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="1.5" capture="box" outputs="none" embed=true name="basic-slideshow" w="560" h="140" padding="28" alt="The selected guide box on the left, a green running dot in its corner, and the slide note floating to its right: the heading Welcome to Field and the sentence about the slideshow system. The capture is caught part-way through the note's reveal animation, so the three bullets below show their markers with no text yet and the Home and Continue links have not appeared."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="8" capture="box" outputs="none" embed=true name="basic-slideshow" w="560" h="140" padding="28" alt="The selected guide box on the left, a green running dot in its corner, and the slide note floating to its right: the heading Welcome to Field and the sentence about the slideshow system. Below it the three bullets about notes, selectable boxes and the visible editor, then the Home and Continue links."}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -105,9 +104,9 @@ Pair notes with view changes. A note that talks about code should leave that cod
 
 ## Add callbacks and live template values
 
-An interactive step wants a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
+An interactive step uses a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28" alt="The guide box beside its note, headed Interactive Guides with Callbacks. Three blue callback links are listed as bullets: Increment, Choose performance mode, Choose quality mode. The three template slots around them are empty in this capture: the line reads Version: with nothing after it, and the footer reads Count: Choice: with neither value filled in."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28" alt="The guide box beside its note, headed Interactive Guides with Callbacks. Three blue callback links are listed as bullets: Increment, Choose performance mode, Choose quality mode. Above them the line reads Version: 1.0.0, and the footer reads Count: 3 and Choice: Balanced Mode."}
 :::static
 import afield.logger.lprintln
 import afield.markdownNote
@@ -119,6 +118,7 @@ var clickCount = 3
 var userChoice = "Balanced Mode"
 val version = "1.0.0"
 val host = thisBox
+//%-
 
 println("interactive guide ready")
 
@@ -168,18 +168,18 @@ runBlocking {
 }
 ```
 
-A template value can come from `this.properties[...]`, from a Kotlin variable that is still in scope, or from the shared template helpers the slideshow runtime exposes.
+A template value can come from `this.properties[...]`, from a Kotlin variable the box has already run, or from the shared template helpers the slideshow runtime exposes. A variable becomes visible to templates once the code declaring it has finished running, so the [`//%-` line](running_code.md#the-fragment-break) after the declarations matters here: it runs `version`, `clickCount` and `userChoice` as their own fragment before `show.start()` renders the first note. Without it the first note shows those slots empty.
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
 
 ## Per-slide chat
 
-Chat is optional. It belongs to the step that asks for it.
+A step can carry its own discussion thread.
 
 - `withChat()` creates a thread for that slide.
 - `withChat(id = "shared-id")` shares one thread across repeated guide instances.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" outputs="none" embed=true name="slide-chat" w="560" h="140" padding="28" alt="The guide box beside a note headed Per-slide Chat, giving the two withChat forms in inline code, then a Back and Next link pair, a horizontal rule, and a collapsed Discussion disclosure with its triangle still closed. The second code span prints its quotes with literal backslashes, as backslash-quote templateId backslash-quote, because the snippet escaped them inside a Kotlin raw string."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" outputs="none" embed=true name="slide-chat" w="560" h="140" padding="28" alt="The guide box beside a note headed Per-slide Chat, giving the two withChat forms in inline code, then a Back and Next link pair, a horizontal rule, and a collapsed Discussion disclosure with its triangle still closed."}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -198,7 +198,7 @@ val show = slideShow {
             ## Per-slide Chat
             Use `withChat()` when a slide should carry its own discussion.
 
-            Use `withChat(id = \"templateId\")` when multiple template instances should share one thread.
+            Use `withChat(id = "templateId")` when multiple template instances should share one thread.
 
             [[back]] [[next]]
             """.trimIndent()
@@ -222,9 +222,8 @@ fail.
 
 ### Setting up the chat server
 
-Chat is the one guide feature that needs a companion service: a small Flask process that persists
-messages as JSON. Field proxies to it, so the browser only ever talks to Field's normal RPC
-transport and never reaches Flask directly.
+Chat needs a small companion service, a Flask process that stores the messages. Field talks to it
+for the browser, so the browser only needs to reach Field.
 
 Install the dependencies and start the service alongside Field:
 
@@ -238,13 +237,13 @@ It reads three optional environment variables: `CHAT_SERVER_PORT` (default
 `5002`), `CHAT_SERVER_DEBUG` (default `true`), and `CHAT_SERVER_URL` (the URL
 Field's JVM server uses, default `http://localhost:5002`).
 
-The frontend reads a username from the URL query string —
-`?file=myguide&username=student1` — and posts as `anonymous` without it. Messages
-are stored under `chat_data/` in per-slideshow, per-slide JSON files
-(`chat_data/slideshow_box123_.../slide_0.json`), each an array of
-`{username, message, timestamp}` records, so a thread survives a restart and can
-be read without Field. The bridge's own parts, and what to do when the two
-processes disagree about a port, are in `dev_docs/GUIDE_CHAT_QUICKSTART.md`.
+Each person following the guide names themselves in the URL, as
+`?file=myguide&username=student1`; without a name they post as `anonymous`. Messages are
+saved under `chat_data/`, one JSON file per slide, so a thread survives a restart.
+
+??? aside "Where the chat bridge is documented"
+    The bridge's parts, the file layout under `chat_data/`, and what to do when Field and the
+    chat server disagree about a port are in `dev_docs/GUIDE_CHAT_QUICKSTART.md`.
 
 ## Annotations and code callouts
 
@@ -307,7 +306,7 @@ For line-level teaching, combine `selectBox(...)`, `line = ...`, `highlight = ..
 
 ## Growing a guide
 
-Guides tend to get written in one direction:
+Most guides are written in this order:
 
 1. `slideShow { ... }` with one or more `step(...)` blocks.
 2. `markdownNote(...)` or `note(...)` in each step, saying what stage the reader is at.
@@ -321,7 +320,7 @@ Steps 4 to 7 go only on the steps that ask for them.
 
 ## Example source map
 
-For complete examples, read `src/jvmMain/kotlin/afield/examples/slideshow_example.kt`:
+For complete examples, read [`slideshow_example.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/slideshow_example.kt):
 
 - `simpleInteractiveExample()` is the minimal callback-and-template example.
 - `exampleSlideShow()` is a traditional guided tour that moves through multiple boxes.

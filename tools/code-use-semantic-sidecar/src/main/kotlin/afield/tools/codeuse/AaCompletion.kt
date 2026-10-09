@@ -43,10 +43,12 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
+import org.jetbrains.kotlin.psi.KtUserType
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
 import org.jetbrains.org.objectweb.asm.AnnotationVisitor
@@ -212,13 +214,16 @@ data class AaLoweredFile(
     val providedImports: List<String>,
     val isDot: Boolean,
     val prefix: String,
+    /** The `import` line the caret is typing in, moved into the file header (see `importPathAt`). It is
+     *  the box's own code, so an error in it is reported as the snippet's. */
+    val caretImportRange: IntRange = IntRange.EMPTY,
 ) {
     /** Which injected region [offset] falls in — the label an error is reported under. */
     fun regionAt(offset: Int): String = when (offset) {
         in preambleRange -> "preamble"
         in declarationsRange -> "declarations"
         in stubsRange -> "stubs"
-        in snippetRange -> "snippet"
+        in snippetRange, in caretImportRange -> "snippet"
         else -> "wrapper"
     }
 }
@@ -375,10 +380,14 @@ data class AaSymbolIndex(
          * Scan [packages] on demand, for a package the prebuilt index does not cover — anything the
          * box imports that is not one of the REPL default imports (`sentences`, a user's own jar).
          * Same scan as [build]; separate entry point because it happens per request rather than per
-         * session, and is memoised by the caller (~0.3s per package, once).
+         * session, and is memoised by the caller. A directory root is read only under [packages]' own
+         * directories rather than walked whole: that walk was 80ms of the 150ms a package cost, on
+         * Field's 11k-file `build/classes`. Every jar is still opened (~60ms over 440 of them), since
+         * nothing records which jar holds which package. [AaSymbolIndex.allPackages] is therefore
+         * partial in the result; callers take only the packages' contents.
          */
         fun scanPackages(roots: List<Path>, packages: Set<String>): AaSymbolIndex =
-            if (packages.isEmpty()) EMPTY else build(roots, packages)
+            if (packages.isEmpty()) EMPTY else build(roots, packages, targeted = true)
 
         /**
          * Build the index, or load it from [cacheDir] when a cache keyed by the same classpath
@@ -432,7 +441,7 @@ data class AaSymbolIndex(
             return md.digest().joinToString("") { "%02x".format(it) }.take(24)
         }
 
-        private fun build(roots: List<Path>, packages: Set<String>): AaSymbolIndex {
+        private fun build(roots: List<Path>, packages: Set<String>, targeted: Boolean = false): AaSymbolIndex {
             val callables = HashMap<String, MutableSet<String>>()
             val classifiers = HashMap<String, MutableSet<String>>()
             val typeAliases = HashMap<String, MutableSet<String>>()
@@ -478,6 +487,18 @@ data class AaSymbolIndex(
                         java.util.zip.ZipFile(root.toFile()).use { zf ->
                             zf.entries().asSequence().filter { !it.isDirectory }.forEach { e ->
                                 consider(e.name) { zf.getInputStream(e).use { it.readBytes() } }
+                            }
+                        }
+                    }
+                } else if (targeted && Files.isDirectory(root)) {
+                    for (pkg in packages) {
+                        val dir = root.resolve(pkg.replace('.', '/'))
+                        if (!Files.isDirectory(dir)) continue
+                        runCatching {
+                            Files.list(dir).use { s ->
+                                s.filter { Files.isRegularFile(it) }.forEach { f ->
+                                    consider(root.relativize(f).toString().replace('\\', '/')) { Files.readAllBytes(f) }
+                                }
                             }
                         }
                     }
@@ -639,6 +660,14 @@ internal fun prefixAt(snippet: String, cursor: Int): String =
 /** A line that is nothing but an `import` — `import a.b.C`, `import a.b.*`, `import a.b.C as D`. */
 private val IMPORT_LINE = Regex("""\s*import\s+\w+(?:\.\w+)*(?:\.\*)?(?:\s+as\s+\w+)?\s*""")
 
+/** A line up to the caret when the caret is in an `import`'s path: `import ‸`, `import kotlin.ma‸`,
+ *  `import afield.pd.‸`. Not past the path — `import a.b.*‸` and `import a.b.C as D‸` do not match. */
+private val IMPORT_PATH_HEAD = Regex("""\s*import\s+(?:\w+\.)*\w*""")
+
+/** The caret's `import` line ([line], in snippet offsets) and its text from `import` up to the caret
+ *  ([typed]: `import kotlin.ma`). See `AaCompleter.importPathAt`. */
+internal data class CaretImport(val line: IntRange, val typed: String)
+
 /**
  * The dummy name spliced in at an otherwise-empty expression slot, so there is a `KtExpression` at the
  * caret whose *expected* type the Analysis API can report. (IntelliJ does the same with
@@ -710,9 +739,9 @@ class AaCompleter(
     private val contextFile: KtFile,
     private val index: AaSymbolIndex,
     private val defaultImports: List<String>,
-    /** The session's binary roots, so a package the box imports but [index] does not cover (anything
-     *  outside [defaultImports] — `sentences`, a user's own jar) can be scanned on demand. Empty
-     *  disables that, leaving only the prebuilt index. */
+    /** The session's binary roots, so a package [index] does not cover can be scanned on demand: one the
+     *  box imports outside [defaultImports] (`sentences`, a user's own jar), or one a package path names
+     *  (`afield.pd.‸`, see [contentsOf]). Empty disables that, leaving only the prebuilt index. */
     private val binaryRoots: List<Path> = emptyList(),
 ) {
     /** One-line index size summary, for sidecar startup logging. */
@@ -751,22 +780,70 @@ class AaCompleter(
         val wanted = (fromBox + starPackagesOf(providedImports)).distinct()
             .filter { it !in index.callables && it !in index.classifiers }
         if (wanted.isEmpty()) return IndexScope(index, emptySet())
-        val missing = wanted.filter { !scanned.containsKey(it) }
-        if (missing.isNotEmpty()) {
-            val fresh = AaSymbolIndex.scanPackages(binaryRoots, missing.toSet())
-            for (pkg in missing) {
-                scanned[pkg] = AaSymbolIndex(
-                    fresh.callables.filterKeys { it == pkg },
-                    fresh.classifiers.filterKeys { it == pkg },
-                    fresh.typeAliases.filterKeys { it == pkg },
-                )
-            }
-        }
+        scanMissing(wanted)
         return IndexScope(
             wanted.fold(index) { acc, pkg -> acc + (scanned[pkg] ?: AaSymbolIndex.EMPTY) },
             wanted.filter { it in fromBox }.toSet(),
         )
     }
+
+    /** Scan whichever of [packages] [scanned] does not hold yet, in one walk of [binaryRoots]. */
+    private fun scanMissing(packages: List<String>) {
+        val missing = packages.filter { !scanned.containsKey(it) }
+        if (missing.isEmpty()) return
+        // Walking every root costs the same whether or not it finds anything, so skip the names it cannot
+        // find anything for, and memoise them as empty:
+        //  - a JDK package. It is not on the binary roots, it lives in a module. Nor could a jar add to it:
+        //    the JVM loads a package a boot-layer module owns from that module only, never the class path.
+        //  - a name no class file is in: a prefix of packages (`java`, `org.jetbrains`), or a class
+        //    star-imported for its statics (`import org.lwjgl.vulkan.VK10.*`, 75ms for nothing).
+        val (empty, onRoots) = missing.partition { pkg ->
+            pkg in jdkPackages || packagesWithClasses?.let { pkg !in it } == true
+        }
+        empty.forEach { scanned[it] = AaSymbolIndex.EMPTY }
+        if (onRoots.isEmpty()) return
+        val started = System.nanoTime()
+        val fresh = AaSymbolIndex.scanPackages(binaryRoots, onRoots.toSet())
+        for (pkg in onRoots) {
+            scanned[pkg] = AaSymbolIndex(
+                fresh.callables.filterKeys { it == pkg },
+                fresh.classifiers.filterKeys { it == pkg },
+                fresh.typeAliases.filterKeys { it == pkg },
+            )
+        }
+        System.err.println("[k2-completion] scanned ${onRoots.joinToString()} on demand in " +
+            "${(System.nanoTime() - started) / 1_000_000}ms: ${fresh.classifierCount} classifiers, " +
+            "${fresh.callableCount} callables")
+    }
+
+    /**
+     * What [index] knows about the single package [pkg], scanning it on demand if nothing imported it.
+     *
+     * A package path written out by hand — `afield.pd.‸PdInstance`, `prop<afield.four.fabricated.‸X>(x)`,
+     * `afield.four.audio.‸WavFloatArrayWriter` — names a package precisely BECAUSE the box did not import
+     * it. [index] holds only the imported packages' contents, so the panel listed the sub-packages
+     * ([AaSymbolIndex.allPackages] knows every package's name) and none of the classes: 56 of the caret
+     * sweep's misses over the boxes written after the floors were cut answered "0 matched in package".
+     * The scan is the same one [indexFor] does for a star import, memoised the same way, so a package
+     * costs one walk of the roots per session. It widens only this lookup: a package someone wrote out is
+     * not thereby imported, so name completion elsewhere does not start offering its contents.
+     */
+    private fun contentsOf(pkg: String, index: AaSymbolIndex): AaSymbolIndex {
+        if (pkg in index.callables || pkg in index.classifiers || pkg in index.typeAliases) return index
+        if (binaryRoots.isEmpty()) return index
+        scanMissing(listOf(pkg))
+        return scanned[pkg] ?: index
+    }
+
+    /** Every package a module in the running JDK's boot layer contains. See [scanMissing]. */
+    private val jdkPackages: Set<String> by lazy {
+        runCatching { ModuleLayer.boot().modules().flatMapTo(HashSet()) { it.descriptor.packages() } }
+            .getOrDefault(emptySet())
+    }
+
+    /** Every package some class file is in, on the roots or in the JDK; null when [index] did not record
+     *  them, which must not read as "no package has classes". See [scanMissing]. */
+    private val packagesWithClasses: Set<String>? by lazy { index.allPackages.toHashSet().takeIf { it.isNotEmpty() } }
 
     /**
      * @param snippet           the code being edited, WITHOUT any caret marker.
@@ -883,12 +960,20 @@ class AaCompleter(
         // synthetic `fun __c() { … }` below, where an import is a syntax error. So `import sentences.*`
         // on line 1 left `SentenceDiagram` unresolved and every member of the box's own type missing.
         // Hoist them to the file header instead (blanked in place, same length, so [cursor] still
-        // means what the caller said). The line the caret sits on is left alone: completing an import
-        // path is a name position like any other.
-        val (body, snippetImports) = hoistImports(snippet, cursor)
+        // means what the caller said).
+        //
+        // That includes the line the caret is typing an import PATH on. It used to stay where it was, on
+        // the theory that completing an import path is a name position like any other — but inside
+        // `fun __c` it is no position at all. `import kotlin.math.‸` there is a syntax error, so there was
+        // no qualified expression at the caret, and every package answered 0 with "no qualified expr";
+        // an empty answer hands the request to K1, so none of [completeAt]'s package-path work (sub-packages,
+        // the on-demand scan, the JDK's classes) ever reached an import line. So the header gets what is
+        // typed of that line, up to the caret, and the caret goes with it. See [importPathAt].
+        val caretImport = importPathAt(snippet, cursor)
+        val (body, snippetImports) = hoistImports(snippet, cursor, caretImport?.line)
         val before = body.substring(0, cursor)
         val after = body.substring(cursor)
-        val prefix = prefixAt(before, before.length)
+        val prefix = (caretImport?.typed ?: before).let { prefixAt(it, it.length) }
         // What KIND of position the caret is in is decided on CODE, not on prose. Read off the raw text,
         // the last non-space character before the caret is whatever the previous line happened to end
         // with — and a comment that ends in a full stop is how people write comments:
@@ -900,8 +985,9 @@ class AaCompleter(
         // qualified expr" with zero candidates — 19 of the caret sweep's misses, every one of them an
         // ordinary call at the start of a statement. Worse than empty when the caret happens to sit
         // inside an outer qualified expression: then it answers with the members of THAT receiver.
-        // Blanked in place, so every offset still means what the caller said.
-        val beforeCode = blankCommentsAndStrings(before)
+        // Blanked in place, so every offset still means what the caller said. On an import line the code
+        // before the caret is the path typed so far, since that line has left the body.
+        val beforeCode = caretImport?.typed ?: blankCommentsAndStrings(before)
         // Covers both `recv.` and safe `recv?.` — both end in '.' after dropping the prefix.
         val isDot = beforeCode.dropLast(prefix.length).trimEnd().endsWith(".")
         // At an untyped expression slot (`d.scheme = ‸`, `f(‸`) there is no expression at the caret to
@@ -951,6 +1037,18 @@ class AaCompleter(
         val sb = StringBuilder()
         allImports.map { it.removePrefix("import ").trim() }
             .filter { it.isNotEmpty() }.distinct().forEach { sb.append("import ").append(it).append('\n') }
+        var cursorOffset = -1
+        var caretImportRange = IntRange.EMPTY
+        if (caretImport != null) {
+            val start = sb.length
+            sb.append(caretImport.typed)
+            // An empty name, after `import ` or after a dot, has to be SOME name, or there is no reference
+            // at the caret to read a qualifier off: the same reason the body splices one at `recv.‸`.
+            if (prefix.isEmpty()) sb.append(CARET_MARKER)
+            cursorOffset = sb.length
+            caretImportRange = start until sb.length
+            sb.append('\n')
+        }
         sb.append('\n')
         val preambleStart = sb.length
         if (fileScopePreamble.isNotBlank()) sb.append(fileScopePreamble).append("\n\n")
@@ -977,10 +1075,12 @@ class AaCompleter(
         // wrapper out of inference entirely.
         recvs.forEachIndexed { i, t -> sb.append("with<").append(t).append(", Unit>(__r").append(i).append(") { ") }
         val snippetStart = sb.length
-        sb.append(before)
-        if (spliceCaret || spliceDotCaret) sb.append(CARET_MARKER)
-        val cursorOffset = sb.length
-        sb.append(after)
+        if (caretImport == null) {
+            sb.append(before)
+            if (spliceCaret || spliceDotCaret) sb.append(CARET_MARKER)
+            cursorOffset = sb.length
+            sb.append(after)
+        } else sb.append(body)
         val snippetRange = snippetStart until sb.length
         recvs.forEach { _ -> sb.append(" }") }
         sb.append("\n}\n")
@@ -998,6 +1098,7 @@ class AaCompleter(
             providedImports = providedImports,
             isDot = isDot,
             prefix = prefix,
+            caretImportRange = caretImportRange,
         )
     }
 
@@ -1109,13 +1210,18 @@ class AaCompleter(
     }
 
     /**
-     * Blank every whole-line `import` in [snippet] (leaving the one holding the caret) and return the
+     * Blank every whole-line `import` in [snippet] (except the one holding the caret) and return the
      * blanked text — character-for-character the same length, so caret offsets survive — plus the
      * import statements found. Only a line that is nothing but an import is touched, so an `import`
      * inside a string literal or a comment is left where it is.
+     *
+     * [caretImport] is the caret's line when the caret is in its path ([importPathAt]). It is blanked
+     * too but not returned: [lower] puts what is typed of it in the header itself, because half a path
+     * (`import kotlin.math.`) is not an import. A caret past the path (`import a.b.*‸`) leaves its line
+     * where it is.
      */
-    internal fun hoistImports(snippet: String, cursor: Int): Pair<String, List<String>> {
-        if (!snippet.contains("import ")) return snippet to emptyList()
+    internal fun hoistImports(snippet: String, cursor: Int, caretImport: IntRange? = null): Pair<String, List<String>> {
+        if (caretImport == null && !snippet.contains("import ")) return snippet to emptyList()
         val out = StringBuilder(snippet)
         val imports = mutableListOf<String>()
         var lineStart = 0
@@ -1128,7 +1234,29 @@ class AaCompleter(
             }
             lineStart += line.length + 1
         }
+        caretImport?.forEach { out.setCharAt(it, ' ') }
         return out.toString() to imports
+    }
+
+    /**
+     * The caret's line, when the caret is in the PATH of the `import` on it: `import ‸`,
+     * `import kotlin.ma‸`, `import afield.pd.‸`, and the path of a star or aliased import
+     * (`import a.b.‸*`, `import a.b.Fo‸ as D`). Null anywhere else, including past the path
+     * (`import a.b.*‸`, `… as D‸`), where there is no package to complete. Decided on code, so an
+     * `import` inside a string or a comment is not one.
+     *
+     * Only the text up to the caret is kept ([CaretImport.typed]): what follows it (the rest of a name,
+     * `.*`, ` as D`) does not change which names complete there, and dropping it means the header line
+     * always parses.
+     */
+    internal fun importPathAt(snippet: String, cursor: Int): CaretImport? {
+        val c = cursor.coerceIn(0, snippet.length)
+        val lineStart = snippet.lastIndexOf('\n', c - 1) + 1
+        val head = snippet.substring(lineStart, c)
+        if (!IMPORT_PATH_HEAD.matches(head)) return null
+        if (!IMPORT_PATH_HEAD.matches(blankCommentsAndStrings(snippet.substring(0, c)).substring(lineStart))) return null
+        val lineEnd = snippet.indexOf('\n', c).let { if (it < 0) snippet.length else it }
+        return CaretImport(lineStart until lineEnd, head.trimStart())
     }
 
     /**
@@ -1397,7 +1525,7 @@ class AaCompleter(
              * private ones the index deliberately keeps (see [FacadeVisitor.visitMethod]).
              */
             var packageTruncated: String? = null
-            fun packageCandidates(pkg: String, index: AaSymbolIndex): List<AaCandidate> {
+            fun packageCandidates(pkg: String, index: AaSymbolIndex, withCallables: Boolean = true): List<AaCandidate> {
                 val out = ArrayList<AaCandidate>()
                 index.allPackages.asSequence()
                     .filter { it.startsWith("$pkg.") }
@@ -1405,12 +1533,27 @@ class AaCompleter(
                     .filter { it.isNotEmpty() && match(Name.identifier(it)) }
                     .distinct()
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "package")) }
-                index.classifiers[pkg].orEmpty().asSequence()
+                val contents = contentsOf(pkg, index)
+                contents.classifiers[pkg].orEmpty().asSequence()
                     .filter { match(Name.identifier(it)) }
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
-                index.typeAliases[pkg].orEmpty().asSequence()
+                contents.typeAliases[pkg].orEmpty().asSequence()
                     .filter { match(Name.identifier(it)) }
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
+                // The JDK is not on the binary roots, so the ASM scan never sees `java.util.concurrent.atomic`'s
+                // classes, only the package's NAME, from the boot layer. AA's own package scope lists them: it
+                // enumerates a Java package, which it cannot do for a binary Kotlin one (the reason the ASM
+                // index exists; it answers 0 for `afield.pd`). The use-site check drops the package-private
+                // helpers a JDK package is full of (`java.util.ArrayPrefixHelpers`, `atomic.Striped64`).
+                if (pkg in jdkPackages) {
+                    runCatching {
+                        findPackage(FqName(pkg))?.packageScope?.classifiers(match).orEmpty()
+                            .filter { accessible(it) }
+                            .mapNotNull { (it as? KaNamedSymbol)?.name?.asString() }
+                            .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
+                    }
+                }
+                if (!withCallables) return out
                 // At a BARE `kotlin.math.‸` too, capped rather than gated. This used to require a prefix,
                 // on the reasoning that `afield.stdlib.` would resolve thousands of symbols for one
                 // keystroke — but the consequence was that a fully-qualified call answered with
@@ -1418,7 +1561,7 @@ class AaCompleter(
                 // path was 7 of the caret sweep's misses per mode. Writing a package path out by hand is a
                 // deliberate act, and [PACKAGE_ENUMERATION_CAP] (800 resolutions, well inside the measured
                 // p50) bounds it. Truncation is reported in the note, as for the receiver index.
-                val callableNames = index.callables[pkg].orEmpty()
+                val callableNames = contents.callables[pkg].orEmpty()
                     .filter { prefix.isEmpty() || it.startsWith(prefix) }
                 // …but only a package that FITS. Resolving 800 of `afield.stdlib`'s 3947 top-level names in
                 // alphabetical order is the same "truncate the alphabet" mistake the transport used to
@@ -1437,7 +1580,12 @@ class AaCompleter(
                 return out
             }
 
-            fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
+            /** The class a qualifier [ref] (written as [rawText]) names, if it names one. Shared by an
+             *  expression receiver ([resolveQualifier]) and a type reference's qualifier. */
+            fun resolveQualifierRef(
+                ref: KtNameReferenceExpression?,
+                rawText: String?,
+            ): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
                 // ASK THE RESOLVER FIRST. Everything below guesses candidate packages from the file's
                 // imports plus two hardcoded `afield` ones, which cannot see Kotlin's DEFAULT imports —
                 // `java.lang` above all — so `Math.` resolved to no qualifier at all and fell through to
@@ -1447,12 +1595,10 @@ class AaCompleter(
                 // `import x.Y as Z` alias. The reference knows the answer; the file's real import scope is
                 // exactly what it resolves against.
                 runCatching {
-                    val ref = (recv as? KtNameReferenceExpression)
-                        ?: (recv as? KtQualifiedExpression)?.selectorExpression as? KtNameReferenceExpression
                     val sym = ref?.mainReference?.resolveToSymbol()
                     if (sym is org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol) return sym
                 }
-                val text = recv.text?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
+                val text = rawText?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
                     ?: return null
                 val parts = text.split('.')
                 if (parts.any { it.isEmpty() }) return null
@@ -1495,6 +1641,13 @@ class AaCompleter(
                 }
                 return null
             }
+
+            fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? =
+                resolveQualifierRef(
+                    (recv as? KtNameReferenceExpression)
+                        ?: (recv as? KtQualifiedExpression)?.selectorExpression as? KtNameReferenceExpression,
+                    recv.text,
+                )
 
             /**
              * Everything reachable through a class qualifier: enum entries, `values()`/`valueOf()`/
@@ -1623,6 +1776,114 @@ class AaCompleter(
                 }.getOrDefault(emptyList())
 
                 return emptyList()
+            }
+
+            /**
+             * What an `import` can name under the class [cls]: its nested classifiers, an enum's entries, a
+             * Java class's statics (`import java.lang.Math.toRadians`) and an object's members. Not a
+             * companion's members: Kotlin imports those only through the companion itself
+             * (`import a.C.Companion.f`), whose name is a nested classifier and so is still offered. Nor an
+             * enum's `values`/`valueOf`/`entries`, which sit in the same static scope as its entries.
+             */
+            fun importableFrom(cls: KaClassSymbol, path: String): List<AaCandidate> {
+                val label = runCatching { cls.classId?.asFqNameString() }.getOrNull() ?: path
+                val isObject = cls.classKind == KaClassKind.OBJECT || cls.classKind == KaClassKind.COMPANION_OBJECT
+                val isEnum = cls.classKind == KaClassKind.ENUM_CLASS
+                val out = ArrayList<AaCandidate>()
+                val statics = listOf(cls.staticDeclaredMemberScope, cls.staticMemberScope)
+                for (scope in statics) runCatching {
+                    scope.callables(match).filter { !isEnum || it is KaEnumEntrySymbol }
+                        .forEach { asCandidate(it, AaCandidate.Kind.MEMBER, label)?.let(out::add) }
+                }
+                // An enum's entries are declared members, not statics, in some AA versions (see
+                // [staticScopeCandidates]); an object's members are importable, inherited ones included,
+                // bar `Any`'s, which nobody imports.
+                runCatching {
+                    cls.declaredMemberScope.callables(match).filterIsInstance<KaEnumEntrySymbol>()
+                        .forEach { asCandidate(it, AaCandidate.Kind.MEMBER, label)?.let(out::add) }
+                }
+                if (isObject) runCatching {
+                    cls.memberScope.callables(match)
+                        .filter { declaredIn(it) != "kotlin.Any" && declaredIn(it) != "java.lang.Object" }
+                        .forEach { asCandidate(it, AaCandidate.Kind.MEMBER, label)?.let(out::add) }
+                }
+                // A callable's visibility is checked in [asCandidate], a classifier's only here: without it
+                // `import java.lang.Math.‸` offered the private `RandomNumberGeneratorHolder`.
+                for (scope in statics + cls.declaredMemberScope) runCatching {
+                    scope.classifiers(match).filter { accessible(it) }
+                        .mapNotNull { (it as? KaNamedSymbol)?.name?.asString() }
+                        .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, label, "class")) }
+                }
+                return out
+            }
+
+            // The caret's own IMPORT line, which [lower] moved into the header: `import kotlin.math.‸`,
+            // `import afield.pd.‸`, `import kot‸`. Under a package an import can name everything
+            // [packageCandidates] lists, top-level functions and properties included (`import
+            // kotlin.math.sin`); under a class, what [importableFrom] lists; at the root, a root package.
+            // Never the value path below: an import's qualifier is not a value, and that path answers an
+            // untyped receiver with `also`/`let`. A function is inserted as its bare name, since `sin(` does
+            // not parse in an import, and each name once, since one import brings in every overload.
+            if (PsiTreeUtil.getParentOfType(leaf, KtImportDirective::class.java, false) != null) {
+                val name = PsiTreeUtil.getParentOfType(leaf, KtSimpleNameExpression::class.java, false)
+                val qualifier = (name?.parent as? KtQualifiedExpression)
+                    ?.takeIf { it.selectorExpression == name }?.receiverExpression
+                val path = qualifier?.text.orEmpty().filterNot { it.isWhitespace() }
+                val cls = qualifier?.let { resolveQualifier(it) }
+                val out = when {
+                    qualifier == null -> index.allPackages.asSequence().map { it.substringBefore('.') }
+                        .filter { it.isNotEmpty() && it.first().isJavaIdentifierStart() && it.all(Char::isJavaIdentifierPart) }
+                        .distinct().filter { match(Name.identifier(it)) }
+                        .map { AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, null, "package") }.toList()
+                    cls != null -> importableFrom(cls, path)
+                    isPackageName(path, index) -> packageCandidates(path, index)
+                    else -> emptyList()
+                }.filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.name }.sortedBy { it.name }
+                    .map { if (it.icon == "method") it.copy(insertText = it.name) else it }
+                return@analyze AaCompletionResult(
+                    out,
+                    when {
+                        out.isEmpty() -> "0 matched on an import line; path=${path.ifEmpty { "<root>" }}" +
+                            if (cls != null) " class" else ""
+                        else -> packageTruncated?.let { "truncated $it" }.orEmpty()
+                    },
+                )
+            }
+
+            // A dot inside a TYPE REFERENCE: `prop<afield.‸stdlib.Vec4>(x)`, `fromContextWithNameOrNull<
+            // afield.four.‸targets.ComputeTarget>("…")`, `var f: java.util.‸concurrent.Future<T>`. A
+            // qualified type is a `KtUserType` with a qualifier, not a `KtQualifiedExpression`, so the dot
+            // path below bailed with "no qualified expr" — 55 misses per editing bucket in the caret sweep,
+            // every one of them a `prop<…>` or `fromContextWithNameOrNull<…>` path in a box written after
+            // the floors were cut. It only ever worked while TYPING, and by accident: with the rest of the
+            // line gone, `prop<afield.` parses as the comparison `prop < afield.`. Checked before the
+            // expression path so `foo.bar<afield.‸X>()` does not answer with `foo`'s members. Only what can
+            // stand in a type is offered: a class's nested classifiers, a package's sub-packages and
+            // classifiers — never a callable.
+            val typeQualifier = if (!isDot) null else
+                PsiTreeUtil.getParentOfType(leaf, KtUserType::class.java, false)?.qualifier
+            if (typeQualifier != null) {
+                val path = typeQualifier.text.orEmpty().filterNot { it.isWhitespace() }
+                val cls = resolveQualifierRef(typeQualifier.referenceExpression as? KtNameReferenceExpression, path)
+                val out = when {
+                    cls != null -> {
+                        val label = runCatching { cls.classId?.asFqNameString() }.getOrNull() ?: path
+                        listOf(cls.staticDeclaredMemberScope, cls.staticMemberScope, cls.declaredMemberScope)
+                            .flatMap { scope ->
+                                runCatching {
+                                    scope.classifiers(match).mapNotNull { (it as? KaNamedSymbol)?.name?.asString() }.toList()
+                                }.getOrDefault(emptyList())
+                            }
+                            .distinct()
+                            .map { AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, label, "class") }
+                    }
+                    isPackageName(path, index) -> packageCandidates(path, index, withCallables = false)
+                    else -> emptyList()
+                }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
+                return@analyze AaCompletionResult(
+                    out,
+                    if (out.isEmpty()) "0 matched; type qualifier=$path ${if (cls != null) "class" else "package"}" else "",
+                )
             }
 
             if (isDot) {

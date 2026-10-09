@@ -138,7 +138,7 @@ data class ReadBoxOutputRequest(
     val maxEntries: Int = 60,
 )
 
-@JsonClassDescription("Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture. Returns the picture, attached for you to inspect, plus measured facts (size, dominant colours, how much of it is not background). Use it after RunBox/LaunchBox whenever a box displays HTML, SVG, a table, a chart or any drawing, to check that it looks the way it was asked to; fix it if it does not. This, not CaptureRenderWindowRequest, is the tool for display(...) output. Printed text is not in the picture: read that with ReadBoxOutputRequest. A box with no panel fails with that said, and a mostly empty capture says BLANK. e.g. box = `Swatch`, note = `is the square red?`")
+@JsonClassDescription("Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture. Returns the picture, attached for you to inspect, plus measured facts (size, dominant colours, how much of it is not background) and viewerStates, the geometry state actually captured. It uses an independent browser, so its camera, visibility and interactive state may differ from the user's. Use it after RunBox/LaunchBox whenever a box displays HTML, SVG, a table, a chart or any drawing, to check that it looks the way it was asked to; fix it if it does not. This, not CaptureRenderWindowRequest, is the tool for display(...) output. Printed text is not in the picture: read that with ReadBoxOutputRequest. A box with no panel fails with that said, and a mostly empty capture says BLANK. e.g. box = `Swatch`, note = `is the square red?`")
 @afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.CAPTURE_IMAGE])
 data class ViewBoxOutputRequest(
     val box: String,
@@ -204,6 +204,8 @@ data class BoxOutputView(
     /** Where the full-resolution PNG was kept, as evidence. */
     val path: String = "",
     val imageAttached: Boolean = false,
+    /** Geometry state actually shown in the independent capture browser. */
+    val viewerStates: List<Map<String, Any?>> = emptyList(),
     @get:com.fasterxml.jackson.annotation.JsonIgnore
     val dataUrl: String = "",
     @get:com.fasterxml.jackson.annotation.JsonIgnore
@@ -212,7 +214,7 @@ data class BoxOutputView(
     @get:com.fasterxml.jackson.annotation.JsonIgnore
     override val toolImages: List<afield.ai.core.ToolImage>
         get() = if (dataUrl.isBlank()) emptyList() else listOf(afield.ai.core.ToolImage(dataUrl,
-            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured just now" +
+            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured in an independent browser" +
                 (if (note.isNotBlank()) " — looking for: $note" else "") +
                 ". Describe what you actually see, then say whether it matches what was asked for."))
 
@@ -307,6 +309,13 @@ class FieldGraphTools(
      */
     val origin: String = "",
 ) {
+    internal val geometryReviews by lazy {
+        GeometryReviewTools(info, { action -> host.onOwner(info, action) }) { runs -> studyBuilds.runsFromEarlierInputs(runs) }
+    }
+    internal val studyBuilds by lazy { StudyBuildTools(info, bindings = {
+        host.onOwner(info) { afield.stdlib.studyBuildBindings(info.boxes.values + info.root) }
+    }, findings = { runs -> host.onOwner(info) { afield.stdlib.studyBuildFindings(info.boxes.values + info.root, runs) } }) }
+
     companion object {
         /**
          * The one way every AI4 path builds its graph tools: the editor chat passes the box and
@@ -557,7 +566,7 @@ class FieldGraphTools(
         } catch (_: TimeoutException) { null }
         if (settleSeconds > 0) Thread.sleep((settleSeconds.coerceAtMost(10.0) * 1000).toLong())
 
-        val page = BoxOutputLog.since(box.id, marker)
+        val page = BoxOutputLog.since(box, marker)
         val stdout = page.entries.filter { it.kind == "out" }.map { it.text }
         val errors = page.entries.filter { it.kind == "err" }.map { it.text }
         val displays = page.entries.filter { it.kind == "display" }.associate { it.channel to it.text.take(3000) }
@@ -610,11 +619,11 @@ class FieldGraphTools(
             success = true,
             message = "Captured the output of '${box.name}' (${shot.channels.joinToString()}), ${image.width}x${image.height}" +
                 (if (blank) ". It looks BLANK: almost every pixel is the background colour ${stats.dominant.firstOrNull()?.first ?: ""}." else ".") +
-                " The picture is attached.",
+                " The picture is attached. This is an independent browser; viewerStates records its geometry view, which may differ from the user's.",
             uid = box.id, name = box.name, channels = shot.channels, width = image.width, height = image.height,
             inkFraction = stats.inkFraction,
             dominantColours = stats.dominant.map { (hex, share) -> "$hex ${"%.1f".format(share * 100)}%" },
-            path = shot.path, imageAttached = true, dataUrl = jpegDataUrl(image), note = req.note,
+            path = shot.path, imageAttached = true, viewerStates = shot.viewerStates, dataUrl = jpegDataUrl(image), note = req.note,
         )
     }
 
@@ -622,10 +631,10 @@ class FieldGraphTools(
         val box = host.onOwner(info) { resolve(req.box) }
         val deadline = System.currentTimeMillis() + (req.waitSeconds.coerceIn(0.0, 120.0) * 1000).toLong()
         fun matches(page: BoxOutputLog.Page) = req.contains.isEmpty() || page.entries.any { it.text.contains(req.contains) }
-        var page = BoxOutputLog.since(box.id, req.since)
+        var page = BoxOutputLog.since(box, req.since)
         while (!matches(page) && System.currentTimeMillis() < deadline) {
             Thread.sleep(50)
-            page = BoxOutputLog.since(box.id, req.since)
+            page = BoxOutputLog.since(box, req.since)
         }
         val found = if (req.contains.isEmpty()) null else matches(page)
         val limit = req.maxEntries.coerceIn(1, 400)

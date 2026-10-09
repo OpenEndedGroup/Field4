@@ -1,4 +1,5 @@
 import afield.four.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false

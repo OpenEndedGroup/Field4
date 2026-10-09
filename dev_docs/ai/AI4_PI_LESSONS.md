@@ -55,8 +55,11 @@ person's work with it. The session tree stores each turn's `op {from, to, origin
 
 After a rewind the reply says how many recorded edits and new boxes the abandoned turns made. Undoing
 them is a second, explicit request (`ai-chat-rewind-world`): `undoOrigins` (strict, so an edit changed
-since is skipped) plus deleting the created boxes. Not undone: other structural changes, and accepted
-provisional `EditFile` edits. The reply says so.
+since is skipped) plus deleting the created boxes that are exactly as the turns left them: each turn
+records `op.fpBefore` / `op.fpAfter`, an `AiWorldUndo.fingerprint` (name, frame, links, saved
+properties) of every box its conversation has created, and a box a person changed afterwards, or
+between the abandoned turns, is kept and named in the reply. Not undone: other structural changes, and
+accepted provisional `EditFile` edits. The reply says so.
 
 ## Measurements
 
@@ -140,6 +143,109 @@ eight calls and their times; `/context`; **rewind** on the second request, then 
 after which `property-lacks:Cell1:code:100` passed; **edit**, which put the request back in the input;
 and `/branches` marking the current position. Two bugs that run found are fixed (`0078c138d`).
 
+## A test: a painting world (2026-10-03)
+
+A Studio box over the paint simulator (`afield.paint`): an `agentExtension` with eleven box-authored
+`paint.*` tools (stroke, dab, work, glaze, draw, hatch, stipple, wait, fresh, hang, and a DEFERRED
+crack), a `canvas` context fragment (size, coordinates, wetness), a stable `craft` fragment (how to
+paint, the tube names), `/canvas`, `/palette` and `/gallery`, and the canvas itself as a
+`branchState`. Driven live through the panel (`agent-task --chat-box Studio`, gpt-6-astra): dusk
+(182 s), night on the same canvas (201 s), a rewind to before the night request, a stormy morning from
+there (168 s), and `/branch 0`. Hanging the canvas after the rewind gave a PNG byte-identical to
+*Harbour at dusk*; after the switch back, byte-identical to *Harbour at night*. The model used tool
+programs to batch strokes without being told to, and recovered from a glaze that turned the canvas
+almost black after seeing it.
+
+It found three bugs, all fixed:
+
+- **A dotted `aiTool` name failed every OpenAI request in its document** (`tools[n].name` must match
+  `^[a-zA-Z0-9_-]+$`); box tools now go out under `BoxTool.wireName` (`paint_look`), and the registry
+  answers to either name.
+- **The panel cleared "running" before the turn was recorded.** A request sent in that gap (seconds,
+  with a 49 MB canvas to save) was refused as "already has an AI turn running", and a Field shut down
+  in it saved the document without the turn's session-tree node. "Running" now ends after recording.
+- **The turn-start snapshot ran in the message handler**; it now runs in the turn's coroutine, and
+  hashing and gzip happen off the Runloop (only the box's `save` runs there).
+
+## The house-workflow review (2026-10-03)
+
+A review of `3f29cf1a3` against the house-design workflow (in the house checkout,
+`dev_docs/agents/house-sketch/PI_WORKTREE_REVIEW_20261003.md`, with five offline probes) found five
+contract problems and five gaps for long, concurrently edited work. Each is fixed below, and each
+probe is now a test asserting the corrected behaviour.
+
+| Finding | What it was | Now | Test |
+| --- | --- | --- | --- |
+| Failed calls | a `success:false` result came back normally, so a held check followed by a cut ran the cut and the program reported success | a failed result throws `ToolFailure` (`e.result`); `tools.X.raw()` inspects failures; `check()` stops on a verdict that is not a failure (`qualified:false`); stages `tool-failed` / `check-failed` | `ToolProgramTest.aFailedCheckStopsTheEditAfterIt`, `aVerdictIsNotAFailureButCheckStopsOnIt`, `rawReturnsFailuresWithoutThrowing` |
+| Nested evidence | nested results cut at 8,000 characters into invalid JSON, with `truncated=false` | a larger result is stored whole (`ToolEvidence`, gzip, content-addressed); the transcript and tool log get a valid stub with id, SHA-256 and size; `truncated` and `nestedClipped` say so; `ReadToolEvidenceRequest` reads it back | `aLargeNestedResultIsKeptWholeAndTheTranscriptSaysWhere` |
+| World undo | deleted every box the abandoned turns created, edited or not (and, it turned out, deleted none of them; below) | turns record a fingerprint of each box the conversation created, at start and end (`AiWorldUndo`); only boxes exactly as the last abandoned turn left them, untouched between turns, are deleted; the reply names the rest | `AgentExtensionsTest.worldUndoDeletesOnlyBoxesAsTheTurnsLeftThem` |
+| Tool identity | `house.check` and `house_check` (and long names sharing 64 characters) reached the model as one tool; programs had no `tools["rectsl.run"]` | long names get a hash suffix; a second tool with the same wire name is refused unless it is the same box renaming its own; built-in names are refused; programs get both spellings | `twoToolsCannotReachTheModelUnderOneName`, `ToolProgramTest.aBoxToolIsCallableByItsOwnNameAndItsWireName` |
+| `/context` | said ephemeral fragments were not stored, which is false on OpenAI | each row says what the provider keeps (`kept, sent once`, `kept, added every turn`, `every request, not kept`, `this turn only`), with totals and a note on why OpenAI's placement accumulates | `ContextPlacementTest.theContextReportSaysWhatEachProviderKeeps` |
+| Live progress | `text()` is only returned at the end | `progress(...)` reaches the panel at once and prefixes the per-call lines; nested tools keep the same progress callback | `progressReachesThePersonWhileTheProgramRuns` |
+| Long jobs | only `timeoutSeconds` was cut to the program's remaining time | `waitSeconds` too; guidance says to return a job handle; nothing retries | `aNestedWaitIsCutToTheTimeTheProgramHasLeft` |
+| Guards | a before-hook that threw or overran let the call proceed | `beforeTool(mandatory = true, timeoutMs)` fails closed; observers unchanged | `aMandatoryGuardThatFailsRefusesTheCall` |
+| Branch restore | restored over whatever was there, and resumed on every reopen | the state now is saved and compared with the last state the conversation left (`AiSessionTree.lastKnownStates`, `state` lines); a difference is kept by default (`BranchConflict.KEEP`) and reported; `resumeOnOpen` is opt-in. The Studio opts into both | `aStateChangedOutsideTheConversationIsNotRestoredOverByDefault`, `AiSessionTreeTest.theLastKnownStateIsTheLatestTurnEndOrRestore` |
+| Cancellation | an interrupt while the Graal context was built could be swallowed | the context is built on another thread and the turn thread waits interruptibly | `anInterruptWhileTheContextIsBuiltCancelsTheProgram` |
+
+Also found while fixing these:
+
+- The tool catalogue listed DEFERRED tools in contexts that cannot load them (`promoted == null`); it
+  now lists them only where `DescribeToolsRequest` is offered.
+- **World undo never deleted anything**: it ran the `-delete-box` action on the Runloop without binding the
+  document as the session, so the reply said "Deleted" and the box stayed in `metadata.edn`. It now deletes through `LiveFieldGraphHost`, as `DeleteBox` does.
+- **A reopened document broke every fingerprint**: loading fills in `autorun false`, so an untouched box
+  no longer matched how its turn left it. Properties at their empty value now count as absent.
+- `tools/docs_voice/check_anchors.py` read the underscores in `photo_to_solid_chain` as emphasis and
+  reported three working links dead (one of them new on this branch); intraword underscores are now
+  literal, as they are to the site's Markdown.
+
+### The re-review (2026-10-03, at `27b37002f`)
+
+`PI_WORKTREE_REREVIEW_20261003.md` beside the first review found three edge paths in those safeguards,
+each reproduced by a probe (`PiRereviewProbeTest`, kept in the house checkout's evidence folder). All
+three probes now fail at the assertion that captured the bug, and their inversions are tests here:
+
+- **A failed safety copy restored anyway.** When saving the state as it is failed, the copy was null,
+  null read as "no conflict", and the old snapshot overwrote a person's edit, reported as restored. Now
+  no hook is restored without its safety copy, under `KEEP` or `RESTORE`; the chat gets a note saying
+  what failed; a cancelled save cancels the restore. `noRestoreWithoutASafetyCopyOfTheStateNow`,
+  `aCancelledSaveCancelsTheRestore`.
+- **A missing snapshot meant "start fresh".** A target hash whose blob was missing reached `restore` as
+  `null` and reset the design. A missing or damaged blob (`AiStateBlobs.get` now throws on a damaged
+  file) is reported and the live state left alone; only a target absent on purpose passes `null`.
+  `aMissingOrDamagedSnapshotIsReportedAndNotRestoredAsEmpty`.
+- **Fingerprints sorted every collection**, so reordering a list (a polygon's vertices) still let world
+  undo delete the box. `AiWorldUndo.canonical` now writes values typed and quoted, lists in order, only
+  sets and maps sorted; the reload normalisation is narrowed from "any empty value" to the loader's own
+  defaults (`LOADER_DEFAULTS`: `autorun`, `preamble`, `nested`). Fingerprints recorded before this no
+  longer match, which keeps those boxes rather than deleting them. `aReorderedListIsAChangeAndValuesDoNotPrintAlike`.
+
+### Checked in Field
+
+Backdoor sessions on scratch documents, one live panel turn each on the configured provider (now
+`gpt-6.1-sol`), the rest scripted:
+
+- A box registering `house_check` beside another box's `house.check` failed to run with "would reach the
+  model as house_inspect, the same name as aiTool("house.inspect") in box Inspect; rename one of them."
+- A program over the two box tools: `tools["house.inspect"]` and `tools.house_inspect` both called the
+  tool; the held `house_check` threw `ToolFailure: house_check (call 2) failed: Qualification held …`, and
+  the `NewBox({name: "Cut"})` after it never ran; `.raw` returned the same failure; the 19,921-byte
+  inspection result was kept as `ai4ev:0de77fe1…` and `ReadToolEvidenceRequest` read it back with the
+  same SHA-256.
+- After the panel turn, a dab painted on the Studio canvas from outside the chat; rewinding the chat
+  replied "Studio/studio/canvas had changed since the conversation last saw it; it was restored anyway,
+  and the replaced state is saved as 6e2dd2e4…" (the Studio's `RESTORE`).
+- A panel turn made boxes A and B; B was then edited by hand; Field was restarted on the document; a
+  rewind and world undo replied "Deleted 1 box(es) those turns created: A. Kept 1 they created: B
+  (changed since)", and `metadata.edn` then had A tombstoned and B as edited.
+- Fingerprints of four boxes were identical across a restart.
+
+Left for the house integration, as the review assigns them: StudyBuild job handles and qualification
+facts, the shared tool pool and promotion of programs into it, `ToolEvidence.store` pointed at the
+house evidence records, capability checkpoints that reference study manifests, reconciling
+`DescribeToolsRequest` with server-side deferral, and the bounded acceptance exercise on a copy of a
+house document.
+
 ## Not done
 
 - **Anthropic was not measured live.** Its placement (cached system blocks, a volatile prefix stripped
@@ -151,13 +257,18 @@ and `/branches` marking the current position. Two bugs that run found are fixed 
   request; a reply was made against that text, and those threads are reset on every kind switch.
 - **Checkpoints are recorded, not used**: nothing yet replays a turn under its checkpoint or warns when
   the tool set has changed since.
-- **A turn cancelled while a tool program's GraalJS context is being built can miss the
-  cancellation**: the interrupt seems to be consumed there (seen once under full-suite load in
-  `ToolProgramTest`). The program then runs until it ends or reaches its own timeout (60 s by default);
-  a cancellation during the program's tool calls or JS is caught (conjecture, 2026-10-02: the window is
-  the context build, not measured further).
 - **`ai4_blobs` is never pruned.** An image a deleted branch referred to stays in the folder.
+- **Evidence is never pruned**, like the state blobs.
+- **A mandatory guard is still only a second line.** It runs where `ToolRegistry.dispatch` runs, so a
+  tool reached another way (a box calling its own `aiTool` handle) is not guarded.
 - **Hooks see views, not the registry.** A hook gets a `ToolCallView` and a `ToolResultView`, which hold
   neither the registry nor the result object, so a hook neither calls tools nor changes what the model
   reads; giving them either would be a new decision, not a fix.
 - **The eval suite is small**: 17 tasks, mostly one run per arm.
+- **Branch-state snapshots are large and never pruned.** A 900 px oil canvas's state is 49 MB and
+  gzips to 28 MB (the ground's texture is noise); every turn that changes it stores one. The four in
+  the painting test came to 114 MB. A Field shut down while a turn is still recording can still lose
+  that turn's node.
+- **Box-chat transcripts keep tool images inline.** `ai4_chat_history` holds each image a turn showed
+  as a data URL (the session tree moves them to `ai4_blobs`, the markdown does not), so the painting
+  test's three turns made an 18 MB transcript.

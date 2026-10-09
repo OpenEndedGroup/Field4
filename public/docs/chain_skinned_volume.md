@@ -3,12 +3,12 @@
 Twist a skinned limb about its own bone and linear blend skinning squeezes the joint into what
 animators call a candy wrapper. Field already measures that as a length:
 `DualQuaternionSkinning.candyWrapperRadius` reports the narrowest ring. A length does not say how
-much of the limb has gone. This page asks for the volume. It poses one rigged glTF, turns the
-posed mesh into a Manifold solid, weighs it, and hands the same solid to the path tracer.
+much of the limb has gone. This page measures the volume instead. It poses one rigged glTF, turns
+the posed mesh into a Manifold solid, weighs it, and hands the same solid to the path tracer.
+`afield.four.modules` skins the file on the CPU, `afield.manifold` turns the triangles into a solid
+and measures it, and `afield.four.fabricated` traces the result.
 
-Three parts of Field that do not know about each other: `afield.four.modules` skins the file on the
-CPU, `afield.manifold` turns triangles into a solid and measures it, and `afield.four.fabricated`
-traces the result.
+The render below shows the same limb skinned both ways.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/twist.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="skinned volume study converged" embed=true hidden=true timeout="300" name="chain-skinned-volume-trace" alt="Two twelve-sided tubes lying side by side on a pale floor with the Venice lagoon behind. The nearer cyan tube, posed by linear blend skinning at a half turn, narrows to a point at its middle like a twisted sweet wrapper; the tan tube behind it, posed by dual quaternion skinning, keeps its full width along its whole length" macro-file="../../dev_docs/agents/transcripts/skinned_volume_path_trace.yaml" capture-box="skinned_volume_trace"}
 // Built and launched from dev_docs/agents/transcripts/skinned_volume_path_trace.yaml.
@@ -39,6 +39,9 @@ At rest the tube is a straight prism over a regular 12-gon, and the volume has a
 `½ · 12 · 0.5² · sin 30° = 0.75`, times height 4, is **3.0**.
 
 ## Volume against twist
+
+This box poses the limb every fifteen degrees from rest to a half turn, under both skinning
+methods, and plots the enclosed volume Manifold reports for each pose.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/sweep.png" wait="8" capture="box" open-outputs="true" w="1000" h="460" padding="16" timeout="180" requires="manifold" name="chain-skinned-volume-sweep" alt="A line plot of enclosed volume against twist angle from 0 to 180 degrees. The linear-blend trace falls smoothly from 3.0 to 2.0; the dual-quaternion trace rises very slightly above the flat rest line at 3.0 and eases back" embed=true}
 :::static
@@ -74,11 +77,13 @@ showSignals(
 :::endfold
 ```
 
-Thirteen poses, fifteen degrees apart. Under linear blending the volume falls at every step. Under
-dual quaternions it goes slightly *up*. Those are the two artefacts `DualQuaternionSkinningTest`
-already measures as edge lengths, a pinch and a bulge, and now they show up as volume too.
+Under linear blending the volume falls at every step. Under dual quaternions it goes slightly up.
+These are the two familiar artefacts of the methods, a pinch and a bulge, seen as volume.
 
 ## Four poses, weighed twice
+
+This box measures four poses with two independent volume calculations, Manifold's and Field's own
+`signedVolume`, alongside the waist radius `candyWrapperRadius` reports.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="330" padding="18" timeout="180" requires="manifold" name="chain-skinned-volume-readout" embed=true}
 :::static
@@ -88,8 +93,6 @@ import afield.four.modules.GltfSkinning.SkinningMethod
 import afield.four.modules.GltfSkinning.SkinningOptions
 import afield.four.modules.skinnedGltfToTriMesh
 import afield.manifold.toSolid
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
 
 val rig = CappedTwistFixture.locate()
 
@@ -171,16 +174,11 @@ tubes in the render is that `method` argument.
 * [A polytope, cut open, and traced](chain_polytope_render.md) does the same last two hops with a
   Conway polyhedron at the front.
 
-??? aside "Why this fixture is not the bending cylinder with lids"
+??? aside "Why the fixture has so many rings"
 
-    The first plan was to cap `RiggedFixture`'s tube as it is: five rings at `y = 0 … 4`, of which
-    only the middle one is blended. The trouble is dual quaternions. At a half turn they rotate that one ring 90°
-    against each neighbour, and a straight triangulated band between two 12-gons 90° apart
-    passes within `r/√2` of the axis. The triangulation alone would then remove about a third of those
-    bands' volume, and the page would blame dual quaternions for it. Seventeen rings spread the
-    joint's rotation over eight bands, 22.5° each at the worst pose. The capped fixture is a new
-    object rather than an edit because `RiggedFixtureDriftTest` pins the bending cylinder's
-    bytes. `SkinnedVolumeTest` pins every structural claim on this page: the open tube is not a
-    solid; the rest volume is 3.0; the tip angle matches the requested twist; linear blending falls at
-    every step to 2.0; dual quaternions stay above rest and within 1%; the two volume
-    implementations agree everywhere except at the exact pinch.
+    `RiggedFixture`'s tube has five rings, and only the middle one is blended. At a half turn, dual
+    quaternions rotate that ring 90° against each neighbour, and a straight triangulated band
+    between two 12-gons 90° apart passes within `r/√2` of the axis, so the triangulation alone
+    would lose about a third of those bands' volume. Seventeen rings spread the joint's rotation
+    over eight bands, 22.5° each at the worst pose, so the volume measures the skinning and not the
+    mesh.

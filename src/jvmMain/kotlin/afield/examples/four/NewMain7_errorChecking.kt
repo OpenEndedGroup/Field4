@@ -8,7 +8,7 @@ import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Projection
 import afield.four.util.Window
-import afield.four.util.forever
+import afield.four.util.updateForever
 import afield.stdlib.fromViews
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
@@ -155,12 +155,12 @@ class NewMain7_errorChecking {
             this.rewind()
         }
 
-        innerRectangle.update["rot"] = forever {
+        innerRectangle.update["rot"] = updateForever {
             innerRectangle.push.get<Matrix4f>("modelMatrix").rotate(0.01f, Vector3f(1f, 0.8f, 0.3f))
             true
         }
 
-        onscreenRectangle.update["rot"] = forever {
+        onscreenRectangle.update["rot"] = updateForever {
             onscreenRectangle.push.get<Matrix4f>("modelMatrix").rotate(0.02f, Vector3f(1f, 0.8f, 0.3f))
             true
         }

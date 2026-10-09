@@ -134,6 +134,43 @@ object ContextPipeline {
 internal fun sha256(text: String): String =
     MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
+/**
+ * Where a fragment ends up, given where the bridge put it ([ContextReport.placement]). The fragment classes
+ * describe intent; the provider decides retention, and these differ: OpenAI's conversations live on its side,
+ * so anything sent inside one stays there.
+ */
+enum class Kept(val label: String) {
+    /** Stays in the conversation and is added again every turn: it accumulates. */
+    EVERY_TURN("kept, added every turn"),
+    /** Stays in the conversation, sent once (and again only when it changes). */
+    ONCE("kept, sent once"),
+    /** Stays in the conversation because it is part of the stored message. */
+    STORED("kept"),
+    /** Sent with every request of every turn, never stored (a cached system prompt). */
+    EVERY_REQUEST("every request, not kept"),
+    /** Sent with this turn's requests and then dropped. */
+    THIS_TURN("this turn only"),
+}
+
+fun keptFor(placement: String, retention: String, stability: String): Kept = when {
+    retention == "DURABLE" || placement == "inline" -> Kept.STORED
+    placement == "developer-once+input" -> if (stability == "STABLE") Kept.ONCE else Kept.EVERY_TURN
+    placement == "system+prefix" -> if (stability == "STABLE") Kept.EVERY_REQUEST else Kept.THIS_TURN
+    else -> Kept.STORED
+}
+
+private fun placementNote(placement: String): String = when (placement) {
+    "developer-once+input" -> "OpenAI keeps the conversation on its side. Stable instructions go into it once, as a developer " +
+        "message, and again only when they change. Volatile context goes in front of each request, so it stays in the " +
+        "conversation and every turn adds another copy. Sending it outside the conversation made every new conversation's " +
+        "first request uncacheable, which cost more (dev_docs/ai/AI4_PI_LESSONS.md)."
+    "system+prefix" -> "Anthropic: stable instructions are cached system blocks sent with every request; volatile context " +
+        "is put in front of the newest request and removed from the stored conversation when the turn ends."
+    "inline" -> "The instructions were sent inside the stored request, so they stay in the conversation and are resent with " +
+        "every later request."
+    else -> "Unknown placement: treat everything as kept."
+}
+
 /** A context report as the markdown `/context` shows: one row per fragment, largest parts easy to spot. */
 fun ContextReport.toMarkdown(): String = buildString {
     appendLine("**What the last turn sent besides the conversation** (placement: `$placement`, instructions `$instructionHash`)")
@@ -142,16 +179,21 @@ fun ContextReport.toMarkdown(): String = buildString {
     appendLine("| --- | --- | --- | ---: | ---: |")
     fragments.groupBy { it.source }.forEach { (source, parts) ->
         val first = parts.first()
-        appendLine("| `$source` | ${if (first.retention == "DURABLE") "stored" else "this turn only"} | " +
+        appendLine("| `$source` | ${keptFor(placement, first.retention, first.stability).label} | " +
             "${first.stability.lowercase()} | ${parts.sumOf { it.chars }} | ${parts.sumOf { it.approxTokens }} |")
     }
-    appendLine("| (request and code) | stored | — | $restChars | ${(restChars + 3) / 4} |")
-    val ephemeral = fragments.filter { it.retention == "EPHEMERAL" }
+    appendLine("| (request and code) | kept | — | $restChars | ${(restChars + 3) / 4} |")
+    val byKept = fragments.groupBy { keptFor(placement, it.retention, it.stability) }
+    fun chars(vararg k: Kept) = k.sumOf { kept -> byKept[kept].orEmpty().sumOf { it.chars } }
     appendLine()
-    append("Ephemeral: ${ephemeral.sumOf { it.chars }} chars (~${ephemeral.sumOf { it.approxTokens }} tokens), sent with every request of the turn and not stored.")
+    append("Kept in the conversation: ${chars(Kept.STORED, Kept.EVERY_TURN, Kept.ONCE) + restChars} chars")
+    if (chars(Kept.EVERY_TURN) > 0) append(", of which ${chars(Kept.EVERY_TURN)} are added again with every turn")
+    append(". Not kept: ${chars(Kept.EVERY_REQUEST, Kept.THIS_TURN)} chars.")
     if (inputTokens != null) append(" Provider-reported input this turn: $inputTokens tokens")
     if (cacheReadTokens != null) append(", $cacheReadTokens from cache")
     if (cacheWriteTokens != null) append(", $cacheWriteTokens written to cache")
     if (inputTokens != null || cacheReadTokens != null) append(".")
     appendLine()
+    appendLine()
+    appendLine(placementNote(placement))
 }

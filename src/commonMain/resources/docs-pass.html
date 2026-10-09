@@ -16,77 +16,8 @@
         }
     </style>
     <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field-tool-pages.css">
     <style>
-        /* The look of /welcome, which links here: same palette, panels, buttons and background. */
-        :root {
-            --field-bg: rgb(20, 20, 20);
-            --field-panel-strong: rgba(0, 0, 0, 0.52);
-            --field-border: rgba(72, 201, 255, 0.18);
-            --field-border-strong: rgba(72, 201, 255, 0.45);
-            --field-cyan: rgb(72, 201, 255);
-            --field-text: rgba(220, 235, 244, 0.95);
-            --field-text-soft: rgba(164, 193, 210, 0.95);
-            --field-danger: #ff6f6f;
-            --radius: 10px;
-            --panel: #222;
-            --panel-2: rgba(0, 0, 0, 0.35);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-strong: var(--field-border-strong);
-            --text: var(--field-text);
-            --soft: var(--field-text-soft);
-            --accent: rgb(224, 241, 249);
-            --warn: rgb(255, 241, 118);
-            --danger: var(--field-danger);
-            --ok: rgb(174, 240, 198);
-            --cyan: var(--field-cyan);
-        }
-        * { box-sizing: border-box; }
-        html, body { margin: 0; background: var(--field-bg); color: var(--text); font-family: "Iosevka Web", system-ui, sans-serif; font-weight: 300; font-size: 13px; }
-        *:focus, *:focus-visible { outline: none !important; box-shadow: none !important; }
-        main { position: relative; z-index: 1; width: min(1180px, 96vw); margin: 18px auto 60px; padding: 14px; display: grid; gap: 12px; }
-        header, section { border: 5px solid black; border-radius: var(--radius); background: var(--panel); backdrop-filter: blur(4px); padding: 16px 18px; }
-        header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
-        h1, h2 { margin: 0; font-weight: 400; }
-        h1 { font-size: clamp(18px, 2.4vw, 26px); color: var(--field-cyan); }
-        h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); margin-bottom: 12px; display: flex; gap: 10px; align-items: baseline; }
-        h2 .count { color: var(--text); text-transform: none; letter-spacing: 0; }
-        p { margin: 8px 0; color: var(--soft); line-height: 1.5; }
-        a { color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(180, 220, 245, 0.42); }
-        code { color: var(--accent); }
-        button {
-            font-family: inherit; font-size: 12px; color: var(--field-text);
-            background: var(--field-panel-strong); border: 1px solid var(--field-border); border-radius: 8px;
-            padding: 8px 14px; cursor: pointer; transition: border-color 120ms ease;
-        }
-        button:hover:not(:disabled) { border-color: var(--field-border-strong); }
-        button:disabled { opacity: .35; cursor: default; }
-        button.danger { color: var(--field-danger); border-color: rgba(255, 111, 111, 0.45); }
-        button.danger:hover:not(:disabled) { border-color: rgba(255, 111, 111, 0.8); }
-        button.primary { border-color: var(--field-border-strong); }
-        button.primary:hover:not(:disabled) { border-color: var(--field-cyan); }
-        input, select {
-            font: inherit; font-size: 12px; color: var(--field-cyan); background: rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(72, 201, 255, 0.35); border-radius: 7px; padding: 7px 10px;
-        }
-        input::placeholder { color: rgba(164, 193, 210, 0.8); }
-        input:focus, select:focus { border-color: var(--field-cyan); }
-        select {
-            appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='rgb(72,201,255)' stroke-width='1.3'/%3E%3C/svg%3E");
-            background-repeat: no-repeat; background-position: right 11px center;
-        }
-        input[type=number] { width: 5.5em; }
-        .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
-        .row label { color: var(--soft); display: flex; gap: 8px; align-items: center; }
-        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-        .chip { border: 1px solid var(--field-border); border-radius: 999px; padding: 3px 10px; color: var(--soft); }
-        .chip b { color: var(--text); font-weight: 400; }
-        .notice { border: 1px solid rgba(255, 241, 118, .4); color: var(--warn); border-radius: 7px; padding: 8px 10px; margin-top: 8px; }
-        .notice.bad { border-color: rgba(255, 111, 111, .5); color: var(--danger); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--border); vertical-align: top; }
-        th { color: var(--soft); font-weight: 300; border-top: none; }
-        th.num, td.num { text-align: right; white-space: nowrap; }
         .job-panel { position: sticky; top: 0; z-index: 8; padding: 10px 18px; background: #000; backdrop-filter: none; }
         .job-line { display: flex; gap: 12px; align-items: center; min-height: 32px; }
         .job-line .job-name { color: var(--text); white-space: nowrap; }
@@ -112,11 +43,8 @@
         .badge.blocking { border-color: var(--warn); color: var(--warn); }
         .badge.crosscutting { color: var(--cyan); }
         .expand { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin: 6px 0 4px; }
-        pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.45; }
         pre.patch { white-space: pre; overflow-x: auto; max-height: 70vh; }
         pre.patch .add { color: var(--ok); } pre.patch .del { color: var(--danger); } pre.patch .hunk { color: var(--cyan); } pre.patch .meta { color: var(--soft); }
-        pre.log { max-height: 50vh; overflow: auto; color: var(--soft); }
-        .muted { color: var(--soft); }
         .add-count { color: var(--ok); } .del-count { color: var(--danger); }
         #changes td:first-child, #handoffs td:nth-child(2) { max-width: 0; width: 100%; }
         .expand { overflow-x: auto; }
@@ -205,8 +133,9 @@
             <button id="revise" type="button" class="primary">Drain the queue</button>
             <button id="stop" type="button">Stop after current pages</button>
             <button id="stop-now" type="button" class="danger">Stop now</button>
+            <button id="import-drafts" type="button" title="completion's generated KDoc for undocumented declarations under src/, as kdoc-draft notes">Import completion KDoc drafts</button>
         </div>
-        <p class="muted">One agent per page, in the pass's worktree. <em>Stop after current pages</em> lets running agents finish and starts no more; <em>Stop now</em> ends them. Either way, whatever they recorded is kept and every other note stays in the queue.</p>
+        <p class="muted">One agent per page, in the pass's worktree. <em>Stop after current pages</em> lets running agents finish and starts no more; <em>Stop now</em> ends them. Either way, whatever they recorded is kept and every other note stays in the queue. <em>Import completion KDoc drafts</em> adds the KDoc completion drafted for undocumented declarations as notes on their Kotlin lines; tag <code>@kdoc-draft</code> drains only those.</p>
         <div id="progress"></div>
     </section>
 
@@ -236,9 +165,10 @@
         <div class="row" id="built-links"></div>
         <div class="row">
             <button id="commit" type="button" class="primary">Commit the worktree</button>
-            <button id="land" type="button" class="primary">Land on main</button>
+            <button id="land" type="button" class="primary">Enqueue for landing</button>
         </div>
-        <p class="muted">Commit runs the repository's pre-commit guard (several minutes). Land merges <code>main</code> into the pass branch if it has moved on, then fast-forwards <code>main</code> in this checkout. Nothing is pushed.</p>
+        <div id="landing-state"></div>
+        <p class="muted">Commit takes seconds: the hooks only report which checks it affects. <em>Enqueue for landing</em> hands the branch to the landing queue (<code>tools/land.py</code>) and returns. The lander merges <code>main</code> in, regenerates the generated files, runs the full checks once and fast-forwards <code>main</code>, or bounces the branch with its reason, shown here. Nothing is pushed.</p>
     </section>
 
 </main>
@@ -299,23 +229,39 @@
         $("posture").innerHTML = lines.join(" ");
     };
 
+    // The landing queue's view of the pass branch: queued (and whether a lander is taking it),
+    // landed, or bounced with the reason and the log the lander wrote.
+    const renderLanding = (wt) => {
+        const node = $("landing-state"), q = wt && wt.landing;
+        if (!q || wt.landed && q.state !== "bounced") { node.innerHTML = wt && wt.landed ? `<p class="state-done">Landed on main${q && q.landedAs ? ` as <code>${esc(q.landedAs.slice(0, 10))}</code>` : ""}.</p>` : ""; return; }
+        if (q.state === "pending") {
+            node.innerHTML = `<p class="state-running">Queued as <code>${esc(q.id)}</code>${q.landingNow ? ": landing now" : wt.landerRunning ? ": waiting for the lander" : ": no lander is running yet"}.</p>`;
+        } else if (q.state === "bounced") {
+            node.innerHTML = `<div class="notice bad">Bounced (<code>${esc(q.id)}</code>): ${esc(q.reason)}<br><span class="muted">log: <code>${esc(q.log)}</code>. Fix it in the pass worktree, commit, and enqueue again.</span></div>`;
+        } else {
+            node.innerHTML = `<p class="state-done">Landed on main as <code>${esc((q.landedAs || "").slice(0, 10))}</code>.</p>`;
+        }
+    };
     const renderPass = (status) => {
         const pass = status.pass, wt = status.worktree;
+        if (!pass || !wt || !wt.exists) $("landing-state").innerHTML = "";
         if (!pass) { $("pass-summary").innerHTML = `<p>No pass is open. Starting one makes a worktree on a new <code>docs-pass/…</code> branch from <code>main</code>, so agents never edit this checkout.</p>`; return; }
         if (!wt || !wt.exists) { $("pass-summary").innerHTML = `<div class="notice bad">The pass's worktree <code>${esc(pass.worktree)}</code> is gone. Abandon the pass to clear it.</div>`; return; }
         const bits = [
             `<code>${esc(pass.worktree)}</code> on <code>${esc(pass.branch)}</code>, from <code>${esc(pass.base)}</code> at <code>${esc(pass.baseCommit.slice(0, 10))}</code>`,
             `${wt.ahead} commit(s) on the branch, ${wt.uncommitted} uncommitted file(s)`,
             wt.baseAdvanced ? `<span class="muted">${esc(pass.base)} has moved on by ${wt.baseAdvanced} commit(s); landing merges it in first</span>` : "",
-            wt.landed ? `<b class="state-done">landed on ${esc(pass.base)}</b>` : "",
+            wt.landed ? `<b class="state-done">landed on ${esc(pass.base)}</b>` : wt.landing && wt.landing.state === "pending" ? `<span class="state-running">queued for landing</span>`
+                : wt.landing && wt.landing.state === "bounced" ? `<span class="state-failed">bounced from the landing queue</span>` : "",
             `${(pass.runs || []).length} run(s)`,
         ].filter(Boolean);
         $("pass-summary").innerHTML = `<p>${bits.join(" · ")}</p>`;
+        renderLanding(wt);
     };
 
     const renderCounts = (status) => {
         const counts = status.notes || {};
-        const order = [["open", "open"], ["question", "agent asks"], ["blocked", "waiting on a handoff"], ["resolved", "resolved"], ["memory", "memories"], ["handoff-open", "handoffs open"], ["handoff-taken", "handoffs taken"]];
+        const order = [["open", "open"], ["drafts-open", "of them KDoc drafts"], ["question", "agent asks"], ["blocked", "waiting on a handoff"], ["resolved", "resolved"], ["memory", "memories"], ["handoff-open", "handoffs open"], ["handoff-taken", "handoffs taken"]];
         $("counts").innerHTML = order.filter(([key]) => counts[key]).map(([key, label]) => `<span class="chip"><b>${counts[key]}</b> ${label}</span>`).join("") || `<span class="muted">no notes</span>`;
         $("queue-count").textContent = counts.open ? `${counts.open} open` : "";
     };
@@ -382,10 +328,17 @@
                     + `<pre class="command">${esc(batch.session.command)}</pre>`
                     + `<button data-act="copy" data-batch="${esc(batch.key)}">Copy command</button> <button data-act="end-session" data-batch="${esc(batch.key)}">End session</button> <button data-act="abandon-session" data-batch="${esc(batch.key)}" class="danger">Abandon session</button></div>`;
             } else {
-                const blocked = batch.notLanded.length ? `land the revision pass first: ${batch.notLanded.length} of these documents are not on main yet`
-                    : !openRows.length ? "every handoff here is taken" : "";
-                action = `<button data-act="start-session" data-batch="${esc(batch.key)}" class="primary"${blocked ? " disabled" : ""}>Start session</button>`
-                    + (blocked ? ` <span class="muted">${esc(blocked)}</span>` : batch.earlierOpen.length ? ` <span class="state-waiting">still open before it: ${esc(batch.earlierOpen.join(", "))}</span>` : "");
+                // A handoff whose document is still on the branch that wrote it waits for that
+                // branch to land; the others can start now, and the page says which is which.
+                const ready = openRows.filter(h => !batch.notLanded.includes(h.id));
+                const blocked = !openRows.length ? "every handoff here is taken"
+                    : !ready.length ? "none of these documents is on main yet" : "";
+                const label = ready.length && ready.length < openRows.length ? `Start session (${ready.length} of ${openRows.length})` : "Start session";
+                const queueWord = q => !q ? " (not queued)" : q.state === "pending" ? ` (queued${q.landingNow ? ", landing now" : ""})` : q.state === "bounced" ? ` (bounced: ${q.reason})` : "";
+                const waiting = (batch.notLandedDetail || []).map(d => `<div class="muted">waits until <code>${esc(d.branches.length ? d.branches.join(", ") : "its branch")}</code> lands on main${esc(queueWord(d.queue))}: ${esc(d.title)}</div>`).join("");
+                action = `<button data-act="start-session" data-batch="${esc(batch.key)}" class="primary"${blocked ? " disabled" : ""}>${label}</button>`
+                    + (blocked ? ` <span class="muted">${esc(blocked)}</span>` : batch.earlierOpen.length ? ` <span class="state-waiting">still open before it: ${esc(batch.earlierOpen.join(", "))}</span>` : "")
+                    + waiting;
             }
             const asking = rows.filter(h => h.question).length;
             return `<div class="batch"><h3>${batch.order} · ${esc(batch.title)} <span class="count">${rows.length}</span>${asking ? ` <span class="badge asks">${asking} asking you</span>` : ""}</h3><p class="muted">${esc(batch.how)}</p>`
@@ -467,7 +420,8 @@
         set("stop-now", draining);
         set("rebuild", !!pass && wt.exists && !busy && !draining);
         set("commit", !!pass && wt.exists && wt.uncommitted > 0 && !busy && !draining);
-        set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !busy && !draining);
+        const queued = wt && wt.landing && wt.landing.state === "pending" && wt.landing.sha === wt.head;
+        set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !queued && !busy && !draining);
         set("cancel-job", busy);
         document.querySelectorAll('#changes button[data-act="discard"]').forEach(b => { b.disabled = busy || draining; });
         document.querySelectorAll('#handoffs [data-act="start-session"]').forEach(b => { if (busy) b.disabled = true; });
@@ -495,10 +449,11 @@
     $("abandon").onclick = async () => await confirmed("Throw the whole pass away: remove its worktree and delete its branch, landed or not? Notes the agents resolved stay resolved in the store.") && act("finish", { abandon: true });
     $("revise").onclick = () => act("revise", { agent: $("agent").value, jobs: Number($("jobs").value) || 4, tags: words($("tags").value), pages: words($("pages").value) });
     $("stop").onclick = () => act("stop");
+    $("import-drafts").onclick = () => act("import-drafts");
     $("stop-now").onclick = async () => await confirmed("Terminate the running agents now? What they already recorded is kept; their pages' other notes stay open.") && act("stop-now");
     $("rebuild").onclick = () => act("rebuild", { mode: $("mode").value });
     $("commit").onclick = async () => await confirmed("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
-    $("land").onclick = async () => await confirmed("Merge the pass into main in this checkout (fast-forward, after merging main into the pass if it has moved)? Nothing is pushed.") && act("land");
+    $("land").onclick = async () => await confirmed("Hand the pass branch to the landing queue? The lander merges main in, checks it and fast-forwards main, or bounces it with a reason. Nothing is pushed.") && act("land");
     $("toggle-log").onclick = () => { const d = $("job-detail"); d.hidden = !d.hidden; $("toggle-log").textContent = d.hidden ? "log" : "hide log"; };
     $("cancel-job").onclick = async () => await confirmed("Kill the running job and everything it started?") && act("cancel-job");
 
@@ -552,7 +507,9 @@
         const batch = button.dataset.batch ? (view.status.batches || []).find(b => b.key === button.dataset.batch) : null;
         if (kind === "start-session") {
             const warning = batch.earlierOpen.length ? `\n\nStill open in earlier batches: ${batch.earlierOpen.join(", ")}. The order is there because their outcome changes this batch's work.` : "";
-            if (await confirmed(`Start a ${batch.title} session: a worktree off main with a brief listing its ${batch.handoffs.length} handoff(s), which are marked taken.${warning}`)) await act("start-session", { batch: batch.key });
+            const later = (batch.notLandedDetail || []).length ? `\n\nLeft for a later session, because its document is not on main yet: ${batch.notLandedDetail.map(d => d.title).join("; ")}.` : "";
+            const starting = batch.handoffs.length - (batch.notLandedDetail || []).length;
+            if (await confirmed(`Start a ${batch.title} session: a worktree off main with a brief listing its ${starting} handoff(s), which are marked taken.${later}${warning}`)) await act("start-session", { batch: batch.key });
             return;
         }
         if (kind === "copy") {

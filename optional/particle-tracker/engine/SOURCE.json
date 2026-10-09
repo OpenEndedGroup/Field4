@@ -1,0 +1,15 @@
+{
+  "source": "https://chatgpt.com/share/6ac2b442-dda4-83eb-a7c6-3923754dab9b",
+  "recovered_on": "2026-10-04",
+  "recovery": "Replayed source-writing commands from shared HTML; original sandbox ZIP unavailable.",
+  "sha256": {
+    "engine/Makefile": "971211275226d85d2982defb4154f47a564ef25c67d3ece06ff0c30f92cf8b3e",
+    "engine/tests.cpp": "88556bb7e88fb7d1a17e868e89069a7f7f91da6fdfff0085c542d84e7a08ce0d",
+    "engine/dense.hpp": "770f541914bd65b8fa931ec869999525b9b3753469ab9e97bbd3764c8f73c734",
+    "engine/tracker.hpp": "796ac9923d968ff374fdcb7c97a496effb0a06062c6210973e98b4cca8f06fc0",
+    "engine/flow.hpp": "59ce60b17e6ae67f716c50d1d47f28addccb6237b676e4097a3466860d9658d0",
+    "engine/main.cpp": "5b2e8647a36b724c66a1ae68b245f4fff0cc2f7e1f614eb73060bc28e6c0aa49",
+    "neural_track.py": "1c639cdca35ba4c131c4409fa1c12187bf604b24b6a5ed4da012181ad2826c9e",
+    "pvt.py": "91654ed9beb3db6cc61539bd40ee0571a802cd703b5f01b633a306c7cd6f69ad"
+  }
+}

@@ -1,5 +1,11 @@
 # Field's server surface: the route and command inventory
 
+Fresh installations bind HTTPS to `127.0.0.1` and enable the application-wide browser-origin
+policy. This inventory records route-specific guards; `none` does not bypass those defaults.
+LAN reachability requires `AFIELD_BIND_HOST=0.0.0.0`, and the older permissive browser policy
+requires `AFIELD_API_REQUIRE_SAME_SITE=0`.
+
+
 The maintainer's companion to `public/docs/server_surface.md`. That page explains the trust
 boundary and the defences; this one is the **ledger** — every door in the wall, counted, with
 the file it is declared in and the guard that runs on it.
@@ -33,7 +39,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 122 | nothing |
+| `/ws` **command** names (`handlers`) | 130 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -62,7 +68,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-45 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
+46 routes, 36 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -82,13 +88,14 @@ mutation; it is a different one.
 | --- | --- | --- |
 | `GET /api/agent-worktrees` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
+| `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
+| `GET /api/chatlog/lens` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/code-use/failures` | `Server.kt` | none |
 | `GET /api/code-use/launches` | `Server.kt` | none |
 | `GET /api/code-use/snippets` | `Server.kt` | none |
 | `GET /api/code-use/summary` | `Server.kt` | none |
 | `GET /api/code-use/symbols` | `Server.kt` | none |
 | `GET /api/code-use/unresolved` | `Server.kt` | none |
-| `GET /api/completion-doc-polish` | `Server.kt` | none |
 | `GET /api/docs-annotations` | `docsAnnotations.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |
@@ -123,6 +130,7 @@ mutation; it is a different one.
 | `GET /min/{...}` | `Server.kt` | none |
 | `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
+| `GET /three-buffers` | `Server.kt` | none |
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
@@ -260,7 +268,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-122 command names, in the `handlers` table. This is the real command API, it is roughly twice
+130 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -276,41 +284,49 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 49 |
+| `Server.kt` | 51 |
 | `agent_backdoor.kt` | 23 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
-| `Ai4Installer.kt` | 9 |
+| `Ai4Installer.kt` | 10 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
+| `ElectronRTTView.kt` | 2 |
 | `UserKeybindingsManager.kt` | 2 |
+| `VoiceTranscriber.kt` | 2 |
 | `chat.kt` | 2 |
+| `OutputRequests.kt` | 1 |
 | `ButtonControlHandler.kt` | 1 |
 | `CoroutineProfiling.kt` | 1 |
 | `DocsSearchInstaller.kt` | 1 |
 | `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
+| `visualizers.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
 
 | file | what its commands reach |
 | --- | --- |
-| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, and `set-string`, which writes box source to disk |
+| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, and the live output iframe ready/reply relay. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
-| `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
+| `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `templating.kt` | template read and write, under the templates directory |
 | `chat.kt` | proxies to the configured chat server |
+| `ElectronRTTView.kt` | an RTT view that box code has already created: `subscribe` points that view's frame-ready pushes at the caller's socket and starts receiving the view's IOSurface ring from its per-view Mach service (local processes only), and `release` frees a ring slot. Both name a view by an unguessable id (pid + nanoTime) and do nothing for an unknown one. The worst a frame can do is redirect or stall one view's frames |
 | `UserKeybindingsManager.kt` | reload the user keybindings file; report the command inventory |
+| `VoiceTranscriber.kt` | AI4 push-to-talk: starts (once) and feeds a local Python Whisper worker, `python/fieldvoice/whisper_worker.py`, under the interpreter Field's Python boxes resolved or `FIELD_VOICE_PYTHON`. Each clip is written to a temp file, transcribed and deleted; the reply is text. No document or box state. No guard beyond the `/ws` boundary, decided 2026-10-04: the client supplies only audio bytes and prompt text, never a path, executable or code, so the worst a hostile frame can do is spend GPU time or start the worker |
+| `OutputRequests.kt` | a live box-registered JSON callback addressed by a run-specific random binding ID. Bounded messages and a 64-request queue; execution is serialized with the owner box/document context. Re-run, stop or deletion revokes the binding; read-only documents refuse requests. The callback may run arbitrary trusted box code. The binding ID is a capability, not separate user authentication; transport uses the existing `/ws` boundary |
 | `ButtonControlHandler.kt` | one control-widget callback |
 | `CoroutineProfiling.kt` | starts, latches, and reads bounded in-memory coroutine captures for the attached document; at most one recording process-wide, with a 30-second maximum |
 | `DocsSearchInstaller.kt` | documentation search |
 | `documentGuides.kt` | document-relative guide listing and reading, revision-checked saves, and shared file-proxy creation; writes reject read-only documents |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
+| `visualizers.kt` | one control-widget callback: `array-update` carries a multislider, matrix, range-slider or menu value as a list of doubles to the callback box code registered for that control id, and records it in the control cache. Unguarded beyond the `/ws` boundary, like `slider-update` and `button-update` beside it; guarding the control-message family is one change for all of them |
 
 `executing.kt` is the row that decides how seriously to read the rest. A command that reaches
 `launch-all` runs the code in the document, in Field's JVM, with Field's privileges. There is
@@ -356,6 +372,10 @@ in-route same-site check stops a web page.
 | `ai-chat-history` | `Ai4Installer.kt` |
 | `ai-chat-rewind-world` | `Ai4Installer.kt` |
 | `ai-chat-screenshot` | `Ai4Installer.kt` |
+| `ai-state-tree` | `Ai4Installer.kt` |
+| `ai-transcribe` | `VoiceTranscriber.kt` |
+| `ai-transcribe-warm` | `VoiceTranscriber.kt` |
+| `array-update` | `visualizers.kt` |
 | `blame-history-line` | `history.kt` |
 | `button-update` | `ButtonControlHandler.kt` |
 | `chat_history` | `Ai4Installer.kt` |
@@ -378,6 +398,8 @@ in-route same-site check stops a web page.
 | `diff-history-version` | `history.kt` |
 | `docs_search_input` | `DocsSearchInstaller.kt` |
 | `document-guide` | `documentGuides.kt` |
+| `electron-rtt-release` | `ElectronRTTView.kt` |
+| `electron-rtt-subscribe` | `ElectronRTTView.kt` |
 | `execute-all` | `executing.kt` |
 | `execute-fragment` | `executing.kt` |
 | `execute-symbol` | `executing.kt` |
@@ -409,6 +431,8 @@ in-route same-site check stops a web page.
 | `launch-batch` | `executing.kt` |
 | `launch-fragment` | `executing.kt` |
 | `line-note` | `Server.kt` |
+| `live-output-iframe-ready` | `Server.kt` |
+| `live-output-iframe-reply` | `Server.kt` |
 | `list-history-versions` | `history.kt` |
 | `load-chat-messages` | `chat.kt` |
 | `macro-transcript-command` | `Server.kt` |
@@ -417,6 +441,7 @@ in-route same-site check stops a web page.
 | `notation-scene` | `NotationServer.kt` |
 | `notation-selection` | `NotationServer.kt` |
 | `output-ack` | `Server.kt` |
+| `output-request` | OutputRequests.kt |
 | `paste-boxes` | `Server.kt` |
 | `perform-action` | `Server.kt` |
 | `post-chat-message` | `chat.kt` |
@@ -495,7 +520,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 122 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 130 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove
@@ -618,6 +643,8 @@ Demonstrated rather than asserted:
 | one ledger row's path edited by hand, 2026-08-22 | failed naming the row as both `missing` and `stale` |
 
 ### Geometry review
+
+`GET /three-buffers?uid=<view>&generation=<id>` streams the binary arrays that a view's latest `three/geometry` description refers to; a superseded generation is a 404. It carries the trust of the WebSocket that delivered the description and no guard of its own: a remote native client may fetch it, and the application-wide origin guard refuses cross-site browser reads.
 
 `GET /three-review?uid=<view>` reads the source box’s selection and saved geometry notes under the same-site docs access policy. `three-selection` and `three-observation` WebSocket messages validate the view and artifact before mutating the review inbox. See [Geometry review](agents/GEOMETRY_REVIEW.md).
 

@@ -1,26 +1,19 @@
 # Polytopes: topology first, coordinates later
 
-*`afield.stdlib.polytope` — an incidence topology, a Conway operator algebra over it, element
-provenance that survives every operator, and only then coordinates.*
+`afield.stdlib.polytope` builds polyhedra with Conway operators (`conway("kbD")`, `cube().kis()`)
+and keeps track of which element of the input each output element came from. A polyhedron here is
+a ranked incidence topology first: vertices, edges and faces with identities, which of them touch,
+and an ordered boundary for every face. Coordinates are a separate layer on top, which you can
+drop, replace or solve for. Triangles for drawing are derived last, and each one knows which face
+it belongs to.
 
-*Every declaration used below is listed, with its KDoc, in the codebase reference:
-[Polytopes](reference/polytopes.md) — the topology, the operator algebra, the three realization
-verbs and the `FLine` adapters, file by file. The nonlinear solver that `relax` and the Ceres
-realization path lean on has its own page, [Solvers](reference/solvers.md).*
+Every declaration used below is listed, with its KDoc, in the codebase reference
+[Polytopes](reference/polytopes.md). The solver behind `relax` has its own page,
+[Solvers](reference/solvers.md).
 
-Most "polyhedron libraries" are mesh libraries wearing a hat. You get vertices, faces as triangles,
-maybe a normal, and every question you actually want to ask (*which* face is this, where did it come
-from, what was it before the last operator ran) has to be reconstructed from floating-point
-positions after the fact.
-
-This one is built the other way round. The authoritative value is a **ranked incidence topology**:
-elements with identities, incidences between adjacent ranks, and an explicit ordered boundary cycle
-for every polygon. It knows nothing about coordinates, `FLine`s, triangles, normals or a renderer.
-Coordinates are a **separate, optional, replaceable layer** on top. Triangles are derived last of
-all, and they carry a map back to the polygon they came from.
-
-Here is what that buys you, before any of the explanation. Every colour below is read out of the
-**lineage**, not out of a coordinate:
+The example below applies three operators to a dodecahedron and colours each output face by the
+dodecahedron face it descends from. The colours come from the faces' history, not from their
+positions:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/hero.png" wait="8.0" capture="box" open-outputs="true" w="1180" h="720" padding="14"}
 :::static
@@ -103,18 +96,14 @@ markdown("what you are looking at", listOf(
 ![A near-spherical solid built from 360 small translucent triangles, layered so the far side shows through the near side. The colours run right around the spectrum — magenta, purple, blue, teal, green, yellow, orange — and gather into twelve rounded patches, one for each pentagon of the original dodecahedron, with blended in-between colours along the seams where a triangle straddles two pentagons. A readout underneath reports 182 vertices, 540 edges, 360 faces, twelve seed pentagons, and that 240 faces sit over one pentagon while 120 straddle two](assets/polytope_examples/hero.png)
 
 That is three chained Conway operators on a dodecahedron (`kis · bevel · D`, 360 output faces),
-canonicalized, and drawn as translucent polygons. The picture is doing one job: **the colours are
-provenance**. Each output face asked its own lineage which of the seed's twelve pentagons it descends
-from, walking back through `kis`, through `truncate`, through `ambo`, and answered in a hue. The 240
-faces that sit over a single pentagon take its colour; the 120 that straddle two take the blend, so
-the original dodecahedron's edges draw themselves in intermediate colours.
+canonicalized, and drawn as translucent polygons. Each output face asks `sourceElements` which of
+the dodecahedron's pentagons it descends from, back through `kis`, `truncate` and `ambo`, and takes
+that pentagon's hue. Faces that straddle two pentagons take the blend, so the dodecahedron's
+original edges show up in the in-between colours.
 
-Nothing here consulted a position, a normal, a face size or a distance. The twelve-fold symmetry in
-that image is a picture of the **incidence structure**, and it survived three operators that each
-threw all the coordinates away and made new ones. The rest of this page is how that works.
-
-Every figure and every number on this page is the output of the code shown above it, run by the docs
-build in a live Field.
+No position, normal or face size was used to choose a colour. The pattern comes from the incidence
+structure alone, which each operator carries through even though it computes new coordinates. The
+rest of this page shows how. The hero example is long; the sections below start small.
 
 ??? info "Where the pieces live"
 
@@ -139,9 +128,10 @@ build in a live Field.
 
 ## Ranked elements and incidence
 
-`PolytopeTopology` stores elements by rank, incidences between **adjacent** ranks only, and (for
-rank 2) an explicit ordered vertex cycle, because unoriented incidence alone does not choose a
-traversal of a polygon. Rank 3, for an ordinary polyhedron, is the single whole-polyhedron element.
+`PolytopeTopology` stores elements by rank (0 for vertices, 1 for edges, 2 for faces), the
+incidences between adjacent ranks, and an ordered vertex cycle for each face, since knowing which
+edges a face touches does not say which way round to walk it. For an ordinary polyhedron, rank 3 is
+the single element standing for the whole solid. This example reads all of that back from a cube:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/topology_readout.png" wait="1.5" capture="box" open-outputs="true" w="800" h="560" padding="14"}
 :::static
@@ -180,29 +170,24 @@ Not one coordinate was consulted above.
 
 ![A table of the cube's four ranks with counts 8, 12, 6, 1, followed by one face's ordered vertex cycle, the edges it is incident to, one edge's two endpoint vertices and two incident faces, Euler characteristic 2, and both validation passes reporting true](assets/polytope_examples/topology_readout.png)
 
-Element ids are **globally scoped within one topology**, not per-rank indices: that is why the
-cube's first face is element 20 rather than face 0. An id identifies *this element of this
-topology*, so an incidence array can mix ranks without ambiguity and provenance can name a source
-element without also having to say which array it was in.
+Element ids are numbered across the whole topology, not per rank, which is why the cube's first
+face is element 20 rather than face 0. An id names one element of one topology, so provenance can
+point at a source element without saying which rank it was.
 
-Two details in that read-out matter:
+- **Only adjacent ranks are linked.** No vertex-to-face incidence is stored; go through the edges.
+  `validate()` checks that incidences agree in both directions, that edges have two endpoints, and
+  that each face's cycle matches its edges and forms a single loop.
+- **Manifoldness is an extra check, not a requirement.** `validate(checkManifold = true)` also
+  requires every edge to have exactly two faces. Topologies that are not closed surfaces are still
+  legal.
 
-- **Incidence is reciprocal and adjacent-rank only.** There is no vertex→face incidence stored; you
-  walk. `validate()` checks reciprocity, edge endpoint counts, that every face cycle vertex really
-  is on one of the face's edges, that every incident edge occurs in the cycle, and that the
-  boundary is a single connected degree-2 loop.
-- **Manifoldness is an opt-in stricter pass**, not a precondition. `validate(checkManifold = true)`
-  additionally requires every edge to have exactly two faces. Non-manifold structures stay legal at
-  the core level, because the core is not only for closed surfaces.
+## Coordinates are optional
 
-## Coordinates are the second layer, and they are optional
+A `PolyhedralObject` is a `topology`, a `Realization3` that may be null, and element attributes.
+`Realization3` holds the vertex positions in the same order as `topology.elements(0)`, and hands
+back copies when you read them.
 
-`PolyhedralObject` is `topology` + a **nullable** `Realization3` + element attributes. `Realization3`
-is an immutable ownership boundary around Field's mutable `Vec3`: public reads hand back copies, and
-coordinates are indexed in exactly the same order as `topology.elements(0)`.
-
-The way to show that the topology really is independent is to take the coordinates away and
-watch which operations still work.
+This example drops the cube's coordinates, takes the dual anyway, and shows which calls still work:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/abstract_dual.png" wait="1.5" capture="box" open-outputs="true" w="980" h="520" padding="14"}
 :::static
@@ -241,19 +226,17 @@ The left column is a complete, valid, checkable octahedron. It simply has nowher
 
 ![A two-column table. The abstract dual has realization null, counts 6v 12e 8f, closed manifold true, isomorphic to octahedron true, and both toFaceFLines and triangulate refusing with IllegalArgumentException FLine conversion requires a 3D realization and IllegalStateException triangulation requires a 3D realization. The realized column has the same topology plus a six-vertex Realization3, eight FLines and eight triangles](assets/polytope_examples/abstract_dual.png)
 
-Both refusals are caught exceptions, printed as they were thrown. The combinatorial claims (valid,
-closed, isomorphic to an octahedron) are all *decidable* with no coordinates in the object, and the
-geometry-shaped calls fail loudly rather than inventing a placeholder embedding.
+The combinatorial questions (valid, closed, isomorphic to an octahedron) all have answers without
+coordinates. The calls that need geometry throw, as shown, rather than making up positions.
 
-`isCombinatoriallyIsomorphicTo` claims less than its name: it is a rank-3 helper that tries vertex
-bijections filtered by a degree/face-size signature and then compares edge and face multisets up to
-rotation and reversal. It is not a general incidence-poset graph-isomorphism solver.
+`isCombinatoriallyIsomorphicTo` works for rank-3 polyhedra only: it compares vertex degrees, face
+sizes and the edge and face lists up to rotation and reversal.
 
-## The operator vocabulary
+## The operators
 
-Thirteen operators. Five are primitives implemented directly on the topology; eight are named
-composites that rewrite into primitives before anything runs. This table is generated from
-`ConwayOperator.entries` and `primitiveExpansion`, so it cannot drift from the enum.
+Some operators are primitives that work directly on the topology; the rest are named composites
+that rewrite into primitives before anything runs. This table is generated from
+`ConwayOperator.entries` and `primitiveExpansion`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/operator_table.png" wait="1.5" capture="box" open-outputs="true" w="860" h="640" padding="14"}
 :::static
@@ -278,17 +261,16 @@ $rows
 
 ![A thirteen-row table listing d dual, a ambo, k kis, t truncate and g gyro as primitives expanding to themselves, then j join, n needle, z zip, o ortho, e expand, s snub, m meta and b bevel as composites with their primitive expansions ad, dk, kd, adad, aa, dgd, adk and at, and equivalent notations daC, kdC, dkC, dadaC, aaC, dgdC, kdaC and taC](assets/polytope_examples/operator_table.png)
 
-Read the last two columns together and the direction convention becomes obvious.
-`primitiveExpansion` is in **execution order, seed outward** (`join` runs *ambo* and then *dual*),
-while prefix notation writes the outermost operator first, so you type `daC`. The library keeps both
-orders and reports both: `notationHistory` is what you asked for, `history` is what actually ran.
+The last two columns run in opposite directions. `primitiveExpansion` lists operators in the order
+they run, from the seed outward (`join` runs ambo, then dual), while prefix notation writes the
+outermost operator first, so you type `daC`. A result reports both: `notationHistory` is what you
+asked for, `history` is what ran.
 
 ### The seeds
 
-Five Platonic seeds, each a fully realized `PolyhedralObject`. All the pictures below are Field's own
-Three.js viewer (`threeGrid(...)`) fed with `toTriMesh()`: one WebGL context tiled into panels, so
-you can orbit the whole sheet at once. The grey line under each panel's name is read off the
-**topology**, not off the mesh.
+The seeds are the five Platonic solids, each with coordinates. The galleries below use Field's
+Three.js viewer (`threeGrid(...)`) on `toTriMesh()`, so you can orbit every panel at once. The grey
+line under each name is read from the topology.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/seeds_gallery.png" wait="2.5" capture="box" open-outputs="true" w="1240" h="820" padding="14"}
 :::static
@@ -334,6 +316,8 @@ because the realization solver's default targets are derived from the *incoming*
 and mean radius.
 
 ### The five primitives
+
+This gallery applies each primitive to the cube, with the cube itself first for comparison:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/primitives_gallery.png" wait="3.0" capture="box" open-outputs="true" w="1240" h="800" padding="14"}
 :::static
@@ -386,14 +370,13 @@ Each caption's face-degree histogram tells you what the operator did combinatori
 - **`g` gyro** is a genuine topology transform: every *directed* half-edge becomes a pentagon, so
   `gC` is 24 pentagons and nothing else.
 
-The `gC` panel looks like a bug. Its caption says 38 vertices, 60 edges and 24 pentagons, and its
-picture is a cube. Both are true:
-`GyroSubdivisionRealization` places the new directed-edge points *along* the existing edges and the
-new face centres *at* the existing face centroids, so every one of those 24 pentagons lies flat in
-one of the cube's six original square planes. Flat shading has nothing to shade differently. The
-combinatorics changed completely; the embedding did not move a single point off the surface.
+The `gC` panel's caption says 24 pentagons, but the picture is a cube. Both are right:
+`GyroSubdivisionRealization` places the new points along the existing edges and the new face
+centres at the old face centroids, so every pentagon lies flat in one of the cube's square faces,
+and flat shading cannot tell them apart. The topology changed; the surface did not.
 
-Draw the polygon boundaries instead of the shading and the 24 pentagons appear:
+Giving each polygon its own colour, using the map from triangles back to polygons, shows the
+pentagons:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/gyro_boundaries.png" wait="2.5" capture="box" open-outputs="true" w="960" h="700" padding="14"}
 :::static
@@ -442,12 +425,13 @@ markdown("gyro", """
 
 ![A shaded cube whose six square faces are each divided into four differently coloured pentagons meeting at the face centre, twenty-four in all. The caption reports 24 faces, all 5-gons, with only 6 distinct face normals — the six axis directions of the original cube](assets/polytope_examples/gyro_boundaries.png)
 
-That is the separation the library is built around, in one picture: **the operator changed the
-topology, and a realization policy (a different, replaceable argument) decided that the new
-vertices should stay on the old surface.** Hand `gyro` a different `RealizationPolicy3` and the same
-24 pentagons can be anywhere you like.
+The operator decides the topology, and a realization policy, a separate argument you can replace,
+decides where the new vertices go. Give `gyro` a different `RealizationPolicy3` and the same
+pentagons land somewhere else.
 
 ### The named composites
+
+The same gallery for the composites, each labelled with the primitives it expands to:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/composites_gallery.png" wait="3.5" capture="box" open-outputs="true" w="1240" h="800" padding="14"}
 :::static
@@ -490,11 +474,11 @@ gallery("composites", columns = 4, cell = 290, panels = listOf(
 
 ![Eight shaded polyhedra in two rows of four: join, needle, zip, ortho, expand, snub, meta and bevel applied to the cube, each captioned with its element counts, face-degree histogram and Euler characteristic 2](assets/polytope_examples/composites_gallery.png)
 
-Composites are *rewritten*, not reimplemented: `conway("bC")` runs `ambo` and then `truncate`, and
-the result reports exactly that.
+A composite is rewritten into its primitives: `conway("bC")` runs `ambo` and then `truncate`, and
+the result says so.
 
-All thirteen are declared on both receivers, so a chain reads the same wherever a step sits in it and
-a composite can follow a primitive without a detour through the parser:
+Every operator is a method on both `PolyhedralObject` and a transform result, so you can chain them
+directly, composites after primitives:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/operator_chaining.png" wait="2.0" capture="box" open-outputs="true" w="900" h="360" padding="14"}
 :::static
@@ -530,10 +514,8 @@ used one — `bevel` is `ta`.
 
 ![A four-row table with an asked-for column and an actually-ran column. cube().ambo().bevel() gives 96 vertices, 144 edges and 50 faces, asked for as ambo bevel and run as ambo ambo truncate. cube().kis().needle() gives 38v 108e 72f, asked for as kis needle and run as kis dual kis. cube().truncate().ortho() gives 74v 144e 72f, run as truncate ambo dual ambo dual. cube().dual().zip() gives 24v 36e 14f, run as dual kis dual. Every row has Euler characteristic 2](assets/polytope_examples/operator_chaining.png)
 
-Read the two history columns together. You asked for `bevel`, and the object recorded both that and
-the `ambo truncate` that ran. The notation is a receipt for the computation rather than an echo of
-the call, which is what lets a composite sit anywhere in a chain without the lineage becoming a
-lie.
+Where you asked for `bevel`, the result records both the `bevel` you named and the `ambo truncate`
+that ran, so the lineage stays accurate wherever a composite sits in the chain.
 
 ## Prefix notation
 
@@ -574,10 +556,10 @@ including the byte offset it failed at.
 
 ## Provenance: every output element remembers where it came from
 
-This is the part a mesh cannot give you. Each `PolytopeTransformResult` carries, for every output
-element, an `ElementLineage` tree: either `Source` (an element of the original seed) or `Derived`
-with the operation, a **role** string, and its parents. `sourceElements(id)` flattens the tree back
-to the seed.
+Each `PolytopeTransformResult` carries, for every output element, an `ElementLineage` tree: either
+`Source` (an element of the original seed) or `Derived`, with the operation, a role string and its
+parents. `sourceElements(id)` flattens the tree back to the seed. This example prints the lineage
+of a bevelled cube:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/lineage.png" wait="2.0" capture="box" open-outputs="true" w="1000" h="560" padding="14"}
 :::static
@@ -621,20 +603,20 @@ flattened to seed elements: ${result.sourceElements(sample.id).joinToString { "r
 
 ![A card showing that bC was written as b bevel, ran the primitives a then t, and produced 48 vertices, 72 edges and 26 faces; a role histogram of 14 truncated-face and 12 vertex-face; the full lineage of one output face reading truncate/truncated-face of ambo/original-face of seed rank-2 element 20; and that face flattening to a single seed element](assets/polytope_examples/lineage.png)
 
-The role histogram is the useful shape of this. After a bevel, 14 of the 26 faces descend from the
-cube's own faces and vertices via `ambo`, and 12 are the faces the truncation cut. You did not have
-to guess that from geometry; you asked.
+The role table answers questions geometry would make you guess at: after a bevel, 14 of the 26
+faces descend from the cube's own faces and vertices through `ambo`, and 12 are the faces the
+truncation cut.
 
-The roles the primitives emit are a small fixed vocabulary: `face-center`, `vertex-face`,
+The roles the primitives emit are a fixed list: `face-center`, `vertex-face`,
 `edge-midpoint`, `original-face`, `original-vertex`, `face-apex`, `kis-triangle`,
 `vertex-edge-point`, `truncated-face`, `partially-truncated-face`, `directed-edge-point`,
-`gyro-pentagon`. They are addressable, which is the next section.
+`gyro-pentagon`. Selectors, in the next section, can pick elements by role.
 
-## Selectors: naming a set of elements without naming indices
+## Selectors: choosing elements without naming indices
 
-`ElementSelector` is a SAM predicate over an `ElementSelectionContext` (the object, the element, and
-its lineage when there is one). `ElementSelectors` supplies the useful ones and they compose with
-`and`, `or` and `!`.
+An `ElementSelector` is a predicate over an `ElementSelectionContext`: the object, the element, and
+its lineage when there is one. `ElementSelectors` supplies the common ones, and they combine with
+`and`, `or` and `!`. This example runs a set of them against a kis-ed cube:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/selectors.png" wait="2.0" capture="box" open-outputs="true" w="1020" h="560" padding="14"}
 :::static
@@ -675,18 +657,17 @@ The two columns differ exactly where a selector needs lineage.
 That difference follows from what a selector runs against: a bare `PolyhedralObject` has no
 transform history to have a role in, and a transform result does.
 
-In the last row, `vertexDegree(4)` matches exactly the
-six apexes kis raised. Negating a `provenanceRole` selector on the *bare object* negates a predicate
-that matched nothing, so `!provenanceRole(...)` is vacuously true and the composed selector still
-matches all six. Ask the transform result and it correctly matches none. A negated provenance test is
-only meaningful where lineage exists.
+In the last row, `vertexDegree(4)` matches the six apexes kis raised. On the bare object
+`provenanceRole(...)` matches nothing, so its negation matches everything and the combined selector
+still finds all six; the transform result correctly finds none. Use negated provenance selectors
+only on a transform result.
 
 ## Deployed parameters: a scalar field over the selected elements
 
-Selection says *where*; an `ElementDoubleParameter` says *how much*, per element. The selective
-`kis`, `truncate` and `gyro` overloads take both, evaluate the parameter once per selected source,
-and record what they resolved in a `TransformDeployment`, so the operation is inspectable and
-replayable after the fact.
+A selector says where; an `ElementDoubleParameter` says how much, per element. The selective
+`kis`, `truncate` and `gyro` overloads take both, evaluate the parameter once per selected element,
+and record the values they used in a `TransformDeployment`, so you can inspect or replay the
+operation afterwards.
 
 Below, a scalar is written onto each of a dodecahedron's twelve faces as an ordinary attribute, kis
 is deployed with `ElementParameters.attribute("spike")`, and then the same scalar is painted back
@@ -750,46 +731,38 @@ markdown("field", """
 
 ![A shaded spiked dodecahedron. The pyramids on the left-hand faces are short and coloured cyan, those on the right are long and coloured orange, with a smooth gradient across the middle. Its caption reports kis deployed over 12 faces with heightScale resolved from 0.210 to 0.750, and an output of 32 vertices, 90 edges and 60 faces made of 60 triangles over 60 source polygons](assets/polytope_examples/parameter_field.png)
 
-Three separate facts are visible in that one picture:
-
-1. **The parameter really is non-uniform** — the spikes get longer left to right, and the printed
-   range is the one the deployment record resolved.
-2. **The colour survived the trip through triangulation.** The attribute lives on the *polygon*.
-   Triangles are derived. Painting the field onto the render mesh only works because
-   `TriangulatedGeometry` kept `sourceFace(triangle)`.
-3. **Selection and parameter are orthogonal.** Here the selector is "every face", and only the
-   scalar varies. Restrict the selector and you get selective *and* non-uniform kis, which is what
-   the loadable demo at the bottom of this page does.
+The spikes lengthen from left to right, and the printed range is the one the deployment record
+holds. The colour reaches the triangles because the attribute lives on the polygon and
+`TriangulatedGeometry` keeps `sourceFace(triangle)`. Here the selector is every face and only the
+height varies; restrict the selector as well and you get kis that is both selective and
+non-uniform, as the demo at the bottom of this page does.
 
 ## Realization: `realize`, `relax` and `canonicalize`
 
-Everything above this point is combinatorics. Turning it into coordinates is a separate decision, and
-it is three separate calls because they promise different things:
+Everything so far has been combinatorics. There are three calls for turning it into coordinates,
+and they promise different things:
 
 | verb | what you give it | what it promises |
 |---|---|---|
 | `realize(policy)` | a topology, with or without coordinates | coordinates built from the combinatorics by a declared construction |
 | `relax(plan)` | an embedding you already have | that embedding, improved under a declared set of named constraints |
-| `canonicalize(...)` | an embedding, or none | the symmetry-respecting representative — **with stated guarantees**, and a reported failure when they do not apply |
+| `canonicalize(...)` | an embedding, or none | the symmetric representative, with stated guarantees, and a reported failure when they do not apply |
 
-The per-operator realization policies you have been looking at all through this page (centroid dual,
-edge-midpoint ambo, face-normal kis, along-edge truncation, gyro subdivision) are local
-heuristics, and the pictures have been saying so. Look back at the `gyro` figure: every group of new
-faces is still coplanar with the square it subdivided, because the policy placed the new vertices on
-that square. The combinatorics of `gC` are those of the pentagonal icositetrahedron; the coordinates
-the operator handed back are not.
+The realization policies each operator uses by default (centroid dual, edge-midpoint ambo,
+face-normal kis, along-edge truncation, gyro subdivision) are local rules of thumb. In the `gyro`
+figure the new faces stay flat on the squares they subdivided: the combinatorics of `gC` are those
+of the pentagonal icositetrahedron, but its coordinates are not.
 
 ### `relax(...)`: repair the embedding you have
 
 `relax(plan)` runs a pure-Kotlin nonlinear least-squares pass over the vertex coordinates. A
 `RelaxationPlan` is a list of named, immutable constraint values (`edge-length`, `face-planarity`,
 `centroid`, `common-radius`, `proximity`, `edge-tangency`, `tangency-centroid`, `symmetry-orbit`)
-plus a least-squares configuration and an optional gauge. Because the plan is *data* it prints,
-diffs and reweights (`plan.withWeight("edge-length", 0.0)`), and the result reports each family's
-unweighted geometric error before and after, so you can see which constraint gave way. Topology and
-attributes are untouched: the result is `copy(realization = solved)` and nothing else.
-`solveRealization()` survives as a wrapper that compiles its five weights into
-`RelaxationPlan.regularize()`, and is what the figure below calls.
+plus a least-squares configuration and an optional gauge. Because the plan is a value you can print, compare and reweight
+(`plan.withWeight("edge-length", 0.0)`), and the result reports each family's error before and
+after, you can see which constraint gave way. Topology and attributes are unchanged; only the
+coordinates are replaced. The figure below calls `solveRealization()`, a shorthand that turns five
+weights into `RelaxationPlan.regularize()`.
 
 !!! warning "`relax` is a local least-squares pass"
 
@@ -862,21 +835,18 @@ markdown("solve", """
 
 ![Three shaded cuboctahedra side by side — the clean one, a visibly lumpy jittered one, and the solved one which is regular again — above a table showing edge RMS deviation falling from 2.741e-01 to near zero and max planarity error falling from 1.293e-01 to near zero, with the solver converging in five iterations on the gradient criterion and the topology object being identical](assets/polytope_examples/realization.png)
 
-Read the table, not the pictures: the pictures only tell you the shape came back, whereas the
-diagnostics say by how much. Note the middle row is `solved.initialDiagnostics` and the last is
-`solved.finalDiagnostics`: the solver measures its own input and output, so a solve that did
-nothing useful is visible in the numbers.
+The pictures show the shape coming back; the table says by how much. The middle row is
+`solved.initialDiagnostics` and the last is `solved.finalDiagnostics`, so a solve that did nothing
+useful shows in the numbers.
 
-Note also that the recovered edge mean is the *jittered* mean, not the original: with
-`targetEdgeLength = null` the target is whatever the input's mean edge length happened to be. The
-solver regularises the shape it was given; it does not know what shape you wish you had given it.
+The recovered edge mean is the jittered one, not the original: with `targetEdgeLength = null` the
+target is the input's mean edge length. Pass a target if you want a particular size.
 
 ### `canonicalize(...)`: the form the combinatorics already determined
 
-The **canonical form** of a polyhedron is the embedding where every edge is tangent to one common
-sphere, the centroid of those tangency points is the origin, and every face is planar. It is a
-specific object rather than a prettier relaxation, and for the polyhedra this library produces it is
-*the* object:
+The canonical form of a polyhedron is the embedding where every edge is tangent to one common
+sphere, the centroid of those tangency points is the origin, and every face is planar. For the
+polyhedra this library produces, it is unique:
 
 !!! info "When the canonical form is unique"
 
@@ -889,10 +859,10 @@ specific object rather than a prettier relaxation, and for the polyhedra this li
     Nothing is guaranteed for non-convex, self-intersecting, higher-genus or non-3-connected input.
     There, the run still returns `converged` and its diagnostics, and expects you to look.
 
-Two methods sit behind one policy. `RECIPROCAL` is Hart's dual reciprocation, whose fixed point is
-exactly the mutual polar reciprocity of primal and dual about one midsphere, in tens of iterations.
-`LOCAL_RELAXATION` is planarize / tangentify / recentre, thousands of iterations but bounded local
-moves. The default runs the first and polishes with the second.
+There are two methods. `RECIPROCAL` is Hart's dual reciprocation, which converges in tens of
+iterations. `LOCAL_RELAXATION` alternates planarizing, tangentifying and recentring, and takes
+thousands of small steps. The default runs the first and polishes with the second. This example
+canonicalizes the gyro-cube from earlier:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/canonical.png" wait="4.0" capture="box" open-outputs="true" w="1220" h="820" padding="14"}
 :::static
@@ -949,30 +919,19 @@ markdown("canon", """
 
 ![Two shaded solids side by side. The left is a plain grey cube — no creases are visible at all, because its twenty-four pentagonal faces lie flat in groups of four on the six square faces of the original cube. The right is the pentagonal icositetrahedron: twenty-four congruent pentagons on a near-spherical body. Below them a table shows the tangency radius spread falling from 3.318e-01 to 9.184e-08 and the dihedral angle spread from 1.571 to 2.807e-07, while the tangency centroid offset and max planarity error start at exactly zero](assets/polytope_examples/canonical.png)
 
-The left panel looks like a plain cube because, as a solid, it *is* one: all twenty-four pentagons
-are there, but they lie flat in groups of four on the six original squares, so there is not a single
-visible crease. The two panels **have the same topology object**: the last line of the readout
-asserts it with `===`, not equality, and both report the same single face degree, `[5]`. Nothing was
-added, removed or re-identified; only the coordinates moved. The combinatorics of the gyro-cube
-always were the combinatorics of the pentagonal icositetrahedron, and the operator's local
-realization policy was simply not in a position to say so.
+The left panel looks like a plain cube because its pentagons lie flat on the cube's squares. Both
+panels share the same topology object (the readout checks it with `===`), and both have only
+pentagons; only the coordinates moved.
 
-Read the table rather than the pictures:
+In the table, the flat cube's planarity error and tangency centroid offset are already zero: it is
+planar and centred. What fails is `tangencyRadiusSpread`, the relative spread of distances from the
+centre to each edge, which is zero only when one sphere touches every edge. That is the condition
+canonicalization fixes, so an embedding can be planar and centred and still far from canonical.
+The dihedral spread falls from `1.571` (π/2: the flat cube's faces meet at a right angle or are
+coplanar) to `2.8e-07`, so in the canonical form every pentagon meets its neighbours at one angle.
 
-- `maxFacePlanarityError` starts at **exactly zero**. Every face of the flat cube is already planar.
-- `tangencyCentroidOffset` also starts at **exactly zero**. The flat cube is already centred.
-- `tangencyRadiusSpread` starts at `3.3e-01`. This is the condition that fails — no single sphere is
-  tangent to all sixty edges, and it is the one canonicalisation is actually for.
-
-So "planar and centred" is not a weak version of canonical; it is a *different* thing, and an
-embedding can satisfy both while being nowhere near the canonical form. `tangencyRadiusSpread` is the
-relative spread of the distances from the centre to each edge's closest point, zero exactly when one
-midsphere touches every edge. The dihedral spread collapsing from `1.571` (π/2: the flat cube's
-faces meet either at a right angle or not at all) to `2.8e-07` is the same fact seen from
-another side: in the canonical form all twenty-four pentagons meet at one common angle.
-
-Note `reseeded = true` in the readout: the iteration could not get there from the flat cube and
-restarted from a spectral embedding, which is the subject of the next section.
+`reseeded = true` in the readout means the iteration could not get there from the flat cube and
+restarted from a spectral embedding, described in `realize(...)` below.
 
 ??? warning "Where it gives up"
 
@@ -981,18 +940,17 @@ restarted from a spectral embedding, which is the subject of the next section.
     restarts from a spectral embedding and `CanonicalizeResult.reseeded` records which embedding the
     answer came from.
 
-    That is not a promise that every input converges. Where one does not, the library returns
-    `converged = false` with `reason = "max iterations"` and finite coordinates rather than a
-    smoothed lie, and a test pins that failure as a *reported* one so it cannot start returning
-    garbage instead. `kkC` below is the worked case.
+    Not every input converges. Where one does not, the result has `converged = false`,
+    `reason = "max iterations"` and finite coordinates. `kkC` below is an example.
 
     `Realization3` stores Field's single-precision `Vec3`, so the achievable residual floor is about
     `1e-7` relative, however good the iteration is.
 
 #### The counter-example: kkC
 
-Three embeddings of the same combinatorics: `kkC` as `kis kis C` built it, what `canonicalize()`
-converges to, and what `relaxWithCeres` reaches. Nothing about the topology differs between them.
+`kkC` (kis applied twice to the cube) is a case `canonicalize()` cannot handle. This example shows
+three embeddings of the same topology: as built, after `canonicalize()`, and after
+`relaxWithCeres`, which needs the Ceres native library:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/kkc_canonical.png" wait="6.0" capture="box" open-outputs="true" w="1240" h="620" padding="14" requires="ceres"}
 :::static
@@ -1047,36 +1005,28 @@ markdown("kkc", """
 
 ![Three shaded solids in a row above a table. The left, kkC as built, is a compact spiky ball of triangles. The middle, canonicalize(), is not a solid at all — it has collapsed to a thin diagonal sliver a few pixels wide, essentially a line. The right, relaxWithCeres(), is a clean stellated form with deep triangular spikes. The table gives tangency radius spread 3.386e-01, 1.930e+00 and 5.104e-08 for the three, and minimum dihedral angle 0.955, 0.003 and 0.340; canonicalize() reports converged = false with reason max iterations, while relaxWithCeres converges in 12 iterations](assets/polytope_examples/kkc_canonical.png)
 
-Read the middle column, not the outer two. `canonicalize()` reports `converged = false`, and it would
-be easy to read that as "needed more iterations". It is not: the embedding it hands back is *worse than
-the one it was given*, with a minimum dihedral angle of 0.003 and a tangency spread that has risen from
-`3.4e-01` to `1.9e+00`. It has not stalled on the way to the answer; it has walked somewhere else. And
-it is somewhere the objective actively rewards: an edge
-tangency is measured from the centre to the **line** through an edge, so as that edge shrinks its
-direction becomes arbitrary and it satisfies its own constraint for nothing. Collapsing edges removes
-constraints, and a formulation that lets them collapse has a spurious zero-cost minimum sitting next
-to the answer.
+`canonicalize()` reports `converged = false`, and more iterations would not help: its result is
+worse than its input, collapsed to a sliver with a minimum dihedral angle of 0.003 and a tangency
+spread up from `3.4e-01` to `1.9e+00`. Tangency is measured to the line through an edge, so a
+shrinking edge satisfies its constraint for free, and the iteration finds that collapse instead of
+the answer. When `canonicalize()` reports `converged = false`, try `relaxWithCeres` with
+`RelaxationPlan.canonicalConditions()`, as in the right panel.
 
-`relax` minimises the identical formula and falls into the same trap, just on a different solid: on
-`kkT` it reports a tangency spread of `1.2e-04` for a solid with an edge at seven ten-thousandths of
-the mean edge length. `RelaxationPlan.canonicalConditions()` therefore carries a one-sided floor under
-edge length by default (`MinEdgeLengthConstraint`, exactly zero above itself and so bit-identical on
-a healthy solid), which opens that edge by an order of magnitude and makes the reported spread *worse*,
-because the flattering number was measuring a fold. What
-reaches the answer is not a stronger solver but three changes to how the problem is *posed*: each
-face's plane carried as a free unit normal plus an offset rather than an origin and a normal (which
-has an exact two-dimensional null space per face, 144 of `kkC`'s 474 parameters), a one-sided floor
-under edge length that is inert on a healthy solid, and a gauge term for the rotation the canonical
-conditions leave free. `dev_docs/CERES.md` works through all three with the parameter counts.
+??? aside "Why relaxWithCeres reaches kkC"
+
+    `relax` minimises the same formula and collapses the same way on other solids (on `kkT` it
+    reports a small spread for a solid with a near-zero edge), so `canonicalConditions()` carries a
+    one-sided floor under edge length, `MinEdgeLengthConstraint`, which is zero on a healthy solid.
+    The Ceres path also carries each face's plane as a free unit normal plus an offset, and adds a
+    gauge term for the free rotation. `dev_docs/CERES.md` works through all three.
 
 ### `realize(...)`: coordinates from the combinatorics alone
 
-If the canonical form really is determined by the topology, then a correct implementation should be
-able to reach it *without ever being shown the operator's coordinates*. `SpectralRealization` builds
-an embedding from the three eigenvectors of the vertex graph Laplacian with the smallest non-zero
-eigenvalues, optionally projected to the sphere. For a vertex-transitive graph those three modes span
-one degenerate eigenspace and the embedding already *is* the symmetric solid; otherwise it is a good
-starting point rather than a finished object.
+`realize` builds coordinates from the topology alone. `SpectralRealization` uses the three
+eigenvectors of the vertex graph Laplacian with the smallest non-zero eigenvalues, optionally
+projected to the sphere. For a vertex-transitive polyhedron that is already the symmetric solid;
+otherwise it is a good starting point for `canonicalize()`. This example takes the gyro-cube's
+topology without its coordinates and compares the two routes to its canonical form:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/spectral.png" wait="4.0" capture="box" open-outputs="true" w="1240" h="840" padding="14"}
 :::static
@@ -1137,47 +1087,35 @@ markdown("spectral", """
 
 ![Three shaded solids of the same pentagonal icositetrahedron. The first, built from the graph Laplacian alone with no coordinates supplied, is already close to the right shape but slightly uneven. The second and third are canonical and indistinguishable from one another. Below them, the tangency spread and dihedral mean for each of the three, the agreement between the two canonical routes to within about 1e-9 radians, and the symmetry readout with the combinatorial class sizes](assets/polytope_examples/spectral.png)
 
-Panels 2 and 3 came from completely different starting coordinates (one from an eigen-decomposition
-of a graph that had never seen a coordinate, one from the operator's own placement on the faces of a
-cube) and landed on the same solid, agreeing on the mean dihedral angle to around `1e-9` radians.
-The shape was a property of the incidence structure the entire time.
+Panels 2 and 3 start from different coordinates, one from the graph alone and one from the
+operator's placement, and reach the same solid, agreeing on the mean dihedral angle to around
+`1e-9` radians.
 
-Panel 1 shows the spectral construction doing real work rather than handing the canonicaliser a
-random cloud. From the graph alone it reaches a tangency spread of
-`2.0e-02`, about sixteen times better than the `3.3e-01` of the flat cube the operator produced, and
-already within a fraction of a percent of the right mean dihedral angle. That is why it is the
-reseeding fallback in the previous section, and why the reseed rescues the case rather than merely
-restarting it.
+Panel 1, from the graph alone, already has a tangency spread of `2.0e-02` against the flat cube's
+`3.3e-01`, and is close to the right dihedral angle. That is why `canonicalize()` reseeds from it
+when an attempt fails.
 
-The symmetry readout underneath is `combinatorialOrbits()`, which refines the ranked incidence
-structure by iterated incidence-colour relabelling. Every automorphism preserves colours, so each
-class is a *union* of true orbits and constraining a class is at least as strong as constraining an
-orbit. But refinement is not a complete invariant, so where a class is strictly coarser than its
-orbits the `symmetry-orbit` constraint family reports a nonzero residual.
-`fullyTransitive = false` here is correct: the pentagonal icositetrahedron is
-face-transitive but not vertex-transitive, and the class sizes say exactly that.
+The symmetry readout comes from `combinatorialOrbits()`, which groups elements by repeatedly
+colouring them by their incidences. Each class contains one or more true symmetry orbits; where a
+class is coarser than its orbits, the `symmetry-orbit` constraint reports a nonzero residual.
+`fullyTransitive = false` is correct here: the pentagonal icositetrahedron is face-transitive but
+not vertex-transitive, as the class sizes show.
 
 ## Rank 4: the same core, one dimension up
 
-Nothing above this point is specific to three dimensions. `PolytopeTopology` is rank-general, and
-`Polytope4` is what happens when you actually use it at a rank the Conway surface operators cannot
-reach: the 5-cell, the tesseract, the 16-cell and the self-dual 24-cell, with `Realization4`, an
-abstract `dual()`, and viewing projections.
+`PolytopeTopology` works at any rank. `Polytope4` uses it for four-dimensional polytopes, which the
+Conway operators do not reach: the 5-cell, the tesseract, the 16-cell and the 24-cell, with
+`Realization4`, an abstract `dual()`, and projections for viewing.
 
-The face lattice is **derived, not declared**. `convexPolytope4(coordinates, facetNormals)` takes
-vertex coordinates and outward facet normals; each normal's supporting hyperplane picks out a cell,
-every pair of cells whose shared vertices are affinely two-dimensional is a polygon, each polygon's
-boundary order comes from an angular sort in its own 2-plane, and the edges are the polygons'
-consecutive pairs. A wrong derivation therefore shows up as a wrong *published count*, not as a shape
-nobody checked.
+You do not declare a 4-polytope's faces; they are derived. `convexPolytope4(coordinates,
+facetNormals)` takes vertex coordinates and outward facet normals. Each normal's hyperplane picks
+out a cell, each pair of cells sharing a two-dimensional set of vertices gives a polygon, each
+polygon is ordered by angle in its own plane, and the edges are consecutive polygon vertices.
 
-This is also where the rank-3 assumptions get audited. An edge of a 4-polytope belongs to three or
-four polygons, never two, so `validate(checkManifold = true)` must **reject** a tesseract, and does.
-`Polytope4` refuses a rank-3 topology outright, in its constructor. `PolyhedralObject` is the
-permissive one: it checks a realization's length and its attribute keys, not the rank, so a rank-4
-topology wraps up in one without complaint. The rank-3 assumption is enforced by the operators that
-depend on it: the Conway surface transforms require rank 3, and `triangulate`, FLine conversion and
-face normals each require a realization. That is where a mismatched topology is really caught.
+An edge of a 4-polytope belongs to three or more polygons, so `validate(checkManifold = true)`
+rejects a tesseract. `Polytope4` refuses a rank-3 topology. `PolyhedralObject` accepts any rank, but
+the Conway operators require rank 3 and `triangulate`, FLine conversion and face normals require a
+3D realization. This example prints the four seeds' derived counts and draws a projected tesseract:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/rank4.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="760" padding="14"}
 :::static
@@ -1221,21 +1159,19 @@ markdown("counts", counts.h)
 
 ![An orbitable wireframe of the tesseract under a rotated perspective projection — a cube inside a cube with the eight connecting edges, visibly mid-rotation so the inner cell is turning out. Below it a table of the four rank-4 seeds with their vertex, edge, polygon and cell counts, all showing V minus E plus F minus C equal to zero, the polygons-per-cell histogram, and every one reporting false for closed 2-manifold](assets/polytope_examples/rank4.png)
 
-Every one of those rows reports `V − E + F − C = 0`, which is the Euler relation for a convex
-4-polytope, and every one reports **`false`** for the closed-2-manifold check, correctly, because a
-4-polytope is not a surface, and a validator that said `true` would be broken.
+Every row satisfies `V − E + F − C = 0`, the Euler relation for a convex 4-polytope, and every row
+reports `false` for the closed-2-manifold check, since a 4-polytope is not a surface.
 
-There is no `triangulate()` for rank 4. A projected 4-polytope's polygons do not bound a surface, and
-filling them would imply one that does not exist, so `toEdgeFLines` and `toCellEdgeFLines` give
-Field a wireframe and stop there. `OrthographicProjection4` collapses the tesseract's two cubes
-exactly onto each other, which a test asserts.
+There is no `triangulate()` for rank 4: a projected 4-polytope's polygons do not bound a surface,
+so `toEdgeFLines` and `toCellEdgeFLines` give you a wireframe. `OrthographicProjection4` maps the
+tesseract's two cubes exactly onto each other; use a rotated or perspective projection to see both.
 
 ## Into Field: one FLine per face
 
-`toFaceFLines()` produces one closed, outward-wound `FLine` per polygonal face, with the face's id,
-rank and propagated attributes attached as line properties. Not a triangle mesh with a face id
-bolted on: the polygons *are* the output, so Field's ordinary `filled`, `stroked`, `hoverColor` and
-`onClick` all work per face with no parallel rendering model.
+`toFaceFLines()` produces one closed, outward-wound `FLine` per face, with the face's id, rank and
+attributes attached as line properties. Field's ordinary `filled`, `stroked`, `hoverColor` and
+`onClick` then work per face. This example truncates four vertices of an ambo-ed cube and colours
+each face by its lineage role:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_flines.png" wait="3.0" capture="box" open-outputs="true" w="1240" h="700" padding="14"}
 :::static
@@ -1270,12 +1206,11 @@ displayOpen("faces")
 
 ![An orbitable Three.js view of a partially truncated cuboctahedron drawn as filled, stroked polygons, with faces tinted purple, green and teal according to the lineage role each one reports](assets/polytope_examples/face_flines.png)
 
-That view is the live `threeLines(...)` viewer, so in a real box you can orbit it, hover a face and,
-if you set `onClick`, pick one and read its provenance back. The figure is a still: hover
-highlighting and the click-to-inspect provenance card need a mouse, which the docs build does not
-have. The [loadable demo](#a-loadable-demo) at the foot of this page has both.
+In a box this is the live `threeLines(...)` viewer: you can orbit it, hover a face and, with
+`onClick`, pick one and read its provenance. The [loadable demo](#a-loadable-demo) at the foot of
+this page does that.
 
-What each of those lines is carrying, from the same transform:
+This example prints what the same transform recorded and what each line carries:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_fline_properties.png" wait="2.0" capture="box" open-outputs="true" w="1020" h="480" padding="14"}
 :::static
@@ -1306,18 +1241,15 @@ markdown("carried", """
 
 ![A table reporting two recorded deployments — ambo over its whole natural domain and truncate over four selected vertices — that four of twelve source vertices were selected, that the output is 24 vertices, 40 edges and 18 faces, that toFaceFLines returned 18 FLines, the role histogram of three original faces, eleven partially truncated faces and four vertex faces, the polytopeFaceId and polytopeFaceRank properties carried on the first line, and that line's node count against the face's polygon degree](assets/polytope_examples/face_fline_properties.png)
 
-Both deployments are recorded, not just the selective one: a uniform operator's `selectedSources` is
-`null`, which means "the operator's complete natural domain", and an explicit selection is a set. The
-distinction survives into the replay record, so a chain can be re-run exactly.
+Both operations are recorded. A uniform operator's `selectedSources` is `null`, meaning every
+element it applies to; a selective one records its set, so the chain can be re-run exactly.
 
 ### Triangles, derived last, that still know where they came from
 
-`triangulate()` projects each face from its actual 3D plane by dropping its Newell normal's dominant
-axis, runs Field's existing `FloatEarcut` in 2D, and flips any triangle whose winding disagrees with
-the face. It **duplicates polygon corners between faces**: `TriMesh` stores normals per
-vertex, and a creased polyhedron needs a different flat normal on each side of an edge.
-
-That duplication has a consequence:
+`triangulate()` projects each face into 2D, triangulates it with Field's `FloatEarcut`, and fixes
+any triangle wound the wrong way. It duplicates polygon corners between faces, because `TriMesh`
+stores normals per vertex and each side of a crease needs its own flat normal. This example
+compares the polytope's counts with the render mesh's:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/triangulation.png" wait="2.5" capture="box" open-outputs="true" w="1060" h="560" padding="14"}
 :::static
@@ -1350,23 +1282,21 @@ is the thing that knows the solid is closed.
 
 ![A two-column table comparing the truncated cube as a polytope — 24 abstract vertices, 14 polygons made of 8 triangles and 6 octagons, Euler characteristic 2, closed — with the same object as a render mesh: many more render vertices, 44 triangles, a different Euler characteristic and not watertight. Below it, the counts of distinct source polygons and distinct abstract vertices recovered through the provenance arrays](assets/polytope_examples/triangulation.png)
 
-If you only ever had the mesh you would have to conclude the truncated cube was fourteen loose
-polygons with a boundary. The topology is not a lossy summary of the triangles; the triangles are a
-lossy projection of the topology, and `sourceFace` / `sourceVertex` are the receipt.
+From the mesh alone, the truncated cube looks like loose polygons with a boundary. The topology
+knows it is closed, and `sourceFace` / `sourceVertex` map each triangle and render vertex back to
+it.
 
-`FanFaceTriangulator` remains available as an explicitly convex-only strategy.
-`EarcutFaceTriangulator` is the default, handles simple concave faces, and, with the boundary model
-in the next section, cuts holes out of them too.
+`EarcutFaceTriangulator` is the default; it handles concave faces and faces with holes.
+`FanFaceTriangulator` is for convex faces only.
 
 ## A face can have holes
 
-A rank-2 element is an **outer cycle plus zero or more inner rings**: `faceCycle` returns the outer
-one, `faceHoles` returns the inner rings, and `faceRings` returns all of them. A hole-free face has a
-`faceRings` of one and takes the identical path through both adapters.
+A face is an outer cycle plus zero or more inner rings: `faceCycle` returns the outer one,
+`faceHoles` the inner rings, and `faceRings` all of them.
 
-The consequence is not only a rendering one. A face with a hole is a **surface with boundary**, so an
-object containing one stops being a closed manifold, and every operation that is only defined for a
-closed manifold has to say so rather than produce nonsense.
+An object with a holed face is no longer a closed manifold, so operations that need one refuse it
+with a message. This example builds `cubeWithWindow`, a cube with a square hole in one face, and
+lists what it reports and refuses:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_with_a_hole.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="620" padding="14"}
 :::static
@@ -1414,21 +1344,15 @@ ${refusals.joinToString("\n") { (call, message) -> "| `$call` | $message |" }}
 
 ![A two-part table. The first lists the windowed face's outer cycle of four vertices, one inner ring of four, two rings total, Euler characteristic 2 counting elements and 1 counting cells, closed manifold false with four one-sided window edges, and eight triangles cut from that face against two for a solid square. The second lists four refused calls — dual, bevel, toOff and triangulate with FanFaceTriangulator — each with the exception message naming the face and its hole count](assets/polytope_examples/face_with_a_hole.png)
 
-The two characteristics are the crux. Counting *elements* still gives 2, because the incidence poset
-of a cube with a window still has a cube's elements. Counting *cells* gives 1, because a disk with
-one hole contributes `1 - 1`: a sphere with a window punched in it is a disk, and χ of a disk is 1.
-Both numbers are correct and they answer different questions, which is why the API offers both.
-
-The four refusals come from two chokepoints rather than four hand-written guards, one at the entry
-to the transform machinery and one in `dual()`, so a fourteenth operator inherits the refusal
-without anyone having to remember it.
+The two Euler characteristics answer different questions. Counting elements gives 2, because a cube
+with a window has a cube's elements. Counting cells gives 1, because a face with one hole
+contributes `1 - 1`: a sphere with a window punched in it is a disk, and χ of a disk is 1.
 
 ### The hole, in pixels, beside the same face without one
 
-The claim that a hole is really a hole is a claim about triangles, so the way to make it is to
-build the identical face twice (once with the inner ring declared, once with it dropped) and render
-both. Back-face culling is **on**: a rim triangle wound the wrong way would be *missing*
-here exactly as it would be missing on a GPU, so this is a winding test as well as a hole test.
+This example builds one square face by hand, once with an inner ring and once without, and renders
+both with back-face culling on, so a triangle wound the wrong way would be missing. The folded part
+shows how to declare a hole with `PolytopeTopologyBuilder.addFaceHole`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_hole_counterfactual.png" wait="3.0" capture="box" open-outputs="true" w="880" h="480" padding="14"}
 :::static
@@ -1489,20 +1413,15 @@ threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260,
 
 ![Two wireframe renders side by side. The left plate, built with addFaceHole, is a square annulus — a square frame with an empty square window at its centre, triangulated into eight triangles around the rim, reported as 8 vertices, 8 edges and 2 rings. The right plate is the identical outline with the ring dropped: a solid filled square of 2 triangles, 4 vertices, 4 edges and 1 ring](assets/polytope_examples/face_hole_counterfactual.png)
 
-Eight triangles against two, from the same outer outline. The window in the left one is empty
-because no triangle was generated there, not because something was drawn over it.
+The holed face is cut into eight triangles around an empty window; without the ring it is two.
 
-Not here: a hole ring that touches its outer boundary, a face with two nested rings, and star
-polygons. The realization verbs are the other gap: `relax` and `canonicalize` build their problem
-from outer rings only, so hole vertices are unconstrained. No shipped path reaches that today,
-because the Conway operators refuse a holed face before a realizer ever sees one.
+`relax` and `canonicalize` use outer rings only, so hole vertices are not constrained.
 
 ## The registered value printers
 
-The mathematical types contain no HTML. `PolytopeVisualizers.kt` registers printers that reduce each
-large immutable value to a public data class from `Summaries.kt` and then hand *that* to Field's
-ordinary reflective visualizer. So the topology stays independent of presentation, and any of these
-is a useful last expression in a live box.
+Polytope values have registered printers, so a topology, a transform result or a triangulation
+shows a readable summary when you `viz` it or leave it as a box's last expression. This example
+shows a selective kis and its triangulation:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/value_printers.png" wait="2.5" capture="box" open-outputs="true" w="1100" h="720" padding="14" scale="3"}
 :::static
@@ -1518,11 +1437,8 @@ viz("inspection", listOf(result, result.polyhedron.triangulate()))
 
 ![Field's reflective value visualizer showing a PolytopeTransformSummary — requested and primitive operations (kis), the output PolyhedralObjectSummary with a PolytopeTopologySummary of rank 3 reporting element counts 10, 20, 12, 1, face degree counts of eight triangles and four squares, Euler characteristic 2, faceHoleCount 0, cellularEulerCharacteristic 2, valid true and closedManifold true, a Realization3Summary of ten vertices and the lift attribute key, then a TransformDeploymentSummary naming the kis operation with a selected count of two — followed by a TriangulatedGeometrySummary of 40 render vertices, 16 triangles, 12 source polygon faces, 10 source vertex elements and flat normals present](assets/polytope_examples/value_printers.png)
 
-The `…` links are the visualizer's ordinary lazy expansion for nested values, not a rendering
-failure; click one in a live box and it fetches the rest.
-
-`println(result.summary())` and `viz("inspection", result)` report the same underlying facts, because
-they go through the same public summary functions. Useful last expressions:
+Click a `…` link in a live box to expand a nested value. `println(result.summary())` prints the
+same facts as text. Useful last expressions:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1536,32 +1452,25 @@ polyhedron.solveRealization()
 
 ## A loadable demo
 
-Four operation transcripts build a working document you can open, edit and re-run:
+These operation transcripts each build a document you can open, edit and re-run:
 
-- **`dev_docs/agents/transcripts/polytope_conway_demo.yaml`** — one compact box that marks two
+- `dev_docs/agents/transcripts/polytope_conway_demo.yaml`: one compact box that marks two
   opposite cube faces with different heights, applies `kis` only there, and sends the polygon faces
   to the on-canvas viewer. Hover a face, click it, and a provenance card reports the output face id,
   the transform role, the deployed height, the source elements and the 3D hit position.
-- **`dev_docs/agents/transcripts/polytope_conway_gallery.yaml`** — the four questions this page is
-  organised around, as four small boxes: a Conway-expression gallery you can retype, a topology-only
+- `dev_docs/agents/transcripts/polytope_conway_gallery.yaml`: small boxes for a Conway-expression
+  gallery you can retype, a topology-only
   dual shown before a policy supplies coordinates, a non-uniform parameter field painted
   onto the output faces, and a realization before/after that leaves the diagnostics as its final
   value.
-- **`dev_docs/agents/transcripts/polytope_canonical_gallery.yaml`** — one box that evaluates a Conway
-  expression, canonicalizes it, and draws the realized and canonical forms side by side in the
-  viewer with the diagnostics underneath. Change `val expression = "gD"` to `"ktC"`, `"bD"` or
-  `"sD"` and re-run: the notation re-parses, both solids redraw, and the tangency-radius spread
-  drops by six orders of magnitude. Set it to `"kkC"` and watch this box report a clean failure: it
-  calls `canonicalize()`, which does not reach that one; `relaxWithCeres` does.
-- **`dev_docs/agents/transcripts/polytope_holes_and_chains.yaml`** — three small boxes for holes and
-  for chaining. The first takes the `cubeWithWindow` seed end to end: the outer cycle and the inner
-  ring, both Euler characteristics, the triangles the window is cut out of, the four operations that
-  refuse a holed face by name, and the faces as polygonal FLines you can orbit and click for a
-  per-face ring and triangle count. The second builds a one-face plate by hand with
-  `PolytopeTopologyBuilder.addFaceHole` and draws it beside the identical outline with the ring
-  dropped, back-face culled, so a rim triangle wound the wrong way would be missing. The third
-  chains every named composite off one `ambo` — `cube().ambo().bevel()` and its seven siblings — and
-  reports what each chain asked for beside what actually ran.
+- `dev_docs/agents/transcripts/polytope_canonical_gallery.yaml`: one box that evaluates a Conway
+  expression, canonicalizes it, and draws the realized and canonical forms side by side with the
+  diagnostics underneath. Change `val expression = "gD"` to `"ktC"`, `"bD"` or `"sD"` and re-run.
+  Set it to `"kkC"` and the box reports that `canonicalize()` did not converge.
+- `dev_docs/agents/transcripts/polytope_holes_and_chains.yaml`: the `cubeWithWindow` seed with its
+  rings, Euler characteristics and refusals, as clickable polygon FLines; the hand-built plate with
+  and without its hole; and every named composite chained off one `ambo`, with what each chain
+  asked for beside what ran.
 
 Replay any of them from the repository root:
 
@@ -1578,28 +1487,22 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   winding and filling rules would be ambiguous for them.
 - Transform parameters are maps of `String` to `Double` in the deployment records. There are no typed
   parameter descriptors, domains, units or composition yet.
-- All three realization verbs exist, but there is no **Wythoff construction** to supply a symmetry
-  specification and a high-quality initial embedding: the canonicaliser rediscovers symmetry
-  numerically instead of being told it. `relaxWithCeres` reaches `kkC` exactly and the two pure-Kotlin
-  iterations do not, so a caller who wants a guaranteed canonical form needs the native solver.
-  `kkT`, `kkO` and `kkI` reach spread `1e-4` rather than machine precision even there.
-- `relax(...)` builds its Jacobian by finite differences over `3·V` parameters. That is a
-  tens-of-vertices tool, not a mesh optimiser.
-- Normals are flat only. Smooth and crease-aware generation, and stable face/edge/vertex picking ids
-  through the *triangle* path, are still to come; the `FLine` path already has picking via callbacks.
-- Rank 4 has four seeds, projections and a wireframe adapter, but no operator algebra: the Conway
-  operators are surface operators and do not lift. Ranks above 4 are reachable by the core and
-  entirely unexercised.
-- The composite operators are declared only on `PolyhedralObject`, not on `PolytopeTransformResult`,
-  so `cube().ambo().bevel()` does not compile although `cube().ambo().kis()` does. Use the prefix
-  notation (`conway("baC")`) until that is fixed.
+- There is no Wythoff construction, so the canonicalizer finds symmetry numerically instead of
+  being given it. For hard cases such as `kkC`, use `relaxWithCeres`; `kkT`, `kkO` and `kkI`
+  reach a spread of about `1e-4` even there.
+- `relax(...)` builds its Jacobian by finite differences over `3·V` parameters, so it suits
+  polyhedra with tens of vertices, not large meshes.
+- Normals are flat only. Picking a face works through the `FLine` path (`onClick`), not through
+  `triangulate()`.
+- Rank 4 has seeds, projections and a wireframe adapter, but no Conway operators. Ranks above 4
+  are allowed by the core but untested.
 
 ## See also
 
 - [Polytopes reference](reference/polytopes.md) — every public declaration in
   `afield.stdlib.polytope`, with the KDoc that lives beside it: the operator algebra and its
   composition rules, the realization verbs and their diagnostics, the attribute and selector algebra,
-  and the `FLine`/`TriMesh` adapters. This page is the tour; that one is the index.
+  and the `FLine`/`TriMesh` adapters.
 - [Solvers reference](reference/solvers.md) — the Ceres constraint vocabulary behind `relax` and
   `CeresRealization`, plus the expression VM for residuals the vocabulary cannot say.
 - [Meshes & 3D Geometry](mesh_examples.md) — `TriMesh`, `MeshView`, `showMesh` and the Three.js viewer

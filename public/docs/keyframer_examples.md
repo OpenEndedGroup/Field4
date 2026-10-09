@@ -19,15 +19,18 @@ to disk with a version history, or turn it into Kotlin source you can paste into
 The blending half of this (numbers and vectors easing while *code* steps discretely) has a worked
 example over on
 [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code).
-This page is the rest of it: **what a scope can watch**, **why a camera move is a screw motion**,
-**how saving works and what survives it**, and **how a captured look becomes source**.
+This page is the rest of it: what a scope can watch, why a camera move is a screw motion, how saving
+works and what survives it, and how a captured look becomes source.
 
-Almost everything below runs on the CPU. `Structure` is constructible bare
+Almost everything below runs on the CPU, without a renderer.
+
+??? aside "Why most of this page needs no GPU"
+    `Structure` is constructible bare
 (`Structure.kt:112#open class Structure(`) and its `bind`/`bindings` are plain map operations
-(`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`). A keyframe scope can be exercised, and tested,
-without a GPU anywhere in sight. The exception is
-[the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
-targets that need a renderer, which `dev_docs/KEYFRAMER_COVERAGE.md` lists.
+    (`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`), so a keyframe scope can be exercised, and tested,
+    without a GPU. The exception is
+    [the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
+    targets that need a renderer, which `dev_docs/KEYFRAMER_COVERAGE.md` lists.
 
 ## What a scope watches
 
@@ -238,11 +241,7 @@ the entire frame is a `vec4 tint` in the shader's uniform block, and the only th
 that uniform is a keyframe.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
-
-val renderer: Renderer = fromContext()
 
 var m = Mesh()
 var module = moduleHere()
@@ -297,13 +296,13 @@ The fan is blue. The mesh colours are all `(1, 1, 1, 1)`; a fan that
 is *any* colour other than white can only have got it from the uniform, and an unwritten uniform
 would have left it black.
 
-The capture contains precisely two colours: black background, and `rgb(170, 205, 229)` across all
-497,142 fan pixels. The keyframed value is the linear `(0.40, 0.6125, 0.78)`, and sRGB-encoding that
-gives `(170, 205, 229)`, to the byte, on all three channels. So the pixels on screen are the
-interpolated keyframe and nothing else: not the `cool` endpoint, not the `warm` one, not white.
-
-That is also the one path no unit test can take: `Key.invoke()` writing through `Structure.bind`
-into a uniform that a live Vulkan pipeline then reads.
+??? aside "Checking the capture pixel by pixel"
+    The capture contains precisely two colours: black background, and `rgb(170, 205, 229)` across all
+    497,142 fan pixels. The keyframed value is the linear `(0.40, 0.6125, 0.78)`, and sRGB-encoding that
+    gives `(170, 205, 229)`, to the byte, on all three channels. So the pixels on screen are the
+    interpolated keyframe and nothing else: not the `cool` endpoint, not the `warm` one, not white.
+    This is the one path no unit test can take: `Key.invoke()` writing through `Structure.bind`
+    into a uniform that a live Vulkan pipeline then reads.
 
 ### The interpolation, rendered at four values of `t`
 
@@ -315,11 +314,7 @@ Each frame is a separate native Vulkan window capture. `t` is the only differenc
 runs, and everything that moves is a uniform a keyframe wrote.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t00.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true name="keyframer-strip-t00" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
-
-val renderer: Renderer = fromContext()
 
 var m = Mesh()
 var module = moduleHere()
@@ -369,11 +364,8 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t33.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t33" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
 
-val renderer: Renderer = fromContext()
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -408,11 +400,8 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t66.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t66" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
 
-val renderer: Renderer = fromContext()
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -447,11 +436,8 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t10.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t10" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
 
-val renderer: Renderer = fromContext()
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -500,10 +486,6 @@ module.look.m = camera.m()
 `t = 1` — the warm endpoint, the fan nearly edge-on:
 
 ![The end pose, the fan compressed into a narrow ellipse and tinted warm orange](assets/keyframer_examples/strip_t10.png)
-
-Being the endpoints, `t = 0` and `t = 1` double as a check on the whole mechanism: if either
-differed from the pose and colour the two keys hold, the interpolation would be wrong at its own
-boundary.
 
 ## A camera move is a screw motion, not a straight line
 
@@ -631,10 +613,11 @@ whole move, the furthest the sclerp path's aim ever strays from the origin is **
 units**, three millionths, which is `Float` rounding rather than a wobble. The subject stays framed
 for free, with no look-at constraint anywhere in the loop.
 
-All of this is asserted in `aCameraPoseSclerpsItsTransformAndLerpsItsFocusDistance`: the constant
-distance, the constant height and the aim are each checked at **eleven** sample points across the
-move, and the midpoint figures (8/√2 on each axis for the sclerp, 6.0000 and 27.24% for the
-straight line) once each, where they are defined.
+??? aside "What the test checks"
+    All of this is asserted in `aCameraPoseSclerpsItsTransformAndLerpsItsFocusDistance`: the constant
+    distance, the constant height and the aim are each checked at eleven sample points across the
+    move, and the midpoint figures (8/√2 on each axis for the sclerp, 6.0000 and 27.24% for the
+    straight line) once each, where they are defined.
 
 ??? aside "The camera target itself needs a renderer"
 
@@ -743,8 +726,6 @@ ${java.nio.file.Files.readString(dir.resolve("look.json.versions").resolve("0000
 
 ![Four panels: a three-row version history numbered 0 to 2 with notes; a line reading kept gain and dropped absent, enabled, taps; a reloaded key showing gain, pos, voice plus the filled-in wet and mode defaults; and the pretty-printed JSON of version zero](assets/keyframer_examples/persistence.png)
 
-Three things to pull out of that.
-
 **The drop is silent and total.** The third save went in with four names and came back with one. No
 exception, no log line, no marker in the file. If you keyframe a `Boolean` you will simply never see
 it again.
@@ -760,8 +741,7 @@ is applied *after* the version-agnostic defaults — for a matching file it wins
 `gain` was saved as the `Float` `0.20f` and appears on disk as `0.20000000298023224`, because every
 number goes over the wire as a `Double`. The round trip is still exact: `"kind": "FLOAT"` is carried
 alongside, and `KValue.toAny` uses it to narrow the value back to a `Float`, recovering `0.2f`
-precisely, which `theFloatOnDiskNarrowsBackToExactlyTheFloatThatWasSaved` asserts against that exact
-on-disk string.
+precisely.
 
 The `Double` wire format does lose information in two cases, though. A `Long` past 2^53 has more
 mantissa than a `Double` can hold and comes back changed. And any `Number` that is *not* one of the
@@ -791,15 +771,20 @@ version:
 
 An unreadable manifest is reported on the `error,keyframer` log channel rather than swallowed, and
 the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it. The notes in
-a half-written file are still there for you to read. One test covers each way the manifest can go
-wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
-`aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
-`aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
-`aDeletedManifestStillLeavesTheFilesAsTheHistory`.
+a half-written file are still there for you to read.
 
-One caveat for old files: a `.versions` directory written before 2026-08 can have gaps. An
-unparseable manifest read as no history at all back then, so the next save called itself version 0
-and wrote over `000000.json`. Whatever is on disk is still readable; what was overwritten is gone.
+??? aside "Tests, and gaps in older version directories"
+    One test covers each way the manifest can go
+    wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
+    `aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
+    `aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
+    `aDeletedManifestStillLeavesTheFilesAsTheHistory`, and
+    `theFloatOnDiskNarrowsBackToExactlyTheFloatThatWasSaved` pins the `Float` round trip against the
+    exact on-disk string.
+
+    A `.versions` directory written before 2026-08 can have gaps. An
+    unparseable manifest read as no history at all back then, so the next save called itself version 0
+    and wrote over `000000.json`. Whatever is on disk is still readable; what was overwritten is gone.
 
 ### Browsing saved keys
 
@@ -906,7 +891,7 @@ It reaches for one unless the body contains `"""`, ends in a quote, or contains 
 case matters: a raw string still interpolates `$name` and `${…}`, and a block mentioning either
 would paste as code that failed to compile or that silently substituted something else,
 defeating the exact round trip `updateCode` exists for. Those bodies get the escaped literal
-instead, which `updateCodeEscapesDollarInASourceBlock` holds in place.
+instead.
 
 `copyUpdateCodeToClipboard()` is the same string, put on the system clipboard. That one goes
 through AWT: it throws on a headless JVM, and it replaces whatever the user had copied.
@@ -1025,11 +1010,10 @@ values of the push constant, and compares both ends against the keyframe they ar
 
 - [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
   — blending two keys, including code values that step rather than smear.
-- [Sweeping a keyframe space overnight](keyframe_autosweep.md) — the collection noun for all of this.
-  Once a directory of saved keys is a *space* rather than a list of looks, `KeyframeSweep` spends the
-  night visiting the points in it nobody clicked on: a random blend of a few keys per pass, sometimes
-  extrapolated past the hull they span, each one rendered into its own directory beside the key that
-  produced it and a manifest of what went into it.
+- [Sweeping saved keyframes overnight](keyframe_autosweep.md) — treat a directory of saved keys
+  as a space and let `KeyframeSweep` render blends of them you never tried, each beside the key
+  that produced it.
 
-`dev_docs/KEYFRAMER_COVERAGE.md` has the public surface of `keyframer.kt` against its ledger, and
-the four calls a headless test cannot reach.
+??? aside "Test coverage"
+    `dev_docs/KEYFRAMER_COVERAGE.md` has the public surface of `keyframer.kt` against its ledger, and
+    the calls a headless test cannot reach.

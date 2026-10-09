@@ -231,8 +231,9 @@ fun primitiveKind(value: Any?): String = when (value) {
     else -> ""
 }
 
-fun primitiveToolValue(value: Any?): Any? = when (value) {
-    is Boolean, is Byte, is Short, is Int, is Long, is Float, is Double, is String -> value
+fun primitiveToolValue(value: Any?, maxChars: Int = 6000): Any? = when (value) {
+    is String -> clipToolText(value, maxChars)
+    is Boolean, is Byte, is Short, is Int, is Long, is Float, is Double -> value
     is Char -> value.toString()
     else -> null
 }
@@ -289,7 +290,7 @@ class Ai4CodeToolProviders(
                     message = "Unknown box '${ref.uid}'."
                 )
 
-            notify("Evaluating Kotlin expression for ${target.id}", "AI4")
+            lprintln("info,ai4", "Evaluating Kotlin expression for ${target.id}")
             val diagnostics = mutableListOf<CompileDiagnostic>()
             var resultValue: ResultValue? = null
 
@@ -353,7 +354,7 @@ class Ai4CodeToolProviders(
                         valueKind = kind,
                         type = runCatching { shortenType(result.type) }.getOrDefault(runtimeTypeName(value)),
                         runtimeType = runtimeTypeName(value),
-                        primitiveValue = primitiveToolValue(value),
+                        primitiveValue = primitiveToolValue(value, req.maxChars),
                         primitiveKind = primitiveKind(value),
                         stringValue = stringValue,
                         html = html,
@@ -441,7 +442,7 @@ class Ai4CodeToolProviders(
                 message = "No Kotlin source is available for ${target.id}/${ref.property}."
             )
 
-        notify("Compiling Kotlin for ${target.id}", "AI4")
+        lprintln("info,ai4", "Compiling Kotlin for ${target.id}")
 
         val diagnostics = mutableListOf<CompileDiagnostic>()
         val before = setupSnapshot(target)
@@ -453,7 +454,7 @@ class Ai4CodeToolProviders(
                 Box.withBoxContext(target) {
                     val lines = source.trimEnd().lines()
                     val breaks = lines.mapIndexedNotNull { index, line ->
-                        if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
+                        if (afield.macros.isFragmentBreak(line)) index else null
                     } + lines.size
 
                     var at = 0
@@ -527,7 +528,7 @@ class Ai4CodeToolProviders(
             append(" for ${target.id}; snippets=$snippetsCompiled")
             if (changedNames.isNotBlank()) append("; setup changed: $changedNames")
         }
-        notify(message, "AI4")
+        lprintln("info,ai4", message)
 
         CompileKotlinResult(
             success = success,
@@ -577,6 +578,11 @@ fun installAi4() {
     val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val activeBoxChats = ConcurrentHashMap.newKeySet<String>()
+    /**
+     * The running turn's [AiTurnInbox] per box chat key. Its monitor also guards [activeBoxChats] wherever a
+     * turn starts or ends, so a message is either queued in a live turn's inbox or starts a turn of its own.
+     */
+    val turnInboxes = ConcurrentHashMap<String, AiTurnInbox>()
     val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
     /** The last turn's [ContextReport] per box (`doc\u0000uid`), for `/context`. Metadata only, never the text. */
     val lastContextByBox = ConcurrentHashMap<String, ContextReport>()
@@ -630,6 +636,7 @@ fun installAi4() {
 
     fun threadFor(fileKey: String, fileText: String, cacheKey: String = fileKey, history: String = ""): OpenAiIdeCodexBridge.ThreadState =
         threadByKey[cacheKey] ?: bridge!!.startThread(fileKey, fileText + AiBoxConversation.resumeContext(history)).also {
+            it.lastFileText = fileText
             threadByKey[cacheKey] = it
         }
 
@@ -639,6 +646,7 @@ fun installAi4() {
             fileText + AiBoxConversation.resumeContext(history),
             instructions = OpenAiIdeCodexBridge.defaultChatThreadInstructions
         ).also {
+            it.lastFileText = fileText
             chatThreadByKey[cacheKey] = it
         }
 
@@ -745,6 +753,28 @@ fun installAi4() {
             ?.let { File(it).name }
             ?: "global-chat"
 
+    /**
+     * Messages a turn ended without delivering (the model stopped calling tools first) become the box's next
+     * turn, one request for all of them, sent through `ai-assist` as the panel sent them.
+     */
+    fun startFollowUpTurn(info: SessionInformation, leftovers: List<AiTurnInbox.Pending>) {
+        val assist = AiTurnInbox.combined(leftovers) ?: return
+        ai4Scope.launch {
+            val previousInfo = thisSessionInfo.get()
+            val previousSession = thisSession.get()
+            thisSessionInfo.set(info)
+            leftovers.lastOrNull { it.session != null }?.session?.let { thisSession.set(it) }
+            try {
+                handle(Message("ai-assist").payload(assist)) { }
+            } catch (t: Throwable) {
+                lprintln("warning,ai4", "Could not start a turn for the messages sent during the last one: ${t.message ?: t::class.java.simpleName}")
+            } finally {
+                if (previousInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(previousInfo)
+                if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
+            }
+        }
+    }
+
     fun parseFileRef(raw: String, defaultProperty: String? = null): FileRef? {
         if (!raw.startsWith("afield://")) return null
         val parts = raw.removePrefix("afield://").split("/", limit = 3)
@@ -812,16 +842,21 @@ fun installAi4() {
             reply(Message("ai-chat-rewind-world").payload(AiChatRewindWorldReply(request.uid, "Box no longer exists.", false)))
             return@mutableSetOf Handled.yes
         }
-        val nodes = AiSessionTree.load(target).nodes().filterKeys { it in request.turns.toSet() }.values
+        val nodes = AiSessionTree.nodesInOrder(target, request.turns)
         val origins = nodes.mapNotNull { AiSessionTree.opOf(it)?.third?.takeIf { o -> o.isNotBlank() } }.toSet()
         val undone = OperationTranscript.undoOrigins(info.filename, origins)
-        val created = nodes.flatMap { AiSessionTree.createdBoxesOf(it) }.distinct()
-            .mapNotNull { uid -> info.boxes[uid]?.takeIf { it.getPropertyRaw("_tombstone") != true } }
-        inMain { created.forEach { box -> actionTable["-delete-box"]?.invoke(listOf(box)) } }
+        // Only boxes exactly as those turns left them: one a person has since edited, moved or wired stays.
+        val plan = AiWorldUndo.plan(nodes, info.boxes)
+        // Through the graph host, as the agent's own DeleteBox goes: the delete action needs this document as
+        // its session, which a bare Runloop dispatch did not give it, so the boxes were reported deleted and kept.
+        val host = afield.ai.agent.LiveFieldGraphHost
+        host.onOwner(info) { plan.delete.forEach { box -> host.delete(info, box) } }
         val text = buildString {
             append(undone.message)
-            if (created.isNotEmpty()) append(" Deleted ${created.size} box(es) those turns created: ${created.joinToString { it.name.ifBlank { it.id } }}.")
-            append(" Box creation, deletion and provisional edits accepted since are not undone.")
+            if (plan.delete.isNotEmpty()) append(" Deleted ${plan.delete.size} box(es) those turns created: ${plan.delete.joinToString { it.name.ifBlank { it.id } }}.")
+            if (plan.keep.isNotEmpty()) append(" Kept ${plan.keep.size} they created: " +
+                plan.keep.joinToString { (box, why) -> "${box.name.ifBlank { box.id }} ($why)" } + ".")
+            append(" Box deletions and provisional edits accepted since are not undone.")
         }
         reply(Message("ai-chat-rewind-world").payload(AiChatRewindWorldReply(request.uid, text, undone.success)))
         Handled.yes
@@ -841,6 +876,13 @@ fun installAi4() {
                 ?.let { AiChatCommandReply(request.uid, true, it) } ?: AiChatCommandReply(request.uid, false, "")
         }
         reply(Message("ai-chat-command").payload(payload))
+        Handled.yes
+    })
+
+    handlers["ai-state-tree"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<StateTreeRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        reply(Message("ai-state-tree").payload(StateTreeBrowser.read(info.boxes.values + info.root, request)))
         Handled.yes
     })
 
@@ -866,6 +908,8 @@ fun installAi4() {
                 if (request.listBranches) {
                     AiBoxChatReply(request.uid, AiBoxConversation.read(target), message = AiSessionTree.branches(target))
                 } else {
+                    // The states the conversation last left, for the restore below to tell its own changes from anyone else's.
+                    val expectedStates = AiSessionTree.lastKnownStates(target)
                     val moved = if (request.rewindTo >= 0) AiSessionTree.rewind(target, request.rewindTo, request.expectedText)
                         else AiSessionTree.switchTo(target, request.switchTo)
                     // Branch state: provider threads are rebuilt from the new head's transcript, and agent memory
@@ -875,9 +919,14 @@ fun installAi4() {
                     agentMemoryByKey.keys.removeIf { it.startsWith(key) }
                     moved.restoredMemory?.let { snap -> agentMemoryByKey[key + "code"] = AgentMemoryState().also { it.restore(snap) } }
                     lastContextByBox.remove("${info.filename}\u0000${target.id}")
+                    // An extension's own world (a canvas, a simulation) follows the conversation too, unless
+                    // something else changed it since; then its onConflict decides, and the reply says so.
+                    val restore = AgentExtensionRegistry.restoreBranchStates(target, moved.branchStates, expectedStates)
+                    AiSessionTree.noteStates(target, restore.effective)
                     send(Message("set-output").payload(Set_output(target.id, "outputarea", "ai-chat", moved.markdown)))
                     val origins = moved.abandoned.mapNotNull { AiSessionTree.opOf(it)?.third?.takeIf { o -> o.isNotBlank() } }.toSet()
                     AiBoxChatReply(request.uid, moved.markdown, userText = moved.userText,
+                        message = restore.notes.joinToString("\n\n"),
                         abandonedTurns = moved.abandoned.map { (it["id"] as kotlinx.serialization.json.JsonPrimitive).content },
                         undoableEdits = OperationTranscript.countOrigins(info.filename, origins),
                         undoableBoxes = moved.abandoned.sumOf { AiSessionTree.createdBoxesOf(it).size })
@@ -894,11 +943,16 @@ fun installAi4() {
             agentMemoryByKey.keys.removeIf { it.startsWith(key) }
             send(Message("set-output").payload(Set_output(target.id, "outputarea", "ai-chat", "")))
         }
+        // A panel opened mid-turn shows what is waiting for that turn too; the saved transcript never holds it.
+        val queued = turnInboxes[key]?.queuedMarkdown().orEmpty()
+        val shown = AiBoxConversation.read(target).let { if (queued.isEmpty()) it else it.trimEnd() + "\n" + queued }
         reply(Message("ai-chat-history").payload(AiBoxChatReply(
-            request.uid, AiBoxConversation.read(target), if (busy) "Wait for the current AI turn before clearing." else ""
+            request.uid, shown, if (busy) "Wait for the current AI turn before clearing." else ""
         )))
         Handled.yes
     })
+
+    VoiceTranscriber.install()
 
     handlers["ai-assist"] = mutableSetOf({ message, _ ->
         invalidateBridgesAfterSettingsChange()
@@ -910,7 +964,7 @@ fun installAi4() {
             try {
                 bridge = createIdeBridge(uiLog)
                 helpers = IdeChatHelpers(bridge!!, log = uiLog)
-                notify("Initializing AI support v4", "AI4")
+                lprintln("info,ai4", "Initializing AI support v4")
             } catch (t: Throwable) {
                 val messageText = aiSetupMessage(t)
                 lprintln("warning,ai4", messageText)
@@ -1094,6 +1148,28 @@ fun installAi4() {
         }
 
         val expandedExtraPrompt = expandBoxSlashRefs(exec.extraPrompt)
+        // What the model reads. A push-to-talk prompt is a Whisper transcript, so the model is told to
+        // read it for intent and repair misheard identifiers from context ("from context" is
+        // `fromContext`); the chat history keeps the transcript as spoken.
+        val modelUserPrompt = if (exec.dictated && expandedExtraPrompt.isNotBlank()) {
+            "[Dictated by voice: this is a speech-to-text transcript and may contain recognition " +
+                "errors. Read it for what was meant, using the code and conversation to correct " +
+                "misheard identifiers, names and symbols. If a correction changes what you would do, " +
+                "say which reading you took.]\n\n" + expandedExtraPrompt
+        } else expandedExtraPrompt
+
+        // Sent from the panel while this box's turn runs: give it to that turn (AiTurnInbox), never refuse it.
+        fun queueForRunningTurn(): Boolean {
+            if (!exec.queueIfBusy || exec.kind != "general") return false
+            val shown = (listOf(expandedExtraPrompt.trim()) + exec.images.map { "![attachment]($it)" })
+                .filter { it.isNotBlank() }.joinToString("\n\n")
+            val pending = AiTurnInbox.Pending(shown, modelUserPrompt, exec.images, exec, thisSession.get())
+            val inbox = synchronized(turnInboxes) { turnInboxes[boxChatKey]?.takeIf { it.offer(pending) } } ?: return false
+            inbox.onQueued?.invoke()
+            return true
+        }
+        if (boxChatKey in activeBoxChats && queueForRunningTurn()) return@mutableSetOf Handled.yes
+
         val agentMemory = agentMemoryByKey.computeIfAbsent(conversationKey) { AgentMemoryState() }
 
         val preamblePropertyRegex =
@@ -1282,7 +1358,7 @@ fun installAi4() {
             val primary = entries.firstOrNull { it.boxUid == box.id && it.property == exec.property }
                 ?: entries.firstOrNull { it.boxUid == box.id }
                 ?: entries.first()
-            notify("Listing ${entries.size} current/connected content property/properties for ${box.id}", "AI4")
+            lprintln("info,ai4", "Listing ${entries.size} content properties for ${box.id}")
             ListContentsResult(
                 fileRef = primary.fileRef,
                 content = primary.content,
@@ -1449,7 +1525,7 @@ fun installAi4() {
         }
 
         val editOtherFile: (EditFileRequest) -> EditFileResponse = editOtherFile@{ req ->
-            notify("Editing ${req.file}", "AI4")
+            lprintln("info,ai4", "Editing ${req.file}")
             val ref = parseFileRef(req.file)
                 ?: return@editOtherFile EditFileResponse(false, "Unsupported file ref '${req.file}'")
             if (ref.document != docName) {
@@ -1460,6 +1536,8 @@ fun installAi4() {
             setProvisional(docPath, target.id, ref.property, req.newContent)
             EditFileResponse(true, "Updated ${req.file}")
         }
+
+        val workspaceSearch = workspaceSearchForDocument(docPath)
 
         val workspaceSymbolSearch: (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult = workspaceSymbolSearch@{ req ->
             val query = req.query.trim()
@@ -1719,18 +1797,24 @@ fun installAi4() {
         }
 
         when (exec.kind) {
-            "chat" -> notify("Initiating AI Chat", "AI4")
-            "general" -> notify("Initiating AI Conversation", "AI4")
-            "cursor" -> notify("Initiating Completion", "AI4")
-            "rewrite" -> notify("Initiating AI Rewrite", "AI4")
-            "error" -> notify("Initiating AI Error Fix", "AI4")
+            "chat" -> notify("Reading your request…", "AI4")
+            "general" -> notify("Reading your request…", "AI4")
+            "cursor" -> notify("Completing the code at your cursor…", "AI4")
+            "rewrite" -> notify("Reworking the selected code…", "AI4")
+            "error" -> notify("Investigating the error…", "AI4")
             else -> {
                 notify("Unknown AI request kind '${exec.kind}'", "AI4")
                 return@mutableSetOf Handled.yes
             }
         }
 
-        if (!activeBoxChats.add(boxChatKey)) {
+        val inbox = AiTurnInbox()
+        val started = synchronized(turnInboxes) {
+            activeBoxChats.add(boxChatKey).also { if (it) turnInboxes[boxChatKey] = inbox }
+        }
+        if (!started) {
+            // A turn began after the check above; or the box is busy with something that takes no messages.
+            if (queueForRunningTurn()) return@mutableSetOf Handled.yes
             notify("This box already has an AI turn running.", "AI4")
             return@mutableSetOf Handled.yes
         }
@@ -1752,14 +1836,20 @@ fun installAi4() {
         // What the session tree records about this turn once it ends (AiSessionTree.recordTurn).
         val turnMeta = java.util.concurrent.atomic.AtomicReference<AiSessionTree.TurnMeta?>(null)
         val opFrom = OperationTranscript.turnBoundary(docPath)
+        // How the boxes this conversation created look as the turn starts, so a later world undo can tell
+        // whether a person changed one of them between turns (AiWorldUndo).
+        val createdBefore = runCatching { AiWorldUndo.fingerprints(sessionInfo.boxes, AiSessionTree.createdAlongHead(box)) }.getOrDefault(emptyMap())
+        // The document's extension branch states as the turn starts (AgentExtensionBuilder.branchState), taken
+        // in the turn's own coroutine: a paint canvas is tens of megabytes, too slow for the message handler.
+        val branchBefore = java.util.concurrent.atomic.AtomicReference<Map<String, String>>(emptyMap())
         ai4Scope.launch {
+            branchBefore.set(runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
             val chatResult: OpenAiIdeCodexBridge.SendResult?
             val editResult: IdeChatHelpers.HighLevelResult?
             val streamActive = AtomicBoolean(false)
             var streamPrefix: String? = null
             val liveLock = Any()
-            val streamBuffer = StringBuilder()
-            val progressEntries = mutableListOf<OpenAiIdeCodexBridge.ProgressUpdate>()
+            val liveConversation = AiLiveConversation()
             var livePrefix: String? = null
             var lastPush = 0L
             var turnModel = (if (exec.kind == "general") chatBridge else bridge)?.modelIdentity
@@ -1776,50 +1866,28 @@ fun installAi4() {
                 latestProgressOpen: Boolean = true,
                 additions: String = ""
             ): String {
-                val entries = synchronized(liveLock) { progressEntries.toList() }
-                val base = baseWithoutPendingAi()
-                return buildString {
-                    append(base)
-                    if (length > 0 && this[length - 1] != '\n') append("\n")
-                    // Keep the requested/reported model visible even while only tool progress exists.
-                    if (aiText.isEmpty() && entries.isNotEmpty()) {
-                        append("<<ai>>\n")
-                        turnModel?.let { append(it.marker()) }
-                    }
-                    entries.forEachIndexed { index, progress ->
-                        val open = latestProgressOpen && aiText.isBlank() && index == entries.lastIndex
-                        append(if (open) "<<progress-open>>\n" else "<<progress>>\n")
-                        append(progress.title.trim().ifBlank { "AI activity" })
-                        val body = progress.body.trim()
-                        if (body.isNotBlank()) {
-                            append("\n")
-                            append(body)
-                        }
-                        append("\n")
-                    }
-                    if (additions.isNotBlank()) {
-                        append(additions.trimEnd())
-                        append("\n")
-                    }
-                    if (aiText.isNotEmpty() || (entries.isEmpty() && additions.isBlank())) {
-                        append("<<ai>>\n")
-                        turnModel?.let { append(it.marker()) }
-                        append(aiText)
-                    }
-                }
+                return liveConversation.render(baseWithoutPendingAi(), turnModel,
+                    live = latestProgressOpen, finalText = aiText.takeIf { it.isNotEmpty() }, additions = additions)
+            }
+
+            // The panel is sent the transcript plus whatever waits in the inbox; only the transcript is saved.
+            fun sendToPanel(markdown: String) {
+                val queued = inbox.queuedMarkdown()
+                val shown = if (queued.isEmpty()) markdown else markdown.trimEnd() + "\n" + queued
+                _send(Message("set-output").payload(Set_output(box.id, "outputarea", "ai-chat", shown)), document = escapedDocPath)
             }
 
             fun pushLiveConversation(latestProgressOpen: Boolean = true) {
                 if (!streamActive.get()) return
-                val partial = synchronized(liveLock) { streamBuffer.toString() }
-                val payload = Set_output(
-                    box.id,
-                    "outputarea",
-                    "ai-chat",
-                    renderLiveConversation(partial, latestProgressOpen)
-                )
-                saveHistory(payload.value)
-                _send(Message("set-output").payload(payload), document = escapedDocPath)
+                val markdown = renderLiveConversation(latestProgressOpen = latestProgressOpen)
+                saveHistory(markdown)
+                sendToPanel(markdown)
+            }
+
+            inbox.onQueued = { pushLiveConversation(latestProgressOpen = true) }
+            inbox.onDelivered = { taken ->
+                synchronized(liveLock) { taken.forEach { liveConversation.user(it.shown) } }
+                pushLiveConversation(latestProgressOpen = true)
             }
 
             fun visibleUserBlockForKind(): String = when (exec.kind) {
@@ -1848,9 +1916,7 @@ fun installAi4() {
                 }
                 streamPrefix = livePrefix
                 synchronized(liveLock) {
-                    progressEntries += OpenAiIdeCodexBridge.ProgressUpdate(
-                        title = title
-                    )
+                    liveConversation.progress(OpenAiIdeCodexBridge.ProgressUpdate(title = title))
                 }
                 streamActive.set(true)
                 pushLiveConversation(latestProgressOpen = true)
@@ -1860,11 +1926,7 @@ fun installAi4() {
                 if (streamActive.get()) {
                     synchronized(liveLock) {
                         progress.modelIdentity?.let { turnModel = it }
-                        // One current activity, replaced as work moves from model to tool to result.
-                        if (progress.phase != null && progressEntries.lastOrNull()?.phase in setOf("model", "tool")) {
-                            progressEntries.removeAt(progressEntries.lastIndex)
-                        }
-                        if (progress.title.isNotBlank()) progressEntries += progress
+                        liveConversation.progress(progress)
                     }
                     pushLiveConversation(latestProgressOpen = true)
                 }
@@ -1877,8 +1939,7 @@ fun installAi4() {
                     additions = additions
                 )
                 saveHistory(next)
-                val payload = Set_output(box.id, "outputarea", "ai-chat", next)
-                _send(Message("set-output").payload(payload), document = escapedDocPath)
+                sendToPanel(next)
                 return next
             }
 
@@ -1916,7 +1977,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             lineNumber = exec.startLine,
-                            userPrompt = expandedExtraPrompt,
+                            userPrompt = modelUserPrompt,
                             attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
@@ -1939,7 +2000,9 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -1947,10 +2010,11 @@ fun installAi4() {
 
                     "general" -> {
                         chatResult = chatHelpers!!.chatGeneral(
+                            maxToolRounds = exec.maxToolRounds,
                             state = state,
                             code = exec.prompt,
                             lang = lang,
-                            userPrompt = expandedExtraPrompt,
+                            userPrompt = modelUserPrompt,
                             imageUrls = exec.images,
                             attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
@@ -1974,18 +2038,20 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = chatGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
                                 synchronized(liveLock) {
-                                    streamBuffer.append(chunk)
+                                    liveConversation.text(chunk)
                                 }
                                 val now = System.currentTimeMillis()
                                 if (now - lastPush >= 80L) {
                                     lastPush = now
                                     if (!streamActive.get()) return@chatGeneral
-                                    pushLiveConversation(latestProgressOpen = false)
+                                    pushLiveConversation(latestProgressOpen = true)
                                 }
                             },
                             onProgress = { progress ->
@@ -2025,7 +2091,9 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -2060,7 +2128,9 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -2095,7 +2165,9 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceSearch = workspaceSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
@@ -2108,19 +2180,19 @@ fun installAi4() {
                 }
             } catch (e: Exception) {
                 val outcome = if (isAiTurnCancellation(e)) "cancelled" else "failed"
+                AiBoxConversation.failed(box, "AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}")
                 // A failed tool round can leave a provider thread awaiting an unsent result.
                 // Continue from saved text next time instead of reusing that incomplete chain.
                 threadByKey.remove(conversationKey)
                 chatThreadByKey.remove(conversationKey)
                 if (livePrefix != null) {
                     sendFinalVisibleAiPanel(
-                        synchronized(liveLock) { streamBuffer.toString() } +
-                            "\n\n_AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}_"
+                        "_AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}_"
                     )
                 }
                 streamActive.set(false)
                 inMain {
-                    notify("AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}", "AI4")
+                    notify(if (isAiTurnCancellation(e)) "Stopped. Details are in the chat." else "AI work stopped before finishing. Open the chat for the error and next steps.", "AI4")
                 }
                 return@launch
             }
@@ -2140,6 +2212,7 @@ fun installAi4() {
             ))
             inMain {
                 if (chatResult != null) {
+                    AiBoxConversation.completed(box, chatResult.rounds, chatResult.hitToolRoundCap)
                     chatResult.modelIdentity?.let { turnModel = it }
                     chatThreadByKey[conversationKey] = chatResult.threadState
                     val trimmedPrompt = expandedExtraPrompt.trim()
@@ -2186,8 +2259,7 @@ fun installAi4() {
                         additions = additions
                     )
                     saveHistory(next)
-                    val payload = Set_output(box.id, "outputarea", "ai-chat", next)
-                    _send(Message("set-output").payload(payload), document = escapedDocPath)
+                    sendToPanel(next)
                     val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
                     if (changedEntries.isNotEmpty()) {
                         setProvisionalArchive(
@@ -2206,7 +2278,7 @@ fun installAi4() {
                             )
                         )
                     }
-                    notify("Finished AI conversation", "AI4")
+                    notify("Reply ready in the chat.", "AI4")
                 } else if (editResult != null) {
                     threadByKey[conversationKey] = editResult.threadState
                     markProvisional(box, exec.property, editResult.editedCode)
@@ -2245,20 +2317,42 @@ fun installAi4() {
                         )
                     }
                     streamActive.set(false)
-                    notify("Finished AI ${exec.kind}", "AI4")
+                    notify("AI changes are ready to review.", "AI4")
                 }
             }.join()
-        }.invokeOnCompletion {
-            AiBoxConversation.running(box, false)
-            // A failed or cancelled turn is recorded too: its partial reply is in the transcript.
+        }.invokeOnCompletion { failure ->
+            // A failed or cancelled turn is recorded too: its partial reply is in the transcript. The box stops
+            // being "running" only once the turn is recorded; clearing it first let the next request (a person's,
+            // or agent-task's, which waits on it) arrive while the turn still held the box, and be refused.
             runCatching {
                 val opTo = OperationTranscript.turnBoundary(docPath)
                 val meta = (turnMeta.get() ?: AiSessionTree.TurnMeta(kind = exec.kind, property = exec.property, memory = agentMemory.snapshot()))
                     .copy(opFrom = opFrom, opTo = opTo, origin = turnOrigin,
-                        createdBoxes = (replyGraph.created.toList() + chatGraph.created.toList()).distinct())
+                        createdBoxes = (replyGraph.created.toList() + chatGraph.created.toList()).distinct(),
+                        createdBefore = createdBefore,
+                        createdAfter = runCatching {
+                            AiWorldUndo.fingerprints(sessionInfo.boxes, AiSessionTree.createdAlongHead(box) + replyGraph.created + chatGraph.created)
+                        }.getOrDefault(emptyMap()),
+                        branchBefore = branchBefore.get(),
+                        branchAfter = runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
                 AiSessionTree.recordTurn(box, savedHistory, history(), meta)
             }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
-            activeBoxChats.remove(boxChatKey)
+            // Releasing the box must survive a failure that also breaks the reporting: a NoClassDefFoundError
+            // from classes rewritten under a live JVM threw out of `failed`, and the stale key refused every
+            // later turn in that box until restart.
+            var undelivered = emptyList<AiTurnInbox.Pending>()
+            try {
+                if (failure != null) AiBoxConversation.failed(box,
+                    "AI ${exec.kind} ${if (isAiTurnCancellation(failure)) "cancelled" else "failed"}: ${failure.message ?: failure::class.java.simpleName}")
+            } finally {
+                undelivered = synchronized(turnInboxes) {
+                    turnInboxes.remove(boxChatKey, inbox)
+                    activeBoxChats.remove(boxChatKey)
+                    inbox.close()
+                }
+                AiBoxConversation.running(box, false)
+            }
+            if (undelivered.isNotEmpty()) startFollowUpTurn(sessionInfo, undelivered)
         }
         Handled.yes
     })
@@ -2568,3 +2662,4 @@ private fun formatMarkdown(text: String): String {
         .replace("\n", "<br/>")
     return result
 }
+

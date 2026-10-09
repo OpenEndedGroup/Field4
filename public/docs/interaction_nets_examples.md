@@ -1,34 +1,36 @@
 # Interaction Nets examples
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). Start from [what's already in the box](reference/index.md).*
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). To normalise terms, draw a reduction and check the reducer against an ordinary evaluator in
+Field, open the [interaction_nets_lambda](agent_transcripts.md#interaction_nets_lambda) starting point.*
 
 An interaction net is a graph you compute with by rewriting it. Each node is an agent with one *principal* port and some auxiliaries; wherever two principal ports are wired to each other you have an active pair, and a rule says what that pair becomes. `Lambda` is a ready-made vocabulary of agents — `APP`, `LAM`, `DUP`, `ERASE`, `VAR`, `ROOT`, `CONST` — and `Lambda.rules()` is a rule book covering it.
 
-So: build a net with `net { }`, wiring ports with `to`; `relax` it to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. The four examples below each take a single step and show three cards over a before-and-after drawing; [Reference](#reference) is the whole surface in one table.
+Build a net with `net { }`, wiring ports with `to`; call `relax` to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. The single-step examples below each show three cards over a before-and-after drawing; [Reference](#reference) lists the whole API.
 
-Every rule splits or attenuates the energy its nodes carry, so a reduction visibly decays instead of merely rewiring. That is art direction rather than semantics, and it is where the energy figures quoted below come from.
+Every node also carries an energy, and every rule splits or reduces the energy of the nodes it creates, so a reduction visibly fades as it runs. The energy is there for drawing and does not change what a net computes; it is where the energy figures quoted below come from.
 
 ## Reducing a λ-term end to end
 
-`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` sugar, and `format` round-trips exactly. `Lambda.rules()` covers fan meetings too: `fan-fan` reads a label off each `DUP` and annihilates two fans from the same duplication or commutes two from different ones, and `erase-erase` closes the matching gap for erasers. Pass `Reducer(relaxIterations = 0)` when nothing is watching, so a reduction does not pay for a layout it will never draw; the figure below passes 8.
+`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` as shorthand, and `format` prints a term that parses back to the same thing. When two `DUP` fans meet, the `fan-fan` rule compares their labels: two fans from the same duplication cancel, and two from different duplications pass through each other. `erase-erase` does the same for two erasers. Pass `Reducer(relaxIterations = 0)` when nothing will be drawn, so the reduction skips the layout work; the figure below passes 8.
 
 ![Five panels, left to right, following one reduction: the compiled net of six agents, then the four reactions beta-linear, dup-lam, beta-linear and fan-fan, ending in two agents — a ROOT holding a single abstraction](assets/interaction_nets_lambda/lambda_reduction.svg)
 
-Those are the five stages of `(λx. x x) (λy. y)`, the smallest term that shows the whole vocabulary at work. Left to right: the compiled net, 6 agents (ROOT, two APP, two LAM, one DUP — the fan for `x`, used twice); after `beta-linear`, 4; after `dup-lam`, 6, with the two fans facing each other, which is the pair the old rule book had no rule for; after a second `beta-linear`, 4; and after `fan-fan` annihilates the matched pair, 2 agents holding `λa. a`. Each panel is fitted to its own box, so the scales are not comparable — the agent counts are what say how big each net was.
+Those are the five stages of `(λx. x x) (λy. y)`, a small term that uses every kind of agent. Left to right: the compiled net, 6 agents (ROOT, two APP, two LAM, one DUP — the fan for `x`, which is used twice); after `beta-linear`, 4; after `dup-lam`, 6, with two fans facing each other; after a second `beta-linear`, 4; and after `fan-fan` cancels the matched pair, 2 agents holding `λa. a`. Each panel is scaled to fit its own box, so compare the agent counts rather than the sizes of the drawings.
 
-Before you build on `normalise`: closed terms are the contract, because a free variable that gets duplicated reads back as an agent id rather than as its name. A term with no normal form does not terminate, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. And `Run.steps` counts betas, fan meetings and erasures alike, so it is not a β-step count and not comparable to one.
+`normalise` expects a closed term: a free variable that gets duplicated reads back as an agent id rather than as its name. A term with no normal form never finishes reducing, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. `Run.steps` counts every reaction, fan meetings and erasures included, so it is larger than the number of β-steps.
 
-How long it takes does not depend on the scheduler. Over the 25-term corpus the reaction count is the same under every `ActivationOrder`, and so is the multiset of rules fired, because interaction nets are strongly confluent. [A λ-term you can hear](chain_lambda_sound.md) is where that is measured and drawn.
+For the test terms in `LambdaTerms.corpus()`, the order in which active pairs are chosen changes neither the result nor the amount of work: under every `ActivationOrder` each term takes the same number of reactions and fires the same rules. [A λ-term you can hear](chain_lambda_sound.md) measures and draws this.
 
-## Where the sharing is wrong
+## When the answer is wrong
 
-The sharing is correct over that corpus and it is not correct in general. The clean line is by type: the property harness has never found a simply-typed closed term that disagrees, under any scheduler. Self-application, and an erasing abstraction under duplication, are exactly the shapes simple types forbid. This is not Lamping's optimal reduction — there are no brackets and no croissants — and without that bookkeeping a distinct label per fan is not enough once reduction starts copying the labels.
+The reducer gives the right answer for simply-typed closed terms. For some untyped terms, such as ones that apply a term to itself or duplicate a function that discards its argument, it can read back a wrong answer. (It is not Lamping's optimal reduction, which needs extra bookkeeping agents to handle these cases.)
 
-Outside that line, **a wrong answer announces itself.** Every disagreement the property harness finds reads back carrying one of `readback`'s marks, and `LambdaTerms.marksOf` is the call that asks: empty means the readback found a term where the net was, and anything else is the reducer declining to answer. `?` is the closedness invariant — a variable occurrence lies inside its binder's body, so a binder that is not open on the walk's own path is a net whose wiring is not a term.
+A wrong answer carries a mark. `LambdaTerms.marksOf` returns the marks `readback` left in a result: an empty list means the net read back as an ordinary term, and anything else means the reducer could not give a trustworthy answer. A `?` mark means a variable was found outside the body of its binder, so the net no longer describes a term.
 
-`marksOf` is a different question from `Run.finished`. That one says the reduction did not run out of reactions; this one says the answer is a term. Both can hold and the answer still be wrong outside the typed line, but a marked answer is the reducer telling you not to trust it, and an unmarked one is at least an answer.
+`Run.finished` answers a different question: whether the reduction stopped because nothing was left to fire. Check both: a finished run with marks is still not an answer you should trust.
 
-`dev_docs/INTERACTION_NETS_LAMBDA.md` has the population, the pinned counterexamples and what it would take to fix.
+??? aside "Where the counterexamples live"
+    `dev_docs/INTERACTION_NETS_LAMBDA.md` has the term population, the pinned counterexamples and what it would take to fix them.
 
 ## Beta bridge with swapped pair orientation
 
@@ -323,11 +325,9 @@ println("interaction erase ready")
 
 ## Two fans that commute, run to a fixed point
 
-The four examples above each take one step, and one step is not enough to see `fan-fan` at all — a rule book reaches its fan meetings and its facing erasers at the *end* of a reduction.
+The examples above each take one step. Fans and erasers usually meet near the end of a reduction, so to see `fan-fan` this example keeps stepping until nothing more can fire. Two `DUP` fans face each other with **different** labels, 1 and 2, so `fan-fan` takes its commuting branch rather than its annihilating one: each duplication has to be applied to the other, and one fan pair becomes four fans wired in a 2×2 crossing. The count goes up before it goes down. Those four fans are then facing the four constants, so four `dup-const` reactions follow and the four constants come out as eight copies — five reactions in total, 6 agents to 8, and not one fan left standing. Give the two fans the *same* label and the first step is an annihilation instead: two reactions, and the constants are spliced straight through in pairs.
 
-This one runs to a fixed point. Two `DUP` fans face each other with **different** labels, 1 and 2, so `fan-fan` takes its commuting branch rather than its annihilating one: each duplication has to be applied to the other, and one fan pair becomes four fans wired in a 2×2 crossing. The count goes up before it goes down. Those four fans are then facing the four constants, so four `dup-const` reactions follow and the four constants come out as eight copies — five reactions in total, 6 agents to 8, and not one fan left standing. Give the two fans the *same* label and the first step is an annihilation instead: two reactions, and the constants are spliced straight through in pairs.
-
-The last card says **4 active pairs** and is nevertheless finished. The eight constants are wired principal to principal in four pairs, and no rule in the book covers `CONST ⟂ CONST`, so `stepDetailed` returns null. An active pair is a wiring, not a promise — the number to watch is the rule that fires.
+The last card says **4 active pairs** and is nevertheless finished. The eight constants are wired principal to principal in four pairs, and no rule in the book covers `CONST ⟂ CONST`, so `stepDetailed` returns null. An active pair only reduces when a rule matches it.
 
 <!--
 FIELD_TEST
@@ -491,4 +491,6 @@ Looking at it:
 
 </div>
 
-Starting points: `Lambda.duplicatedConstantDemo()` and `Lambda.eraseApplicationDemo()` are the nets behind the third and fourth examples above, and `dev_docs/agents/demos/interaction_nets_lambda` is a loadable document that normalises a term, draws a reduction and runs the whole corpus against the oracle.
+`Lambda.duplicatedConstantDemo()` and `Lambda.eraseApplicationDemo()` build the nets used in the duplication and erasure examples above.
+
+See also: [A λ-term you can hear](chain_lambda_sound.md), [Petri nets](petri_nets.md).

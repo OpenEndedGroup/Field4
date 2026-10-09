@@ -23,8 +23,8 @@ import kotlin.test.assertTrue
  *
  * The defect these cover: the cache is keyed by declaration identity (prompt version, name, path, line,
  * source hash), so the completion path never *reads* a record whose declaration moved or changed — but
- * nothing removed the record it missed either, so the file only ever grew. `polishCompletionDocs` reads
- * the whole file rather than by key, and a real run on 2026-09-04 was offered two records pointing at
+ * nothing removed the record it missed either, so the file only ever grew. `import-drafts` (and before
+ * it `polishCompletionDocs`) reads the whole file rather than by key, and a real run on 2026-09-04 was offered two records pointing at
  * `afield/four/synth/GraphQuery.kt` (moved to `afield/graphquery/`) and a `generateSmoothIsoContours`
  * draft describing `pointWeights`/`edgeWeights` parameters the declaration no longer has.
  *
@@ -237,7 +237,7 @@ class GeneratedCompletionDocSweepTest {
 
         /** Two declarations, because a snippet ends where the next indexed one begins. */
         val SOURCE = """
-            package fixture
+            package afield.fixture
 
             fun documentMe(a: Int): Int {
                 return a + 1

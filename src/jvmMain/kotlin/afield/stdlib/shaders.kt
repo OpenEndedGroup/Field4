@@ -12,6 +12,7 @@ import afield.four.util.*
 import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
+import afield.macros.stripPreambleSupplierTag
 import afield.stacksl.StackSLCompileOptions
 import afield.stacksl.StackSLCompileResult
 import afield.stacksl.StackSLCompiler
@@ -2719,7 +2720,7 @@ private fun stackAutoErrorLine(box: Box, source: String, message: String?): Int?
         ?.let { Regex("""(?:error|warning):\s*(\d+):\d+:""", RegexOption.IGNORE_CASE).find(it) }
         ?.groupValues?.getOrNull(1)?.toIntOrNull()
         ?: return null
-    val code = box.code.takeIf { it.isNotEmpty() } ?: return null
+    val code = box.code?.takeIf { it.isNotEmpty() } ?: return null
     // Match the source VERBATIM first. StackSL counts lines from the start of the string it was
     // handed, and a `"""` literal usually begins with a newline, so its line 1 is the empty remainder
     // of the assignment's own line. Trimming that newline away here would shift every marker up by
@@ -2926,7 +2927,10 @@ private fun preambleSegmentKey(segment: PreambleSegment): String {
 
     if (prefixedLine != null) return preambleLineKey(prefixedLine)
 
-    val normalized = segment.lines.joinToString(separator = "\n") { it.trimEnd() }.trim()
+    // A supplier tag is provenance, not identity, as in `prefixFor`: a box's own `prop<T>(x)` and the
+    // same declaration inherited from a parent are one line. Keyed with the tag, both survived, and the
+    // completion sidecar — which compiles the preamble as one file — reported REDECLARATION.
+    val normalized = segment.lines.joinToString(separator = "\n") { stripPreambleSupplierTag(it.trimEnd()) }.trim()
     return normalized
 }
 
@@ -4881,7 +4885,8 @@ fun insertForShader(
  * descendant of the box that owns the window, or `fromContext()` finds nothing.
  */
 fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer {
-    return _moduleHere(parameters(renderer = fromContext(), p))
+    val parameters = parameters(renderer = fromContext(), p)
+    return _moduleHere(parameters).also { attachDeclaredMeshes(it, parameters) }
 }
 
 /**

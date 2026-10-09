@@ -55,9 +55,10 @@ import afield.ml.core.FieldMLValue
  *
  * ## What is left, honestly
  *
- * Four macros generate Kotlin **declarations** rather than rewriting a call — `sourceBlock` (a lambda
+ * Five macros need Kotlin source rather than an ordinary host call — `sourceBlock` (a lambda
  * whose body is Kotlin source), `jsonParser` (a generated class), `graphLens` (a `::` property
- * reference) and `ai` (generated Kotlin from a prompt). Those are the irreducible core of mechanism A:
+ * reference), `ai` (generated Kotlin from a prompt), and `interpolant` (a Kotlin lambda saved with
+ * its source). Those are the irreducible core of mechanism A:
  * reaching them needs a compiler, and [expand] gets no further than handing their generated text back as
  * a string. `prop`/`rootProp` also generate declarations, but their declaration is a *delegate* whose
  * semantics FieldML can implement natively — see `afield.stdlib.inheritedPropertyRaw` and the `prop`
@@ -195,6 +196,11 @@ object FieldMLMacroLayer {
                 "the payload is Kotlin source in a lambda, and there is nothing to compile it",
         ),
         Route(
+            "interpolant", Reach.NEEDS_KOTLIN,
+            "rewrites to registerInterpolant(name, source) { <the original Kotlin body> } " +
+                "(keyframeInterpolants.kt); the segment lambda needs a Kotlin compiler",
+        ),
+        Route(
             "jsonParser", Reach.NEEDS_KOTLIN,
             "here is empty; the whole expansion is a generated Kotlin data class in the preamble " +
                 "(jsonparsing.kt:90). hostMacroExpand hands the generated source back as text",
@@ -207,6 +213,13 @@ object FieldMLMacroLayer {
         Route(
             "ai", Reach.NEEDS_KOTLIN,
             "asks a model for Kotlin and inserts it (ai_macro.kt:490); generated Kotlin, by definition",
+        ),
+        Route(
+            "showMeshGrid", Reach.CALL_SHAPED,
+            "@LabelsArgumentsFromSource: rewrites showMeshGrid(cube, ball) to showMeshGrid(\"cube\" to cube, " +
+                "\"ball\" to ball) — same callee, only the labels are added, so a FieldML call that passes " +
+                "labelled pairs reaches it directly",
+            "showMeshGrid", "afield.stdlib.Mesh_fieldKt",
         ),
     ).associateBy { it.macro }
 

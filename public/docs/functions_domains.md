@@ -4,7 +4,7 @@
 
 Every `Fn` in the Functions small language carries one interval: its `domain`, the stretch of the number line the function is meant to be looked at over. A `hannWindow()` is shaped across `0.0..1.0` and is silent outside it. A `ramp` rises across the interval you give it. An oscillator goes on forever.
 
-The infinite case is where a domain earns its keep, because **arithmetic intersects domains.** Add two functions and the sum is only defined where *both* operands are defined, so an operand carrying the wrong domain narrows every expression it enters.
+Domains matter because arithmetic intersects them. Add two functions and the sum is only defined where *both* operands are defined, so an operand carrying the wrong domain narrows every expression it enters.
 
 ## What a domain is
 
@@ -19,11 +19,11 @@ Domain.point(x)  // a single point, min == max
 
 Unless a constructor says otherwise, a fresh `Fn` starts at `Domain.DEFAULT`. You set the construction interval with `domain = ...`, relabel or place an existing function with `over (...)`, and declare "this really is unbounded" with `/ all`.
 
-You rarely read a domain out by hand. You feel it: in *where a curve is drawn*, in *where a sampler walks*, and in *what survives an addition*.
+You rarely read a domain out by hand. It decides where a curve is drawn, where a sampler walks, and what is left of a sum.
 
 ## Domains intersect under arithmetic
 
-When you combine two functions, the result is defined on the **intersection** of their domains:
+When you combine two functions, the result is defined on the intersection of their domains:
 
 ```diffstatic {data-lang=kotlin}
 val a = ramp(0.0, 1.0, domain = 0.0..2.0)   // defined on 0..2
@@ -31,7 +31,7 @@ val b = hannWindow(1.0..3.0)                 // defined on 1..3
 val c = a + b                                // defined on 1..2  (the overlap)
 ```
 
-Numeric parameters are the exception that keeps this liveable. A literal like `0.6`, or any argument passed as a `Number`, becomes a constant `Fn` whose domain is `Domain.ALL`. Intersecting with `ALL` changes nothing, so scaling and offsetting never accidentally narrow a function:
+Numbers are the exception. A literal like `0.6`, or any argument passed as a `Number`, becomes a constant `Fn` whose domain is `Domain.ALL`. Intersecting with `ALL` changes nothing, so scaling and offsetting never accidentally narrow a function:
 
 ```diffstatic {data-lang=kotlin}
 val d = hannWindow(1.0..3.0) * 0.6 + 0.2     // still defined on 1..3
@@ -43,7 +43,7 @@ So a bare literal never narrows anything, while an *explicit* finite domain, or 
 
 An oscillator is defined on all of ℝ. `sin()` has a value at `x = -100` and at `x = 1000`; nothing about it is confined to `0.0..1.0`. So `sin`, `cos`, `saw`, `triangle`, `square`, `pulseTrain`, `impulseTrain` and `pulseBurst` all default `domain` to `Domain.ALL`.
 
-Give one a finite domain instead and it clamps every expression it enters. The unit interval used to be the constructors' own default, which made that the easiest mistake in the language to make by accident:
+Give one a finite domain instead and it clamps every expression it enters:
 
 ```diffstatic {data-lang=kotlin}
 // Old behavior — the trap.
@@ -55,7 +55,7 @@ val stack  = tone + rising                     // 0..1  ∩  0..3  ==  0..1  (!)
 
 The `rising` term is defined across `0.0..3.0` and the oscillator cuts two-thirds of it off.
 
-An unbounded operand contributes nothing to the intersection, so the expression takes its extent from the terms that do have an opinion:
+An unbounded operand contributes nothing to the intersection, so the expression takes its extent from the finite terms:
 
 ```diffstatic {data-lang=kotlin}
 // New behavior.
@@ -112,7 +112,7 @@ You cannot walk an infinite interval at a fixed sample count, so wherever an imp
 - an **empty** domain passes through unchanged;
 - an **unbounded** domain previews over `plotSafe()`'s finite fallback window.
 
-So a bounded function samples over exactly the interval you would expect, while an `ALL`-domain oscillator handed no explicit window previews over a sensible finite range instead of hanging. This applies at the implicit-domain samplers (`toDoubleArray`, `toVec2List`, `toFLine`, the `sample*` family, the cursor/stream/integral/filter streams, and the `repeat`/`mirrorRepeat`/`tile` anchors) and at the domain→`[0,1]` shapers (`tween`, `spliceWindow`, the `window` family), so even transmuting an unbounded generator into a windowed shape stays finite.
+So a bounded function samples over exactly the interval you would expect, while an `ALL`-domain oscillator handed no explicit window previews over a sensible finite range instead of hanging. Every sampler that falls back on the function's own domain does this (`toDoubleArray`, `toVec2List`, `toFLine`, the `sample*` family, the streams, and `repeat`/`mirrorRepeat`/`tile`), and so do the shapers that map a domain onto `0..1` (`tween`, `spliceWindow`, the `window` family). Windowing an unbounded oscillator therefore gives a finite shape.
 
 Give a plot or sampler an explicit window when you have one, and rely on the fallback only for a quick look:
 
@@ -121,7 +121,8 @@ sin(3.0).plot("tone", domain(0.0..2.0))   // explicit window — samples 0..2
 sin(3.0).toFLine()                          // no window — previews the fallback
 ```
 
-Graph serialization and rebuild keep the *original* domain, unbounded or not, so a function's declared reach shows up in its fingerprint and survives a round-trip instead of being normalized to whatever window last previewed it.
+??? aside "Serialization keeps the declared domain"
+    Graph serialization and rebuild keep the original domain, unbounded or not, so it is part of a function's fingerprint and survives a round-trip unchanged by whatever window last previewed it.
 
 ## The exception: `gaussian` stays local
 

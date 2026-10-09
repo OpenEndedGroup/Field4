@@ -140,6 +140,25 @@ data class Parameters(
     var fieldStats: ShaderFieldStatsBinding? = null
 
 ) {
+    /**
+     * Meshes declared with `+Mesh("name") { ... }` inside a `moduleHere { }` block. A mesh cannot be
+     * sized before its module exists, and this block runs first, so they wait here and the module
+     * builder creates, adds and fills them once it has built the module.
+     */
+    val declaredMeshes = mutableListOf<DeclaredMesh>()
+
+    /**
+     * Inside `moduleHere { }`: a mesh called [name] for this module, filled by [build] once the module
+     * exists. Add it with a leading `+`: `+Mesh("my mesh") { set(3, 3) { ... } }`. Elsewhere `Mesh()`
+     * is the ordinary constructor.
+     */
+    fun Mesh(name: String, build: Mesh.() -> Unit = {}): DeclaredMesh = DeclaredMesh(name, build)
+
+    /** Adds a [Mesh] declared in this block to the module. */
+    operator fun DeclaredMesh.unaryPlus() {
+        declaredMeshes += this
+    }
+
     val triangles = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
     val lines = VK_PRIMITIVE_TOPOLOGY_LINE_LIST
     val points = VK_PRIMITIVE_TOPOLOGY_POINT_LIST
@@ -216,6 +235,21 @@ data class Parameters(
 private fun sampledTextureMipLevels(view: HasImageView): Int {
     return (view as? RenderToTexture)?.mipLevels
         ?: view.imageView.imageViewData.mipLevels
+}
+
+/** A mesh declared inside `moduleHere { +Mesh("name") { ... } }`; see [Parameters.declaredMeshes]. */
+class DeclaredMesh(val name: String, val build: Mesh.() -> Unit)
+
+/**
+ * Creates each mesh declared in [p]'s block, adds it to [module] under its name, then runs its
+ * build block, in declaration order. Re-running the box replaces a mesh of the same name.
+ */
+fun attachDeclaredMeshes(module: ModulePointer, p: Parameters) {
+    p.declaredMeshes.forEach { declared ->
+        val mesh = Mesh()
+        module += declared.name to mesh
+        declared.build(mesh)
+    }
 }
 
 fun parameters(renderer: Renderer = fromContext(), build: Parameters.() -> Unit): Parameters {

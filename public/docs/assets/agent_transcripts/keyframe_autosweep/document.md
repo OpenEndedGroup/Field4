@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. renderer
@@ -45,7 +45,7 @@ contract a sweep needs: named lanes with a getter and a setter, and nothing else
 document writing them.
 
 ```edn [field-box id="ks_rig" role="properties"]
-{"id" "ks_rig" "index" 1 "name" "the rig, and ten lanes of it" "parents" ["root" "ks_renderer"] "children" ["ks_sweep"] "properties" {"children" #{#afield/box "ks_sweep"} "parents" #{#afield/box "root" #afield/box "ks_renderer"} "name" "the rig, and ten lanes of it" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_rig_code_.kt" "lines" 157 "characters" 7892 "sha256" "6deaa6eb0a08a38678988d07a52bb47125044c2a564279f44f1a338391c12d00"}]}
+{"id" "ks_rig" "index" 1 "name" "the rig, and ten lanes of it" "parents" ["root" "ks_renderer"] "children" ["ks_sweep"] "properties" {"children" #{#afield/box "ks_sweep"} "parents" #{#afield/box "root" #afield/box "ks_renderer"} "name" "the rig, and ten lanes of it" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_rig_code_.kt" "lines" 155 "characters" 7746 "sha256" "db438eac08e64daa674fe2005dc3fd0e68ed6c03dbf5dacd4cac45a65c92d59c"}]}
 ```
 
 ```kotlin [field-property box="ks_rig" name="code" path="ks_rig_code_.kt"]
@@ -63,9 +63,7 @@ import afield.stdlib.path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
-// Fully qualified, because `prop<>` rewrites this box's code and the rewrite does not
-// carry the snippet's own imports.
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 prop<afield.stdlib.KeyframeScope>(keys)
 
 val r: Renderer = fromContext()

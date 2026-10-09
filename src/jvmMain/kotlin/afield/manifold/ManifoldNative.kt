@@ -551,22 +551,94 @@ internal object ManifoldNative {
      * geometry, and the argument lists stay readable.
      */
     fun invokeStruct(handle: MethodHandle, allocator: SegmentAllocator, vararg args: Any?): MemorySegment =
-        handle.invokeWithArguments(allocator, *args) as MemorySegment
+        call { handle.invokeWithArguments(allocator, *args) as MemorySegment }
 
     fun ptr(handle: MethodHandle, vararg args: Any?): MemorySegment =
-        handle.invokeWithArguments(*args) as MemorySegment
+        call { handle.invokeWithArguments(*args) as MemorySegment }
 
     fun double(handle: MethodHandle, vararg args: Any?): Double =
-        handle.invokeWithArguments(*args) as Double
+        call { handle.invokeWithArguments(*args) as Double }
 
     fun long(handle: MethodHandle, vararg args: Any?): Long =
-        handle.invokeWithArguments(*args) as Long
+        call { handle.invokeWithArguments(*args) as Long }
 
     fun int(handle: MethodHandle, vararg args: Any?): Int =
-        handle.invokeWithArguments(*args) as Int
+        call { handle.invokeWithArguments(*args) as Int }
 
     fun unit(handle: MethodHandle, vararg args: Any?) {
-        handle.invokeWithArguments(*args)
+        call { handle.invokeWithArguments(*args) }
+    }
+
+    // ---- Native lifetime --------------------------------------------------------------------------
+    //
+    // A Solid or Section frees its native object from a Cleaner once the JVM no longer reaches it. An
+    // operation reads its operands' pointers and then calls native code, and after the read nothing keeps
+    // a temporary operand alive: `previewPolygon(p) and ring` let the Cleaner free the left-hand section
+    // while Manifold was intersecting it, and the house corpus host died in CrossSection::GetPaths
+    // (a mutex in freed memory). Two things close that:
+    //  * reading `ptr` pins its owner to this thread until the next native call here returns, so an
+    //    operand cannot become unreachable between its pointer being read and the call using it;
+    //  * every native call holds a shared lock that a free takes exclusively, so nothing is freed while
+    //    any call is running. The lock is fair, so a steady stream of calls cannot starve the frees.
+
+    //
+    // A Kotlin lambda that Manifold calls back (an SDF or a warp) runs inside a native call that already
+    // holds the shared lock, often on one of Manifold's own threads. Native calls it makes skip the lock,
+    // since nothing can be freed until the outer call returns, and frees it asks for wait for the next
+    // free outside a callback. Taking the lock there instead could deadlock against a queued free.
+
+    private val calls = java.util.concurrent.locks.ReentrantReadWriteLock(true)
+    private val pinned = ThreadLocal.withInitial { ArrayList<Any>() }
+    private val upcallDepth = ThreadLocal.withInitial { IntArray(1) }
+    private val deferred = java.util.concurrent.ConcurrentLinkedQueue<Pair<MethodHandle, MemorySegment>>()
+
+    /** Keep [owner] reachable until the next native call on this thread returns. */
+    fun pin(owner: Any) {
+        pinned.get().add(owner)
+    }
+
+    private inline fun <T> inUpcall(body: () -> T): T {
+        val depth = upcallDepth.get()
+        depth[0]++
+        try {
+            return body()
+        } finally {
+            depth[0]--
+        }
+    }
+
+    private inline fun <T> call(body: () -> T): T {
+        if (upcallDepth.get()[0] > 0 || calls.readHoldCount > 0) {
+            try {
+                return body()
+            } finally {
+                pinned.get().clear()
+            }
+        }
+        val lock = calls.readLock()
+        lock.lock()
+        try {
+            return body()
+        } finally {
+            lock.unlock()
+            pinned.get().clear()
+        }
+    }
+
+    /** Free a native object, never while a native call is running. */
+    fun release(delete: MethodHandle, handle: MemorySegment) {
+        deferred.add(delete to handle)
+        if (upcallDepth.get()[0] > 0 || calls.readHoldCount > 0) return
+        val lock = calls.writeLock()
+        lock.lock()
+        try {
+            while (true) {
+                val (d, h) = deferred.poll() ?: break
+                d.invokeWithArguments(h)
+            }
+        } finally {
+            lock.unlock()
+        }
     }
 
     /** A fresh `ManifoldManifold*` from the library's own allocator, ready to be constructed into. */
@@ -608,7 +680,7 @@ internal object ManifoldNative {
 
         fun sample(x: Double, y: Double, z: Double, @Suppress("UNUSED_PARAMETER") ctx: MemorySegment): Double =
             try {
-                field(x, y, z)
+                inUpcall { field(x, y, z) }
             } catch (t: Throwable) {
                 if (firstFailure == null) firstFailure = t
                 FAILED_SAMPLE
@@ -634,7 +706,7 @@ internal object ManifoldNative {
         fun sample(x: Double, y: Double, z: Double, @Suppress("UNUSED_PARAMETER") ctx: MemorySegment): MemorySegment {
             val out = scratch.get()
             val moved = try {
-                map(x, y, z)
+                inUpcall { map(x, y, z) }
             } catch (t: Throwable) {
                 if (firstFailure == null) firstFailure = t
                 Triple(x, y, z)     // leave the vertex where it was rather than fold the mesh onto itself

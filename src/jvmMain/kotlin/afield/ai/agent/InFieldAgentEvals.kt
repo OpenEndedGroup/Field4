@@ -334,7 +334,7 @@ object InFieldAgentEvals {
             ),
             steps(program("""
                 const cells = tools.ListBoxes({}).boxes.map(b => b.name).filter(n => n.startsWith("Cell")).sort();
-                const failing = cells.filter(n => !tools.RunBox({box: n}).success);
+                const failing = cells.filter(n => !tools.RunBox.raw({box: n}).success);
                 tools.NewBox({name: "Report", code: 'println("' + failing.join(", ") + '")'});
                 const report = tools.RunBox({box: "Report"});
                 return {failing, printed: report.stdout};

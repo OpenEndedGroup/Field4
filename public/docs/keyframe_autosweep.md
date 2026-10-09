@@ -1,4 +1,4 @@
-# Keyframe autosweeping: exploring a saved space while you sleep
+# Sweeping saved keyframes overnight
 
 *The declarations used below are listed, with their KDoc, in the codebase reference:
 [`keyframeSweep.kt`](reference/graphics.md#keyframesweep-kt) and
@@ -7,10 +7,8 @@
 and `interpolate` come from.*
 
 A `KeyframeScope` gives you one look at a time: capture it, edit it, put it back. A directory of
-saved keys is a different kind of object — a *space*, whose interesting points are mostly the ones
-nobody has visited. Twelve keys with ten lanes each is not twelve looks; it is a ten-dimensional
-region with twelve labelled points in it, and an evening of clicking between those twelve is an
-evening spent at the labels.
+saved keys describes more than the looks in it: twelve keys with ten lanes each are twelve points
+in a ten-dimensional space, and almost all of that space is blends nobody has tried.
 
 `KeyframeSweep` visits the rest of it overnight. Each pass draws a few keys from the pool, blends
 them at random weights — sometimes past either end of the hull they span — applies the blend to the
@@ -19,9 +17,8 @@ to completion before the next pass starts. What the callback writes there is its
 short clip, a mesh, a CSV. What the sweep writes there is the *provenance* — the blended key as
 ordinary key JSON, and a manifest saying which keys went in at which weight.
 
-The point is what happens next. A night of this is a few thousand directories to categorise, cluster,
-score or hand to a model, and everything in the design below is in service of making that second pass
-possible.
+A night of this is a few thousand directories to categorise, cluster, score or hand to a model, and
+the layout below is designed so that a second program can do that.
 
 ## The whole of it
 
@@ -240,7 +237,7 @@ archive/
       frames/
 ```
 
-Three properties of that layout are what a second pass depends on.
+A second pass relies on these properties of the layout.
 
 **`key.json` is an ordinary key**, written by the same serializer `saveKey` uses, so
 `scope.loadKey(…)` reads it and `KeyframeCollection` browses it. Which means **`renders/` is itself a
@@ -260,7 +257,7 @@ killed between a manifest write and its append leaves it one line short.
 [`KeyframeSweep.reindex`](reference/graphics.md#keyframesweep-kt) rebuilds it; the manifests are
 authoritative.
 
-## The blend is a fold, not new arithmetic
+## How several keys are blended
 
 `KeyframeScope.interpolate` already knows how every lane type blends — numbers and vectors lerp,
 quaternions slerp, `CameraPose` sclerps, code blends or steps. An N-way blend here is therefore a
@@ -300,7 +297,7 @@ approaches zero, including under extrapolation, where some weights *are* negativ
     put an `Int` lane outside the range its `intTarget` declares and the clamp belongs in the target,
     on apply. The key then records the point actually visited and still reproduces the render.
 
-## Extrapolation is measured in hull-crossings
+## Blending past the saved keys
 
 An extrapolated look is the one nobody would have authored: past the end of every key you saved rather
 than between them. With probability `extrapolationProbability`, one participant is drawn as the
@@ -311,8 +308,6 @@ That makes `gain` read directly. At `1.0` the pole's weight is zero and the blen
 far face of the hull; at `1.5` it is half as far again beyond that face; anything above 1 is genuinely
 outside. `minExtrapolationGain` is therefore floored at `1.0`, because a "gain" that sometimes
 extrapolated and sometimes did not would make the archive's `extrapolationGain` field mean nothing.
-
-Two details in that are easy to get wrong.
 
 The pole is a *different draw* from the anchor. One key doing both jobs produces blends wearing the
 palette of the look they have just fled; keeping them separate is visible in the table above as a
@@ -339,8 +334,7 @@ says so.
 
 ## What a night survives
 
-Nothing in the sweeper trusts the run to finish, because the failure modes of an unattended eight-hour
-job are not the failure modes of a demo.
+The sweeper assumes an unattended run can be interrupted or go wrong at any point.
 
 - **A resume does not change the draw.** Each render's randomness comes from `seed` and its *index*,
   nothing accumulating, so skipping four thousand finished renders leaves the unfinished ones drawing
@@ -388,9 +382,7 @@ that goes wrong exactly when the machine is busy — which, on the night of a lo
 
 Neither helper will invent a file. A readback that comes back empty and a missing `ffmpeg` are both
 recorded as an artifact with a null path and a stated reason, and the frame PNGs are left on disk, so
-`muxSweepArchiveClips` can mux the whole archive the next morning without re-rendering the night. An
-archive that says what it is missing can still be analysed; one with a plausible-looking wrong file in
-it cannot.
+`muxSweepArchiveClips` can mux the whole archive the next morning without re-rendering the night.
 
 !!! warning "One renderer and one target for the whole run"
 
@@ -420,15 +412,17 @@ From inside Field, `sweepArchiveSummary(archive)` is the one-line version for th
 renders, how they ended, how many left the hull, the widest single weight, the median render time, how
 much of the pool got used, and any lane that was dropped or back-filled.
 
-## Running it, and reading it back
+## A loadable version
 
-The loadable version of this page is the `keyframe_autosweep` transcript — four boxes, a renderer, the
-rig, the sweep and the morning box — listed with the rest in
-[Agent transcripts](agent_transcripts.md#keyframe_autosweep). That is the fastest way to get a real
-sweep running against your own scene.
+Open **keyframe_autosweep** from Starting points on the welcome screen, or
+[open it here](offline.html?file=assets/agent_transcripts/keyframe_autosweep/metadata.edn). It has
+four boxes: a renderer, the rig, the sweep and the morning box. Replace the rig with your own scene
+to start a real sweep against it. Its entry in
+[Agent transcripts](agent_transcripts.md#keyframe_autosweep) lists what each box does.
 
-Two suites stand behind it. `afield.stdlib.KeyframeSweepTest` is CPU-only and pins the provenance
-contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
-distribution; `tools/run_field_tests.py --id keyframe.sweep.smoke` runs a real six-render sweep on a
-GPU and pins that the picture actually follows the blend. Which claim belongs to which, and the gap
-between them, is in `dev_docs/KEYFRAME_SWEEP_AGREEMENT.md`.
+??? aside "Tests"
+    Two suites stand behind this page. `afield.stdlib.KeyframeSweepTest` is CPU-only and pins the provenance
+    contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
+    distribution; `tools/run_field_tests.py --id keyframe.sweep.smoke` runs a real six-render sweep on a
+    GPU and pins that the picture actually follows the blend. Which claim belongs to which, and the gap
+    between them, is in `dev_docs/KEYFRAME_SWEEP_AGREEMENT.md`.

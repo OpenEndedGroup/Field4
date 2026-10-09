@@ -28,6 +28,7 @@ class KeyCamera(
 
     var decay = 0.95
     var movementSpeed = 0.01
+    /** Scale for keyboard yaw, pitch and roll; larger values turn the camera faster. */
     var rotationSpeed = 0.05
 
     // right-shift double-tap detection

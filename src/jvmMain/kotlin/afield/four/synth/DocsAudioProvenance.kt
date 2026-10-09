@@ -104,9 +104,9 @@ object DocsAudioProvenance {
     val ORIGIN_BY_RENDERER: Map<String, Origin> = mapOf(
         "afield.four.synth.PatSoundDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.PatMiniNotation" to Origin.STAND_IN_SYNTH,
-        // Both of these drive patVoice too: CaSoundDocs through patRenderStereo, and PatSynthDocs
-        // through a PatSynthBank rendered block by block.
-        "afield.four.synth.CaSoundDocs" to Origin.STAND_IN_SYNTH,
+        // CaSoundDocs plays its CA rows through patRenderStereoDirt, strictly from the pinned subset.
+        "afield.four.synth.CaSoundDocs" to Origin.DIRT_SAMPLES,
+        // PatSynthDocs drives patVoice through a PatSynthBank rendered block by block.
         "afield.four.synth.PatSynthDocs" to Origin.STAND_IN_SYNTH,
         // patRenderStereo again, on a step mask that came out of an interaction-net reduction
         // rather than out of a cellular automaton: the same family as CaSoundDocs with a different
@@ -115,10 +115,17 @@ object DocsAudioProvenance {
         // patRenderStereo once more, on notes read out of the document's drawing by
         // notation.space and the loop chain_drawn_score.md shows (patTimed makes the pattern).
         "afield.four.synth.DrawnScoreDocs" to Origin.STAND_IN_SYNTH,
+        // patRenderStereo on notes whose pitch is the size of a point cloud morphing between two
+        // strokes read from the drawing, paired by matchPoints. See chain_drawn_morph.md.
+        "afield.four.synth.DrawnMorphDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
         // A SineOsc whose amplitude or frequency is a Functions.Fn, through FnSignal: the same
         // Kotlin signal graph DoughDspSoundDocs renders. See chain_fn_sound_roundtrip.md.
         "afield.four.synth.FnSoundDocs" to Origin.DOUGH_DSP,
+        // Pitch trackers and DSP primitives from the same Kotlin signal graph, run on a saw bassline,
+        // pinned Dirt-Samples one-shots and a committed public-domain film clip. See
+        // subharmonic_sound.md.
+        "afield.four.synth.SubharmonicSoundDocs" to Origin.DOUGH_DSP,
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.four.synth.FaustPolySoundDocs" to Origin.FAUST,
@@ -126,6 +133,12 @@ object DocsAudioProvenance {
         // Boolean-network note streams played through the pinned Dirt-Samples subset, strictly:
         // no token falls back, so the family is the pure one. See boolean_network_music_examples.md.
         "afield.four.synth.BooleanNetworkSoundDocs" to Origin.DIRT_SAMPLES,
+        // A Petri net's emits() played through the pinned Dirt-Samples subset, strictly. See
+        // chain_petri_sparks.md.
+        "afield.four.synth.PetriSparksDocs" to Origin.DIRT_SAMPLES,
+        // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
+        // voices — no samples anywhere on the path. See orca.md.
+        "afield.four.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */

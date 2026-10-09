@@ -151,6 +151,16 @@ ESCAPES = (
         paths=("src/jvmTest/resources/afield/graphics/close_node_caller_audit.txt",),
         note="rewrites the close-node caller-audit golden",
     ),
+    Escape(
+        "AFIELD_HARVEST_WRITE", "flag", value="1",
+        paths=("tools/completion-corpus/boxes",),
+        note="CompletionCorpusHarvest rewrites the completion-corpus fixtures (tools/merge_regen.py)",
+    ),
+    Escape(
+        "AFIELD_WRITE_DERIVED_COUNTS", "set",
+        paths=("public/docs", "dev_docs"),
+        note="ProseNumeralContractTest rewrites marked <!--count:--> numerals (tools/merge_regen.py)",
+    ),
     # Directory-valued: the destination is whatever the operator exported.
     Escape("AFIELD_PROOF_DIR", "dir", note="collects proofDir() artifacts"),
     Escape("AFIELD_POLYTOPE_PROOF_DIR", "dir", note="collects polytope proofs"),

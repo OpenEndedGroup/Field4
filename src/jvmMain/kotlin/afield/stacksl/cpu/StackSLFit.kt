@@ -37,11 +37,13 @@ import java.util.stream.IntStream
  *     range. A pixel that is saturated at the seed therefore contributes **nothing** to the
  *     gradient, so a seed whose image is mostly blown out is a seed with almost no signal.
  *     [StackSLFitResult.saturatedFraction] measures how much of the image is in that state.
- *  3. **The loss is a per-pixel sum of squares and rewards exactly that.** It has no term for
- *     structure, so a fit can lower it a long way by matching a target's colour and luminance
+ *  3. **The default loss is a per-pixel sum of squares and rewards exactly that.** It has no term
+ *     for structure, so a fit can lower it a long way by matching a target's colour and luminance
  *     statistics while the image does not resemble the target at all. `StackSLFitFigureTest`
  *     writes a figure of the target, the seed and the fit side by side, which is the comparison
- *     the loss itself cannot make.
+ *     the loss itself cannot make. [StackSLFitLoss.LPIPS] descends on the perceptual distance
+ *     instead, with the gradient of the LPIPS network chained through the program
+ *     ([StackSLLpipsLoss]); [StackSLFitLoss.LPIPS_PIXEL] on the mean of the two.
  */
 
 /**
@@ -68,6 +70,11 @@ object StackSLFit {
      * `dev_docs/STACKSL_SURROGATE.md` says which family to anneal for which program: the
      * [AdSurrogateFamily.STAIRCASE] family also softens `_noise`'s lattice index, where zero is the
      * *true* derivative, so switching everything on costs a noise-frequency wire its accuracy.
+     *
+     * [loss] picks what is descended on: [StackSLFitLoss.MSE] by default, or LPIPS through
+     * [StackSLLpipsLoss] at [lpipsSide] (a multiple of [dim]) with an optional [lpipsGrid] of
+     * region terms. [StackSLFitResult.seedLoss] and [StackSLFitResult.fittedLoss] are then that
+     * loss's values.
      */
     fun fit(
         program: String,
@@ -80,13 +87,17 @@ object StackSLFit {
         slot: String = "program",
         indices: List<Int>? = null,
         parallel: Boolean = true,
-        annealing: AdAnnealing? = null
+        annealing: AdAnnealing? = null,
+        loss: StackSLFitLoss = StackSLFitLoss.MSE,
+        lpipsSide: Int = maxOf(StackSLLpipsLoss.DEFAULT_SIDE / dim, 1) * dim,
+        lpipsGrid: Int = 0
     ): StackSLFitResult {
         require(target.width == dim && target.height == dim) {
             "target is ${target.width}x${target.height}, fit is ${dim}x$dim"
         }
         val wired = StackSLWires.lift(program, slot)
-        val loss = StackSLImageLoss(wired, template, dim, target, parallel)
+        val image = StackSLImageLoss(wired, template, dim, target, parallel)
+        val lpips = if (loss == StackSLFitLoss.MSE) null else StackSLLpipsLoss(image, lpipsSide, lpipsGrid, loss)
         val moving = indices ?: wired.literalWires.map { it.index }
         require(moving.isNotEmpty()) {
             "'$program' has no literal-backed wire to fit: ${wired.describe()}"
@@ -109,19 +120,21 @@ object StackSLFit {
         ) { p ->
             // One `next()` per loss evaluation: the schedule's own KDoc says why that is the driver
             // and what LBFGS does to it. With `annealing == null` this is the exact gradient.
-            val whole = loss.valueAndGradient(expand(p), annealing?.next() ?: AdSurrogate.OFF)
+            val surrogate = annealing?.next() ?: AdSurrogate.OFF
+            val whole = lpips?.valueAndGradient(expand(p), surrogate) ?: image.valueAndGradient(expand(p), surrogate)
             ADGradient(whole.value, DoubleArray(moving.size) { whole.gradient[moving[it]] })
         }
 
         val fitted = expand(run.x)
         return StackSLFitResult(
             wired = wired,
-            loss = loss,
+            loss = image,
             fittedIndices = moving,
             fittedWires = fitted,
             run = run,
             fittedProgram = StackSLWires.rewrite(program, wired.wires, fitted),
-            annealing = annealing
+            annealing = annealing,
+            lossKind = loss
         )
     }
 }
@@ -178,6 +191,53 @@ class StackSLImageLoss(
      * surrogate. Default off, and every existing caller therefore gets exactly what it got before.
      */
     fun valueAndGradient(values: DoubleArray, surrogate: AdSurrogate = AdSurrogate.OFF): ADGradient {
+        val (total, gradient) = sweep(values, surrogate) { x, y, out, tape ->
+            var pixel: AD = tape.constant(0.0)
+            for (ch in 0 until CHANNELS) {
+                pixel += (out.c[ch] - target.at(x, y, ch).toDouble()).sq()
+            }
+            pixel
+        }
+        val scale = 1.0 / (dim.toDouble() * dim.toDouble() * CHANNELS)
+        for (k in gradient.indices) gradient[k] *= scale
+        return ADGradient(total * scale, gradient)
+    }
+
+    /**
+     * The vector-seeded backward pass: `sum over pixels and channels of seed[ch, y, x] * d out[ch] /
+     * d wire`, for an image-space gradient [seed] that something else computed.
+     *
+     * This is how a loss the tape cannot see is descended on. For a loss `L(image)`, pass
+     * `seed = dL / d image` and the result is `dL / d wire` by the chain rule: each pixel's tape is
+     * swept backward from `sum_ch seed[ch, y, x] * out.c[ch]` instead of from its squared error.
+     * `out` is the template's output *after* its `clamp`, so a clamped channel passes back zero, as
+     * it should. [seed] is planar, `3 x dim x dim`, channel-major, row 0 at the top — the layout
+     * `Lpips.distanceAndGradientPlanar` uses; see [StackSLLpipsLoss.blockSum] for a seed computed
+     * on an enlarged image. With `seed = 2 (out - target) / (3 dim^2)` this is exactly the
+     * [valueAndGradient] gradient, which `StackSLLpipsLossTest` asserts.
+     */
+    fun seededGradient(values: DoubleArray, seed: FloatArray, surrogate: AdSurrogate = AdSurrogate.OFF): DoubleArray {
+        require(seed.size == CHANNELS * dim * dim) { "seed holds ${seed.size} floats, expected ${CHANNELS * dim * dim}" }
+        val plane = dim * dim
+        return sweep(values, surrogate) { x, y, out, tape ->
+            var pixel: AD = tape.constant(0.0)
+            for (ch in 0 until CHANNELS) {
+                val s = seed[ch * plane + y * dim + x].toDouble()
+                if (s != 0.0) pixel += out.c[ch] * s
+            }
+            pixel
+        }.second
+    }
+
+    /**
+     * One backward sweep per pixel of [pixelLoss], summed: the sum of the per-pixel values and the
+     * sum of their gradients with respect to every wire, unscaled.
+     */
+    private fun sweep(
+        values: DoubleArray,
+        surrogate: AdSurrogate,
+        pixelLoss: (x: Int, y: Int, out: AdValue, tape: ADTape) -> AD
+    ): Pair<Double, DoubleArray> {
         val n = wired.wires.size
         require(values.size == n) { "expected $n wire values, got ${values.size}" }
         val perRow = arrayOfNulls<DoubleArray>(dim)
@@ -200,17 +260,13 @@ class StackSLImageLoss(
                     throw GlslEvalError("pixel ($x, $y) executed discard; a fit has no answer for that")
                 }
                 val out = machine.global(outName) ?: throw GlslEvalError("shader never wrote '$outName'")
-                var pixel: AD = tape.constant(0.0)
-                for (ch in 0 until CHANNELS) {
-                    pixel += (out.c[ch] - target.at(x, y, ch).toDouble()).sq()
-                }
+                val pixel = pixelLoss(x, y, out, tape)
                 val adjoint = tape.backward(pixel)
                 acc[0] += pixel.value
                 for (k in 0 until n) acc[k + 1] += adjoint[wireNodes[k].index]
             }
             perRow[y] = acc
         }
-        val scale = 1.0 / (dim.toDouble() * dim.toDouble() * CHANNELS)
         var total = 0.0
         val gradient = DoubleArray(n)
         perRow.forEach { row ->
@@ -218,8 +274,7 @@ class StackSLImageLoss(
             total += r[0]
             for (k in 0 until n) gradient[k] += r[k + 1]
         }
-        for (k in 0 until n) gradient[k] *= scale
-        return ADGradient(total * scale, gradient)
+        return total to gradient
     }
 
     /**
@@ -290,7 +345,7 @@ class StackSLImageLoss(
 class StackSLFitResult(
     /** The wired program that was fitted. */
     val wired: WiredProgram,
-    /** The loss the descent ran on — keep it to render the seed and the fit at the same size. */
+    /** The image loss: the renderer, and the MSE whatever [lossKind] the descent ran on. */
     val loss: StackSLImageLoss,
     /** The wire indices that were allowed to move, in the optimiser's own order. */
     val fittedIndices: List<Int>,
@@ -308,7 +363,9 @@ class StackSLFitResult(
      * the surrogate only ever changes a partial. Kept so that a reading of a run knows which it is
      * looking at rather than inferring it from the numbers.
      */
-    val annealing: AdAnnealing? = null
+    val annealing: AdAnnealing? = null,
+    /** What the descent ran on; [seedLoss] and [fittedLoss] are its values. */
+    val lossKind: StackSLFitLoss = StackSLFitLoss.MSE
 ) {
     /** The wire vector the fit started from. */
     val seedWires: DoubleArray get() = wired.initial

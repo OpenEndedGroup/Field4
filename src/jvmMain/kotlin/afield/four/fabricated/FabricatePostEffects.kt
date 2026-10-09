@@ -118,7 +118,7 @@ fun StandardRenderer.Bundle.addBloom(
     return listOf(bright, blurH, blurV, composite)
 }
 
-internal fun FabricatePostEffect.quad(name: String): Mesh? = module.current.meshes["${name}Quad"]
+internal fun FabricatePostEffect.quad(name: String): Mesh? = module?.current?.meshes["${name}Quad"]
 
 internal fun afield.four.buffers.Structure.setIfPresent(name: String, value: Any) {
     if (offsets.containsKey(name)) set(name, value)

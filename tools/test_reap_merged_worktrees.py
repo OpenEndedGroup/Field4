@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -47,47 +48,76 @@ def captured(fn, *args, **kwargs) -> str:
 class PolicyTests(unittest.TestCase):
     """The scope rules, which are the part a human has to be able to predict."""
 
-    def test_a_family_needs_both_the_root_and_the_prefix(self) -> None:
+    def test_a_named_family_needs_both_the_root_and_the_prefix(self) -> None:
         # The bug this replaced was one-axis: the prefix decided everything and the root was checked
-        # somewhere else, or not at all.
+        # somewhere else, or not at all. A near miss now falls through to the catch-all, which keeps
+        # its branch, rather than to a family that would delete it.
         self.assertEqual(family_for(BASE / "w", "nightly/2026-08-01/example", FAMILIES).name, "nightly")
-        self.assertIsNone(family_for(AGENT / "w", "nightly/2026-08-01/example", FAMILIES))
-        self.assertIsNone(family_for(BASE / "w", "claude/session-1234", FAMILIES))
+        self.assertEqual(family_for(AGENT / "w", "nightly/2026-08-01/example", FAMILIES).name, "any-merged")
+        self.assertEqual(family_for(BASE / "w", "claude/session-1234", FAMILIES).name, "any-merged")
         self.assertEqual(family_for(AGENT / "w", "claude/session-1234", FAMILIES).name, "agent-session")
 
-    def test_the_default_family_still_covers_exactly_what_it_used_to(self) -> None:
+    def test_the_nightly_family_still_covers_exactly_what_it_used_to(self) -> None:
         for branch in ("nightly/2026-08-01/example", "review/example-on-main", "integration/nightly-four"):
             self.assertEqual(family_for(BASE / "w", branch, FAMILIES).name, "nightly", branch)
         for branch in ("main", "feature/user-work", "docs/voice-pass-2"):
-            self.assertIsNone(family_for(BASE / "w", branch, FAMILIES), branch)
+            self.assertNotEqual(family_for(BASE / "w", branch, FAMILIES).name, "nightly", branch)
+
+    def test_nothing_outside_the_roots_is_claimed(self) -> None:
+        self.assertIsNone(family_for(Path("/elsewhere/w"), "nightly/2026-08-01/example", FAMILIES))
+        self.assertIsNone(family_for(Path("/elsewhere/w"), None, FAMILIES))
+
+    def test_codex_checkouts_sit_one_level_down(self) -> None:
+        codex = Path("/codex-root/worktrees")  # not /home: macOS resolves that to /System/Volumes/Data
+        families = retention_families(BASE, AGENT, codex)
+        self.assertEqual(family_for(codex / "pr96-slug" / "field4", "codex/pr96", families).name, "any-merged")
+        self.assertIsNone(family_for(codex / "field4", "codex/pr96", families))
+
+    def test_only_nightly_and_docs_branches_are_deleted(self) -> None:
+        """The app re-checks out a resumed session's branch, so those refs must survive removal."""
+        deleting = {f.name for f in FAMILIES if f.delete_branch}
+        self.assertEqual(deleting, {"nightly", "docs-blast"})
 
     def test_protected_branches_outrank_every_family(self) -> None:
-        for branch in ("nightly/journal", "nightly/ci-journal"):
+        for branch in ("nightly/journal", "nightly/ci-journal", "land/lander"):
             self.assertIsNone(family_for(BASE / branch, branch, FAMILIES), branch)
         # ...including a family written specifically to claim one.
         greedy = (RetentionFamily("greedy", (BASE,), ("nightly/",), True, "test"),)
         self.assertIsNone(family_for(BASE / "journal", "nightly/journal", greedy))
 
-    def test_a_detached_head_belongs_to_no_family(self) -> None:
-        self.assertIsNone(family_for(BASE / "w", None, FAMILIES))
+    def test_a_detached_head_belongs_only_to_the_catch_all(self) -> None:
+        self.assertEqual(family_for(BASE / "w", None, FAMILIES).name, "any-merged")
 
     def test_the_blast_family_is_named_and_reaches_both_roots(self) -> None:
         blast = next(f for f in FAMILIES if f.name == "docs-blast")
-        self.assertFalse(blast.default_on)
         self.assertEqual(set(blast.roots), {BASE, AGENT})
-        self.assertEqual(family_for(BASE / "w", "docs/language-2026-09-05", FAMILIES).name, "docs-blast")
-        self.assertEqual(family_for(AGENT / "w", "docs/language-2026-09-05", FAMILIES).name, "docs-blast")
-        # A neighbouring docs branch that is not blast output stays out.
-        self.assertIsNone(family_for(BASE / "w", "docs/nav-dissolve-staging", FAMILIES))
+        for branch in ("docs/language-2026-09-05", "docs/voice-2026-09-22e", "docs-pass/20261002-1531",
+                       "docs/kdoc-2026-09-11-c"):
+            self.assertEqual(family_for(BASE / "w", branch, FAMILIES).name, "docs-blast", branch)
+            self.assertEqual(family_for(AGENT / "w", branch, FAMILIES).name, "docs-blast", branch)
+        # A neighbouring docs branch that is not harness output is not deleted with the checkout.
+        self.assertEqual(family_for(BASE / "w", "docs/nav-dissolve-staging", FAMILIES).name, "any-merged")
 
-    def test_only_the_nightly_family_is_on_by_default(self) -> None:
-        self.assertEqual({f.name for f in FAMILIES if f.default_on}, {"nightly"})
+    def test_every_family_is_on_by_default(self) -> None:
+        self.assertEqual(
+            {f.name for f in FAMILIES if f.default_on},
+            {"nightly", "docs-blast", "agent-session", "any-merged"},
+        )
 
     def test_every_family_explains_itself(self) -> None:
         for family in FAMILIES:
             self.assertTrue(family.why.strip(), family.name)
             self.assertTrue(family.roots, family.name)
-            self.assertTrue(family.branch_prefixes, family.name)
+            self.assertTrue(family.branch_prefixes or family.any_branch, family.name)
+
+    def test_regenerable_matching_reaches_into_caches_with_their_own_gitignore(self) -> None:
+        for entry in ("build/", "public/.cache/1002625795874814453", ".pytest_cache/v/",
+                      ".nightly-tmp/build.log", "native/field-slug/build/", "tools/linalg-generator/build/",
+                      "src/__pycache__/", "java_pid123.hprof", "public/docs-runner-failures/editor.png.log"):
+            self.assertTrue(reaper.is_regenerable(entry), entry)
+        for entry in ("src/personal/", "src/personal/Foo.kt", "dev_docs/agents/demos/x/transcript.edn",
+                      "NIGHTLY_WORKLOG.md", ".ci-check85/check.log", "MORNING.md"):
+            self.assertFalse(reaper.is_regenerable(entry), entry)
 
 
 class RepoFixture:
@@ -230,7 +260,9 @@ class GitBackedTests(unittest.TestCase):
         path = self.fx.add_worktree(self.fx.base, "messy", "nightly/2026-01-02/messy", "2026-01-02T00:00:00+00:00")
         (path / "untracked.txt").write_text("work\n")
         self.assertEqual(self.fx.classify(path, now=self.now, completed=True).reason, "dirty")
-        outside = self.fx.add_worktree(self.fx.base, "mine", "feature/mine", "2026-01-02T00:00:00+00:00")
+        elsewhere = self.fx.repo.parent / "elsewhere"
+        elsewhere.mkdir()
+        outside = self.fx.add_worktree(elsewhere, "mine", "feature/mine", "2026-01-02T00:00:00+00:00")
         self.assertEqual(self.fx.classify(outside, now=self.now, completed=True).reason, "no-family")
 
     # ---- the other refusals ---------------------------------------------------------------
@@ -262,6 +294,19 @@ class GitBackedTests(unittest.TestCase):
         self.assertEqual(verdict.reason, "live")
         self.assertIn("4242", verdict.text)
 
+    def test_a_registered_worktree_whose_directory_is_gone_is_prunable_not_a_crash(self) -> None:
+        """2026-10-08: four such entries, and the first `git status` inside one stopped the run."""
+        path = self.fx.add_worktree(self.fx.base, "deleted", "nightly/2026-01-02/deleted", "2026-01-02T00:00:00+00:00")
+        tree = self.fx.tree_at(path)
+        shutil.rmtree(path)
+        verdict = classify_worktree(
+            tree, repo=self.fx.repo, main_head=self.fx.main_head, families=self.fx.families,
+            cwds={}, min_idle_hours=DEFAULT_MIN_IDLE_HOURS, now_epoch=self.now,
+        )
+        self.assertFalse(verdict.removable)
+        self.assertEqual(verdict.reason, "prunable")
+        self.assertIn(verdict.reason, REFUSAL_LABELS)
+
     # ---- report / candidate parity, which is the regression that matters ------------------
 
     def test_agent_root_tree_with_a_nightly_name_is_not_counted_as_reclaimable(self) -> None:
@@ -274,8 +319,8 @@ class GitBackedTests(unittest.TestCase):
         )
         row = next(r for r in rows if r.path == path.resolve())
         self.assertFalse(row.reclaimable)
-        self.assertEqual(row.reason, "no-family")
-        self.assertIsNone(row.offered_by, "it is not on offer either -- no family covers it")
+        # Only the catch-all claims it, and the catch-all is not enabled in this run.
+        self.assertEqual(row.offered_by, "any-merged")
 
     def test_enabling_a_family_moves_a_row_from_withheld_to_reclaimable(self) -> None:
         path = self.fx.add_worktree(self.fx.agent, "session", "claude/session-abc123", "2026-01-02T00:00:00+00:00")
@@ -345,6 +390,174 @@ class GitBackedTests(unittest.TestCase):
         self.assertEqual({p.name for p in reported}, {"ok1", "ok2"})
 
 
+class WorkGuardTests(unittest.TestCase):
+    """The guards added on 2026-10-03: ignored work, scratch, detached HEADs, submodules, archiving."""
+
+    IGNORES = "build/\npublic/.cache/\nsrc/personal/\nNIGHTLY_WORKLOG.md\n"
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.fx = RepoFixture(Path(self._tmp.name).resolve())
+        (self.fx.repo / ".gitignore").write_text(self.IGNORES)
+        self.fx.git("add", ".gitignore")
+        self.fx.commit("ignores", "2026-01-01T00:01:00+00:00")
+        self.now = 1800000000.0
+
+    def tree(self, name: str, branch: str = "nightly/2026-01-02/x") -> Path:
+        return self.fx.add_worktree(self.fx.base, name, branch, "2026-01-02T00:00:00+00:00")
+
+    def test_src_personal_refuses_a_clean_merged_tree(self) -> None:
+        """git status says nothing about it; this guard is the only thing between it and deletion."""
+        path = self.tree("personal")
+        (path / "src/personal/inflatables").mkdir(parents=True)
+        (path / "src/personal/inflatables/Views.kt").write_text("// a week of work\n")
+        self.assertEqual(self.fx.git("status", "--porcelain", cwd=path).stdout, "")
+        verdict = self.fx.classify(path, now=self.now)
+        self.assertFalse(verdict.removable)
+        self.assertEqual(verdict.reason, "ignored-work")
+        self.assertIn("src/personal", verdict.text)
+
+    def test_build_output_and_caches_do_not_refuse(self) -> None:
+        path = self.tree("built")
+        (path / "build/classes").mkdir(parents=True)
+        (path / "build/classes/A.class").write_text("x")
+        (path / "public/.cache").mkdir(parents=True)
+        (path / "public/.cache/.gitignore").write_text("*\n")
+        (path / "public/.cache/1002625795874814453").write_text("x")
+        verdict = self.fx.classify(path, now=self.now)
+        self.assertTrue(verdict.removable, verdict.text)
+
+    def test_a_worklog_does_not_refuse_and_is_archived_first(self) -> None:
+        path = self.tree("logged")
+        (path / "NIGHTLY_WORKLOG.md").write_text("analysis\n")
+        self.assertTrue(self.fx.classify(path, now=self.now).removable)
+        archive = Path(self._tmp.name) / "archive"
+        copies = reaper.archive_precious(path, archive)
+        self.assertEqual([c.read_text() for c in copies], ["analysis\n"])
+        self.assertEqual(copies[0].parent, archive / "worklogs")
+        # A second archive of the same name must not overwrite the first.
+        again = reaper.archive_precious(path, archive)
+        self.assertNotEqual(again[0], copies[0])
+        self.assertTrue(copies[0].exists())
+
+    def test_nightly_scratch_is_not_dirt_but_other_untracked_files_are(self) -> None:
+        path = self.tree("scratch")
+        (path / ".nightly-tmp").mkdir()
+        (path / ".nightly-tmp/build.log").write_text("x")
+        self.assertTrue(self.fx.classify(path, now=self.now).removable)
+        (path / "MORNING.md").write_text("notes\n")
+        self.assertEqual(self.fx.classify(path, now=self.now).reason, "dirty")
+
+    def test_a_merged_detached_head_is_dated_by_its_own_reflog(self) -> None:
+        path = self.fx.base / "bisect"
+        self.fx.git("worktree", "add", "-q", "--detach", str(path), "main", when="2026-01-02T00:00:00+00:00")
+        tree = self.fx.tree_at(path)
+        self.assertIsNone(tree.branch)
+        main_head = self.fx.git("rev-parse", "main").stdout.strip()
+        verdict = classify_worktree(
+            tree, repo=self.fx.repo, main_head=main_head, families=self.fx.families,
+            cwds={}, min_idle_hours=DEFAULT_MIN_IDLE_HOURS, now_epoch=self.now,
+        )
+        self.assertTrue(verdict.removable, verdict.text)
+        self.assertEqual(verdict.family.name, "any-merged")
+        self.assertLess(reaper.head_idle_hours(path, 1767312000.0 + 3600), 2.0)
+
+    def test_submodule_status_lines(self) -> None:
+        """Parsed from canned output: building a real submodule fixture needs file:// transport."""
+        path = Path(self._tmp.name) / "fake"
+        path.mkdir()
+        (path / ".gitmodules").write_text("[submodule]\n")
+
+        def fake_git(outputs):
+            def run(repo, *args, check=True):
+                key = args[0] if args[0] != "submodule" else "submodule"
+                code, out = outputs.get((key, str(repo)), outputs.get(key, (0, "")))
+                return subprocess.CompletedProcess(args, code, out, "")
+            return run
+
+        repo = Path("/repo")
+        sha = "8ffcb6b545fe04d3138192eec703fcaadb2d64c5"
+        cases = {
+            "uninitialized": ({"submodule": (0, f"-{sha} services/audio\n")}, None),
+            "moved": ({"submodule": (0, f"+{sha} services/audio (heads/main)\n")}, "off its recorded commit"),
+            "in the primary": ({"submodule": (0, f" {sha} services/audio (heads/main)\n"),
+                                "cat-file": (0, "")}, None),
+            "only here": ({"submodule": (0, f" {sha} services/audio (heads/main)\n"),
+                           "cat-file": (1, ""), "branch": (0, "")}, "exists only in this checkout"),
+            "on a remote": ({"submodule": (0, f" {sha} services/audio (heads/main)\n"),
+                             "cat-file": (1, ""), "branch": (0, "  origin/main\n")}, None),
+        }
+        for name, (outputs, expected) in cases.items():
+            with unittest.mock.patch.object(reaper, "run_git", fake_git(outputs)), \
+                 unittest.mock.patch.object(Path, "exists", lambda self: True):
+                problem = reaper.submodule_problem(path, repo)
+            if expected is None:
+                self.assertIsNone(problem, name)
+            else:
+                self.assertIn(expected, problem or "", name)
+
+
+class CleanBuildsTests(unittest.TestCase):
+    """``--clean-builds`` deletes only build output, from quiet trees, merged or not."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.fx = RepoFixture(Path(self._tmp.name).resolve())
+        (self.fx.repo / ".gitignore").write_text("build/\n.gradle/\nsrc/personal/\n")
+        self.fx.git("add", ".gitignore")
+        self.fx.commit("ignores", "2026-01-01T00:01:00+00:00")
+
+    def built_tree(self) -> Path:
+        path = self.fx.add_worktree(self.fx.base, "built", "feature/unmerged", "2026-01-02T00:00:00+00:00")
+        (path / "wip.kt").write_text("unmerged work\n")
+        self.fx.git("add", "wip.kt", cwd=path)
+        self.fx.commit("wip", "2026-01-02T00:05:00+00:00", cwd=path)
+        for rel in ("build/js/a/b.js", "build/classes/A.class", ".gradle/9.5/x.bin"):
+            (path / rel).parent.mkdir(parents=True, exist_ok=True)
+            (path / rel).write_text("x" * 4096)
+        (path / "src/personal").mkdir(parents=True)
+        (path / "src/personal/Mine.kt").write_text("// keep\n")
+        (path / "notes.txt").write_text("untracked notes\n")
+        (path / "a.txt").write_text("edited, uncommitted\n")
+        return path
+
+    def test_apply_removes_build_output_and_nothing_else(self) -> None:
+        path = self.built_tree()
+        before = self.fx.git("status", "--porcelain", cwd=path).stdout
+        measured = reaper.clean_builds(path, apply=False)
+        self.assertGreater(measured.kib, 0)
+        self.assertTrue((path / "build").exists(), "a dry run must not delete")
+        result = reaper.clean_builds(path, apply=True)
+        self.assertFalse((path / "build").exists())
+        self.assertFalse((path / ".gradle").exists())
+        self.assertEqual((path / "src/personal/Mine.kt").read_text(), "// keep\n")
+        self.assertEqual((path / "notes.txt").read_text(), "untracked notes\n")
+        self.assertEqual((path / "a.txt").read_text(), "edited, uncommitted\n")
+        self.assertTrue((path / "wip.kt").exists())
+        self.assertFalse(result.status_changed)
+        self.assertEqual(self.fx.git("status", "--porcelain", cwd=path).stdout, before)
+
+    def test_a_recently_written_file_marks_the_tree_active(self) -> None:
+        path = self.built_tree()
+        now = time.time()
+        for f in path.rglob("*"):
+            if f.is_file():
+                os.utime(f, (now - 48 * 3600, now - 48 * 3600))
+        self.assertIsNone(reaper.recently_active(path, 12, now))
+        os.utime(path / "build/js/a/b.js", (now - 60, now - 60))
+        self.assertIsNotNone(reaper.recently_active(path, 12, now))
+
+    def test_a_find_that_cannot_answer_reads_as_active(self) -> None:
+        """It failed open once: BSD find rejected "@<epoch>", printed nothing, and every tree read
+        as quiet. An error must keep the tree."""
+        path = self.built_tree()
+        broken = subprocess.CompletedProcess([], 1, "", "find: Can't parse date/time: @1\n")
+        with unittest.mock.patch.object(reaper.subprocess, "run", return_value=broken):
+            self.assertIsNotNone(reaper.recently_active(path, 12, time.time()))
+
+
 class CommandLineTests(unittest.TestCase):
     """End to end, against a throwaway repo. Dry run only -- --apply is never invoked."""
 
@@ -386,17 +599,30 @@ class CommandLineTests(unittest.TestCase):
 
     def test_completed_outside_every_enabled_family_is_an_explicit_error(self) -> None:
         path = self.fx.add_worktree(self.fx.agent, "session", "claude/session-abc", "2026-01-02T00:00:00+00:00")
-        result = self.run_tool("--base", str(self.fx.base), "--completed", str(path))
+        result = self.run_tool("--base", str(self.fx.base), "--completed", str(path), "--only-family", "nightly")
         self.assertEqual(result.returncode, 2)
         self.assertIn("outside every enabled retention family", result.stderr)
         self.assertIn("--family agent-session", result.stderr, "say which flag would help")
         # ...and naming the family makes it work, still as a dry run.
         allowed = self.run_tool(
-            "--base", str(self.fx.base), "--completed", str(path), "--family", "agent-session"
+            "--base", str(self.fx.base), "--completed", str(path), "--only-family", "nightly",
+            "--family", "agent-session",
         )
         self.assertEqual(allowed.returncode, 0, allowed.stderr)
         self.assertIn("branches preserved", allowed.stdout)
         self.assertTrue(path.is_dir(), "dry run must leave the checkout alone")
+
+    def test_a_dry_run_reports_a_vanished_worktree_and_leaves_it_registered(self) -> None:
+        path = self.fx.add_worktree(self.fx.base, "vanished", "nightly/2026-01-02/vanished", "2026-01-02T00:00:00+00:00")
+        self.fx.add_worktree(self.fx.base, "ok1", "nightly/2026-01-02/ok1", "2026-01-02T00:00:00+00:00")
+        shutil.rmtree(path)
+        result = self.run_tool("--base", str(self.fx.base))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("directory is gone; --apply prunes them: vanished", result.stdout)
+        self.assertIn("DRY RUN", result.stdout)
+        # Pruning is --apply's job; a dry run must not change git's worktree list either.
+        listed = self.fx.git("worktree", "list", "--porcelain").stdout
+        self.assertIn(str(path.resolve()), listed)
 
     def test_completed_on_a_protected_branch_does_not_suggest_a_flag(self) -> None:
         """There is no flag, and hinting at one invites somebody to go looking for it."""

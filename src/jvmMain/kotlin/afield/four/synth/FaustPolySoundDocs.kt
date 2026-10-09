@@ -153,18 +153,17 @@ object FaustPolySoundDocs {
         Figure(
             name = "poly-chord-eight-voices",
             voices = 8,
-            pageLabel = "**Eight voices.** Four triads, one per cycle. Three notes of each chord " +
-                "sound together, which is three fundamentals in a band that can hold nothing else.",
+            pageLabel = "With eight voices, the four triads play one per cycle, and all three notes of " +
+                "each chord sound together.",
             expectedFundamentals = 3,
             expectSteals = false,
         ),
         Figure(
             name = "poly-chord-one-voice",
             voices = 1,
-            pageLabel = "**The same notation, one voice.** Identical pattern, program and gain. The " +
-                "three notes of a chord arrive on the same frame, so two of them steal the only " +
-                "voice there is — and what you hear is the last of the three, with a click where " +
-                "the voice turned over.",
+            pageLabel = "The three notes of each chord arrive at the same moment and take the only " +
+                "voice in turn, so you hear the last of the three, with a click where the voice " +
+                "changed note.",
             expectedFundamentals = 1,
             expectSteals = true,
         ),
@@ -315,8 +314,9 @@ object FaustPolySoundDocs {
         // And the page has to carry what the figures claim, so the prose cannot drift off the audio.
         val page = File(PAGE)
         if (page.isFile) {
-            val text = page.readText()
-            val missing = FIGURES.filterNot { text.contains(it.pageLabel) }
+            // Whitespace-insensitive, so reflowing the paragraph is not drift; changing a word is.
+            val text = page.readText().collapseWhitespace()
+            val missing = FIGURES.filterNot { text.contains(it.pageLabel.collapseWhitespace()) }
             check(missing.isEmpty()) {
                 "$PAGE does not carry the caption(s) ${missing.map { it.name }} verbatim, so the " +
                     "prose and the published clip can drift apart"
@@ -331,3 +331,5 @@ object FaustPolySoundDocs {
         println()
     }
 }
+
+private fun String.collapseWhitespace() = trim().replace(Regex("""\s+"""), " ")

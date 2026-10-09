@@ -17,7 +17,7 @@ This explicit optional task:
 
 1. Initializes the recorded RTXNS submodule if absent, without changing an existing checkout's
    revision or overwriting local edits.
-2. Downloads Field's pinned Slang 2026.18.3 and checks the archive SHA-256 from
+2. Downloads Field's pinned Slang 2026.19 and checks the archive SHA-256 from
    `toolchains.json`. Hashes come from the official Slang release asset metadata.
 3. Caches the compiler through `tools/native_download_cache.py`, the same per-user cache used by
    Ceres/TetGen. `AFIELD_NATIVE_DOWNLOAD_CACHE` overrides its root. Downloads and the source
@@ -67,7 +67,7 @@ Public walkthrough: [A learned shader function](../../public/docs/learned_shader
 
 `buildLearnedShaders` now compiles the two frozen inference variants and three GPU-training entry
 points as one transaction. A failure in any entry preserves the working set. Training uses Slang
-2026.18.3's built-in cooperative-vector differentiation; it does not import the older RTXNS sample's
+2026.19's built-in cooperative-vector differentiation; it does not import the older RTXNS sample's
 autodiff extension. Feature negotiation queries training separately from inference. Field startup,
 ordinary docs builds, and non-NVIDIA examples never run this optional preparation task.
 

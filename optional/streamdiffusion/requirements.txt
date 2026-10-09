@@ -1,0 +1,2 @@
+# Add to a prepared StreamDiffusionV2 environment; Torch/model dependencies live there.
+cuda-python==12.6.2.post1

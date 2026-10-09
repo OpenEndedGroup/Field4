@@ -1,5 +1,6 @@
 package afield.four.synth
 
+import java.io.File
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.test.Test
@@ -15,6 +16,17 @@ import kotlin.test.assertTrue
  * improvement is measured rather than described.
  */
 class PatAlgebraTest {
+    @Test
+    fun compilerOutputsHaveWindowsPortableFileNames() {
+        val output = File("build/classes/kotlin/jvm/main")
+        assertTrue(output.isDirectory, "inspect the actual JVM compiler output")
+        val forbidden = "<>:\"\\|?*"
+        val invalid = output.walkTopDown().filter { file ->
+            file.isFile && file.extension == "class" && file.name.any { it in forbidden }
+        }.map { it.relativeTo(output).path }.toList()
+        assertTrue(invalid.isEmpty(), "Windows cannot write these compiler outputs: $invalid")
+    }
+
 
     private fun <A> PatPattern<A>.cycle(index: Long = 0L): List<PatEvent<A>> =
         events(PatArc(PatQ.of(index), PatQ.of(index + 1))).sortedWith(compareBy({ it.arc.start }, { it.arc.end }))

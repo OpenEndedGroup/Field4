@@ -7,6 +7,8 @@ import afield.ControllerControl
 import afield.ControllerControlsResponse
 import afield.ControllerSelectionState
 import afield.controllerControlsForBox
+import afield.encodeArrayControlValues
+import afield.getArrayCallback
 import afield.getButtonCallback
 import afield.getCheckboxCallback
 import afield.getColorCallback
@@ -85,7 +87,9 @@ private data class ControllerInput(
     val r: Double = 0.0,
     val g: Double = 0.0,
     val b: Double = 0.0,
-    val a: Double = 1.0
+    val a: Double = 1.0,
+    /** The whole value of a multislider, matrix, range slider or menu; see `afield/visualizers.kt`. */
+    val values: List<Double> = emptyList()
 )
 
 @Serializable
@@ -183,6 +187,7 @@ private fun handleControllerInput(input: ControllerInput, preferences: FieldPref
         "button" -> updateControllerButton(input, targetDocument)
         "string" -> updateControllerString(input, targetDocument)
         "color" -> updateControllerColor(input, targetDocument)
+        "array" -> updateControllerArray(input, targetDocument)
     }
 }
 
@@ -509,6 +514,16 @@ private fun updateControllerButton(input: ControllerInput, targetDocument: Strin
     broadcastControllerControlUpdates(controls, targetDocument)
     val callback = getButtonCallback(controlId) ?: return
     launchControllerCallback("button", controlId) { callback(pressed) }
+}
+
+/** A multislider, matrix, range slider or menu edited on the phone: the same path as `array-update`. */
+private fun updateControllerArray(input: ControllerInput, targetDocument: String) {
+    val controlId = input.controlId.trim()
+    if (controlId.isBlank()) return
+    val controls = updateControllerControlValue(controlId) { it.copy(text = encodeArrayControlValues(input.values)) }
+    broadcastControllerControlUpdates(controls, targetDocument)
+    val callback = getArrayCallback(controlId) ?: return
+    launchControllerCallback("array", controlId) { callback(input.values) }
 }
 
 private fun updateControllerString(input: ControllerInput, targetDocument: String) {

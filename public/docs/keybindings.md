@@ -54,7 +54,7 @@ bindings:
   macro-transcript-panel: "cmd+shift+r"   # was: no shortcut at all
 ```
 
-Three things are *not* in the file:
+Two things are *not* in the file:
 
 - **Gestures.** Alt-click to launch a box, Alt-drag to "strum" several, Opt+drag, and the
   multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
@@ -177,9 +177,7 @@ the opposite; no comment at all means both. The scope belongs to the command, no
 spec, so it is not something you edit, but it does tell you whether a bare letter is a
 sensible thing to bind a command to.
 
-One line of your file does both jobs. The same spec becomes the keybinding Monaco uses when
-an editor has focus *and* the test the canvas runs when it does not, so a rebind cannot leave
-the two halves of Field disagreeing about a key. Matching is on the physical key
+One line of your file sets the shortcut for both the editor and the canvas. Matching is on the physical key
 (`KeyboardEvent.code`), not the character produced, so an Alt shortcut survives macOS turning
 `Alt+]` into `’`, falling back to the character itself for shifted punctuation on layouts
 where it is not physically Shift plus that key.
@@ -239,17 +237,13 @@ Field would rather tell you than guess.
       — a chord is at most two keys, like `cmd+k cmd+s` — this one has more
     ```
 
-    **The command keeps its default.** A line Field cannot read is ignored, not obeyed
-    halfway and not taken as an unbind: `open-anything` above is still on `cmd+p`. Keep that
-    apart from an empty value, which means something quite different: `""` is an unbind you
-    asked for (below). If a rejected spec also produced "no shortcut", a typo and a decision
-    would look identical, and the error message would be describing a shortcut you had just
-    lost without saying so.
+    **The command keeps its default.** A line Field cannot read is ignored, not taken as an
+    unbind: `open-anything` above is still on `cmd+p`. Only an empty value, `""`, removes a
+    shortcut.
 
 - **A command id it does not recognize** — usually a typo — is logged as a warning naming
-  the id, and the binding is kept anyway rather than dropped. It has to be: the
-  selection-only commands genuinely are not registered most of the time, and silently
-  discarding a shortcut that works would be worse than a warning you can ignore.
+  the id, and the binding is kept anyway, because the selection-only commands are not
+  registered most of the time and their shortcuts still have to work.
 - **YAML that does not parse** leaves your previous shortcuts in force and says where the
   file is broken. A stray bracket cannot lock you out of your own keyboard.
 - **Two commands on one chord** logs which two, and warns you that only one of them will
@@ -312,7 +306,7 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**107 rebindable commands**, 50 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
+**133 rebindable commands**, 55 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
 
 ### Global
 
@@ -322,6 +316,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `open-command-palette` | `cmd+shift+p` or `f1` | both | Command Palette |
 | `show-cheatsheet` | `?` | both | Show Cheatsheet |
 | `toggle-docs` | `cmd+/` | both | Toggle Documentation |
+| `toggle-drawing-layer` | `alt+d` | both | Toggle Drawing Layer |
 
 ### Canvas
 
@@ -334,10 +329,13 @@ exactly what a fresh `keybindings.yaml` says.
 | `add-document-note` | *(none)* | both | Add Note to This Document |
 | `add-editor-to-output` | *(none)* | both | Add Editor to Output Area |
 | `align` | *(none)* | both | Align boxes |
+| `anchor-drawing-to-boxes` | *(none)* | both | Anchor Drawing to Boxes |
+| `auto-display-editor` | *(none)* | both | Auto-display Editor |
 | `connect` | `g` | canvas | Connect boxes |
 | `copy-box-guide-link` | *(none)* | both | Copy Markdown Link to Box or Line |
 | `copy-selection` | `cmd+c` | canvas | Copy Selection |
 | `delete-box` | `cmd+backspace` or `cmd+delete` | both | Delete Box(es) |
+| `disable-auto-displaying-editor` | *(none)* | both | Disable Auto-displaying Editor |
 | `disconnect` | `u` | canvas | Disconnect boxes |
 | `edit-hashtag` | `cmd+h` | both | Edit hashtag |
 | `export-document-edn` | *(none)* | both | Export document (.edn) |
@@ -345,12 +343,16 @@ exactly what a fresh `keybindings.yaml` says.
 | `export-selection-edn` | *(none)* | both | Export selection (.edn) |
 | `fmt-kotlin` | *(none)* | both | Format Kotlin |
 | `fmt-property` | *(none)* | both | Format |
+| `frame-selected` | `alt+f` | both | Frame Selected |
 | `insert-from-workspace` | `cmd+t` | both | Insert template |
 | `macro-transcript-panel` | *(none)* | both | Macro: Recorder Panel |
 | `macro-transcript-run` | *(none)* | both | Macro: Run on Selection |
 | `macro-transcript-save` | *(none)* | both | Macro: Mark End & Save |
 | `macro-transcript-start` | *(none)* | both | Macro: Mark Start |
 | `macro-transcript-undo` | *(none)* | both | Macro: Undo on Selection |
+| `make-function-study` | *(none)* | both | Make a Function Study |
+| `make-rectsl-scene` | *(none)* | both | Make a RectSL Scene |
+| `make-stacksl-program` | *(none)* | both | Make a StackSL Program |
 | `move-forward` | *(none)* | both | Move selected boxes forward |
 | `nest-into` | *(none)* | both | Nest selection into a box |
 | `new-box` | `n` | canvas | New Box |
@@ -363,36 +365,53 @@ exactly what a fresh `keybindings.yaml` says.
 | `record-selected-box-mp4` | *(none)* | both | Record Selected Box MP4 |
 | `record-selected-editor-mp4` | *(none)* | both | Record Selected Editor MP4 |
 | `record-window-mp4` | *(none)* | both | Record Window MP4 |
-| `reload-user-keybindings` | *(none)* | both | Reload Keybindings |
+| `relink-pane` | *(none)* | both | Relink Pane |
 | `reloadPersonal` | *(none)* | both | Reload personal/ classes |
+| `reload-user-keybindings` | *(none)* | both | Reload Keybindings |
+| `remove-canvas-split` | *(none)* | both | Remove Canvas Split |
 | `reset` | *(none)* | both | Reset Kotlin Environment for Box |
+| `reset-canvas-zoom` | *(none)* | both | Reset Canvas Zoom |
+| `reset-view` | `alt+h` | both | Reset View |
 | `route` | *(none)* | both | Route (position-guided) |
 | `save-as-template` | *(none)* | both | Save selection as template |
 | `search-docs-and-code` | `cmd+shift+d` | both | Search Documentation & Code |
 | `select-all-boxes` | *(none)* | both | Select All Boxes |
 | `set-main-language` | *(none)* | both | Set Main Language |
 | `set-main-language-clojure` | *(none)* | both | Set Main Language: Clojure |
+| `set-main-language-csound` | *(none)* | both | Set Main Language: Csound |
 | `set-main-language-datalog` | *(none)* | both | Set Main Language: Datalog |
 | `set-main-language-fieldml` | *(none)* | both | Set Main Language: FieldML |
 | `set-main-language-forth` | *(none)* | both | Set Main Language: ForthField |
 | `set-main-language-kotlin` | *(none)* | both | Set Main Language: Kotlin |
 | `set-main-language-kotlinjs` | *(none)* | both | Set Main Language: Kotlin → head |
+| `set-main-language-lua` | *(none)* | both | Set Main Language: Lua |
 | `set-main-language-morpho` | *(none)* | both | Set Main Language: MorphoHDL |
 | `set-main-language-nano` | *(none)* | both | Set Main Language: Nano |
+| `set-main-language-pd` | *(none)* | both | Set Main Language: Pure Data |
 | `set-main-language-python` | *(none)* | both | Set Main Language: Python |
+| `set-main-language-rectsl` | *(none)* | both | Set Main Language: RectSL |
 | `set-main-language-remotejs` | *(none)* | both | Set Main Language: Javascript |
+| `set-main-language-stacksl` | *(none)* | both | Set Main Language: StackSL |
 | `show-all-layers` | *(none)* | both | Show All Layers |
 | `show-document-guide` | *(none)* | both | Show Document Guide |
 | `show-document-history` | *(none)* | both | Show Document History |
+| `show-layers-panel` | `alt+l` | both | Show Layers Panel |
 | `show-profiling-timeline` | *(none)* | both | Show Profiling Timeline |
 | `snap_tidy` | *(none)* | both | Snap + tidy boxes |
 | `solo-next-layer` | `alt+]` | both | Solo Next Layer |
 | `solo-previous-layer` | `alt+[` | both | Solo Previous Layer |
+| `split-canvas-columns-here` | *(none)* | both | Split Canvas Columns Here |
+| `split-canvas-here` | *(none)* | both | Split Canvas Here |
+| `split-canvas-rows-here` | *(none)* | both | Split Canvas Rows Here |
 | `switch-to-docs-iframe` | *(none)* | both | Read the Field Documentation |
 | `switch-to-monaco-editor` | *(none)* | both | Switch to Monaco Editor |
+| `toggle-box-snapping` | *(none)* | both | Toggle Box Snapping |
 | `toggle-keypress-display` | *(none)* | both | Toggle Keypress Display |
 | `toggle-notes-markdown-preview` | `cmd+shift+m` | both | Toggle Markdown Preview |
 | `un-nest` | *(none)* | both | Un-nest selection |
+| `unlink-pane` | *(none)* | both | Unlink Pane |
+| `unlink-pane-horizontally` | *(none)* | both | Unlink Pane Horizontally |
+| `unlink-pane-vertically` | *(none)* | both | Unlink Pane Vertically |
 
 ### Editor
 
@@ -440,6 +459,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `save-bookmark-7` | `cmd+shift+f7` | both | Save Bookmark 7 |
 | `save-bookmark-8` | `cmd+shift+f8` | both | Save Bookmark 8 |
 | `save-bookmark-9` | `cmd+shift+f9` | both | Save Bookmark 9 |
+| `show-bookmarks` | `alt+b` | both | Show Bookmarks |
 
 <!-- END generated: default bindings -->
 

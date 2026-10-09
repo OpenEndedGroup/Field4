@@ -7,7 +7,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.UUID
 import kotlin.contracts.ExperimentalContracts
@@ -157,20 +156,14 @@ class NotifyLog(
     private val maxLen: Int = 200,
     private val dedupeWindowMs: Long = 1000
 ) : LogSink {
-    override fun log(event: LogEvent) {
-        StdoutLog.log(event)
-        val cleaned = event.message.replace(Regex("\\s+"), " ").trim()
-        val clipped = if (cleaned.length <= maxLen) cleaned else cleaned.substring(0, maxLen) + "..."
-        val key = "$label|$prefix|${event.channel}|$clipped"
-        val now = System.currentTimeMillis()
-        val prev = lastNotification.put(key, now)
-        if (prev != null && now - prev < dedupeWindowMs) return
-        // An empty category disables toast replacement and floods the UI during tool use.
-        notify("$prefix: [${event.channel}] $clipped", label.ifBlank { "AI4" })
-    }
+    private val policy = AiToastPolicy(dedupeWindowMs = dedupeWindowMs)
 
-    companion object {
-        private val lastNotification = ConcurrentHashMap<String, Long>()
+    override fun log(event: LogEvent) {
+        // Keep the complete diagnostic event in the log, even when it has no toast.
+        StdoutLog.log(event)
+        val text = policy.message(event, System.currentTimeMillis()) ?: return
+        val clipped = text.take(maxLen.coerceAtLeast(1))
+        notify(clipped, label.ifBlank { prefix.ifBlank { "AI4" } })
     }
 }
 

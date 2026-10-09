@@ -1,7 +1,9 @@
 import afield.four.Renderer
 import afield.four.util.Window
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.stdlib.KeyframeScope
+import afield.four.fabricated.StandardRenderer
+var Box.bundle by Inheritance<StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<StandardRenderer.Bundle>() /**/
 val Why.bundle by Whying() /**/
 var Box.keys by Inheritance<afield.stdlib.KeyframeScope>() /**/
 val Once.keys by Onceing<afield.stdlib.KeyframeScope>() /**/

@@ -25,11 +25,9 @@ window.require.config({
 
 window.MonacoEnvironment = {
         getWorkerUrl: function (workerId, label) {
-                return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
-        self.MonacoEnvironment = {
-          baseUrl: '${document.location.protocol}//${document.location.host}/min/'
-        };
-        importScripts('${document.location.protocol}//${document.location.host}/min/vs/base/worker/workerMain.js');`)}`;
+                // A data: worker has an opaque origin and cannot load its scripts under the
+                // browser-origin guard. Serve the bootstrap from Field's own origin instead.
+                return new URL("/fieldMonacoWorker.js", document.location.href).href;
         }
 };
 
@@ -47,7 +45,7 @@ const FIELD_LANGUAGE_MODULES = [
         "bithero/glsl", "bithero/slang", "bithero/msl", "bithero/forth", "bithero/fieldml",
         "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/datalog", "bithero/fnrewrite",
         "bithero/sonicpi", "bithero/faust",
-        "bithero/nano", "bithero/kotlinjs", "bithero/morpho", "bithero/petri", "bithero/brief", "bithero/pd",
+        "bithero/nano", "bithero/kotlinjs", "bithero/morpho", "bithero/petri", "bithero/brief", "bithero/pd", "bithero/csound",
 ]
 const LANGUAGE_MODULE_DEADLINE_MS = 10000
 
@@ -899,6 +897,23 @@ const showMonaco = () => {
                         window.syncNotesMarkdownPreview()
                 }
         }, 0)
+}
+
+const AUTO_DISPLAY_EDITOR_KEY = "field.editor.autoDisplay"
+try {
+        window.fieldAutoDisplayEditor = window.localStorage.getItem(AUTO_DISPLAY_EDITOR_KEY) !== "false"
+} catch (_) {
+        window.fieldAutoDisplayEditor = true
+}
+
+window.setAutoDisplayEditor = (enabled) => {
+        window.fieldAutoDisplayEditor = enabled
+        try {
+                window.localStorage.setItem(AUTO_DISPLAY_EDITOR_KEY, String(enabled))
+        } catch (_) {}
+        if (window.fieldDisplayMode === "no-editor" || window.fieldDisplayMode === "editor-only") return
+        if (!enabled) hideMonaco()
+        else if (window.selectedList && window.selectedList.length === 1) showMonaco()
 }
 
 const NOTES_MARKDOWN_MODE_KEY = "field.notes.markdownMode"

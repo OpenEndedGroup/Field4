@@ -5,6 +5,26 @@ in it is voice activity, vocal timbre, prosody and phonetic motion, and that is 
 `analysis.embed_speech` measures. Two speech models sit behind that one operation, and which of
 them you ask changes what the motion is about.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_speech_embeddings/learned_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-speech" alt="Real emotion2vec and WavLM learned phase portraits with voice activity, energy and novelty"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_speech_embeddings")
+val previews = listOf("emotion2vec", "wavlm_base_plus").map {
+    json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText())
+}
+display("speech spaces", speechEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 220))
+
+```
+
+These are the two workers' landmark MDS views of `near_drowning.wav`. The workflow below fits
+fresh t-SNE views of a selected ten-second interval from the same cached learned features.
+
 | Backend | Bias | Useful first reading |
 | --- | --- | --- |
 | `analysis.emotion2vec` | affect, vocal texture, prosody, speaker state | where the manner and energy of speech change |
@@ -23,12 +43,11 @@ From the Field Audio AI checkout (or Field4's `services/field-audio-ai` submodul
 ./scripts/run-api.sh
 ```
 
-The speech worker listens on `127.0.0.1:8768`; the API remains on `127.0.0.1:8765`. Checkpoints
-load lazily. Ordinary Field tests and documentation builds do not create this environment or
-download either model. The model repositories and their terms remain external to Field4's
-AGPL-3.0-or-later source license.
+The speech worker listens on `127.0.0.1:8768`; the API stays on `127.0.0.1:8765`. Each model is
+downloaded and loaded the first time a job asks for it. The models have their own licence terms,
+separate from Field's.
 
-## Complete Field path for `near_drowning.wav`
+## Plotting a recording
 
 This box first reuses a previously imported content-addressed asset. If none exists, it imports
 `~/Downloads/near_drowning.wav`. Then it displays the source immediately, submits both jobs,
@@ -110,7 +129,7 @@ client.assetsByFilename("*near_drowning*").thenCompose { matches ->
 
 Re-running the unchanged box returns the cached neural results: source identity, exact range, model
 revision, layer, chunking, MDS parameters, and preprocessing are part of the operation hash.
-Change any of those inputs—or set `forceRegenerate = true`—to make a new operation. Changing a
+Change any of those inputs, or set `forceRegenerate = true`, to make a new operation. Changing a
 Field-side range, pooling, sampling or distance recomputes the projection locally and leaves the
 cached analysis where it is.
 
@@ -150,10 +169,5 @@ fitted recordings. Use the stored 768-dimensional vectors for retrieval or cross
 distance. The worker fixes eigenvector signs so an identical cached request has an identical view,
 but rotations of a newly fitted corpus still have no semantic name.
 
-Frame counts for `near_drowning.wav` and the cost of an exact fit at each pooling setting are in
-`dev_docs/AUDIO_EMBEDDING_PROJECTION_MEASUREMENTS.md`.
-
-The loadable `audio_ai_speech_embeddings` operation transcript contains this live box, a durable
-job monitor, and a model-free synchronized renderer calibration. Continue with the
-[general audio visualizers](visualizers.md#speech-embedding-phase-portraits) or
+See also the [general audio visualizers](visualizers.md#speech-embedding-phase-portraits) and
 [beat and pitch analysis](audio_ai_analysis.md).

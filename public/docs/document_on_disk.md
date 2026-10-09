@@ -57,7 +57,6 @@ Thirteen saves of a three-box document, into a temp directory, driven by the rea
 ```diffstatic {data-lang=text}
 after three saves of a three-box document:
   AGENTS.md
-  README.md
   alpha_code_.kt
   beta_code_.kt
   beta_fragment_.glsl
@@ -92,7 +91,7 @@ uv run --project . --group backdoor python tools/run_field_tests.py --id example
 which is what produced the two blocks above:
 `src/jvmMain/kotlin/afield/examples/DocumentOnDiskSmokeTest.kt:35#object DocumentOnDiskSmokeTest`.
 
-Two things in that listing are not about backups. `AGENTS.md` and `README.md` are seeded into any
+Two things in that listing are not about backups. `AGENTS.md` is seeded into any
 new document directory from `templates/` by
 `src/jvmMain/kotlin/afield/saving.kt:1682#private fun ensureAgentGuides(workspaceDir: String)`, once,
 without overwriting a file you have edited. And there is no `operations.yaml` or `transcript.edn`
@@ -167,9 +166,11 @@ supported way to edit a box's code from outside Field.
 
 **A `metadata.edn` edit is reconciled at box granularity, not merged.** An external modification runs
 `src/jvmMain/kotlin/afield/FileWatchManager.kt:500#private fun reconcileMetadata(workspaceDir: File)`,
-which adds boxes present on disk and absent from the session, and tombstones boxes present in the
-session and absent from the file
+which adds boxes present on disk and absent from the session, and tombstones boxes that were in the
+last `metadata.edn` Field wrote or loaded and are absent from the new one
 (`src/jvmMain/kotlin/afield/FileWatchManager.kt:578#box.setPropertyRaw("_tombstone", true, doResync = true)`).
+A box created in the session since that write is left alone: it was never in the file, so the edit
+cannot have removed it.
 Its own contract line is the one to read:
 `src/jvmMain/kotlin/afield/FileWatchManager.kt:496#properties of boxes already present in the`
 session are left alone. So *adding* or *removing* a box by editing `metadata.edn` under a live Field

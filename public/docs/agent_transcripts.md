@@ -55,16 +55,16 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 168 transcripts on every build, at three
-depths. 88 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks every transcript on every build, at one of three
+depths. Most are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-73 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+Others want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
-evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
+evaluation skipped, the line that would open the window or reach the device. A handful are
 Kotlin **compiled to JavaScript** for a browser or visionOS head, through the real head profile that
 the box's `// {{ marker }}` selects.
 
@@ -89,6 +89,23 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### stipple_sheet
+
+**A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
+box loads the small model the page trained and deforms 400 particles and a coordinate lattice with
+it. Three sliders move transport time, movie time and the number of integration steps separately,
+so you can push the sheet past the times it was trained on and watch where it stops holding.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn)
+
+### particle_video_reader
+
+Inspect recorded trajectories as continuous polylines, with time, history length, identity color
+and sampling-density controls. This portable example reads the same complete-trajectory subset
+as the [Video particles](particle_video.md) walkthrough; it runs without a neural environment.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particle_video_reader/metadata.edn)
+
 ### hello_display
 
 Minimal blank-canvas macro that creates one runnable output box.
@@ -96,6 +113,14 @@ Minimal blank-canvas macro that creates one runnable output box.
 ![One box named main on an otherwise empty canvas, its output a pale card reading "hello from OperationTranscript"](assets/macro-hello-display.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/hello_display/metadata.edn)
+
+### ai4_iframe_hello
+
+A single box embeds a page served by Field and exposes its iframe to AI4. Run the box, open its
+AI Chat panel, and ask it to write “hello” in the textbox. [Live iframe tools](ai4_live_iframe.md)
+explains the opt-in and the tools.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
 
 ### marf_field_clocks
 
@@ -168,6 +193,38 @@ after `score` again. The replay runs all five headless: the drawing is data on t
 audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
+
+### drawn_morph
+
+A drawn morph, heard, as five boxes. `shapes` draws a circle named "from" and a heart named "to" on
+the drawing layer; `paired` reads both strokes back, gives each 240 points evenly spaced by arc
+length with `resampleByLength`, pairs them with `matchPoints` and draws the pairs, matched and by
+list index; `morph` draws five steps of each pairing; `spread` plots how big the cloud is through
+the morph; `play` turns the morph, out and back, into 32 notes whose pitch is that size and renders
+both pairings into audio players. Draw two strokes of your own and follow the comment in `shapes`.
+The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_morph/metadata.edn)
+
+### drawn_paint
+
+Drawn strokes become paint, as six boxes. `strokes` draws three pen strokes on the drawing layer,
+each with a pen pressure at every point, and plots the pressure along each; `paint` paints them with
+a round brush whose `swell` follows the pen, follows the pen's pressure squared, and stays even;
+`crossings` crosses wet yellow and red bands with blue, crosses them again dried, and smears them
+with a clean hog brush and a badger blender; `drying` crosses one band after 0 to 100 simulated
+hours; `meadow` paints a meadow at evening from 560 strokes on a red-ground oil canvas; `pencil`
+draws the first three strokes in a 6B pencil. Every box reads the strokes in one region of the
+drawing, so strokes you draw there with a tablet pen are painted too. All but `strokes` need the
+optional paint library (`./gradlew buildPaintNative`); without it they say where they looked and
+stop. See [Drawn Strokes Become Paint](chain_drawn_paint.md).
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="dp_meadow" screenshot="assets/chain_drawn_paint/starting_point.png" transcript="dev_docs/agents/transcripts/drawn_paint.yaml" padding="0" wait="0" timeout="300" requires="paint" embed=true hidden=true name="agent-transcripts-drawn-paint" alt="The meadow box of the drawn_paint starting point and, below it, its output panel showing the finished oil painting of a meadow at evening, sky and clouds over a field of grass and red poppies."}
+// The transcript built the six boxes and ran them; this captures `meadow` and its output panel.
+ui.pause(1500)
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_paint/metadata.edn)
 
 ### studies_rings
 
@@ -415,6 +472,64 @@ replaces the first.
 ![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
+
+### frames_lifecycle
+
+**A frame loop, from start to cleanup.** The companion to
+[Frames and the Animation Loop](animation_time_model.md), in four boxes. Box 1 is an `animate { }`
+with no end condition: a disc travels a Lissajous figure until you press stop. Box 2 is the same
+loop with `if (elapsed >= 6.0) end()` and an `.end { }` that repaints the last frame in red, so you
+see it move and then see it stop. Box 3 shows that re-running a box replaces its loop rather than
+adding a second one: run it twice and the counter restarts in a new colour. It also prints its own
+frame rate, which is a different number on every machine. Box 4 is yours to drive: stop it inside
+its eight seconds, let it run out, or re-run it, and compare which cleanup lines appear. `.end { }`
+runs when the loop is cancelled, not when it finishes.
+
+Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
+loop runs thousands of frames a second and drawing each one floods the output.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/frames_lifecycle_stops.png" capture="box" open-outputs="true" wait="8.0" embed=true hidden=true timeout="120" padding="12" name="gallery-frames-lifecycle" alt="Box 2 after its six seconds: the disc stopped on its track and the progress bar full, all redrawn in red by the .end block" macro-file="../../dev_docs/agents/transcripts/frames_lifecycle.yaml" capture-box="frames_lifecycle_stops"}
+// The transcript builds all four boxes and launches three; this is box 2 after it has stopped itself.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/frames_lifecycle/metadata.edn)
+
+### three_inspector_wall
+
+**The three.js output as an instrument.** One box draws a wall detail, four skins and five conduit
+runs, with the three controls `threeInspect` adds to the viewer's toolbar: a ruler that measures the
+closest approach between two things you click, a section plane, and an explode slider. It is the
+complete example from [Drawing with FLines](fline_examples.md), the same code that page captures.
+
+![The three-inspector demo document, opened](assets/three_inspector_demo/opened.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/three_inspector_wall/metadata.edn)
+
+### fline_hit_records
+
+**What a click on a figure returns.** A wall of panels drawn through `Box.inspect`. Click a panel and
+the output names it, says whether you hit its face, an edge or a corner, and where on it, in the
+wall's own coordinates. Click the amber ridge line and you get its position along its length. Every
+hit is also printed, so the box's text output becomes a log of what you clicked. From the hit-record
+section of [Drawing with FLines](fline_examples.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fline_hit_records.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-fline-hit-records" alt="A card reading Click a part of the figure, above a wall of fifteen panels in three rows and five columns, drawn at a slant in teal to violet, with an amber ridge line along its top edge" macro-file="../../dev_docs/agents/transcripts/fline_hit_records.yaml" capture-box="fline-hit-records-wall"}
+// The transcript builds and runs the box; this is its output before anything is clicked.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fline_hit_records/metadata.edn)
+
+### sound_render_path
+
+**One beat, three ways of sounding it.** The companion to the real-drums section of
+[Sound: the Pattern → Audio Path](sound.md). Box 0 draws the beat as a piano roll. Box 1 plays it
+through the synth stand-in and box 2 through the Dirt samples: play them back to back. Box 3 shows
+the per-event fallback, where a sample name the library does not have is voiced by the synth and
+mixed in with the rest. Box 4 reports where Field looked for the sample library and what it found.
+
+![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sound_render_path/metadata.edn)
 
 ### pitch_transcription_roundtrip
 
@@ -1014,6 +1129,32 @@ is provably inside the search space. The empty half of that cost plane is the fi
 
 [Open ↗](offline.html?file=assets/agent_transcripts/morpho_circuit_search/metadata.edn)
 
+### keyframe_editor
+
+The keyframe editor, `keyframes(...)`, as the three boxes of its page,
+[The keyframe editor](keyframe_editor.md). `brightness` plays a hand-drawn curve with a `loop`, moving
+the editor's playhead with `setTime` and sending `evaluateValueAt` to a meter, so you can edit the
+curve while it plays. `shape` starts a curve with one key of each type through
+`keys = listOf(Keyframe(...))`. `smoothed` draws a smoothed copy of its curve as an overlay and keeps
+it up to date with `onChange`. `custom types` defines an overshoot, a wobble and a chaotic scribble
+(the logistic map, pinned to both keys) as key types of its own with `interpolant(...)`, which then appear in the key menu. CI launches `brightness`, executes the
+other three, advances 90 frames, and stops.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn)
+
+### gesture_to_keyframes
+
+A performed gesture turned into keys you can edit, and back, from
+[The keyframe editor](keyframe_editor.md#from-a-performed-gesture). One box holds a
+[gesture pad](visualizers.md#recording-a-gesture) with a hand-wobbly figure eight in it, and the x and
+y lanes that `bakeGesture` reduces the take to, within a tolerance of 0.02. Running the box bakes only
+when the lanes are empty, so your edits survive a rerun. Drag a key in either lane and press
+**replay lanes**: `setTake` sends the edited lanes back to the pad and its trail redraws. Shift-drag
+on the pad to record a take of your own, then press **bake take**; **smooth take** takes the tremor
+out of it and bakes it again. CI launches the box, advances 90 frames, and stops.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gesture_to_keyframes/metadata.edn)
+
 ### keyframer_worked_example
 
 `KeyframeScope`, the thing that stops a look you spent twenty minutes
@@ -1217,6 +1358,56 @@ same shape through Field's own `marchingCubes` and names the difference.
 ![A gyroid-thickened torus drawn as a pale wireframed surface, its rim rippling in and out where the gyroid cuts it, captioned 14869 verts, 29738 tris, chi=0 genus 1, watertight, volume 17750.1245, and "29738 triangles, genus 1, guaranteed closed"](assets/manifold/levelset.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
+
+### ai4_paint_studio
+
+A studio where AI4 paints. The one box puts a canvas from the [paint simulator](paint_canvas.md) on
+an easel and gives the chat agent twenty tools to paint on it: strokes, dabs, whole regions worked
+the way a painter blocks in, glazes, pencil lines, hatching, stippling, drying time, a fresh canvas
+or sheet of paper, a painting knife, a rag, spatter, watercolour and ink washes, drops and a tilted
+board, brushes kept by name between requests, and *hang*, which keeps a
+finished painting in the document's gallery. The canvas and the kept tools belong to the
+conversation, so rewinding the chat to a request brings back the canvas, and every kept brush as
+dirty as it was, from before it. Open the
+box's AI panel and ask for a painting; [AI4 paints](ai4_painting.md) shows three made this way. A
+second box, Scribbler, adds a `scribble` tool with `aiTool { }`; [Experimenting with
+AI4](ai4_experiments.md) shows a painting made with it. It needs the paint library
+(`./gradlew buildPaintNative`) and an AI provider.
+
+![three paintings of one harbour made in the studio by AI4: at dusk, at night, and in a storm](assets/ai4_painting/three.jpg)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_paint_studio/metadata.edn)
+
+### stacksl_evolve_studio
+
+A StackSL search toward a picture that the AI chat steers. The one box holds the search and gives
+the chat agent tools to run generations, look at the best programs, propose programs of its own,
+ask the fast model for a round of edits, take a gradient step on a program's numbers, and change the
+metric and population. The population belongs to the conversation: rewinding the chat to a request
+puts the search back as it was before it, and the agent can breed the current population with one
+from a branch it left. Opening the document shows only the target; the search starts when you ask
+for it. Open the box's AI panel and ask, for instance, "evolve toward the target, and bring in the
+watchmaker when it stalls". [Evolving a Shader](stacksl_evolve.md#steering-it-from-the-ai-chat)
+describes it. It needs an AI provider.
+
+![rows of targets and the best programs found for them: the plain search draws noise and stripes, the search with the watchmaker draws each target](assets/stacksl_evolve/watchmaker-original.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacksl_evolve_studio/metadata.edn)
+
+### paint_canvas
+
+Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
+canvas, a brush, three strokes* loads a filbert twice and then drags it through a three-pass zigzag
+without reloading, so you can see the brush run dry. *Strokes along a flow field* paints 260 short
+strokes that follow a field of directions. It reloads the brush before each one with `wipe = 0.4`,
+so some of the last colour stays in the bristles and neighbouring strokes blend. *Pencil, hatching
+and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chalk line under it, on a
+20 cm sheet so the pencil reads at screen size. All three need the optional paint library
+(`./gradlew buildPaintNative`). Without it they say where they looked and stop.
+
+![a few hundred curved brushstrokes sweeping in swirling currents, warm colours at the top shading to cool blues and violets at the bottom](assets/paint_canvas/flow.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
 
 ### photo_to_solid_chain
 
@@ -1561,6 +1752,8 @@ number; then the seven refusals, which carry *reasons* rather than nulls, and th
 that matters — a swallowed child under a hard `Union` is dead, because a pointwise `min` gives the
 whole derivative to whichever child is nearest, and it presents as a *converged* optimisation.
 
+![Seed, fitted and target solids side by side: a rounded capsule converges to the target ball and rod](assets/solid_notation/inverse.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/solidsl_inverse/metadata.edn)
 
 ## Service-backed composition scenes
@@ -1651,6 +1844,17 @@ These boxes are all compiled through Field's real Kotlin/preamble path, but not 
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
 
+### chain_scene_to_light
+
+A RectSL scene on a light rig, with no lighting hardware: the universes go out as sACN to this
+machine and come back. Launch `1. Scene on the rig` to draw the scene, shrink it to one pixel per
+fixture and send it on a 44 Hz clock; launch `2. Receiver` to draw the rig lit by what arrived; run
+`3. Measure` for a round trip of nine frames and a thin line sampled two ways. Edit the scene in the
+first box and launch it again to see the change reach the second. See
+[A RectSL Scene on a Light Rig](chain_scene_to_light.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/chain_scene_to_light/metadata.edn)
+
 ### kratos_thermal_playground
 
 Launch one box and drag the cuboid arm, conductivity, heat source
@@ -1676,6 +1880,8 @@ around the obstacle, and potential flow around a sphere gives exactly 1.5, which
 to see that the answer is a flow and not a plausible picture. Install the worker first with
 `uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels.
 Requires Manifold.
+
+![Solved streamlines passing around a sphere-and-rod obstacle, above a mid-plane velocity slice of its wake](assets/transcript_gallery/kratos-flow.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/kratos_flow_playground/metadata.edn)
 
@@ -1725,6 +1931,20 @@ Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_render_analysis/metadata.edn)
 
+### loris_partial_explorer
+
+Analyze the committed public-domain film dialogue, follow native-worker status, inspect irregular
+frequency/amplitude/phase/bandwidth trajectories, and audition source and resynthesis with a shared
+cursor and full-band ERB/Hz/cents views. Further boxes select and transform partials, compare
+independent fine-time and fine-frequency passes, and twist one chunk into a noisy spectral whirlpool
+with playable resynthesis. Every complete box is compile-checked; running analysis requires the optional
+`./gradlew buildLorisNative` build, not a GPU or audio-model server.
+Walkthrough: [Loris partial tracks and resynthesis](loris.md).
+
+![A three-second spectral whirlpool: partial tracks bend through 6–9 seconds, with amber noise bandwidth, above the resynthesized waveform and audio player](assets/loris/spectral-whirlpool.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn)
+
 ### audio_ai_underfit_mancini
 
 Import a held-out excerpt, hash the completed Experiment in Terror
@@ -1733,7 +1953,8 @@ explains the 165-chunk album training set and the source-conditioned controls; b
 worker request and presents the durable candidate board with source, seed, model revisions, and
 checkpoint provenance. The optional authenticated GPU worker is compiled here and remains an explicit
 interactive action.
-Walkthrough: [Experiment in Terror with an Underfit LoRA](audio_ai_underfit_mancini.md).
+Walkthrough: [Experiment in Terror with an Underfit LoRA](audio_ai_underfit_mancini.md),
+with the actual MJQ source excerpt, matched no-LoRA baseline and archived LoRA take.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_underfit_mancini/metadata.edn)
 
@@ -1772,6 +1993,22 @@ reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be wo
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
 
+### fieldcv_webcam
+
+**Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a
+Python root with three cells under it, one that opens the camera mirrored and starts a pipeline of
+tracks, pose, hands and a face mesh (with flow and background subtraction ready to switch in), one of
+single lines to run one at a time — `use("hands")`, `inset_view = motion`, a lambda of your own — and
+one that reports frames per second and what was found; and three Kotlin boxes under the window that
+read the cells' results by name through `NumpyShared`: the frame as a texture, an inset of any image
+the cells choose, and six channels of polylines, including strokes drawn by pinching thumb and index
+finger. Without a camera, or before macOS has granted it, the webcam cell runs on a sample clip
+instead. `public/docs/python_cv.md` is the page; the Python cells need the optional `cv` dependency
+group, which CI does not install, so `DemoTranscriptExecSmokeTest` compiles the three Kotlin boxes
+and skips the Python.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn)
+
 ### pure_data_demo
 
 **Pure Data inside Field.** Eight boxes: a Kotlin root whose `mainLanguage` makes three Pd boxes
@@ -1787,7 +2024,55 @@ once with `./gradlew buildLibpdNative`. The build does not own that, so CI compi
 boxes and skips the three Pd ones, as it skips Python cells; every box was run by hand against a
 built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
 
+![A Pure Data drone patch: frequency and cutoff receivers drive a filtered phasor into stereo output](assets/pure_data/drone-patch.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
+
+### csound_demo
+
+**Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
+five Kotlin boxes that talk to Csound. **pluck** is a `.csd` with a plucked string, a MIDI-played
+`Key` instrument and a global reverb on a `chnmix` bus. Launched, Alt-Enter on its score line
+`i "Pluck" 0 1 69 -9` answers `sent …`, and Alt-Enter inside `instr Pluck` answers `recompiled instr
+Pluck`. **typo** has `oscilx` on line 4, which launching marks there. **talk to pluck** writes a k-
+and an S-channel and sends score events built from Kotlin values; the orchestra's `outvalue`s come
+back as `Csound said: from Kotlin` and the reverb's level. **keys** sends MIDI notes, which `Key`
+prints as `Key 62`, `Key 65`, … **Field into fx** feeds a Field sawtooth into an a-rate channel and
+plays the reverb tail back as a Field signal. **through Csound, measured** prints a gain of 0.2420
+for a 1 kHz Field sine through `butterlp 500` (a Butterworth gives 0.2425), and **a table from
+Kotlin** writes a 4096-point ftable and reads it back equal. Needs libcsound, built once with
+`./gradlew buildCsoundNative`. The build does not own that, so CI compiles the Kotlin boxes and
+skips the Csound ones; every box was run by hand against a built Csound on 2026-10-02.
+[Csound](csound.md) has the walkthrough.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
+
+### orca_hello
+
+[ORCA](orca.md) in a box output, playing a melody and a bass line through a `PatSynthBank`. Run the
+box, click the grid and type; every note ORCA plays is shown under it. The box also gives its AI
+Chat tools that read and write the grid, so you can ask AI4 to change the tune.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_hello/metadata.edn)
+
+### orca_jam
+
+An ORCA with four voiced channels (a soft lead, a bass, a noise hi-hat, a bright square) and AI4 on
+the board. Run the box, open its AI Chat and ask it to play: it writes into the grid while the music
+runs, and rewinding the chat puts the board and the tempo back. [ORCA](orca.md#gpt-jams-orca) has a
+recording of a jam.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_jam/metadata.edn)
+
+### orca_duet
+
+Two ORCAs in one box and a Kotlin `frames { }` loop between them. `lead` plays a tune; the loop
+copies the last eight notes it played into `echo`, which plays them back three frames to a note
+against `lead`'s two, and every eighth echo moves one note of `lead`'s tune up the scale. A line
+under the grids shows what Kotlin heard and changed. Launch the box, then type into either grid.
+[ORCA](orca.md#two-orcas-and-kotlin-between-them) has the video and a recording.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
 ### marf_demo
 
@@ -1809,6 +2094,32 @@ being split into a second transcript, because the point the document makes is th
 know whether it is being drawn or heard, and that argument does not survive the split.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/marf_demo/metadata.edn)
+
+### syphon_bridge
+
+Three boxes that move frames over [Syphon](syphon.md), the way video applications on a Mac share
+pictures. *Servers on this machine* lists every Syphon server announced. *Publish an animated
+picture* draws twelve circles into a `BufferedImage` every frame and publishes it as "Field pattern",
+which Resolume, TouchDesigner, MadMapper or OBS can pick up. *Receive a server's frames* connects to
+"Field pattern" as a client and shows its latest frame, so the round trip is visible with nothing
+else installed; change the name to receive another application. macOS only, and all three need the
+optional library (`./gradlew buildSyphonNative`, which needs Xcode); without it they say how to build
+it and stop.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/syphon_bridge/metadata.edn)
+
+### particle_video
+
+Follow a movie as recorded moving points. The [Video particles](particle_video.md) walkthrough
+shows a hand-colored serpentine dance at native resolution with 24,000 target particles, with
+source and Kotlin-rendered output side by side. The reader box scrubs a portable subset of complete
+trajectories and exposes identity colors and trails without a Python process. The tracking box
+runs an optional cached RAFT job; prepare its environment and select the device first.
+CI compiles the boxes; new inference requires that separate environment.
+
+![Recorded particles with time, color and trail controls](assets/particle_video/field-view.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn)
 
 ## visionOS device scenes
 
@@ -2054,7 +2365,7 @@ is a name with no midpoint, so it is taken whole from one parent and the manifes
 `grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
 outside its own range — where the target clamps it and the key keeps the number, so the archive still
 records the point that was visited. The morning box needs no renderer at all: an archive describes
-itself. The companion page is [Keyframe autosweeping](keyframe_autosweep.md).
+itself. The companion page is [Sweeping saved keyframes overnight](keyframe_autosweep.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_autosweep/metadata.edn)
 
@@ -2106,6 +2417,8 @@ destroys mass. `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
 `tools/run_field_tests.py --id four.simulation-chain.smoke` is both chains driven headlessly — the jump
 flood against exact ground truth, and the fluid against the one thing no plan can check: with the input
 switched off, the picture has to keep changing.
+
+![Cyan dye swirling through the GPU fluid, with blue and gold signed-distance bands inset at the upper right](assets/transcript_gallery/simulation-chain.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/four_simulation_chain/metadata.edn)
 
@@ -2386,6 +2699,30 @@ The scene renders at 1280 × 720; surface-guided reconstruction is enabled, with
 
 [Open ↗](offline.html?file=assets/agent_transcripts/direct_lighting/metadata.edn)
 
+### open_dlss_nr
+
+Draw animated ink in an editable Field fragment shader, pass it through OpenDLSS-NR at
+tone 0 / structure 10, then grade the result independently. Three labeled 768 × 768 panels
+keep the source visible. The **record clip** child exports six seconds of consecutive GPU frames
+from the live study. Source and grading work without the optional native dependency.
+See [Neural image rendering](open_dlss_nr.md) for preparation, all scene code and the captured video.
+
+![Field shader source, native NR and graded output](assets/opendlssnr/study.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/open_dlss_nr/metadata.edn)
+
+### open_dlss_nr_cubes
+
+Rasterize two rotating colored cubes on a checkerboard plane, with thin crossing bars, a moving
+camera and light. Compare SOURCE, OpenDLSS-NR at tone 0 / structure 10, and independently graded
+output in three labeled 768 × 768 panels. Both shaders are editable; **record clip** captures
+six seconds at 30 fps from the live GPU targets. Source and grading work without the optional backend.
+See [Neural image rendering](open_dlss_nr.md) for the complete scene code and video.
+
+![Rasterized cubes, native NR and graded output](assets/opendlssnr/cubes.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/open_dlss_nr_cubes/metadata.edn)
+
 ### neural_reconstruction
 
 Compare the unmodified source, native-resolution DLAA, and two DLSS Super Resolution modes at
@@ -2500,7 +2837,7 @@ resets accumulation and produces a PASS marker during live execution.
 [Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_material_shader_check/metadata.edn)
 
 The three below end at the same tracer and start somewhere else in Field, so each one carries two
-subsystems the others do not; [Chains Across Subsystems](chain_polytope_render.md) is where they are
+subsystems the others do not; [Long Way Round](chains.md) is where they are
 walked through.
 
 ### polytope_path_trace_lineage
@@ -2523,6 +2860,25 @@ thickness.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn)
 
+### polytope_layer_stack_path_trace
+
+Canonical gC sliced at 48 layer midpoints, extruded with small gaps and coloured
+by height. The real path tracer accumulates at least 900 samples before the
+Linux/NVIDIA capture. See [the layer-stack walkthrough](chain_ceres_manifold_contours.md).
+
+![Forty-eight extruded layers of canonical gC, coloured by height and path traced over a pale floor](assets/chain_ceres_manifold_contours/stack.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn)
+
+### photo_mount_path_trace
+
+The relief and frame returned by `PhotoToSolidChain.mount()`, imported into the
+real tracer and lit with the Venice environment. The retained Linux/NVIDIA figure
+shows the mounted plaque after at least 900 samples. See
+[the photo-to-solid walkthrough](chain_photo_to_solid.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/photo_mount_path_trace/metadata.edn)
+
 ### physics_manifold_path_trace
 
 A 14 × 14 SimdVerlet cloth drapes over a sphere collider, and each
@@ -2544,6 +2900,16 @@ output device. See [the walkthrough](chain_pattern_particles.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pattern_particles/metadata.edn)
 
+### petri_sparks
+
+Three boxes: a renderer, a `#petri` net of three token rings and a `charge` place that four kicks
+fill and a clap empties, and a sparks box that asks a run of the net each frame what fired in the
+last 1.6 seconds (`firingsOver`), where each token is (`markingAt`) and how full `charge` is
+(`countAt`). Each firing becomes a burst of streaks in its transition's colour, computed entirely in
+the vertex shader from the burst's origin and age. See [the walkthrough](chain_petri_sparks.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/petri_sparks/metadata.edn)
+
 ### life3d_manifold_path_trace
 
 `LIFE3D_BLOB` for eight generations, then the question a volume of
@@ -2555,6 +2921,16 @@ each way, because the count is a property of the surface and not only of the aut
 [the walkthrough](chain_life3d_render.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn)
+
+### petri_state_space_sculpture
+
+The dining philosophers' reachability graph as a path-traced sculpture. Each marking of the
+symmetric five-seat table becomes a glass bead, placed by breadth-first depth and by which
+philosophers hold forks; each firing becomes a `tubeMesh` coloured by what it does, and the
+shortest route to the deadlock glows. The stubborn-set reduced graph stands beside it. See
+[the walkthrough](chain_petri_sculpture.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/petri_state_space_sculpture/metadata.edn)
 
 ### rectsl_spacetime_path_trace
 
@@ -2630,6 +3006,8 @@ straight lines between surfaces" stops being true — the integrator has to samp
 the density rather than picking one is what makes that legible: the geometry never moves, so everything
 that changes between passes is the medium. `dev_docs/PARTICIPATING_MEDIA.md` is the write-up.
 
+![A slatted ceiling light casts visible shafts through haze over a sphere](assets/path_tracing/medium_shafts.png)
+
 [Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_medium/metadata.edn)
 
 ### neural_particles
@@ -2651,6 +3029,8 @@ an undertrained field. And the source jitter that seeds the particles is the opp
 used in training — train on the exact correspondence, seed near it.
 `tools/run_field_tests.py --id four.neural-particles.smoke` grades the GPU's trajectories against the
 CPU integrator per particle.
+
+![The word FIELD assembled from warm gold particles on black](assets/neural_particles/word.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/neural_particles/metadata.edn)
 
@@ -2695,6 +3075,8 @@ a single closed contour in the typeface — C, S, E, F, L, T, V, Z — because o
 paired with two contours at once, and both must be trained from the same source and the same seed.
 `WeightInterpolationTest` holds the numbers, including a check that the hand-written integrator
 agrees with the library's.
+
+![Three particle glyphs from the same trained letter pair, with network weights pinned at three interpolation values](assets/neural_particles/interpolation.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/letter_interpolation/metadata.edn)
 
@@ -2755,6 +3137,39 @@ The same pass ordering extended to raw RTXDI and five RR guide attachments. The 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rr_plumbing/metadata.edn)
 
+
+### streaming_diffusion
+
+A renderer and an editable spinning-curves scene with ink, charcoal and barbed-wire controls.
+The optional Linux/NVIDIA worker returns a sampled RTT through shared GPU memory; unsupported
+platforms show an availability message. CI compiles the boxes without starting the worker.
+The retained native capture and measured run are on [Streaming diffusion](streaming_diffusion.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
+
+
+### syphon_gpu
+
+[Syphon](syphon.md) from the Vulkan renderer, both ways. A renderer box opens a window; the second
+box draws a colour gradient into a `RenderToTexture` and publishes every frame as "Field GPU" with
+`followOnGpu`, which copies each frame on the GPU into an IOSurface for Syphon without reading it
+back; the third connects to "Field GPU" as a client and draws its frames, as a texture, over the
+whole window, sampling the IOSurface Syphon shares without copying it. macOS only; needs
+`./gradlew buildSyphonNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/syphon_gpu/metadata.edn)
+
+### syphon_zero_copy_receive_smoke
+
+The test behind `SyphonClient.texture()`. A separate process publishes a known pattern through
+Syphon, first at 64×48 and then at 96×64. A shader samples the received texture into a
+`RenderToTexture`, and the box reads it back. It expects exact pixels in the right order and the
+right way up, one re-import when the size changes, and no frame copied through memory. MoltenVK
+samples the IOSurface as an imported image; KosmicKrisp samples it as host memory under a linear
+image. CI compiles the graph; the backdoor replay is the live test, and needs
+`./gradlew buildSyphonNative`. An integration probe, not a starting point.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/syphon_zero_copy_receive_smoke/metadata.edn)
 
 ## Graphics building blocks
 

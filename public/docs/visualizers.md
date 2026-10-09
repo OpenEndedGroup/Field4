@@ -922,6 +922,168 @@ This pattern is good for surfaces that combine parameter editing with a compact 
 - quick scene presets
 - reusable demo boxes
 
+### Sequencer controls: multisliders, grids, ranges and menus
+
+Four controls hold more than one number, after the Max objects they borrow from:
+
+- `multiSlider(...)` is a bank of bars you draw by sweeping across them, like Max's `multislider`. A fast sweep fills every bar it passes.
+- `matrix(...)` is a grid of cells, like `matrixctrl`. A press advances a cell to its next state, and dragging paints that state across every cell you cross. Cells are on or off by default; pass `states = 4` and each cell cycles through 0 to 3. State 0 is black and the others are equally spaced colours.
+- `rangeSlider(...)` picks an interval, like `rslider`. Drag a thumb to move one end, or drag between the thumbs to move both.
+- `menu(...)` picks one of a list of strings, like `umenu`.
+
+The first three return a handle with a **playhead**: a position the box writes and you only see. It never calls your callback and is never saved, so you can set it on every frame. Here a `loop` reads the step off the clock each frame, so it never drifts:
+
+<!--
+FIELD_TEST
+id: docs.visualizers.controls.sequencer
+runner: backdoor-box
+tags: [docs, visualizers, controls, multislider, matrix, range, menu]
+timeoutSec: 45
+waitSec: 0.5
+expect:
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-sequencer.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="4" fps="20" timeout="180" w="900" embed=true name="sequencer" alt="a sequencer surface in one output channel. VELOCITY is a bank of sixteen cyan bars in a sine-shaped curve; PATTERN is a four-by-sixteen grid with cells in red, green and blue on black; BAND is a two-thumb range slider from 200 to 900; WAVE is a drop-down reading saw. An orange playhead steps left to right across the bars and the grid columns together while an orange tick sweeps along the band track"}
+:::static
+var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
+var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }
+var band = 200.0..900.0
+var wave = "saw"
+
+lateinit var steps: ArrayControlHandle<List<Double>>
+lateinit var grid: ArrayControlHandle<List<List<Int>>>
+lateinit var range: ArrayControlHandle<ClosedFloatingPointRange<Double>>
+
+controlGroup("sequencer") {
+    steps = multiSlider("velocity", count = 16, initialValues = velocity) { velocity = it }
+    grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern) {
+        pattern = it
+        print(it.h)
+    }
+    range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band) {
+        band = it
+        print(it.h)
+    }
+    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+        wave = name
+    }
+}
+
+// Eight steps a second, read off the clock every frame.
+val start = System.nanoTime()
+loop {
+    val step = ((System.nanoTime() - start) / 125_000_000L).toInt()
+    steps.playhead(step % 16)
+    grid.playhead(step % 16)
+    range.playhead(20.0 + (step % 64) / 63.0 * 1980.0)
+}
+```
+
+A playhead on a multislider or matrix is a bar or column index, and a negative one hides it. On a range slider it is a value on the track.
+
+### The same controls, on a dial
+
+Pass `polar = true` to draw any of the three around a circle. A step sequence is a loop, and the dial shows that: the last step sits next to the first.
+
+- On a polar `multiSlider`, the angle picks the bar and the distance from the centre sets its value. A sweep across the top goes the short way round.
+- On a polar `matrix`, rows are rings (row 0 is the outermost) and columns are sectors running clockwise from twelve o'clock. The playhead lights a whole sector.
+- On a polar `rangeSlider`, the track is the whole circle, and `min` and `max` meet at the top. The band runs clockwise from `start` to `endInclusive` and may wrap through the top. Drag inside it to turn the whole band.
+
+A wrapped band has `start > endInclusive`, which Kotlin's own `in` reads as an empty range, so test it with `arcContains`. On a dial a range means an arc, so use it for values that are already circular: a phase, a hue, a window into a loop.
+
+<!--
+FIELD_TEST
+id: docs.visualizers.controls.sequencer-polar
+runner: backdoor-box
+tags: [docs, visualizers, controls, multislider, matrix, range, polar]
+timeoutSec: 45
+waitSec: 0.5
+expect:
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-sequencer-polar.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="4" fps="20" timeout="180" w="1200" embed=true name="sequencer-polar" alt="three dials side by side. VELOCITY draws sixteen cyan wedges of different lengths around a hub; PATTERN draws four rings of sixteen sectors with a few cells lit red, green and blue; BAND is a cyan circle whose bright arc runs clockwise from 1700 through the top to 400, with a tick at twelve o'clock labelled 2000 | 20.00. An orange sector sweeps clockwise around the first two dials together while an orange tick travels around the band"}
+:::static
+var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
+var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }
+var band = 1700.0..400.0   // wraps through the top
+
+lateinit var steps: ArrayControlHandle<List<Double>>
+lateinit var grid: ArrayControlHandle<List<List<Int>>>
+lateinit var range: ArrayControlHandle<ClosedFloatingPointRange<Double>>
+
+controlGroup("dial", columns = 3) {
+    steps = multiSlider("velocity", count = 16, initialValues = velocity, polar = true) { velocity = it }
+    grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern, polar = true) { pattern = it }
+    range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band, polar = true) {
+        band = it
+        print(it.arcContains(100.0))
+    }
+}
+
+val start = System.nanoTime()
+loop {
+    val step = ((System.nanoTime() - start) / 125_000_000L).toInt()
+    steps.playhead(step % 16)
+    grid.playhead(step % 16)
+    range.playhead(20.0 + (step % 64) / 63.0 * 1980.0)
+}
+```
+
+### Recording a gesture
+
+`gesture(...)` is an XY pad that remembers what you did with it. A plain drag works like `vec2Control(...)`, and the callback gets each position. **Shift-drag** records a take: the whole stroke and its timing, kept with the box like any other control value. On a phone, tap **rec**, then draw. The trail of the take stays on the pad.
+
+The box replays the take, and the box keeps the time. `at(seconds)` returns where the take is that far into its loop, interpolated between the recorded samples, and `playhead(seconds)` puts a ring on the pad there. Read both off the clock in a `loop`, as the sequencer does, and the replay never drifts and keeps going with the browser closed. `initialTake` gives the pad something to play before you have recorded anything; here it is a figure eight:
+
+<!--
+FIELD_TEST
+id: docs.visualizers.controls.gesture
+runner: backdoor-box
+tags: [docs, visualizers, controls, gesture, vec2]
+timeoutSec: 45
+waitSec: 0.5
+expect:
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-gesture.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="4" fps="20" timeout="180" w="600" embed=true name="gesture" alt="an XY pad headed MOVE with the readout 2.0 s take and a rec button. A faint figure-eight trail fills the pad, and an orange ring travels round it, tracing the eight once every two seconds"}
+:::static
+var p = Vector2f(0f, 0f)
+lateinit var pad: GestureHandle
+
+// A figure eight to start from; shift-drag on the pad to record your own.
+val eight = 64 { i ->
+    val a = i / 63.0 * 2 * Math.PI
+    i / 63.0 * 2.0 to Vector2f((0.8 * Math.sin(a)).toFloat(), (0.6 * Math.sin(2 * a)).toFloat())
+}
+
+controlGroup("gesture") {
+    pad = gesture("move", initialTake = eight) { p = it }
+}
+
+val start = System.nanoTime()
+loop {
+    val t = (System.nanoTime() - start) / 1e9
+    pad.at(t)?.let { p = it }
+    pad.playhead(t)
+}
+```
+
+`p` follows your finger while you drag and the take otherwise. Use it for anything with two axes: a camera, a pan and a filter, a point in a preset space.
+
+To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, and send the edited lanes back with `pad.setTake(x, y)`: see [From a performed gesture](keyframe_editor.md#from-a-performed-gesture).
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
@@ -929,6 +1091,12 @@ This pattern is good for surfaces that combine parameter editing with a compact 
 - Use `checkbox(...)` for feature toggles and gates.
 - Use `stringInput(...)` for names, labels, prompts, and small text parameters.
 - Use `colorPicker(...)` for RGBA values stored as normalized `Vector4f` data.
+- Use `multiSlider(...)` for a row of values you want to draw rather than set one at a time: steps, envelopes, partials.
+- Use `matrix(...)` for patterns: on/off steps, or several states per cell with `states = n`.
+- Use `rangeSlider(...)` for an interval, such as a band, a window or a velocity range. Use `polar = true` when the value wraps around, like a phase or a hue.
+- Use `menu(...)` for choosing one of a few named options.
+- Use `gesture(...)` for a two-axis movement you want to perform once and loop.
+- For a curve over time you shape by hand, an envelope, use the keyframe editor, `keyframes(...)`: see [Keyframes and timelines](funFeatures.md#keyframes-and-timelines).
 
 The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.
 
@@ -1180,6 +1348,10 @@ visualize path.
 
 ### Speech embedding phase portraits
 
+The real emotion2vec and WavLM views from the [speech walkthrough](audio_ai_speech_embeddings.md).
+
+![The real emotion2vec and WavLM views](assets/audio_ai_speech_embeddings/learned_spaces.png)
+
 `speechEmbeddingVisualizationHtml(result)` turns the worker's cached learned-frame preview into two phase
 portraits: MDS axes 0×1 and 2×3. The complete 768-dimensional embedding remains in the immutable
 NPZ; only a bounded preview crosses into the browser. A strip underneath shows WebRTC voice
@@ -1225,6 +1397,10 @@ the neural analysis.
 
 ### Short-time spectral phase portraits
 
+Three real distance spaces from the [spectral walkthrough](audio_ai_spectral_embeddings.md).
+
+![Three real distance spaces](assets/audio_ai_spectral_embeddings/spectral_spaces.png)
+
 `spectralEmbeddingPreviewVisualizationHtml(preview)` uses the same two phase portraits and shared
 time bus for a Field-owned MDS or t-SNE projection of mel, log-mel, or MFCC frames. The lower strip
 shows energy, mel-distribution flux, and spectral centroid; path opacity follows normalized flux.
@@ -1258,6 +1434,10 @@ binary artifact → temporal pooling → three Field Smile spaces → bidirectio
 
 ### Instrument-labelled transcription
 
+A real recording and its recovered notes from the [MuScriptor walkthrough](audio_ai_muscriptor.md).
+
+![A real recording and its recovered notes](assets/audio_ai_muscriptor/piano_roll.png)
+
 The same `analysisVisualizationHtml` viewer recognizes `analysis.transcribe_music` results as a
 MuScriptor piano roll. Note colour follows the recovered instrument group; the two lower lanes show
 active polyphony and onset count. It uses the same `syncGroup` time bus as the waveform, beat,
@@ -1286,6 +1466,10 @@ lane on one sync group. The [render-to-analysis walkthrough](audio_render_analys
 
 ### Corpus neighbour microscope
 
+Real retrieved windows from the [corpus walkthrough](audio_ai_corpus_microscope.md).
+
+![Real retrieved windows](assets/audio_ai_corpus_microscope/neighbours.png)
+
 `corpusMicroscopeHtml(preview, queryAudio)` composes the same general `AudioVisualizer` into a
 source-relative A/B board. Each neighbour retains its real asset and source timestamp, but every
 player uses `syncOffsetSeconds = -segment.startSeconds`; shared time zero is therefore the start of
@@ -1302,6 +1486,10 @@ The [corpus microscope walkthrough](audio_ai_corpus_microscope.md) and
 visualize path.
 
 ### Waveform-summary endpoint contract
+
+This player fetches its envelopes from the live Field Audio waveform endpoint.
+
+![Real service waveform envelopes of a Pat Dirt render](assets/audio_render_analysis/service_waveform.png)
 
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The
 visualizer adds these query parameters whenever its visible interval changes:

@@ -1,0 +1,284 @@
+{
+  "operation": {
+    "operation": "generate.style",
+    "inputs": [
+      {
+        "asset_id": "sha256:0b80bac5e1c27faad60bf3eb6701a0795a4c62c673656a1889564983f2a4d365",
+        "start_seconds": 0,
+        "duration_seconds": 12.0
+      }
+    ],
+    "parameters": {
+      "duration_seconds": 30.0,
+      "prompt": "mancini-eit, suspenseful nocturnal orchestral jazz, flute, vibraphone and muted brass",
+      "negative_prompt": "vocals, speech, harsh distortion",
+      "model_name": "small-music-base",
+      "steps": 50,
+      "cfg": 1.5,
+      "cfg_rescale": 0.0,
+      "init_noise_level": 0.65,
+      "duration_padding_seconds": 2.0,
+      "chunked_decode": true,
+      "lora_checkpoints": [
+        {
+          "path": "mancini-experiment-in-terror/step-1000.safetensors",
+          "sha256": "3769f0e3282ea970a5c953933216f84c847478cfc51213c7adfa3f5a98762364",
+          "strength": 0.85,
+          "interval_min": 0.0,
+          "interval_max": 0.92
+        }
+      ]
+    },
+    "seeds": [
+      1962
+    ],
+    "candidate_count": 1,
+    "backend_preference": "underfit.stable_audio_3",
+    "requested_by": "field:underfit-mancini-proof",
+    "force_regenerate": true
+  },
+  "accepted": {
+    "job_id": "job_89a6b8e38df649768c0b35e7946aaa76",
+    "state": "queued",
+    "request_hash": "sha256:b237fd34fdb263da2af6685ae0540427141537c1abc6ec8303d0463c79266625",
+    "resolved_backend": "underfit.stable_audio_3",
+    "cache_hit": false
+  },
+  "job": {
+    "id": "job_89a6b8e38df649768c0b35e7946aaa76",
+    "operation_id": "op_cd5d16a511334bf3b5aa60cb8e1f7ee6",
+    "request_hash": "sha256:b237fd34fdb263da2af6685ae0540427141537c1abc6ec8303d0463c79266625",
+    "state": "complete",
+    "resolved_backend": "underfit.stable_audio_3",
+    "progress": 1.0,
+    "created_at": "2026-09-13T11:20:43.999392Z",
+    "updated_at": "2026-09-13T11:20:50.555150Z",
+    "error": null,
+    "candidate_set_id": "cset_788837e2824f42a28988c2a398a7ebc5",
+    "codec_result_id": null,
+    "analysis_result_id": null,
+    "cache_hit": false
+  },
+  "candidate_set": {
+    "id": "cset_788837e2824f42a28988c2a398a7ebc5",
+    "operation_id": "op_cd5d16a511334bf3b5aa60cb8e1f7ee6",
+    "request_hash": "sha256:b237fd34fdb263da2af6685ae0540427141537c1abc6ec8303d0463c79266625",
+    "candidates": [
+      {
+        "asset": {
+          "id": "sha256:572545c7809e33ad00e642d40c5b3c65ebecfa3abbf233b8924292e26d30a5ad",
+          "byte_size": 5292044,
+          "created_at": "2026-09-13T11:20:50.507512Z",
+          "representations": [
+            {
+              "id": "rep_b0528ec314976234a7ae87c1",
+              "asset_id": "sha256:572545c7809e33ad00e642d40c5b3c65ebecfa3abbf233b8924292e26d30a5ad",
+              "role": "model_native",
+              "media_type": "audio/wav",
+              "sample_rate": 44100,
+              "channels": 2,
+              "frame_count": 1323000,
+              "duration_seconds": 30.0,
+              "native_sample_rate": 44100,
+              "resampling_method": null,
+              "binary_url": "/v1/representations/rep_b0528ec314976234a7ae87c1/content",
+              "metadata": {
+                "backend": "underfit.stable_audio_3",
+                "backend_revision": "underfit:e336b3d330e5f0648cf5da36736fd07c45b2329b;stable-audio-3:779434a908193105335fd8d833418603625b2859",
+                "generation_controls": {
+                  "apg_scale": 1.0,
+                  "cfg": 1.5,
+                  "cfg_interval_max": 1.0,
+                  "cfg_interval_min": 0.0,
+                  "cfg_norm_threshold": 0.0,
+                  "cfg_rescale": 0.0,
+                  "chunked_decode": true,
+                  "duration_padding_seconds": 2.0,
+                  "init_noise_level": 0.65,
+                  "sampler_type": null,
+                  "steps": 50
+                },
+                "lora_checkpoints": [
+                  {
+                    "interval_max": 0.92,
+                    "interval_min": 0.0,
+                    "layer_filter": "",
+                    "path": "mancini-experiment-in-terror/step-1000.safetensors",
+                    "sha256": "3769f0e3282ea970a5c953933216f84c847478cfc51213c7adfa3f5a98762364",
+                    "strength": 0.85
+                  }
+                ],
+                "model_name": "small-music-base",
+                "operation_id": "op_cd5d16a511334bf3b5aa60cb8e1f7ee6",
+                "request_hash": "sha256:b237fd34fdb263da2af6685ae0540427141537c1abc6ec8303d0463c79266625",
+                "seed": 1962,
+                "stable_audio_3_revision": "779434a908193105335fd8d833418603625b2859",
+                "underfit_revision": "e336b3d330e5f0648cf5da36736fd07c45b2329b",
+                "wav": {
+                  "channels": 2,
+                  "duration_seconds": 30.0,
+                  "format": "WAV",
+                  "frame_count": 1323000,
+                  "sample_rate": 44100,
+                  "subtype": "PCM_16"
+                }
+              }
+            }
+          ],
+          "metadata": {
+            "backend": "underfit.stable_audio_3",
+            "backend_revision": "underfit:e336b3d330e5f0648cf5da36736fd07c45b2329b;stable-audio-3:779434a908193105335fd8d833418603625b2859",
+            "generation_controls": {
+              "apg_scale": 1.0,
+              "cfg": 1.5,
+              "cfg_interval_max": 1.0,
+              "cfg_interval_min": 0.0,
+              "cfg_norm_threshold": 0.0,
+              "cfg_rescale": 0.0,
+              "chunked_decode": true,
+              "duration_padding_seconds": 2.0,
+              "init_noise_level": 0.65,
+              "sampler_type": null,
+              "steps": 50
+            },
+            "lora_checkpoints": [
+              {
+                "interval_max": 0.92,
+                "interval_min": 0.0,
+                "layer_filter": "",
+                "path": "mancini-experiment-in-terror/step-1000.safetensors",
+                "sha256": "3769f0e3282ea970a5c953933216f84c847478cfc51213c7adfa3f5a98762364",
+                "strength": 0.85
+              }
+            ],
+            "model_name": "small-music-base",
+            "operation_id": "op_cd5d16a511334bf3b5aa60cb8e1f7ee6",
+            "request_hash": "sha256:b237fd34fdb263da2af6685ae0540427141537c1abc6ec8303d0463c79266625",
+            "seed": 1962,
+            "stable_audio_3_revision": "779434a908193105335fd8d833418603625b2859",
+            "underfit_revision": "e336b3d330e5f0648cf5da36736fd07c45b2329b"
+          }
+        },
+        "operation_id": "op_cd5d16a511334bf3b5aa60cb8e1f7ee6",
+        "index": 0,
+        "seed": 1962,
+        "native_representation_id": "rep_b0528ec314976234a7ae87c1",
+        "proxy_representation_id": "rep_6d9404d6e738570ee100d941",
+        "splice_preview_representation_id": "rep_dfa82fec2fd83a1249139bf0",
+        "native_representation": {
+          "id": "rep_b0528ec314976234a7ae87c1",
+          "asset_id": "sha256:572545c7809e33ad00e642d40c5b3c65ebecfa3abbf233b8924292e26d30a5ad",
+          "role": "model_native",
+          "media_type": "audio/wav",
+          "sample_rate": 44100,
+          "channels": 2,
+          "frame_count": 1323000,
+          "duration_seconds": 30.0,
+          "native_sample_rate": 44100,
+          "resampling_method": null,
+          "binary_url": "/v1/representations/rep_b0528ec314976234a7ae87c1/content",
+          "metadata": {
+            "backend": "underfit.stable_audio_3",
+            "backend_revision": "underfit:e336b3d330e5f0648cf5da36736fd07c45b2329b;stable-audio-3:779434a908193105335fd8d833418603625b2859",
+            "generation_controls": {
+              "apg_scale": 1.0,
+              "cfg": 1.5,
+              "cfg_interval_max": 1.0,
+              "cfg_interval_min": 0.0,
+              "cfg_norm_threshold": 0.0,
+              "cfg_rescale": 0.0,
+              "chunked_decode": true,
+              "duration_padding_seconds": 2.0,
+              "init_noise_level": 0.65,
+              "sampler_type": null,
+              "steps": 50
+            },
+            "lora_checkpoints": [
+              {
+                "interval_max": 0.92,
+                "interval_min": 0.0,
+                "layer_filter": "",
+                "path": "mancini-experiment-in-terror/step-1000.safetensors",
+                "sha256": "3769f0e3282ea970a5c953933216f84c847478cfc51213c7adfa3f5a98762364",
+                "strength": 0.85
+              }
+            ],
+            "model_name": "small-music-base",
+            "operation_id": "op_cd5d16a511334bf3b5aa60cb8e1f7ee6",
+            "request_hash": "sha256:b237fd34fdb263da2af6685ae0540427141537c1abc6ec8303d0463c79266625",
+            "seed": 1962,
+            "stable_audio_3_revision": "779434a908193105335fd8d833418603625b2859",
+            "underfit_revision": "e336b3d330e5f0648cf5da36736fd07c45b2329b",
+            "wav": {
+              "channels": 2,
+              "duration_seconds": 30.0,
+              "format": "WAV",
+              "frame_count": 1323000,
+              "sample_rate": 44100,
+              "subtype": "PCM_16"
+            }
+          }
+        },
+        "proxy_representation": {
+          "id": "rep_6d9404d6e738570ee100d941",
+          "asset_id": "sha256:f6fea40f72666e09bbc609d7796f78274b9cd9e2ee78a46d4c230515ec810632",
+          "role": "audition_proxy",
+          "media_type": "audio/wav",
+          "sample_rate": 48000,
+          "channels": 2,
+          "frame_count": 1440000,
+          "duration_seconds": 30.0,
+          "native_sample_rate": 44100,
+          "resampling_method": "libsoxr_hq",
+          "binary_url": "/v1/representations/rep_6d9404d6e738570ee100d941/content",
+          "metadata": {
+            "project_sample_rate": 48000,
+            "source_asset_id": "sha256:572545c7809e33ad00e642d40c5b3c65ebecfa3abbf233b8924292e26d30a5ad",
+            "wav": {
+              "channels": 2,
+              "duration_seconds": 30.0,
+              "format": "WAV",
+              "frame_count": 1440000,
+              "sample_rate": 48000,
+              "subtype": "FLOAT"
+            }
+          }
+        },
+        "splice_preview_representation": {
+          "id": "rep_dfa82fec2fd83a1249139bf0",
+          "asset_id": "sha256:7aa3040715d64b55a5d5e5900f7357ab0a87466a358077aff5425b1876b7bc8e",
+          "role": "splice_preview",
+          "media_type": "audio/wav",
+          "sample_rate": 48000,
+          "channels": 2,
+          "frame_count": 213600,
+          "duration_seconds": 4.45,
+          "native_sample_rate": 48000,
+          "resampling_method": "identity",
+          "binary_url": "/v1/representations/rep_dfa82fec2fd83a1249139bf0/content",
+          "metadata": {
+            "candidate_asset_id": "sha256:572545c7809e33ad00e642d40c5b3c65ebecfa3abbf233b8924292e26d30a5ad",
+            "crossfade": "equal_power",
+            "crossfade_seconds": 0.05,
+            "peak_guarded": true,
+            "source_asset_id": "sha256:0b80bac5e1c27faad60bf3eb6701a0795a4c62c673656a1889564983f2a4d365",
+            "wav": {
+              "channels": 2,
+              "duration_seconds": 4.45,
+              "format": "WAV",
+              "frame_count": 213600,
+              "sample_rate": 48000,
+              "subtype": "FLOAT"
+            }
+          }
+        },
+        "score": null,
+        "gesture_evaluation": null,
+        "rating": null,
+        "selected": false,
+        "annotation": null
+      }
+    ],
+    "created_at": "2026-09-13T11:20:50.552694Z"
+  }
+}

@@ -312,83 +312,25 @@
         #hud .hud-group, #hud .hud-button { border: 0; background: #000; }
         #hud button:focus-visible, #feature-review button:focus-visible,
         #hud select:focus-visible { color: var(--accent); }
-        #hud #xray-toggle.is-active { background: var(--accent); color: #000; }
+        #hud #xray-toggle.is-active, #hud #camera-link.is-active { background: var(--accent); color: #000; }
         #xray-tools { flex-wrap: wrap; }
         #viewer-tools { display: contents; }
         .viewer-tool { user-select: none; }
+        #hud .viewer-tool .hud-button.is-active { background: var(--accent); color: #000; }
         .viewer-tool input, .viewer-tool textarea, .viewer-tool [role="status"] { user-select: text; }
         #glb-status { max-width: 28em; white-space: normal; user-select: text; -webkit-user-select: text; }
         #glb-status.is-error { color: #ff7777; }
         #feature-region-box { position: fixed; border: 1px dashed #fff; pointer-events: none; z-index: 8; }
-        #feature-angle-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-        #feature-angle { width: 140px; accent-color: var(--accent); }
-        #feature-angle-value { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
-        #feature-tools select, #feature-review button, #feature-review textarea {
-            font: inherit; color: var(--ink); background: #242424; border: 0; border-radius: 6px;
-        }
+        .viewer-tool select { font: inherit; color: var(--ink); background: #242424; border: 0; border-radius: 6px; }
         #hud-left { flex: 1; min-width: 0; flex-wrap: wrap; }
         #hud-right { flex-shrink: 1; }
         @media (max-width: 760px) { #hud { flex-wrap: wrap; } #hud-left, #hud-right { flex-basis: 100%; max-width: 100%; } }
-        #inspector-group, #feature-tools { flex-wrap: wrap; }
-        #feature-tools { background: #000; }
-        #feature-tools label { padding-left: 6px; }
-        #feature-tools label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-        #feature-tools button { white-space: nowrap; }
-        #feature-tools select {
+        #inspector-group { flex-wrap: wrap; }
+        .viewer-tool select {
             appearance: none; max-width: 110px; height: 28px; padding: 4px 30px 4px 10px;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23e7eef8' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
             background-repeat: no-repeat; background-position: right 10px center;
         }
-        #feature-description { white-space: pre-line; }
-        #feature-review {
-            position: absolute; bottom: 38px; left: 12px; z-index: 10; padding: 16px;
-            width: min(360px, calc(100% - 24px)); max-height: calc(100% - 110px); overflow: auto;
-            background: #000; border: 0; border-radius: 8px; font-size: 12px;
-        }
-        #feature-review p { margin: 0 0 12px; overflow-wrap: anywhere; }
-        #feature-review textarea { display: block; width: 100%; resize: vertical; padding: 10px; margin: 6px 0 12px; }
-        #feature-review button { padding: 7px 10px; cursor: pointer; }
-        #feature-review #feature-save { background: var(--accent); color: #000; }
-        #feature-review #feature-save:focus-visible { background: #b4edff; }
-        #feature-review button:disabled { opacity: .4; cursor: default; }
-        #feature-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-        #feature-message { color: var(--muted); margin: 10px 0 0 !important; }
-        #feature-message[data-error="true"] { color: #ff7070; }
-
-        #review-inbox {
-            position: absolute; right: 12px; bottom: 38px; z-index: 11; width: min(420px, calc(100% - 24px));
-            max-height: calc(100% - 110px); overflow: auto; background: #000; border-radius: 8px; padding: 16px;
-            font-size: 12px; user-select: none; -webkit-user-select: none;
-        }
-        #review-inbox :focus { outline: none; box-shadow: none; }
-        #review-inbox button, #review-inbox textarea { font: inherit; border: 0; border-radius: 6px; padding: 8px 10px; background: #242424; color: var(--ink); }
-        #review-inbox textarea { width: 100%; display: block; margin: 6px 0 12px; resize: vertical; user-select: text; -webkit-user-select: text; }
-        #review-inbox button { cursor: pointer; }
-        #review-inbox button:focus-visible { color: var(--accent); }
-        #review-inbox button:disabled { opacity: .4; cursor: default; }
-        #review-inbox .review-primary { background: var(--accent); color: #000; }
-        #review-inbox .review-primary:focus-visible { background: #b4edff; }
-        #review-inbox .review-copy { user-select: text; -webkit-user-select: text; white-space: pre-wrap; overflow-wrap: anywhere; }
-        #review-inbox .review-meta, #review-counts { color: var(--muted); }
-        #review-inbox .review-error { color: #ff7070; }
-        #review-inbox p { margin: 8px 0 12px; }
-        #review-inbox summary { padding: 10px 0; cursor: pointer; overflow-wrap: anywhere; }
-        #review-inbox details + details { margin-top: 8px; }
-        #review-inbox .review-entry { margin: 12px 0; padding: 8px 12px; background: #141414; border-radius: 6px; }
-        #review-inbox a { display: inline-block; margin: 8px 12px 8px 0; color: var(--accent); }
-        #review-inbox .review-evidence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0 18px; }
-        #review-inbox .review-evidence-link {
-            display: flex; flex-direction: column; gap: 10px; min-width: 0; margin: 0; padding: 10px;
-            background: #181818; border-radius: 6px; text-decoration: none;
-        }
-        #review-inbox .review-evidence-link:hover, #review-inbox .review-evidence-link:focus-visible { background: #282828; color: #b4edff; }
-        #review-inbox .review-evidence-link img { display: block; width: 100%; aspect-ratio: 8 / 5; object-fit: contain; background: #000; border-radius: 4px; }
-        #review-inbox .review-evidence-link img[hidden] { display: none; }
-        #review-inbox .review-evidence-link span { padding: 0 2px 2px; }
-        #review-inbox label { display: block; margin-top: 12px; }
-        #review-inbox input[type=checkbox] { accent-color: var(--accent); }
-        .review-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-
         #marquee {
             position: absolute;
             z-index: 9;
@@ -458,17 +400,11 @@
                 <b id="xray-readout">12%</b>
             </label>
             <button type="button" class="hud-button" id="export-glb" title="Download visible geometry with its current positions and materials">Export GLB</button>
+            <button type="button" class="hud-button" id="camera-link" aria-label="Link camera" aria-pressed="false" disabled title="Link cameras with other opted-in views in this document">Link camera</button>
             <span id="glb-status" role="status" aria-live="polite"></span>
         </div>
         <div id="viewer-tools"></div>
         <div class="hud-group hidden" id="feature-tools">
-            <label>Pick <select id="feature-mode" aria-label="Pick a model feature">
-                <option value="off">Off</option><option value="point">Point</option><option value="face">Face</option>
-                <option value="edge">Edge</option><option value="vertex">Vertex</option><option value="region">Rectangle</option>
-            </select></label>
-            <button type="button" class="hud-button" id="feature-load">Load note</button>
-            <button type="button" class="hud-button" id="feature-inbox">Notes</button>
-            <input type="file" id="feature-file" accept=".json,application/json" hidden>
         </div>
     </div>
     <div id="hud-right">
@@ -480,24 +416,11 @@
 </div>
 <div id="feature-region-box" class="hidden"></div>
 <div id="feature-review" class="hidden" aria-label="Selected model feature">
-    <label id="feature-angle-wrap" class="hidden">Angle <input id="feature-angle" type="range" value="0" min="-180" max="180" step="5" aria-label="Rectangle angle"> <output id="feature-angle-value" for="feature-angle">0°</output></label>
-    <p id="feature-description">Click a feature to identify it.</p>
-    <label>Note<textarea id="feature-note" rows="2" placeholder="What should change here?"></textarea></label>
-    <div id="feature-actions">
-        <button type="button" id="feature-copy">Copy reference</button>
-        <button type="button" id="feature-save">Save note</button>
-        <button type="button" id="feature-clear">Clear</button>
-    </div>
-    <p id="feature-message" aria-live="polite"></p>
-    <textarea id="feature-reference" class="hidden" rows="4" readonly aria-label="Feature reference to copy"></textarea>
+
 </div>
 
 <div id="review-inbox" class="hidden" aria-label="Geometry review threads">
-    <div class="review-actions"><button type="button" id="review-refresh">Refresh</button><button type="button" id="review-close">Close</button></div>
-    <label><input type="checkbox" id="review-completed"> Include resolved</label>
-    <p id="review-counts"></p>
-    <p id="review-error" class="review-copy review-error" aria-live="polite"></p>
-    <div id="review-threads"></div>
+
 </div>
 
 <script>
@@ -535,7 +458,12 @@ if (window.location.protocol === 'file:') {
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mountReviewInbox } from '/geometry_review_inbox.js';
+import { mountReviewControls } from '/geometry_review_controls.js';
+const reviewControls = mountReviewControls(document.getElementById('feature-tools'), document.getElementById('feature-review'));
 import { createViewerTools } from '/threejs_tools.js';
+import { createCameraLink, createTurntable } from '/threejs_camera_link.js';
+import { createShot, explodePositions, xrayOpacity as shotOpacity } from '/threejs_shot.js';
 
 const container = document.getElementById('canvas-wrap');
 const marqueeEl = document.getElementById('marquee');
@@ -595,12 +523,20 @@ const viewerTools = createViewerTools({
     host: document.getElementById('viewer-tools'), requestRender,
     context: element => {
         const overlays = new THREE.Group(); scene.add(overlays);
-        return {THREE, camera, controls, overlays, inspector: window.FieldInspector,
+        return {THREE, camera, controls, overlays, inspector: window.FieldInspector, surface: renderer.domElement,
+            interactionBusy: () => featureModeEl.value !== 'off' || inspectorState.measuring,
             sources: () => featureSources().map(s => ({id:s.id, label:s.label, object:s.slot.object})),
             release: () => scene.remove(overlays)};
     }
 });
-window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools});
+let captureState = {ready:false, error:null, revision:null};
+window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
+    turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
+    captureStatus: () => {
+        const tools = viewerTools.status(), render = renderScheduler.stats();
+        return {...captureState, ready:captureState.ready && !tools.pending.length && !tools.error &&
+            render.visible && render.frames > 0, error:captureState.error || tools.error};
+    }});
 let glbExporting = false;
 async function exportGLB({download=true} = {}) {
     if (glbExporting) throw new Error('An export is already in progress.');
@@ -665,6 +601,86 @@ controls.rotateSpeed = 0.7;
 controls.zoomSpeed = 0.9;
 controls.panSpeed = 0.6;
 controls.addEventListener('change', requestRender);
+let cameraWasMoved = false;
+controls.addEventListener('start', () => { cameraWasMoved = true; });
+// OrbitControls 0.184 caches the up-axis basis on construction. Keep that basis in
+// sync when a linked view or saved camera uses a different canonical up direction.
+function cameraUp(up) {
+    camera.up.fromArray(up).normalize();
+    controls._quat.setFromUnitVectors(camera.up, new THREE.Vector3(0, 1, 0));
+    controls._quatInverse.copy(controls._quat).invert();
+}
+// A box can ask for a slow turn (`turntable(…)`). A press, wheel or key here holds it, and so does
+// a person moving a linked view; it resumes once the payload's pause has passed. It turns only while
+// this frame is on screen and the page is visible, and asks for frames only while it turns.
+let onScreen = true;
+if (typeof IntersectionObserver === 'function') new IntersectionObserver(entries => {
+    const next = entries[entries.length - 1].isIntersecting;
+    if (next !== onScreen) { onScreen = next; requestRender(); }
+}).observe(container);
+const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.random().toString(36).slice(2)}`,
+    visible: () => onScreen, wake: ms => setTimeout(requestRender, ms)});
+// A box can ask for a looping presentation move (`shot(…)`): the camera dollies while the model explodes
+// and goes see-through, on the wall clock, held by the same interactions as the turntable. `shotDistance`
+// is this frame's dolly, read by the panel cameras; `shotAppliedDistance` is what the single camera has.
+const shot = createShot({wake: ms => setTimeout(requestRender, ms)});
+let shotDistance = 1, shotAppliedDistance = 1;
+// About the target and the view's up axis. Positive turns the model anticlockwise seen from above.
+// `cameraTurned` lets a resize refit an untouched view without undoing the turn.
+let cameraTurned = false;
+function turnCamera(angle) {
+    if (!angle) return;
+    camera.position.sub(controls.target).applyAxisAngle(camera.up, -angle).add(controls.target);
+    cameraTurned = true;
+}
+const cameraLinkButton = document.getElementById('camera-link');
+let cameraLinkOn = false;
+const cameraLink = createCameraLink({
+    tag: () => turntable.driving() ? {drive: turntable.key()} : null,
+    heard: message => turntable.heard(message),
+    read: () => ({eye:camera.position.toArray(),target:controls.target.toArray(),up:camera.up.toArray(),
+        fov:camera.fov,zoom:camera.zoom,near:camera.near,far:camera.far}),
+    write: pose => {
+        // Drain local inertial motion before applying a remote pose, preventing echo/drift.
+        const damping = controls.enableDamping;
+        controls.enableDamping = false; controls.update();
+        camera.position.fromArray(pose.eye); controls.target.fromArray(pose.target); cameraUp(pose.up);
+        camera.fov=pose.fov; camera.zoom=pose.zoom; camera.near=pose.near; camera.far=pose.far;
+        const distance=camera.position.distanceTo(controls.target);
+        controls.minDistance=Math.min(controls.minDistance,distance*.5);
+        controls.maxDistance=Math.max(controls.maxDistance,distance*2);
+        camera.updateProjectionMatrix(); controls.update(); controls.enableDamping=damping;
+        cameraWasMoved=true; requestRender();
+    },
+    changed: state => {
+        cameraLinkButton.disabled=!state.available;
+        cameraLinkButton.classList.toggle('is-active',state.enabled);
+        cameraLinkButton.setAttribute('aria-pressed',String(state.enabled));
+        cameraLinkButton.textContent=state.enabled?'Camera linked':'Link camera';
+        cameraLinkButton.title=state.enabled?'Orbit, pan and zoom are shared with linked views in this document. Click to unlink.':
+            'Link cameras with other opted-in views in this document; display and notes stay independent';
+        if (state.enabled !== cameraLinkOn) { cameraLinkOn = state.enabled; turntable.linked(state.enabled); }
+    }
+});
+// `linkCamera()` starts the view linked. A request applies when it changes, so re-running the box
+// does not undo the human's unlink, and withdrawing it releases only a link the request made.
+let requestedCameraLink = null, linkFromRequest = false;
+function applyCameraLinkRequest(request) {
+    const next = request ? JSON.stringify(request) : null;
+    if (next === requestedCameraLink || !cameraLink.status().available) return;
+    requestedCameraLink = next;
+    const on = cameraLink.status().enabled;
+    if (request && !on) { cameraLink.setEnabled(true); linkFromRequest = cameraLink.status().enabled; }
+    else if (!request && on && linkFromRequest) { cameraLink.setEnabled(false); linkFromRequest = false; }
+}
+cameraLinkButton.addEventListener('click',()=>{linkFromRequest=false;cameraLink.setEnabled(!cameraLink.status().enabled);});
+controls.addEventListener('change',()=>cameraLink.localChanged());
+controls.addEventListener('start',()=>{cameraLink.dragging(true);turntable.hold(true);shot.hold(true);});
+controls.addEventListener('end',()=>{cameraLink.dragging(false);turntable.hold(false);shot.hold(false);cameraLink.localChanged();});
+for (const type of ['pointerdown', 'wheel', 'keydown'])
+    document.addEventListener(type, () => { turntable.nudge(); shot.nudge(); cameraLink.busy(); }, { capture: true, passive: true });
+window.addEventListener('pagehide',()=>cameraLink.dispose());
+let appliedCameraSpec = null, cameraViewport = null;
 renderer.domElement.addEventListener('webglcontextlost', () => { contextAvailable = false; renderScheduler.visibilityChanged(); });
 renderer.domElement.addEventListener('webglcontextrestored', () => { contextAvailable = true; renderScheduler.visibilityChanged(); });
 
@@ -1114,9 +1130,14 @@ function typedArrayCtor(type) {
     return Float32Array;
 }
 
+/**
+ * Always a copy. A description's arrays are typed views of its buffer response, and handing one to a
+ * BufferAttribute uncopied would let the explode, which writes positions in place, rewrite the message
+ * the viewer keeps (`wireState.base`) to redraw after a style change.
+ */
 function typedArrayFromSpec(spec, fallbackType = 'Float32Array') {
     const Ctor = typedArrayCtor(spec?.type || fallbackType);
-    return spec?.array instanceof Ctor ? spec.array : new Ctor(spec?.array || []);
+    return new Ctor(spec?.array || []);
 }
 
 function makeDynamicAttribute(spec, fallbackType = 'Float32Array') {
@@ -1388,7 +1409,7 @@ function makePointMaterial() {
                 vec2 uv = gl_PointCoord - vec2(0.5);
                 float dist = dot(uv, uv);
                 if (dist > 0.25) discard;
-                float shapeAlpha = smoothstep(0.25, 0.02, dist);
+                float shapeAlpha = 1.0 - smoothstep(0.02, 0.25, dist);
                 gl_FragColor = vec4(vColor.rgb, vColor.a * shapeAlpha);
             }
         `,
@@ -1577,7 +1598,7 @@ function makeInteractivePointMaterial(hoverColor) {
                 vec2 uv = gl_PointCoord - vec2(0.5);
                 float dist = dot(uv, uv);
                 if (dist > 0.25) discard;
-                float shapeAlpha = smoothstep(0.25, 0.02, dist);
+                float shapeAlpha = 1.0 - smoothstep(0.02, 0.25, dist);
                 vec3 c = mix(vColor.rgb, uHoverColor, uHover);
                 float a = mix(vColor.a, uHoverAlpha, uHover);
                 gl_FragColor = vec4(c, a * shapeAlpha);
@@ -3338,7 +3359,14 @@ function addPayloadDrawables(list) {
             },
             // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
             // hovering solid has to carry it exactly as an interactive FLine fill does.
-            configureObject: (object, material) => { object.userData.interactiveMat = material; }
+            //
+            // A part's own x-ray opacity (ThreePartAppearance.xrayOpacity) belongs here too. It sat in the
+            // interactive-lines options from 2026-10-04 to 10-07, where `d` is not defined: every
+            // clickable stroked FLine threw on build, and no part's x-ray opacity was ever applied.
+            configureObject: (object, material) => {
+                object.userData.interactiveMat = material;
+                if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
+            }
         });
         if (!slot) return;
 
@@ -3350,6 +3378,18 @@ function addPayloadDrawables(list) {
         // says nothing about whether this is a surface. The section's cut outline needs to know.
         slot.kindOfDraw = kind;
         slot.fitSample = fitSampleOf(d.geometry);
+        // What a shot moves: explode offsets (an `explode` attribute beside `position`) and x-ray (a solid
+        // opacity to mix the authored one from). The base positions are kept so explode 0 is exact.
+        const explodeAttribute = slot.object.geometry.getAttribute('explode');
+        const positionAttribute = slot.object.geometry.getAttribute('position');
+        if (explodeAttribute && positionAttribute && explodeAttribute.array.length === positionAttribute.array.length) {
+            slot.explode = {base: Float32Array.from(positionAttribute.array), offsets: explodeAttribute.array, applied: 0};
+            // An exploded part leaves the bounds three.js culls by; culling it would blink it out at the edges.
+            slot.object.frustumCulled = false;
+        }
+        if (kind === 'surface' && Number.isFinite(d.style?.solidOpacity)) {
+            slot.shotOpacity = {solid: d.style.solidOpacity, authored: slot.material.opacity};
+        }
         if (d.transform && d.transform.length === 16) {
             slot.object.matrixAutoUpdate = false;
             slot.object.matrix.fromArray(d.transform);
@@ -4153,11 +4193,18 @@ function inspectorDiagonal(bounds) {
  * whose fill is in another must have one centroid, not two.
  */
 function inspectorCapture(payload) {
+    const previousRevision = featureIdentity();
+    const previousArtifact = inspectorState.spec?.artifactDigest || featurePayload?.revision;
     featurePayload=payload; featureSourceCache=null; partSolo=null;
     const spec = payload.inspector || {enabled:false,artifactDigest:payload.revision,section:{},renderOrigin:[0,0,0]};
-    const sameArtifact = spec && inspectorState.spec && spec.artifactDigest && spec.artifactDigest === inspectorState.spec.artifactDigest;
-    if (!sameArtifact) { inspectorState.hidden = new Set(); inspectorState.assemblyStep = null; inspectorState.selectedPart = null; inspectorState.selectedTriangle = null; inspectorState.selection = null; featureNoteEl.value=''; }
+    const artifact = spec.artifactDigest || payload.revision;
+    // Assembly visibility belongs to the canonical parts; notes belong to the whole mixed scene.
+    if (!artifact || artifact !== previousArtifact) { inspectorState.hidden = new Set(); inspectorState.assemblyStep = null; }
     inspectorState.spec = spec;
+    if (!previousRevision || previousRevision !== featureIdentity()) {
+        inspectorState.selectedPart = null; inspectorState.selectedTriangle = null;
+        inspectorState.selection = null; featureNoteEl.value='';
+    }
     inspectorState.bounds = payload.bounds || null;
     inspectorState.diagonal = inspectorDiagonal(payload.bounds);
     inspectorState.picked = [];
@@ -4581,14 +4628,13 @@ function inspectorRebuildOverlay() {
 let featurePayload = null, featureSourceCache = null;
 const featureModeEl = document.getElementById('feature-mode');
 const featureNoteEl = document.getElementById('feature-note');
-const featureMessageEl = document.getElementById('feature-message');
 let featureSaving = false;
 function featureMessage(message, error=false) {
-    featureMessageEl.textContent=message; featureMessageEl.dataset.error=String(error);
+    reviewControls.message(message,error);
 }
 
 const featureClone = value => value == null ? null : JSON.parse(JSON.stringify(value));
-function featureIdentity() { return inspectorState.spec?.artifactDigest || featurePayload?.revision || null; }
+function featureIdentity() { return featurePayload?.revision || inspectorState.spec?.artifactDigest || null; }
 function featureToDisplay(point) {
     const origin=inspectorState.spec?.renderOrigin || [0,0,0];
     const p=point.map((v,i)=>v-origin[i]);
@@ -4867,16 +4913,6 @@ renderer.domElement.addEventListener('pointerup',event=>{
     if(region.width>.002&&region.height>.002)try {featureRegion(region,true);}catch(e){featureMessage(String(e),true);}
 },true);
 renderer.domElement.addEventListener('pointercancel',()=>{featureDrag=null;controls.enabled=true;featureRectangleBox(null);},true);
-document.getElementById('feature-angle').oninput=()=>{
-    const angle=Number(document.getElementById('feature-angle').value);
-    document.getElementById('feature-angle-value').textContent=angle+'°';
-    // Preview while dragging; resolve visible surfaces once the slider is released.
-    if(inspectorState.selection?.region)featureRectangleBox({...inspectorState.selection.region,angle});
-};
-document.getElementById('feature-angle').onchange=()=>{
-    if(inspectorState.selection?.region)try{featureRegion({...featureDisplayRegion(inspectorState.selection.region),angle:Number(document.getElementById('feature-angle').value)},true);}catch(e){featureMessage(String(e),true);}
-};
-
 function featurePick(x,y,kind='face',publish=false) {
     if(panelState.cameras.length>1)throw new Error('Feature review currently requires a single viewport');
     if(!['point','face','edge','vertex'].includes(kind)||![x,y].every(v=>Number.isFinite(v)&&v>=0&&v<=1))throw new Error('Pick uses normalized canvas coordinates and face, edge or vertex');
@@ -5011,106 +5047,45 @@ function featureReview(record) {
     if(typeof record.text!=='string')throw new Error('Invalid note');
     inspectorRestore(record.view);featureNoteEl.value=record.text;featureHud();return inspectorSnapshot();
 }
-featureModeEl.onchange=()=>{inspectorState.measuring=false;featureHud();};
-document.getElementById('feature-clear').onclick=()=>{featureSet(null,true);featureModeEl.value='off';featureNoteEl.value='';featureHud();};
-document.getElementById('feature-copy').onclick=async()=>{
-    const text=JSON.stringify(featureObservation(featureNoteEl.value),null,2);
-    try {await navigator.clipboard.writeText(text);featureMessage('Reference copied. Paste it into your agent conversation.');}
-    catch(_) {const area=document.getElementById('feature-reference');area.value=text;area.classList.remove('hidden');area.focus();area.select();featureMessage('Copy this selected reference.');}
-};
-document.getElementById('feature-save').onclick=()=>{
-    if(featureSaving)return;
-    try {
+reviewControls.bind({
+    mode: () => { inspectorState.measuring=false; featureHud(); },
+    clear: () => { featureSet(null,true); featureHud(); },
+    angle: (angle, commit) => {
+        const region=inspectorState.selection?.region;
+        if(!region)return;
+        if(commit)featureRegion({...featureDisplayRegion(region),angle},true);
+        else featureRectangleBox({...region,angle});
+    },
+    reference: featureObservation,
+    save: text => {
+        if(featureSaving)return;
         if(!wsState.ws || wsState.ws.readyState!==WebSocket.OPEN)throw new Error('Field is disconnected; reconnect before saving');
-        const record=featureObservation(featureNoteEl.value);
-        record.evidence=featureCaptureEvidence(record);
-        featureSaving=true; featureHud();
-        sendMessage({type:'three-observation',revision:featureIdentity(),record});
+        const record=featureObservation(text);record.evidence=featureCaptureEvidence(record);
+        featureSaving=true;featureHud();sendMessage({type:'three-observation',revision:featureIdentity(),record});
         featureMessage('Saving note and images…');
-    } catch(e) { featureSaving=false; featureHud(); featureMessage(String(e),true); }
-};
-document.getElementById('feature-load').onclick=()=>document.getElementById('feature-file').click();
-document.getElementById('feature-file').onchange=async event=>{
-    try {featureReview(JSON.parse(await event.target.files[0].text()));}
-    catch(e){featureMessage(String(e),true);document.getElementById('feature-review').classList.remove('hidden');}
-    event.target.value='';
-};
+    },
+    load: featureReview,
+    notes: () => {
+        if(reviewInboxEl.hidden||reviewInboxEl.classList.contains('hidden'))return reviewInbox.open();
+        reviewInbox.close();
+    }
+});
 
 // A thread is durable context. Reading it never acknowledges it or moves the camera.
 const reviewInboxEl=document.getElementById('review-inbox');
-const reviewThreadsEl=document.getElementById('review-threads');
-const reviewErrorEl=document.getElementById('review-error');
-const reviewDrafts=new Map(), reviewExpanded=new Set();
-let reviewLoadSerial=0;
-function reviewText(parent,tag,text,className='') {
-    const el=document.createElement(tag);el.textContent=text;el.className=className;parent.append(el);return el;
-}
-async function reviewLoadThreads() {
-    const serial=++reviewLoadSerial;
-    reviewErrorEl.textContent='';
-    try {
-        const response=await fetch('/three-review?'+new URLSearchParams({uid:clientUid,includeResolved:String(document.getElementById('review-completed').checked)}));
-        if(!response.ok)throw new Error(await response.text()||'Could not read notes');
-        const inbox=await response.json();if(serial!==reviewLoadSerial)return;
-        document.getElementById('review-counts').textContent=`${inbox.openCount} open · ${inbox.resolvedCount} resolved`;
-        reviewThreadsEl.replaceChildren();
-        if(!inbox.notes.length)reviewText(reviewThreadsEl,'p','No open notes. Include resolved to read completed threads.','review-copy');
-        for(const note of inbox.notes) {
-            const card=document.createElement('details');card.dataset.noteId=note.id;card.open=reviewExpanded.has(note.id);reviewThreadsEl.append(card);
-            card.ontoggle=()=>{if(card.open)reviewExpanded.add(note.id);else reviewExpanded.delete(note.id);};
-            reviewText(card,'summary',`${note.status||'open'} · ${note.text.slice(0,80)}${note.text.length>80?'…':''} · ${(note.replies||[]).length} ${(note.replies||[]).length===1?'reply':'replies'}`);
-            reviewText(card,'p',note.text,'review-copy');
-            reviewText(card,'p',`Recorded ${note.createdAt||''} · geometry ${String(note.artifactDigest).slice(0,12)}`,'review-copy review-meta');
-            if(note.artifactDigest===featureIdentity()) {
-                const show=reviewText(card,'button','Show feature');show.type='button';
-                show.onclick=()=>{try {featureReview(note);}catch(error){reviewErrorEl.textContent=String(error);}};
-            } else reviewText(card,'p','Earlier geometry. Its saved evidence remains available.','review-copy review-meta');
-            let evidenceGallery=null;
-            if(note.evidence)for(const kind of ['context','crop']) {
-                const hash=note.evidence[kind]?.sha256;if(!/^[0-9a-f]{64}$/.test(hash||''))continue;
-                if(!evidenceGallery)evidenceGallery=reviewText(card,'div','','review-evidence');
-                const title=kind==='context'?'Context image':'Close crop';
-                const link=reviewText(evidenceGallery,'a','','review-evidence-link');
-                link.href='/three-review-image?'+new URLSearchParams({uid:clientUid,sha256:hash});link.target='_blank';link.rel='noopener';
-                link.draggable=false;link.setAttribute('aria-label',`Open full-size ${title.toLowerCase()}`);
-                const preview=document.createElement('img');preview.alt='';preview.loading='lazy';preview.decoding='async';preview.draggable=false;
-                preview.onerror=()=>{preview.hidden=true;};preview.src=link.href;link.append(preview);
-                reviewText(link,'span',title);
-            }
-            const entries=[...(note.replies||[]).map(e=>({...e,reply:true})),...(note.history||[])].sort((a,b)=>a.version-b.version);
-            for(const entry of entries) {
-                const block=reviewText(card,'div','', 'review-entry');
-                reviewText(block,'p',`${entry.actor} · ${entry.reply?'reply':entry.status} · ${entry.at}`,'review-copy review-meta');
-                reviewText(block,'p',entry.reply?entry.text:entry.summary,'review-copy');
-                reviewText(block,'p',`Geometry ${String(entry.checkedRevision).slice(0,12)}`,'review-copy review-meta');
-            }
-            const label=reviewText(card,'label','Reply or resolution');
-            const input=document.createElement('textarea');input.rows=3;input.maxLength=16000;input.setAttribute('aria-label','Reply to annotation');
-            input.value=reviewDrafts.get(note.id)||'';input.oninput=()=>reviewDrafts.set(note.id,input.value);label.append(input);
-            const actions=reviewText(card,'div','','review-actions');
-            const reply=reviewText(actions,'button','Add reply','review-primary'), status=reviewText(actions,'button',note.status==='resolved'?'Reopen':'Resolve');
-            reply.type=status.type='button';
-            const feedback=reviewText(card,'p','','review-copy review-error');feedback.setAttribute('aria-live','polite');
-            async function write(asReply) {
-                const text=input.value.trim();if(!text){feedback.textContent='Write a reply or explain the resolution first.';return;}
-                reply.disabled=status.disabled=true;feedback.textContent='';
-                const request={id:note.id,actor:'Viewer user',checkedRevision:inbox.revision,expectedVersion:note.version||0,
-                    ...(asReply?{reply:text}:{status:note.status==='resolved'?'open':'resolved',summary:text})};
-                try {
-                    const response=await fetch('/three-review-note?'+new URLSearchParams({uid:clientUid}),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
-                    if(!response.ok)throw new Error(await response.text());
-                    reviewDrafts.delete(note.id);await reviewLoadThreads();
-                }catch(error){feedback.textContent=String(error);reply.disabled=status.disabled=false;}
-            }
-            reply.onclick=()=>write(true);status.onclick=()=>write(false);
-        }
-    } catch(error) {if(serial===reviewLoadSerial)reviewErrorEl.textContent=String(error);}
-}
-document.getElementById('feature-inbox').onclick=()=>{reviewInboxEl.classList.toggle('hidden');if(!reviewInboxEl.classList.contains('hidden'))reviewLoadThreads();};
-document.getElementById('review-close').onclick=()=>reviewInboxEl.classList.add('hidden');
-document.getElementById('review-refresh').onclick=reviewLoadThreads;
-document.getElementById('review-completed').onchange=reviewLoadThreads;
-
+const reviewInbox=mountReviewInbox(reviewInboxEl, {
+    revision:featureIdentity,
+    load:async includeResolved=>{
+        const response=await fetch('/three-review?'+new URLSearchParams({uid:clientUid,includeResolved:String(includeResolved)}));
+        if(!response.ok)throw new Error(await response.text()||'Could not read notes');return response.json();
+    },
+    write:async request=>{
+        const response=await fetch('/three-review-note?'+new URLSearchParams({uid:clientUid}),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
+        if(!response.ok)throw new Error(await response.text());return response.json();
+    },
+    show:featureReview,
+    imageUrl:(_note,_kind,hash)=>'/three-review-image?'+new URLSearchParams({uid:clientUid,sha256:hash})
+});
 // Artifact-bound state is shared by manual controls, saved reviews and agent automation.
 function inspectorPartIds() { return featureSources().map(s=>s.id).sort(); }
 function inspectorSnapshot() {
@@ -5119,7 +5094,7 @@ function inspectorSnapshot() {
         renderUpAxis: (inspectorState.spec || {}).renderUpAxis || 'Y',
         sectionFlip: !!(((inspectorState.spec || {}).section || {}).flip),
         hidden: [...inspectorState.hidden].sort(), camera: camera.position.toArray(), target: controls.target.toArray(),
-        cameraFov:camera.fov,cameraZoom:camera.zoom,cameraNear:camera.near,cameraFar:camera.far,
+        cameraUp:camera.up.toArray(),cameraFov:camera.fov,cameraZoom:camera.zoom,cameraNear:camera.near,cameraFar:camera.far,
         explode: inspectorState.explodeAmount, assemblyStep: inspectorState.assemblyStep,
         xray: xrayState.enabled, xrayOpacity: xrayState.opacity, tools: viewerTools.snapshot(),
         light: keyLight.position.toArray(), sectionEnabled: inspectorState.sectionEnabled,
@@ -5127,6 +5102,7 @@ function inspectorSnapshot() {
         selectedPart: inspectorState.selectedPart, selectedTriangle: inspectorState.selectedTriangle, selection:featureClone(inspectorState.selection) };
 }
 function inspectorRestore(state) {
+    cameraWasMoved = true;
     if (!state.artifactDigest || state.artifactDigest !== featureIdentity() ||
         JSON.stringify([...state.partIds].sort()) !== JSON.stringify(inspectorPartIds()))
         throw new Error('Inspection state belongs to different geometry; face remapping requires review');
@@ -5136,7 +5112,7 @@ function inspectorRestore(state) {
         throw new Error('Inspection state uses different display axes');
     const ids = new Set(inspectorPartIds());
     if ((state.hidden || []).some(id => !ids.has(id))) throw new Error('Unknown hidden part');
-    for (const vector of [state.camera, state.target, state.light, state.sectionNormal])
+    for (const vector of [state.camera, state.target, state.cameraUp, state.light, state.sectionNormal])
         if (vector && vector.length && (vector.length !== 3 || !vector.every(Number.isFinite))) throw new Error('Invalid view vector');
     if (!Number.isFinite(state.explode) || state.explode < 0 || !Number.isFinite(state.sectionFraction) ||
         state.sectionFraction < 0 || state.sectionFraction > 1) throw new Error('Invalid inspection parameters');
@@ -5145,6 +5121,7 @@ function inspectorRestore(state) {
     if (!state.sectionNormal || state.sectionNormal.length !== 3 || state.sectionNormal.every(v => v === 0))
         throw new Error('Section normal must be nonzero');
     if (state.selectedPart != null && !ids.has(state.selectedPart)) throw new Error('Unknown selected part');
+    if(state.cameraUp && state.cameraUp.every(v=>v===0))throw new Error('Camera up must be nonzero');
     if(state.cameraFov!=null&&(!Number.isFinite(state.cameraFov)||state.cameraFov<=0||state.cameraFov>=180))throw new Error('Invalid camera field of view');
     if((state.cameraNear!=null||state.cameraFar!=null)&&(!Number.isFinite(state.cameraNear)||!Number.isFinite(state.cameraFar)||state.cameraNear<=0||state.cameraFar<=state.cameraNear))throw new Error('Invalid camera clipping range');
     if(state.cameraZoom!=null&&(!Number.isFinite(state.cameraZoom)||state.cameraZoom<=0))throw new Error('Invalid camera zoom');
@@ -5167,6 +5144,7 @@ function inspectorRestore(state) {
     inspectorState.selection=selection;
     inspectorState.hidden = new Set(state.hidden || []); partSolo = null;
     if (state.camera && state.camera.length) camera.position.fromArray(state.camera);
+    cameraUp(state.cameraUp || [0,1,0]);
     if(state.cameraFov!=null)camera.fov=state.cameraFov;
     if(state.cameraZoom!=null)camera.zoom=state.cameraZoom;
     if(state.cameraNear!=null){camera.near=state.cameraNear;camera.far=state.cameraFar;}
@@ -5573,6 +5551,50 @@ function fitSampleOf(geometryData) {
     return out.subarray(0, w);
 }
 
+/**
+ * A turning view's fit sample: [points] (or the bounds' corners) swept round the vertical axis
+ * through the bounds' centre, so a corner that swings towards the camera stays in the frame.
+ * [limit] caps the points returned by striding the source, for fits that run once per panel.
+ */
+function sweptFitPoints(points, bounds, turning, limit = Infinity) {
+    if (!turning || !bounds || !bounds.min || !bounds.max) return points;
+    const source = points && points.length >= 3 ? points : Float32Array.from({length: 24}, (_, k) =>
+        ((k / 3 | 0) & (1 << (k % 3))) ? bounds.max[k % 3] : bounds.min[k % 3]);
+    const cx = (bounds.min[0] + bounds.max[0]) / 2, cz = (bounds.min[2] + bounds.max[2]) / 2;
+    const steps = 16, stride = 3 * Math.max(1, Math.ceil(source.length / 3 * steps / limit));
+    const out = new Float32Array(Math.ceil(source.length / stride) * steps * 3);
+    let w = 0;
+    for (let s = 0; s < steps; s += 1) {
+        const c = Math.cos(s * 2 * Math.PI / steps), n = Math.sin(s * 2 * Math.PI / steps);
+        for (let i = 0; i + 2 < source.length; i += stride) {
+            const x = source[i] - cx, z = source[i + 2] - cz;
+            out[w++] = cx + x * c + z * n; out[w++] = source[i + 1]; out[w++] = cz - x * n + z * c;
+        }
+    }
+    return out.subarray(0, w);
+}
+
+/**
+ * Place one panel of a turning contact sheet. The panel is fitted once, to its geometry swept
+ * through the whole turn, and afterwards that framing is only rotated to the panel's yaw: no fit
+ * per frame however many panels there are, and no shape that breathes as it turns. A changed pitch
+ * or panel aspect refits.
+ */
+function placeTurningPanel(entry, view) {
+    const focus = new THREE.Vector3(...entry.bounds.min).add(new THREE.Vector3(...entry.bounds.max)).multiplyScalar(0.5);
+    const key = view.pitchDegrees.toFixed(3) + '|' + entry.camera.aspect.toFixed(4);
+    if (!entry.turnFit || entry.turnFit.key !== key) {
+        if (!entry.swept) entry.swept = sweptFitPoints(entry.fitPoints, entry.bounds, true, 1024);
+        applyCameraSpec(entry.camera, view, entry.bounds, true, entry.swept);
+        entry.turnFit = {key, yaw: view.yawDegrees, offset: entry.camera.position.clone().sub(focus)};
+        return;
+    }
+    entry.camera.position.copy(entry.turnFit.offset)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), (view.yawDegrees - entry.turnFit.yaw) * Math.PI / 180).add(focus);
+    entry.camera.up.set(0, 1, 0);
+    entry.camera.lookAt(focus);
+}
+
 /** Every fit sample belonging to [panelIndex], concatenated. `-1` drawables belong to every panel. */
 function fitPointsForPanel(panelIndex) {
     const parts = payloadGeometrySlots.drawables
@@ -5686,8 +5708,234 @@ function applyPickThresholds(bounds) {
 // `const raycaster`. `null` bounds is the legacy pair, exactly.
 applyPickThresholds(null);
 
+/**
+ * What the asynchronous half of applyGeometry depends on: tool modules and the camera link. Payloads
+ * that agree on it settle identically, so a stream of them keeps the readiness the first reached. When
+ * every payload restarted readiness instead, a source sending faster than the settle (a tool sync and
+ * two frames) was never ready, and no capture of a live geometry stream could be taken. A saved review
+ * is restored against one geometry digest, so a reviewed payload always settles on its own (`null`).
+ */
+function captureSettleKey(payload) {
+    if (payload.inspector?.review) return null;
+    const inspector = payload.inspector || {};
+    return JSON.stringify([payload.toolModules || [], payload.cameraLinkScope ?? null, inspector.renderOrigin ?? null,
+        inspector.renderUpAxis ?? null, inspector.units ?? null, (payload.panels || []).length > 1]);
+}
+
+// [viewer-region wire-payload] BEGIN
+// What arrives on the websocket, made into what the rest of the viewer reads. `ThreeWire.kt` is the
+// other half.
+//
+//  * A `three/geometry` message is a description: every numeric array in it is `{array: [], buffer: i}`,
+//    and `buffers` says where entry `i` is in one binary response from `/three-buffers`. Binding turns
+//    each into a typed view of that response — no parsing, and no copy. A solid's exact topology
+//    (`inspector.parts`) becomes plain arrays instead, as JSON used to give it.
+//  * Part styles arrive beside the geometry (`partAppearance`) and in `three/appearance` messages, and
+//    are applied here exactly as `applyPartAppearance` (ThreePartAppearance.kt) applies them.
+//
+// Both replaced sending the whole scene as JSON, which on 2026-10-07 froze a house host for twenty
+// minutes over a style change to 224 panels. Pure — no DOM, no THREE, no fetch — so
+// `ThreeGeometryWireTest` runs it on the server's own messages and bytes.
+const WIRE_BUFFER_TYPES = { Float32Array, Float64Array, Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array };
+
+/**
+ * Point a description's references at [buffer], an ArrayBuffer holding its `/three-buffers` response.
+ * Mutates and returns the payload; a payload without `buffers` is returned as it is.
+ */
+function bindWireBuffers(payload, buffer) {
+    const table = payload && payload.buffers;
+    if (!table) return payload;
+    if (!buffer || buffer.byteLength !== table.bytes) {
+        throw new Error(`geometry buffers are ${buffer ? buffer.byteLength : 0} bytes; the description says ${table.bytes}`);
+    }
+    const view = (i) => {
+        const entry = table.entries[i];
+        const Ctor = entry && WIRE_BUFFER_TYPES[entry.type];
+        if (!Ctor) throw new Error(`geometry buffer ${i} has no known type`);
+        return new Ctor(buffer, entry.offset, entry.count);
+    };
+    const bind = (geometry) => {
+        if (!geometry) return;
+        Object.values(geometry.attributes || {}).forEach((spec) => {
+            if (!spec || !Number.isInteger(spec.buffer)) return;
+            spec.array = view(spec.buffer);
+            delete spec.buffer;
+        });
+        const index = geometry.index;
+        if (index && Number.isInteger(index.buffer)) {
+            index.array = view(index.buffer);
+            delete index.buffer;
+        }
+    };
+    bind(payload.lines);
+    bind(payload.fills);
+    bind(payload.points);
+    (payload.interactive || []).forEach((obj) => { bind(obj.lines); bind(obj.fills); bind(obj.points); });
+    (payload.drawables || []).forEach((d) => bind(d && d.geometry));
+    // Plain arrays, not typed views: the feature code slices and compares these doubles, and puts pieces
+    // of them in records that go back to Field as JSON.
+    Object.values((payload.inspector && payload.inspector.parts) || {}).forEach((part) => {
+        const refs = part && part.buffers;
+        if (!refs) return;
+        ['positions', 'indices', 'faces'].forEach((key) => {
+            if (Number.isInteger(refs[key])) part[key] = Array.from(view(refs[key]));
+        });
+        if (Number.isInteger(refs.edges)) {
+            const flat = view(refs.edges);
+            const edges = new Array(flat.length >> 1);
+            for (let k = 0; k < edges.length; k += 1) edges[k] = [flat[2 * k], flat[2 * k + 1]];
+            part.edges = edges;
+        }
+        delete part.buffers;
+    });
+    delete payload.buffers;
+    return payload;
+}
+
+/** [parts] applied to a payload's drawables: `applyPartAppearance` in ThreePartAppearance.kt, line for line. */
+function partAppearancePayload(payload, parts) {
+    const styles = parts || {};
+    if (!payload || !Array.isArray(payload.drawables) || !payload.drawables.length || !Object.keys(styles).length) return payload;
+    return {...payload, drawables: payload.drawables.map((d) => {
+        const style = d && Object.prototype.hasOwnProperty.call(styles, d.id) ? styles[d.id] : null;
+        const position = style && d.geometry && d.geometry.attributes ? d.geometry.attributes.position : null;
+        if (!position || !position.array) return d;
+        const color = new Float32Array(Math.floor(position.array.length / 3) * 3);
+        for (let i = 0; i < color.length; i += 3) {
+            color[i] = style.color[0];
+            color[i + 1] = style.color[1];
+            color[i + 2] = style.color[2];
+        }
+        return {
+            ...d,
+            geometry: {...d.geometry, attributes: {...d.geometry.attributes,
+                color: {itemSize: 3, array: color, type: 'Float32Array', normalized: false}}},
+            style: {...(d.style || {}), unlit: !!style.unlit,
+                xrayOpacity: Number.isFinite(style.xrayOpacity) ? style.xrayOpacity : null}
+        };
+    })};
+}
+
+/**
+ * The wire state after one message, and the payload to draw (`null` for nothing to draw).
+ *
+ * `base` is the last geometry message, bound, and what is drawn is always `base` with `parts` applied,
+ * so one style change never compounds onto the colours another wrote. A `three/appearance` message
+ * merges into `parts`, or replaces them; one for a revision this view is not showing is stale and
+ * dropped, because the next geometry message brings the current styles with it. One flagged
+ * `beforeGeometry` is a replay's: it is held for the geometry message that follows it.
+ */
+function receiveWireMessage(state, message) {
+    const current = state || {base: null, parts: {}, nextParts: null};
+    if (!message) return {state: current, draw: null};
+    if (message.type === 'three/appearance') {
+        const revision = message.revision ?? null;
+        const incoming = {...(message.parts || {})};
+        if (message.beforeGeometry) return {state: {...current, nextParts: {revision, parts: incoming}}, draw: null};
+        if (!current.base || revision !== (current.base.revision ?? null)) return {state: current, draw: null};
+        const parts = message.replace ? incoming : {...current.parts, ...incoming};
+        return {state: {...current, parts}, draw: partAppearancePayload(current.base, parts)};
+    }
+    if (message.type !== 'three/geometry') return {state: current, draw: null};
+    const next = current.nextParts;
+    const parts = next && next.revision === (message.revision ?? null) ? next.parts : {...(message.partAppearance || {})};
+    return {state: {base: message, parts, nextParts: null}, draw: partAppearancePayload(message, parts)};
+}
+
+/** A geometry message that will never be drawn — superseded before its buffers came — takes its replay styles with it. */
+function wireAbandon(state) {
+    return state ? {...state, nextParts: null} : state;
+}
+
+/**
+ * Drop what a later geometry message makes moot: everything queued before the last one, except the
+ * flagged styles sent immediately ahead of it, which are its own. A slider that republishes geometry
+ * thirty times a second must cost one buffer fetch, not thirty in a row.
+ */
+function wireCompactQueue(state, queue) {
+    let last = -1;
+    for (let i = queue.length - 1; i >= 0; i -= 1) {
+        if (queue[i] && queue[i].type === 'three/geometry') { last = i; break; }
+    }
+    if (last <= 0) return {state, queue};
+    const own = queue[last - 1].type === 'three/appearance' && queue[last - 1].beforeGeometry;
+    const from = own ? last - 1 : last;
+    const dropped = queue.slice(0, from);
+    const abandoned = dropped.some((m) => m && m.type === 'three/geometry');
+    return {state: abandoned ? wireAbandon(state) : state, queue: queue.slice(from)};
+}
+// [viewer-region wire-payload] END
+
+let wireState = null;
+
+/** Messages waiting to be drawn, in order, and the buffer fetch in flight. */
+const wireInbox = { queue: [], busy: false, fetching: null };
+
+function wireBufferUrl(message) {
+    // The server the websocket goes to, which is the page's own unless `ws` / `wsHost` say otherwise.
+    const ws = new URL(buildWsUrl());
+    const origin = `${ws.protocol === 'wss:' ? 'https:' : 'http:'}//${ws.host}`;
+    return `${origin}/three-buffers?` + new URLSearchParams({uid: message.uid, generation: message.buffers.generation});
+}
+
+function wireFailed(error) {
+    captureState.error = 'Geometry: ' + String(error?.message || error);
+    const status = document.getElementById('glb-status');
+    status.classList.add('is-error');
+    status.textContent = captureState.error;
+}
+
+function wireReceive(message) {
+    // A newer geometry message makes the fetch in flight moot.
+    if (message.type === 'three/geometry' && wireInbox.fetching) wireInbox.fetching.abort();
+    wireInbox.queue.push(message);
+    wirePump();
+}
+
+/** One message at a time, in order; a description waits for its buffers before anything after it is drawn. */
+async function wirePump() {
+    if (wireInbox.busy) return;
+    wireInbox.busy = true;
+    try {
+        while (wireInbox.queue.length) {
+            ({state: wireState, queue: wireInbox.queue} = wireCompactQueue(wireState, wireInbox.queue));
+            const message = wireInbox.queue.shift();
+            try {
+                if (message.type === 'three/geometry' && message.buffers) {
+                    const controller = new AbortController();
+                    wireInbox.fetching = controller;
+                    let bytes = null;
+                    try {
+                        const response = await fetch(wireBufferUrl(message), {signal: controller.signal});
+                        // 404: superseded, and the description that replaced it is on its way.
+                        if (response.ok) bytes = await response.arrayBuffer();
+                        else if (response.status !== 404) throw new Error(`geometry buffers: HTTP ${response.status}`);
+                    } catch (error) {
+                        if (!controller.signal.aborted) wireFailed(error);
+                    } finally {
+                        wireInbox.fetching = null;
+                    }
+                    if (!bytes) { wireState = wireAbandon(wireState); continue; }
+                    bindWireBuffers(message, bytes);
+                }
+                const received = receiveWireMessage(wireState, message);
+                wireState = received.state;
+                if (received.draw) applyGeometry(received.draw);
+            } catch (error) {
+                console.error('three viewer: could not apply a message', error);
+                wireFailed(error);
+            }
+        }
+    } finally {
+        wireInbox.busy = false;
+    }
+}
+
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;
+    const settleKey = captureSettleKey(payload);
+    const settled = captureState.ready && settleKey !== null && captureState.settleKey === settleKey;
+    captureState = {ready:settled, error:null, revision:payload.revision || payload.inspector?.artifactDigest || null, settleKey};
     requestRender();
     payloadState = payload;
     editorState.pointerDown = null;
@@ -5716,28 +5964,45 @@ function applyGeometry(payload) {
         frameBounds(payload.bounds);
         hasFramedInitialGeometry = true;
     }
-    // An explicit camera spec beats auto-framing, and beats it on every payload rather than only the
-    // first: a caller who named an angle means it, and a re-publish must not drift off it.
-    if (payload.camera && payload.bounds && panelState.cameras.length <= 1) {
+    // Camera specifications establish a starting view. Repeating the same specification while
+    // editing geometry must preserve the human's orbit, pan and zoom. A changed specification
+    // is an explicit new view; the inspector's restore operation is another explicit view change.
+    const cameraKey = payload.camera ? JSON.stringify(payload.camera) : null;
+    if (payload.camera && cameraKey !== appliedCameraSpec && payload.bounds && panelState.cameras.length <= 1) {
         camera.aspect = container.clientHeight > 0 ? container.clientWidth / container.clientHeight : 1;
-        applyCameraSpec(camera, payload.camera, payload.bounds, true, fitPointsForPanel(-1));
+        applyCameraSpec(camera, payload.camera, payload.bounds, true,
+            sweptFitPoints(fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
         const derived = cameraPresetEye(payload.camera, payload.bounds);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
         controls.update();
         hasFramedInitialGeometry = true;
+        appliedCameraSpec = cameraKey;
+        cameraWasMoved = false; cameraTurned = false;
+        cameraViewport = [container.clientWidth, container.clientHeight];
     }
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);
     inspectorPartHud();
-    viewerTools.sync(payload.toolModules || []).then(() => {
+    viewerTools.sync(payload.toolModules || []).then(async () => {
         if (payloadState !== payload) return;
         const review = payload.inspector?.review;
         if (review) inspectorRestore({...review, xray:review.xray ?? xrayState.enabled, xrayOpacity:review.xrayOpacity ?? xrayState.opacity});
+        cameraLink.configure(panelState.cameras.length>1?null:{scope:payload.cameraLinkScope,group:payload.cameraLink?.group,
+            origin:payload.inspector?.renderOrigin,upAxis:payload.inspector?.renderUpAxis,units:payload.inspector?.units});
+        // The turn first, so a view that is about to join the link waits for its alignment pose.
+        turntable.configure(payload.turntable);
+        shot.configure(payload.shot); shotDistance = 1; shotAppliedDistance = 1;
+        applyCameraLinkRequest(payload.cameraLink);
         inspectorRefresh();
+        requestRender();
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (payloadState === payload || (settleKey !== null && captureState.settleKey === settleKey)) captureState.ready = true;
     }).catch(error => {
+        if (payloadState !== payload) return;
+        captureState.error = 'Viewer tool: ' + String(error?.message || error);
         const status = document.getElementById('glb-status');
-        status.classList.add('is-error'); status.textContent = 'Viewer tool: ' + error.message;
+        status.classList.add('is-error'); status.textContent = captureState.error;
     });
     inspectorUpdateHud();
     inspectorRefresh();
@@ -5767,12 +6032,13 @@ function sendMessage(payload) {
 function connectWs() {
     const ws = new WebSocket(buildWsUrl());
     wsState.ws = ws;
-    ws.addEventListener('open', () => sendMessage({ type: 'hello' }));
+    // `buffers`: this viewer fetches geometry buffers over HTTP. A hello without it is sent plain JSON.
+    ws.addEventListener('open', () => sendMessage({ type: 'hello', buffers: 1 }));
     ws.addEventListener('message', (event) => {
         let message = null;
         try { message = JSON.parse(event.data); } catch (_) { return; }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
-        applyGeometry(message);
+        wireReceive(message);
     });
     ws.addEventListener('close', () => {
         if(featureSaving){featureSaving=false;featureHud();featureMessage('Connection lost while saving. Check the inbox before retrying.',true);}
@@ -6368,12 +6634,13 @@ function updatePanelCameras() {
     const dPolar = (controls.getPolarAngle() - panelState.base.polar) * 180 / Math.PI;
     const zoom = panelState.base.distance > 1e-9 ? controls.getDistance() / panelState.base.distance : 1;
     const count = panelState.cameras.length;
+    const turning = !!payloadState?.turntable;
     panelState.cameras.forEach((entry, index) => {
         if (!entry.bounds) return;
         const spec = entry.spec || {};
         const vp = panelViewport(index, count);
         entry.camera.aspect = vp.h > 0 ? vp.w / vp.h : 1;
-        applyCameraSpec(entry.camera, {
+        const view = {
             // Dragging right raises the azimuth, which should turn the model the same way it turns
             // the single-panel camera — hence the plain addition rather than a subtraction.
             yawDegrees: (spec.yawDegrees || 0) + dAzimuth,
@@ -6381,10 +6648,12 @@ function updatePanelCameras() {
             pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
             distance: spec.distance === undefined ? 2.7 : spec.distance,
             fieldOfViewDegrees: spec.fieldOfViewDegrees
-        }, entry.bounds, true, entry.fitPoints);
+        };
+        if (turning) placeTurningPanel(entry, view);
+        else applyCameraSpec(entry.camera, view, entry.bounds, true, entry.fitPoints);
         // Fit establishes the reference framing. Dolly afterwards so fitting cannot undo zoom.
         const focus = new THREE.Vector3(...entry.bounds.min).add(new THREE.Vector3(...entry.bounds.max)).multiplyScalar(0.5);
-        entry.camera.position.sub(focus).multiplyScalar(zoom).add(focus);
+        entry.camera.position.sub(focus).multiplyScalar(zoom * shotDistance).add(focus);
         const distance = entry.camera.position.distanceTo(focus);
         entry.camera.near = Math.max(1e-5, distance * 0.01);
         entry.camera.far = Math.max(distance * 100, entry.camera.near + 1);
@@ -6411,12 +6680,24 @@ function onResize() {
     renderer.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    // A camera that was fitted to the frame has to be refitted when the frame changes shape —
-    // including the resize the chrome bands trigger, which happens once on every mesh payload.
-    if (!inspectorState.selection && payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
-        applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true, fitPointsForPanel(-1));
+    // A genuine viewport resize may refit an untouched initial view. Geometry refreshes and
+    // chrome notifications at the same size never move the camera, nor does resizing a view
+    // the human or an inspection tool has already positioned.
+    const viewportChanged = !cameraViewport || cameraViewport[0] !== width || cameraViewport[1] !== height;
+    cameraViewport = [width, height];
+    if (viewportChanged && !cameraWasMoved && !inspectorState.selection && payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
+        const turned = cameraTurned ? camera.position.clone().sub(controls.target) : null;
+        applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true,
+            sweptFitPoints(fitPointsForPanel(-1), payloadState.bounds, !!payloadState.turntable));
         const derived = cameraPresetEye(payloadState.camera, payloadState.bounds);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
+        // A turning view keeps its angle: the refit changes the framing, not how far it has turned.
+        if (turned) {
+            const up = camera.up, flat = v => v.addScaledVector(up, -v.dot(up));
+            const from = flat(camera.position.clone().sub(controls.target)), to = flat(turned);
+            camera.position.sub(controls.target)
+                .applyAxisAngle(up, Math.atan2(up.dot(from.clone().cross(to)), from.dot(to))).add(controls.target);
+        }
         controls.update();
     }
     if (pointMaterial && pointMaterial.uniforms) pointMaterial.uniforms.uPixelRatio.value = getDpr();
@@ -6441,7 +6722,7 @@ function renderGeometry(viewCamera) {
             if (!material || saved.has(material)) continue;
             if (object.isMesh) {
                 saved.set(material, {opacity:material.opacity, depthWrite:material.depthWrite});
-                material.opacity *= xrayState.opacity;
+                material.opacity *= material.userData?.fieldXrayOpacity ?? xrayState.opacity;
                 material.depthWrite = false;
             } else if (material.uniforms?.uXrayEdgeStrength) {
                 const uniform = material.uniforms.uXrayEdgeStrength;
@@ -6460,7 +6741,39 @@ function renderGeometry(viewCamera) {
     }
 }
 
+/** This frame's shot: explode the parts, mix the surfaces' opacity, and dolly the camera. */
+function applyShotLook(look) {
+    for (const slot of payloadGeometrySlots.drawables) {
+        if (!slot?.object) continue;
+        if (slot.explode && Math.abs(slot.explode.applied - look.explode) > 1e-5) {
+            const position = slot.object.geometry.getAttribute('position');
+            explodePositions(slot.explode.base, slot.explode.offsets, look.explode, position.array);
+            position.needsUpdate = true;
+            slot.explode.applied = look.explode;
+        }
+        if (slot.shotOpacity) {
+            const opacity = shotOpacity(slot.shotOpacity.solid, slot.shotOpacity.authored, look.xray);
+            slot.material.opacity = opacity;
+            // A solid surface writes depth so it hides what is behind it; once it is see-through it must
+            // not, or it hides whatever draws after it (three.js sorts translucency per object).
+            slot.material.depthWrite = opacity >= 0.999;
+        }
+    }
+    shotDistance = look.distance;
+    if (panelState.cameras.length <= 1 && Math.abs(shotAppliedDistance - look.distance) > 1e-6) {
+        camera.position.sub(controls.target).multiplyScalar(look.distance / shotAppliedDistance).add(controls.target);
+        shotAppliedDistance = look.distance;
+    }
+}
+
 function render() {
+    const turn = turntable.step();
+    if (turn !== null) { turnCamera(turn); requestRender(); }
+    // A shot draws continuously, but only while the view is on screen and the page is showing.
+    if (shot.active() && onScreen && document.visibilityState !== 'hidden') {
+        const look = shot.step();
+        if (look) { applyShotLook(look); if (!shot.held()) requestRender(); }
+    }
     controls.update();
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';

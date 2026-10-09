@@ -1119,7 +1119,7 @@ internal fun dispatchExecutionOutput(
         }
     }
     logErrorOutputToTerminal(box, normalized)
-    BoxOutputLog.observeOutput(normalized)
+    BoxOutputLog.observeOutput(normalized, outputDocument(box))
     // The recipient is resolved now, not when the run started. A launch outlives the socket that
     // asked for it — reload the browser and that socket is gone — and until 2026-09-29 everything the
     // launch printed went on down it: `reply` wrote to the dead socket, and the reloaded page, now a
@@ -1206,7 +1206,7 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
     }
 
     box.output.displayProxy = { channel, content ->
-        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))))
+        sendBoxOutput(box, Message("set-output").payload(Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))))
     }
 }
 
@@ -1476,7 +1476,7 @@ class KotlinExecution : BoxExecution {
                         )
                     }
                     box.output.displayProxy = { channel, content ->
-                        send(
+                        sendBoxOutput(box,
                             Message("set-output").payload(
                                 Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))
                             )
@@ -1485,7 +1485,7 @@ class KotlinExecution : BoxExecution {
 
                     val lines = request.normalizedCode.lines()
                     val breaks = lines.mapIndexedNotNull { index, line ->
-                        if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
+                        if (afield.macros.isFragmentBreak(line)) index else null
                     } + lines.size
 
                     var at = 0
@@ -2520,7 +2520,7 @@ class KotlinExecution : BoxExecution {
                     )
                 }
                 box.output.displayProxy = { channel, content ->
-                    send(
+                    sendBoxOutput(box,
                         Message("set-output").payload(
                             Set_output(
                                 box.id,
@@ -3118,8 +3118,7 @@ class KotlinExecution : BoxExecution {
         if (line !in 1..lines.size) return null
 
         val breaks = lines.mapIndexedNotNull { index, rawLine ->
-            val trimmed = rawLine.trim()
-            if (trimmed.startsWith("//%-") || trimmed.startsWith("/*%-*/")) index else null
+            if (afield.macros.isFragmentBreak(rawLine)) index else null
         } + lines.size
 
         var at = 0
@@ -3559,8 +3558,15 @@ class KotlinExecution : BoxExecution {
             reply(Message("complete").payload(emptyCompletion()))
         }
 
-        runBlocking {
-            launch(Runloop.runLoop.main) {
+        // Launched, not wrapped in runBlocking: this runs on the Netty event loop serving the browser's
+        // websocket (Server.kt launches every handler in the /ws session's scope). Blocking it for the
+        // length of a completion -- seconds on a cold K1 delegate, then candidate classification --
+        // stalled every message on that loop, keepalive pongs included, until clients dropped the
+        // connection. The runloop still does the work one completion at a time; the browser matches
+        // each reply to its own request.
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Runloop.runLoop.main) {
+            try {
                 val c = runCatching {
                     inside.ki.complete(allCode, position)
                 }.getOrElse {
@@ -3645,6 +3651,13 @@ class KotlinExecution : BoxExecution {
                         replyEmpty("error")
                     }
                 }
+            } catch (t: Throwable) {
+                // A throw after the engine call (classification, enrichment) used to go unanswered, and
+                // the popup waited out its timeout.
+                completionFailure(
+                    "completion exception uid='${inside.id}' property='$property' position=$position error='${t.javaClass.simpleName}: ${t.message.orEmpty()}'"
+                )
+                replyEmpty("exception")
             }
         }
     }

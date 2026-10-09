@@ -5,6 +5,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import os
+import re
 import shlex
 import signal
 import socket
@@ -98,6 +99,38 @@ def automation_workspace(repo_root: Path) -> Path:
     return repo_root.resolve() / "build" / "field-automation-workspace"
 
 
+def automation_log_environment(repo_root: Path) -> dict[str, str]:
+    """Checkout-local homes for the usage logs a Field JVM otherwise appends under ``~/.afield/logs``.
+
+    Those directories are read as the user's own usage: the completion log by completion ranking
+    and ground-truth work, tool I/O and its evidence by ``tools/ai_tool_usage.py`` and the tool-use
+    improvement monitor. Until 2026-10-06 every automated server wrote into them as well. 1,188 of
+    2,132 completion records came from scratch sessions such as the UI suite's
+    ``CompletionOwnImportRegression``, and 192 of the 974 tool-I/O sessions since 2026-09-20 were
+    docs-runner or scratch turns.
+
+    The code-use database (``AFIELD_CODE_USE_PATH``, ``CodeUseTelemetryService``) moves too. Its
+    AI4 tools and ``/api/code-use`` routes query it machine-wide and filter by document only after
+    taking the newest rows, so agent runs crowded out the user's own: on 2026-10-06, 424,607 of its
+    465,786 snippets came from managed servers, scratch sessions and the jvm-main tests they spawn
+    (which inherit this environment), and 32 of its newest 500 failures came from a user document.
+    An agent's history-mining queries (line callers, hot symbols, peer callers) therefore start from
+    this checkout's own runs; ``--attach-existing`` still reaches the user's history.
+
+    The request ledger (``AFIELD_AI_USAGE_LOG_PATH``) stays in ``~/.afield/logs``: an agent's AI
+    call costs real money on the same key, ``tools/ai_usage.py`` accounts for that spend across the
+    machine, and each record already names its checkout and port.
+    """
+    root = repo_root.resolve() / "build" / "field-automation-logs"
+    return {
+        "AFIELD_COMPLETION_INTERACTION_LOG_PATH": str(root / "completion_interactions"),
+        "AFIELD_AI4_TOOL_IO_LOG_PATH": str(root / "ai4_tool_io"),
+        "AFIELD_AI4_TOOL_EVIDENCE_PATH": str(root / "ai4_tool_io" / "evidence"),
+        "AFIELD_AI4_CAPTURE_DIR": str(root / "ai4_box_captures"),
+        "AFIELD_CODE_USE_PATH": str(root / "code-use" / "field-code-use.sqlite"),
+    }
+
+
 def automation_server_environment(
     port: int,
     *,
@@ -105,14 +138,163 @@ def automation_server_environment(
     extra: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Environment for an automated Field server without preference side effects."""
+    repo_root = Path(__file__).resolve().parent.parent
     environment = dict(os.environ if base is None else base)
     environment.update({
         "PORT": str(port),
         "AFIELD_SKIP_WORKSPACE_PERSIST": "1",
+        # Test clients register throwaway commands (the chord regression's `cmd+k`), and the server
+        # appends every command it sees to the keybindings file; keep that off ~/.afield.
+        "AFIELD_KEYBINDINGS_FILE": str(repo_root / "build" / "field-automation-keybindings.yaml"),
+        # Set over the inherited environment, not under it: an exported path in the agent's shell
+        # is usually the one the user's own Field writes to.
+        **automation_log_environment(repo_root),
     })
     if extra is not None:
         environment.update(extra)
     return environment
+
+
+# Startup budget for a Field launched with `./gradlew runJvm` (the backdoor's managed server, the
+# smoke runner's prewarm, the docs runner's shared server). A flat wait covers a warm build plus
+# JVM boot but not the first build in a fresh worktree -- the whole Kotlin JVM + JS compile and
+# webpack, ~250 s measured -- so every launcher used to fail while Gradle was still compiling.
+# Now the build phase, everything before Gradle prints `> Task :runJvm`, is bounded only by the
+# ceiling, and the JVM gets its own short budget from that line. See `ManagedStartupWatch`.
+MANAGED_STARTUP_CEILING_ENV = "AFIELD_BACKDOOR_STARTUP_TIMEOUT"
+MANAGED_JVM_START_TIMEOUT_ENV = "AFIELD_BACKDOOR_JVM_START_TIMEOUT"
+DEFAULT_MANAGED_STARTUP_CEILING = 1800.0
+DEFAULT_MANAGED_JVM_START_TIMEOUT = 120.0
+GRADLE_TASK_LINE = re.compile(r"^> Task (:\S+)")
+GRADLE_LOCK_WAIT_PREFIX = "WAIT gradle: verification lock held"
+GRADLE_LOCK_RELEASED_PREFIX = "gradle: verification lock released"
+
+
+def env_seconds(name: str, default: float) -> float:
+    """A positive number of seconds from the environment, or `default` when unset or blank."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        raise ValueError(f"{name}={raw!r} is not a number of seconds") from None
+    if value <= 0:
+        raise ValueError(f"{name}={raw!r} must be a positive number of seconds")
+    return value
+
+
+class ManagedStartupWatch:
+    """How long to keep waiting for a `./gradlew runJvm` to answer `/health`.
+
+    The Gradle log tells the two phases apart. Until Gradle prints `> Task :runJvm` the
+    process is still building, and the wait is bounded only by `ceiling`. Once that line
+    appears the JVM is booting, and it gets `jvm_timeout` more (never past the ceiling). A
+    process that exits ends the wait in either phase; that check belongs to the caller's loop,
+    which also owns the health probe.
+
+    `observe()` reads only the bytes appended since the last call, so polling a long log every
+    half second stays cheap. `ceiling_knob` and `jvm_knob` name the settings a timeout message
+    tells the reader to raise, since each launcher spells them its own way. `clock` defaults to
+    `time.monotonic`, looked up when the watch is made, so tests can inject or patch it.
+    """
+
+    def __init__(
+        self,
+        log_path: Path | str,
+        *,
+        ceiling: float,
+        jvm_timeout: float,
+        ceiling_knob: str = f"{MANAGED_STARTUP_CEILING_ENV} or --startup-timeout",
+        jvm_knob: str = MANAGED_JVM_START_TIMEOUT_ENV,
+        clock: Callable[[], float] | None = None,
+    ) -> None:
+        self.log_path = Path(log_path)
+        self.ceiling = ceiling
+        self.jvm_timeout = jvm_timeout
+        self.ceiling_knob = ceiling_knob
+        self.jvm_knob = jvm_knob
+        self.clock = clock or time.monotonic
+        self.started_at = self.clock()
+        self.jvm_started_at: float | None = None
+        self.last_task: str | None = None
+        # The latest `WAIT gradle: verification lock held ...` line, cleared when Gradle says
+        # the lock was released. A build stuck behind another verification is not a slow build.
+        self.lock_wait: str | None = None
+        self._offset = 0
+        self._partial = b""
+
+    @property
+    def phase(self) -> str:
+        return "build" if self.jvm_started_at is None else "jvm"
+
+    def elapsed(self) -> float:
+        return self.clock() - self.started_at
+
+    def observe(self) -> None:
+        try:
+            with self.log_path.open("rb") as handle:
+                handle.seek(self._offset)
+                chunk = handle.read()
+        except OSError:
+            return
+        if not chunk:
+            return
+        self._offset += len(chunk)
+        lines = (self._partial + chunk).split(b"\n")
+        self._partial = lines.pop()
+        for raw in lines:
+            line = raw.decode("utf-8", errors="replace").rstrip("\r")
+            match = GRADLE_TASK_LINE.match(line)
+            if match:
+                self.last_task = match.group(1)
+                if self.jvm_started_at is None and self.last_task.endswith(":runJvm"):
+                    self.jvm_started_at = self.clock()
+            elif line.startswith(GRADLE_LOCK_WAIT_PREFIX):
+                self.lock_wait = line
+            elif line.startswith(GRADLE_LOCK_RELEASED_PREFIX):
+                self.lock_wait = None
+
+    def deadline(self) -> float:
+        ceiling = self.started_at + self.ceiling
+        if self.jvm_started_at is None:
+            return ceiling
+        return min(ceiling, self.jvm_started_at + self.jvm_timeout)
+
+    def expired(self) -> bool:
+        return self.clock() >= self.deadline()
+
+    def describe(self) -> dict[str, object]:
+        """The fields worth logging on each health poll."""
+        return {
+            "startupPhase": self.phase,
+            "lastGradleTask": self.last_task,
+            "elapsedSeconds": round(self.elapsed(), 3),
+            "lockWait": self.lock_wait is not None,
+        }
+
+    def exit_context(self) -> str:
+        """Where in startup a process that just exited was, for its error message."""
+        if self.phase == "build":
+            return f"during the Gradle build (last task {self.last_task or 'none yet'})"
+        return "after Gradle started the JVM"
+
+    def timeout_reason(self) -> str:
+        elapsed = self.elapsed()
+        if self.jvm_started_at is not None and self.jvm_started_at + self.jvm_timeout <= self.started_at + self.ceiling:
+            since = self.clock() - self.jvm_started_at
+            return (
+                f"Gradle reached :runJvm {since:.0f}s ago and the JVM did not answer within its "
+                f"{self.jvm_timeout:.0f}s start budget ({self.jvm_knob})"
+            )
+        phase = "the Gradle build was still running" if self.jvm_started_at is None else "the JVM was still starting"
+        reason = (
+            f"{phase} when the {self.ceiling:.0f}s startup ceiling ran out after {elapsed:.0f}s "
+            f"(last Gradle task {self.last_task or 'none yet'}; raise it with {self.ceiling_knob})"
+        )
+        if self.lock_wait is not None:
+            reason += f"; Gradle was waiting on this checkout's verification lock: {self.lock_wait}"
+        return reason
 
 
 def field_instance_info(

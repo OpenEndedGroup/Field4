@@ -11,7 +11,8 @@ that are easy to misunderstand. It is not a second command reference.
   `tools/field_backdoor.py`, especially `build_command_parser()`,
   `parse_command()`, and `dispatch_command()`.
 - Managed-server startup and JDWP environment:
-  `BackdoorSession.ensure_server()` in the same file.
+  `FieldBackdoor.ensure_server()` in the same file; the startup budget is
+  `ManagedStartupWatch` in `tools/verification_runtime.py`.
 - Server RPC handlers used by Playwright, native captures, and JVM entrypoints:
   `src/jvmMain/kotlin/afield/Server.kt`.
 - Semantic document operations and their guarantees:
@@ -56,6 +57,42 @@ given. Automated servers also decline to update the interactive
 `~/.afield/last-workspace.txt` preference. This is deliberate: a machine-global
 preference can name a deleted sibling worktree, while scratch state belongs to
 the checkout that launched it.
+
+For the same reason, an automated server writes its completion-interaction log, AI4
+tool I/O, tool evidence and box captures under `build/field-automation-logs/`, not
+`~/.afield/logs/`, where ranking work and `tools/ai_tool_usage.py` would read them as
+the user's own sessions (`automation_log_environment` in
+`tools/verification_runtime.py`, shared by the backdoor, the smoke, docs and UI
+runners, `field_session.py` and `run_desktop_playwright.py`). The AI request ledger
+(`~/.afield/logs/ai_usage/`) stays machine-wide, because agent turns spend real
+tokens on the same key.
+
+Code-use telemetry follows the logs: an automated server, and every `run-jvm-main`
+child it spawns, records into `build/field-automation-logs/code-use/field-code-use.sqlite`
+(`AFIELD_CODE_USE_PATH`), not `~/.afield/code-use/`. The AI4 code-use tools and
+`/api/code-use/*` routes on that server therefore see only this checkout's runs. For
+`failures`, which is what an agent fixing its own error needs, that is the point. The
+history-mining kinds (`line-callers`, `hot-symbols`, `early-document-symbols`, and the
+peer callers in `related-source-for-code` and `semantic-analyze`) start empty in a
+fresh worktree. To ask them about the user's history, attach to the user's Field
+(`--attach-existing`), which queries its own database. Gradle's JavaExec and test JVMs
+(`checkAgentTranscripts` among them) and a Field launched by hand still write to
+`~/.afield/code-use/`.
+
+A Field the backdoor starts is `./gradlew runJvm`, so the first launch from a fresh
+worktree compiles everything (Kotlin JVM + JS, webpack) before the JVM exists. The
+startup wait follows the managed-server log (`ManagedStartupWatch` in
+`tools/verification_runtime.py`). While Gradle is
+building, the process is given up to the startup ceiling: `--startup-timeout` or
+`AFIELD_BACKDOOR_STARTUP_TIMEOUT`, default 1800 s. Once Gradle prints `> Task :runJvm`,
+the JVM has `AFIELD_BACKDOOR_JVM_START_TIMEOUT` (default 120 s) to answer `/health`. A
+process that exits fails the command at once, and the error names the last Gradle task.
+A timeout says which phase ran out, and whether Gradle was waiting on the checkout's
+verification lock. You don't need to prebuild with
+`./gradlew jvmMainClasses jsBrowserDevelopmentWebpack`. Every other launcher that runs
+`./gradlew runJvm` itself uses the same watch and the same build ceiling, each with its
+own JVM budget: the smoke runner's prewarm (180 s), the docs runner's shared server
+(`AFIELD_DOCS_SERVER_START_TIMEOUT`, 120 s) and the `field_session.py` bench (180 s).
 
 Do not point isolated verification at 9092: a *fresh* same-checkout server there is
 reused (a stale or foreign one is refused), and it holds human work. Reuse one custom
@@ -441,6 +478,13 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 - `--chat-box <box>` (live only) runs the task as that box's real AI4 panel turn (`ai-assist`,
   kind `general`), so the exchange lands in its chat history. The per-call tool log then stays with
   the panel.
+- A live panel turn may outlast the observer's ten-minute wait. Its result then says
+  `verdict: running` with `chatBox` identifying the continuing turn; no completion checks
+  have run. Read that chat's current history/status and retained tool/build results.
+  An observation timeout is not authorization to submit the same work again.
+- A panel provider failure returns `verdict: error`, its failure message and the
+  retained partial reply. Completion checks do not run on that partial work, and
+  no second user turn is appended. A stopped running flag alone is not success.
 - The same tools are in every AI4 chat. `agent-task` is a headless entry into the AI4 chat turn,
   not a separate agent.
 - After the task the backdoor refreshes its snapshot, so later commands can name the boxes the agent

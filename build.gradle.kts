@@ -464,7 +464,18 @@ fun fieldAotBuildFingerprint(
 // launch -cp: the app loads it through afield.PersonalLayer, a URLClassLoader parented to the
 // app loader, so the whole layer can eventually be dropped and rebuilt without restarting.
 // The path is announced to the app via a system property rather than the classpath.
-val hasPersonalLayer = file("src/personal/kotlin").exists()
+// Optional project-owned extensions share the existing isolated personal compilation.
+// Never add these roots to core: the dependency direction remains extension -> Field.
+val externalExtensionRoots = (providers.gradleProperty("fieldExtensionDirs").orNull
+    ?: providers.environmentVariable("AFIELD_EXTENSION_DIRS").orNull).orEmpty()
+    .split(File.pathSeparatorChar).filter { it.isNotBlank() }.map { file(it.trim()).canonicalFile }
+    .distinct().onEach { root ->
+        require(root.isDirectory && (File(root, "kotlin").isDirectory || File(root, "resources").isDirectory)) {
+            "Field extension root must contain kotlin/ or resources/: $root"
+        }
+    }
+val personalSourceRoots = (listOf(file("src/personal")) + externalExtensionRoots).distinctBy { it.canonicalPath }
+val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory }
 val personalLayerJar: File = layout.buildDirectory.file("personal/afield-personal.jar").get().asFile
 /** Must match `afield.PersonalLayer.CLASSPATH_PROPERTY`. */
 val personalLayerProperty = "afield.personal.classpath"
@@ -508,6 +519,7 @@ fun requiredRunJvmArgs(): List<String> {
         add("--enable-native-access=ALL-UNNAMED")
         add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
+        add("-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}")
         add(steamAudioJvmArg())
         if (hasPersonalLayer) add("-D$personalLayerProperty=${personalLayerJar.absolutePath}")
         if (!onWindowsOrLinux) {
@@ -815,6 +827,7 @@ kotlin {
                 args += "--enable-native-access=ALL-UNNAMED"
                 args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
                 args += "-Dafield.ceres.library=${ceresNative.asFile.absolutePath}"
+                args += "-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}"
                 args += steamAudioJvmArg()
 
                 applicationDefaultJvmArgs.set(args)
@@ -837,8 +850,8 @@ kotlin {
             compilations.create("personal") {
                 associateWith(jvmMainCompilation)
                 defaultSourceSet {
-                    kotlin.setSrcDirs(listOf(file("src/personal/kotlin")))
-                    resources.setSrcDirs(listOf(file("src/personal/resources")))
+                    kotlin.setSrcDirs(personalSourceRoots.map { File(it, "kotlin") })
+                    resources.setSrcDirs(personalSourceRoots.map { File(it, "resources") })
                 }
             }
         }
@@ -1099,9 +1112,11 @@ kotlin {
                 //   -Xplugin args (compilerPluginArgs == []) still produced 10
                 //   io.github.kyay10.wither frames. The practical consequence is that Wither
                 //   CANNOT be turned off at runtime -- only by removing the line below.
-                // - and it is not neutral: its IrGenerationExtension breaks local and class-member
-                //   `by provideDelegate` in box code. See dev_docs/k2_repl_provide_delegate.md and
-                //   the reproducer afield.examples.ProvideDelegateReplSmokeTest.
+                // - and it is not neutral: until 2026-10-04 its IrGenerationExtension failed every
+                //   box that called a local function (or a member of a local or anonymous class) as
+                //   a statement, with "... has no callableId". The jar is now built from
+                //   ~/temp/wither branch field/kotlin-2.5.0-beta1, which fixes that. See
+                //   dev_docs/k2_repl_provide_delegate.md and afield.ReplSnippetDeclarationsSmokeTest.
                 implementation(files("libs/wither-annotations.jar"))
                 implementation(files("libs/wither-plugin.jar"))
 
@@ -1304,6 +1319,20 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // itself non-reproducible. See dev_docs/HERMETIC_COMPLETION_INPUTS.md.
     maxHeapSize = "4g"
 
+    // AI4's per-turn tool-I/O log, its tool-evidence store and the request ledger all default to
+    // `~/.afield/logs/`, where `tools/ai_tool_usage.py`, the tool-use improvement monitor and every
+    // usage count read them as real sessions. Bridge fixtures were writing there on every run:
+    // on 2026-10-06, 1,015 of 3,835 tool-I/O files were `conv_test`, and all 120 Anthropic ones
+    // were `claude-test` (so the logs showed Anthropic sessions where no real one had ever run),
+    // and the one improvement dry run on record reviewed twelve fixtures and nothing else.
+    // Pointing them under build/ here means no test can forget to turn them off, and the tests
+    // that read the log still have one. Relative, so this checkout's absolute path stays out of
+    // the task's inputs (see `SmileNativeLibraryPath`); the worker's working directory is the
+    // project. Set before the `afield.` forwarding below, so an explicit `-D…` still wins.
+    systemProperty("afield.ai4.toolIoLog.path", "build/test-ai-logs/ai4_tool_io")
+    systemProperty("afield.ai4.toolEvidence.path", "build/test-ai-logs/ai4_tool_io/evidence")
+    systemProperty("afield.ai.usageLog.path", "build/test-ai-logs/ai_usage")
+
     // A test worker is a fresh JVM and does not inherit the build's system properties, so the
     // `-Dafield.…=write` switches our characterization tests document for regenerating their
     // goldens never actually reached them. Forward that one namespace and nothing else: it keeps
@@ -1331,7 +1360,7 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     from({ smileOpenBlasRuntime.map { zipTree(it) } }) {
         include(
             "**/libopenblas.so.0", "**/libopenblas*.dylib", "**/libopenblas.dll",
-            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack.dll",
+            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack*.dll",
         )
         eachFile { path = name }
         includeEmptyDirs = false
@@ -1341,7 +1370,9 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
         val directory = smileNativeDirectory.get().asFile.toPath()
         fun alias(prefix: String, target: String) {
             val source = Files.list(directory).use { files ->
-                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow()
+                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow {
+                    GradleException("Missing $prefix native library in $directory for $bytedecoPlatformClassifier")
+                }
             }
             val destination = directory.resolve(target)
             if (source != destination) Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING)
@@ -1363,11 +1394,21 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     }
 }
 
+// java.library.path goes through an argument provider rather than systemProperty(): a system
+// property is a task input by value, so the absolute path of this checkout's native directory put
+// every JavaExec and Test task's cache key out of reach of every other worktree. The provider
+// declares the directory by content instead.
+class SmileNativeLibraryPath(
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NONE) val directory: Provider<Directory>,
+) : CommandLineArgumentProvider {
+    override fun asArguments() = listOf("-Djava.library.path=${directory.get().asFile.absolutePath}")
+}
+
 fun org.gradle.process.JavaForkOptions.useSmileNative() {
     val nativePath = smileNativeDirectory.get().asFile.absolutePath
     systemProperty("smile.lib.lapack", "openblas")
     systemProperty("smile.lib.arpack", "arpack")
-    systemProperty("java.library.path", nativePath)
+    jvmArgumentProviders.add(SmileNativeLibraryPath(smileNativeDirectory))
     val pathVariable = when {
         osName.startsWith("Win") -> "PATH"
         osName.startsWith("Mac") || osName.startsWith("Darwin") -> "DYLD_LIBRARY_PATH"
@@ -1628,6 +1669,23 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         citationGuardTestClasses.forEach(::includeTestsMatching)
         isFailOnNoMatchingTests = true
     }
+    // Progress, one line per guard class as it starts and finishes. The task runs for minutes inside
+    // every landing, and `tools/land.py status` reads these lines to say which guard it is on.
+    val guardTotal = citationGuardTestClasses.size
+    var guardsDone = 0
+    addTestListener(object : TestListener {
+        override fun beforeSuite(suite: TestDescriptor) {
+            if (suite.className != null) println("citationGates: running ${suite.className!!.substringAfterLast('.')}")
+        }
+        override fun afterSuite(suite: TestDescriptor, result: TestResult) {
+            val name = suite.className ?: return
+            guardsDone++
+            val seconds = (result.endTime - result.startTime) / 1000.0
+            println("citationGates: [$guardsDone/$guardTotal] ${name.substringAfterLast('.')} ${result.resultType} in ${"%.1f".format(seconds)}s")
+        }
+        override fun beforeTest(testDescriptor: TestDescriptor) {}
+        override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {}
+    })
     // These guards read documentation, not just classes, so Gradle must be told: without this the
     // task is UP-TO-DATE after a pure Markdown edit and the guards "pass" without running. Measured
     // on 2026-08-19 — a deliberately planted bad fence went green until `--rerun-tasks`. A guard
@@ -1657,10 +1715,16 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // Gradle honours and the guard cannot see. It fails in the safe direction (a spurious "undeclared"
     // rather than a spurious pass) and it cost a commit to find, so match the idiom: every other
     // fileTree in this block is single-argument too.
+    //
+    // `.patch`/`.diff` are here for `PersonalBoundaryTest` too, though they are not box code: a patch
+    // quotes the body of the files it changes, so it can carry private source outright, and agents
+    // leave them under `dev_docs/agents/`. A diff arriving there must not inherit a previous verdict.
     inputs.files(fileTree("dev_docs") {
         include("**/*.kt")
         include("**/*.edn")
         include("**/*.yaml")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedDevDocsBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -1668,12 +1732,16 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         include("**/*.kt")
         include("**/*.edn")
         include("**/*.yaml")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedPublishedBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.files(fileTree("templates") {
         include("**/*.kt")
         include("**/*.edn")
+        include("**/*.patch")
+        include("**/*.diff")
     })
         .withPropertyName("guardedTemplateBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
@@ -1795,6 +1863,11 @@ val recordTestTreeBaseline = tasks.register<Exec>("recordTestTreeBaseline") {
         "--snapshot", testTreeWriteBaselineFile.get().asFile.absolutePath,
         "--ran-dir", testTreeWriteRanDir.get().asFile.absolutePath,
     ))
+    // A regeneration run (`merge_regen.py`) puts JavaExec rewriters such as
+    // checkCompletionCorpusFixtures in the same invocation as citationGates. Snapshotting before
+    // they run charged their intended rewrites (182 corpus files) to the first test task's guard.
+    // Only Test tasks are guarded, so baselining after every scheduled JavaExec loses nothing.
+    mustRunAfter(tasks.withType<JavaExec>())
 }
 
 val checkTestTreeWrites = tasks.register<Exec>("checkTestTreeWrites") {
@@ -1983,12 +2056,28 @@ tasks.register<JavaExec>("checkSourcePartition") {
 // chips when they are absent. checkSourcePages is the guard that matters: it parses the fences back
 // out of the emitted markdown and asserts each is verbatim source at the line it claims, which is the
 // only property that makes a numbered fence honest.
+//
+// Declared inputs and output make it up-to-date when nothing it reads has changed, and cacheable, so a
+// fresh worktree on an already-built commit takes the pages from the shared build cache instead of
+// rendering all of them. It reads every .kt under src/ (a citation is resolved by basename anywhere
+// there) and the citations in public/docs; build_zensical_docs.py copies build/source-pages into the
+// docs tree rather than pointing this task at the tree it wipes on every build.
 tasks.register<JavaExec>("generateSourcePages") {
     group = "documentation"
     description = "Renders the reference packages and every cited source file as docs pages into build/source-pages."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.SourcePageGenerator")
+    val outDir = layout.buildDirectory.dir("source-pages")
+    inputs.files(fileTree("src") { include("**/*.kt") })
+        .withPropertyName("kotlinSources").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree("public/docs") { include("**/*.md") })
+        .withPropertyName("docsProse").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(outDir).withPropertyName("pages")
+    outputs.cacheIf { true }
+    doFirst { outDir.get().asFile.deleteRecursively() }
+    // No output argument: the generator defaults to <repo>/build/source-pages, and an absolute path
+    // here would be an input that differs per worktree, so no worktree could hit another's cache entry.
 }
 
 tasks.register<JavaExec>("checkSourcePages") {
@@ -2024,6 +2113,38 @@ tasks.register<JavaExec>("checkAgentTranscripts") {
     // KotlinInterface2 be constructed at all.
     jvmArgs("-XX:+UnlockExperimentalVMOptions")
     jvmArgs(requiredRunJvmArgs())
+}
+
+// Box code as published has to compile, and has to avoid the idioms agents keep copying from it
+// (dev_docs/agents/BOX_CODE_REVISION_PASS.md). Both read AFIELD_GUARD_CHANGED_PATHS_FILE, which
+// tools/check_staged_generated_artifacts.py writes, so a landing checks only what it changed; run
+// by hand with neither, they cover the whole corpus (the compile takes as long as the smoke sweep).
+tasks.register<JavaExec>("checkBoxCodeCompiles") {
+    group = "verification"
+    description = "Compiles, without evaluating, every box of the changed agent transcripts (all of them when no change list is given)."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeCompileGuard")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("formatBoxCode") {
+    group = "formatting"
+    description = "Formats box code in transcripts (or the given files) with the editor's formatter, in place; --check only reports."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<Exec>("checkBoxIdioms") {
+    group = "verification"
+    description = "Flags redundant renderer lookups, bindPushConstant calls, Box.context lookups and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_box_idioms.py")
 }
 
 // The *other* half of the same artifact, and the half nothing checked until 2026-08-06:
@@ -2607,7 +2728,7 @@ tasks.register("generateFieldAotCache") {
         if (isWindows) {
             val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/aot-classpath-argfile.txt")
             argFile.parentFile.mkdirs()
-            argFile.writeText("-cp\n${fieldAotRuntimeClasspath(runJvmTask.classpath)}\n")
+            argFile.writeText("-cp\n${javaArgfileToken(fieldAotRuntimeClasspath(runJvmTask.classpath))}\n")
             backendCommand += "@${argFile.absolutePath}"
         } else {
             backendCommand += "-cp"
@@ -2724,7 +2845,7 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
             if (exit != 0) throw GradleException("Native browser bridge compile failed (${command.joinToString(" ")})")
         }
 
-        val platformLinkArgs = if (isLinux) emptyList() else listOf("-framework", "IOSurface")
+        val platformLinkArgs = if (isLinux) emptyList() else listOf("-framework", "IOSurface", "-framework", "CoreFoundation")
 
         compile(
             *(if (isLinux) arrayOf("-shared", "-fPIC") else arrayOf("-dynamiclib")),
@@ -2746,10 +2867,37 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
     }
 }
 
+// The Linux RTT view reverses the native-handle handoff: the JVM sends dma-buf FDs to Electron.
+val buildFieldFdPass = tasks.register("buildFieldFdPass") {
+    group = "application"
+    description = "Builds the isolated JNI FD sender used by the Linux Electron RTT view."
+    val source = layout.projectDirectory.dir("native/field-fdpass")
+    inputs.files(source.file("CMakeLists.txt"), source.file("src/fdpass.c"),
+        source.file("java/fieldfdpass/UnixFdPassNative.java"))
+    outputs.files(source.file("build/libfieldfdpass.so"), source.file("build/fieldfdpass-native.jar"))
+    onlyIf { osName.startsWith("Linux") }
+    doLast {
+        val cache = source.file("build/CMakeCache.txt").asFile
+        val cachedHome = cache.takeIf { it.isFile }?.readLines()
+            ?.firstOrNull { it.startsWith("CMAKE_HOME_DIRECTORY:INTERNAL=") }?.substringAfter('=')
+        if (cachedHome != null && File(cachedHome).canonicalFile != source.asFile.canonicalFile) {
+            logger.lifecycle("Checkout moved; rebuilding the FD helper's CMake output.")
+            delete(source.dir("build"))
+        }
+        fun run(vararg command: String) {
+            val process = ProcessBuilder(*command).directory(project.projectDir).inheritIO()
+            process.environment()["JAVA_HOME"] = System.getProperty("java.home")
+            if (process.start().waitFor() != 0) throw GradleException("FD helper build failed: ${command.joinToString(" ")}")
+        }
+        run("cmake", "-S", source.asFile.absolutePath, "-B", source.dir("build").asFile.absolutePath)
+        run("cmake", "--build", source.dir("build").asFile.absolutePath)
+    }
+}
+
 val electronInstall = tasks.register("electronInstall") {
     group = "application"
     description = "Installs Electron wrapper dependencies in electron/."
-    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge)
+    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge, buildFieldFdPass)
 
     doLast {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")
@@ -2856,13 +3004,19 @@ val electronInstall = tasks.register("electronInstall") {
     }
 }
 
+fun javaArgfileToken(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"")
+        .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
+
+val fieldServerOnly = providers.gradleProperty("fieldServerOnly").map(String::toBoolean).orElse(false)
+
 tasks.register("dumpFieldLaunch") {
     group = "application"
     description = "Writes build/field-launch/{java,args} so ./field.sh and .\\field.ps1 can launch " +
         "afield.Server directly in a terminal (stdout stays a TTY, so the pinned console renders)."
-    dependsOn(tasks.named("jvmJar"))
+    dependsOn(tasks.named("jvmJar"), prepareSmileNative)
     dependsOn(tasks.named("generateLocalKeystore"))
-    dependsOn(electronInstall)
+    if (!fieldServerOnly.get()) dependsOn(electronInstall)
     personalJar?.let { dependsOn(it) }
     outputs.upToDateWhen { false }
 
@@ -2879,14 +3033,13 @@ tasks.register("dumpFieldLaunch") {
         val outDir = File(project.layout.buildDirectory.asFile.get(), "field-launch")
         outDir.mkdirs()
         File(outDir, "java").writeText(javaExecutable + System.lineSeparator())
-        // Java @argfile: one token per line. Paths are assumed free of whitespace, as elsewhere in
-        // this build (see the runDesktop Windows @argfile at the classpath block below).
+        // Java @argfile: quote every token so whitespace, backslashes and # survive on all OSes.
         File(outDir, "args").writeText(
             buildString {
-                jvmArgs.forEach { appendLine(it) }
+                jvmArgs.forEach { appendLine(javaArgfileToken(it)) }
                 appendLine("-cp")
-                appendLine(runJvmTask.classpath.asPath)
-                appendLine(mainClass)
+                appendLine(javaArgfileToken(runJvmTask.classpath.asPath))
+                appendLine(javaArgfileToken(mainClass))
             }
         )
 
@@ -2896,12 +3049,11 @@ tasks.register("dumpFieldLaunch") {
         val electronArgs = if (os.contains("windows") || os.contains("mac")) {
             emptyList()
         } else {
-            listOf(
-                "--ignore-gpu-blocklist", "--disable-gpu-process-crash-limit",
-                "--enable-gpu-rasterization", "--enable-zero-copy", "--ozone-platform-hint=auto",
-            )
+            listOf("--ozone-platform-hint=auto")
         }
-        File(outDir, "electron").writeText(electronHostBinary().absolutePath + System.lineSeparator())
+        File(outDir, "electron").writeText(
+            (if (fieldServerOnly.get()) "" else electronHostBinary().absolutePath) + System.lineSeparator()
+        )
         File(outDir, "electron-dir").writeText(electronDir.asFile.absolutePath + System.lineSeparator())
         File(outDir, "electron-args").writeText(
             electronArgs.joinToString(separator = System.lineSeparator(), postfix = if (electronArgs.isEmpty()) "" else System.lineSeparator())
@@ -3052,7 +3204,7 @@ tasks.register("runDesktop") {
         if (isWindows) {
             val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/classpath-argfile.txt")
             argFile.parentFile.mkdirs()
-            argFile.writeText("-cp\n${backendClasspath}\n")
+            argFile.writeText("-cp\n${javaArgfileToken(backendClasspath)}\n")
             backendCommand += "@${argFile.absolutePath}"
         } else {
             backendCommand += "-cp"
@@ -3073,13 +3225,7 @@ tasks.register("runDesktop") {
             .start()
         forwardProcessOutput(backendProcess)
         val isMac = os.contains("mac")
-        val linuxElectronGpuArgs = listOf(
-            "--ignore-gpu-blocklist",
-            "--disable-gpu-process-crash-limit",
-            "--enable-gpu-rasterization",
-            "--enable-zero-copy",
-            "--ozone-platform-hint=auto",
-        )
+        val linuxElectronGpuArgs = listOf("--ozone-platform-hint=auto")
         val electronCommand = if (isWindows) {
             listOf(electronHostBinary().absolutePath, ".")
         } else if (isMac) {
@@ -3387,6 +3533,9 @@ tasks.register<Exec>("buildLearnedShaders") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// Native preparation scripts use the platform Python command, like the source launcher.
+val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
 //
 // Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —
@@ -3412,7 +3561,7 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     outputs.dir(layout.buildDirectory.dir("field-tetgen/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3426,6 +3575,91 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
         }
         logger.lifecycle(result.standardOutput.asText.get().trim())
     }
+}
+
+// Build native/field-slug, the helper afield.graphics.slug.SlugPath shells out to. Explicit opt-in
+// like Loris: build.sh fetches the pinned Slughorn revision from GitHub on first run.
+val buildSlugNative = tasks.register<Exec>("buildSlugNative") {
+    group = "build"
+    description = "Builds native/field-slug (pinned Slughorn + C++20), which SlugPath and four.slug.readback need."
+    inputs.files("native/field-slug/build.sh", "native/field-slug/main.cpp")
+    outputs.file("native/field-slug/build/field-slug")
+    commandLine("bash", "native/field-slug/build.sh")
+}
+
+// The natives the FIELD_TEST smoke catalog needs that `clean` or a fresh worktree leaves absent.
+// The docs set is buildDocsNativePrerequisites; this one is what run_field_tests.py launches against.
+tasks.register("buildSmokeNativePrerequisites") {
+    group = "build"
+    description = "Builds or fetches the native helpers the smoke catalog needs (Steam Audio, field-slug)."
+    dependsOn(fetchSteamAudioNatives, buildSlugNative)
+}
+
+// Explicit opt-in: no ordinary build, check or Field startup downloads/builds Loris.
+tasks.register("buildLorisNative") {
+    group = "build"
+    description = "Builds the optional pinned Loris analysis/resynthesis worker (CMake + C++17)."
+    inputs.dir("native/field-loris")
+    inputs.file("tools/build_loris_native.py")
+    inputs.file("tools/native_download_cache.py")
+    outputs.dir(layout.buildDirectory.dir("field-loris/build"))
+    doLast {
+        val result = providers.exec {
+            commandLine(nativeBuildPython, "tools/build_loris_native.py")
+            isIgnoreExitValue = true
+        }
+        if (result.result.get().exitValue != 0) throw GradleException(
+            result.standardOutput.asText.get() + result.standardError.asText.get())
+        logger.lifecycle(result.standardOutput.asText.get().trim())
+    }
+}
+
+// Build native/field-paint: claude-paint's `paint` crate (a bristle-brush oil-paint simulation,
+// vendored with Field's additions in native/field-paint/vendor/paint, see VENDORED.md there) behind
+// a flat C ABI, for afield.paint.PaintCanvas.
+//
+// Optional and not wired into `check`: it needs cargo, and the first build fetches the crate's
+// dependencies from crates.io (pinned by native/field-paint/Cargo.lock). The docs page
+// (public/docs/paint_canvas.md) declares `requires="paint"`, so buildDocsNativePrerequisites builds it. The
+// output is build/field-paint/release, which PaintLibrary searches; -Dafield.paint.library or
+// AFIELD_PAINT_LIBRARY point elsewhere.
+//
+//     ./gradlew buildPaintNative
+//     ./gradlew jvmTest --tests 'afield.paint.PaintCanvasTest'
+val buildPaintNative = tasks.register<Exec>("buildPaintNative") {
+    group = "build"
+    description = "Builds native/field-paint into build/field-paint (needs cargo and, once, the network)."
+    val sourceDir = layout.projectDirectory.dir("native/field-paint")
+    inputs.dir(sourceDir)
+    outputs.dir(layout.buildDirectory.dir("field-paint/release"))
+    commandLine(
+        "cargo", "build", "--release", "--locked",
+        "--manifest-path", sourceDir.file("Cargo.toml").asFile.absolutePath,
+        "--target-dir", layout.buildDirectory.dir("field-paint").get().asFile.absolutePath,
+    )
+}
+
+// Build native/field-syphon: a flat C ABI over the Syphon framework (BSD-2, pinned by revision in
+// native/field-syphon/build.sh), for afield.syphon — publishing Field frames to, and receiving
+// frames from, Resolume / TouchDesigner / MadMapper / OBS on macOS.
+//
+// Optional, macOS-only and not wired into `check`: it needs Xcode, and the first build clones the
+// Syphon-Framework repository. Output is build/field-syphon (Syphon.framework,
+// libfield_syphon.dylib, and the field_syphon_probe test peer), which SyphonLibrary searches;
+// -Dafield.syphon.library or AFIELD_SYPHON_LIBRARY point elsewhere.
+//
+//     ./gradlew buildSyphonNative
+//     ./gradlew jvmTest --tests 'afield.syphon.SyphonTest'
+val buildSyphonNative = tasks.register<Exec>("buildSyphonNative") {
+    group = "build"
+    description = "Builds native/field-syphon into build/field-syphon (macOS; needs Xcode and, once, the network)."
+    val sourceDir = layout.projectDirectory.dir("native/field-syphon")
+    inputs.dir(sourceDir)
+    outputs.dir(layout.buildDirectory.dir("field-syphon"))
+    commandLine(
+        "bash", sourceDir.file("build.sh").asFile.absolutePath,
+        layout.buildDirectory.dir("field-syphon").get().asFile.absolutePath,
+    )
 }
 
 // Fetch the pinned subset of tidalcycles/Dirt-Samples the docs' sample clips are rendered from.
@@ -3452,7 +3686,7 @@ val fetchDocsDirtSamples = tasks.register("fetchDocsDirtSamples") {
     outputs.upToDateWhen { false }
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath) +
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath) +
             if (gradle.startParameter.isOffline) listOf("--check") else emptyList()
         val result = providers.exec {
             commandLine(command)
@@ -3489,7 +3723,7 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
     outputs.dir(layout.buildDirectory.dir("field-libpd/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3503,6 +3737,56 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
         }
         logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
     }
+}
+
+// Build libcsound — Csound as a C library — into build/field-csound, for afield.csound.
+//
+// No wrapper: afield.csound binds csound.h directly through FFM. The script downloads one pinned,
+// checksummed Csound release tarball into the per-user native download cache and builds only the
+// library (no frontends, drivers or plugin opcodes). Needs cmake, flex, bison and libsndfile.
+// Optional like libpd and not wired into `check`; the Csound tests skip without it.
+//
+//     ./gradlew buildCsoundNative
+//     ./gradlew jvmTest --tests 'afield.csound.*'
+val buildCsoundNative = tasks.register("buildCsoundNative") {
+    group = "build"
+    description = "Builds libcsound into build/field-csound (needs cmake, flex, bison, libsndfile and, once, the network)."
+
+    val script = layout.projectDirectory.file("tools/build_csound_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
+    inputs.file(script)
+    inputs.file(cacheHelper)
+    outputs.dir(layout.buildDirectory.dir("field-csound/build"))
+
+    doLast {
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
+    }
+}
+
+// Write src/commonMain/resources/csound-vocabulary.json from libcsound's own opcode list
+// (csoundNewOpcodeList): what a Csound box completes against. Needs a built libcsound
+// (buildCsoundNative); CsoundVocabularyTest fails when the committed file has drifted from it.
+tasks.register<JavaExec>("generateCsoundVocabulary") {
+    group = "documentation"
+    description = "Regenerates csound-vocabulary.json from the built libcsound's opcode list."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.csound.CsoundVocabulary")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+    workingDir = projectDir
 }
 
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
@@ -3608,7 +3892,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, "buildLorisNative")
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 
@@ -3771,35 +4055,6 @@ tasks.register<JavaExec>("runfilestore") {
     standardInput = System.`in`
 }
 
-tasks.register<JavaExec>("polishCompletionDocs") {
-    javaLauncher.set(javaToolchains.fieldLauncher())
-    group = "application"
-    description = "Runs AI4 completion-doc cache/source polishing CLI and regenerates the codebase reference"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
-    standardInput = System.`in`
-
-    // Source KDoc is the input to the committed codebase reference and KDoc
-    // worklist. Keep those derived files synchronized before the /welcome
-    // monitor reports the polish task as finished. A finalizer also repairs the
-    // reference after a failed AI run that managed to write a partial batch.
-    finalizedBy("generateCodebaseReference")
-}
-
-tasks.register<JavaExec>("polishCompletionDocsDryRun") {
-    javaLauncher.set(javaToolchains.fieldLauncher())
-    group = "application"
-    description = "Runs AI4 completion-doc cache/source polishing CLI without writing files"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
-    args("--dry-run")
-    standardInput = System.`in`
-}
-
 tasks.register<JavaExec>("improveAiToolUse") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"
@@ -3884,4 +4139,23 @@ tasks.named("jvmDistTar") {
 
 tasks.named("jvmDistZip") {
     enabled = false
+}
+
+// Explicit optional preparation: ordinary compilation/startup never downloads NR assets.
+tasks.register<Exec>("fetchOpenDlssNrWeights") {
+    group="build"
+    description="Fetch and verify the pinned OpenDLSS-NR model into the shared native cache"
+    commandLine(rootPythonCommand+listOf("tools/build_opendlssnr.py","--weights-only")+
+        if(gradle.startParameter.isOffline)listOf("--offline") else emptyList())
+}
+tasks.register<Exec>("buildOpenDlssNrNative") {
+    group="build"
+    description="Build the optional Vulkan OpenDLSS-NR adapter and kernels"
+    commandLine(rootPythonCommand+listOf("tools/build_opendlssnr.py")+
+        if(gradle.startParameter.isOffline)listOf("--offline") else emptyList())
+}
+tasks.register("buildOpenDlssNr") {
+    group="build"
+    description="Prepare the optional OpenDLSS-NR library, kernels and weights"
+    dependsOn("buildOpenDlssNrNative")
 }

@@ -151,7 +151,7 @@ val Once.renderer by Onceing<Renderer>() /**/
 <!-- field-box id="c82c404d-a15d-4f51-a06f-66dfc2a00364" index="2" -->
 
 ```edn [field-box id="c82c404d-a15d-4f51-a06f-66dfc2a00364" role="properties"]
-{"id" "c82c404d-a15d-4f51-a06f-66dfc2a00364" "index" 2 "name" "5 - The candy wrapper, side by side" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "5 - The candy wrapper, side by side" "frame" #afield/rect [697.33203125 375.296875 393.60546875 143.71875] "nested" #{} "attic" "" "autorun" false} "blockProperties" [{"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "c271e4c4e9836e4f77281b753c7a65126463289a6d57b23e4bc664576b7024e7"} {"name" "code" "language" "kotlin" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt" "lines" 62 "characters" 3270 "sha256" "c473ec9689990351bb2ed5c52f73fd903453a89a87980a81e10863ebb64873ab"} {"name" "fragment" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "c82c404d-a15d-4f51-a06f-66dfc2a00364" "index" 2 "name" "5 - The candy wrapper, side by side" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "5 - The candy wrapper, side by side" "frame" #afield/rect [697.33203125 375.296875 393.60546875 143.71875] "nested" #{} "attic" "" "autorun" false} "blockProperties" [{"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "c271e4c4e9836e4f77281b753c7a65126463289a6d57b23e4bc664576b7024e7"} {"name" "code" "language" "kotlin" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt" "lines" 61 "characters" 3191 "sha256" "09621204b38f4efa40886c55bb597af94a64a524ff81ff3c08674d6538ef452d"} {"name" "fragment" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "c82c404d-a15d-4f51-a06f-66dfc2a00364_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```text [field-property box="c82c404d-a15d-4f51-a06f-66dfc2a00364" name="preamble"]
@@ -259,12 +259,11 @@ import afield.stdlib.linalg.Matrix4f
 val useDualQuaternions = false
 val twistTime = 1.0f
 
-// ONE mesh, deliberately, and this is a trap worth knowing about. Drawing LBS and DQS side by side
+// ONE mesh, deliberately. Drawing LBS and DQS side by side
 // as two Mesh objects DOES NOT WORK: both read `inst`'s vertex buffer at draw time rather than at
 // applyToMesh time, so both tubes show whichever pose was written LAST. Measured 2026-09-19 -- with
 // lbs-then-dqs both rendered round, and with lbs-then-lbs both rendered pinched, while the printed
 // numbers stayed correct. A two-mesh comparison here would be a figure that lies.
-val renderer: Renderer = fromContext()
 
 var (module, models) = gltfModelHere(RiggedFixture.locate())
 var m = Mesh()
@@ -629,7 +628,7 @@ println("At time 0 and 2 the tube is straight; the extreme is at time 1.")
 <!-- field-box id="gpu_skin" index="6" -->
 
 ```edn [field-box id="gpu_skin" role="properties"]
-{"id" "gpu_skin" "index" 6 "name" "4 - The same deformation on the GPU, no shader change" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "4 - The same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [700.0 226.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 71 "characters" 3462 "sha256" "c9a99cc156372dbb50677daaff60bed6f82ad220cdfe1136e00bd0a310f5b19b"} {"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "f06f1a765abc44dfe220c15003c7e0867955b0f2736e2ccbbfb5d9309ffaf8f5"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "gpu_skin" "index" 6 "name" "4 - The same deformation on the GPU, no shader change" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "4 - The same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [700.0 226.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 70 "characters" 3423 "sha256" "cc908420d24afff4bd2035be60954f94c0621610d0d1102a9289494c40705939"} {"name" "preamble" "language" "text" "lines" 81 "characters" 5450 "sha256" "f06f1a765abc44dfe220c15003c7e0867955b0f2736e2ccbbfb5d9309ffaf8f5"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="gpu_skin" name="code" path="gpu_skin_code_.kt"]
@@ -653,7 +652,6 @@ val poseTime = 1.0f
 // `prop<Renderer>(renderer)` macro a hand-built renderer box uses -- so the bare name does not
 // resolve and fromContext() finds it by type instead. In a document with your own renderer box as
 // the parent, `renderer` resolves directly and this line is redundant but harmless.
-val renderer: Renderer = fromContext()
 
 var (module, models) = gltfModelHere(RiggedFixture.locate())
 

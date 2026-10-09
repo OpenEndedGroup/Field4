@@ -1,0 +1,277 @@
+/* Multislider, matrix, range slider and menu (afield/visualizers.kt), drawn by arrayControls.js.
+   Shared by the canvas (index.html) and the phone (controllers.html), which maps the --field-*
+   variables used here onto its own palette. */
+/* Multislider, matrix, range slider, menu — afield/visualizers.kt, driven by arrayControls.js */
+.field-array .array-visual {
+    touch-action: none;
+    user-select: none;
+    cursor: crosshair;
+}
+
+.field-array .array-readout {
+    font-size: 11px;
+    color: var(--field-accent-text-soft);
+}
+
+.multislider-visual {
+    display: block;
+    width: 100%;
+    background: var(--field-surface);
+    border: 1px solid var(--field-accent-border-faint);
+    border-radius: 4px;
+}
+
+.multislider-bar {
+    fill: var(--field-accent);
+    opacity: 0.8;
+}
+
+.matrix-visual {
+    display: grid;
+    gap: 2px;
+}
+
+.matrix-cell {
+    aspect-ratio: 1;
+    background: var(--field-surface-muted);
+    border: 1px solid var(--field-accent-border-faint);
+    border-radius: 2px;
+}
+
+.matrix-cell.on {
+    background: var(--cell-color, rgb(var(--field-danger-rgb)));
+    border-color: var(--cell-color, rgb(var(--field-danger-rgb)));
+    opacity: 0.85;
+}
+
+.range-visual {
+    position: relative;
+    height: 24px;
+    cursor: ew-resize;
+}
+
+.range-track,
+.range-fill {
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    margin-top: -2px;
+    border-radius: 2px;
+}
+
+.range-track {
+    left: 0;
+    right: 0;
+    background: var(--field-accent-muted);
+}
+
+.range-fill {
+    background: var(--field-accent);
+}
+
+.range-thumb {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 18px;
+    margin: -9px 0 0 -5px;
+    border-radius: 3px;
+    background: var(--field-accent);
+    pointer-events: none;
+}
+
+.field-menu {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.field-menu-select {
+    font-family: var(--field-font);
+    font-size: 12px;
+    color: var(--field-accent-text-soft);
+    background: var(--field-surface);
+    border: 1px solid var(--field-accent-border-faint);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+/* Playheads — positions the box writes; never hit-tested. */
+.multislider-playhead {
+    fill: rgb(var(--field-warning-rgb));
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.matrix-cell.playhead {
+    box-shadow: inset 0 0 0 1px rgb(var(--field-warning-rgb));
+}
+
+.matrix-cell.playhead:not(.on) {
+    background: rgba(var(--field-warning-rgb), 0.25);
+}
+
+.range-playhead {
+    display: none;
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    width: 2px;
+    margin-left: -1px;
+    background: rgb(var(--field-warning-rgb));
+    pointer-events: none;
+}
+
+/* Polar variants — the same controls drawn on a dial (polar = true). */
+.polar-visual {
+    display: block;
+    margin: 4px auto 0;
+    max-width: 100%;
+    border: none;
+    background: none;
+}
+
+.multislider-visual.polar-visual {
+    border: none;
+    background: none;
+}
+
+.polar-guide {
+    fill: var(--field-surface);
+    stroke: var(--field-accent-border-faint);
+    stroke-width: 1;
+}
+
+.matrix-polar .matrix-cell {
+    fill: var(--field-surface-muted);
+    stroke: var(--field-accent-border-faint);
+    stroke-width: 0.6;
+}
+
+.matrix-polar .matrix-cell.on {
+    fill: var(--cell-color, rgb(var(--field-danger-rgb)));
+    stroke: var(--cell-color, rgb(var(--field-danger-rgb)));
+    opacity: 0.85;
+}
+
+.matrix-polar .matrix-cell.playhead {
+    stroke: rgb(var(--field-warning-rgb));
+    stroke-width: 1.4;
+    box-shadow: none;
+}
+
+.matrix-polar .matrix-cell.playhead:not(.on) {
+    fill: rgba(var(--field-warning-rgb), 0.25);
+}
+
+.range-visual.range-polar {
+    position: static;
+    height: auto;
+    cursor: grab;
+}
+
+.range-arc-track {
+    fill: none;
+    stroke: var(--field-accent-muted);
+    stroke-width: 4;
+    stroke-linecap: round;
+}
+
+.range-arc-fill {
+    fill: none;
+    stroke: var(--field-accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+}
+
+.range-arc-thumb {
+    fill: var(--field-accent);
+    pointer-events: none;
+}
+
+.range-arc-playhead {
+    stroke: rgb(var(--field-warning-rgb));
+    stroke-width: 2;
+    pointer-events: none;
+}
+
+.range-arc-label {
+    fill: var(--field-accent-text-soft);
+    font-family: var(--field-font);
+    font-size: 14px;
+    text-anchor: middle;
+}
+
+.range-arc-seam {
+    stroke: var(--field-accent-text-soft);
+    stroke-width: 1.5;
+    opacity: 0.7;
+}
+
+.range-arc-end {
+    fill: var(--field-accent-text-soft);
+    font-family: var(--field-font);
+    font-size: 10px;
+    text-anchor: middle;
+    opacity: 0.8;
+}
+
+/* Gesture pad — an XY pad that records a take (gesture(...) in visualizers.kt). */
+.gesture-visual {
+    cursor: crosshair;
+}
+
+.gesture-pane {
+    fill: var(--field-surface);
+    stroke: var(--field-accent-border-faint);
+    stroke-width: 1;
+}
+
+.gesture-axis {
+    stroke: var(--field-accent-border-faint);
+    stroke-width: 0.6;
+    stroke-dasharray: 2 3;
+}
+
+.gesture-trail {
+    fill: none;
+    stroke: var(--field-accent-muted);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+}
+
+.gesture-recording {
+    fill: none;
+    stroke: rgb(var(--field-danger-rgb));
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.gesture-live {
+    fill: var(--field-accent);
+}
+
+.gesture-play {
+    fill: none;
+    stroke: rgb(var(--field-warning-rgb));
+    stroke-width: 2.5;
+    pointer-events: none;
+}
+
+.gesture-rec {
+    margin-left: 8px;
+    font-family: var(--field-font);
+    font-size: 11px;
+    color: var(--field-accent-text-soft);
+    background: var(--field-surface);
+    border: 1px solid var(--field-accent-border-faint);
+    border-radius: 4px;
+    padding: 1px 8px;
+    cursor: pointer;
+}
+
+.gesture-rec.armed {
+    color: #fff;
+    background: rgb(var(--field-danger-rgb));
+    border-color: rgb(var(--field-danger-rgb));
+}

@@ -530,6 +530,13 @@ class SavingContext {
                     val metadataStartedAt = System.nanoTime()
                     metadataChanged = checkDifference(metadataPath, ednText)
                     metadataMs = SaveReloadLog.elapsedMillis(metadataStartedAt)
+                    // Now, not with the sidecars at the end: the rest of a save can take long enough
+                    // that the file's own watch event arrives first and is taken for an external edit.
+                    snapshot.fileWatchManager?.markMetadataWrite(
+                        File(metadataPath),
+                        snapshot.transfers.map { it.id },
+                        written = metadataChanged
+                    )
                     altered = altered || metadataChanged
                     if (metadataChanged) alteredFiles.add(metadataPath)
 
@@ -606,11 +613,8 @@ class SavingContext {
                             if (watchManager == null) {
                                 SaveReloadLog.log("save-warning", "doc=$fn missing-watch-manager")
                             }
+                            // metadata.edn was registered when it was written (markMetadataWrite).
                             watchManager?.let {
-                                val metadataFile = File(root, METADATA_EDN)
-                                if (metadataFile.exists()) {
-                                    it.markInternalSave(metadataFile)
-                                }
                                 File(root).listFiles()?.forEach { file ->
                                     if (file.isFile && file.name.contains("_") &&
                                         Box.ioSeparateProperties.values.contains(file.extension)
@@ -1750,7 +1754,7 @@ class SavingContext {
         File(fn).mkdirs()
         // The eighth producer, and the only one that fires on *load* rather than on save:
         // `load()` calls this, so merely opening a document seeds `AGENTS.md` and `README.md`
-        // beside it. Harmless in a scratch workspace, two untracked files in a repository — 28 of
+        // beside it. (Older Fields also seeded a `README.md`; see [ensureAgentGuides].) Harmless in a scratch workspace, two untracked files in a repository — 28 of
         // this repository's 117 document directories have no tracked `AGENTS.md`, including the
         // shipped demo at `dev_docs/agents/demos/python_cells`.
         if (!ReadOnlyDocuments.blocksWritesTo(fn)) {
@@ -1760,25 +1764,24 @@ class SavingContext {
     }
 
     /**
-     * Seed a workspace with human and agent orientation without overwriting user files.
+     * Seed a workspace with agent orientation without overwriting user files.
      *
-     * `templates/WORKSPACE_README.md` becomes `README.md` and
-     * `templates/WORKSPACE_AGENTS.md` becomes `AGENTS.md`. Each file is copied only when the source
-     * exists and the destination does not. Guide discovery or copying failures are logged but never
-     * fail workspace creation.
+     * `templates/WORKSPACE_AGENTS.md` becomes `AGENTS.md`, copied only when the source exists and
+     * the destination does not. Copying failures are logged but never fail workspace creation.
+     *
+     * Field used to seed a `README.md` as well. It was a description of the on-disk format, which
+     * the Document Guide panel then listed as though it were the document's docs; its content now
+     * lives in `AGENTS.md`. Copies already on disk are left alone and hidden from the panel
+     * (`DocumentGuideFiles.SEEDED_WORKSPACE_README_TITLE`).
      */
     private fun ensureAgentGuides(workspaceDir: String) {
         try {
             val workspace = File(workspaceDir)
             if (!workspace.exists() || !workspace.isDirectory) return
 
-            // Copy the workspace onboarding set into new workspaces:
-            //   README.md  — human orientation (what this folder is, how to open it)
-            //   AGENTS.md  — agent onboarding, auto-discovered by agent tooling; onboards
-            //                an agent that opens this folder to the transcript/backdoor path.
-            // Both point at the canonical automation docs under dev_docs/agents/.
+            // AGENTS.md is auto-discovered by agent tooling and onboards an agent that opens this
+            // folder to the on-disk format and the transcript/backdoor path (dev_docs/agents/).
             val guidesToCopy = mapOf(
-                "templates/WORKSPACE_README.md" to "README.md",
                 "templates/WORKSPACE_AGENTS.md" to "AGENTS.md"
             )
 

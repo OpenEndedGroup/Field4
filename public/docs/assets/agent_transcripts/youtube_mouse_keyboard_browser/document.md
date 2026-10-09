@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. 16:9 window + renderer
@@ -42,16 +42,14 @@ start(renderer::run)
 <!-- field-box id="youtube_desktop_panel" index="1" -->
 
 ```edn [field-box id="youtube_desktop_panel" role="properties"]
-{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 38 "characters" 1363 "sha256" "295d294a6ae7cc73d2a55d3ed6febdf7951b73dbe66630dba547df24b1c6022a"}]}
+{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 36 "characters" 1285 "sha256" "bc5b2c219e184fc6245d1cfa2bbed23d2dadabbe5a97a47380a2d2f6b327cff6"}]}
 ```
 
 ```kotlin [field-property box="youtube_desktop_panel" name="code" path="youtube_desktop_panel_code_.kt"]
 import afield.four.Target
 import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowserWindowPanel
-import afield.four.modules.fromContext
 
-val renderer: Renderer = fromContext()
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(

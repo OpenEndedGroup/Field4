@@ -99,14 +99,12 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-          // argument is fully qualified because `prop<>`'s code rewrite does not carry the
-          // snippet's own imports.
+          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
           import afield.four.fabricated.StandardRenderer
           import afield.four.fabricated.applyScenePlan
           import afield.stdlib.linalg.Vector3f
 
-          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+          prop<StandardRenderer.Bundle>(bundle)
 
           once.bundle {
               val b = StandardRenderer.build(

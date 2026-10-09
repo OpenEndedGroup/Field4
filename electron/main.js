@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { useAngleVulkan } = require("./gpu-policy.cjs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const {
@@ -8,6 +9,7 @@ const {
   WebContentsView,
   ipcMain,
   screen,
+  systemPreferences,
 } = require("electron");
 
 const APP_NAME = "Field4";
@@ -48,6 +50,20 @@ const diagnosticStartedAt = Date.now();
 let diagnosticLogPath = null;
 let diagnosticLogStream = null;
 
+
+// AI4 push-to-talk (voiceInput.js). macOS only grants the microphone to an app that asks, and a
+// page's getUserMedia alone reports a refusal as a bare "Permission denied". Asking here shows the
+// system prompt the first time and lets the page say where to re-enable it after a "no".
+async function onMicrophoneAccess() {
+  if (process.platform !== "darwin") return "granted";
+  let status = systemPreferences.getMediaAccessStatus("microphone");
+  if (status === "not-determined") {
+    await systemPreferences.askForMediaAccess("microphone");
+    status = systemPreferences.getMediaAccessStatus("microphone");
+  }
+  diagnosticLog("microphone-access", { status });
+  return status;
+}
 function diagnosticError(error) {
   if (!error) return null;
   return {
@@ -145,6 +161,12 @@ process.on("unhandledRejection", (reason) => {
 });
 
 app.setName(APP_NAME);
+// A capture Electron (afield.docs.ElectronCaptureBrowser) gets its own profile, so the user's
+// per-host zoom, cookies and window state never reach a docs capture, and their running Field4 app
+// keeps its profile to itself.
+if (process.env.FIELD_ELECTRON_USER_DATA) {
+  app.setPath("userData", process.env.FIELD_ELECTRON_USER_DATA);
+}
 if (process.platform === "win32") {
   app.setAppUserModelId(APP_USER_MODEL_ID);
 }
@@ -165,54 +187,16 @@ function installChromiumGpuSwitches() {
 
   if (process.platform !== "linux") return;
 
-  appendChromiumSwitchIfMissing("ignore-gpu-blocklist");
-  appendChromiumSwitchIfMissing("disable-gpu-process-crash-limit");
-  appendChromiumSwitchIfMissing("enable-gpu-rasterization");
-  appendChromiumSwitchIfMissing("enable-zero-copy");
   appendChromiumSwitchIfMissing("ozone-platform-hint", "auto");
-
-  // ANGLE-over-Vulkan, but only where Ozone can actually present through it.
-  //
-  // Vulkan is what lets Chromium export a paint as a native pixmap, which is what the accelerated
-  // browser-texture producer needs (see dev_docs/external_browser_surfaces.md). But Ozone's
-  // Wayland backend has no Vulkan surface support: it logs "'--ozone-platform=wayland' is not
-  // compatible with Vulkan" and then never composites the window onto the screen. The renderer
-  // still runs perfectly well — the page loads, the websocket talks, `did-finish-load` fires — so
-  // nothing looks wrong from the main process; the window is just empty, showing only the
-  // compositor's blur of whatever is behind it. That is the whole of the failure, and it is
-  // invisible to `capturePage`, which does not go through the on-screen path.
-  //
-  // So: X11 gets it, Wayland does not. The producer is unaffected either way — it is a separate
-  // Electron process with its own switches, and being offscreen it never needs an Ozone surface.
-  if (!shouldUseAngleVulkan()) {
-    console.log(
-      `[electron,gpu] leaving ANGLE on GL: ozone platform is ${ozonePlatform()}, which cannot present Vulkan`,
-    );
-    return;
-  }
+  // The desktop must work on mixed GPUs and ordinary drivers. Let Chromium select its backend.
+  // The offscreen browser-texture producer configures its own accelerated switches separately.
+  if (!shouldUseAngleVulkan()) return;
   appendChromiumSwitchIfMissing("enable-features", "Vulkan");
   appendChromiumSwitchIfMissing("use-angle", "vulkan");
 }
 
-/**
- * Which Ozone backend this process will come up on. `ozone-platform-hint=auto` resolves to Wayland
- * whenever a Wayland display is reachable, so that is what we reproduce here; an explicit
- * `--ozone-platform` on the command line wins over the hint.
- */
-function ozonePlatform() {
-  if (app.commandLine.hasSwitch("ozone-platform")) {
-    return app.commandLine.getSwitchValue("ozone-platform") || "auto";
-  }
-  return process.env.WAYLAND_DISPLAY ? "wayland" : "x11";
-}
-
 function shouldUseAngleVulkan() {
-  // The escape hatch is two-way on purpose: "1" to get the accelerated backend back on a session
-  // we decided against, "0" to rule it out on one we would otherwise have allowed.
-  const override = process.env.FIELD_ELECTRON_ANGLE_VULKAN;
-  if (override === "1") return true;
-  if (override === "0") return false;
-  return ozonePlatform() !== "wayland";
+  return useAngleVulkan(process.platform, process.env.FIELD_ELECTRON_ANGLE_VULKAN);
 }
 
 installChromiumGpuSwitches();
@@ -806,6 +790,14 @@ function createMainWindow() {
     win.removeMenu();
   }
 
+  // The window's own webContents is never used (every page is a WebContentsView), so it never gets
+  // a renderer, and a CDP client that auto-attaches to it waits forever: Playwright's
+  // connectOverCDP hangs on its Page.enable. The docs capture path (afield.docs.ElectronCaptureBrowser)
+  // attaches over CDP, so when remote debugging is on, give it a page that answers.
+  if (app.commandLine.hasSwitch("remote-debugging-port")) {
+    win.webContents.loadURL("about:blank");
+  }
+
   const tabStripView = new WebContentsView({
     webPreferences: {
       preload: TAB_STRIP_PRELOAD,
@@ -1268,15 +1260,13 @@ function createMainWindow() {
     });
     tab.view.webContents.on(
       "console-message",
-      (details, level, message, line, sourceId) => {
-        const item = details?.message
-          ? {
-              level: details.level,
-              message: details.message,
-              line: details.lineNumber,
-              sourceId: details.sourceId,
-            }
-          : { level, message, line, sourceId };
+      (details) => {
+        const item = {
+          level: details.level,
+          message: details.message,
+          line: details.lineNumber,
+          sourceId: details.sourceId,
+        };
         if (
           item.level === "warning" ||
           item.level === "error" ||
@@ -1433,6 +1423,91 @@ function createMainWindow() {
     return payload;
   };
 
+  // This command reaches the user's live tab. The renderer first resolves the box and output
+  // channel to one iframe and gives it a unique name; Electron resolves that name again in its
+  // frame tree. No independently launched capture page or remote debugging port is involved.
+  const onLiveOutputIframe = async (event, request) => {
+    const tab = activeTab();
+    const contents = liveContents(tab);
+    if (!contents || event.sender !== contents ||
+        event.senderFrame?.routingId !== contents.mainFrame.routingId ||
+        event.senderFrame?.processId !== contents.mainFrame.processId) {
+      throw new Error("The requesting Field tab is no longer active");
+    }
+    if (!request || typeof request.id !== "string" ||
+        request.frameName !== `field-live-iframe-${request.id}`) {
+      throw new Error("Invalid live iframe request");
+    }
+    const candidates = contents.mainFrame.framesInSubtree.filter(frame =>
+      !frame.isDestroyed() && frame !== contents.mainFrame);
+    let frames = candidates.filter(frame => frame.name === request.frameName);
+    // WebFrameMain.name can retain the navigation-time name after an iframe is renamed. Ask each
+    // child in its own context; this also works when that child is on another localhost origin.
+    if (frames.length === 0) {
+      const names = await Promise.all(candidates.map(async frame => {
+        try { return await frame.executeJavaScript("window.name"); }
+        catch (_) { return null; }
+      }));
+      frames = candidates.filter((_, index) => names[index] === request.frameName);
+    }
+    // A unique URL is useful for ordinary already-loaded frames whose page resets window.name.
+    // If two frames share it, refuse to guess which one the box/channel phrase meant.
+    if (frames.length === 0 && typeof request.frameUrl === "string") {
+      frames = candidates.filter(frame => frame.url === request.frameUrl);
+    }
+    if (frames.length !== 1) {
+      throw new Error(`Could not identify one live iframe for ${request.frameName}; found ${frames.length}`);
+    }
+    const frame = frames[0];
+    const timeoutMillis = Math.max(1, Math.min(Number(request.timeoutMillis) || 10000, 120000));
+    const work = async () => {
+      if (request.operation === "evaluate") {
+        const source = JSON.stringify(String(request.javascript || ""));
+        const result = await frame.executeJavaScript(
+          `Promise.resolve((0, eval)(${source})).then(value => JSON.stringify({ value }))`);
+        return { value: JSON.parse(result).value, frameUrl: frame.url };
+      }
+      if (request.operation === "screenshot") {
+        const rect = request.captureRect;
+        if (!rect || ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+            rect.width <= 0 || rect.height <= 0 || rect.width > 8192 || rect.height > 8192) {
+          throw new Error("Invalid live iframe screenshot rectangle");
+        }
+        const image = await contents.capturePage({
+          x: Math.floor(rect.x), y: Math.floor(rect.y),
+          width: Math.ceil(rect.width), height: Math.ceil(rect.height),
+        });
+        if (!image || image.isEmpty()) throw new Error("Electron captured no visible iframe pixels");
+        const size = image.getSize();
+        const scale = Math.min(1, 1600 / Math.max(size.width, size.height));
+        const bounded = scale < 1
+          ? image.resize({ width: Math.max(1, Math.round(size.width * scale)), quality: "best" })
+          : image;
+        const jpeg = bounded.toJPEG(85);
+        return { value: `data:image/jpeg;base64,${jpeg.toString("base64")}`, frameUrl: frame.url };
+      }
+      if (request.operation === "cdp") {
+        const debug = contents.debugger;
+        if (!debug.isAttached()) debug.attach("1.3");
+        const value = await debug.sendCommand(
+          String(request.method || ""), request.params || {}, request.sessionId || undefined);
+        return { value, frameUrl: frame.url };
+      }
+      throw new Error(`Unknown live iframe operation '${request.operation}'`);
+    };
+    let timer;
+    try {
+      return await Promise.race([
+        work(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`Live iframe command timed out after ${timeoutMillis}ms`)), timeoutMillis);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   ipcMain.on("field4-tabs-ready", onTabsReady);
   ipcMain.on("field4-tabs-activate", onTabActivate);
   ipcMain.on("field4-tabs-close", onTabClose);
@@ -1441,6 +1516,10 @@ function createMainWindow() {
   ipcMain.on("field4-tabs-hide", onHideTabs);
   ipcMain.removeHandler("field4-history-capture-window");
   ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
+  ipcMain.removeHandler("field4-live-output-iframe");
+  ipcMain.handle("field4-live-output-iframe", onLiveOutputIframe);
+  ipcMain.removeHandler("field4-microphone-access");
+  ipcMain.handle("field4-microphone-access", onMicrophoneAccess);
 
   const relayout = () => applyLayout();
   const enterFullScreen = () => {
@@ -1488,6 +1567,19 @@ async function logGpuStatus(label) {
   }
 }
 
+// A capture Electron (afield.docs.ElectronCaptureBrowser) is owned by the Field JVM that launched it,
+// and a JVM that dies without running its shutdown hooks would otherwise leave it running forever.
+const ownerPid = Number(process.env.FIELD_ELECTRON_OWNER_PID || 0);
+if (ownerPid > 0) {
+  setInterval(() => {
+    try {
+      process.kill(ownerPid, 0);
+    } catch (_) {
+      app.quit();
+    }
+  }, 2000).unref();
+}
+
 app.whenReady().then(() => {
   initializeDiagnosticLog();
   if (LOG_GPU_STATUS) {
@@ -1495,6 +1587,7 @@ app.whenReady().then(() => {
   }
   installDockIcon();
   installAppMenu();
+  require("./rtt-view-host").install();
   createMainWindow();
   if (LOG_GPU_STATUS) {
     setTimeout(() => logGpuStatus("delayed"), 2000);

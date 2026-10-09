@@ -31,7 +31,11 @@ TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 from verification_runtime import (
+    DEFAULT_MANAGED_STARTUP_CEILING,
+    MANAGED_STARTUP_CEILING_ENV,
+    ManagedStartupWatch,
     automation_server_environment,
+    env_seconds,
     automation_workspace,
     field_instance_info,
     field_instance_problem,
@@ -105,9 +109,12 @@ RUNNER_SUBPROCESS_GRACE_SEC = float(os.environ.get("FIELD_DOCS_SUBPROCESS_GRACE"
 # screenshot take substantially longer than 1/fps without making the capture unhealthy.
 VIDEO_CAPTURE_SETUP_HEADROOM_SEC = float(os.environ.get("FIELD_DOCS_VIDEO_SETUP_HEADROOM", "150"))
 VIDEO_CAPTURE_PER_FRAME_BUDGET_SEC = float(os.environ.get("FIELD_DOCS_VIDEO_PER_FRAME_BUDGET", "2"))
-# A shared Field server gets one generous startup deadline. If it cannot become healthy inside that
-# window, fail with its log rather than concealing the lifecycle defect behind another cold boot.
-SERVER_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SERVER_START_TIMEOUT", "120"))
+# A shared Field server gets one start attempt. If it cannot become healthy, fail with its log rather
+# than concealing the lifecycle defect behind another cold boot. This is the JVM's budget, counted from
+# Gradle's `> Task :runJvm`; the build before that line (all of it, from a fresh worktree) is bounded
+# by AFIELD_BACKDOOR_STARTUP_TIMEOUT instead (`ManagedStartupWatch` in tools/verification_runtime.py).
+SERVER_START_TIMEOUT_ENV = "AFIELD_DOCS_SERVER_START_TIMEOUT"
+SERVER_START_DEADLINE_SEC = float(os.environ.get(SERVER_START_TIMEOUT_ENV, "120"))
 # Kept consistent with tools/field_backdoor.py: the first Playwright attach on a
 # machine may download browser binaries. While that marker is absent, give the
 # capture subprocess enough headroom to finish the download instead of killing it
@@ -842,6 +849,10 @@ class RunnerOptions:
     # figures of something drawn on the canvas, where the capture viewport is far larger than the
     # drawing and `trim` cannot see past the dot grid.
     clip: tuple[float, float, float, float] | None = None
+    # `window-outputs="true"`: keep a `capture="window"` a window capture even though the box's
+    # output panels are open, so `clip=` can frame the panels together with what is drawn on the
+    # canvas beside them (normally window + open outputs collapses to a box capture).
+    window_outputs: bool = False
     # `viewport="WxH"` (capture="ui" only): the capture page's size in CSS pixels for this drive,
     # set before the recording starts and restored after it. Field's layout follows the window
     # (the editor pane is 40vw), so a smaller window is how a figure shows box and editor together
@@ -861,13 +872,24 @@ class RunnerOptions:
     hide_toasts: bool = False
 
 
+# A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
+# names it, the committed capture is kept. `macos-electron` captures from this checkout's Field
+# Electron app instead of the capture Chromium (`playwright-open --electron`), for output that only
+# exists there, such as the RTT view's shared-texture frames.
+CAPTURE_PROFILE_PLATFORMS = {
+    "linux-nvidia": "linux",
+    "macos-electron": "darwin",
+}
+
+
 def capture_profile_enabled(profile: str | None) -> bool:
     if profile is None:
         return True
-    if profile != "linux-nvidia":
+    platform = CAPTURE_PROFILE_PLATFORMS.get(profile)
+    if platform is None:
         raise RuntimeError(f"Unknown docs capture profile {profile!r}")
     requested = {p.strip() for p in os.environ.get("FIELD_DOCS_CAPTURE_PROFILES", "").split(",")}
-    return sys.platform.startswith("linux") and profile in requested
+    return sys.platform.startswith(platform) and profile in requested
 
 
 def derive_sidecar_port(repo_root: Path) -> int:
@@ -1645,6 +1667,7 @@ class RunnerState:
         else:
             popen_kwargs["start_new_session"] = True
 
+        ceiling = env_seconds(MANAGED_STARTUP_CEILING_ENV, DEFAULT_MANAGED_STARTUP_CEILING)
         LOG.info("Field docs runner starting shared Field server on port %s", self.backdoor_port)
         self._shared_field_process = subprocess.Popen(cmd, **popen_kwargs)
         self._shared_field_started_by_runner = True
@@ -1654,15 +1677,28 @@ class RunnerState:
         self._shared_field_stop_reason = None
         self.server_starts += 1
 
-        deadline = time.monotonic() + SERVER_START_DEADLINE_SEC
-        while time.monotonic() < deadline:
+        watch = ManagedStartupWatch(
+            self.shared_log_path,
+            ceiling=ceiling,
+            jvm_timeout=SERVER_START_DEADLINE_SEC,
+            ceiling_knob=MANAGED_STARTUP_CEILING_ENV,
+            jvm_knob=SERVER_START_TIMEOUT_ENV,
+        )
+        announced_jvm = False
+        while True:
             if self._capture_environment_check is not None:
                 self._capture_environment_check()
             process = self._shared_field_process
             if process is None:
                 return "start process handle was cleared"
+            watch.observe()
+            if watch.phase == "jvm" and not announced_jvm:
+                announced_jvm = True
+                LOG.info("Field docs runner: Gradle built in %.0fs; starting the Field JVM", watch.elapsed())
             if process.poll() is not None:
-                return f"process exited with code {process.returncode}"
+                return f"process exited with code {process.returncode} {watch.exit_context()}"
+            if watch.expired():
+                return watch.timeout_reason()
             if self._http_health_ok(self.backdoor_port):
                 LOG.info("Field docs runner shared Field server ready on port %s", self.backdoor_port)
                 # The JVM is a child of the gradle wrapper, so its PID differs from
@@ -1673,8 +1709,6 @@ class RunnerState:
                 self._shared_field_jvm_pid = listeners[0] if listeners else None
                 return None
             time.sleep(0.5)
-
-        return f"timed out after {SERVER_START_DEADLINE_SEC:.0f}s waiting for health"
 
     def _kill_shared_field_process(self) -> None:
         """Best-effort teardown of a shared Field process whose start failed.
@@ -2644,6 +2678,28 @@ class RunnerState:
             LOG.info("Field docs runner cache hit (ui drive): %s", primary)
             self.cache_hits += 1
             return
+        # The same two reuse rules ensure_screenshot and the video/audio paths apply. Without them a
+        # fresh worktree (no .field-docs-runner-cache.json) re-drove every capture="ui" fence on the
+        # site in incremental mode, even with the committed outputs on disk.
+        cached_metadata = self.cache_metadata.get(cache_key)
+        if all(out.exists() for out in outputs) and (
+            reuse_existing_asset_for_incremental(
+                runner_mode=self.runner_mode,
+                output_path=primary,
+                options=options,
+                cached_metadata=cached_metadata,
+                current_metadata=cache_metadata,
+            )
+            or (cache_allowed and not options.force and self.runner_mode == "incremental"
+                and cached_digest is None)
+        ):
+            LOG.info("Field docs runner using existing checked-in ui drive asset: %s", primary)
+            self.assets_reused += 1
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
         LOG.info(
             "Field docs runner cache %s (ui drive): %s",
             cache_status_label(cache_allowed=cache_allowed, force=options.force),
@@ -2986,7 +3042,27 @@ def ensure_state(config: Any) -> RunnerState:
     return STATE
 
 
+EMBED_SCREENSHOT_RE = re.compile(r'^```\w*_runner\b[^\n]*\bembed=true\b[^\n]*$', re.M)
+IMAGE_LINE_RE = re.compile(r'^!\[[^\]]*\]\(([^)\s]+)\)', re.M)
+
+
+def duplicate_embedded_images(markdown: str) -> list[tuple[int, str]]:
+    """(line, path) of each image line repeating a screenshot an `embed=true` runner fence on the
+    page already puts there: the embed appends the capture under its fence, so a second reference
+    shows every figure twice (paint_canvas.md, watercolor.md and paint_gestures.md did, 2026-10-08)."""
+    embedded = set()
+    for m in EMBED_SCREENSHOT_RE.finditer(markdown):
+        shot = re.search(r'\bscreenshot="([^"]+)"', m.group(0))
+        if shot:
+            embedded.add(shot.group(1))
+    return [(markdown.count("\n", 0, m.start()) + 1, m.group(1)) for m in IMAGE_LINE_RE.finditer(markdown) if m.group(1) in embedded]
+
+
 def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, files: Any) -> str:
+    duplicates = duplicate_embedded_images(markdown)
+    if duplicates:
+        raise RuntimeError(f"{page_path}: these image lines repeat a screenshot their runner fence already embeds (embed=true); "
+                           "delete them: " + ", ".join(f"line {n} {path}" for n, path in duplicates))
     markdown = rewrite_source_citations(
         markdown,
         depth=page_directory_depth(page_path, state.docs_dir),
@@ -3337,6 +3413,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         trim_native=parse_bool(first_attr(attrs, "trim-native", "trim_native", "native-trim", "native_trim", "auto-trim", "auto_trim"), default=False),
         trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
         clip=parse_clip(first_attr(attrs, "clip")),
+        window_outputs=parse_bool(first_attr(attrs, "window-outputs", "window_outputs"), default=False),
         viewport=parse_viewport(first_attr(attrs, "viewport")),
         scale=parse_capture_scale(first_attr(attrs, "scale")),
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
@@ -4786,7 +4863,7 @@ def parse_codegen_expectation(*, code: str, key: str) -> bool | None:
 
 
 def effective_capture_mode(options: RunnerOptions) -> str:
-    if options.capture == "window" and options.open_outputs and not options.with_editor:
+    if options.capture == "window" and options.open_outputs and not options.with_editor and not options.window_outputs:
         return "box"
     return options.capture
 
@@ -5089,6 +5166,9 @@ def build_backdoor_command(
     if document:
         command.extend(["--document", document])
     backdoor_commands: list[str] = []
+    if options.capture_profile == "macos-electron":
+        # Before anything renders: the capture page has to be the Electron tab when output DOM appears.
+        backdoor_commands.append("playwright-open --electron")
 
     if options.capture == "ui":
         # Optional setup: run a transcript= file of create/launch ops FIRST, in the same
@@ -5443,6 +5523,13 @@ def build_backdoor_command(
             ]))
         elif capture_mode == "box":
             target_uid = default_target_uid
+            # Tall output crops can extend beyond the viewport, where Chromium paints
+            # white unless the document root has Field's background. The WebGL
+            # backdrop can also composite white in clipped headless screenshots.
+            backdoor_commands.append(shlex.join([
+                "page-eval", "--file", str(repo_root / "tools/lighting/capture_background.js"),
+                "--timeout", str(options.timeout),
+            ]))
             parts = [
                 "screenshot-box",
                 target_uid,

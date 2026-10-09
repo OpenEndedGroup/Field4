@@ -11,7 +11,8 @@ This page collects the tools for all three and draws the motion in each, with a
 `showSignals` plot where the value is a signal over time and an `FLine` where the
 shape is spatial.
 For recovering a hidden value from noisy measurements, see
-[State estimation](state_estimation_examples.md).
+[State estimation](state_estimation_examples.md). To draw a value over time by
+hand rather than ease it from code, see [The keyframe editor](keyframe_editor.md).
 
 ## Interpolants: easing a value to a target
 
@@ -80,8 +81,7 @@ target moves again. Pick the ramp whose settling time matches the gesture.
 ### Diff: retime interpolation by duration
 
 "Smooth" can mean "over the next 140 evaluations" or "over 1.2 seconds of real
-time." Those are different promises, and the difference matters the moment frame
-rate, scheduling, or sampling cadence drifts. The diff below keeps a step-counted
+time." The two come apart as soon as the frame rate or sampling cadence changes. The diff below keeps a step-counted
 line and adds a duration-based one, sampling both under a cadence that slows
 partway through:
 
@@ -162,8 +162,8 @@ markdown("legend", """
 ![Step-based versus time-based smoothing under an uneven sampling cadence](assets/interpolants_examples/smooth_duration.png)
 
 The orange trace arrives as soon as 140 calls have happened; the green trace
-arrives at the requested timeline duration regardless of cadence. The example injects a synthetic
-clock, so its uneven cadence is exact rather than whatever the machine happened to do. For a film or
+arrives at the requested duration whatever the cadence. The example passes in its own clock, so
+the uneven cadence is the same on every run. For a film or
 offline render, use `clock = frameClock(24.0) { renderer.frameCounter }`: repeated reads in one frame
 see the same time, and each rendered frame advances exactly 1/24 second. Use the
 step form when the world is discrete and counted, the time form when it is
@@ -250,10 +250,9 @@ and the next. Restarting `inertialTo` replaces the step with a zero: the new ble
 begins at rest, so whatever speed the value had is thrown away and built again
 from nothing. Left to re-solve, it is the only one of the three whose speed after
 a jump is the speed it had before — it carries on in the old direction for a
-moment, turns around, and has no corner in it anywhere. That is the difference
-between a drag that stutters and one that does not.
+moment, turns around, and has no corners. A drag bound to it does not stutter.
 
-Two consequences of re-solving, both of which decide whether to bind one:
+Before you bind one, note two things about re-solving:
 
 - `inertialTo` **never reports itself complete**, even while sitting on its
   target. A uniform that reports completion stops being written, and an
@@ -353,11 +352,10 @@ whole job. The bottom panel is the second root. `solve` returns two, and it pick
 the negative one — the curve entered *before* its own zero crossing — when the
 incoming speed exceeds about 21.3 times the distance remaining, which for
 `overshoot = 0.05` is the whole of that branch. Stopping cleanly from there would
-mean a deceleration nothing in the world could have produced, so it flies past
-instead, by roughly two-ninths of a blend time's travel, and comes back over about
-1.5 blend times. `overshoot = 0.0` refuses, and the blue sliver at the right of
-that panel is what refusing costs: the same unit of distance, covered inside the
-last 7% of the blend.
+need an implausibly sharp deceleration, so the curve flies past the target and
+comes back. With `overshoot = 0.0` it does not overshoot, and the blue sliver at
+the right of that panel shows the cost: the same unit of distance, covered in the
+last few percent of the blend.
 
 ## Keyframes: morphing a whole parameter state — including code
 
@@ -452,13 +450,13 @@ path is the linear vector ease. A `Key` also knows how to `diff` against another
 and emit the `update { ... }` code that reproduces it, so a captured look is both
 a value you can interpolate *toward* and a snippet you can paste back into a box.
 
-## Correlations: a relationship drawn instead of summarised
+## Correlations: drawing how two signals depend on each other
 
-A correlation compresses a relationship into one number, which is useful and also
-the problem — it can hide a nonlinear dependency or flatten timing into a
-statistic that sounds more certain than it is. Two signals can clearly belong
-together without a straight-line relationship; a rolling metric is the way to
-watch that dependence drift over time:
+A correlation compresses a relationship into one number. That number can hide a
+nonlinear dependency, or flatten a relationship that changes over time into one
+value. Two signals can clearly belong together without a straight-line
+relationship. A rolling metric lets you watch that dependence change as the
+signals play:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.5" capture="box" open-outputs="true"}
 :::static
@@ -547,8 +545,7 @@ see [Neighbors & graph connectivity examples](graph_connectivity_examples.md).
 
 ---
 
-Three families, one habit: whether a value eases, morphs, or correlates, draw the
-motion. For recovering a hidden value from noisy measurements, see
+For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md); for raw and filtered *signals*
 rather than these derived quantities, continue with the
 [time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves).

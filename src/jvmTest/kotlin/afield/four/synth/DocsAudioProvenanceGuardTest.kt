@@ -34,17 +34,17 @@ class DocsAudioProvenanceGuardTest {
     /**
      * The corpus as it stands, pinned by count and by family.
      *
-     * These numbers are the audit's headline and the reason this file exists. Fourteen of the
-     * fifty-four never touch [patVoice] — seven a DoughDSP primitive, one real Dirt-Samples, one
-     * mixed, three a Faust program, two the dough wasm engine — and that minority is what refuted
+     * These numbers are the audit's headline and the reason this file exists. Thirty-three of the
+     * seventy-three never touch [patVoice] — eighteen a DoughDSP signal, nine real Dirt-Samples,
+     * one mixed, three a Faust program and two the dough wasm engine. That minority refuted
      * the "every audio figure in the documentation is `patVoice`" claim this file was written to
      * check.
      *
      * The *majority* moved, though, and the direction is worth recording rather than just
      * re-typing: it was 5 of 15 stand-in until `pattern_language.md` grew a mini-notation card per
-     * form of the notation, twenty-six clips of `patVoice` in one commit. So the stand-in is now
-     * 40 of 54, and `sound.md`'s section on this had to stop arguing that the stand-in is *not*
-     * what you hear on most of the site. A count pinned here and stated in prose there is exactly
+     * form of the notation, twenty-six clips of `patVoice` in one commit. The stand-in was then
+     * 40 of 54, then 40 of 74, and is now 42 of 76; `sound.md`'s section had to stop arguing that the stand-in is
+     * *not* what you hear on most of the site. A count pinned here and stated in prose there is exactly
      * the pair that drifts, which is why the assertion names the page.
      */
     @Test
@@ -59,10 +59,10 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 41,
-            Origin.DIRT_SAMPLES to 6,
+            Origin.STAND_IN_SYNTH to 42,
+            Origin.DIRT_SAMPLES to 10,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 9,
+            Origin.DOUGH_DSP to 18,
             Origin.FAUST to 3,
             Origin.DOUGH_WASM to 2,
         )
@@ -189,11 +189,9 @@ class DocsAudioProvenanceGuardTest {
         /**
          * How many `audio="…"` fences the docs publish.
          *
-         * Fifty-four, across nine pages: **twenty-nine** on `pattern_language.md` (three scene
-         * clips plus one per mini-notation card), six on `dough_dsp_sound.md`, three each on
-         * `sound.md`, `sound_paths.md`, `chain_ca_sound.md`, `chain_pattern_particles.md` and
-         * `chain_lambda_sound.md`, and two each on `faust.md` and `pat_spatial.md`. Pinned so a new
-         * clip cannot ship without a stated provenance.
+         * Seventy-three across fourteen pages, including twenty-nine on `pattern_language.md`
+         * and nine on `subharmonic_sound.md`. Pinned so a new clip cannot ship without a stated
+         * provenance.
          *
          * It was twelve until `sound_paths.md` published its one-buffer-three-paths comparison,
          * which is also where [Origin.FAUST] came from: a Faust program compiled at runtime is a
@@ -232,13 +230,31 @@ class DocsAudioProvenanceGuardTest {
          * pentatonic scale), and plays them through [patTimed] and [patRenderStereo]. Its FIELD_TEST
          * finds every strike and every pitch in both renders and holds them against the notes.
          *
+         * Two more are `chain_drawn_morph.md`'s (2026-10-02), [Origin.STAND_IN_SYNTH]:
+         * [DrawnMorphDocs] plays the size of a point cloud morphing between two drawn strokes, paired
+         * by `matchPoints`, as pitch through [patTimed] and [patRenderStereo].
+         *
          * The four newest are `boolean_network_music_examples.md`'s, and they are
          * [Origin.DIRT_SAMPLES]: [BooleanNetworkSoundDocs] plays each fence's note stream through
          * the pinned Dirt-Samples subset with no fallback. In the same change (2026-10-01)
          * `sound_paths.md`'s dry comparison clip moved from [Origin.STAND_IN_SYNTH] to
          * [Origin.DIRT_SAMPLES], because its input became real one-shots; the total did not move
          * for that one, the split did.
+         *
+         * `chain_ca_sound.md`'s three moved the same way (2026-10-02): [CaSoundDocs] now plays its
+         * rows as `click`, `hh` and pitched `arpy` one-shots from the pinned subset.
+         *
+         * `subharmonic_sound.md` added nine (2026-10-03), all [Origin.DOUGH_DSP]: pitch trackers
+         * from `Subharmonic.kt` rendered by [SubharmonicSoundDocs] in the same Kotlin signal graph,
+         * on a saw bassline, pinned Dirt-Samples one-shots and a committed public-domain film clip.
+         *
+         * `chain_petri_sparks.md` added one (2026-10-08), [Origin.DIRT_SAMPLES]: [PetriSparksDocs]
+         * plays a Petri net's `emits()` through the pinned subset with no fallback.
+         *
+         * `orca.md` added two (2026-10-09), [Origin.STAND_IN_SYNTH]: [OrcaSoundDocs] runs ORCA's own
+         * operators in [OrcaHeadless] and voices each note through a [PatSynthBank] of [patVoice]
+         * voices, not samples.
          */
-        const val EXPECTED_FENCE_COUNT = 62
+        const val EXPECTED_FENCE_COUNT = 76
     }
 }

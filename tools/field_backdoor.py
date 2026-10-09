@@ -34,12 +34,18 @@ if __name__ == "__main__":
 
 import websockets  # noqa: E402
 from verification_runtime import (  # noqa: E402
+    DEFAULT_MANAGED_JVM_START_TIMEOUT,
+    DEFAULT_MANAGED_STARTUP_CEILING,
+    MANAGED_JVM_START_TIMEOUT_ENV,
+    MANAGED_STARTUP_CEILING_ENV,
+    ManagedStartupWatch,
     automation_server_environment,
     automation_workspace,
     field_instance_info,
     field_instance_problem,
     select_automation_port,
 )
+from verification_runtime import env_seconds as _env_seconds  # noqa: E402
 
 try:
     import yaml
@@ -110,6 +116,14 @@ GRADLE_JVMARGS = "-Xmx8g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError
 
 class BackdoorError(RuntimeError):
     pass
+
+
+def env_seconds(name: str, default: float) -> float:
+    """`verification_runtime.env_seconds`, failing as a BackdoorError so the CLI reports it plainly."""
+    try:
+        return _env_seconds(name, default)
+    except ValueError as exc:
+        raise BackdoorError(str(exc)) from None
 
 
 class CommandParseError(BackdoorError):
@@ -610,9 +624,15 @@ class FieldBackdoor:
         logger: SessionLogger,
         attach_existing: bool = False,
         allow_unverified_workspace: bool = False,
+        startup_timeout: float | None = None,
+        jvm_start_timeout: float | None = None,
     ) -> None:
         self.port = port
         self.allow_unverified_workspace = allow_unverified_workspace
+        # Budgets for a server this session launches; None defers to the environment
+        # (`AFIELD_BACKDOOR_STARTUP_TIMEOUT`, `AFIELD_BACKDOOR_JVM_START_TIMEOUT`) at launch time.
+        self.startup_timeout = startup_timeout
+        self.jvm_start_timeout = jvm_start_timeout
         # A backdoor-managed Field is automation, even when the caller omitted
         # --workspace. Never let it inherit the machine-global interactive
         # preference, which may name a deleted sibling worktree.
@@ -655,6 +675,7 @@ class FieldBackdoor:
         self.last_box_uid: str | None = None
         self.box_aliases: dict[str, str] = {}
         self.playwright_state: dict[str, Any] | None = None
+        self.playwright_electron = False
         # Per box: what the page could see when it last ran. A browser that attaches after a run
         # cannot recreate the output DOM that run produced, and an inline editor visualizer only
         # exists if the editor was open before the run -- so a capture of such a box shows
@@ -831,23 +852,45 @@ class FieldBackdoor:
         else:
             popen_kwargs["start_new_session"] = True
 
-        self.logger.log("managed_server_spawn", command=cmd, managedLog=str(self.managed_log_path))
+        ceiling = self.startup_timeout or env_seconds(MANAGED_STARTUP_CEILING_ENV, DEFAULT_MANAGED_STARTUP_CEILING)
+        jvm_timeout = self.jvm_start_timeout or env_seconds(
+            MANAGED_JVM_START_TIMEOUT_ENV, DEFAULT_MANAGED_JVM_START_TIMEOUT
+        )
+        self.logger.log(
+            "managed_server_spawn",
+            command=cmd,
+            managedLog=str(self.managed_log_path),
+            startupCeilingSeconds=ceiling,
+            jvmStartTimeoutSeconds=jvm_timeout,
+        )
         self.managed_process = subprocess.Popen(cmd, **popen_kwargs)
+        watch = ManagedStartupWatch(self.managed_log_path, ceiling=ceiling, jvm_timeout=jvm_timeout)
+        await self.wait_for_managed_server(watch)
 
-        deadline = time.monotonic() + 120.0
+    async def wait_for_managed_server(self, watch: ManagedStartupWatch, *, poll_interval: float = 0.5) -> None:
+        """Poll `/health` until the managed server answers, exits, or `watch` runs out."""
+        assert self.managed_process is not None
         attempt = 0
-        while time.monotonic() < deadline:
+        announced_phase = watch.phase
+        while True:
             attempt += 1
+            watch.observe()
+            if watch.phase != announced_phase:
+                announced_phase = watch.phase
+                self.logger.log("managed_server_jvm_starting", **watch.describe())
             if self.managed_process.poll() is not None:
                 self.logger.log(
                     "managed_server_exited_early",
                     returnCode=self.managed_process.returncode,
                     managedLog=str(self.managed_log_path),
+                    **watch.describe(),
                 )
                 raise BackdoorError(
-                    f"Managed Field server exited early with code {self.managed_process.returncode}. "
-                    f"See {self.managed_log_path}."
+                    f"Managed Field server exited early with code {self.managed_process.returncode} "
+                    f"{watch.exit_context()}. See {self.managed_log_path}."
                 )
+            if watch.expired():
+                break
             healthy = health_check(self.port, self.ssl_context)
             self.logger.log(
                 "health_check",
@@ -855,7 +898,7 @@ class FieldBackdoor:
                 port=self.port,
                 healthy=healthy,
                 attempt=attempt,
-                elapsedSeconds=round(120.0 - (deadline - time.monotonic()), 3),
+                **watch.describe(),
             )
             if healthy:
                 # Read the workspace back even on the path that supplied it. `--args=--workspace`
@@ -870,15 +913,18 @@ class FieldBackdoor:
                     requestedWorkspace=self.requested_workspace,
                 )
                 return
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(poll_interval)
 
+        reason = watch.timeout_reason()
         self.logger.log(
             "managed_server_health_timeout",
             port=self.port,
             managedLog=str(self.managed_log_path),
+            reason=reason,
+            **watch.describe(),
         )
         raise BackdoorError(
-            f"Field server did not become healthy on https://localhost:{self.port}/health within 120 seconds. "
+            f"Field server did not become healthy on https://localhost:{self.port}/health: {reason}. "
             f"See {self.managed_log_path}."
         )
 
@@ -1264,10 +1310,12 @@ class FieldBackdoor:
             self.last_box_uid = next(reversed(self.boxes), None)
 
     async def open_playwright(self, timeout: float) -> dict[str, Any]:
-        self.logger.log("open_playwright_start", timeout=timeout, documentName=self.document_name, scratch=self.scratch, sessionKey=self.session_key)
+        self.logger.log("open_playwright_start", timeout=timeout, documentName=self.document_name, scratch=self.scratch, sessionKey=self.session_key, electron=self.playwright_electron)
+        # `playwright-open --electron` sets playwright_electron for the rest of the session, so every
+        # later attach (editor-open, screenshots) keeps capturing from the Electron app.
         event = await self.call_for_single_reply(
             "agent-open-playwright",
-            {},
+            {"electron": True} if self.playwright_electron else {},
             timeout=timeout,
         )
         payload = event["payload"]
@@ -3345,6 +3393,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     sleep_parser.add_argument("seconds", type=float)
     playwright_open = subparsers.add_parser("playwright-open", add_help=False)
     playwright_open.add_argument("--timeout", type=float)
+    playwright_open.add_argument("--electron", action="store_true")
 
     dispose_graphics = subparsers.add_parser("dispose-graphics-context", add_help=False)
     dispose_graphics.add_argument("--timeout", type=float)
@@ -3973,6 +4022,8 @@ async def dispatch_command(
 
     if args.command == "playwright-open":
         timeout = command_timeout(args.timeout, client.default_timeout)
+        if args.electron:
+            client.playwright_electron = True
         data = await ensure_playwright_attached(client, timeout=timeout, reason="command:playwright-open")
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -4886,12 +4937,25 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
     )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     parser.add_argument(
+        "--startup-timeout",
+        type=float,
+        default=None,
+        help=(
+            "Ceiling in seconds on starting a managed Field, Gradle build included (default "
+            f"${MANAGED_STARTUP_CEILING_ENV} or {DEFAULT_MANAGED_STARTUP_CEILING:.0f}). Once Gradle "
+            f"reaches :runJvm the JVM gets ${MANAGED_JVM_START_TIMEOUT_ENV} "
+            f"(default {DEFAULT_MANAGED_JVM_START_TIMEOUT:.0f}) seconds to answer /health."
+        ),
+    )
+    parser.add_argument(
         "--allow-unverified-workspace",
         action="store_true",
         help="with --attach-existing, accept a server that does not report its workspace",
     )
     parser.add_argument("single_command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
+    if args.startup_timeout is not None and args.startup_timeout <= 0:
+        parser.error("--startup-timeout must be a positive number of seconds")
     args.port, port_source = resolve_cli_port(args.port, attach_existing=args.attach_existing)
     if port_source == "automation-default":
         print(
@@ -4913,6 +4977,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         port=args.port,
         portSource=port_source,
         timeout=args.timeout,
+        startupTimeout=args.startup_timeout,
         singleCommand=args.single_command,
     )
 
@@ -4923,6 +4988,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         logger=logger,
         attach_existing=args.attach_existing,
         allow_unverified_workspace=args.allow_unverified_workspace,
+        startup_timeout=args.startup_timeout,
     )
     client.port_source = port_source
     client.graphics_context_enabled = bool(args.graphics_context)

@@ -9,8 +9,8 @@ It is a **CPU** solver with **no renderer of its own**. It hands you `FLine`s, a
 your business: `showPlane` into a box output, `Box.lines` into the 3D view, an `afield.four`
 renderer. Nothing here needs a GPU.
 
-This page is not the API; the API is in the KDoc. It is about the thing you will get wrong, which is
-that **`stiffness` and `iterations` are not two knobs.**
+The API is in the [codebase reference](reference/simulation.md). This page covers the thing that
+surprises people: `stiffness` and `iterations` act as one knob.
 
 !!! note "If you just want the cloth on screen"
     Open the **`cloth_simdverlet_start`** starting point from Field's welcome screen, also listed in
@@ -150,10 +150,10 @@ showPlaneGrid(
 
 ![Four panels of the same hanging cloth, solved as stiffness 60 by 16 iterations, 120 by 8, 240 by 4 and 960 by 1. The four sheets have the same shape, the same festoons between the five pins and the same depth of sag; each caption reports the furthest any particle sits from the corresponding particle of the 960-by-1 sheet.](assets/physics/equivalence.png)
 
-Four different-looking settings, one sheet. The furthest any particle strays from the reference is
-**0.000224 world units**: less than half a thousandth of the 0.5 grid spacing, after two hundred
-frames. If you were turning `iterations` up expecting the drape to tighten, you were turning
-`stiffness` up by the same factor and would have got there sixteen times cheaper by typing it.
+The four settings give one sheet. The captions show how far the furthest particle strays from the
+reference: a tiny fraction of the grid spacing, after two hundred frames. Turning `iterations` up to
+tighten the drape turns `stiffness` up by the same factor, and setting `stiffness` directly gets
+there at a fraction of the cost.
 
 ### Where floating point catches up
 
@@ -215,16 +215,13 @@ showSignals(
 
 ![A line plot of three traces over 400 frames, showing the base-ten logarithm of the largest distance between corresponding particles of a 60-by-16, 120-by-8 and 240-by-4 sheet and the 960-by-1 sheet.](assets/physics/equivalence_drift.png)
 
-Two things in that plot. The gap climbs eight orders of magnitude in the first hundred frames, from
-below the `1e-12` floor to about `1e-4` — and then it **stops**, and stays at `1e-4` for the
-remaining three hundred. Damping of 0.99 and a sheet that has found its drape put a ceiling on the
-amplification, so the difference saturates at roughly a five-thousandth of one particle spacing:
-invisible, permanently.
+The gap climbs by many orders of magnitude in the first hundred frames, then levels off and stays
+flat. Damping and a sheet that has found its drape put a ceiling on the amplification, so the
+difference settles far below anything you could see.
 
-Read that as a note about *reproducibility*, not about correctness. Two algebraically identical
-settings are the same cloth for as long as anyone is watching, and are not the same array of floats.
-If you need a run to reproduce bit-exactly (recording, regression-testing), pin the split as well as
-the product.
+Two algebraically identical settings therefore give the same-looking cloth, but not the same array
+of floats. If you need a run to reproduce bit-exactly (for a recording or a regression test), pin
+the split as well as the product.
 
 ### Tune the product
 
@@ -325,27 +322,24 @@ showPlaneGrid(
 
 ![Four panels of the same cloth at stiffness-times-iterations products of 6, 64, 320 and 960, drawn on one shared window so the rungs are comparable. At product 6 the sheet has stretched into a tall narrow web that fills the frame; at 64 it is a recognisable but slack cloth; at 320 and 960 it is a sheet with shallow festoons between the pins. Each caption gives the product and the worst strain reached during four hundred frames, with and without the curvature force.](assets/physics/tuning_ladder.png)
 
-The captions read **971 %** peak strain at a product of 6 (one spring at more than ten times its
-rest length, which is why that panel is a tall web rather than a cloth), then **196 %** at 64,
-**52 %** at 320, and **19 %** at 960, which is what the starting point ships.
+At the lowest product some springs stretch to many times their rest length, which is why that panel
+is a tall web rather than a cloth. Strain falls as the product rises, up to the 960 the starting
+point ships.
 
-Note that strain falls *more slowly* than the product rises: 160 times the product, between the
-first rung and the last, buys 51 times less strain. These are peaks over the whole run, reached while
-the sheet is still falling, so they are not the equilibrium sag, which is a good reason to measure
-the number in your own scene rather than to interpolate this table.
+Strain falls more slowly than the product rises. The captions are peaks over the whole run, reached
+while the sheet is still falling, so they are not the sag at rest. Measure the strain in your own
+scene rather than interpolating these.
 
-The second half of each caption adds the curvature force, which does *not* buy strain headroom:
-turning it up to 100 leaves the floppiest rung a bit tighter (971 % → 738 %) and makes every other
-rung **worse** (196 → 230, 52 → 66, 19 → 25). That is the accumulator again. The curvature pass adds
-into the same `ax/ay/az` the springs do, so at these strengths it is one more load on the sheet
+The second half of each caption adds the curvature force, and it does not give you strain headroom.
+At 100 it tightens the floppiest rung a little and makes every other rung worse. The curvature pass
+adds into the same `ax/ay/az` the springs do, so at these strengths it is one more load on the sheet
 rather than a stiffener.
 
-??? note "The repository records a different ladder"
-    `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` runs the same four rungs and reports 1949 % /
-    116 % / 32 % / 11 %. Those are *settled* values read off a box that has stopped moving, on a
-    scene that ships the curvature force; the numbers above are peaks over the fall with curvature
-    off. The note itself puts the two about 1.7 times apart on every stable rung. Same ordering,
-    same conclusion, two different questions.
+??? aside "The repository records a different ladder"
+    `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` runs the same four rungs and reports different
+    numbers. Those are settled values read off a box that has stopped moving, on a scene with the
+    curvature force on; the captions here are peaks over the fall with curvature off. The ordering
+    is the same.
 
 ### Divergence at the high end
 
@@ -423,18 +417,15 @@ showSignals(
 
 ![A line plot of the worst strain in the sheet over four hundred frames for three settings, on a base-ten logarithmic scale. Two traces run flat just below zero for the whole four hundred frames. The third leaves them at around frame eighty and climbs almost vertically off the top of the plot, ending part way across.](assets/physics/divergence.png)
 
-Two of those three settle and stay settled, flat at about 20 % strain for four hundred frames. The
-third leaves them at frame 83, and by frame 161 the coordinates are `NaN` — **78 frames**, or 1.3
-seconds at 60 fps, between "visibly wrong" and "gone". Once it is past 100 % it never comes back: the
-climb from 10⁰ to 10²⁰ takes about seventy frames and nothing in the solver arrests it.
+Two of the three settle and stay flat for the whole run. The third leaves them, and the title gives
+the frame where it passes 100 % strain and the frame where its coordinates become `NaN`: about a
+second at 60 fps between visibly wrong and gone. Once it is past 100 % it never comes back.
 
-Note the middle trace. `100 × 16` is a product of **1600** and it settles, so the ceiling at this
-`dt` is somewhere between 1600 and 2400: not a round number, and not one you should carry to
-another scene. Gravity is loading the top row with forty particles' weight here; a smaller sheet or a
-lighter one will take more.
+The middle trace, `100 × 16`, settles, so the ceiling at this `dt` lies between its product and the
+top one's. Do not carry that number to another scene: a smaller or lighter sheet takes more.
 
-So **watch the peak strain, not the picture.** The measurement is twenty lines of Kotlin, folded
-into the block above; it is cheap, and it goes wrong long before the drawing does.
+Watch the peak strain rather than the picture. The measurement is the short `strain` function folded
+into the block above. It is cheap, and it goes wrong long before the drawing does.
 
 !!! warning "Stability goes as `stiffness × iterations × dt²`"
     All the numbers on this page are at `dt = 1/60`. Run the same settings at `dt = 1/30` and you
@@ -522,12 +513,11 @@ showPlaneGrid(
 
 ![Four panels of the same hanging cloth at stiffness sixty and sixteen iterations, with curvature strength off, at the library default of 0.05, at 20 and at 100; each caption reports how far the furthest particle sits from the corresponding particle of the sheet with no curvature force.](assets/physics/curvature.png)
 
-At `stiffness × iterations = 960` the default `0.05` moves the furthest particle **0.000889 world
-units** away from a sheet with no curvature force at all: under a five-hundredth of one grid
-spacing, after three hundred frames. `20` moves it by **0.357** and `100` by **0.911**, and you can
-see both of those in the picture as a visibly flatter sheet with shallower festoons.
+At `stiffness × iterations = 960` the default `0.05` barely moves the sheet: the caption's distance
+is a tiny fraction of one grid spacing. `20` and `100` move it visibly, giving a flatter sheet with
+shallower festoons.
 
-So the default is not a gentle setting; next to springs this stiff it is a rounding error. If you
+Next to springs this stiff, the default does almost nothing. If you
 turned curvature on, expected the sheet to flatten, and saw nothing happen, that is why. Pick a
 curvature strength by looking at `stiffness × iterations` first. It wants to be within an order of
 magnitude or two of the product, not of 1.
@@ -651,9 +641,8 @@ showPlaneGrid(
 
 ![Four panels. The top two are wireframe drawings of a hanging cloth, one correctly wired and one with a mis-wired constraint slot, and they look the same. The bottom two are the solver's own debug view of the same two sheets; the right-hand one has an extra long diagonal segment running across the sheet that is absent on the left.](assets/physics/debug_view.png)
 
-The top row is the picture you would naturally draw, and the two sheets in it are **0.611 world
-units** apart at their furthest particle, more than a whole grid spacing. The bug is not subtle in
-its effect; it is just invisible in that drawing, because `cloth.lines()` walks rows and columns *by
+The top row is the picture you would naturally draw. The caption shows the two sheets more than a
+grid spacing apart at their furthest particle, yet the bug is invisible in that drawing, because `cloth.lines()` walks rows and columns *by
 index* and the grid it draws is still the grid you asked for. The bottom row is the same two sheets
 with the constraint set drawn instead, and the bug is the long diagonal running up across the
 right-hand panel.
@@ -686,7 +675,7 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   are what let a sheet drape, come apart and fly. A collider is a **post-solve position projection**
   rather than a force, and that choice falls straight out of the equivalence above: a penalty force
   runs once against springs that are acting at `stiffness × iterations`, so it either fails to hold
-  or explodes. `dev_docs/physics/SIMDVERLET_5_WORLD.md` has the argument and the measurements.
+  or explodes.
 - **`OctreeBarnesHut`** — an octree with Barnes–Hut summarisation, for the *n*-body case where every
   particle pulls on every other one.
 - **`PointDriver`**, in `PointController.kt` — a standalone position controller, position in and
@@ -715,8 +704,8 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   so everything you can do to a line applies to them.
 - **[Visualizers & Controls](visualizers.md)** and **[Field's 3D Output](three_output.md)** — where
   to send those lines other than `showPlane`.
-- `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md`, in the repository, for the four-slot design
-  rationale and the list of runnable entry points.
 
-Every code block above runs as printed, in a box, and on the CPU; the figures on this page are what
-the documentation build gets when it runs them.
+??? aside "Design notes"
+    `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` has the four-slot design rationale and the list
+    of runnable entry points; `SIMDVERLET_5_WORLD.md` has the argument and measurements behind
+    colliders as projections.

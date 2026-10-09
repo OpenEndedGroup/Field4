@@ -1,8 +1,6 @@
 # Inline History: the History Lens
 
-The [document history](document_history.md) view works on the whole document. You leave the editor, pick a version out of a timeline, and restore it. That is a lot of machinery for the question you usually have, which is what one line said a few saves ago.
-
-The **History Lens** answers that question where the line is.
+The **History Lens** shows what one line or selection of code said in earlier saves, in the editor, under the line itself. To take the whole document back to an earlier version, use [document history](document_history.md) instead.
 
 ![The History Lens open below a line of code](assets/history-lens.png)
 
@@ -14,9 +12,9 @@ The lens opens as a small zone directly beneath your selection. It has no keyboa
 
 ## What it shows
 
-The lens traces the selected line or range back through the saved versions, using line alignment
-and selection-change detection, and lists the versions where that trace changed. Saves that left
-the line alone are skipped.
+The lens follows the selected line or range back through the saved versions, even as lines above
+it are added or removed, and lists the versions where it changed. Saves that left it alone are
+skipped.
 
 Each row is one matching version, labelled the same way the [history panel](document_history.md)
 labels it (`#2858`, `#2857`, …), with metadata such as box count, size, and age. The value at that

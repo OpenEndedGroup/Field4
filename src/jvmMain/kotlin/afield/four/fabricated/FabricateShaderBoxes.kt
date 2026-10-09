@@ -50,7 +50,7 @@ fun StandardRenderer.Bundle.shaderModules(): LinkedHashMap<String, ModulePointer
     // Post-stack effects (tone mapping, bloom, user shader effects). Motion blur / FXAA reuse the
     // modules already added above and are skipped by the identity de-dup.
     postStack.effects().forEach { effect ->
-        add("std-post/${effect.name}", effect.module)
+        effect.module?.let { add("std-post/${effect.name}", it) }
     }
 
     return out

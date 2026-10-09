@@ -14,6 +14,7 @@ import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.MessageParam
 import com.anthropic.models.messages.StopReason
 import com.anthropic.models.messages.Tool
+import com.anthropic.models.messages.ToolChoiceNone
 import com.anthropic.models.messages.TextBlockParam
 import com.anthropic.models.messages.ToolResultBlockParam
 import kotlinx.serialization.json.JsonArray
@@ -181,6 +182,7 @@ class AnthropicBridge(
         }
 
         val callCtx = ctx.copy(
+            reportProgress = onProgress ?: ctx.reportProgress,
             promoted = ctx.promoted ?: state.promotedTools,
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(LlmProgressUpdate(line)) } },
         )
@@ -220,6 +222,7 @@ class AnthropicBridge(
             val resultBlocks = mutableListOf<ContentBlockParam>()
             for (use in toolUses) {
                 val name = use.name()
+                log.toolActivity(name)
                 val argsJson = runCatching { toJsonString(use._input()) }.getOrElse { "{}" }
                 info("tool: name=$name id=${use.id()} args=${truncate(argsJson, 400)}")
                 toolIo("tool_call", mapOf("round" to (rounds + 1), "toolName" to name, "callId" to use.id(), "arguments" to argsJson))
@@ -241,6 +244,9 @@ class AnthropicBridge(
                 val toolMs = (System.nanoTime() - started) / 1_000_000
                 toolElapsedMs += toolMs
                 val resultJson = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
+                if (runCatching { aiToolMapper.readTree(resultJson).let { it["success"]?.asBoolean() == false || it["error"]?.asBoolean() == true } }.getOrDefault(false)) {
+                    log.userNotice("An action could not finish. Details are in the chat and Tool pool.", attention = true)
+                }
                 val summary = truncate(resultJson, 300)
                 transcript += LlmToolTranscriptEntry(name, use.id(), argsJson, summary, resultJson, elapsedMs = toolMs)
                 transcript += afield.ai.core.program.nestedTranscriptEntries(use.id(), result)
@@ -299,20 +305,34 @@ class AnthropicBridge(
                 )
             }
 
+            // What the person wrote while this round ran (AiTurnInbox): a text block after the tool results,
+            // which must come first in the message. Their images are dropped, as a turn's own are here.
+            callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { taken ->
+                val text = AiTurnInbox.modelText(taken)
+                resultBlocks += ContentBlockParam.ofText(TextBlockParam.builder().text(text).build())
+                if (taken.any { it.images.isNotEmpty() }) warn("images sent while the turn ran are ignored by the Anthropic bridge.")
+                info("user interjection: ${taken.size} message(s), ${text.length} chars")
+                toolIo("user_interjection", mapOf("round" to (rounds + 1), "messages" to taken.size, "text" to text))
+            }
+
             messages += MessageParam.builder()
                 .role(MessageParam.Role.USER)
                 .contentOfBlockParams(resultBlocks)
                 .build()
 
             rounds++
-            // At the round cap, force a final answer with no tools (results are already paired above).
+            // At the round cap, force a final answer (results are already paired above) by switching tool use
+            // off rather than leaving the tools out: the Messages API 400s a request whose messages carry
+            // tool_use/tool_result blocks but which defines no tools ("must define tools"), and a changed tool
+            // list would also miss the cached prefix. Nothing is added to the messages, so no later turn
+            // inherits a stop.
             val includeTools = rounds < maxToolRounds
             if (!includeTools) {
-                warn("maxToolRounds=$maxToolRounds reached; requesting a final answer without further tools.")
+                warn("maxToolRounds=$maxToolRounds reached; requesting a final answer with tool_choice none.")
             }
             if (!includeTools) hitToolRoundCap = true
             activePhase = if (includeTools) "model:followup" else "model:forced_final"
-            response = createMessage(buildParams(systemBlocks, messages, if (includeTools) toolDefs() else emptyList(), maxOutputTokens, cacheTail = tc != null))
+            response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null, toolsDisabled = !includeTools))
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
@@ -376,7 +396,8 @@ class AnthropicBridge(
         messages: List<MessageParam>,
         toolDefs: List<Tool>,
         maxOutputTokens: Long,
-        cacheTail: Boolean = false
+        cacheTail: Boolean = false,
+        toolsDisabled: Boolean = false
     ): MessageCreateParams {
         val builder = MessageCreateParams.builder()
             .model(model)
@@ -387,6 +408,8 @@ class AnthropicBridge(
         // reads the rounds before it from cache. With the tool and system breakpoints that makes three of four.
         if (cacheTail) builder.cacheControl(CacheControlEphemeral.builder().build())
         toolDefs.forEach { builder.addTool(it) }
+        // `none`, unlike `any`/`tool`, is accepted by every current model.
+        if (toolsDisabled) builder.toolChoice(ToolChoiceNone.builder().build())
         return builder.build()
     }
 
@@ -441,6 +464,7 @@ class AnthropicBridge(
                 if (delay != null && attempt < maxRateLimitRetries) {
                     val wait = min(delay, maxRateLimitDelayMs)
                     warn("rate limited (attempt ${attempt + 1}/$maxRateLimitRetries); waiting ${wait}ms.")
+                    log.userNotice("The AI service is busy. Retrying automatically in ${(wait + 999) / 1000}s; completed work is kept.", attention = true)
                     Thread.sleep(wait)
                     attempt++
                     continue

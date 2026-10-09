@@ -16,7 +16,9 @@ This file is about what goes on a page and how it reads.
    `??? aside` at most, or in `dev_docs/`, or nowhere. The test: would someone who does not care
    how the page was made want to read it? ("Stop talking to Marc and start talking to our users.")
 2. **No lab-notebook voice.** Do not narrate an investigation and report findings as you make them.
-   Say how the thing works and how to use it.
+   Say how the thing works and how to use it. The same goes for a "missing features" section: it
+   says what is and is not supported, and what to use instead. Effort estimates ("a weekend of
+   Kotlin"), roadmap guesses and who has not built what yet belong in `dev_docs/`.
 3. **Lead with the common case.** Open on what people actually type (`loop {}`, then `forever {}`,
    with `frames {}` as the building block under both), and move mechanism, edge cases and clever
    variants to an internals section at the bottom.
@@ -53,13 +55,24 @@ This file is about what goes on a page and how it reads.
 13. **Look at every capture you make, at column width.** It is legible, not half size. There is no
    empty canvas or editor below the content (trim or clip it). The interesting state is showing
    (a selected version, not the current one; the panel open, not the window). It matches today's
-   UI, including the command palette's current shortcut.
+   UI, including the command palette's current shortcut. Alt text and captions are prose, and
+   they describe what the code draws today: when they disagree with the fence (a caption saying
+   twelve wires over code that builds ten, from an older capture), fix the text to match the code
+   (`sorting_networks_examples.md`, 2026-10-08).
 14. **Captures come from the runner.** Videos come from a `capture="ui"` fence or an operation
    transcript (use `hide-toasts=true` when notifications cover the subject), never a hand
    recording, which goes stale silently. AGENTS.md section 3 forbids faking one.
 15. **A page about sound has sound, made from real material.** Use the pinned Dirt-Samples
    (`./gradlew fetchDocsDirtSamples`), not a stand-in synth that sounds like noise. A page whose
-   subject is audio and has nothing to listen to should not be a page yet.
+   subject is audio and has nothing to listen to should not be a page yet. One exception: a
+   pitched page whose own analysis listens back to its render (YIN pitch tracking on
+   `chain_drawn_score.md`, `chain_drawn_morph.md`) may keep a plain synth voice such as
+   `patVoice`, because the analysis needs a clean, detached, single-pitch signal (Marc,
+   2026-10-03). A page that says its output cannot be captured ("realtime only", "needs
+   hardware") has that claim checked against the build tasks and tests: if one already produces
+   the output, publish it through the runner; if the claim is wrong, fix the page or the code
+   rather than leave the gap (Marc, 2026-10-07; `pat_spatial.md` said this while
+   `./gradlew headTrackedDemo` wrote a WAV).
 
 ## Where things live
 

@@ -29,7 +29,9 @@ import java.util.concurrent.CompletableFuture
  * The task runs on a background thread, because the agent's tools wait for other boxes' verdicts and
  * those need the Runloop this box's code is running on. So this returns at once; the returned future
  * completes with the structured [AgentTaskResult] for code that wants it. Do not block on it from box
- * code.
+ * code. If observation expires while a live panel turn continues, its verdict is `running` and
+ * `chatBox` identifies that continuing conversation. No completion checks or final verdict have
+ * run; inspect the same chat instead of submitting the goal again.
  */
 fun Box.askFieldAgent(
     goal: String,

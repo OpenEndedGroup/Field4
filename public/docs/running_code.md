@@ -4,8 +4,9 @@ This page is about what Field does behind the scenes when you run a box. You do 
 start writing boxes. It is for when something that looks like an ordinary call turns out not to be
 one, or when a child box cannot see a value its parent set.
 
-- **Running versus launching.** `alt-return` runs a line or a block; `alt-0` runs everything in the
-  box; `alt-click` and `alt-up` *launch* it. Running evaluates and stops. Launching gives the code a
+- **Running versus launching.** `alt-enter` runs a selection, a line, or its outer enclosing block;
+  `alt-0` runs everything in the box; `alt-click` and `alt-up` *launch* it. Running evaluates and
+  stops. Launching gives the code a
   chance to put something into the animation loop and keep going. The keys themselves, the `?`
   cheat sheet and the `F1` palette are in the [Survival Guide](survivalGuide.md).
 - **What happens between the keystroke and the compiler** — fragments, macro expansion, the
@@ -23,6 +24,34 @@ For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechan
 
 ---
 
+## Running code around the cursor
+
+In the code editor, **Alt+Enter** runs the selected text if you have a selection. With no
+selection, it runs the line under the cursor. If that line is inside a `{ … }` block, it runs the
+**outer enclosing block**, from its opening line through its closing line. This includes the whole
+outer block when the cursor is inside a nested block:
+
+```diffstatic {data-lang=kotlin}
+repeat(2) {
+    if (true) {
+        println("hello") // Alt+Enter here runs the whole repeat(2) block
+    }
+}
+```
+
+Select just the inner lines when you want to run less. **Alt+0** runs the whole box, regardless of
+the cursor position.
+
+To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
+number under cursor and rerun** or **Decrement number under cursor and rerun**. The shortcuts are
+**Command+Option+K/J** on Mac and **Ctrl+Alt+K/J** elsewhere (K increments, J decrements). Each
+command changes that number and then performs the same run as Alt+Enter, so a number inside a block
+reruns the outer enclosing block. Integers change by one; decimal numbers use a step scaled to the
+value and keep their decimal precision. You can also find both commands by name in the **F1**
+palette.
+
+---
+
 ## The pipeline, in five steps
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
@@ -33,7 +62,7 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 4. compiles and evaluates the fragment,
 5. and folds some of what just ran (`@exported` declarations) back into the preamble.
 
-Most of the day-to-day magic is built on these five steps. That covers `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, and `@exported` helpers. Everything below is that machinery, in the order the steps run.
+These five steps are what make `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, and `@exported` helpers work.
 
 Two distinct "code that writes code" mechanisms are involved, and they run at different times:
 
@@ -46,9 +75,9 @@ Both write into the same place, the box's **preamble**: the shared, auto-regener
 
 ## Macros: calls rewritten before they compile
 
-A handful of things that look like ordinary function calls are actually **source macros**, expanded at compile time. The most important are `prop` / `rootProp`, `moduleHere` / `computeModuleHere` / `meshModuleHere` / `shadertoyHere`, `fieldStatsHere`, `print` / `println`, and `sourceBlock`.
+A handful of things that look like ordinary function calls are actually **source macros**, expanded at compile time. The most important are `prop` / `rootProp`, `moduleHere` / `computeModuleHere` / `meshModuleHere` / `shadertoyHere`, `fieldStatsHere`, `print` / `println`, and the two that keep their own source, `sourceBlock` and `interpolant`.
 
-They are intercepted before the compiler sees them. If a macro ever reaches the compiler un-expanded it throws. The bare declarations exist only to fail loudly:
+They are intercepted before the compiler sees them. Most have a bare declaration that exists only to fail loudly if a call ever reaches the compiler un-expanded:
 
 ```diffstatic {data-lang=kotlin}
 fun <T> Box.prop(name: String) {
@@ -68,9 +97,48 @@ The expander walks your code's syntax tree, asks the macro registry to rewrite e
 - **Macro expansion is not pure.** Besides rewriting text, it mutates box state. `moduleHere { }`, for instance, seeds the box's `vertex`/`fragment` shader properties and *compiles those shaders* during expansion (it needs the shader interface to generate typed accessors — see **Generated GLSL accessors** below). This is why the ordering of `//%-` fragments matters (see **The `//%-` fragment break** below).
 - **A macro's output lands in the preamble**, so it becomes available not just to the rest of your code but — if tagged for inheritance — to child boxes too.
 
+### `sourceBlock` and `interpolant`: code that keeps its own source
+
+Two macros wrap a lambda so that it carries the text it was written as. That text can be saved, and
+compiled again later, so the code still works when the box that wrote it has not run.
+
+`sourceBlock { … }` gives you a block you call like a function, with its body's text in `.source`:
+
+```diffstatic {data-lang=kotlin}
+val answer = sourceBlock { 6 * 7 }
+println(answer())          // 42
+println(answer.source)     // 6 * 7
+```
+
+The keyframer and code blends save blocks this way. A block loaded back from a saved file has no
+lambda yet; the first call compiles its source in the box it came from.
+
+`interpolant("name") { … }` defines a key type for the keyframe editor: a segment shape, written as
+the curve's value across the segment.
+
+```diffstatic {data-lang=kotlin}
+interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
+```
+
+The type appears in the key menu, and its source is saved with the box. A curve that uses it keeps
+its shape when the definition has not run yet (it comes later in the box, or you deleted it),
+because Field compiles the saved source instead. See [Your own key types](keyframe_editor.md#your-own-key-types)
+for what the lambda can use.
+
+!!! warning "Don't call a saved block from its own box's code"
+    Compiling a saved block in its box runs that box's code again — which calls the block again.
+    Call a block that came from a file from another box, a frame loop or a control callback. A block
+    made by `sourceBlock` in this run already has its lambda and is safe to call at once. (Field
+    stops the loop after one repeat, with an error saying so.)
+
 ---
 
-## `prop` and `once`: typed, inheritable box state
+## `prop`, `once` and `cached`: values that outlive a run
+
+Each run of a box starts with fresh local variables: a `val` written at the top of the code is
+made again every time you run it. These three keep a value across runs.
+
+### `prop`: a typed slot that children inherit
 
 `prop<T>(name)` is the workhorse. Writing it in a parent box:
 
@@ -78,47 +146,115 @@ The expander walks your code's syntax tree, asks the macro registry to rewrite e
 prop<Int>(savemarker) = 12321
 ```
 
-expands to *nothing at the call site but the bare name* (`savemarker = 12321`), plus two generated lines injected into the box's preamble:
+expands to *nothing at the call site but the bare name* (`savemarker = 12321`), plus three generated lines injected into the box's preamble:
 
 ```diffstatic {data-lang=kotlin}
 var Box.savemarker by Inheritance<Int>() /**/
 val Once.savemarker by Onceing<Int>() /**/
+val Why.savemarker by Whying() /**/
 ```
 
 (and an `import` for the type). Now `savemarker` is a real, typed Kotlin property. From then on:
 
 - **Writing** `savemarker = …` stores the value **on this box**.
 - **Reading** `savemarker` returns this box's value if set, otherwise walks *up the box graph* to the first ancestor that has one (that is what `Inheritance` does — see **Property inheritance** below).
+- **`why.savemarker`** says which box that value came from; see [Why does this value resolve here?](why.md).
 
-The companion `once.savemarker { … }` computes and stores the value when the property is `null`,
-then returns the stored value on later calls:
+The name is written unquoted: it is a name, not a string.
 
-```diffstatic {data-lang=kotlin}
-class Onceing<T> {
-    operator fun getValue(f: Once, property: KProperty<*>): (() -> T) -> T = { compute ->
-        var a = f.inside.getPropertyRaw(property.name) as T?
-        if (a == null) { a = compute(); if (a != null) f.inside.setPropertyRaw(property.name, a, true) }
-        a as T
-    }
-}
-```
+### `once`: fill the slot the first time
 
-`prop` and `once` are two halves of one feature: `prop` declares the typed, inheritable slot; `once`
-fills a non-null value lazily. Because `null` is the empty sentinel, a computation that returns
-`null` is not cached and may run again. This is the idiom behind a renderer box publishing its
+`once.savemarker { … }` runs the block only when the property is `null`, stores the result, and
+returns the stored value on every later run. This is the idiom behind a renderer box publishing its
 window and renderer to its children:
 
 ```diffstatic {data-lang=kotlin}
 prop<Window>(window)
 prop<Renderer>(renderer)
 
-once.renderer {                       // cached after the first non-null result
+once.renderer {                       // runs on the first run only
     window = Window("My sketch")
     Renderer(window)
 }
 ```
 
-`window` and `renderer` are now typed properties on this box, filled once, and visible to every box connected beneath it, because `prop` generated inheriting accessors.
+`window` and `renderer` are now typed properties on this box, filled once, and visible to every box
+connected beneath it. A child reads `renderer` by name; it never needs to look the renderer up.
+
+`null` means "empty": a block that returns `null` is not cached and runs again next time.
+
+### `cached`: one value per set of keys
+
+`once` has one slot per name. When a value depends on something else — a view made for a
+particular renderer, a buffer made for a particular size — use `cached`, which keeps one value per
+type *and* key:
+
+```diffstatic {data-lang=kotlin}
+val view = cached<ElectronRTTView>(renderer) { ElectronRTTView(640, 360) }
+```
+
+Re-run the box and you get the same view back. Connect the box under a different renderer, or pass
+different keys, and the block runs again to make a new one; the old one is closed (if it is
+`AutoCloseable`), so changing a key replaces rather than leaks. Keys are compared with `equals`, and
+any number can be given: `cached<FloatArray>(width, height) { FloatArray(width * height) }`.
+
+One run may ask for several values of one type under different keys — one view per renderer in a
+loop — and keeps them all. Two calls with the *same* type and keys share one value; add a key such as
+`"left"` to keep them apart. `cached` needs no `prop` first, and its value is not visible to child
+boxes: return it into a `prop` if children should see it.
+
+`T` should be a library type. A class declared in the box's own code is a new class each time the
+box compiles, so a `cached` of it never finds the previous value.
+
+### `aside`: code an ordinary run skips
+
+`once` and `cached` run their block on the first full run. Sometimes you want the opposite: code
+that a full run never runs, and that you run by hand when you want it — a one-off experiment, a
+reset, a debug dump. Wrap it in `aside`:
+
+```diffstatic {data-lang=kotlin}
+aside("reset") {
+    savemarker = 0
+    println("reset")
+}
+```
+
+Running the whole box skips the block. Put the cursor inside it and press option/alt-return to run
+just that block. (Running a selection that includes it runs it too.) The name is only a label for
+you; it changes nothing. It saves keeping that code commented out and uncommenting it each time.
+
+### `flipbox`: a block with a checkbox
+
+Between the two, a stack marker can carry a checkbox. Press Cmd+Shift+. to insert a marker (drawn
+as a single rune), then write `.flipbox(true) { … }` after it:
+
+```diffstatic {data-lang=kotlin}
+__m("Zk3q-a1").flipbox(true) {
+    buildTheExpensiveThing()
+}
+```
+
+The editor draws the `true` as a checkbox. The block runs when the box runs with the box ticked,
+and each run unticks it. With `true` it starts ticked, so it runs on the first run like `once`, and
+later runs skip it. Click the checkbox to run the block again, without running the box, like
+option/alt-return on an `aside`. With `false` it runs only when you click. The tick is not saved
+with the document, so `true` applies again after Field restarts.
+
+### What lasts how long
+
+What the block of a `once` or `cached` makes — a slider, a render module, an audio patch —
+belongs to the box, not to the run that happened to make it, so a re-run does not take it apart.
+
+| | re-run | stop | delete the box / close the document |
+|---|---|---|---|
+| a `val` in the code | made again | — | — |
+| `prop` value | kept | kept | gone |
+| `once` / `cached` value | kept | kept, unless its block started something that runs (an audio patch, a process); then cleared and made again on the next run | released |
+| `cached` value whose keys changed | closed, a new one made | — | — |
+
+Stop only stops what is running. If a `once` or `cached` block started an audio patch, stop ends
+the patch and forgets the value, so the next run makes a fresh one instead of handing back one whose
+sound has gone.
 
 ---
 
@@ -157,7 +293,7 @@ Two things have to be true for a child to use a parent's value:
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
 
-This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
+This is the commonest graphics mistake: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
 
@@ -251,7 +387,7 @@ useThe(a)
 
 Fragments are **partially-editable chunks**, and they run in order with **expand → compile → evaluate interleaved per fragment**: fragment N+1 is macro-expanded only *after* fragment N has finished running. Between fragments, the preamble/setup blocks are re-run too.
 
-That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The canonical case is seeding a shader for `moduleHere`:
+That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The usual case is seeding a shader for `moduleHere`:
 
 ```diffstatic {data-lang=kotlin}
 once.vertex   { RECT_ANIMATION_VERTEX_SHADER }
@@ -266,14 +402,14 @@ val module = moduleHere {           // reads the box's vertex/fragment PROPERTIE
 }
 ```
 
-Walk it through:
+What happens in each case:
 
 - **Without** the `//%-`, both are one compilation unit. All of its macros expand first, then it runs. So `moduleHere` expands — reading the box's shaders, finding none, seeding the **default `in vec3 pos`** shader and generating accessors for *that* — *before* `once.vertex` has ever run. The result: the module uses the wrong shader (and, for RectSL, the mesh's vertex attributes won't match the shader's inputs).
 - **With** the `//%-`, fragment 1 runs first: `once.vertex`/`once.fragment` set the box's real shader source. Then fragment 2 is expanded, and `moduleHere` now sees the shader you supplied and generates the correct accessors and module.
 
-So `//%-` is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
+So `//%-` is how you set some state and then run a macro that reads it. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
-**A second worked example, on the preamble half rather than the macro half.** `runLaunchSetupBlocks(box)` is called from *inside* the fragment loop in `execution.kt`, not before it, which is why the preamble and setup blocks are re-run between fragments. A fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
+The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
 ---
 
@@ -282,6 +418,8 @@ So `//%-` is what makes "set some state, then run a macro that reads it" work. I
 - During interactive execution, Kotlin box code is **fragmented** on `//%-`, and each fragment is **macro-expanded, compiled, and evaluated in turn** — so a fragment sees the runtime effects of earlier fragments in that box.
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
+- **`once`** and **`cached`** keep a value across runs; `cached` keeps one per type and key, and closes the old one when a key changes (see **What lasts how long**).
+- **`aside { }`** is the reverse: a block a full run skips, run by hand with option/alt-return.
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 

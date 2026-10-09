@@ -572,9 +572,9 @@ internal class CpuBitmapTransport(
     }
 }
 
-private data class ReceivedMachSurface(val token: Long, val port: Int)
+internal data class ReceivedMachSurface(val token: Long, val port: Int)
 
-private class MacMachSurfaceInbox(libraryFile: File, service: String) : AutoCloseable {
+internal class MacMachSurfaceInbox(libraryFile: File, service: String) : AutoCloseable {
     private val library: SharedLibrary
     private val receiveAddress: Long
     private val destroyAddress: Long

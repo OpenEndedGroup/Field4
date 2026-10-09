@@ -10,6 +10,30 @@ import kotlin.js.JsName
 import kotlin.math.max
 import kotlin.math.min
 
+/** One command addressed to an iframe in a particular box output, in one live Electron tab. */
+@Serializable
+data class LiveOutputIframeCommand(
+    val id: String,
+    val boxUid: String,
+    val channel: String,
+    val operation: String,
+    val javascript: String = "",
+    val url: String = "",
+    val method: String = "",
+    val params: JsonObject = JsonObject(emptyMap()),
+    val sessionId: String? = null,
+    val timeoutMillis: Long = 10_000,
+)
+
+@Serializable
+data class LiveOutputIframeReply(
+    val id: String,
+    val ok: Boolean,
+    val value: JsonElement = JsonNull,
+    val frameUrl: String = "",
+    val error: String = "",
+)
+
 var _uid = 0
 
 fun Any?.toJsonElement(): JsonElement = when (this) {
@@ -174,7 +198,32 @@ data class AiAssist(
     val startLine: Int = 0,
     val property: String = "code",
     val kind: String,
-    val images: List<String> = emptyList()
+    val images: List<String> = emptyList(),
+    val maxToolRounds: Int = 24,
+    /** The prompt came from push-to-talk, so it may carry speech-recognition errors. */
+    val dictated: Boolean = false,
+    /**
+     * When the box already has a turn running, give this message to that turn instead of refusing it
+     * (`AiTurnInbox`). The chat panel sets it; a caller that waits for its own turn, like an agent task, does not.
+     */
+    val queueIfBusy: Boolean = false
+)
+
+/** Push-to-talk audio: base64 little-endian float32 mono PCM, plus Whisper's initial prompt. */
+@Serializable
+data class AiTranscribeRequest(
+    val pcm: String,
+    val sampleRate: Int = 16000,
+    val vocabulary: String = ""
+)
+
+@Serializable
+data class AiTranscribeResponse(
+    val success: Boolean,
+    val text: String = "",
+    val message: String = "",
+    val millis: Int = 0,
+    val backend: String = ""
 )
 
 @Serializable
@@ -1368,6 +1417,20 @@ data class Rect(val x: Double, val y: Double, val w: Double, val h: Double) {
     val cy: Double get() = y + h / 2.0
 }
 
+/** Semantic document navigation shared by AI4 and the existing Field canvas. */
+@Serializable
+data class DocumentBoxNavigation(
+    val uid: String, val surface: String = "editor", val channel: String = "",
+    val property: String = "code", val line: Int? = null
+)
+
+@Serializable
+data class DocumentBoxNavigationResult(
+    val success: Boolean, val uid: String, val surface: String, val channel: String = "",
+    val channels: List<String> = emptyList(), val message: String,
+    val visible: Boolean = false
+)
+
 // Slideshow messages
 @Serializable
 data class SelectAndEditBox(
@@ -1538,6 +1601,10 @@ data class Vec2Update(val controlId: String, val x: Double, val y: Double)
 @Serializable
 data class CheckboxUpdate(val controlId: String, val value: Boolean)
 
+/** The whole value of a multislider, matrix, range slider or menu. See `afield/visualizers.kt`. */
+@Serializable
+data class ArrayControlUpdate(val controlId: String, val values: List<Double>)
+
 @Serializable
 data class StringUpdate(val controlId: String, val value: String)
 
@@ -1611,7 +1678,18 @@ data class ControllerControl(
      * laws set this and linear ones leave it at `0` — which is what keeps every existing slider's
      * formatting identical to the digit.
      */
-    val significantDigits: Int = 0
+    val significantDigits: Int = 0,
+    /**
+     * The shape of a multislider, matrix, range slider or menu (`afield/visualizers.kt`), so a
+     * surface that only sees this record — the phone — can draw it: [columns] is a multislider's bar
+     * count or a matrix's column count, [rows] and [states] are a matrix's, [options] a menu's.
+     * Their value travels in [text] as comma-separated numbers, and a playhead in [value].
+     */
+    val rows: Int = 0,
+    val columns: Int = 0,
+    val states: Int = 0,
+    val polar: Boolean = false,
+    val options: List<String> = emptyList()
 )
 
 /** A momentary button going down or coming back up. See `ControlGroupBuilder.button`. */

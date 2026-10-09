@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. 1 · spectral spaces guide and jobs
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="spectral_embedding_guide" index="0" -->
 
 ```edn [field-box id="spectral_embedding_guide" role="properties"]
-{"id" "spectral_embedding_guide" "index" 0 "name" "1 · spectral spaces guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · spectral spaces guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_guide_code_.kt" "lines" 10 "characters" 1016 "sha256" "2aae92af36f2e5b776749a07b17f205019924637ff3219b81a3f814e6839ef02"}]}
+{"id" "spectral_embedding_guide" "index" 0 "name" "1 · spectral spaces guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · spectral spaces guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_guide_code_.kt" "lines" 10 "characters" 1047 "sha256" "11e5aa5b166b03bae056cf2bca93dfffce3408918586ba32c00b747586ca3e31"}]}
 ```
 
 ```kotlin [field-property box="spectral_embedding_guide" name="code" path="spectral_embedding_guide_code_.kt"]
@@ -21,7 +21,7 @@ display("guide", """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
   <h2 style="margin:0 0 8px;color:#7fcbd7">Short-time spectral spaces</h2>
   <p>One lightweight <code>analysis.embed_spectral</code> job records a 25 Hz trajectory as normalized mel mass, absolute log-mel, MFCC, energy, centroid, flatness, rolloff, and flux. Field owns temporal pooling, distances, MDS/t-SNE, and audition.</p>
-  <p><b>Mel Wasserstein</b> measures how far spectral mass moves along a perceptual frequency axis. <b>Log-mel</b> retains detailed band shape. <b>MFCC</b> gives a compact broad spectral envelope. Run box 2 without any service; run box 3 for import → submit → monitor → await → decode → three Smile t-SNE fits → synchronized playback.</p>
+  <p><b>Mel Wasserstein</b> measures how far spectral mass moves along a perceptual frequency axis. <b>Log-mel</b> retains detailed band shape. <b>MFCC</b> gives a compact broad spectral envelope. Run box 2 from the committed real result without any service; run box 3 for import → submit → monitor → await → decode → three Smile t-SNE fits → synchronized playback.</p>
 </section>
 """.trimIndent())
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
@@ -121,62 +121,28 @@ client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
 }
 ```
 
-## 3. 2 · model-free synchronized spectral gallery
+## 3. 2 · real cached spectral projections
 
 <!-- field-box id="spectral_embedding_visualizer_gallery" index="2" -->
 
 ```edn [field-box id="spectral_embedding_visualizer_gallery" role="properties"]
-{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · model-free synchronized spectral gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · model-free synchronized spectral gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 48 "characters" 2174 "sha256" "bd5627fa13901b883caa567f04a4aed1599e50a368577d0a5ecaadb0048ea151"}]}
+{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached spectral projections" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached spectral projections" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 14 "characters" 1023 "sha256" "7fc4085a8a97097c60ce779b93f3027cb0ad97457a310575b61ce80ebc3c348c"}]}
 ```
 
 ```kotlin [field-property box="spectral_embedding_visualizer_gallery" name="code" path="spectral_embedding_visualizer_gallery_code_.kt"]
-import afield.stdlib.*
 import afield.stdlib.noir.audioai.*
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-
-val demoSync = "spectral-space-gallery"
-val rate = 8_000
-val duration = 14.0
-val samples = FloatArray((rate * duration).toInt()) { i ->
-    val t = i / rate.toDouble()
-    val sweep = 170.0 + 520.0 * (.5 + .5 * kotlin.math.sin(t * .37))
-    (.18 * kotlin.math.sin(2 * Math.PI * sweep * t) +
-        .07 * kotlin.math.sin(2 * Math.PI * (1250 + 420 * kotlin.math.sin(t * .19)) * t)).toFloat()
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_spectral_embeddings")
+val preview = json.decodeFromString<AnalysisPreview>(File(folder, "result-preview.json").readText())
+val frames = decodeSpectralEmbeddingMessagePack(File(folder, "frames.msgpack").readBytes(), maxFrames = 600, durationSeconds = 10.0, poolMillis = 200.0, hopMillis = 40.0)
+val previews = listOf(SpectralEmbeddingDistance.MEL_WASSERSTEIN, SpectralEmbeddingDistance.LOG_MEL_COSINE, SpectralEmbeddingDistance.MFCC_EUCLIDEAN).mapIndexed { index, distance ->
+    preview.withSpectralProjection(frames.tsne(dimensions = 4, distance = distance, perplexity = 30.0, maxIterations = 750, seed = 184921L + index))
 }
-display("source", AudioVisualizer.renderSamplesHtml(
-    samples, rate,
-    AudioVisualizerOptions(width = 1100, waveformHeight = 105, syncGroup = demoSync),
-    label = "model-free spectral calibration · one cursor",
-))
-val times = (0..280).map { it * .05 }
-fun s(name: String, values: List<Double>) = AnalysisSeries(
-    name, name.replace('_', ' '), timesSeconds = times.map { it as Double? },
-    values = values.map { it as Double? },
-)
-fun preview(label: String, phase: Double) = AnalysisPreview(
-    operation = "analysis.embed_spectral", durationSeconds = duration,
-    series = listOf(
-        s("energy_dbfs", times.map { -34.0 + 9 * kotlin.math.sin(it * .43) }),
-        s("spectral_flux", times.map { .08 + .6 * Math.pow(kotlin.math.abs(kotlin.math.sin(it * 1.1)), 8.0) }),
-        s("spectral_centroid_hz", times.map { 900.0 + 650 * kotlin.math.sin(it * .37) }),
-        s("spectral_flatness", times.map { .08 + .06 * kotlin.math.sin(it * .71) }),
-    ) + (0..3).map { axis ->
-        s("tsne_$axis", times.map { t ->
-            kotlin.math.sin(t * (.37 + axis * .13) + phase + axis) + .24 * kotlin.math.sin(t * 2.1)
-        })
-    },
-    analysis = buildJsonObject {
-        put("backend", "model-free calibration")
-        put("projection_method", "t-SNE")
-        put("projection_series_prefix", "tsne_")
-        put("projection_distance", label)
-        put("projection_sampled_frames", times.size)
-    },
-)
-display("spectral spaces", spectralEmbeddingPreviewDashboardHtml(
-    listOf(preview("mel Wasserstein-1", 0.0), preview("MFCC Euclidean", 1.4)),
-    width = 1100, phaseHeight = 245, syncGroup = demoSync,
-))
+display("spectral spaces", spectralEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 210))
 ```
 

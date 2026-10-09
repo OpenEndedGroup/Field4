@@ -37,6 +37,7 @@ import afield.server.DocsAccessPolicy
 import afield.server.docsFlagEnabled
 import afield.server.isSameSiteRequest
 import afield.server.installDocumentGuideRoutes
+import afield.chatlog.installChatlogRoutes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
@@ -957,13 +958,16 @@ private fun displayWorkspacePath(path: String): String {
     return if (workspace.exists()) workspace.canonicalFile.absolutePath else workspace.absolutePath
 }
 
-private fun argsWithWorkspace(args: List<String>, workspace: String): List<String> {
+internal fun argsWithWorkspace(args: List<String>, workspace: String): List<String> {
     val updated = mutableListOf<String>()
     var replaced = false
     var index = 0
     while (index < args.size) {
         val arg = args[index]
         when {
+            arg.equals("--document", ignoreCase = true) -> index += if (index + 1 < args.size) 2 else 1
+            arg.startsWith("--document=", ignoreCase = true) -> index += 1
+
             arg.equals("--workspace", ignoreCase = true) -> {
                 updated += arg
                 updated += workspace
@@ -1476,7 +1480,9 @@ actual fun _send(message: Message) {
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     recordControllerOutputMessage(document, message)
-    BoxOutputLog.observeBroadcast(message)
+    // Resolve the exact owner for the log as well as the wire recipients.
+    val logDocument=documents.values.singleOrNull { it.filename.matches(document.toRegex()) }?.filename.orEmpty()
+    BoxOutputLog.observeBroadcast(message,logDocument)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -1505,7 +1511,20 @@ internal fun broadcastWelcomeEvent(reason: String) {
 }
 
 
-var lastFn by PersistentString { "welcome" }
+private val workspaceLastDocument by lazy {
+    WorkspaceLastDocument(File(displayWorkspacePath(home)), File(fieldUserConfigDir(), "last-documents"))
+}
+
+var lastFn: String?
+    get() = runCatching { workspaceLastDocument.read() }.getOrElse {
+        lprintln("warning,workspace", "could not read last document: ${it.message}")
+        null
+    }
+    set(value) {
+        runCatching { workspaceLastDocument.remember(value) }.onFailure {
+            lprintln("warning,workspace", "could not remember last document: ${it.message}")
+        }
+    }
 var recentFns by PersistentString { "" }
 var fieldPreferencesJson by PersistentString { "" }
 
@@ -1647,6 +1666,10 @@ var globalPlaywright: Playwright? = null
 var globalPlaywrightBrowser: Browser? = null
 var globalPlaywrightBrowserContext: BrowserContext? = null
 var globalPlaywriteContext: Page? = null
+// `playwright-open --electron` makes the capture page this checkout's Electron app instead of the
+// shared Chromium (afield.docs.ElectronCaptureBrowser); the choice lasts until the next explicit open.
+@Volatile var playwrightUsesElectron: Boolean = false
+var globalElectronCapture: afield.docs.ElectronCaptureBrowser? = null
 var globalServerPort: Int = 9092
 var globalLoopbackHttpPort: Int? = null
 private const val PLAYWRIGHT_NAVIGATION_TIMEOUT_MS = 12_000.0
@@ -1697,6 +1720,8 @@ private fun initialFramePreviewSessionKey(file: String?, scratch: Boolean, sessi
 
 private fun indexInitialFramePreviewScript(file: String?, scratch: Boolean, sessionKey: String?): String {
     val target = initialFramePreviewSessionKey(file, scratch, sessionKey) ?: return ""
+    // A newly named document has no preview yet; this is ordinary first-use, not a warning.
+    if (!File(target).exists()) return ""
     val frames = runCatching { SavingContext().readInitialBoxFrames(target) }
         .onFailure { lprintln("warning,server", "could not read initial frame preview for index $target: ${it.message}") }
         .getOrDefault(emptyList())
@@ -1765,6 +1790,8 @@ private fun closeGlobalPlaywrightPageState() {
 private fun resetGlobalPlaywrightState() {
     closeGlobalPlaywrightPageState()
     runCatching { globalPlaywrightBrowser?.close() }
+    runCatching { globalElectronCapture?.close() }
+    globalElectronCapture = null
     runCatching { globalPlaywright?.close() }
     globalPlaywrightBrowser = null
     globalPlaywright = null
@@ -1833,7 +1860,41 @@ internal fun ensureSharedPlaywrightBrowser(): Pair<Browser, Boolean> {
     return browser to createdBrowser
 }
 
+// The Electron app's own Field tab. Its context is Electron's default session, so it is never closed
+// here (closeGlobalPlaywrightPageState only closes a context this server created); the viewport is set
+// to the capture viewport by emulation, and the device scale factor is the display's own.
+private fun ensureElectronPlaywrightPage(targetUrl: String): PlaywrightPageHandle {
+    closeGlobalPlaywrightPageState()
+    val pw = globalPlaywright ?: Playwright.create().also { globalPlaywright = it }
+    val existing = globalElectronCapture?.takeIf { it.alive }
+    val capture = existing ?: run {
+        runCatching { globalElectronCapture?.close() }
+        afield.docs.ElectronCaptureBrowser.launch(pw, targetUrl).also { globalElectronCapture = it }
+    }
+    val page = capture.fieldPage(globalServerPort)
+    // The same viewport and scale factor as a Chromium capture context. Playwright's setViewportSize
+    // cannot set a scale factor on an attached page (it kept the window's, 0.83 for a viewport larger
+    // than the window), so ask CDP directly.
+    page.context().newCDPSession(page).send(
+        "Emulation.setDeviceMetricsOverride",
+        com.google.gson.JsonObject().apply {
+            addProperty("width", PLAYWRIGHT_VIEWPORT_WIDTH)
+            addProperty("height", PLAYWRIGHT_VIEWPORT_HEIGHT)
+            addProperty("deviceScaleFactor", PLAYWRIGHT_DEVICE_SCALE_FACTOR)
+            addProperty("mobile", false)
+        }
+    )
+    globalPlaywriteContext = page
+    return PlaywrightPageHandle(
+        page = page,
+        createdBrowser = existing == null,
+        createdContext = false,
+        createdPage = existing == null
+    )
+}
+
 private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
+    if (playwrightUsesElectron) return ensureElectronPlaywrightPage(targetUrl)
     var createdContext = false
     var createdPage = false
 
@@ -2163,6 +2224,7 @@ class Server {
             UserThemeManager.start()
             UserKeybindingsManager.start()
             NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
+            SemanticRetrievalService.startIdleRebuildWatcher() // rebuilds a stale semantic index once the workspace is quiet
 
             // The loop below saves every ~5 s; this saves what it has not reached when Field stops.
             DocumentShutdownFlush.install()
@@ -2454,6 +2516,17 @@ class Server {
                     joinSelectionContext(it, thisSession.get())
                 }
 
+                Handled.yes
+            })
+
+            handlers["live-output-iframe-ready"] = mutableSetOf({ _, _ ->
+                LiveOutputIframeBridge.ready(thisSession.get())
+                Handled.yes
+            })
+            handlers["live-output-iframe-reply"] = mutableSetOf({ message, _ ->
+                LiveOutputIframeBridge.reply(
+                    thisSession.get(), Json.decodeFromJsonElement<LiveOutputIframeReply>(message.payload!!)
+                )
                 Handled.yes
             })
 
@@ -3193,6 +3266,7 @@ class Server {
             })
 
             registerButtonUpdateHandler() // afield/ButtonControlHandler.kt — see its KDoc
+            registerArrayControlUpdateHandler() // afield/visualizers.kt
             handlers["fline-click"] = mutableSetOf({ message, reply ->
                 val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
                 lprintln("debug,fline", "Received FLine click: ${click.callbackId}")
@@ -3575,12 +3649,9 @@ class Server {
             val portFallbackCount =
                 System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
             var port = preferredPort
-            // Every interface, deliberately: browsers and the visionOS shell reach Field from
-            // other devices on the local network. The consequence is that *every* route
-            // installed below is reachable from that network, and a route that must not be
-            // has to enforce it itself — on `call.request.local.remoteAddress`, which is the
-            // socket, rather than on a header. `docsAnnotations.kt` is the worked example.
-            val httpsHost = "0.0.0.0"
+            // Desktop use stays local. Remote shells (including visionOS) opt into LAN binding.
+            val httpsHost = fieldServerBindHost()
+            lprintln("info,startup", "HTTPS bind: $httpsHost:$preferredPort")
             val keystorePath =
                 System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
             val keystorePassword = System.getenv("AFIELD_KEYSTORE_PASS") ?: "changeit"
@@ -3674,6 +3745,9 @@ class Server {
                         // parsed; routing it through the gzip buffer would coalesce those flushes
                         // and defeat the point of streaming, so leave it uncompressed.
                         excludeContentType(ContentType.parse("application/x-ndjson"))
+                        // Three.js geometry buffers: float data barely compresses, and gzip would cost a
+                        // core for as long as a large scene takes to stream.
+                        excludeContentType(ContentType.parse(afield.graphics.THREE_BUFFERS_CONTENT_TYPE))
                     }
 
                     install(WebSockets) {
@@ -3714,6 +3788,7 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installChatlogRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
 
@@ -3831,7 +3906,7 @@ class Server {
                                     projects,
                                     currentRuntimeInfo(),
                                     PythonInterface.currentPythonSettingsStatus(),
-                                    CompletionDocPolishMonitor.status(),
+                                    CompletionDocDrafts.summary(),
                                     AiToolUseImprovementMonitor.status(),
                                     codeUseSummary,
                                     semanticSettings
@@ -3882,24 +3957,6 @@ class Server {
                                     write("\n")
                                     flush()
                                 }
-                            }
-                        }
-
-                        get("/api/completion-doc-polish") {
-                            call.respond(CompletionDocPolishMonitor.status())
-                        }
-
-                        post("/api/completion-doc-polish") {
-                            try {
-                                val request = runCatching { call.receive<CompletionDocPolishRunRequest>() }
-                                    .getOrElse { CompletionDocPolishRunRequest() }
-                                call.respond(CompletionDocPolishMonitor.start(request.dryRun))
-                            } catch (e: Exception) {
-                                lprintln("error,server", "completion-doc polish launch failed: ${e.message}")
-                                call.respond(
-                                    HttpStatusCode.InternalServerError,
-                                    mapOf("error" to "completion-doc polish launch failed")
-                                )
                             }
                         }
 
@@ -5014,7 +5071,7 @@ class Server {
                                                     t.printStackTrace()
                                                 }
                                             }
-                                            if (message.name == "slider-update" || message.name == "button-update")
+                                            if (message.name == "slider-update" || message.name == "button-update" || message.name == "output-request")
                                                 orderedControls.send(dispatch)
                                             else launch(block = dispatch)
                                         }
@@ -5023,6 +5080,7 @@ class Server {
                             } finally {
                                 orderedControls.cancel()
                                 controlConsumer.cancel()
+                                LiveOutputIframeBridge.gone(ts)
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
                                 afield.graphics.detachThreeGlobalListener(ts)
@@ -5122,6 +5180,24 @@ class Server {
                                 val bytes = afield.graphics.threeGeometryReviewImage(uid, hash)
                                 if (bytes == null) call.respond(HttpStatusCode.NotFound)
                                 else call.respondBytes(bytes, ContentType.Image.PNG)
+                            }
+                        }
+                        route("/three-buffers") {
+                            get {
+                                // The arrays a `three/geometry` description refers to, written from the
+                                // payload as they stream. A superseded generation is gone: the viewer
+                                // has been sent the description that replaced it. The trust is the
+                                // websocket's that sent the description — remote native clients allowed,
+                                // cross-site browser reads refused by installFieldApiSameSiteGuard.
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val generation = call.request.queryParameters["generation"] ?: ""
+                                val buffers = afield.graphics.threeGeometryBuffers(uid, generation)
+                                if (buffers == null) call.respond(HttpStatusCode.NotFound, "No current geometry for that view and generation")
+                                else {
+                                    call.response.header(HttpHeaders.CacheControl, "private, max-age=3600, immutable")
+                                    call.respondOutputStream(ContentType.parse(afield.graphics.THREE_BUFFERS_CONTENT_TYPE),
+                                        HttpStatusCode.OK, buffers.bytes) { buffers.writeTo(this) }
+                                }
                             }
                         }
                         route("/three-review") {
@@ -5417,13 +5493,20 @@ class Server {
                 } catch (t: Throwable) {
                     if (!isPortBindException(t)) throw t
                     bindFailure = t
-                    lprintln("warning,server", "Port ${candidatePort} is already in use; trying next port")
+                    val mirror = loopbackHttpPortFor(candidatePort)?.let { " (or its HTTP mirror on $it)" } ?: ""
+                    lprintln("warning,server", "Port ${candidatePort}${mirror} is already in use; trying next port")
                 }
             }
 
             if (!started) {
-                throw bindFailure
-                    ?: IllegalStateException("Unable to bind Field server to any port in range ${preferredPort}..${preferredPort + portFallbackCount - 1}")
+                val last = preferredPort + portFallbackCount - 1
+                val message = "Unable to bind Field server to any port in ${preferredPort}..${last}. " +
+                    "Another Field is probably running (lsof -nP -iTCP:${preferredPort} -sTCP:LISTEN). " +
+                    "To use a different port: PORT=<port> ./field.sh (the HTTP mirror follows at PORT+10000; " +
+                    "set AFIELD_HTTP_PORT=<port> or AFIELD_HTTP_PORT=off to move or disable it; " +
+                    "AFIELD_PORT_FALLBACK_COUNT=<n> widens the range tried)."
+                lprintln("error,server", message)
+                throw IllegalStateException(message, bindFailure)
             }
 
             globalServerPort = port
@@ -5657,17 +5740,21 @@ internal fun Application.installFieldApiCors() {
     installFieldApiSameSiteGuard()
 }
 
-/** Turns [installFieldApiSameSiteGuard] on. Off by default, and the default is the exposure. */
+/** Browser-origin protection is on by default; `0` is an explicit compatibility opt-out. */
 internal const val FIELD_API_REQUIRE_SAME_SITE_ENV = "AFIELD_API_REQUIRE_SAME_SITE"
 
 /** `-D` equivalent of [FIELD_API_REQUIRE_SAME_SITE_ENV], and it wins when both are set. */
 internal const val FIELD_API_REQUIRE_SAME_SITE_PROPERTY = "afield.api.requireSameSite"
 
+/** Bind locally unless a remote client has been explicitly enabled. */
+internal fun fieldServerBindHost(setting: String? = System.getenv("AFIELD_BIND_HOST")): String =
+    setting?.trim()?.takeIf { it.isNotEmpty() } ?: "127.0.0.1"
+
 /** Current posture of the application-wide browser-origin guard. */
-internal fun fieldApiRequiresSameSite(): Boolean = docsFlagEnabled(
-    System.getProperty(FIELD_API_REQUIRE_SAME_SITE_PROPERTY),
-    System.getenv(FIELD_API_REQUIRE_SAME_SITE_ENV),
-)
+internal fun fieldApiRequiresSameSite(
+    property: String? = System.getProperty(FIELD_API_REQUIRE_SAME_SITE_PROPERTY),
+    environment: String? = System.getenv(FIELD_API_REQUIRE_SAME_SITE_ENV),
+): Boolean = docsFlagEnabled(property, environment?.takeIf { it.isNotBlank() } ?: "true")
 
 /**
  * Applies the same-site guard's browser-origin policy to a command WebSocket upgrade.
@@ -5733,6 +5820,18 @@ internal const val SEC_FETCH_MODE_HEADER = "Sec-Fetch-Mode"
 private val fieldApiSelfGuardedReadPrefixes = listOf("/api/docs-annotations", "/api/docs-improvement/pass")
 
 /**
+ * Annotation writes have their own machine and site policy, including an explicit cross-site
+ * opt-in. Defer only the routes that actually install that policy; a new or lookalike API path
+ * must still meet the application-wide guard until it has its own route-level protection.
+ */
+internal fun fieldApiWriteNeedsSameSite(method: HttpMethod, path: String): Boolean = when (method) {
+    HttpMethod.Post -> path != "/api/docs-annotations"
+    HttpMethod.Put -> !Regex("^/api/docs-annotations/[^/]+/resolve$").matches(path)
+    HttpMethod.Delete -> !Regex("^/api/docs-annotations/[^/]+$").matches(path)
+    else -> true
+}
+
+/**
  * Whether a *read* should be held to the same-site rule.
  *
  * The exposure this closes is a page you have open **reading** Field's answer: `anyHost()` in
@@ -5786,51 +5885,28 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  * [fieldApiSelfGuardedReadPrefixes] and [fieldApiReadNeedsSameSite] are where that decision now
  * lives.
  *
- * ## Why this is off by default, which is the uncomfortable part
+ * ## Desktop and remote use
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 56
- * state-changing HTTP routes have no route-specific access control**, `POST
- * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
- * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
- * `/controllers/ws` accept commands without authentication, but apply this same-site policy to
- * browser upgrades when the switch is on. Two separate
- * exposures follow, and it is worth not conflating them:
- *
- *  - **another website**, via the CORS block above. That is what this guard closes.
- *  - **another host on the network**, via `httpsHost = "0.0.0.0"`. This guard closes *none*
- *    of that, and nothing in it should be read as if it did: a `curl` from the LAN sends no
- *    `Origin` and no `Sec-Fetch-Site`, and Ktor's CORS plugin does not even run for a
- *    request with no `Origin`. [isSameSiteRequest] treats that as same-site on purpose,
- *    because refusing it would break every non-browser client Field has, including the
- *    `curl` recipes in its own dev_docs.
- *
- * So: default-permissive, because turning it on is a behaviour change to a running system
- * that nobody is awake to notice, and because a silent default-deny on 49 routes is how you
- * discover which of them the human's own tooling was using. Loud either way, because the
- * failure mode this whole area is about is capability you did not know you had.
+ * The guard is on by default and HTTPS binds loopback. `AFIELD_BIND_HOST=0.0.0.0` enables
+ * remote clients such as visionOS; it does not add authentication. A native client with no
+ * browser-origin headers remains allowed. `AFIELD_API_REQUIRE_SAME_SITE=0` explicitly restores
+ * cross-origin compatibility for tools that need it.
  */
 internal fun Application.installFieldApiSameSiteGuard() {
     val required = fieldApiRequiresSameSite()
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 49 of its 56 state-changing routes have no route-specific " +
-                "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
-                "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
-                "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +
-                "your recent commit messages, and /api/source and /api/workspace-search reach source text. " +
-                "The connector binds 0.0.0.0. Any host on this network can call " +
-                "them with curl, and any website you have open can call them from your browser. Set " +
-                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse cross-site HTTP writes AND reads, plus browser " +
-                "upgrades to both WebSocket command channels; it does not cover the network half. That needs " +
-                "authentication or a bind address change, which would break the visionOS shell. " +
-                "See dev_docs/DOCS_IMPROVEMENT_AGENT.md and public/docs/server_surface.md.",
+            "Cross-site browser protection is disabled ($FIELD_API_REQUIRE_SAME_SITE_ENV=0). " +
+                "Field's HTTP API and command WebSockets are unauthenticated. HTTPS binds " +
+                "${fieldServerBindHost()}; remote access needs a trusted network or firewall. " +
+                "See public/docs/server_surface.md.",
         )
         return
     }
     lprintln(
         "server",
-        "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site HTTP writes and reads are refused, except " +
+        "Browser-origin protection is enabled: cross-site HTTP writes and reads are refused, except " +
             "${fieldApiSameSiteExemptPaths.joinToString()}, top-level navigations, and the routes that guard " +
             "themselves (${fieldApiSelfGuardedReadPrefixes.joinToString()}); cross-site browser upgrades to " +
             "/ws and /controllers/ws are refused at the upgrade. This does NOT authenticate the API — a " +
@@ -5850,6 +5926,8 @@ internal fun Application.installFieldApiSameSiteGuard() {
         // cannot leak or that guard themselves — see [fieldApiReadNeedsSameSite].
         if (call.request.httpMethod == HttpMethod.Get || call.request.httpMethod == HttpMethod.Head) {
             if (!fieldApiReadNeedsSameSite(call.request.headers[SEC_FETCH_MODE_HEADER], path)) return@intercept
+        } else if (!fieldApiWriteNeedsSameSite(call.request.httpMethod, path)) {
+            return@intercept
         }
         if (isSameSiteRequest(
                 call.request.headers[SEC_FETCH_SITE_HEADER],
@@ -5872,8 +5950,8 @@ internal fun Application.installFieldApiSameSiteGuard() {
         }
         call.respond(
             HttpStatusCode.Forbidden,
-            "Field is refusing cross-site $kind because $FIELD_API_REQUIRE_SAME_SITE_ENV is set. Unset it to " +
-                "restore the default, which is that any website you have open can call this route.",
+            "Field is refusing cross-site $kind. For tools that require this access, explicitly " +
+                "allow cross-site clients with $FIELD_API_REQUIRE_SAME_SITE_ENV=0.",
         )
         finish()
     }

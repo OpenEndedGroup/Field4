@@ -1,0 +1,21 @@
+name: ai4_iframe_hello
+description: One box hosts a live webpage and opts that iframe into AI4's inspect, wait, navigate, screenshot, click, fill and JavaScript tools.
+operations:
+  - create:
+      box: ai4_iframe_hello
+      name: Iframe hello · run me
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 300.0
+        h: 60.0
+      properties:
+        code: |
+          display("page", """<iframe src="/iframe-ai4-demo.html" style="border:0;width:640px;height:380px;display:block"></iframe>""")
+          exposeOutputIframeTools("page", "hello")
+  - execute:
+      box: ai4_iframe_hello
+      property: code
+      type: fragment
+  - wait:
+      millis: 250

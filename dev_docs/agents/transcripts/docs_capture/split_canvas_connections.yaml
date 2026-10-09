@@ -1,0 +1,210 @@
+name: split_canvas_connections
+description: >
+  The split-canvas connections video on `public/docs/moving_around_the_canvas.md`: the sequencer
+  layout of split_canvas.yaml (bar headings along the top, instrument labels down the left, pattern
+  boxes in the body), plus a `mix` box in the top-left corner, with `keys 4` wired across all four
+  panes. Its parents are its instrument label (`keys`, bottom-left pane) and its bar heading
+  (`bar 4`, top-right pane); its children are `mix` (top-left), and `pad 5` and `fx 4` beside it in
+  the body. Selecting it lights those connections, which then follow the panes as the body scrolls.
+
+  Capture-only, so it lives under transcripts/docs_capture/ (see bookmarks_panel.yaml).
+operations:
+  - create:
+      box: sp_bar1
+      name: "bar 1"
+      frame: { x: 230.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bar2
+      name: "bar 2"
+      frame: { x: 420.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bar3
+      name: "bar 3"
+      frame: { x: 610.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bar4
+      name: "bar 4"
+      frame: { x: 800.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bar5
+      name: "bar 5"
+      frame: { x: 990.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bar6
+      name: "bar 6"
+      frame: { x: 1180.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bar7
+      name: "bar 7"
+      frame: { x: 1370.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bar8
+      name: "bar 8"
+      frame: { x: 1560.0, y: 30.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick
+      name: "kick"
+      frame: { x: 24.0, y: 140.0, w: 130.0, h: 56.0 }
+  - create:
+      box: sp_snare
+      name: "snare"
+      frame: { x: 24.0, y: 240.0, w: 130.0, h: 56.0 }
+  - create:
+      box: sp_hats
+      name: "hats"
+      frame: { x: 24.0, y: 340.0, w: 130.0, h: 56.0 }
+  - create:
+      box: sp_bass
+      name: "bass"
+      frame: { x: 24.0, y: 440.0, w: 130.0, h: 56.0 }
+  - create:
+      box: sp_keys
+      name: "keys"
+      frame: { x: 24.0, y: 540.0, w: 130.0, h: 56.0 }
+  - create:
+      box: sp_pad
+      name: "pad"
+      frame: { x: 24.0, y: 640.0, w: 130.0, h: 56.0 }
+  - create:
+      box: sp_fx
+      name: "fx"
+      frame: { x: 24.0, y: 740.0, w: 130.0, h: 56.0 }
+  - create:
+      box: sp_kick1
+      name: "kick 1"
+      frame: { x: 230.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick2
+      name: "kick 2"
+      frame: { x: 420.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick3
+      name: "kick 3"
+      frame: { x: 610.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick4
+      name: "kick 4"
+      frame: { x: 800.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick5
+      name: "kick 5"
+      frame: { x: 990.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick6
+      name: "kick 6"
+      frame: { x: 1180.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick7
+      name: "kick 7"
+      frame: { x: 1370.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_kick8
+      name: "kick 8"
+      frame: { x: 1560.0, y: 140.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_snare2
+      name: "snare 2"
+      frame: { x: 420.0, y: 240.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_snare4
+      name: "snare 4"
+      frame: { x: 800.0, y: 240.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_snare6
+      name: "snare 6"
+      frame: { x: 1180.0, y: 240.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_snare8
+      name: "snare 8"
+      frame: { x: 1560.0, y: 240.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats1
+      name: "hats 1"
+      frame: { x: 230.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats2
+      name: "hats 2"
+      frame: { x: 420.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats3
+      name: "hats 3"
+      frame: { x: 610.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats4
+      name: "hats 4"
+      frame: { x: 800.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats5
+      name: "hats 5"
+      frame: { x: 990.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats6
+      name: "hats 6"
+      frame: { x: 1180.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats7
+      name: "hats 7"
+      frame: { x: 1370.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_hats8
+      name: "hats 8"
+      frame: { x: 1560.0, y: 340.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bass1
+      name: "bass 1"
+      frame: { x: 230.0, y: 440.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bass3
+      name: "bass 3"
+      frame: { x: 610.0, y: 440.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bass5
+      name: "bass 5"
+      frame: { x: 990.0, y: 440.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_bass7
+      name: "bass 7"
+      frame: { x: 1370.0, y: 440.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_keys3
+      name: "keys 3"
+      frame: { x: 610.0, y: 540.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_keys4
+      name: "keys 4"
+      frame: { x: 800.0, y: 540.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_keys7
+      name: "keys 7"
+      frame: { x: 1370.0, y: 540.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_keys8
+      name: "keys 8"
+      frame: { x: 1560.0, y: 540.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_pad1
+      name: "pad 1"
+      frame: { x: 230.0, y: 640.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_pad5
+      name: "pad 5"
+      frame: { x: 990.0, y: 640.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_fx4
+      name: "fx 4"
+      frame: { x: 800.0, y: 740.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_fx8
+      name: "fx 8"
+      frame: { x: 1560.0, y: 740.0, w: 150.0, h: 56.0 }
+  - create:
+      box: sp_mix
+      name: "mix"
+      frame: { x: 24.0, y: 30.0, w: 130.0, h: 56.0 }
+  - connect: { parent: sp_keys, child: sp_keys4 }
+  - connect: { parent: sp_bar4, child: sp_keys4 }
+  - connect: { parent: sp_keys4, child: sp_mix }
+  - connect: { parent: sp_keys4, child: sp_pad5 }
+  - connect: { parent: sp_keys4, child: sp_fx4 }
+  - wait:
+      millis: 400

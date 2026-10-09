@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. renderer
@@ -36,32 +36,20 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-itself, so these are needed. The `prop<>` type argument is written out in full on
-purpose: `prop<>` rewrites the box's code and the rewrite does not carry the snippet's
-own imports, so `prop<StandardRenderer.Bundle>(bundle)` under an
-`import afield.four.fabricated.StandardRenderer` fails with
-`Unresolved reference 'StandardRenderer'` reported against the *import* line. Every
-other reference in the box resolves through the import normally.
+`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 
 ```edn [field-box id="pc_scene" role="properties"]
-{"id" "pc_scene" "index" 1 "name" "scene" "parents" ["root" "pc_renderer"] "children" ["pc_chain"] "properties" {"children" #{#afield/box "pc_chain"} "parents" #{#afield/box "root" #afield/box "pc_renderer"} "name" "scene" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_scene_code_.kt" "lines" 44 "characters" 1681 "sha256" "3898dac0ee49771e8bf962d123063736997b7dfb018ea56a5676fe662d5ed411"}]}
+{"id" "pc_scene" "index" 1 "name" "scene" "parents" ["root" "pc_renderer"] "children" ["pc_chain"] "properties" {"children" #{#afield/box "pc_chain"} "parents" #{#afield/box "root" #afield/box "pc_renderer"} "name" "scene" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_scene_code_.kt" "lines" 38 "characters" 1198 "sha256" "65b80104bfaa9f7c9b54413599f8f62f1e27f5b539535ed1a00525f2f8c4bff7"}]}
 ```
 
 ```kotlin [field-property box="pc_scene" name="code" path="pc_scene_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-// itself, so these are needed. The `prop<>` type argument is written out in full on
-// purpose: `prop<>` rewrites the box's code and the rewrite does not carry the snippet's
-// own imports, so `prop<StandardRenderer.Bundle>(bundle)` under an
-// `import afield.four.fabricated.StandardRenderer` fails with
-// `Unresolved reference 'StandardRenderer'` reported against the *import* line. Every
-// other reference in the box resolves through the import normally.
+// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 val r: Renderer = fromContext()
 
@@ -100,17 +88,16 @@ println("scene ready: ${bundle.postStack.names()}")
 <!-- field-box id="pc_chain" index="2" -->
 
 ```edn [field-box id="pc_chain" role="properties"]
-{"id" "pc_chain" "index" 2 "name" "pass chain" "parents" ["root" "pc_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pc_scene"} "name" "pass chain" "_tombstone" false "frame" #afield/rect [640.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_chain_code_.kt" "lines" 39 "characters" 1452 "sha256" "a1bc6478727cd708c35927dc837ee8cdb3b4d9e8af9f462e403fada8385fd1df"}]}
+{"id" "pc_chain" "index" 2 "name" "pass chain" "parents" ["root" "pc_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pc_scene"} "name" "pass chain" "_tombstone" false "frame" #afield/rect [640.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_chain_code_.kt" "lines" 38 "characters" 1371 "sha256" "310a470e88ed8057770a79cdeefd65c979211239ad2b060e74e1d8f2d34b3bc7"}]}
 ```
 
 ```kotlin [field-property box="pc_chain" name="code" path="pc_chain_code_.kt"]
+import afield.four.fabricated.FabricateBuiltChain
 import afield.four.fabricated.FabricatePassLibrary
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.addPassChain
 
-// Fully qualified for the same reason as the scene box: `prop<>`'s rewrite loses the
-// snippet's imports.
-prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+prop<FabricateBuiltChain>(chain)
 
 val r: Renderer = fromContext()
 val b: StandardRenderer.Bundle = fromContext()

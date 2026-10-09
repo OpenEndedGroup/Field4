@@ -6,7 +6,7 @@ The [learned shader](learned_shader.md) workflow can now train directly from a F
 
 ## Open the experiment
 
-Build the optional shaders with `./gradlew buildLearnedShaders`, then open **Starting points → gpu_shader_learning**. It needs enabled cooperative-vector **training**, not just inference. Field now uses the shared, checksummed **Slang 2026.18.3** compiler; the optional shader build uses that pin and makes it available to the existing Slang runtime. Explicit runtime compiler overrides retain their normal priority.
+Build the optional shaders with `./gradlew buildLearnedShaders`, then open **Starting points → gpu_shader_learning**. It needs enabled cooperative-vector **training**, not just inference. Field now uses the shared, checksummed **Slang 2026.19** compiler; the optional shader build uses that pin and makes it available to the existing Slang runtime. Explicit runtime compiler overrides retain their normal priority.
 
 The three panels are **source**, **learned output** and **absolute RGB error × 8**. The purple stripe sits in the middle of each source/learned panel: its two hard edges make a deliberately discontinuous target. Training visits thirteen normalized time values. Turning off **Learn on GPU** animates through intermediate values, so you can see how the fit interpolates. Select **1: Learned** with learning disabled to stop executing the teacher entirely. The learned texture remains available as `lab.model.output`.
 

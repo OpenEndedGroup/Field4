@@ -510,6 +510,8 @@ class PassTest(unittest.TestCase):
         self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
         self.repo.write("agent.py", FAKE_AGENT)
         self.repo.write("sleepy.py", SLEEPY_AGENT)
+        # The real queue's enqueue, so the pass talks to the same files the lander reads.
+        self.repo.write("tools/land.py", (Path(__file__).resolve().parent / "land.py").read_text())
         self.repo.commit("docs")
         self.store_path = self.repo.root / "store.json"
         other = "https://openendedgroup.com/field4/other/"
@@ -580,7 +582,18 @@ class PassTest(unittest.TestCase):
         message = subprocess.run(["git", "log", "-1", "--format=%B"], cwd=self.worktree, capture_output=True, text=True).stdout
         self.assertIn("Docs-Note: 11111111-a", message)
         self.assertIn("reworded the step", message)
-        self.assertEqual(self.cli("pass", "land"), 0)
+        # Landing enqueues and stops; nothing moves main until a lander takes the item.
+        with mock.patch.object(dn, "ensure_lander", return_value=True) as lander:
+            self.assertEqual(self.cli("pass", "land"), 0)
+        lander.assert_called_once()
+        queued = self.status()["worktree"]["landing"]
+        self.assertEqual(queued["state"], "pending")
+        self.assertNotIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
+        with self.assertRaises(SystemExit) as early:
+            self.cli("pass", "finish")
+        self.assertIn("queued for landing", str(early.exception))
+        self.land_as_the_lander_would(queued["id"])
+        self.assertEqual(self.status()["worktree"]["landing"]["state"], "landed")
         self.assertIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
         self.assertTrue((self.repo.root / "public/docs/unrelated.md").is_file())
         self.assertTrue(self.status()["worktree"]["landed"])
@@ -592,6 +605,32 @@ class PassTest(unittest.TestCase):
         self.assertEqual(self.cli("pass", "finish"), 0)
         self.assertFalse(self.worktree.exists())
         self.assertIsNone(dn.load_pass(self.repo.root))
+
+    def land_as_the_lander_would(self, item_id: str) -> None:
+        """What tools/land.py run does with one item, minus regeneration and the guard."""
+        queue = Path(self.repo.git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()) / "field-land-queue"
+        item = json.loads((queue / "pending" / f"{item_id}.json").read_text())
+        self.repo.git("merge", "--no-ff", "-m", f"Land {item['branch']}", item["sha"])
+        item.update(landed_as=self.repo.git("rev-parse", "HEAD").strip(), finished="now")
+        (queue / "pending" / f"{item_id}.json").unlink()
+        (queue / "landed" / f"{item_id}.json").write_text(json.dumps(item))
+
+    def test_a_bounce_comes_back_with_its_reason(self) -> None:
+        self.cli("pass", "create", "--path", str(self.worktree))
+        (self.worktree / "public/docs/guide.md").write_text("# Guide\n\nchanged\n")
+        subprocess.run(["git", "commit", "-qam", "edit"], cwd=self.worktree, check=True)
+        with mock.patch.object(dn, "ensure_lander", return_value=True):
+            self.cli("pass", "land")
+        queue = Path(self.repo.git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()) / "field-land-queue"
+        pending = next((queue / "pending").glob("*.json"))
+        item = json.loads(pending.read_text()) | {"reason": "ProseNumeralContractTest: logging.md says 970", "log": "/tmp/x.log"}
+        pending.unlink()
+        (queue / "bounced" / pending.name).write_text(json.dumps(item))
+        landing = self.status()["worktree"]["landing"]
+        self.assertEqual((landing["state"], landing["reason"]), ("bounced", "ProseNumeralContractTest: logging.md says 970"))
+        with self.assertRaises(SystemExit) as refused:
+            self.cli("pass", "finish")
+        self.assertIn("bounced", str(refused.exception))
 
     def test_discarding_an_edit_reopens_what_it_resolved(self) -> None:
         self.cli("pass", "create", "--path", str(self.worktree))
@@ -833,12 +872,32 @@ class SessionTest(unittest.TestCase):
     def overview(self) -> dict:
         return {b["key"]: b for b in dn.batch_overview(self.git, self.store.notes())}
 
-    def test_a_session_waits_until_every_document_is_on_main(self) -> None:
+    def test_a_handoff_not_on_main_waits_and_the_rest_start(self) -> None:
+        # The unlanded document lives on the branch that wrote it, as a nightly sweep's would.
+        self.repo.git("checkout", "-q", "-b", "docs/language-test")
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Not landed\n")
+        self.repo.commit("sweep files a handoff")
+        self.repo.git("checkout", "-q", "main")
         navigation = self.overview()["navigation"]
         self.assertEqual(navigation["notLanded"], ["bbbb0002"])
+        self.assertEqual(navigation["notLandedDetail"][0]["branches"], ["docs/language-test"])
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        self.assertEqual(session["handoffs"], ["aaaa0001"])
+        brief = (Path(session["worktree"]) / "HANDOFF_SESSION.md").read_text()
+        self.assertNotIn("Rename the guide page title", brief)
+        states = {n["id"]: (n.get("handoff") or {}).get("state") for n in self.store.notes()}
+        self.assertEqual(states, {"aaaa0001": "taken", "bbbb0002": "open"})
+
+    def test_a_session_with_nothing_on_main_names_the_branch(self) -> None:
+        self.store.mutate(lambda notes: notes.remove(next(n for n in notes if n["id"] == "aaaa0001")))
+        self.repo.git("checkout", "-q", "-b", "docs/language-test")
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Not landed\n")
+        self.repo.commit("sweep files a handoff")
+        self.repo.git("checkout", "-q", "main")
         with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
             dn.start_session(self.git, self.store, "navigation")
-        self.assertIn("land the revision pass first", str(refused.exception))
+        self.assertIn("docs/language-test", str(refused.exception))
 
     def test_the_overview_says_who_is_already_running_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
@@ -848,11 +907,83 @@ class SessionTest(unittest.TestCase):
         lsof = ("p101\ncclaude\nfcwd\nn" + session["worktree"] + "/public\n"
                 "p102\nczsh\nfcwd\nn" + session["worktree"] + "\n"
                 "p103\ncclaude\nfcwd\nn" + session["worktree"] + "-other\n")
-        with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=lsof)):
+        lsof = lsof.replace("p101\ncclaude", "p101\nc2.1.288")  # Claude Code's own name is its version
+        ps = "  101 claude Read HANDOFF_SESSION.md\n  102 -zsh\n  103 claude\n"
+
+        def fake_run(argv, *args, **kwargs):
+            return subprocess.CompletedProcess(argv, 0, stdout=ps if argv[0] == "ps" else lsof)
+        with mock.patch("subprocess.run", side_effect=fake_run):
             shown = self.overview()["navigation"]["session"]
         self.assertEqual(shown["driver"], "orchestrating agent")
         # Only an agent, and only inside this worktree: not the shell, not a sibling with a longer name.
         self.assertEqual(shown["occupants"], ["claude (pid 101)"])
+
+    def _started_then_unregistered(self) -> dict:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        # What the human hit: git let go of the worktree, and Finder put the folder back.
+        self.repo.git("worktree", "remove", "--force", session["worktree"])
+        Path(session["worktree"]).mkdir()
+        (Path(session["worktree"]) / ".DS_Store").write_bytes(b"\0Bud1")
+        return session
+
+    def test_ending_a_session_whose_worktree_git_already_dropped(self) -> None:
+        session = self._started_then_unregistered()
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(Path(session["worktree"]).exists())
+        self.assertEqual(dn.load_sessions(self.repo.root), [])
+        self.assertNotIn(session["branch"], self.repo.git("branch", "--list"))
+
+    def test_a_dropped_worktree_holding_real_files_is_refused(self) -> None:
+        session = self._started_then_unregistered()
+        (Path(session["worktree"]) / "notes.md").write_text("mine\n")
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("notes.md", str(refused.exception))
+        self.assertTrue((Path(session["worktree"]) / "notes.md").exists(), "nothing of the human's is deleted")
+
+    def _started_then_half_removed(self) -> dict:
+        """What the human hit second: git dropped its record, the checkout stayed, caches and all."""
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n.field/\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        worktree = Path(session["worktree"])
+        (worktree / ".field" / "filestore").mkdir(parents=True)
+        (worktree / ".field" / "filestore" / "filestore_cache.json").write_text("{}")
+        admin = self.repo.git("rev-parse", "--git-common-dir").strip()
+        subprocess.run(["rm", "-rf", str(Path(self.repo.root, admin, "worktrees", worktree.name))], check=True)
+        return session
+
+    def test_a_half_removed_worktree_identical_to_its_branch_is_cleaned(self) -> None:
+        session = self._started_then_half_removed()
+        self.assertTrue((Path(session["worktree"]) / "public/docs/guide.md").exists())
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(Path(session["worktree"]).exists())
+
+    def test_a_half_removed_worktree_with_an_edit_is_refused(self) -> None:
+        session = self._started_then_half_removed()
+        (Path(session["worktree"]) / "public/docs/guide.md").write_text("# Edited and never committed\n")
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("public/docs/guide.md", str(refused.exception))
+        self.assertTrue(Path(session["worktree"]).exists())
+
+    def test_a_session_an_agent_is_still_working_in_is_not_ended(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        with mock.patch.object(dn, "session_occupants", return_value=["claude (pid 75800)"]), \
+                mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("claude (pid 75800)", str(refused.exception))
+        self.assertTrue(dn.is_registered_worktree(self.git, Path(session["worktree"])), "nothing was removed")
 
     def test_start_and_end_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
@@ -930,6 +1061,132 @@ class OutcomesFileTest(unittest.TestCase):
             self.assertIn("memory", [e["kind"] for e in note["thread"]])
         finally:
             repo.close()
+
+
+KOTLIN = textwrap.dedent("""\
+    package afield
+
+    /** Already documented. */
+    fun other(): Int = 1
+
+    fun scale(x: Double, by: Double = 2.0): Double = x * by
+
+    @JvmStatic
+    fun shift(x: Double): Double = x + 1.0
+    """)
+KT = "src/jvmMain/kotlin/afield/Foo.kt"
+
+
+def draft_cache(path: Path, records: dict) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"version": 1, "records": records}), encoding="utf-8")
+    return path
+
+
+def record(name: str, source_path: str, line: int, doc: str = "Scales a value.") -> dict:
+    return {"sourceName": name, "sourcePath": source_path, "sourceLine": line, "sourceHash": "h",
+            "documentation": doc, "model": "fast-model"}
+
+
+DRAFT_AGENT = textwrap.dedent("""\
+    import re, subprocess, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    cli = re.search(r"^  (.+?) resolve <note-id>", prompt, re.M).group(1)
+    blocks = re.findall(r"^### note (\\S+)(.*?)(?=^### note |^## Memories)", prompt, re.M | re.S)
+    path = "src/jvmMain/kotlin/afield/Foo.kt"
+    for note_id, body in blocks:
+        if "`afield.scale`" in body:
+            text = open(path, encoding="utf-8").read()
+            text = text.replace("fun scale(", "/** Multiplies [x] by [by]. */\\nfun scale(")
+            open(path, "w", encoding="utf-8").write(text)
+            subprocess.run(cli + f" resolve {note_id} 'wrote the KDoc'", shell=True, check=True)
+        else:
+            subprocess.run(cli + f" resolve {note_id} 'obvious from its name; no KDoc'", shell=True, check=True)
+    """)
+
+
+class KDocDraftTest(unittest.TestCase):
+    """Completion's KDoc drafts as `kdoc-draft` notes: import, tracking, and what a run decides."""
+
+    def setUp(self) -> None:
+        self.repo = TempRepo()
+        self.repo.write(KT, KOTLIN)
+        self.repo.write(".gitignore", ".field-backdoor/\n.field/\n")
+        self.repo.commit("kotlin")
+        self.git = dn.Git(self.repo.root)
+        self.store = dn.Store(self.repo.root / "store.json")
+        self.cache = draft_cache(self.repo.root / ".field" / "filestore" / dn.DRAFT_CACHE_FILE, {
+            "k-scale": record("afield.scale", KT, 6),
+            "k-shift": record("afield.shift", KT, 9, "Adds one."),
+            "k-other": record("afield.other", KT, 4),
+            "k-jar": record("org.lib.Thing.go", "jar:file:///x/lib-sources.jar!/org/lib/Thing.kt", 3),
+            "k-declined": record("afield.scale", KT, 6, "An older draft."),
+        })
+        dn.write_declined(self.cache, ["k-declined"])
+
+    def tearDown(self) -> None:
+        self.repo.close()
+
+    def test_import_takes_only_undocumented_declarations_in_our_tree(self) -> None:
+        counts = dn.import_drafts(self.store, self.git, self.cache)
+        self.assertEqual((counts["imported"], counts["documented"], counts["outside"], counts["declined"]), (2, 1, 1, 1))
+        notes = {n["id"]: n for n in self.store.notes()}
+        scale = notes[dn.draft_note_id("k-scale")]
+        self.assertEqual(scale["kind"], dn.DRAFT_KIND)
+        self.assertEqual(scale["tags"], [dn.DRAFT_KIND])
+        self.assertEqual(scale["note"], "Scales a value.")
+        self.assertEqual((scale["source"]["path"], scale["source"]["startLine"]), (KT, 6))
+        self.assertEqual(scale["source"]["page"], "reference/source/jvmMain/afield/Foo.md")
+        self.assertEqual(dn.resolve_page_source(scale["pageUrl"], self.git).path, KT, "the page URL leads back to the file")
+        self.assertEqual(dn.note_state(scale), "open")
+        self.assertTrue(dn.in_queue(scale, ["kdoc-draft"]))
+        # The @JvmStatic between declaration and where KDoc would go is looked through.
+        self.assertEqual(notes[dn.draft_note_id("k-shift")]["source"]["startLine"], 9)
+        self.assertEqual(dn.import_drafts(self.store, self.git, self.cache)["known"], 2, "a second import adds nothing")
+
+    def test_a_draft_follows_its_declaration(self) -> None:
+        dn.import_drafts(self.store, self.git, self.cache)
+        draft = next(n for n in self.store.notes() if n["id"] == dn.draft_note_id("k-scale"))
+        self.repo.write(KT, KOTLIN.replace("package afield\n", "package afield\n\nimport kotlin.math.abs\n"))
+        self.repo.commit("import")
+        self.assertEqual(dn.sync_note(draft, dn.Git(self.repo.root))["startLine"], 8)
+        # Its line rewritten, blame loses it; the name finds it again.
+        self.repo.write(KT, KOTLIN.replace("by: Double = 2.0", "by: Double = 3.0"))
+        self.repo.commit("default")
+        source = dn.sync_note(draft, dn.Git(self.repo.root))
+        self.assertEqual((source["status"], source["startLine"]), ("reanchored", 6))
+        self.assertEqual(source["draft"]["symbol"], "afield.scale", "the draft's identity survives a sync")
+
+    def test_drafts_and_notes_on_one_file_share_an_agent(self) -> None:
+        dn.import_drafts(self.store, self.git, self.cache)
+        human = dn.normalize_note({"id": "h1", "pageUrl": PAGE, "note": "say what by is", "kind": "note",
+                                   "source": {"page": "reference/afield.md", "path": KT, "startLine": 6, "endLine": 6}})
+        partitions = dn.partition_notes([*self.store.notes(), human])
+        self.assertEqual(len(partitions), 1)
+        self.assertEqual(partitions[0].files, [KT])
+
+    def test_a_run_integrates_one_draft_and_declines_the_other(self) -> None:
+        dn.import_drafts(self.store, self.git, self.cache)
+        agent = self.repo.root / "agent.py"
+        agent.write_text(DRAFT_AGENT)
+        self.repo.git("add", "agent.py")
+        self.repo.git("commit", "-q", "-m", "agent")
+        code = dn.main(["--store", str(self.store.path), "--repo", str(self.repo.root), "revise", "--tag", "kdoc-draft",
+                        "--agent-command", f"{sys.executable} {agent} {{prompt_file}}"])
+        self.assertEqual(code, 0)
+        self.assertIn("/** Multiplies [x] by [by]. */", (self.repo.root / KT).read_text())
+        states = {n["id"]: dn.note_state(n) for n in self.store.notes()}
+        self.assertEqual(states[dn.draft_note_id("k-scale")], "resolved")
+        self.assertEqual(states[dn.draft_note_id("k-shift")], "resolved")
+        # Only the one resolved without KDoc is declined, so completion stops offering it.
+        self.assertEqual(dn.read_declined(self.cache), {"k-declined", "k-shift"})
+
+    def test_prompt_says_what_a_draft_is(self) -> None:
+        self.assertIn("KDoc drafts", dn.AGENT_PROMPT)
+        dn.import_drafts(self.store, self.git, self.cache)
+        rendered = dn.render_note(next(n for n in self.store.notes() if n["kind"] == dn.DRAFT_KIND), self.git)
+        self.assertIn("Draft KDoc for `afield.", rendered)
+        self.assertIn("Not the human's words", rendered)
 
 
 class WritingRulesTest(unittest.TestCase):

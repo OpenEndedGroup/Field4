@@ -1,7 +1,4 @@
-import afield.four.modules.fromContext
 import afield.four.util.GpuProbe
-
-val renderer: Renderer = fromContext()
 
 // A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
 // what is NOT here: no `defaultBuffer` whose access pattern you have to remember

@@ -5,10 +5,8 @@
 // `frames { repeat(180) { frame() } }` with a `println` inside -- which spends 180 real frames
 // to learn what the log already knows.
 import afield.four.fabricated.*
-import afield.four.modules.fromContext
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 prop<PathTraceConvergence>(log)
 

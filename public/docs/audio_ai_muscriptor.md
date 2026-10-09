@@ -1,9 +1,35 @@
 # Multi-instrument transcription with MuScriptor
 
-MuScriptor closes a useful loop in Field Audio: a mixed recording becomes an inspectable,
-instrument-labelled note sequence and ordinary MIDI. The integration keeps Field in charge of the
-source window, job, cache key, artifacts, visualization, and subsequent composition. MuScriptor
-runs in a separate Python environment and can be replaced without changing the Field project model.
+MuScriptor turns a mixed recording into a list of notes, each labelled with an instrument, and a
+MIDI file. Field shows the notes as a piano roll that plays in step with the recording, and hands
+them to your code as ordinary values. MuScriptor runs in its own Python environment, started
+separately from Field.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_muscriptor/piano_roll.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-muscriptor" alt="Real Sonic Pi waveform and MuScriptor instrument-labelled piano roll with polyphony and onset lanes"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_muscriptor")
+val preview = json.decodeFromString<AnalysisPreview>(File(folder, "preview.json").readText())
+val wav = WavFloatArrayLoader.loadWavToFloatArray(File(folder, "source.wav").absolutePath)
+val sync = "docs-real-muscriptor"
+val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate, options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync), wavBytes = File(folder, "source.wav").readBytes(), label = "Sonic Pi recording · 8.192 seconds")
+display("transcription", source + analysisPreviewVisualizationHtml(preview, width = 1040, height = 400, syncGroup = sync))
+
+```
+
+Listen to the recording whose notes are shown above.
+
+<audio controls preload="metadata" src="assets/audio_ai_muscriptor/source.wav"></audio>
+
+
+The notes above are MuScriptor Small's reading of an eight-second Sonic Pi recording. Instrument
+colours are the model's guesses; they do not establish which instruments produced the sound.
 
 The model-neutral operation is `analysis.transcribe_music`. Its three concrete capabilities are:
 
@@ -27,8 +53,8 @@ uvx hf auth login
 ./scripts/run-muscriptor-worker.sh
 ```
 
-The first real request downloads that revision's checkpoint. The normal smoke test never touches a
-model; the opt-in form downloads and exercises a real checkpoint:
+The first request downloads the model. To check the worker, run its test script; with `--model`
+it also downloads and runs a real model:
 
 ```diffstatic {data-lang=bash}
 ./scripts/test-muscriptor-worker.sh
@@ -39,7 +65,7 @@ Start the ordinary API separately with `./scripts/run-api.sh`. That script point
 `FIELD_AUDIO_MUSCRIPTOR_URL` at `http://127.0.0.1:8769`. Device, dtype, cache location, local
 checkpoint overrides, and revision override variables are documented in the worker README.
 
-## Field: source to synchronized score
+## Transcribing a recording
 
 Never block Field's runloop with `.get()` while a transcription is running. Compose futures, update
 the status card from worker events, and await the durable result:
@@ -97,7 +123,7 @@ The waveform and piano roll share Field's general time bus. Playback moves the s
 click-to-seek, wheel zoom, and drag pan work in either view and are reflected in the other. Notes are
 coloured by instrument group, and the lower lane shows active polyphony against onset count.
 
-The visualization is not a dead end. `client.musicTranscription(result)` downloads the compact
+To use the notes in code, `client.musicTranscription(result)` downloads the compact
 MessagePack artifact and returns typed `MusicTranscriptionNote` values, so ordinary Field code can
 filter, group, transform, or feed the recovered notes into other music systems without parsing JSON:
 
@@ -142,8 +168,8 @@ playhead between waveform and score does not introduce the model's small systema
 ## Limits of a transcription
 
 A transcription is a set of model hypotheses, not a score. Read it against the synchronized
-waveform and piano roll before you treat it as one — on a short Sonic Pi recording the pulse timing
-and several of the pitches came out useful and the score as a whole did not.
+waveform and piano roll before you treat it as one. Expect the timing and many pitches to be
+useful, and the whole to need correcting.
 
 The instrument labels are hypotheses too. "Piano" and "bass" on an electronic source describe what
 the model heard, not what made the sound, and the `instruments` allow-list is the way to say so up
@@ -155,12 +181,8 @@ instrument. MuScriptor 0.3.0 does not expose beat quantization at all, which is 
 artifact above is a handle rather than a file. And the upstream authors caution that dense mixes,
 unusual timbres, processed recordings, and exact offsets remain difficult.
 
-What has been run end to end, and the out-of-range-note fix that followed it, is in
-`dev_docs/MUSCRIPTOR_VERIFICATION.md`.
-
-Load the `audio_ai_muscriptor` operation transcript for the complete editable starting point. Its
-first two boxes run without the server or model; the third performs the live asset → job → score →
-MIDI workflow.
+See also: [Audio AI analysis](audio_ai_analysis.md) for beats and pitch, and
+[Short-time spectral spaces](audio_ai_spectral_embeddings.md).
 
 Upstream references: [MuScriptor repository](https://github.com/muscriptor/muscriptor) and
 [small-model card](https://huggingface.co/MuScriptor/muscriptor-small).

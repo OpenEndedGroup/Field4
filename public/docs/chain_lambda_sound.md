@@ -1,27 +1,25 @@
 # A λ-term you can hear
 
-Four steps, four parts of Field. `lambdaterms.kt` parses a λ-term and compiles it to an interaction
-net. `interactionnets.kt`'s `Reducer` fires one reaction at a time and hands back a `ReductionStep`
-for each. [`LambdaSoundDocs`](reference/patterns.md#lambdasounddocs-kt-lambdasounddocs) records
-those into a time series. `patCondense` — the mini-notation parser run backwards — finds the
-shortest notation that plays the resulting step mask, and `patRenderStereo` plays it.
+This page reduces a λ-term step by step and turns the reduction into a rhythm you can listen to.
+`lambdaterms.kt` parses the term and compiles it to an interaction net, and the `Reducer` in
+`interactionnets.kt` fires one reaction at a time, reporting each as a `ReductionStep`.
+[`LambdaSoundDocs`](reference/patterns.md#lambdasounddocs-kt-lambdasounddocs) records those steps
+as a time series. `patCondense`, which runs the mini-notation parser backwards, finds the shortest
+notation that plays the resulting step mask, and `patRenderStereo` plays it.
 
-The reason to take a reduction through a *rhythm* compressor rather than a plot is that the
-compressor is a measurement. A sequence with a figure in it gets a much shorter spelling than one
-without, so the length of what `patCondense` returns is a number about the schedule that produced
-the sequence. And the order in which a schedule fires its reactions is the one thing about a
-reduction here that a schedule changes.
+A pattern with a figure in it condenses to a shorter notation than one without, so the notation
+`patCondense` returns tells you something about the order the reactions fired in. That order is
+what changes when you change the scheduler.
 
 ## One reduction, recorded
 
-`three two` is Church exponentiation the other way round — the numeral three applied to the numeral
-two, which is 2³. It reduces in twenty-six reactions, eight of which are β and the rest of which
-are the fan-and-eraser bookkeeping that makes sharing correct.
+`three two` is Church exponentiation the other way round: the numeral three applied to the numeral
+two, which is 2³. Most of its reactions are not β-steps but the fan-and-eraser bookkeeping that
+keeps sharing correct. The box below reduces it and plots the size of the net after each reaction.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term"}
 :::static
 import afield.four.synth.LambdaSoundDocs
-import afield.stdlib.ActivationOrder
 
 // trace() compiles, reduces and records; it does not relax the layout, because nothing is
 // watching. The answer it read back is checked against the plain normal-order evaluator below.
@@ -52,25 +50,23 @@ markdown("readout", """
 ```
 
 
-The lower trace is how many reactions were *available* at each moment — how much choice the
-scheduler had — and it is never zero until the end and never large. A
-reduction here is not a wavefront sweeping a big net; it is a handful of live collisions at a time,
-and picking among them is the scheduler's entire job.
+The lower trace is how many reactions were available at each moment, which is how much choice the
+scheduler had. It stays small throughout: only a handful of pairs are ready to react at any time,
+and the scheduler's job is to pick among them.
 
 !!! note "A normal form still has an active pair in it"
 
     The last row above says one, and it says one for every term in the corpus under every
     scheduler. `ROOT`'s principal port faces the answer's principal port, and nothing in
-    `Lambda.rules` covers `ROOT ⟂ LAM`. So a normal form in this substrate is **"no rule
-    matches"**, not "nothing is touching", and a termination check written as
-    `net.activePairs().isEmpty()` never fires.
+    `Lambda.rules` covers `ROOT ⟂ LAM`. A reduction has finished when no rule matches, so a
+    termination check written as `net.activePairs().isEmpty()` never fires.
 
 ## The scheduler does not change how long it takes
 
-`Reducer` takes an `ActivationOrder`, which chooses the next active pair to fire. Over the front
-end's whole 25-term corpus under four schedulers — 100 reductions, 912 reactions — the choice never
-changes the number of reactions. Not the count, and not even the mix: every schedule
-fires *the same multiset of rules*, in a different order.
+`Reducer` takes an `ActivationOrder`, which chooses the next active pair to fire. Whichever order
+you pick, a term takes the same number of reactions, and fires the same rules the same number of
+times; only the order differs. The box below reduces every term in the λ front end's corpus under
+all four schedulers and fails if any term breaks either rule.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: three terms at four spellings each, two at three, four at two and thirteen at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests"}
 :::static
@@ -87,7 +83,7 @@ val spellings = LambdaSoundDocs.spellingsPerTerm(sweep)
 :::fold the corpus, worst-spread first
 val rows = sweep.entries
     .filter { counts.getValue(it.key) > 0 }
-    .sortedWith(compareByDescending<Map.Entry<String, Map<afield.stdlib.ActivationOrder, LambdaSoundDocs.Trace>>> {
+    .sortedWith(compareByDescending<Map.Entry<String, Map<ActivationOrder, LambdaSoundDocs.Trace>>> {
         spellings.getValue(it.key)
     }.thenByDescending { counts.getValue(it.key) })
     .joinToString("\n") { (name, traces) ->
@@ -109,28 +105,25 @@ $rows
 ```
 
 
-That is a stronger statement than "the answer does not depend on the scheduler", which
-`stdlib.lambda-terms.property` already established over 17 200 checks. The *route* does not either,
-except in its order.
+This follows from a result of Lafont's: interaction nets are strongly confluent. Two reactions
+available at once involve disjoint pairs of agents, so firing one cannot destroy the other, and a
+strongly confluent system that terminates reaches its normal form in the same number of steps down
+every path.
 
-Interaction nets are strongly confluent: two reactions available at once are on disjoint pairs of
-agents, so firing one cannot destroy the other, only move it — and a strongly confluent system that
-terminates reaches its normal form in the same number of steps down every path. That is Lafont's
-result. It is not a given here, because the fan labelling is known to be wrong on some terms, so the
-counts below are taken under all four schedulers.
+??? aside "Why the page measures the counts instead of citing Lafont"
 
-The terms where the sharing is heaviest are where a confluence failure would show, and
-`LambdaSoundDocs.CONFLUENCE_PROBES` runs four of them under all four schedulers: a duplicated
-abstraction that loses a copy to its eraser, an answer the readback cannot walk, a readback with an
-occurrence outside its binder's body, and a term whose readback depends on scoping binder names.
-Each takes the same number of reactions under every order. Three of the four answers are wrong, and
-every one of those three says so.
+    The fan labelling in the λ front end is wrong on some terms, so confluence is not guaranteed
+    here. `LambdaSoundDocs.CONFLUENCE_PROBES` runs four terms with heavy sharing under all four
+    schedulers: a duplicated abstraction that loses a copy to its eraser, an answer the readback
+    cannot walk, a readback with an occurrence outside its binder's body, and a term whose readback
+    depends on scoping binder names. Each takes the same number of reactions under every order.
+    Three of the four answers are wrong, and each of those three reports that it is.
 
 ## What the scheduler does change
 
-Same reactions, same count, different *order* — so the β-steps land in different places, and
-`patCondense` returns a different string. Nine of the twenty-five corpus terms condense to more than
-one notation across the four schedulers. Here is one of them, four ways.
+Because the order differs, the β-steps land in different places, and `patCondense` can return a
+different notation for each scheduler. The box below takes `three two` under all four schedulers
+and draws where its β-steps fall.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true alt="Four coloured piano-roll lanes of one cycle each, all with eight strikes in twenty-six slots but in visibly different places: FIRST_FOUND ends with four strikes packed against the right edge, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs across the middle, and RIGHTMOST_BY_ID spreads its last four out singly. Below, a table giving all four schedulers the same twenty-six reactions and eight betas against four different condensed notations and compressions of 0.43, 0.61, 0.57 and 0.65, all four signed for by the search"}
 :::static
@@ -172,9 +165,9 @@ rest and then `x!4`. RIGHTMOST_BY_ID spreads the same eight out far enough that 
 a Euclidean figure in them and spells part of the bar as `x(4,13,3)`. Nothing in the condenser knows
 what a λ-term is; it is looking for the shortest string that plays what it was handed.
 
-Compression is a ratio of characters, so the atom's length moves it — both bars above use `x`,
-which is the same care [the CA chain](chain_ca_sound.md) takes for the same reason. Compare two
-spellings only when they are spelled with the same atom.
+Compression is a ratio of characters, so the length of the atom affects it. Both bars above use
+`x`, as [the CA chain](chain_ca_sound.md) does. Compare two notations only when they use the same
+atom.
 
 Here is FIRST_FOUND's bar, three cycles at 0.4 cycles per second:
 
@@ -188,9 +181,8 @@ And RIGHTMOST_BY_ID's, same term, same twenty-six reactions, same eight β-steps
 // Offline-rendered by LambdaSoundDocs.renderWav("exp-rightmost").
 ```
 
-Those two clips are the same length, the same peak and the same RMS, necessarily — same strikes,
-same voice, same tempo. What separates them is where the strikes are: the two waveforms correlate
-at only 0.375.
+The two clips have the same strikes, voice and tempo, so they match in length and loudness. They
+differ only in where the strikes fall.
 
 ## The reduction as pitch
 
@@ -203,9 +195,9 @@ val notes = LambdaSoundDocs.trace("erase-argument").melody
 // -> one MIDI note per reaction, pitched by the kind that reaction emitted
 ```
 
-`K I (mul 2 3)` is the corpus's erasing term: it computes six and throws it away. Nine of its
-twenty-three reactions are `prune`, taking the discarded multiplication apart agent by agent,
-because an interaction net may not simply drop a wire.
+`K I (mul 2 3)` is the corpus's erasing term: it computes six and throws it away. Many of its
+reactions are `prune`, taking the discarded multiplication apart agent by agent, because an
+interaction net cannot simply drop a wire.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/erase-rule-melody.wav" audio-spec="erase-rule-melody" audio-renderer="afield.four.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-melody-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("erase-rule-melody").
@@ -224,17 +216,10 @@ because an interaction net may not simply drop a wire.
 
 * [Interaction Nets examples](interaction_nets_examples.md) for the agents, the rule book, the
   `Reducer` and the λ front end, and for what the sharing gets wrong and on which shapes.
-  `dev_docs/INTERACTION_NETS_LAMBDA.md` is the whole ledger.
 * [Patterns & Rhythm](pattern_language.md) for the event model and the mini-notation, and
-  `dev_docs/PAT_CONDENSE.md` for the condenser, the bounds it searches under and what it refuses.
-* [Sound](sound.md) and [Making a Sound, Every Path There Is](sound_paths.md) for the stand-in voice
-  and for why every audio figure in these docs comes out of the offline `wav-file` sink.
-* [A cellular automaton you can hear](chain_ca_sound.md) is the neighbouring chain: the same
-  `mask → patCondense → .wav` half of this route, fed by an elementary rule instead of by a
-  rewrite schedule, and using the condensation to separate two rules rather than two schedulers.
-
-Every number on this page comes out of one run of the `synth.lambda.sound` FIELD_TEST, which is the
-same code the figures above call. Replay it with
-`python3 tools/run_field_tests.py --id synth.lambda.sound`; it takes about six seconds and writes
-nothing. The per-term tables, the confluence-probe counts and the waveform comparison are in
-`dev_docs/CHAIN_LAMBDA_SOUND_MEASUREMENTS.md`.
+  [`PAT_CONDENSE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/PAT_CONDENSE.md)
+  for the condenser, the bounds it searches under and what it refuses.
+* [Sound](sound.md) and [Making a Sound, Every Path There Is](sound_paths.md) for the voice used
+  here and how audio is rendered offline for these pages.
+* [A cellular automaton you can hear](chain_ca_sound.md) uses the same mask, condense and play
+  steps, fed by an elementary cellular automaton instead of a reduction.

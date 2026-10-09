@@ -1,5 +1,13 @@
 package afield.server
 
+import afield.DocumentGuideRequest
+import afield.DocumentGuideResponse
+import afield.Message
+import afield.handlers
+import afield.thisSessionInfo
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
 import kotlin.test.*
@@ -18,6 +26,17 @@ class DocumentGuideFilesTest {
             val entries = DocumentGuideFiles(root).list()
             assertEquals(listOf("README.md", "Camera.md", "docs/Nested.markdown"), entries.map { it.path })
             assertEquals("Nested guide", entries.last().title)
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun seededWorkspaceReadmeIsNotListedAsAGuide() {
+        val root = createTempDirectory("field-guides-seeded").toFile()
+        try {
+            root.resolve("README.md").writeText("# A Field workspace\n\nWelcome. This folder is a **Field document**.")
+            root.resolve("Camera.md").writeText("# Camera")
+            assertEquals(listOf("Camera.md"), DocumentGuideFiles(root).list().map { it.path })
+            // Still readable when something links to it.
+            assertTrue(DocumentGuideFiles(root).read("README.md").contents.startsWith("# A Field workspace"))
         } finally { root.deleteRecursively() }
     }
 
@@ -117,5 +136,23 @@ class DocumentGuideFilesTest {
             assertFailsWith<IllegalArgumentException> { files.read("Big.md") }
             assertFailsWith<IllegalArgumentException> { files.read("missing.md") }
         } finally { root.deleteRecursively() }
+    }
+
+    // A reconnecting page polls for guides before its session is back; it must get an answer, not an NPE.
+    @Test fun aRequestWithNoSessionIsAnsweredSoThePageRetries() {
+        val old = handlers["document-guide"]
+        try {
+            documentGuideHandlers()
+            thisSessionInfo.remove()
+            val replies = mutableListOf<Message>()
+            val request = Message("document-guide", replyTo = "document-guide-7",
+                payload = Json.encodeToJsonElement(DocumentGuideRequest(action = "list")))
+            handlers["document-guide"]!!.single()(request) { replies += it }
+            val reply = replies.single()
+            assertEquals("document-guide-7", reply.name)
+            assertFalse(Json.decodeFromJsonElement<DocumentGuideResponse>(reply.payload!!).ok)
+        } finally {
+            if (old == null) handlers.remove("document-guide") else handlers["document-guide"] = old
+        }
     }
 }

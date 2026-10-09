@@ -12,8 +12,7 @@ arrangement.
 
 The companion service is experimental, and pinned under `services/field-audio-ai` as a Git submodule
 while its architecture moves. The Field-side API is in `afield.stdlib.noir.audioai` and names
-operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`, rather than
-depending on AudioCraft classes.
+operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`.
 
 Running any of it needs that submodule initialized, the analysis and AudioCraft packages
 installed, and weights on disk. Short of that, what you can still read is a committed,
@@ -33,6 +32,11 @@ objects, states, and error vocabulary, and needs none of the above.
 - monophonic pYIN and polyphonic Basic Pitch analysis;
 - revision-pinned emotion2vec and WavLM Base+ speech trajectories with voice activity and live Field projections;
 - zoomable waveform, pitch, beat and token views, plus the embedded job monitor.
+
+## Variations of a source
+
+This box takes four and a half seconds of a recording, asks MusicGen-Style for eight
+twelve-second variations, one per seed, and shows them as a candidate board when they arrive:
 
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.noir.audioai.*
@@ -70,6 +74,9 @@ Python 3.10 worker. Field hashes the local `.safetensors` file before submission
 that digest again beneath `FIELD_AUDIO_UNDERFIT_LORA_ROOT`. The digest participates in the request
 hash, so replacing a checkpoint at the same filename cannot return an older cached candidate set.
 
+This box asks for thirty seconds through one LoRA checkpoint at strength 0.7, starting from a
+twelve-second window of the source:
+
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
@@ -99,6 +106,9 @@ client.submit(underfitCandidates(
 )).thenCompose(client::awaitCandidates)
   .thenAccept { display("underfit", candidateBoardHtml(it)) }
 ```
+
+Hear the source, matched no-LoRA baseline and actual LoRA take in the
+[Underfit Mancini experiment](audio_ai_underfit_mancini.md#listen-to-the-experiment).
 
 `initNoiseLevel` is the audio-to-audio distance control: zero preserves the selected source and one
 approaches a fresh text-conditioned sample. A LoRA `intervalMax` below one skips it during the

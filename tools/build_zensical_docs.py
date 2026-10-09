@@ -116,6 +116,25 @@ def tetgen_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def paint_library_path(repo_root: Path) -> Path:
+    """Where `afield.paint.PaintLibrary.resolvedPath` will look, from Python.
+
+    One candidate, where `./gradlew buildPaintNative` writes (cargo's `--target-dir`
+    `build/field-paint`, release profile). As with TetGen only the environment override
+    is honoured; the JVM property is invisible from here.
+    """
+    override = os.environ.get("AFIELD_PAINT_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name = "field_paint_jvm.dll"
+    elif sys.platform == "darwin":
+        name = "libfield_paint_jvm.dylib"
+    else:
+        name = "libfield_paint_jvm.so"
+    return repo_root / "build" / "field-paint" / "release" / name
+
+
 def libpd_library_path(repo_root: Path) -> Path:
     """Where `afield.pd.PdLibrary.resolvedPath` will look, from Python.
 
@@ -137,6 +156,30 @@ def libpd_library_path(repo_root: Path) -> Path:
         repo_root / "build" / "field-libpd" / "build" / "libs" / name,
         repo_root / "build" / "field-libpd" / "build" / "libs" / "Release" / name,
     ]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
+def csound_library_path(repo_root: Path) -> Path:
+    """Where `afield.csound.CsoundLibrary.resolvedPath` will look, from Python.
+
+    libpd's shape: `tools/build_csound_native.py` builds libcsound into this repo's `build/`
+    (a framework on macOS), and an installed Csound is the fallback. Only the environment override
+    is honoured; `-Dafield.csound.library` is a JVM property this process cannot see.
+    """
+    override = os.environ.get("AFIELD_CSOUND_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    build = repo_root / "build" / "field-csound" / "build"
+    if sys.platform == "darwin":
+        candidates = [build / "CsoundLib64.framework" / "CsoundLib64",
+                      Path("/Library/Frameworks/CsoundLib64.framework/CsoundLib64")]
+    elif sys.platform.startswith("win"):
+        candidates = [Path("C:/Program Files/Csound6_x64/bin/csound64.dll")]
+    else:
+        candidates = [build / "libcsound64.so"] + [
+            Path(d) / "libcsound64.so.6.0"
+            for d in ("/usr/lib/x86_64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64", "/usr/lib", "/usr/local/lib")
+        ]
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
@@ -336,11 +379,24 @@ def dirt_samples_root_path(repo_root: Path) -> Path:
     return root if root.is_dir() and not problems_in(root, manifest) else root / "incomplete"
 
 
+def loris_executable_path(repo_root: Path) -> Path:
+    override = os.environ.get("AFIELD_LORIS_EXECUTABLE", "").strip()
+    if override:
+        return Path(override).expanduser()
+    name = "field_loris.exe" if sys.platform == "win32" else "field_loris"
+    base = repo_root / "build/field-loris/build"
+    choices = [base / name, base / "Release" / name]
+    return next((p for p in choices if p.is_file()), choices[0])
+
+
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
+    "loris": (loris_executable_path, "./gradlew buildLorisNative"),
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "paint": (paint_library_path, "./gradlew buildPaintNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
+    "csound": (csound_library_path, "./gradlew buildCsoundNative"),
     "luajit": (luajit_library_path, "brew install luajit (or apt install libluajit-5.1-2)"),
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
@@ -641,8 +697,11 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
         print(f"No {gradlew}; skipping source pages.", file=sys.stderr)
         return None
     started = time.monotonic()
+    # The task writes build/source-pages with declared inputs, so it is skipped when nothing it reads
+    # changed and restored from the build cache in a fresh worktree; the copy below is what goes into
+    # the docs tree this script wipes on every build.
     result = subprocess.run(
-        [str(gradlew), "--no-daemon", "-q", "generateSourcePages", f"--args={generated_docs}"],
+        [str(gradlew), "--no-daemon", "-q", "generateSourcePages"],
         cwd=repo_root,
         check=False,
     )
@@ -653,6 +712,7 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
             file=sys.stderr,
         )
         return None
+    shutil.copytree(repo_root / "build" / "source-pages", generated_docs, dirs_exist_ok=True)
     anchors = generated_docs / "reference" / "source" / "anchors.json"
     pages = len(list((generated_docs / "reference" / "source").rglob("*.md")))
     print(f"Generated {pages} source page(s) in {time.monotonic() - started:.1f}s")

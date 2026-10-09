@@ -6,8 +6,10 @@ import afield.Rect
 import afield.graphics.FLine
 import afield.stdlib.linalg.Vector4f
 import java.awt.Stroke
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 /**
  * The small vocabulary of `FLine` construction and styling that sketches and examples reach for
@@ -308,6 +310,39 @@ fun FLine.rect(x: Number, y: Number, w: Number, h: Number): FLine {
  * Append a closed rectangle path for [rect] to this line.
  */
 fun FLine.rect(rect: Rect): FLine = rect(rect.x, rect.y, rect.w, rect.h)
+
+/**
+ * Append a closed circle of radius [r] about ([cx], [cy]) to this line, starting and ending at its
+ * rightmost point.
+ *
+ * By default it is four cubic Béziers (the standard 0.5523 control-arm approximation, within 0.03% of
+ * the true radius), so it stays round at any zoom. Pass [segments] for a polygon instead: a few
+ * hundred bytes in SVG output, where a dense cloud of Bézier circles gets heavy.
+ *
+ * `fline { circle(0, 0, 14) }`
+ */
+fun FLine.circle(cx: Number, cy: Number, r: Number, segments: Int = 0): FLine {
+    val x = cx.toDouble()
+    val y = cy.toDouble()
+    val radius = r.toDouble()
+    if (segments > 0) {
+        for (i in 0 until segments) {
+            val a = i * 2.0 * Math.PI / segments
+            if (i == 0) moveTo(x + radius * cos(a), y + radius * sin(a))
+            else lineTo(x + radius * cos(a), y + radius * sin(a))
+        }
+        close()
+        return this
+    }
+    val k = 0.5522847498 * radius
+    moveTo(x + radius, y)
+    cubicTo(x + radius, y + k, 0, x + k, y + radius, 0, x, y + radius, 0)
+    cubicTo(x - k, y + radius, 0, x - radius, y + k, 0, x - radius, y, 0)
+    cubicTo(x - radius, y - k, 0, x - k, y - radius, 0, x, y - radius, 0)
+    cubicTo(x + k, y - radius, 0, x + radius, y - k, 0, x + radius, y, 0)
+    close()
+    return this
+}
 
 /**
  * Convert this rectangle into a styled [FLine].

@@ -15,16 +15,41 @@ from build_zensical_docs import (  # noqa: E402
     ceres_library_path,
     check_native_prerequisites,
     tetgen_library_path,
+    paint_library_path,
     dirt_samples_root_path,
     libpd_library_path,
+    csound_library_path,
     jep_python_candidates,
     resolve_jep_python,
+    loris_executable_path,
 )
 
 FENCE = (
     '```diffstatic_runner {data-lang=kotlin screenshot="assets/p/kkc.png" '
     'wait="6.0" capture="box" requires="ceres"}\n:::static\nval x = 1\n```\n'
 )
+
+
+class LorisPrerequisiteTests(unittest.TestCase):
+    def test_loris_is_optional_and_has_an_explicit_build_command(self):
+        resolve, command = NATIVE_PREREQUISITES["loris"]
+        self.assertIs(resolve, loris_executable_path)
+        self.assertEqual(command, "./gradlew buildLorisNative")
+
+    def test_override_and_default_match_kotlin_discovery(self):
+        with patch.dict(os.environ, {"AFIELD_LORIS_EXECUTABLE": "/custom/field_loris"}):
+            self.assertEqual(loris_executable_path(Path("/repo")), Path("/custom/field_loris"))
+        with patch.dict(os.environ, {"AFIELD_LORIS_EXECUTABLE": ""}):
+            self.assertEqual(loris_executable_path(Path("/repo")).parent, Path("/repo/build/field-loris/build"))
+
+    def test_multiconfiguration_release_executable_is_found(self):
+        with TemporaryDirectory() as tmp, patch.dict(os.environ, {"AFIELD_LORIS_EXECUTABLE": ""}):
+            root = Path(tmp)
+            name = "field_loris.exe" if sys.platform == "win32" else "field_loris"
+            binary = root / "build/field-loris/build/Release" / name
+            binary.parent.mkdir(parents=True)
+            binary.touch()
+            self.assertEqual(loris_executable_path(root), binary)
 
 
 class PythonPrerequisiteTests(unittest.TestCase):
@@ -156,6 +181,27 @@ class TetgenLibraryPathTests(unittest.TestCase):
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
 
 
+class PaintLibraryPathTests(unittest.TestCase):
+    """TetGen's three properties for the paint wrapper, kept in step with
+    `afield.paint.PaintLibrary.searchedPaths` by hand."""
+
+    def test_the_environment_override_wins(self):
+        os.environ["AFIELD_PAINT_LIBRARY"] = "/somewhere/libfield_paint_jvm.dylib"
+        self.addCleanup(os.environ.pop, "AFIELD_PAINT_LIBRARY", None)
+        self.assertEqual(paint_library_path(Path("/repo")), Path("/somewhere/libfield_paint_jvm.dylib"))
+
+    def test_the_default_is_where_build_paint_native_writes(self):
+        os.environ.pop("AFIELD_PAINT_LIBRARY", None)
+        resolved = paint_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/field-paint/release"))
+        self.assertIn("field_paint_jvm", resolved.name)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        resolve, how_to_build = NATIVE_PREREQUISITES["paint"]
+        self.assertIs(resolve, paint_library_path)
+        self.assertEqual("./gradlew buildPaintNative", how_to_build)
+
+
 class LibpdLibraryPathTests(unittest.TestCase):
     """TetGen's two properties for libpd, kept in step with `afield.pd.PdLibrary.searchedPaths`."""
 
@@ -174,6 +220,27 @@ class LibpdLibraryPathTests(unittest.TestCase):
         resolve, how_to_build = NATIVE_PREREQUISITES["libpd"]
         self.assertIs(resolve, libpd_library_path)
         self.assertEqual("./gradlew buildLibpdNative", how_to_build)
+
+
+class CsoundLibraryPathTests(unittest.TestCase):
+    """libpd's properties for libcsound, kept in step with `afield.csound.CsoundLibrary.searchedPaths`."""
+
+    def test_the_environment_override_wins(self):
+        os.environ["AFIELD_CSOUND_LIBRARY"] = "/somewhere/libcsound64.so"
+        self.addCleanup(os.environ.pop, "AFIELD_CSOUND_LIBRARY", None)
+        self.assertEqual(csound_library_path(Path("/repo")), Path("/somewhere/libcsound64.so"))
+
+    def test_the_default_is_where_build_csound_native_writes(self):
+        os.environ.pop("AFIELD_CSOUND_LIBRARY", None)
+        resolved = csound_library_path(Path("/nonexistent-repo"))
+        if sys.platform.startswith("win"):
+            return
+        self.assertTrue(str(resolved).startswith("/nonexistent-repo/build/field-csound/build/"), resolved)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        resolve, how_to_build = NATIVE_PREREQUISITES["csound"]
+        self.assertIs(resolve, csound_library_path)
+        self.assertEqual("./gradlew buildCsoundNative", how_to_build)
 
 
 class NativePrerequisiteTests(unittest.TestCase):

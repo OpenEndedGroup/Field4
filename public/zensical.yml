@@ -11,6 +11,8 @@ nav:
   # for, and an arc one heading over from it was an arc nobody found.
   - Start Here:
     - Installation: installation.md
+    - Your First Five Minutes: first_steps.md
+    - Your Code, AI and Local History: privacy.md
     - Survival Guide: survivalGuide.md
     - Kotlin Syntax Overview: kotlin_overview.md
     # Above the Tour, not after it: "Where to Go Next" is the arc's exit ramp onto the rest of the
@@ -49,20 +51,25 @@ nav:
   # choosing one to learn in depth, so the chains are a showcase here rather than a capstone after
   # the subsystem sections, where they used to sit. No one subsystem owns a chain — putting the polytope page under "Geometry & Solids" would file it
   # away from the tracer it ends at, and under "Rendering & GPU" away from the algebra it starts from.
-  - Chains Across Subsystems:
+  - Long Way Round:
+    - Overview: chains.md
     - A Polytope, Cut Open and Traced: chain_polytope_render.md
     - Particles, Welded and Traced: chain_physics_render.md
     - A Cellular Automaton You Can Hear: chain_ca_sound.md
     - A Pattern That Moves Particles: chain_pattern_particles.md
+    - A Petri Net That Throws Sparks: chain_petri_sparks.md
     - Three-Dimensional Life, Counted and Traced: chain_life3d_render.md
     - A RectSL Animation as a Solid: chain_rectsl_spacetime.md
     - A Polytope, Canonicalised and Sliced: chain_ceres_manifold_contours.md
     - A Photograph, Closed and Mounted: chain_photo_to_solid.md
     - A λ-Term You Can Hear: chain_lambda_sound.md
     - A Twisted Limb, Weighed and Traced: chain_skinned_volume.md
+    - A Deadlock, Sculpted and Traced: chain_petri_sculpture.md
     - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
     - A Drawn Score, Heard: chain_drawn_score.md
+    - A Drawn Morph, Heard: chain_drawn_morph.md
+    - Drawn Strokes Become Paint: chain_drawn_paint.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
@@ -117,6 +124,8 @@ nav:
       - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
+      # Directly after the interpolants page: that page eases a value from code, this one draws it.
+      - Keyframe Editor: keyframe_editor.md
       # Directly after the interpolants page, which is the other half of the same subject: that
       # page is a value eased once to a target that stays put, this one is springs and a steering
       # model for a target that keeps moving. Filed under Time & Signals rather than beside
@@ -127,7 +136,7 @@ nav:
       - Keyframes: keyframer_examples.md
       # Directly after the keyframes page, because it is that page's collection noun: one saved key
       # is a look, a directory of them is a space, and this is what explores the space overnight.
-      - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
+      - Sweeping Saved Keyframes Overnight: keyframe_autosweep.md
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md
       # One page for both halves of signal processing: timeseries_examples.md (filters and
@@ -146,8 +155,12 @@ nav:
     - Point Sets & Shape:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
       - Flow Matching: flow_matching.md
+      - Stipple Transport: stipple_transport.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
+      - Paint and Pencil from FLines: paint_canvas.md
+      - Watercolour and Ink: watercolor.md
+      - Brushes with Moving Hairs: paint_gestures.md
       - Imaging & Computer Vision: imaging_examples.md
       - Depth & CLIP (ONNX): onnx.md
     - Geometry & Solids:
@@ -168,9 +181,13 @@ nav:
       - Making a Sound, Every Path There Is: sound_paths.md
       - A Pattern in Space (HRTF): pat_spatial.md
       - DoughDSP Sound Examples: dough_dsp_sound.md
+      - Subharmonic Synthesis: subharmonic_sound.md
+      - Loris Partial Tracks and Resynthesis: loris.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
       - Pure Data: pure_data.md
+      - Csound: csound.md
+      - ORCA: orca.md
       # After the two engines Field talks to, because it is the general form of what they do: OSC
       # in and out of a box, for any peer — a phone, SuperCollider, Max, a touch table over TUIO.
       - OSC and TUIO: osc.md
@@ -178,6 +195,8 @@ nav:
       # peer, with Field acting as a node — here Art-Net and sACN over UDP to lighting hardware. It
       # was a one-page "Lighting" group of its own; the only other lighting page is a chain.
       - "Driving Lights: Art-Net and sACN": dmx_lighting.md
+      - "MQTT: sensors, devices and brokers": mqtt.md
+      - "OSCQuery: controls other tools can find": oscquery.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md
@@ -215,11 +234,13 @@ nav:
     - StackSL Cheatsheet: stacksl_cheatsheet.md
     - StackSL Examples: stacksl_examples.md
     - Proving What a Shader Draws: stacksl_intervals.md
+    - Evolving a Shader: stacksl_evolve.md
     - RectSL Cheatsheet: rectsl_cheatsheet.md
     - RectSL Examples: rectsl_examples.md
     - RectSL Inverse Animation: rectsl_inverse_animation.md
     - ForthField Examples: forth_examples.md
     - Python in a Box: python.md
+    - Computer Vision in Python: python_cv.md
     # Beside python.md rather than further down: the two pages answer the same question about two
     # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
@@ -244,6 +265,9 @@ nav:
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
       - afield.four Graphics: afield_four_graphics.md
+      # Straight after the graphics contract: a render target from that page, drawn into a box's
+      # output area instead of a window. Electron-only, which the page says up front.
+      - Graphics in an Output Area: four_in_output_areas.md
       - GPU Schemas: gpu_schema.md
       - Slug Filled Paths: slug_paths.md
       # Directly after the graphics contract and before the probes page, because it is the sequel
@@ -261,21 +285,24 @@ nav:
       # A second worked render graph — fluid storage, grain, and a motion attachment through
       # render-to-texture — moved out of "Working in a Document" for the same reason as the page
       # above: nothing on it is about working in a document. It stays inside one subsystem and has
-      # no hop checks, which is why it is not under "Chains Across Subsystems".
+      # no hop checks, which is why it is not under "Long Way Round".
       - Flow Grain and Motion: flow_grain.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
       - Direct Lighting: direct_lighting.md
+      - Neural Image Rendering: open_dlss_nr.md
       - Neural Reconstruction: neural_reconstruction.md
       - Ray Reconstruction: ray_reconstruction.md
       - Path-Traced Reconstruction: path_traced_reconstruction.md
       - Computed Ray Geometry: computed_ray_geometry.md
       - From Modules to Reconstruction: reconstruction_plumbing.md
       - Optical Flow: optical_flow.md
+      - Video Particles: particle_video.md
       - A Learned Shader Function: learned_shader.md
       - GPU Shader Learning: gpu_shader_learning.md
       - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
+      - Streaming Diffusion: streaming_diffusion.md
       - Particles, Cloth & Constraints: physics.md
       - Pressure Membranes: pressure_membranes.md
       # Directly after the hand-written particle systems, because it is the same compute-then-draw
@@ -285,6 +312,7 @@ nav:
       # one is about getting it onto the GPU and proving it is still the same network.
       - Neural Particle Systems: neural_particles.md
       - Field Probes: field_probes.md
+      - Syphon (Sharing Frames with Other Apps): syphon.md
     - Heads & Headsets:
       - RemoteJS & WebXR: ar_reference.md
       # Here rather than at the head of "Writing Code in a Box", where it was the first thing a
@@ -305,14 +333,19 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - Talking to AI4: voice_input.md
+    - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
+    - Experimenting with AI4: ai4_experiments.md
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a Scene into Existence: rectsl_conversation.md
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
+    - AI4 Paints: ai4_painting.md
     # After the four conversations rather than before them: those pages show a study being worked on,
     # and this one is the layer they share, which reads best once you have seen one.
     - Studies: studies.md
     - AI Tool-Use History: ai_tool_use_history.md
+    - Reading Saved AI4 Chats: ai4_chat_archive.md
     - AI Documentation Polish: ai_doc_polish.md
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
@@ -341,6 +374,7 @@ nav:
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
       - Machine learning: reference/machine-learning.md
+      - Video: reference/video.md
     # Directly under Reference since its hand-written companion, linear_algebra.md, moved to the
     # head of "Drawing From Data": this page is generated (tools/linalg-generator), so it stays.
     - Generated Vector API: linear_algebra_api.md
@@ -388,6 +422,7 @@ nav:
     # you look up after something has already surprised you rather than while composing.
     - What a Capture Can and Cannot Show: capture_limits.md
     - Building & Testing: building_and_testing.md
+    - Landing on main: landing_queue.md
 
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts

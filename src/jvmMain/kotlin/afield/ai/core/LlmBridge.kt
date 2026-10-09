@@ -24,6 +24,12 @@ typealias LlmToolTranscriptEntry = OpenAiIdeCodexBridge.ToolTranscriptEntry
 
 enum class LlmReasoningEffort { LOW, MEDIUM, HIGH }
 
+/** A provider-scoped local preference; explicit per-call choices still take precedence. */
+fun configuredAiReasoningEffort(): LlmReasoningEffort =
+    LlmReasoningEffort.entries.firstOrNull {
+        it.name.equals(configuredAiModelSettings().reasoningEffort, ignoreCase = true)
+    } ?: LlmReasoningEffort.MEDIUM
+
 /**
  * Provider-aware factory: builds the agent engine matching the /welcome provider
  * setting. Shared by the IDE installer and the docs-search bridge so provider
@@ -32,7 +38,7 @@ enum class LlmReasoningEffort { LOW, MEDIUM, HIGH }
 fun createLlmBridge(
     model: String = Ai4ModelDefaults.flagshipModel(),
     log: LogSink = StdoutLog,
-    reasoningEffort: LlmReasoningEffort = LlmReasoningEffort.MEDIUM
+    reasoningEffort: LlmReasoningEffort = configuredAiReasoningEffort()
 ): LlmBridge =
     if (configuredAiProvider() == "anthropic")
         AnthropicBridge(model = model, log = log)

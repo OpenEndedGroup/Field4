@@ -1,11 +1,10 @@
 # Charts as FLines
 
-*`chart()` builds a plot out of geometry rather than out of a browser. That matters for three things: drawing the plot into the same picture as your other FLines, clicking on its marks, and drawing an expectation you can watch the data break. Plotly is better at everything else.*
+A `Chart` is a plot made of FLines. Use it when the plot has to sit in the same drawing as your other FLines, when you want to click on its marks, or when you want to draw an expected range and see which data falls outside it. For everything else, Plotly is better.
 
-`afield.Chart` is to a plot what `Table` is to a grid. You build one up a call at a time, hand it to
-`showChart`, and it arrives in the repo's style with no markup in the way. It implements `ToHTML`,
-so `showChart(c)`, `display(channel, c)`, `c.h`, and a box whose last expression is a `Chart` all
-render the same figure.
+You build a `Chart` up a call at a time and hand it to `showChart`. `showChart(c)`,
+`display(channel, c)`, `c.h`, and a box whose last expression is a `Chart` all render the same
+figure. Here is a residual curve with an expected bound:
 
 ```diffstatic {data-lang=kotlin}
 Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|")
@@ -25,25 +24,16 @@ showSignals("residual" to residual, "step" to step, title = "per iteration")
 ```
 
 The others return a `Plot` for you to `display`; [DoughDSP: hear the primitives](dough_dsp_sound.md)
-uses `showSignals` throughout, if you want to see it at work. Plotly is a browser page, so the docs build
-captures it headlessly like anything else, and for a general plot it is the better answer. Plotly has real filled text with font fallback and shaping, a legend with line
-swatches, axes that autorange, and it reflows to whatever shape you give it. A `Chart` is fixed
-geometry that gets fitted and centred, so any aspect mismatch is empty margin, and its text is
-geometry that scales with the fit rather than staying screen-relative.
+uses `showSignals` throughout. Plotly has real text, a legend with line swatches, axes that
+autorange, and it reflows to whatever shape you give it. A `Chart` is fixed geometry fitted and
+centred in its panel, so a panel of a different shape leaves empty margin, and its text scales with
+the figure.
 
-The dividing line:
+Use a `Chart` instead when you need one of these:
 
-> FLine is for what Plotly cannot do. Rasterisation is for what FLine cannot do.
-
-Three things put a figure on the FLine side of it:
-
-1. **Composition with other FLine geometry** under one shared transform. Plotly owns its own canvas
-   and cannot participate. This is the architectural reason, and the strongest one.
-2. **The pick path into Field's interactive SVG**: a mark that yields a hit record naming the
-   element plus a local `(u, v)`.
-3. **`expect()` as a drawn claim.** Plotly has no notion of it.
-
-If none of those three applies to what you are doing, use Plotly.
+- the plot drawn under the same transform as other FLine geometry, which Plotly cannot join;
+- clicking a mark and getting back the datum it stands for;
+- `expect()`, which draws an expected range on the plot.
 
 ## The marks
 
@@ -80,18 +70,16 @@ Chart(title = "bars put their categories on the axis", yLabel = "gates")
 ## Scales and ticks
 
 `Scale(lo, hi, pixelLo, pixelHi, kind)` maps data to pixels with `toPixel`/`toData`. A y scale is
-built *inverted*, because y grows downwards in Field's 2D outputs, and carrying that inversion in a
-type keeps it out of every caller.
+built inverted, because y grows downwards in Field's 2D outputs.
 
-Tick selection is public, so anything drawing an axis can share one implementation of Heckbert's
-nice-number algorithm: `niceTicks(lo, hi, target)`, `logTicks`, `niceNumber`, `tickLabel` and
+The tick functions are public, so you can use them for an axis of your own: `niceTicks(lo, hi, target)`, `logTicks`, `niceNumber`, `tickLabel` and
 `tickLabels`.
 
 Values are snapped to their own step, so an axis never reads `0.30000000000000004`, and `tickLabels`
 picks one notation for a whole axis rather than per label.
 
-Set `xKind`/`yKind` to `ScaleKind.LOG` for a log axis. A log scale **refuses** a non-positive domain,
-and a non-positive datum maps to `NaN` and is dropped rather than clamped — clamping would draw a lie.
+Set `xKind`/`yKind` to `ScaleKind.LOG` for a log axis. A log scale refuses a non-positive domain,
+and a non-positive datum is left out of the plot.
 
 ```diffstatic {data-lang=kotlin}
 val n = (1..6).map { 10.0.pow(it) }
@@ -105,9 +93,9 @@ Chart(title = "a log axis, and decade ticks", xLabel = "n", yLabel = "seconds")
 
 ![A log-log plot over six decades, ticks at 1.0e+01 through 1.0e+06 on x and 0.001 through 1 on y](assets/chart_gallery/chart-log-scale-decades.png)
 
-## `expect()` — a claim you can watch fail
+## `expect()`: drawing what the data should do
 
-`expect(min, max, series, because)` **draws** the claim: the accepted range becomes a band across the
+`expect(min, max, series, because)` draws the expectation: the accepted range becomes a band across the
 plot, the bounds it names are ruled, data outside recolours, and the footnote counts the violations.
 An unbounded side draws no edge, which is the visual difference between "at most 1e-6" and "between
 0 and 1e-6".
@@ -121,19 +109,17 @@ Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|", no
 
 ![A residual curve that converges but spikes twice above the expectation band; the bound is ruled at 1e-6, four points are red, and the footnote reads 4 points outside expectation](assets/chart_gallery/chart-expect-a-claim-you-can-watch-fail.png)
 
-Two details matter:
-
-- **`Chart.deviations` hands the same list to a test**, so the figure a reader sees and the assertion
-  a build runs are the same claim rather than two descriptions of it. There is also a predicate form,
+- `Chart.deviations` returns the points outside the expectation, so a test can assert on the same
+  list the footnote counts. There is also a predicate form,
   `expect(series, because) { x, y -> … }`, with no shape to draw.
-- **It is `distinct()` by datum.** A `line` for the trend plus `points` to make it clickable is two
+- Each datum is counted once. A `line` for the trend plus `points` to make it clickable is two
   marks over one datum, and the footnote counts that datum once.
 
 ## Marks pick themselves up
 
 `Box.lines` switches to the interactive SVG renderer the moment any line carries `onClick` or
-`hoverColor`. Point and bar marks set both, plus a `label` naming the datum, so hovering a bar and
-clicking a point work by construction:
+`hoverColor`. Point and bar marks set both, plus a `label` naming the datum, so you can hover over a bar
+or click a point with no extra setup:
 
 ```diffstatic {data-lang=kotlin}
 val c = Chart(yLabel = "gates").bars("cost", "xor" to 6, "adder" to 27)
@@ -141,17 +127,12 @@ c.onPick = { pick -> print("${pick.series}/${pick.category} = ${pick.y}") }
 showChart(c)
 ```
 
-`pickable = false` is the escape hatch and `pickLimit` (default 400) is where a mark stops being
-individually live.
-
-Dots are twelve-segment polygons rather than `pointed` nodes. Skia's SVG export has no circle
-primitive and writes a `pointed` node as roughly **5 kB of quadratic Béziers**, which puts a
-90-point cloud at 458 kB for one panel. A polygon is a few hundred bytes, and unlike a `pointed`
-node it is a line of its own that can carry its own callback.
+Set `pickable = false` to turn this off. A series with more data than `pickLimit` (400 by
+default) stops responding point by point.
 
 ## From a DataFrame
 
-`DataFrame<*>.chart()` picks the axes so you do not have to name them for a quick look — the first
+`DataFrame<*>.chart()` picks the axes so you do not have to name them for a quick look: the first
 numeric column for x if the frame has two or more, otherwise the first column as categories,
 otherwise the row index; then every remaining numeric column as a series.
 
@@ -167,51 +148,42 @@ Series are capped for auto-selection, because a legend stops being readable past
 entries, and the per-datum dots are dropped automatically for a frame with more rows than `pickLimit`. See
 [DataFrames in a Box](dataframe.md).
 
-## A figure stays inside the frame it declared
+## Keeping a figure inside its frame
 
-A `Chart` is fixed geometry, so the panel it lands in fits it — and it fits the geometry's *own*
-bounds, which `linesToHTML` stamps on the wrapper as `data-afield-bounds-*`. That has one
-consequence: anything drawn outside `width` × `height` is not cropped, it **shrinks everything
-else**.
+The panel a `Chart` lands in is fitted to the geometry it actually draws, so anything drawn outside
+`width` × `height` would make the whole figure smaller. `clip`, on by default, prevents that in two
+ways:
 
-`clip`, on by default, is what stops that. It does two things, because they are one property:
-
-- **mark geometry is cut to `plotRect`** — lines and area outlines by Liang–Barsky, an area's fill
+- mark geometry is cut to `plotRect`: lines and area outlines by Liang–Barsky, an area's fill
   by Sutherland–Hodgman so it stays closed, a point outside dropped whole, a bar clamped on both
   axes and dropped when no part of it is in the window, a rule or a band that falls off the axis not
   drawn at all. A clipped series stays *one* `FLine` with several subpaths, so it is still one
   series, one legend entry, and one thing to hover;
-- **`title` and `note` are wrapped to the figure width**, by measured width, capped at two and four
+- `title` and `note` are wrapped to the figure width, capped at two and four
   lines with an ellipsis past that.
 
-This only matters when you set an explicit `xDomain` or `yDomain`, because a derived domain always
-covers its own data. A cross section 2 × 3 across charted into a 0.24 × 0.24 window put its outline
-5137 px outside its own plot rectangle, and the panel drew the 780 × 440 figure at **9%** of its
-declared size. A 142-character note measured 1197 px against 711 px of room and drew it at **63%**.
-Both of those shipped on [a published page](tetgen.md). `dev_docs/chart_clip_and_note.md` has the
-before/after pairs.
+Clipping only matters when you set an explicit `xDomain` or `yDomain`, because a derived domain
+always covers its own data.
 
-Set `clip = false` to get that behaviour back — worth it when you are composing a chart with other
+Set `clip = false` when you are composing a chart with other
 FLine geometry under a shared transform and want the overflow.
 
 ## Down to geometry
 
 `toFLines()` lowers the whole figure to `List<FLine>` in pixel space and `plotRect()` reports the
-frame the derived insets landed on — the rectangle mark geometry is clipped to — so the chart can go
+rectangle the marks are clipped to, so the chart can go
 into the same drawing as the rest of your geometry, under one transform. `toHTML()` goes through
 `afield.graphics.linesToHTML`, the same markup `Box.lines` builds.
 
-Labels are glyph outlines, and `labelLines` handles the three things that go wrong with those.
-`TextLayout.toFLines()` is **plural**, never one filled `toFLine()`, whose triangulator fans
-disjoint contours from a shared origin and draws a starburst where a word should be. Placement goes
-through `FLine.transform`, which copies control points as well as node positions; offsetting
-`node.to` alone leaves every cubic handle at the origin and smears each letter into a streak. And
-the whole thing is wrapped in `runCatching`, so a headless machine with no fonts gets an
-*unlabelled* chart rather than an exception in the middle of a figure.
+Labels are glyph outlines. On a machine with no fonts, the chart is drawn without labels.
+
+If you add text of your own as FLines, use `TextLayout.toFLines()`, one line per contour, and move
+it with `FLine.transform`. A single filled `toFLine()`, or moving each `node.to` alone, garbles the
+letters.
 
 ??? aside "Where the pictures come from"
 
-    The five figures on this page are **committed captures** from the `visualization.chart-gallery`
+    The figures on this page are committed captures from the `visualization.chart-gallery`
     FIELD_TEST: `Chart.toFLines()` → Skia's `outputTo` on a raster surface → PNG, with no AWT, no GPU
     and no Field window. Regenerate them with:
 
@@ -219,9 +191,10 @@ the whole thing is wrapped in `runCatching`, so a headless machine with no fonts
     CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery
     ```
 
-    They are committed rather than built by the docs runner, so that command has to be re-run to
-    reflect a change. What the gallery asserts, at what thresholds, and the one thing it cannot cover
-    are in `dev_docs/chart_primitive.md`.
+    The docs runner does not rebuild them, so re-run that command after a change. What the gallery
+    asserts is in `dev_docs/chart_primitive.md`; the clipping before/after pairs are in
+    `dev_docs/chart_clip_and_note.md`. Dots are twelve-sided polygons rather than `pointed` nodes
+    because Skia exports each `pointed` node to SVG as several kilobytes of curves.
 
     The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log
     refusals and expectations:
@@ -232,7 +205,5 @@ the whole thing is wrapped in `runCatching`, so a headless machine with no fonts
 
 ## Reference
 
-The generated API listing is under [Visualization](reference/visualization.md); the source is
-`visualization/charts.kt`, with the DataFrame entry point in `DataFrameCharts.kt`. Implementation
-notes, the full Plotly comparison and the list of what was *not* built are in
-`dev_docs/chart_primitive.md`.
+The generated API listing is under [Visualization](reference/visualization.md). See also
+[DataFrames in a Box](dataframe.md) and [FLine examples](fline_examples.md).

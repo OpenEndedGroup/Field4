@@ -1,26 +1,14 @@
 # Drawing and Notation
 
-Press `alt-d` and the canvas becomes a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-made style, laid over your boxes. Press it again and you are back with the boxes. What you drew stays where you put it, pans and zooms with the canvas, and is saved with the document.
+Press `Alt+D` and the canvas becomes a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-made style, laid over your boxes. Press it again and you are back with the boxes. What you drew stays where you put it, pans and zooms with the canvas, and is saved with the document.
 
 On its own that is a whiteboard. What makes it Field's is that your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 
 ![Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over a score drawn by a box's code, blue rectangles, a red pen-stroke glissando, a green level line and an orange playhead, with the box that drew them to the left](assets/chain_drawn_score/hero.png)
 
-## A long tradition
-
-Artists and composers spent much of the twentieth century pulling notation apart, and most of what they found is useful here.
-
-Kandinsky's *Point and Line to Plane* (1926) treated the elements of a drawing as things with properties you could name and measure. In the 1950s composers took the hint. Morton Feldman's *Projection 1* (1950) gives the cellist boxes on a grid: time runs left to right, three rows say high, middle or low, and the pitches themselves are left open. Earle Brown's *December 1952* is a page of horizontal and vertical rectangles that can be read in any direction. Stockhausen's *Studie II* (1954) was published as a score of overlapping rectangles, each a band of frequencies over a stretch of time.
-
-John Cage came closest to the idea behind this page. *Fontana Mix* (1958) is a kit of sheets with curved lines, transparencies of points, a grid and a straight line. The performer lays them over one another, draws a line from a point inside the grid to a point outside it, and measures where that line crosses the curves. The measurements become the piece. The score is read by intersection.
-
-Others built machines to do the reading. Daphne Oram's Oramics drew sound on strips of 35mm film for photocells to follow, and Iannis Xenakis's UPIC (1977) turned drawings made on a tablet into sound. The traffic ran the other way too: Fluxus event scores and Sol LeWitt's wall drawings are instructions, text that makes the work when someone follows it.
-
-Field sits in the middle of all this. A box can draw, which is LeWitt's direction, and a box can read what you drew, which is Cage's, in the same document while both are running.
-
 ## Drawing
 
-`alt-d` switches the mouse and keyboard to the drawing; `alt-d` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
+`Alt+D` switches the mouse and keyboard to the drawing; `Alt+D` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
 
 When the drawing is off it is still visible, but it lets clicks through to the boxes. Two things tie it to them:
 
@@ -43,6 +31,8 @@ markdown("marks", "${notation.mine.size} marks drawn")
 ```
 
 `rect`, `ellipse`, `diamond`, `text`, `line`, `arrow`, `stroke` (a freehand stroke, from points or an `FLine`) and `frame` are all there. `arrow(from = thisBox, to = otherBox)` puts the ends on the two boxes' edges, and they stay there when either box moves. Give a block a key, `notation("overlay") { … }`, to keep a second set of marks that is replaced on its own.
+
+A stroke can carry pen pressure, as one drawn with a tablet pen does: `stroke(line, pressure = { t -> 0.2 + 0.8 * t })` gives the pressure, 0 to 1, as a function of how far along the stroke the pen is. `mark.pressures` reads it back, from code-drawn and hand-drawn strokes alike, and [Drawn Strokes Become Paint](chain_drawn_paint.md) paints with it.
 
 Any mark, hand-drawn or not, can be changed or removed:
 
@@ -83,9 +73,21 @@ notation.onChange { edit -> println("${edit.added.size} added, ${edit.removed.si
 
 A handler runs once the stroke is finished, not while it is being drawn. Running the box again replaces its handlers, and stopping the box removes them. Changes a box makes itself do not call it back.
 
+## A long tradition
+
+Artists and composers spent much of the twentieth century pulling notation apart, and most of what they found is useful here.
+
+Kandinsky's *Point and Line to Plane* (1926) treated the elements of a drawing as things with properties you could name and measure. In the 1950s composers took the hint. Morton Feldman's *Projection 1* (1950) gives the cellist boxes on a grid: time runs left to right, three rows say high, middle or low, and the pitches themselves are left open. Earle Brown's *December 1952* is a page of horizontal and vertical rectangles that can be read in any direction. Stockhausen's *Studie II* (1954) was published as a score of overlapping rectangles, each a band of frequencies over a stretch of time.
+
+John Cage came closest to the idea behind this page. *Fontana Mix* (1958) is a kit of sheets with curved lines, transparencies of points, a grid and a straight line. The performer lays them over one another, draws a line from a point inside the grid to a point outside it, and measures where that line crosses the curves. The measurements become the piece. The score is read by intersection.
+
+Others built machines to do the reading. Daphne Oram's Oramics drew sound on strips of 35mm film for photocells to follow, and Iannis Xenakis's UPIC (1977) turned drawings made on a tablet into sound. The traffic ran the other way too: Fluxus event scores and Sol LeWitt's wall drawings are instructions, text that makes the work when someone follows it.
+
+Field sits in the middle of all this. A box can draw, which is LeWitt's direction, and a box can read what you drew, which is Cage's, in the same document while both are running.
+
 ## Reading by intersection
 
-Cutting a drawing with a line is a good way to read it. A vertical line through a score picks out an instant, and a horizontal one picks out a pitch. `notation.space` names a region and says what its axes mean. The region can be a frame, a box, or a rectangle:
+Cutting a drawing with a line is a good way to read it. It also makes a drawn line a value over time, the freehand counterpart of placing keys in [the keyframe editor](keyframe_editor.md). A vertical line through a score picks out an instant, and a horizontal one picks out a pitch. `notation.space` names a region and says what its axes mean. The region can be a frame, a box, or a rectangle:
 
 ```diffstatic {data-lang=kotlin}
 val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
@@ -183,6 +185,7 @@ Open **drawing_notation** from the welcome screen's starting points. It has the 
 | `notation.near(point, r)`, `.inside(rect)` | marks by position |
 | `notation { … }`, `notation("key") { … }` | draw marks this box owns |
 | `notation.edit(m) { … }`, `.delete(m)`, `.anchor(m, box)`, `.clear()` | change marks |
+| `mark.points`, `mark.pressures`, `mark.pressuresAlong(n)` | a stroke's points and its pen pressure, per point or evenly spaced; [painted](chain_drawn_paint.md) |
 | `notation.onStroke`, `.onArrow`, `.onText`, `.onChange` | react to what people draw |
 | `notation.vertical(x)`, `.horizontal(y)`, `.intersect(a, b)` | cut the canvas |
 | `notation.space(region, x = …, y = …)` | a region with its own axes |
