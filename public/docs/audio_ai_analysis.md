@@ -37,9 +37,6 @@ the next section runs the real jobs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_analysis/synchronized_analysis.png" wait="2" capture="box" open-outputs="true" padding="18"}
 :::static
-import afield.stdlib.*
-import afield.stdlib.noir.audioai.*
-
 val demoSync = "analysis-doc-demo"
 val demoRate = 8_000
 val demoAudio = FloatArray(demoRate * 12) { i ->
@@ -90,8 +87,6 @@ cards report each job while the worker runs, and a job becomes a panel on the an
 once it has finished successfully.
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()

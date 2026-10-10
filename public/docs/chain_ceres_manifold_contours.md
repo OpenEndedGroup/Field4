@@ -122,11 +122,6 @@ cuts both forms comparably.
 :::static
 import afield.manifold.Solid
 import afield.manifold.toSolid
-import afield.stdlib.polytope.NormalPolicy
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.canonicalize
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.triangulate
 import afield.util.PngEncoder
 
 val LAYERS = 48
@@ -324,15 +319,6 @@ solver, `relaxWithCeres`, does reach a canonical form. This box tries both and s
 import afield.manifold.FillRule
 import afield.manifold.Solid
 import afield.manifold.toSolid
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.NormalPolicy
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.canonicalDiagnostics
-import afield.stdlib.polytope.canonicalize
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relaxWithCeres
-import afield.stdlib.polytope.triangulate
 
 // relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
 val seed = conway("kkC").polyhedron

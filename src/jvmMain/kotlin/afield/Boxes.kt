@@ -1660,6 +1660,9 @@ import afield.graphics.*
 import afield.stdlib.linalg.*
 import afield.stdlib.linalg.arena.*
 import afield.stdlib.linalg.storage.*
+import afield.stdlib.polytope.*
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.loris.*
 import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking

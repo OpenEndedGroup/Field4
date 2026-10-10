@@ -824,9 +824,6 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-controls.png" alt="five stacked control widgets in one output channel, all drawn in cyan on black. GAIN, a horizontal slider a third of the way along, reading 0.35. ORBIT, a square vec2 pad with crosshairs and a handle pulled down and right of centre, annotated theta -30 degrees, magnitude 0.40, X 0.35, Y -0.20. ARMED, a checked checkbox. NAME, a text field holding 'Field'. ACCENT, an orange swatch beside an alpha slider at 0.85, with rgba(0.95, 0.45, 0.15, 0.85) printed above it" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="controls"}
 :::static
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector4f
-
 controlGroup("controls") {
     slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
     vec2Control("orbit", initialValue = Vector2f(0.35f, -0.2f)) { }
@@ -872,9 +869,6 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" alt="two channels. 'surface' holds the same five widgets under different names: BLOOM at 0.62, a WIND pad with its handle up and left at theta 146 degrees and magnitude 0.54, TRAILS checked, LABEL reading 'wake field', and a cyan TINT swatch at alpha 0.90. 'preview' below it holds a wide rendered strip, warm brown at the left and a soft blue bloom left of centre, with the line wind=(-0.45, 0.32), bloom=0.62, trails=true underneath, so the preview and the widgets agree" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
 :::static
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector4f
-
 var wind = Vector2f(-0.45f, 0.32f)
 var bloom = 0.62
 var trails = true
@@ -1145,8 +1139,6 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-recorded-audio.png" alt="an audio channel headed 'five-second synthetic recording'. A wide cyan waveform block fills the pane, with one vertical amber band about a fifth of the way in marking the playhead. Beneath it: plus, minus and 'all' zoom buttons, the window 0:00.80 to 0:03.50 of 0:05.00, the hint 'wheel zoom at playhead, drag pan, click seek', and a browser audio transport parked at 0:01 of 0:05" wait="2.5" capture="box" open-outputs="true" padding="12" w="1200" h="310" embed=true name="recorded-audio"}
 :::static
-import afield.stdlib.*
-
 val sampleRate = 8_000
 val seconds = 5.0
 val recording = FloatArray((sampleRate * seconds).toInt()) { i ->
@@ -1200,9 +1192,6 @@ For a Field Audio service representation, use the same component without transfe
 the complete recording just to draw it:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.*
-import afield.stdlib.noir.audioai.*
-
 val representation: AssetRepresentation = candidate.proxyRepresentation!!
 display("audio", representation.audioVisualizerHtml(
     options = AudioVisualizerOptions(showPlayhead = true)
@@ -1274,7 +1263,6 @@ audio.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-one-viewer.png" alt="Three stacked output panes headed envelope, audio and signal, all spanning 0 to 2 seconds. The envelope pane plots exp(-2.5 t) as a blue curve falling from 1 to near zero, its header chip reading 1024/1024 samples. The audio pane draws the decaying 220 Hz ping as a cyan waveform above a browser transport parked at 0:00 of 0:02, its chip reading click seek, wheel zoom at playhead, drag pan. The signal pane draws the same ping evaluated per window in white, its chip reading envelope and a delta t of 1.25e-4 s" wait="2" capture="box" open-outputs="true" padding="12" w="1200" embed=true name="one-viewer"}
 :::static
-import afield.stdlib.*
 import kotlin.math.*
 
 // One viewer, three sources, one timeline: a decaying 220 Hz ping.
@@ -1318,8 +1306,6 @@ That board is `analysisPreviewDashboardHtml(...)` drawing model-free previews; t
 produces it is on the [beat and pitch analysis walkthrough](audio_ai_analysis.md#the-views).
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.noir.audioai.*
-
 val client = FieldAudioClient()
 client.assetByFilename("*Nancy*").thenCompose { asset ->
     val region = AssetRegion(asset.id, startSeconds = 0.0, durationSeconds = 30.0)

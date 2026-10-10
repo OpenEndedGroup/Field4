@@ -17,8 +17,6 @@ positions:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/hero.png" wait="8.0" capture="box" open-outputs="true" w="1180" h="720" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 // One expression: kis of bevel of the dodecahedron. Three chained operators, 360 output faces.
 val chain = conway("kbD")
 val run = chain.polyhedron.canonicalize()
@@ -135,8 +133,6 @@ the single element standing for the whole solid. This example reads all of that 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/topology_readout.png" wait="1.5" capture="box" open-outputs="true" w="800" h="560" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val t = cube().topology
 
 val face = t.elements(2).first()
@@ -191,8 +187,6 @@ This example drops the cube's coordinates, takes the dual anyway, and shows whic
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/abstract_dual.png" wait="1.5" capture="box" open-outputs="true" w="980" h="520" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 // Drop the cube's coordinates. The topology survives verbatim.
 val abstractCube = PolyhedralObject(cube().topology)
 val d = abstractCube.transform(ConwayOperator.DUAL).polyhedron
@@ -240,8 +234,6 @@ that rewrite into primitives before anything runs. This table is generated from
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/operator_table.png" wait="1.5" capture="box" open-outputs="true" w="860" h="640" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val rows = ConwayOperator.entries.joinToString("\n") { op ->
     // primitiveExpansion is in EXECUTION order (seed outward). Prefix notation writes it
     // the other way round, so reverse it to get the string you would actually type.
@@ -274,8 +266,6 @@ line under each name is read from the topology.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/seeds_gallery.png" wait="2.5" capture="box" open-outputs="true" w="1240" h="820" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 :::fold one small gallery helper, reused by the two galleries below
 fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<String, PolyhedralObject>>) {
     val view = MeshView(wireframe = false, distance = 2.3)
@@ -321,8 +311,6 @@ This gallery applies each primitive to the cube, with the cube itself first for 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/primitives_gallery.png" wait="3.0" capture="box" open-outputs="true" w="1240" h="800" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 :::fold the same gallery helper as above
 fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<String, PolyhedralObject>>) {
     val view = MeshView(wireframe = false, distance = 2.3)
@@ -380,9 +368,6 @@ pentagons:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/gyro_boundaries.png" wait="2.5" capture="box" open-outputs="true" w="960" h="700" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-import afield.stdlib.TriMesh
-
 // Shading cannot separate coplanar faces, so give each polygon its own colour instead. The
 // triangle -> source-polygon map is what makes that possible on a triangle mesh at all.
 val gyro = conway("gC").polyhedron
@@ -435,8 +420,6 @@ The same gallery for the composites, each labelled with the primitives it expand
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/composites_gallery.png" wait="3.5" capture="box" open-outputs="true" w="1240" h="800" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 :::fold the same gallery helper as above
 fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<String, PolyhedralObject>>) {
     val view = MeshView(wireframe = false, distance = 2.3)
@@ -482,8 +465,6 @@ directly, composites after primitives:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/operator_chaining.png" wait="2.0" capture="box" open-outputs="true" w="900" h="360" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 // Each of these is a composite applied to the result of a primitive. Before the thirteen were
 // named on both receivers, none of them compiled.
 val chains = listOf(
@@ -526,8 +507,6 @@ vertices of degree *N*.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/parser_table.png" wait="2.0" capture="box" open-outputs="true" w="1100" h="620" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 fun row(src: String): String = try {
     val e = parseConwayExpression(src)
     val r = e.evaluate()
@@ -563,8 +542,6 @@ of a bevelled cube:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/lineage.png" wait="2.0" capture="box" open-outputs="true" w="1000" h="560" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val result = conway("bC")   // bevel = ambo then truncate
 
 fun describe(l: ElementLineage): String = when (l) {
@@ -620,8 +597,6 @@ its lineage when there is one. `ElementSelectors` supplies the common ones, and 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/selectors.png" wait="2.0" capture="box" open-outputs="true" w="1020" h="560" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val kisCube = cube().kis()          // apex over every square
 
 val cases = listOf<Pair<String, ElementSelector>>(
@@ -675,9 +650,6 @@ onto the *rendered triangles* by following `triangulate()`'s triangle → source
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/parameter_field.png" wait="3.0" capture="box" open-outputs="true" w="900" h="760" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-import afield.stdlib.TriMesh
-
 // One scalar per face of a dodecahedron: spike height rises from left to right.
 var source = dodecahedron()
 val realization = source.realization!!
@@ -777,8 +749,6 @@ weights into `RelaxationPlan.regularize()`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/realization.png" wait="3.0" capture="box" open-outputs="true" w="1220" h="780" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-import afield.stdlib.Vec3
 import kotlin.random.Random
 
 // Take a real Conway output and jitter every vertex. The topology is not touched at all.
@@ -866,8 +836,6 @@ canonicalizes the gyro-cube from earlier:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/canonical.png" wait="4.0" capture="box" open-outputs="true" w="1220" h="820" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 // The gyro-cube, exactly as the operator built it, and the same combinatorics canonicalized.
 val built = conway("gC").polyhedron
 val run = built.canonicalize()
@@ -954,8 +922,6 @@ three embeddings of the same topology: as built, after `canonicalize()`, and aft
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/kkc_canonical.png" wait="6.0" capture="box" open-outputs="true" w="1240" h="620" padding="14" requires="ceres"}
 :::static
-import afield.stdlib.polytope.*
-
 // kis applied twice to the cube: 38 vertices, 108 edges, 72 faces. The standing counter-example.
 // relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
 val seed = conway("kkC").polyhedron
@@ -1030,8 +996,6 @@ topology without its coordinates and compares the two routes to its canonical fo
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/spectral.png" wait="4.0" capture="box" open-outputs="true" w="1240" h="840" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 // Throw the coordinates away and keep only the incidence structure.
 val topologyOnly: PolytopeTopology = conway("gC").polyhedron.topology
 
@@ -1119,8 +1083,6 @@ the Conway operators require rank 3 and `triangulate`, FLine conversion and face
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/rank4.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="760" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val seeds = listOf("5-cell" to fiveCell(), "tesseract" to tesseract(),
     "16-cell" to sixteenCell(), "24-cell" to twentyFourCell())
 
@@ -1175,8 +1137,6 @@ each face by its lineage role:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_flines.png" wait="3.0" capture="box" open-outputs="true" w="1240" h="700" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 // Truncate four of an ambo-ed cube's twelve vertices, then colour every output face by the
 // role its lineage reports. Nothing here inspects a coordinate to decide a colour.
 val seed = conway("aC")
@@ -1214,8 +1174,6 @@ This example prints what the same transform recorded and what each line carries:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_fline_properties.png" wait="2.0" capture="box" open-outputs="true" w="1020" h="480" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val seed = conway("aC")
 val chosen = seed.polyhedron.topology.elements(0).filterIndexed { i, _ -> i % 3 == 0 }.map { it.id }
 val result = seed.truncate(ElementSelectors.ids(chosen), ElementParameters.constant(0.30))
@@ -1253,8 +1211,6 @@ compares the polytope's counts with the render mesh's:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/triangulation.png" wait="2.5" capture="box" open-outputs="true" w="1060" h="560" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val p = conway("tC").polyhedron       // truncated cube: octagons and triangles
 val g = p.triangulate()
 
@@ -1300,8 +1256,6 @@ lists what it reports and refuses:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_with_a_hole.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="620" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-
 val solid = cubeWithWindow(side = 0.45f)
 val topology = solid.topology
 val windowed = topology.elements(2).single { topology.faceHasHoles(it.id) }
@@ -1356,10 +1310,6 @@ shows how to declare a hole with `PolytopeTopologyBuilder.addFaceHole`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_hole_counterfactual.png" wait="3.0" capture="box" open-outputs="true" w="880" h="480" padding="14"}
 :::static
-import afield.stdlib.polytope.*
-import afield.stdlib.MeshView
-import afield.stdlib.Vec3
-
 val hole = 0.45f
 
 :::fold one square face, built by hand, optionally with one inner ring
@@ -1425,8 +1375,6 @@ shows a selective kis and its triangulation:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/value_printers.png" wait="2.5" capture="box" open-outputs="true" w="1100" h="720" padding="14" scale="3"}
 :::static
-import afield.stdlib.polytope.*
-
 var seed = cube()
 seed.topology.elements(2).take(2).forEach { seed = seed.withAttribute(it.id, "lift", 0.4) }
 val result = seed.kis(ElementSelectors.attributeEquals("lift", 0.4), ElementParameters.attribute("lift"))
