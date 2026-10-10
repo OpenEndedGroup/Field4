@@ -514,7 +514,6 @@ Marched, the seed, the fit and the target:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/partial.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.solidsl.*
-import afield.stdlib.OptimizeMethod
 
 // A sphere and a cylinder. The model below gets a CUBE and a cylinder.
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
@@ -562,7 +561,6 @@ shows something the two ends cannot: *when* each parameter stops moving.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/converging.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.solidsl.*
-import afield.stdlib.OptimizeMethod
 
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
