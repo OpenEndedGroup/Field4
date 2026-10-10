@@ -1958,6 +1958,9 @@ function sliderTrackPixels(container) {
     const rect = svg.getBoundingClientRect();
     const viewWidth = parseFloat(container.dataset.viewWidth || '320');
     const padding = parseFloat(container.dataset.padding || '14');
+    // An unlaid-out (collapsed) panel measures 0; treat it as the SVG's nominal width rather than
+    // letting one pixel of travel sweep the whole range.
+    if (!(rect.width > 0)) return viewWidth - padding * 2;
     return Math.max(1, rect.width * (viewWidth - padding * 2) / viewWidth);
 }
 
