@@ -427,8 +427,12 @@ class FieldApiCorsExposureTest {
                         "handleControllerInput(" in handler ||
                         "rawHandlers.values" in handler ||
                         "handle(message)" in handler
-                    ) "commands" else "server notifications"
-                    val guard = if ("refuseCrossSiteFieldWebSocket(" in handler) "same-site" else "none"
+                    ) "commands" else if ("process.outputStream" in handler) "terminal input" else "server notifications"
+                    val guard = when {
+                        "refuseCrossSiteFieldWebSocket(" in handler -> "same-site"
+                        "refuseUnlessTerminalClient(" in handler -> "loopback + same-site"
+                        else -> "none"
+                    }
                     found[path] = "$role; $guard"
                 }
             }
@@ -533,6 +537,10 @@ class FieldApiCorsExposureTest {
             // and deliberately no switch or token (2026-09-30; see docsPass.kt's header and
             // DocsPassRouteTest).
             "POST /api/docs-improvement/pass" to "loopback + same-site",
+            // /terminal.html (terminal.kt): starts an interactive `claude` in the checkout. The
+            // client picks a kind, never a command; same boundary as the revision pass.
+            "POST /api/terminal" to "loopback + same-site",
+            "POST /api/terminal/{id}/kill" to "loopback + same-site",
             "POST /api/duplicate-document" to "none",
             // The one route whose openness is a feature: the offline viewer POSTs here from
             // whatever origin its bundle was served from, which is why anyHost() stands.
@@ -569,6 +577,8 @@ class FieldApiCorsExposureTest {
 
         val EXPECTED_WEBSOCKET_SURFACE = sortedMapOf(
             "/controllers/ws" to "commands; same-site",
+            // Keystrokes into a pty (terminal.kt): the revision pass's boundary, hatches shut.
+            "/pty/{id}" to "terminal input; loopback + same-site",
             "/welcome-events" to "server notifications; none",
             "/ws" to "commands; same-site",
         )

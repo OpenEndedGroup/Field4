@@ -1702,6 +1702,16 @@ and draws the model's favourite after every six answers, then the ideal past a d
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gp_instruments/metadata.edn)
 
+### gp_drawing
+
+**Drawing with Gaussian processes**, in three boxes to play with. A closed loop through six pins,
+whose mean and draws all close without a seam; drag a pin's control and it redraws. Four 1-D
+measurements with sliders for the length scale and for how noisy one of them is. A field over the
+plane: its mean, two whole-field draws and its standard deviation. See
+[Drawing with Gaussian processes](gaussian_processes.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gp_drawing/metadata.edn)
+
 ### chart_primitive
 
 **`Chart` — the FLine plot primitive**, in four boxes, one per thing the primitive is for: a chart in

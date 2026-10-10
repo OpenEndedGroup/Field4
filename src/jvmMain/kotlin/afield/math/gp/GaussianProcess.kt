@@ -1,6 +1,8 @@
 @file:afield.CompletionCategory("Math")
 package afield.math.gp
 
+// In memory of David J. C. MacKay.
+
 import kotlin.math.*
 
 /** Numerical regularisation is separate from observation noise, and its actual value is reported. */

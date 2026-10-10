@@ -63,71 +63,12 @@ CONFIG_REL = "public/zensical.yml"
 # silently skipped — a guard whose regex only matches the correct shape selects nothing.
 OFFLINE_REF = re.compile(r"""(?P<lead>[^\s"'()]*?)offline\.html\?file=(?P<file>[^)\s"'>]*)""")
 
-# The pages that carry these links, recorded 2026-09-17 by this guard over the population below.
-# Set equality both ways, so a new carrier page fails as loudly as a removed one: adding a
-# transcript to a page already on this list is routine and does not touch it, but a *new* page
-# growing an offline link is exactly the moment to check the link's shape.
-def ledger_line(rel: str) -> str:
-    """The exact CARRIER_PAGES entry a newly measured carrier page needs."""
-    return f'"{rel}",'
-
-
-CARRIER_PAGES = {
-    "public/docs/afield_four_graphics.md",
-    "public/docs/agent_transcripts.md",
-    # Added 2026-10-07 (nightly CI): six pages gained starting-point links between 2026-10-04
-    # and 10-06 (800c6f340, 71f8c9b19, 6b2ad8e66, ad0e0671b, 40f6f6fa5, 302bb21c3) and left this
-    # ledger behind. Shape checked on each: `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`,
-    # no leading slash, and every target metadata.edn exists.
-    "public/docs/ai4_live_iframe.md",
-    "public/docs/aperture_playground.md",
-    "public/docs/direct_lighting.md",
-    # Added 2026-09-29: the drawing page links its starting point. Shape checked:
-    # `offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn`, no leading slash.
-    "public/docs/drawing_and_notation.md",
-    "public/docs/faust.md",
-    "public/docs/fieldml_host_bridge.md",
-    "public/docs/fline_examples.md",
-    # Added 2026-09-22: `b5b9ad9e0` landed `flow_grain.md` with a correct viewer-relative link
-    # and left this ledger behind, so the guard was red on `main`. The shape was checked, which
-    # is the whole point of failing here: `offline.html?file=assets/…/metadata.edn`, no leading
-    # slash on either half.
-    "public/docs/flow_grain.md",
-    "public/docs/gpu_state.md",
-    # Added 2026-09-30: the Lua page links its starting point. Shape checked:
-    # `offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn`, no leading slash.
-    "public/docs/keyframe_autosweep.md",
-    "public/docs/keyframe_editor.md",
-    "public/docs/lua.md",
-    "public/docs/mesh_examples.md",
-    "public/docs/nano_examples.md",
-    # Added 2026-10-03: both new pages link their starting points. Shape checked:
-    # `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`, no leading slash.
-    "public/docs/open_dlss_nr.md",
-    "public/docs/openxr_eye_intersection.md",
-    # Added 2026-10-08: `1ba2eb637` landed two starting-point links. Shape checked:
-    # `offline.html?file=assets/agent_transcripts/orca_{hello,duet}/metadata.edn`, both exist.
-    "public/docs/orca.md",
-    "public/docs/particle_video.md",
-    "public/docs/profiling_timeline.md",
-    # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
-    # `offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn`, no leading slash.
-    "public/docs/pure_data.md",
-    # Added 2026-10-04: `489bd01b5` landed the Python CV page with a starting-point link and left
-    # this ledger behind (red on `main`). Shape checked:
-    # `offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn`, no leading slash.
-    "public/docs/python_cv.md",
-    "public/docs/rectsl_examples.md",
-    "public/docs/rtp_midi.md",
-    "public/docs/solid_notation.md",
-    "public/docs/sound_paths.md",
-    "public/docs/stacksl_examples.md",
-    "public/docs/stipple_transport.md",
-    "public/docs/streaming_diffusion.md",
-    "public/docs/three_output.md",
-    "public/docs/vision_geometry.md",
-    "public/docs/wfc_examples.md",
-}
+# There is no hand-kept list of carrier pages. Until 2026-10-10 a `CARRIER_PAGES` set was held
+# here with set equality both ways, on the theory that a new page growing an offline link was the
+# moment to check the link's shape. But every reference on every page is shape-checked below, and
+# its target's existence too, so the ledger added no check — only an edit that authors forgot six
+# times in three weeks (main red or a follow-up commit each time). The carrier set is now measured
+# and reported (`--summary`); the shape lint, the target check and the occurrence floor are the gate.
 
 # Measured the same day: 137 occurrences over 513 tracked `public/docs/**.md`. Reported rather
 # than gated (agent_transcripts.md grows a link per new transcript), but the floor is asserted —
@@ -205,7 +146,7 @@ def problems_for(*, page: str, lead: str, file_value: str, site_dir: str,
         if not target.is_file():
             found.append(
                 f"`?file={file_value}` names nothing committed under {DOCS_REL}/ "
-                f"(looked for {target.relative_to(REPO_ROOT)})"
+                f"(looked for {DOCS_REL}/{file_value})"
             )
     return found
 
@@ -217,8 +158,8 @@ def main() -> int:
     parser.add_argument("--repo-root", default=str(REPO_ROOT), help="Repository root to scan.")
     parser.add_argument("--summary", action="store_true", help="Print the per-page census too.")
     parser.add_argument(
-        "--no-ledger", action="store_true",
-        help="Skip the CARRIER_PAGES set-equality check (for running against a fixture tree).",
+        "--min-occurrences", type=int, default=RECORDED_OCCURRENCES,
+        help="Override the occurrence floor (for running against a fixture tree).",
     )
     args = parser.parse_args()
 
@@ -261,29 +202,14 @@ def main() -> int:
     # Premise first: if the scan stops finding references at all, the regex or the scan root broke.
     # That must fail rather than read as "the tree is clean" — the exact way a guard becomes a
     # tautology. Recorded floor, not equality, because agent_transcripts.md gains one per
-    # transcript; the page *set* below is what is pinned in both directions.
-    if occurrences < RECORDED_OCCURRENCES:
+    # transcript.
+    if occurrences < args.min_occurrences:
         print(
             f"\nFAIL — found {occurrences} reference(s), fewer than the {RECORDED_OCCURRENCES} "
             f"recorded on 2026-09-17.\nEither links were deleted (say so and lower "
             f"RECORDED_OCCURRENCES) or this scan stopped matching them."
         )
         return 1
-
-    ledger_problems: list[str] = []
-    if not args.no_ledger:
-        seen = set(per_page)
-        for missing in sorted(CARRIER_PAGES - seen):
-            ledger_problems.append(
-                f"{missing}: listed in CARRIER_PAGES but carries no `offline.html?file=` link "
-                f"any more. Delete the entry."
-            )
-        for extra in sorted(seen - CARRIER_PAGES):
-            ledger_problems.append(
-                f"{extra}: carries {per_page[extra]} `offline.html?file=` link(s) and is not in "
-                f"CARRIER_PAGES. Check the shape, then add this line to CARRIER_PAGES in "
-                f"tools/check_doc_offline_links.py (alphabetical):\n      {ledger_line(extra)}"
-            )
 
     if failures:
         print(f"\nFAIL — {len(failures)} malformed reference(s):\n")
@@ -298,16 +224,11 @@ def main() -> int:
             "It resolves under any prefix and at the server root, because the build re-bases the\n"
             "link for the page's URL depth and the viewer resolves `?file=` against its own URL."
         )
-    if ledger_problems:
-        print(f"\nFAIL — {len(ledger_problems)} CARRIER_PAGES ledger problem(s):\n")
-        for problem in ledger_problems:
-            print(f"  {problem}")
-
-    if failures or ledger_problems:
+    if failures:
         return 1
     print(
         f"OK — all {occurrences} reference(s) on {len(per_page)} page(s) are viewer-relative on "
-        f"both halves and name a committed target; carrier set matches CARRIER_PAGES exactly."
+        f"both halves and name a committed target."
     )
     return 0
 

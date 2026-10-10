@@ -126,6 +126,8 @@ class AgentDemoRegistrationTest {
             // the only evidence its four boxes ran was that a human had run them once, by hand.
             // 2026-10-10: Bayesian optimisation and A/B preference learning; registered EXECUTE.
             "gp_instruments",
+            // 2026-10-10: Gaussian processes to play with (closed loop, 1-D, 2-D); registered EXECUTE.
+            "gp_drawing",
             "gpu_probe_bench",
             "interaction_nets_lambda",
             "keyframe_key_discovery",

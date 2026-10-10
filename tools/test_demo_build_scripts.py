@@ -121,6 +121,7 @@ CORPUS = {
     # concurrent session held, and nothing under `artifacts/` is named by any registry in the tree.
     # 2026-10-10: GP instruments. No build.yaml (the transcript lives in dev_docs/agents/transcripts).
     "gp_instruments",
+    "gp_drawing",
     "gpu_probe_bench",
     "interaction_nets_lambda",
     "keyframe_key_discovery",

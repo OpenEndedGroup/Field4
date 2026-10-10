@@ -477,7 +477,8 @@ fingerprint, so a stage that uses this result records which request produced it.
 current like any other, because the stage's own fingerprint covers only the design. A later start,
 including the card's **Rebuild**, has no request unless it is given one again, so a request is never
 left behind for the next build to pick up. Values must survive a JSON round trip. An agent passes a
-request as `request` in `StartStudyBuildRequest`, with string values.
+request as `request` in `StartStudyBuildRequest`, a string holding a JSON object such as
+`{"budgetSeconds": 60}`. The worker reads its values as JSON types, so this stage sees a number.
 
 ### Depend on another runner's stage
 
@@ -567,7 +568,9 @@ match its recorded hash, and the attempt records what it copied with the hashes
 (`StudyBuildRecord.resumedFrom`); the card names it. A path can be a directory, which copies
 everything under it. By default the earlier attempt must have built the same inputs and dependency
 results with the same recipe, so an agent cannot continue from a checkpoint of a design it has since
-replaced. Pass `sameDesign = false` when an earlier design is a deliberate starting point.
+replaced. Pass `sameDesign = false` when an earlier design is a deliberate starting point. An agent
+names the attempt the same way, with `request` set to `{"resume": "<jobId>"}` in
+`StartStudyBuildRequest`.
 
 `builds.await(jobId)` blocks until an attempt finishes, which suits a box that runs stages in order
 like this one. For a long build, let the card or AI4 follow it instead.

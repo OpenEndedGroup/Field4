@@ -1,7 +1,5 @@
 # Drawing with Gaussian processes
 
-*In memory of David J. C. MacKay.*
-
 Pin a curve at a few places, then draw several ways it could pass between them. Or pin a scalar
 field at points in a plane or volume, and draw a whole field that respects those observations.
 A Gaussian process gives you a distribution over these possibilities: a mean, uncertainty, and
@@ -10,10 +8,8 @@ samples whose neighbouring values belong to the same function.
 Start with four measurements and a smoothness assumption. This fits a scalar function of one
 variable, then draws five possible functions over the same grid:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/conditioning.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.graphics.*
-
 val xs = doubleArrayOf(-1.2, -0.35, 0.1, 0.95)
 val ys = doubleArrayOf(-0.7, 0.8, 0.35, -0.4)
 val gp = gp1D(xs, ys,
@@ -21,25 +17,41 @@ val gp = gp1D(xs, ys,
     kernel = GpKernels.rbf(lengthScale = 0.48))
 val grid = DoubleArray(181) { -1.8 + 3.6 * it / 180 }
 val posterior = gp.posterior(grid)
+
+// GP values are y-up; the SVG is y-down, so flip and scale into pixels
+fun plot(line: FLine) = line.transform { vec(it.x * 180, -it.y * 120, 0) }
+
 val draws = (0L..4L).map { seed ->
-    posterior.sampleFLine(grid, seed).apply {
-        color = vec(0.3, 0.65, 0.9, 0.55)
+    plot(posterior.sampleFLine(grid, seed)).apply {
+        color = vec(0.3, 0.65, 0.9, 0.7)
         thickness = 1.5
     }
 }
-val mean = posterior.meanFLine(grid).apply {
+val (lower, upper) = posterior.intervalFLines(grid)
+val band = listOf(lower, upper).map {
+    plot(it).apply { color = vec(1, 0.5, 0.2, 0.5); thickness = 1.0 }
+}
+val mean = plot(posterior.meanFLine(grid)).apply {
     color = vec(1, 0.5, 0.2, 1)
     thickness = 3.0
 }
-lines(draws + mean, w = 700.0, h = 360.0, fitToSize = true)
+val pins = FLine().apply {
+    xs.indices.forEach { moveTo(xs[it], ys[it]) }
+}.let(::plot).apply {
+    stroked = false; pointed = true; pointSize = 3.0; color = vec(1, 1, 1, 1)
+}
+lines(draws + band + mean + pins, w = 700.0, h = 360.0, fitToSize = true)
 ```
 
-The upper plot below shows functions before seeing any measurements. The lower plot shows draws
-from the conditioned distribution. The third observation is less reliable: its larger noise
-standard deviation lets the functions pass further from it. Colours distinguish independent
-draws, not a before/after pairing.
+The blue lines are five draws, the thick orange line the mean, and the thin orange lines the 95%
+pointwise interval. The third observation is less reliable: its larger noise standard deviation
+lets the functions pass further from it. Away from the observations the draws spread back out
+to the prior.
 
-![Prior functions, then posterior functions and pointwise intervals after four observations](assets/gaussian_processes/conditioning.png)
+![Five blue draws and a thick orange mean pass through four white observation dots; thin orange interval lines pinch in at the dots and open wide at both ends, and the draws pass slightly to either side of the third dot](assets/gaussian_processes/conditioning.png)
+
+To play with the closed loop, the 1-D example and the 2-D field with live controls, open
+[the `gp_drawing` document](agent_transcripts.md#gp_drawing).
 
 ## Three different things to draw
 
@@ -74,9 +86,36 @@ For a 1D plot, `posterior.intervalFLines(grid)` returns its lower and upper boun
 
 The covariance kernel specifies how values at different positions relate. Its length scale sets
 the distance over which they remain related; its variance sets the squared output amplitude.
-Look at prior samples before fitting: they show the assumptions you are imposing.
+Look at prior samples before fitting: they show the assumptions you are imposing. These are
+three draws each, before any observation, from RBF, Matérn 3/2, Matérn 1/2 and periodic kernels
+with the same length scale:
 
-![Prior draws comparing smooth, rough and periodic kernels](assets/gaussian_processes/kernels.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/kernels.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
+:::static
+val grid = DoubleArray(241) { -2.0 + 4.0 * it / 240 }
+val kernels = listOf(
+    GpKernels.rbf(lengthScale = 0.5),
+    GpKernels.matern(1.5, lengthScale = 0.5),
+    GpKernels.matern(0.5, lengthScale = 0.5),
+    GpKernels.periodic(period = 1.3, lengthScale = 0.8),
+)
+val colors = listOf(vec(0.3, 0.65, 0.9, 0.8), vec(0.95, 0.55, 0.25, 0.8),
+    vec(0.9, 0.35, 0.55, 0.8), vec(0.4, 0.85, 0.5, 0.8))
+
+// one row per kernel, stacked down the page; y-up within each row
+val rows = kernels.flatMapIndexed { row, kernel ->
+    val prior = GaussianProcess.prior(dimensions = 1, kernel = kernel)
+    val joint = prior.posterior(grid)
+    (0L..2L).map { seed ->
+        joint.sampleFLine(grid, seed).transform { vec(it.x * 160, row * 170 - it.y * 50, 0) }.apply {
+            color = colors[row]; thickness = 1.5
+        }
+    }
+}
+lines(rows, w = 700.0, h = 560.0, fitToSize = true)
+```
+
+![Four rows of three draws: smooth blue RBF curves, orange Matérn 3/2 curves with small kinks, jagged pink Matérn 1/2 curves, and green periodic curves repeating the same shape](assets/gaussian_processes/kernels.png)
 
 | Kernel | Useful starting point |
 | --- | --- |
@@ -141,27 +180,36 @@ For a scalar field `f(x,y)`, observations are positions and scalar values. Give 
 length scale when the field should stretch further in one direction. These scales use the units
 of your positions, not grid indices.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/field2d.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 val points = listOf(vec(-0.8, -0.5), vec(0.55, -0.5), vec(-0.3, 0.65), vec(0.65, 0.55))
 val field = gp2D(points, doubleArrayOf(0.9, -0.7, -0.8, 0.65),
     kernel = GpKernels.matern(1.5, doubleArrayOf(0.55, 0.8)), noiseStd = 0.04)
-val side = 25
+val side = 40
 val queries = Array(side * side) { i ->
     doubleArrayOf(-1.2 + 2.4 * (i % side) / (side - 1),
                   -1.2 + 2.4 * (i / side) / (side - 1))
 }
 val joint = field.posterior(queries)
-val sample = joint.sample(seed = 57)
-val image = Array(side) { row -> DoubleArray(side) { col -> sample[row * side + col] } }
-showHeatmap(image)
+fun grid(values: DoubleArray) = Array(side) { row -> DoubleArray(side) { col -> values[row * side + col] } }
+
+// panels side by side, separated by a thin gap
+fun row(vararg panels: Array<DoubleArray>, gap: Double) = Array(side) { r ->
+    panels.flatMapIndexed { i, p -> (if (i > 0) List(2) { gap } else emptyList()) + p[r].toList() }.toDoubleArray()
+}
+
+// the mean and two whole-field draws share one colour scale; then the standard deviation
+showHeatmap(row(grid(joint.mean), grid(joint.sample(seed = 57)), grid(joint.sample(seed = 58)), gap = 0.0),
+    vmin = -2.5, vmax = 2.5, normalize = false, colormap = "coolwarm", width = 720, channel = "mean, two draws")
+showHeatmap(grid(joint.variance.map { sqrt(it) }.toDoubleArray()),
+    vmin = 0.0, normalize = false, colormap = "magma", width = 240, channel = "standard deviation")
 ```
 
-Both lower panels are whole-field draws. They differ most where the observations leave room to
-differ. The uncertainty panel shows standard deviation, not image contrast or random noise added
-to the mean. All three value panels share a colour scale.
+The first panel is the mean; the next two are whole-field draws. They agree near the four
+observations and differ most where the observations leave room to differ. All three share a
+colour scale. The panel below is the standard deviation, dark at the observations.
 
-![A 2D posterior mean, standard deviation and two correlated samples](assets/gaussian_processes/field2d.png)
+![Three square panels in a blue-white-red scale: a soft mean with two warm and two cool patches, then two blotchier draws that agree with it at four places; below, a standard-deviation panel with four dark holes on a bright background](assets/gaussian_processes/field2d.png)
 
 For a large uncertainty map, use `field.marginals(queries)`. It computes individual predictions
 without allocating the square query covariance. For a large *sample*, use a feature path below;
@@ -191,7 +239,7 @@ and sizes when the distinction matters.
 Here the feature seed chooses the model, while the sample seed chooses a function from it.
 Once drawn, the function can be evaluated anywhere, in any order, including in separate tiles.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/field3d.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 val observations = arrayOf(
     doubleArrayOf(-0.7, -0.4, -0.5), doubleArrayOf(0.6, 0.4, 0.5),
@@ -200,14 +248,32 @@ val featureModel = GpRbfFeatures(
     lengthScales = doubleArrayOf(0.7, 0.7, 0.9), frequencyCount = 512, seed = 77
 ).fit(observations, doubleArrayOf(0.8, -0.8, -0.5, 0.6), DoubleArray(4) { 0.04 })
 val oneVolume = featureModel.samplePath(seed = 88)
-val a = oneVolume(0.2, 0.3, 0.4)
-val b = oneVolume(0.2, 0.3, 0.4)  // exactly the same value
+
+// three z slices through the same sampled volume, then its uncertainty on those slices
+val side = 64
+fun slice(z: Double, f: (Double, Double, Double) -> Double) = Array(side) { row ->
+    DoubleArray(side) { col ->
+        f(-1.0 + 2.0 * col / (side - 1), -1.0 + 2.0 * row / (side - 1), z)
+    }
+}
+fun row(panels: List<Array<DoubleArray>>, gap: Double) = Array(side) { r ->
+    panels.flatMapIndexed { i, p -> (if (i > 0) List(2) { gap } else emptyList()) + p[r].toList() }.toDoubleArray()
+}
+val zs = listOf(-0.5, 0.0, 0.5)
+showHeatmap(row(zs.map { z -> slice(z) { x, y, zz -> oneVolume(x, y, zz) } }, gap = 0.0),
+    vmin = -2.0, vmax = 2.0, normalize = false, colormap = "coolwarm", width = 720,
+    channel = "one sample at z = -0.5, 0, 0.5")
+showHeatmap(row(zs.map { z -> slice(z) { x, y, zz -> featureModel.predict(x, y, zz).std } }, gap = 0.0),
+    vmin = 0.0, vmax = 1.0, normalize = false, colormap = "magma", width = 720,
+    channel = "standard deviation on the same slices")
 ```
 
-These are three slices through **one** such sampled volume. Sampling each slice separately would
-lose their relationship. The lower row shows the feature model's posterior standard deviation.
+These are three slices through **one** such sampled volume, drawn in the same box. Sampling each
+slice separately would lose their relationship; here neighbouring slices share their shapes. The
+lower row shows the feature model's posterior standard deviation on the same slices, dark where a
+slice passes near an observation.
 
-![Three spatial slices of one sampled 3D feature field, with matching uncertainty slices](assets/gaussian_processes/field3d.png)
+![Top row: three slices of one sampled field, each with a cool patch at the top that drifts right and a warm corner bottom left that fades from slice to slice; bottom row: standard deviation on the same slices with dark spots where observations lie near each slice](assets/gaussian_processes/field3d.png)
 
 For a modest number of arbitrary queries, an exact model also supports
 `val function = volume.samplePath(seed = 88)`. Each new position is drawn conditional on previous
@@ -229,10 +295,8 @@ This example allows XY positions to move together through a correlated output co
 The default matrix is the identity: independent coordinate processes, still correlated along
 each coordinate's parameter axis.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/curve.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.graphics.*
-
 val curve = gpCurve(
     doubleArrayOf(0.0, 0.2, 0.65, 1.0),
     listOf(vec(-1.0, -0.6, 0), vec(-0.65, 0.65, 0), vec(0.6, 0.5, 0), vec(0.9, -0.5, 0)),
@@ -241,12 +305,34 @@ val curve = gpCurve(
     outputCovariance = arrayOf(doubleArrayOf(1.0, 0.35), doubleArrayOf(0.35, 0.7)))
 val t = DoubleArray(121) { it / 120.0 }
 val distribution = curve.posterior(t)
-val alternatives = (0L..4L).map { distribution.sampleLine(it) }
-val meanCurve = distribution.meanLine()
-val coordinateVariances = distribution.variances
-val covarianceAtMiddle = distribution.covarianceAt(60)  // 3×3; planar Z is zero
-val (left, right) = distribution.normalBand()
-lines(alternatives + listOf(meanCurve, left, right), w = 700.0, h = 420.0, fitToSize = true)
+
+// y-up curve coordinates into y-down pixels
+fun plot(line: FLine) = line.transform { vec(it.x * 250, -it.y * 250, 0) }
+
+val alternatives = (0L..4L).map { seed ->
+    plot(distribution.sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.7); thickness = 1.5 }
+}
+val meanCurve = plot(distribution.meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
+
+// 95% position ellipses from the 2×2 covariance at a few parameters
+val ellipses = (10..110 step 20).map { i ->
+    val c = distribution.covarianceAt(i)
+    val a = c[0][0]; val b = c[0][1]; val d = c[1][1]
+    val mid = (a + d) / 2; val r = sqrt(((a - d) / 2).pow(2) + b * b)
+    val angle = 0.5 * atan2(2 * b, a - d)
+    val k = sqrt(-2 * ln(0.05))
+    val r1 = k * sqrt(mid + r); val r2 = k * sqrt(max(0.0, mid - r))
+    val p = distribution.meanPoints[i]
+    FLine().apply {
+        for (s in 0..48) {
+            val u = 2 * PI * s / 48
+            val x = p.x + r1 * cos(u) * cos(angle) - r2 * sin(u) * sin(angle)
+            val y = p.y + r1 * cos(u) * sin(angle) + r2 * sin(u) * cos(angle)
+            if (s == 0) moveTo(x, y) else lineTo(x, y)
+        }
+    }.let(::plot).apply { color = vec(1, 1, 1, 0.6); thickness = 1.0 }
+}
+lines(alternatives + ellipses + meanCurve, w = 700.0, h = 420.0, fitToSize = true)
 ```
 
 The curve mean defaults to the observations' centroid; supply `mean = vec(...)` to choose another
@@ -255,7 +341,7 @@ Use `dimensions = 3` for spatial curves and a 3×3 output covariance to correlat
 The kernel variance has squared coordinate units; the output covariance is a dimensionless
 relative shape.
 
-![Coherent curve samples and correlated pointwise position ellipses](assets/gaussian_processes/curve.png)
+![An orange mean arch through four pins with five blue draws around it, and white 95% position ellipses, small near the pins and larger between them, tilted by the XY correlation](assets/gaussian_processes/curve.png)
 
 At a parameter value the 2D position has an uncertainty ellipse. Its principal axes come from
 the eigenvectors of the 2×2 covariance, and its 95% radii are
@@ -284,8 +370,60 @@ val variation = fitted.sampleLine(seed = 29)
 Sampling a drawn stroke more densely adds more observations. With independent nonzero noise that
 means more evidence, so uncertainty shrinks. If the observations are really a few intentional
 control points, use `gpCurve` on those points rather than resampling the stroke hundreds of times.
-For a closed path, use `GpKernels.periodic(period = 1.0, ...)`; identical endpoints then represent
-the same random value. Contradictory exact endpoint values are not a consistent periodic model.
+### Closed loops
+
+For a closed path, use `GpKernels.periodic(period = 1.0, ...)` and place the pins on a parameter
+that runs once round the loop, from 0 up to (but not including) 1. With a period of one,
+`t = 0` and `t = 1` are the same point of the same function: every draw returns to where it
+started with the same position and the same direction, so there is no seam to hide. Do not pin
+both `t = 0` and `t = 1`; they are one observation. The curve mean defaults to the pins'
+centroid, which for a loop is its middle.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/loop.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
+:::static
+// six pins around a loop; move any of them and run again
+val pins = listOf(vec(1.0, 0.0, 0), vec(0.45, 0.8, 0), vec(-0.5, 0.95, 0),
+                  vec(-1.1, 0.0, 0), vec(-0.4, -0.75, 0), vec(0.6, -0.9, 0))
+// each pin's place on the loop's parameter, which runs once round from 0 to 1
+val at = DoubleArray(pins.size) { it.toDouble() / pins.size }
+
+// a periodic kernel with period 1 makes t = 0 and t = 1 the same point, value and slope
+val loop = gpCurve(at, pins,
+    kernel = GpKernels.periodic(period = 1.0, lengthScale = 0.6, variance = 0.04),
+    noiseStd = DoubleArray(pins.size) { 0.01 }, dimensions = 2)
+val t = DoubleArray(201) { it / 200.0 }
+val distribution = loop.posterior(t)
+
+fun plot(line: FLine) = line.transform { vec(it.x * 200, -it.y * 200, 0) }
+
+val draws = (0L..5L).map { seed ->
+    plot(distribution.sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.8); thickness = 1.5 }
+}
+val mean = plot(distribution.meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
+val dots = plot(FLine().apply { pins.forEach { moveTo(it.x, it.y) } }).apply {
+    stroked = false; pointed = true; pointSize = 3.0; color = vec(1, 1, 1, 1)
+}
+lines(draws + mean + dots, w = 600.0, h = 520.0, fitToSize = true)
+
+// the seam: a draw's last point is its first, and it turns there no more than anywhere else
+val p = distribution.samplePoints(seed = 0L)
+fun turn(a: Vec3, b: Vec3, c: Vec3): Double {
+    val ux = b.x - a.x; val uy = b.y - a.y; val vx = c.x - b.x; val vy = c.y - b.y
+    return abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy).toDouble())
+}
+val seamGap = hypot((p.last().x - p.first().x).toDouble(), (p.last().y - p.first().y).toDouble())
+val seamTurn = turn(p[p.size - 2], p[0], p[1])
+val maxTurn = (1 until p.size - 1).maxOf { turn(p[it - 1], p[it], p[it + 1]) }
+println("seam gap %.2e, turn at the seam %.4f rad, largest turn elsewhere %.4f rad"
+    .format(seamGap, seamTurn, maxTurn))
+```
+
+![An orange closed loop through six white pins, with six blue closed draws that pinch in at every pin and bulge apart between them; the seam at the rightmost pin, where each draw starts and ends, is as smooth as anywhere else](assets/gaussian_processes/loop.png)
+
+The box also measures the seam of one draw: its last point is exactly its first, and it turns
+less there than it does at its sharpest bend elsewhere. For an existing closed stroke,
+`stroke.gaussianProcess(...)` with the same periodic kernel does the same, since its parameter
+is normalised arc length.
 
 ### Tangents, frames and curvature
 
@@ -296,15 +434,41 @@ coordinate units per unit of parameter; `curve.velocities(ts)` is the joint over
 direction in radians. Use it to orient strokes, glyphs or brushes along the curve, and to make
 them hesitate where the direction is uncertain.
 
-```diffstatic {data-lang=kotlin}
+Velocities can be pinned as well as positions. The curve below is pinned at two ends only, and
+told to leave its start going up and arrive at its end going down: a bulge the two positions
+alone could not ask for. A tick crosses the mean curve at each frame, wider where the tangent's
+direction is less certain:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/frames.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
-val frames = curve.frames(DoubleArray(40) { it / 39.0 })
-val ticks = frames.map { f ->
-    val w = 0.03 + 0.3 * f.tangentAngleStd.coerceAtMost(1.0)  // wider where the direction is uncertain
+// two loose pins, a pinned launch direction, and a free middle
+val arch = gpCurve(doubleArrayOf(0.0, 1.0), listOf(vec(0, 0, 0), vec(1, 0, 0)),
+    GpKernels.rbf(0.4), dimensions = 2, noiseStd = doubleArrayOf(0.02, 0.02),
+    velocities = listOf(0.0 to vec(0, 3, 0), 1.0 to vec(0, -3, 0)))
+val ts = DoubleArray(41) { it / 40.0 }
+
+fun plot(line: FLine) = line.transform { vec(it.x * 500, -it.y * 500, 0) }
+
+// a tick across the curve at every frame, longer where the tangent direction is uncertain
+val ticks = arch.frames(ts).map { f ->
+    val w = 0.02 + 0.2 * f.tangentAngleStd.coerceAtMost(1.0)
     val p = f.position; val n = f.normal!!
-    FLine().moveTo(p.x - n.x * w, p.y - n.y * w).lineTo(p.x + n.x * w, p.y + n.y * w)
+    plot(FLine().moveTo(p.x - n.x * w, p.y - n.y * w).lineTo(p.x + n.x * w, p.y + n.y * w)).apply {
+        color = vec(0.4, 0.85, 0.5, 0.9); thickness = 1.5
+    }
 }
+val draws = (0L..3L).map { seed ->
+    plot(arch.posterior(ts).sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.85); thickness = 1.2 }
+}
+val mean = plot(arch.posterior(ts).meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
+lines(draws + ticks + mean, w = 700.0, h = 420.0, fitToSize = true)
+
+val k = arch.curvature(ts)
+println("curvature at the top: of mean %.2f, of draws %.2f ± %.2f"
+    .format(k.ofMean[20], k.mean[20], k.std[20]))
 ```
+
+![An orange arch rising straight up from its left pin, over the top and straight down to its right pin, with faint blue draws around it; green ticks cross it at even steps, short at the ends where the direction is pinned and longest across the top](assets/gaussian_processes/frames.png)
 
 A planar normal is the tangent turned a quarter to the left. A spatial curve's normal is the
 Frenet normal, and is null where the mean curve is straight.
@@ -313,16 +477,6 @@ Frenet normal, and is null where the mean curve is straight.
 the mean curve (`ofMean`) and the mean and standard deviation of the curvature of the draws.
 These differ: a straight mean between two loose pins has zero curvature, while every draw from
 it bends. Planar curvature is signed, positive turning left.
-
-Velocities can be pinned too. This curve leaves its start going up and arrives at its end going
-down, a bulge the two positions alone could not ask for:
-
-```diffstatic {data-lang=kotlin}
-:::static
-val arch = gpCurve(doubleArrayOf(0.0, 1.0), listOf(vec(0, 0, 0), vec(1, 0, 0)),
-    GpKernels.rbf(0.4), dimensions = 2,
-    velocities = listOf(0.0 to vec(0, 3, 0), 1.0 to vec(0, -3, 0)))
-```
 
 `sampleLine(seed, spread)` scales a draw's departure from the mean: `0.0` is the mean line,
 `1.0` an honest sample, `2.0` the same variation exaggerated. The same seed keeps the same shape
@@ -347,12 +501,31 @@ val steepest = slopes.sampleFLine(grid, seed = 3)
 Slopes can also be **observations**. Pin a value and a slope and the function leaves that point
 in the direction you chose, with whatever uncertainty you give the slope:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/slopes.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
+val grid = DoubleArray(161) { -0.4 + 2.8 * it / 160 }
+fun plot(line: FLine) = line.transform { vec(it.x * 220, -it.y * 120, 0) }
+
+// the same two values, with and without a pinned launch slope at x = 0
+val free = gp1D(doubleArrayOf(0.0, 2.0), doubleArrayOf(0.0, 0.0), GpKernels.rbf(lengthScale = 0.6))
 val launched = gp1D(doubleArrayOf(0.0, 2.0), doubleArrayOf(0.0, 0.0),
     GpKernels.rbf(lengthScale = 0.6),
     slopes = listOf(GpDerivativeObservation.slope(0.0, value = 1.5, noiseStd = 0.1)))
+
+fun drawsOf(model: GaussianProcess, c: Vec4, offset: Double) =
+    model.posterior(grid).samples(4, seed = 7).map { ys ->
+        FLine().apply { grid.indices.forEach { if (it == 0) moveTo(grid[it], ys[it] + offset) else lineTo(grid[it], ys[it] + offset) } }
+            .let(::plot).apply { color = c; thickness = 1.5 }
+    }
+
+lines(drawsOf(free, vec(0.6, 0.6, 0.6, 0.7), 0.0) +
+      drawsOf(launched, vec(0.3, 0.65, 0.9, 0.9), -3.0), w = 700.0, h = 420.0, fitToSize = true)
+
+val slope = launched.derivative(0, 0.0)
+println("slope at 0: %.2f ± %.2f".format(slope.mean, slope.std))
 ```
+
+![Top: four grey draws pinned to zero at both ends, wandering either way between them. Below: four blue draws through the same two values that all leave the left pin climbing, rise to a hump, and come back down to the right pin](assets/gaussian_processes/slopes.png)
 
 In higher dimensions, `GpDerivativeObservation(point, axis, value, noiseStd)` measures one
 partial derivative, and `posterior(listOf(GpFunctional.value(...), GpFunctional.derivative(axis, ...)))`
@@ -407,17 +580,48 @@ alternative with a `converged` flag; it needs no Smile optimizer. Both propagate
 When one assumption matters most, such as a period, look at the evidence for each candidate
 instead of searching for a single best. `scanGpEvidence` fits once per candidate and returns
 their log evidence and the posterior weights over the candidates under a uniform prior on the
-grid. A broad set of weights is the honest answer when the data cannot decide:
+grid. A broad set of weights is the honest answer when the data cannot decide. Here nine noisy
+samples of something that repeats are scanned over two octaves of candidate periods:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/evidence.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
-val periods = DoubleArray(41) { 0.5 * 2.0.pow(it / 40.0) }   // one octave, log spaced
+// nine noisy samples of something that repeats roughly every 0.8
+val xs = DoubleArray(9) { 0.23 * it }
+val ys = DoubleArray(9) { sin(2 * PI * xs[it] / 0.8) + 0.1 * cos(7.0 * it) }
+
+val periods = DoubleArray(61) { 0.4 * 2.0.pow(2.0 * it / 60.0) }   // two octaves, log spaced
 val scan = scanGpEvidence(periods) { p ->
-    gp1D(xs, ys, GpKernels.periodic(period = p, lengthScale = 0.8), noiseStd = 0.05)
+    gp1D(xs, ys, GpKernels.periodic(period = p, lengthScale = 0.8), noiseStd = 0.1)
 }
-val likeliest = scan.best
 val weights = scan.posteriorWeights
+
+// posterior weight over the period; ticks mark 0.4, 0.8 and 1.6 on a log axis
+val bars = periods.indices.map { i ->
+    val x = ln(periods[i] / 0.4) * 400
+    FLine().moveTo(x, 0.0).lineTo(x, -300 * weights[i] / weights.max()).apply {
+        color = vec(0.3, 0.65, 0.9, 1); thickness = 4.0
+    }
+}
+val axis = FLine().moveTo(0.0, 4.0).lineTo(ln(4.0) * 400, 4.0).apply { color = vec(0.6, 0.6, 0.6, 1); thickness = 1.0 }
+val octaves = (0..2).map { o ->
+    FLine().moveTo(ln(2.0.pow(o)) * 400, 4.0).lineTo(ln(2.0.pow(o)) * 400, 14.0).apply { color = vec(0.6, 0.6, 0.6, 1) }
+}
+lines(bars + axis + octaves, w = 700.0, h = 260.0, fitToSize = true, channel = "period weights")
+println("likeliest period %.3f".format(scan.best))
+
+// keep that uncertainty: mix the candidates by their weights
+val mixed = gp1D(xs, ys, GpKernels.periodicMixture(periods, weights, lengthScale = 0.8), noiseStd = 0.1)
+val grid = DoubleArray(241) { -0.2 + 2.4 * it / 240 }
+val draws = mixed.posterior(grid).samples(4, seed = 5).map { ys ->
+    FLine().apply { grid.indices.forEach { if (it == 0) moveTo(grid[it] * 250, -ys[it] * 100) else lineTo(grid[it] * 250, -ys[it] * 100) } }
+        .apply { color = vec(0.3, 0.65, 0.9, 0.7); thickness = 1.5 }
+}
+val dots = FLine().apply { xs.indices.forEach { moveTo(xs[it] * 250, -ys[it] * 100) } }
+    .apply { stroked = false; pointed = true; pointSize = 3.0; color = vec(1, 1, 1, 1) }
+lines(draws + dots, w = 700.0, h = 260.0, fitToSize = true, channel = "draws from the mixture")
 ```
+
+![Top: blue bars of posterior weight over two octaves of period, a tall spike at 0.8 with a few smaller neighbours, and small bars near 0.57 and 1.6; ticks under the axis mark 0.4, 0.8 and 1.6. Below: four blue draws from the mixture kernel through nine white points, repeating roughly every 0.8](assets/gaussian_processes/evidence.png)
 
 To keep that uncertainty in the model rather than choosing, mix the candidates:
 `GpKernels.periodicMixture(periods, weights)` sums periodic kernels with the given weights, and
@@ -517,10 +721,9 @@ variance, including observation noise and any reported numerical jitter.
 See also [drawing with FLines](fline_examples.md#filters-and-gp),
 [functions and domains](functions_domains.md) and [statistics](statistics_examples.md).
 
-??? aside "Reproducing the numerical figures"
-    These are numerical plots of production Kotlin GP output, not Field UI captures.
-    `GaussianProcessFiguresTest` writes CSV data when `FIELD_GP_FIGURE_DATA` is set;
-    [the plotting script](https://github.com/OpenEndedGroup/Field4/blob/main/tools/gp/render_figures.py)
-    turns that data into these figures. It contains no separate GP implementation.
-    The source and verification details are in
-    [the implementation note](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GAUSSIAN_PROCESSES.md).
+??? aside "How these figures are made"
+    Every figure on this page is the docs runner's capture of the fence above it, run in Field.
+    The first version of the page (October 2026) carried matplotlib plots of CSV dumped by
+    `GaussianProcessFiguresTest`; they were replaced with these captures so that each snippet is
+    also checked to compile and run against the current `afield.math.gp`. Verification notes are
+    in [the implementation note](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GAUSSIAN_PROCESSES.md).

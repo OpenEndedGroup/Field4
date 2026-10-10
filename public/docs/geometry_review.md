@@ -91,6 +91,12 @@ If geometry changes during capture, the tool reports that change rather than pre
 picture as current. Replies and resolutions also require the latest note version, so a
 competing update is reported instead of overwritten.
 
+`InspectGeometryViewRequest` returns a picture, a compact part hierarchy and a complete `state`
+that can be restored later. Its `camera` and `target` arguments (three numbers each, in the
+viewer's Y-up coordinates) frame a detail. `stateJson` takes the complete state from an earlier
+inspection; a partial state is rejected. Set `includeMetadata=true` only when you need full source
+provenance and detailed tree records.
+
 ### Keep important parts legible
 
 AI4 can colour parts in the existing viewer without rebuilding their geometry. After
@@ -109,11 +115,10 @@ Kotlin code can use the returned view's `styleParts(revision, styles, replace)` 
 
 ### Let the agent point something out
 
-An agent can use the same annotation system to show you a problem it discovered. The
-report includes what it found, the consequence, and what feedback would help. **Error**
-means a reported failure; **Needs inspection** identifies a suspicion; **Decision needed**
-asks for a choice. These labels describe the finding. The build's own checks determine
-whether work can proceed.
+An agent can use the same notes to show you a problem it found. The report says what it
+found, what follows from it, and what feedback would help. **Error** means a reported failure,
+**Needs inspection** a suspicion, and **Decision needed** asks you to choose. The label only
+describes the finding; whether a build can go ahead is still decided by its own checks.
 
 The agent first inspects the geometry and selects a visible feature. It passes the complete
 returned state to `ReportGeometryFindingRequest`, along with the view and revision,
@@ -203,19 +208,13 @@ val review = geometryReviewSurface("plan", revision = designDigest)
 Use `outputBox` when the canvas is displayed by a different box in the same document.
 AI4's view listing reports that capture box and `ViewBoxOutputRequest` as the inspection tool.
 The existing read, reply and resolve tools work on these notes, including saved pictures.
-`InspectGeometryViewRequest` remains specific to Three.js scenes.
+`InspectGeometryViewRequest` works only on Three.js scenes.
 
-Inspection returns a picture, compact part hierarchy and a complete restorable `state`.
-Use its `camera` and `target` arguments (three numbers in the viewer's Y-up coordinates)
-to frame a detail. `stateJson` accepts the complete state from a previous inspection;
-a partial state is rejected. Set `includeMetadata=true` only when full source provenance
-and detailed tree records are needed. These operations leave your own camera untouched.
-
-Call `review.updateRevision(newDigest)` whenever the authored geometry changes. The canvas owns
-visible-surface hit testing and stable feature references. Pass its saved selection/view record to
-`review.receive(record)`; this uses the same revision checks, PNG validation, persistence and
-note history as the standard viewer. `receive(record, saveNote = false)` updates only the current
-selection. Writes dispatch to Field's owner thread. `reviews()` reads open notes;
+Call `review.updateRevision(newDigest)` whenever the authored geometry changes. Your canvas does
+its own hit testing and decides what a stable feature reference is. Pass its saved selection and
+view record to `review.receive(record)`, which checks the revision, validates the pictures and
+stores the note just as the standard viewer does. `receive(record, saveNote = false)` updates only
+the current selection. `reviews()` reads open notes;
 `updateNote(request)` accepts the ordinary reply or resolve request with revision and version.
 
 A record contains `viewId` (the binding's `uid`), `artifactDigest`, `text`, `selection`, and `view`.
