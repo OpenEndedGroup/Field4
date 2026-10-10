@@ -65,9 +65,8 @@ val systems = listOf<Pair<String, DynamicGraphSystem>>(
         maxNeighborRadius = 0.09, minArea = 1e-4)
 )
 
-// The claim each panel makes, as numbers rather than as an impression: how many edges, what fraction
-// of them close a triangle, and -- because colour and thickness are on a FIXED scale -- how much of
-// the shared ceiling the system's weights actually reached.
+// For each panel: how many edges, what fraction of them close a triangle, and how much of the shared
+// weight ceiling the system's weights reached (colour and thickness are on one fixed scale).
 val panels = systems.map { (name, system) ->
     val (state, edges) = build(system)
     val adjacency = Array(state.pointCount) { HashSet<Int>() }
@@ -78,9 +77,8 @@ val panels = systems.map { (name, system) ->
     println("%-16s %4d edges  %5.1f%% in a triangle  mean degree %.2f  wmax %.4f (%.1f%% of ceiling)".format(
         name, edges.values().size, 100.0 * fraction, 2.0 * edges.values().size / state.pointCount,
         wmax, 100.0 * wmax / ceiling))
-    // dynamicGraphFLines, not dynamicGraphPanel: a still figure on this page is VECTOR -- one FLine
-    // per edge through showPlaneGrid -> drawToSVG. The raster is for the clips further down, where
-    // animateEvolution needs an Img. Weight drives colour AND stroke width, both against `ceiling`.
+    // One FLine per edge, drawn as vector graphics. Weight sets both colour and stroke width,
+    // against `ceiling`.
     "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
         dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma")
 }
@@ -126,62 +124,31 @@ points were laid out on.
 
 Decay is what makes these graphs remember. `decayExponential(dt, λ)` multiplies each weight by
 `e^(−λ dt)`, so the weight after a given time does not depend on how many frames it took.
-`decayLinear(dt, rate)` subtracts `rate × dt` instead. The example steps one edge under each law,
-prints the results next to the formulas, and plots both curves.
+`decayLinear(dt, rate)` subtracts `rate × dt` instead. The example steps one edge under each law
+and plots both curves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dynamic_graph_systems_examples/decay.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Both decay laws against their closed forms, and against each other.
-fun weightAfter(steps: Int, seconds: Float, exponential: Boolean): Double {
-    val edges = DynamicEdgeList(2)
-    edges.reinforce(0, 1, 1.0, ttl = 1000f, maxWeight = 1.0)
-    val dt = seconds / steps
-    repeat(steps) { if (exponential) edges.decayExponential(dt, 0.35) else edges.decayLinear(dt, 0.35) }
-    return edges.get(0, 1)?.weight ?: 0.0
+// One edge under each decay law, starting at weight 1, stepped at 60 frames a second for four seconds.
+val exponential = DynamicEdgeList(2)
+val linear = DynamicEdgeList(2)
+exponential.reinforce(0, 1, 1.0, ttl = 1000f, maxWeight = 1.0)
+linear.reinforce(0, 1, 1.0, ttl = 1000f, maxWeight = 1.0)
+
+val expo = mutableListOf<Double>()
+val lin = mutableListOf<Double>()
+repeat(240) {
+    expo += exponential.get(0, 1)?.weight ?: 0.0
+    lin += linear.get(0, 1)?.weight ?: 0.0
+    exponential.decayExponential(1f / 60f, 0.35)
+    linear.decayLinear(1f / 60f, 0.35)
 }
 
-println("exponential, 2 s at lambda = 0.35 -- closed form e^-0.7 = %.9f".format(Math.exp(-0.7)))
-for (n in listOf(1, 4, 120)) println("   in %3d steps: %.9f".format(n, weightAfter(n, 2f, true)))
-println("linear, 2 s at 0.35/s -- closed form 1 - 0.7 = 0.300000000")
-for (n in listOf(1, 4, 120)) println("   in %3d steps: %.9f".format(n, weightAfter(n, 2f, false)))
-
-// The half-life, which is the number you actually reach for when choosing lambda.
-val halfLife = Math.log(2.0) / 0.35
-val e = DynamicEdgeList(2)
-e.reinforce(0, 1, 1.0, ttl = 1000f, maxWeight = 1.0)
-e.decayExponential(halfLife.toFloat(), 0.35)
-println("ln2/lambda = %.4f s halves the weight: %.9f".format(halfLife, e.get(0, 1)!!.weight))
-
-// ttl is the OTHER way an edge dies, and it is independent of weight: this edge is at the ceiling
-// the whole time and still expires. Without it, an edge a saturating system keeps proposing would
-// be immortal.
-val heavy = DynamicEdgeList(2)
-heavy.reinforce(0, 1, 8.0, ttl = 0.5f, maxWeight = 8.0)
-repeat(4) { heavy.decayExponential(0.1f, 1e-9) }
-println("ttl 0.5 s, at t = 0.4 s: ${heavy.values().size} edge of weight ${heavy.get(0, 1)?.weight}")
-heavy.decayExponential(0.2f, 1e-9)
-println("            at t = 0.6 s: ${heavy.values().size} edges -- expired while still at the ceiling")
-
-:::fold draw the two curves, sampled from the real edge store rather than plotted from the formula
-// Sampled by actually stepping an edge store, not by evaluating the formula -- otherwise the picture
-// is a plot of the documentation rather than of the code.
-val samples = 240
-val expo = DoubleArray(samples)
-val lin = DoubleArray(samples)
-val a = DynamicEdgeList(2).also { it.reinforce(0, 1, 1.0, 1000f, 1.0) }
-val b = DynamicEdgeList(2).also { it.reinforce(0, 1, 1.0, 1000f, 1.0) }
-for (i in 0 until samples) {
-    expo[i] = a.get(0, 1)?.weight ?: 0.0
-    lin[i] = b.get(0, 1)?.weight ?: 0.0
-    a.decayExponential(1f / 60f, 0.35)
-    b.decayLinear(1f / 60f, 0.35)
-}
 showSignals(
-    "exponential, λ = 0.35" to expo.toList(),
-    "linear, 0.35 / s" to lin.toList(),
-    x = (0 until samples).map { it / 60.0 }
+    "exponential, λ = 0.35" to expo,
+    "linear, 0.35 / s" to lin,
+    x = List(240) { it / 60.0 },
 )
-:::endfold
 ```
 
 ![two decay curves over four seconds of simulated time: the exponential one falls smoothly and is still above 0.2 at the end, the linear one reaches zero at about 2.9 seconds and stays there](assets/dynamic_graph_systems_examples/decay.png)
@@ -199,46 +166,25 @@ joined must come within `rEnter`, but a pair already joined only has to stay wit
 formed while two points were close survives them drifting a little apart, so a cloud that jitters
 across the threshold does not make the graph flicker.
 
-The example walks two points apart, then runs a wobbling cloud twice: once with hysteresis, and once
-with `rExit == rEnter`, which switches it off.
+The example runs a wobbling cloud twice: once with hysteresis, and once with `rExit == rEnter`,
+which switches it off. A fold underneath does the same with two points walked apart.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dynamic_graph_systems_examples/hysteresis.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Two points, walked apart from 0.05 to 0.13 -- past rEnter (0.10), inside rExit (0.16).
-// The only difference between the arms is rExit.
-fun walk(rExit: Double): Pair<Boolean, Boolean> {
-    val state = DynamicPointState(mutableListOf(Vec3(0f, 0f, 0f), Vec3(0.05f, 0f, 0f)))
-    val edges = DynamicEdgeList(2)
-    val hash = Vec3SpatialHash(0.2)
-    val system = Vec3PersistentProximityHysteresisSystem(
-        rEnter = 0.10, rExit = rExit, ttl = 0.2f, reinforce = 4.0, maxWeight = 8.0)
-    repeat(30) { stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.2) }
-    val formedWhileClose = edges.get(0, 1) != null
-    state.points[1] = Vec3(0.13f, 0f, 0f)
-    repeat(60) { stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.2) }
-    return formedWhileClose to (edges.get(0, 1) != null)
-}
-
-println("rExit 0.16 (hysteresis):  formed at d=0.05 = %s, survives d=0.13 = %s".format(
-    walk(0.16).first, walk(0.16).second))
-println("rExit 0.10 (control arm): formed at d=0.05 = %s, survives d=0.13 = %s".format(
-    walk(0.10).first, walk(0.10).second))
-
-// What that buys on a real cloud: a 200-point disc, every point given a per-frame wobble of +-0.012
-// -- a fifth of rEnter, enough to cross the threshold and not enough to rearrange the neighbourhood.
-// Count how much WORK the graph does to stay where it is.
+// A 200-point disc, each point wobbling by up to 0.012 a frame: about a fifth of rEnter, enough to
+// cross the threshold without rearranging the neighbourhood.
 val n = 200
 val base = List(n) { i ->
     val a = i * 2.39996322972865332
     val r = 0.45 * Math.sqrt((i + 0.5) / n)
     Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
 }
-// One window, computed once from the cloud at rest, shared by both panels -- otherwise the sparser
-// arm is drawn at its own scale and the comparison says nothing.
+// Both panels share one window, computed from the cloud at rest, so they are drawn at the same scale.
 val window = dynamicGraphWindow(base, padFraction = 0.06)
 
 class Flicker(val appeared: Int, val vanished: Int, val standing: Int, val lines: List<FLine>)
 
+// Run the cloud for 150 frames and count the edges created and lost along the way.
 fun flicker(rExit: Double): Flicker {
     val state = DynamicPointState(base.map { Vec3(it) }.toMutableList())
     val edges = DynamicEdgeList(n)
@@ -264,20 +210,38 @@ fun flicker(rExit: Double): Flicker {
         dynamicGraphFLines(state.points, edges.values(), maxWeight = 3.0, colormap = "magma"))
 }
 
+// rExit == rEnter switches hysteresis off.
 val on = flicker(rExit = 0.075)
 val off = flicker(rExit = 0.055)
 println("hysteresis on:  ${on.appeared} edges created, ${on.vanished} lost, ${on.standing} standing after 150 frames")
 println("hysteresis off: ${off.appeared} edges created, ${off.vanished} lost, ${off.standing} standing after 150 frames")
-println("...so the memoryless arm creates %.2fx as many edges and loses %.1fx as many".format(
-    off.appeared.toDouble() / on.appeared, off.vanished.toDouble() / on.vanished))
-// The figure is not allowed to crop its own subject silently.
-println("points outside the shared window: ${dynamicGraphOutsideWindow(base, window)}")
 
 showPlaneGrid(
     "rExit 0.075: ${on.appeared} in, ${on.vanished} out" to on.lines,
     "rExit = rEnter: ${off.appeared} in, ${off.vanished} out" to off.lines,
     columns = 2, cellWidth = 460, cellHeight = 460, window = dynamicGraphPlaneWindow(window),
 )
+
+:::fold the same thing with two points: walk them apart, past rEnter but inside rExit
+// Two points walked apart from 0.05 to 0.13: past rEnter (0.10), inside rExit (0.16).
+fun walk(rExit: Double): Pair<Boolean, Boolean> {
+    val state = DynamicPointState(mutableListOf(Vec3(0f, 0f, 0f), Vec3(0.05f, 0f, 0f)))
+    val edges = DynamicEdgeList(2)
+    val hash = Vec3SpatialHash(0.2)
+    val system = Vec3PersistentProximityHysteresisSystem(
+        rEnter = 0.10, rExit = rExit, ttl = 0.2f, reinforce = 4.0, maxWeight = 8.0)
+    repeat(30) { stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.2) }
+    val formedWhileClose = edges.get(0, 1) != null
+    state.points[1] = Vec3(0.13f, 0f, 0f)
+    repeat(60) { stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.2) }
+    return formedWhileClose to (edges.get(0, 1) != null)
+}
+
+for (rExit in listOf(0.16, 0.10)) {
+    val (formed, survives) = walk(rExit)
+    println("rExit $rExit: formed at d=0.05 = $formed, survives d=0.13 = $survives")
+}
+:::endfold
 ```
 
 ![two proximity graphs over the same wobbling 200-point disc: the left, with hysteresis, is a full connected mesh; the right, with the hysteresis removed, is visibly sparser and more broken up](assets/dynamic_graph_systems_examples/hysteresis.png)
@@ -297,10 +261,10 @@ cloud that stays still, beside the same system with its clock held at zero.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/breathing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="300" w="1000" name="dgs-breathing-video" alt="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"}
 :::static
-// The cloud NEVER MOVES in this clip. Every edge that appears or disappears is the anisotropic
-// metric breathing -- an axis that rotates with the clock and a stretch along it between 0.25 and
-// 2.0. The right-hand panel is the control: the same k, the same cloud, the same code path, with the
-// clock HELD AT ZERO, so it is required to stand still.
+// The cloud does not move in this clip. Every edge that appears or disappears comes from the
+// anisotropic metric breathing: an axis that rotates with the clock and a stretch along it between
+// 0.25 and 2.0. The right-hand panel runs the same k, cloud and code with the clock held at zero, so
+// its graph stays still.
 val n = 260
 val cloud = List(n) { i ->
     val a = i * 2.39996322972865332
@@ -397,7 +361,7 @@ val seedRing = List(64) { i ->
     val a = 2.0 * Math.PI * i / 64
     Vec3((0.42 * Math.cos(a)).toFloat(), (0.42 * Math.sin(a)).toFloat(), 0f)
 }
-// A window sized for where the structure ENDS UP, not for the seed. Fitting to the seed would put
+// A window sized for where the structure ends up, not for the seed. Fitting to the seed would put
 // the whole clip against the frame edge; re-fitting per frame would make the growth invisible.
 val window = doubleArrayOf(-0.95, -0.95, 0.95, 0.95)
 val ceiling = 3.0
@@ -508,7 +472,7 @@ val background = disc(nBg, 0.50)
 val blobs = List(3) { disc(perCluster, 0.070) }
 val starts = listOf(Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f))
 val velocities = listOf(Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f))
-// group: -1 background, else which cluster. Used ONLY to check the answer, never to build the graph.
+// group: -1 background, else which cluster. Only used to check the answer, not to build the graph.
 val group = IntArray(n) { if (it < nBg) -1 else (it - nBg) / perCluster }
 
 val points = MutableList(n) { Vec3(0f, 0f, 0f) }
