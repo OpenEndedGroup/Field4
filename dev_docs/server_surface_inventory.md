@@ -112,6 +112,7 @@ mutation; it is a different one.
 | `GET /api/semantic-search/settings` | `Server.kt` | none |
 | `GET /api/semantic-search/status` | `Server.kt` | none |
 | `GET /api/source` | `Server.kt` | none |
+| `GET /api/terminal` | `terminal.kt` | loopback + same-site |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |

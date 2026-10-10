@@ -580,11 +580,33 @@ class BoxReferenceTests(unittest.TestCase):
             attach_existing=True,
         )
         with (
-            mock.patch("tools.field_backdoor.health_check", return_value=False),
+            mock.patch("tools.field_backdoor.health_check", return_value=False) as health,
+            mock.patch("tools.field_backdoor.port_accepts_connections", return_value=False),
             self.assertRaisesRegex(BackdoorError, "no Field server is listening"),
         ):
             asyncio.run(client.ensure_server())
         self.assertIsNone(client.managed_process)
+        # A closed port is reported at once: no slow retries.
+        self.assertEqual(health.call_count, 1)
+
+    def test_a_slow_health_answer_from_a_listening_port_is_a_busy_server(self) -> None:
+        """2026-10-10: a loaded host answered /health in more than 1.5 s, and attachments called it missing."""
+        client = FieldBackdoor(
+            port=9092,
+            workspace="/tmp/AFieldWorkspace",
+            default_timeout=0.01,
+            logger=_Logger(),
+            attach_existing=True,
+        )
+        instance = {"repoRoot": str(REPO_ROOT), "startedAtEpochMs": 1, "pid": 123, "workspace": "/tmp/AFieldWorkspace"}
+        with (
+            mock.patch("tools.field_backdoor.health_check", side_effect=[False, False, True]) as health,
+            mock.patch("tools.field_backdoor.port_accepts_connections", return_value=True),
+            mock.patch("tools.field_backdoor.field_instance_info", return_value=instance),
+        ):
+            asyncio.run(client.ensure_server())
+        self.assertTrue(client.reused_existing_server)
+        self.assertEqual([c.kwargs.get("timeout") for c in health.call_args_list[1:]], [10.0, 10.0])
 
     def test_unknown_scratch_box_explains_invocation_lifetime(self) -> None:
         with self.assertRaises(BackdoorError) as raised:

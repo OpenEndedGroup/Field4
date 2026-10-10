@@ -55,6 +55,13 @@ object DocumentToTranscript {
     /** Properties a `create` op carries as fields of its own, or that the graph rebuilds. */
     private val STRUCTURAL = setOf("name", "frame", "children", "parents", "_tombstone", "nested", "nestedIn")
 
+    /**
+     * Persisted keys that `@RunsAt(early)` installers add to [Box.ioPersistentProperties], which this
+     * standalone harness never runs. Without them a FieldML or KotlinJS root loses the marker that
+     * says what language its children are, and the transcript replays their source as Kotlin.
+     */
+    private val LANGUAGE_PROPERTIES = setOf("mainLanguage", "isFieldMLRoot", "isKotlinJsRoot")
+
     /** Root properties that are session state rather than part of the scene. */
     private val ROOT_SESSION_STATE = setOf("fileManagerAccessHistory")
 
@@ -243,7 +250,7 @@ object DocumentToTranscript {
 
     private fun carriedProperties(box: Box): List<Pair<String, Any?>> =
         box.properties.entries
-            .filter { (k, v) -> k in Box.ioPersistentProperties && k !in STRUCTURAL && !isEmpty(v) }
+            .filter { (k, v) -> (k in Box.ioPersistentProperties || k in LANGUAGE_PROPERTIES) && k !in STRUCTURAL && !isEmpty(v) }
             // An empty preamble is regenerated on open; the materializer strips it for the same reason.
             .filterNot { (k, v) -> k == "preamble" && v == "" }
             .sortedBy { it.key }

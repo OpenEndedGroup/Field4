@@ -256,9 +256,9 @@ A name the method does not have is an error where it is written. When two overlo
 
 Each of these documents demonstrates part of the page. Start with the macro demo: it needs no GPU and nothing wired up.
 
-`public/docs/assets/fieldml_macro_demo/metadata.edn` has four boxes: a `prop` written in one and inherited by another that draws a spiral from it, Field's own `println` macro expanded and called, and the generated Kotlin of `prop` and `sourceBlock` as readable text. Run the parameter box, run the drawing box, then change `swirl` or `turns` in the first and run both again.
+The [`fieldml_macro_demo`](agent_transcripts.md#fieldml_macro_demo) starting point has four boxes: a `prop` written in one and inherited by another that draws a spiral from it, Field's own `println` macro expanded and called, and the generated Kotlin of `prop` and `sourceBlock` as readable text. Run the parameter box, run the drawing box, then change `swirl` or `turns` in the first and run both again.
 
-[Open ↗](offline.html?file=assets/fieldml_macro_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_macro_demo/metadata.edn), or open the [`fieldml_macro_demo`](agent_transcripts.md#fieldml_macro_demo) starting point from the welcome screen.
 
 ![two captures of the same FieldML box side by side on black: on the left a wide four-turn cyan spiral filling the frame, on the right a tight nine-turn spiral about half the diameter](assets/fieldml_macro_demo/spiral-pair.png)
 
@@ -280,7 +280,7 @@ Each of these documents demonstrates part of the page. Start with the macro demo
 
 The host bridge demo has five boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, one that exercises overload resolution, varargs and `hostNull`, and one that calls Kotlin by name and leaves its defaults alone.
 
-[Open ↗](offline.html?file=assets/fieldml_host_bridge_demo/metadata.edn), or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_host_bridge_demo/metadata.edn), or open the [`fieldml_host_bridge_demo`](agent_transcripts.md#fieldml_host_bridge_demo) starting point from the welcome screen.
 
 Things to change:
 
@@ -301,11 +301,11 @@ Things to change:
 
 For a machine with a GPU, the next describes an `afield.four` scene from FieldML. One box finds the `Renderer` above it, builds a shader module from two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }`, attaches a three-vertex mesh, and registers it with the render target. Connect it to whichever box owns your renderer.
 
-[Open ↗](offline.html?file=assets/fieldml_afield_four_demo/metadata.edn), or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_afield_four_demo/metadata.edn), or open the [`fieldml_afield_four_demo`](agent_transcripts.md#fieldml_afield_four_demo) starting point from the welcome screen.
 
 The frames demo is the same scene with a `Frames` loop on it, the spinning triangle pictured above. Its first box is a small Kotlin box that opens the window and owns the `Renderer`, so there is nothing to wire up. Open it, run `window and renderer`, then run the FieldML box.
 
-[Open ↗](offline.html?file=assets/fieldml_frames_demo/metadata.edn), or open `public/docs/assets/fieldml_frames_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_frames_demo/metadata.edn), or open the [`fieldml_frames_demo`](agent_transcripts.md#fieldml_frames_demo) starting point from the welcome screen.
 
 | In | Change | What happens |
 | --- | --- | --- |
@@ -319,7 +319,7 @@ In the macro module demo, a macro builds the scene: instead of hand-writing `par
 
 Then run the fourth box while it is spinning. It writes `spinRate` with `setRootProp`, and the scene reads that slot on *every frame*, so another box changes the speed of the running scene.
 
-[Open ↗](offline.html?file=assets/fieldml_macro_module_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_module_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_macro_module_demo/metadata.edn), or open the [`fieldml_macro_module_demo`](agent_transcripts.md#fieldml_macro_module_demo) starting point from the welcome screen.
 
 <div class="field-data-table" markdown>
 
@@ -337,13 +337,13 @@ Its output record says what the macro did: `builtBy = "_moduleHere"` names the f
 
 The mesh demo has a vertex shader with real inputs, whose data FieldML recomputes every frame: two `layout(location = …) in` variables, both written through `Mesh.write`, one positionally and one by name, leaving out `Mesh.write`'s `inside` default. Like the frames demo, it opens its own window.
 
-[Open ↗](offline.html?file=assets/fieldml_mesh_demo/metadata.edn), or open `public/docs/assets/fieldml_mesh_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_mesh_demo/metadata.edn), or open the [`fieldml_mesh_demo`](agent_transcripts.md#fieldml_mesh_demo) starting point from the welcome screen.
 
 ![four captures of a native Vulkan window a second apart, each a ring of coloured triangles on black, the hues rotating between frames](assets/fieldml_mesh_demo/ring-frames.png)
 
 The lambda demo is about callback parameter types: a warp with no `hostAs` in it, a raster whose two callbacks have typed parameters, a box of inferred types, and a box showing where a parameter stays untyped.
 
-[Open ↗](offline.html?file=assets/fieldml_lambda_demo/metadata.edn), or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/fieldml_lambda_demo/metadata.edn), or open the [`fieldml_lambda_demo`](agent_transcripts.md#fieldml_lambda_demo) starting point from the welcome screen.
 
 <div class="field-data-table" markdown>
 

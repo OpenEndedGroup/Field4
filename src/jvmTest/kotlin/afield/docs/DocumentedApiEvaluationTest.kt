@@ -197,6 +197,11 @@ class DocumentedApiEvaluationTest {
         // afield.syphon (2026-10-03): needs macOS, a Vulkan renderer with VK_EXT_external_memory_host
         // and the optional native/field-syphon library. Verified live against an external Syphon
         // client (dev_docs/SYPHON_BRIDGE.md); SyphonTest covers the CPU paths.
+        // The fieldml_frames/mesh/macro_module_demo starting points (2026-10-10) are COMPILE_ONLY: they
+        // draw into a native window. Box.launchFrames hands its Frames to Field's Runloop, which no
+        // jvmTest or jvm-main smoke runs; FieldMLSuspendCallbackTest runs the same Frames bodies
+        // directly, and FieldMLSmokeExamplesTest checks the demos still call it.
+        "launchFrames" to "fieldml GPU demos; dispatches onto the Runloop, which no jvmTest or smoke runs; FieldMLSuspendCallbackTest runs the Frames bodies",
         "followOnGpu" to "macOS + Vulkan renderer + optional Syphon library; verified live, see dev_docs/SYPHON_BRIDGE.md",
         // Visible since the page census includes bare API names, not only call syntax (W1).
         // The 2026-09-24 NVIDIA/RTXDI landing. Every one of these needs hardware this repository's

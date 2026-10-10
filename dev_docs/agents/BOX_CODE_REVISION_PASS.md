@@ -23,6 +23,26 @@ checked and improved, and what an agent revising it is asked.
   clean and compile. Running the code, GPU work and docs captures stay with the smoke catalog
   and the docs runner (the nightly).
 
+## Imports
+
+A box is compiled with `intro` (`Boxes.kt`) prepended, so most imports agents write add nothing.
+`analyzeBoxImports` (`afield/internal/boxImports.kt`) says of each import whether it is redundant,
+unused, needed, or kept for want of evidence, and `formatBoxImports` removes the first two and sorts
+the rest; nothing adds an import. Format Kotlin in the editor does this before ktfmt, and the editor
+folds the remaining block (`importFolding.js`). For the corpus:
+
+- `./gradlew formatBoxCode --args="--imports [--k2] <files>"` applies it with the other formatting;
+- `./gradlew boxImportCensus --args="[--k2] [--out dir] [paths]"` changes nothing and reports every
+  import's verdict, the imports boxes keep that the intro lacks (by name and by package), and for a
+  package the class names that would clash with the intro and the boxes using them: the evidence for
+  growing the intro, which is Marc's call.
+
+`--k2` asks the code-use sidecar for resolution, which is the only evidence that can drop a star
+import; it resolves Field's sources but no libraries, so library-heavy boxes keep their stars.
+
+In the pass, imports are a deterministic step before ktfmt, compile-checked with everything else;
+the agents never edit them.
+
 ## What the revision pass asks (not yet built)
 
 The plan is a `code-review` note kind in `tools/docs_notes.py`. Notes come from the checker

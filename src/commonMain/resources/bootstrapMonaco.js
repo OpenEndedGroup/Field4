@@ -784,6 +784,7 @@ const initMonaco = () => {
         initMarkerSupport(globalEditor)
         window.LineHeatmap?.install?.(globalEditor)
         window.CommentBlocks?.install?.(globalEditor, monaco)
+        window.ImportFolding?.install?.(globalEditor, monaco)
 }
 
 const syncBoxRunningClass = (box) => {

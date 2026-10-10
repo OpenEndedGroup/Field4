@@ -124,6 +124,8 @@ class AgentDemoRegistrationTest {
             // session that night. That routing was declared at the time and it cost exactly what
             // was predicted: nothing under `artifacts/` is named by any registry, so for one day
             // the only evidence its four boxes ran was that a human had run them once, by hand.
+            // 2026-10-10: Gaussian processes to play with (closed loop, 1-D, 2-D); registered EXECUTE.
+            "gp_drawing",
             "gpu_probe_bench",
             "interaction_nets_lambda",
             "keyframe_key_discovery",
@@ -274,20 +276,11 @@ class AgentDemoRegistrationTest {
         "ai_tool_demo",
         "brief_house_demo",
         "canonical_graphics",
-        "fieldml_afield_four_demo",
-        "fieldml_frames_demo",
-        "fieldml_host_bridge_demo",
-        "fieldml_lambda_demo",
-        "fieldml_macro_demo",
-        "fieldml_macro_module_demo",
-        "fieldml_mesh_demo",
         "fline_examples",
         "nano_examples",
         "rectsl_gallery",
         "rtp_midi_demo",
         "stacksl_cpu_demo",
-        "stacksl_fit_demo",
-        "stacksl_gallery",
         "stacksl_surrogate_demo",
         "three_mesh_pick_demo",
         "three_output_gallery",

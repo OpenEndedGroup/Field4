@@ -1691,6 +1691,16 @@ outside the declared frame is not cropped, it shrinks everything else.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/chart_clip/metadata.edn)
 
+### gp_drawing
+
+**Drawing with Gaussian processes**, in three boxes to play with. A closed loop through six pins,
+whose mean and draws all close without a seam; drag a pin's control and it redraws. Four 1-D
+measurements with sliders for the length scale and for how noisy one of them is. A field over the
+plane: its mean, two whole-field draws and its standard deviation. See
+[Drawing with Gaussian processes](gaussian_processes.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gp_drawing/metadata.edn)
+
 ### chart_primitive
 
 **`Chart` — the FLine plot primitive**, in four boxes, one per thing the primitive is for: a chart in
@@ -1824,6 +1834,14 @@ whole derivative to whichever child is nearest, and it presents as a *converged*
 ![Seed, fitted and target solids side by side: a rounded capsule converges to the target ball and rod](assets/solid_notation/inverse.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/solidsl_inverse/metadata.edn)
+
+### stacksl_fit_demo
+
+The fitting demo from [StackSL examples](stacksl_examples.md): every literal in a StackSL program
+made addressable, gradient descent on those numbers, and the fitted program printed back as source
+you can paste into a shader.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
 
 ## Service-backed composition scenes
 
@@ -2221,6 +2239,65 @@ CI compiles the boxes; new inference requires that separate environment.
 ![Recorded particles with time, color and trail controls](assets/particle_video/field-view.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn)
+
+## FieldML scenes
+
+<!-- transcript-index: verified-by = compile -->
+
+The demos for [FieldML and the JVM](fieldml_host_bridge.md). Each is a FieldML root with FieldML
+boxes under it; the four that draw also have a Kotlin box that opens the window and renderer.
+
+### fieldml_macro_demo
+
+The first demo for [FieldML and the JVM](fieldml_host_bridge.md): a `prop` set in one FieldML box
+and inherited by another that draws a spiral from it, Field's `println` macro expanded and called,
+and the Kotlin that `prop` generates, shown as text. Run the parameter box, then the drawing box.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldml_macro_demo/metadata.edn)
+
+### fieldml_host_bridge_demo
+
+[FieldML and the JVM](fieldml_host_bridge.md) in five boxes: a FieldML function rasterised by
+Kotlin, a FieldML lambda passed to `FLine.transform`, host members with real types, overloads and
+varargs, and named arguments with Kotlin defaults.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldml_host_bridge_demo/metadata.edn)
+
+### fieldml_lambda_demo
+
+FieldML lambdas the JVM calls with no cast, from [FieldML and the JVM](fieldml_host_bridge.md):
+six typed callback parameters, what the type checker knows inside a lambda, and where it still
+knows nothing.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldml_lambda_demo/metadata.edn)
+
+### fieldml_afield_four_demo
+
+A whole afield.four scene described from FieldML, from [FieldML and the JVM](fieldml_host_bridge.md):
+a triangle on a real Vulkan device. Run the `window and renderer` box first, then the FieldML box.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldml_afield_four_demo/metadata.edn)
+
+### fieldml_frames_demo
+
+A FieldML triangle that spins, driven by `eachFrame`, from
+[FieldML and the JVM](fieldml_host_bridge.md). Run the `window and renderer` box first.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldml_frames_demo/metadata.edn)
+
+### fieldml_macro_module_demo
+
+A scene built by calling the `moduleHere` source macro from FieldML, with a live parameter beside
+it, from [FieldML and the JVM](fieldml_host_bridge.md). Run the renderer box first.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldml_macro_module_demo/metadata.edn)
+
+### fieldml_mesh_demo
+
+Sixteen triangles whose vertex data a FieldML box writes every frame, from
+[FieldML and the JVM](fieldml_host_bridge.md). Run the `window and renderer` box first.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldml_mesh_demo/metadata.edn)
 
 ## visionOS device scenes
 
@@ -3271,6 +3348,13 @@ image. CI compiles the graph; the backdoor replay is the live test, and needs
 `./gradlew buildSyphonNative`. An integration probe, not a starting point.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/syphon_zero_copy_receive_smoke/metadata.edn)
+
+### stacksl_gallery
+
+The gallery from [StackSL examples](stacksl_examples.md): one renderer box and a box per StackSL
+shader. Launch the renderer, then launch any example; each one replaces the last in the window.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacksl_gallery/metadata.edn)
 
 ## Graphics building blocks
 

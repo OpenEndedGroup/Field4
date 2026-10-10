@@ -1064,6 +1064,8 @@ kotlin {
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
+                // The pseudo-terminal behind /terminal.html (afield/server/terminal.kt).
+                implementation("org.jetbrains.pty4j:pty4j:0.14.0")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
                 val customKotlinVersion = "2.5.255-SNAPSHOT"
@@ -2135,6 +2137,17 @@ tasks.register<JavaExec>("formatBoxCode") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("boxImportCensus") {
+    group = "reporting"
+    description = "Reports what every published box's imports are for, and which packages could join the box intro; changes no box."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxImportCensus")
     workingDir = rootDir
     jvmArgs("-XX:+UnlockExperimentalVMOptions")
     jvmArgs(requiredRunJvmArgs())

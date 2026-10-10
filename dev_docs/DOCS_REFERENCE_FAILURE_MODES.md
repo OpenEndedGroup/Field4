@@ -169,11 +169,15 @@ on 17 of 513 tracked pages** and prints that on every run. It:
 - asserts its own premise: the prefix and `site_dir` still differ, and differ only in case;
 - treats the occurrence count as a **floor**, so a regex or scan root that stops matching fails
   rather than reading as a clean tree;
-- holds `CARRIER_PAGES` as a **bidirectional set-equality ledger**, so a removed carrier fails as
-  loudly as a new one. Page set, not per-page counts: adding a transcript to a page already on the
-  list is routine, a *new* page growing an offline link is the moment to check the shape.
+- measures the carrier-page set rather than holding one. Until 2026-10-10 a hand-kept
+  `CARRIER_PAGES` ledger was compared both ways "so a new carrier page is the moment to check the
+  shape" — but the shape and target checks above already run on every reference on every page,
+  so the ledger checked nothing extra and was forgotten six times in three weeks (red `main` or a
+  follow-up commit each time, last `e1e61977e` for `staged_projects.md`). It was retired; a
+  scratch-git-tree test (`FixtureTree`) pins that a new carrier page passes unregistered and that
+  a bad link on it still fails. `--summary` prints the measured set.
 
-14 unittests in `tools/test_check_doc_offline_links.py`.
+16 unittests in `tools/test_check_doc_offline_links.py`.
 
 ---
 
@@ -374,7 +378,7 @@ count, and a `displayed code masked:` line, so neither number can be quoted bare
 |---|---|
 | `tools/check_doc_site_links.py` | the built-site guard; `CODE_REGION`, the empty `KNOWN_UNRESOLVED`, the `build shape:` line |
 | `tools/test_check_doc_site_links.py` | 33 tests (was 25) |
-| `tools/check_doc_offline_links.py` | the offline-viewer link shape lint; `CARRIER_PAGES` |
+| `tools/check_doc_offline_links.py` | the offline-viewer link shape lint (carrier set measured, not listed) |
 | `tools/test_check_doc_offline_links.py` | 14 tests |
 | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt` | mode 1's origin |
 | `src/jvmMain/kotlin/afield/four/synth/PatCondense.kt` | the immune form: inline backticks |

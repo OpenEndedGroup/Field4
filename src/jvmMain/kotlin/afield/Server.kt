@@ -32,6 +32,8 @@ import afield.server.refuseUnlessSameSiteDocsClient
 import afield.server.installFieldAudioProxyRoutes
 import afield.server.installSignalViewerRoutes
 import afield.server.installDocsAnnotationRoutes
+import afield.server.installTerminalRoutes
+import afield.server.docsAccessPolicy
 import afield.server.SEC_FETCH_SITE_HEADER
 import afield.server.DocsAccessPolicy
 import afield.server.docsFlagEnabled
@@ -5025,6 +5027,10 @@ class Server {
                                 exitProcess(0)
                             }
                         }
+
+                        // /terminal.html's pty sessions (terminal.kt); here, beside the other WebSockets, because
+                        // the docs-route test apps install no WebSockets plugin.
+                        installTerminalRoutes(docsAccessPolicy)
 
                         webSocket("/welcome-events") {
                             welcomeEventSessions.add(this)

@@ -293,10 +293,31 @@ Order, one session for each or for two of them together:
    - the driver's rewind-and-resend for the round cap (2988e8fcf, 553ecf50e);
    - `capture_watchdog.sh` (02dc672e0);
    - the box-recreate step in `src/new_document.py` (08b5fe784).
+
+   **Done 2026-10-10.** The house and gallery hosts run 57c11d404, and the corpus host runs from the house host's
+   checkout. The re-pin changed only `SolidInspectionKt` (private kit 16da1210), and all three workarounds are
+   retired. Every live house was migrated and rebuilt without the model. -9, -11, -13 and -14 cut as before, and -10
+   holds as before. -8 lost its cut to an approved kit rule (socket faces from the rough path; 2 contacts left).
+   -12 is held by its own publication gate after the migration changed its providers. On the way, migration learned
+   to rebase what a house extended instead of refusing it (below). Two Field bugs were found:
+   - the backdoor's 1.5 s `/health` reads a busy host as gone; fixed in 3f23fd175;
+   - `StartStudyBuildRequest.request` (a `Map`) derives a schema openai-java rejects, so OpenAI turns that load the
+     builds tools fail before they run; a task is filed.
+
+   The private repo's log for the day is `docs/OVERNIGHT_2026-10-06.md`.
 2. **Kits and identity.** Replace `kit/manifest.json` and its scripts with `kit.json` and `tools/field_kit.py`. The
    scripts are `rehash_kit.py`, `stage_kit_manifest.py`, `migrate_document.py`, `activate_document.py`,
    `publish_kit_template.py` and `template_payload.py`. Replace `backend-identity.json` with `RuntimeIdentity`, and
    the `house.kit` tool with `InspectKitRequest` / `showKit()`. Every later migration rides on this step.
+   The core kit must keep what the private migration gained on 2026-10-10. Marc: "I don't mind agents extending their
+   own kit, I do mind not being able to pull other upgrades into agents that have extended their own kit."
+   - A file the document changed is rebased three ways: its recorded release's version, the document's, the new
+     release's.
+   - A conflict leaves a package for the document's agent to resolve, which the next migration installs.
+   - Provider copies follow their provider.
+   - A document's own provider boxes are relaunched after the kit's.
+
+   The private `src/migrate_document.py` and `src/activate_document.py` hold the working version.
 3. **StudyBuilds patterns:**
 
    | Private pattern | Core version |

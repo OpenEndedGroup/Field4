@@ -842,7 +842,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     if (current == null) {
                         unsupported++
                     } else {
-                        val next = formatCodeProperty(property, current)
+                        val next = if (property == "code") formatBoxKotlin(current) else formatCodeProperty(property, current)
                         if (next == null) {
                             unsupported++
                         } else {
@@ -865,7 +865,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 var formatted = 0
                 boxes.forEach {
                     it.code?.let { source ->
-                        it.code = formatKotlinCode(source)
+                        it.code = formatBoxKotlin(source)
                         formatted++
                     }
                 }
