@@ -990,6 +990,9 @@ internal class ToolRegistry {
     /** The names of the registered (non-dynamic) tools. */
     fun handlerNames(): Set<String> = handlers.keys.toSet()
 
+    /** The request class of every registered (non-dynamic) tool, by name, whatever its gate: what AgentToolSchemaTest checks. */
+    internal fun handlerClasses(): Map<String, Class<*>> = handlers.mapValues { it.value.cls }.toSortedMap()
+
     /**
      * The subset of [handlers] that arrived through [AgentToolExtensions] rather than from core.
      *

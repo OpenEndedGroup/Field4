@@ -74,10 +74,18 @@ class StudyBuildToolsTest {
 
             budget.set("30")
             val fingerprint = builds.stages().single().fingerprint!!
-            val asked = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0, request = mapOf("resume" to "job-1")))
+            val asked = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0, request = """{"resume": "job-1"}"""))
             assertTrue(asked.success, asked.message)
             val job = asked.details["job"] as Map<*, *>
             assertEquals(mapOf("resume" to "job-1"), job["request"])
+            // A JSON string carries JSON types, so a stage reading `request["budgetSeconds"] as? Number` sees one.
+            val numeric = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0, request = """{"budgetSeconds": 60}"""))
+            assertEquals(mapOf("budgetSeconds" to 60), (numeric.details["job"] as Map<*, *>)["request"])
+            for (bad in listOf("""["resume", "job-1"]""", "resume=job-1", "\"job-1\"")) {
+                val refused = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, request = bad))
+                assertFalse(refused.success, bad)
+                assertContains(refused.message, "request must be a JSON object")
+            }
             assertEquals(true, (asked.details["currency"] as Map<*, *>)["isCurrent"])
             assertEquals(false, job["fromEarlierInputs"])
             val plain = call(info, StartStudyBuildRequest(box.id, "study", "search", fingerprint, waitSeconds = 5.0))
