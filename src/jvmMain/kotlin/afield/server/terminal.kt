@@ -39,14 +39,16 @@ import kotlin.concurrent.thread
 
 // ─────────────────────────────────────────────────────────────────────────────
 // A real terminal in the browser: /terminal.html (xterm.js) over the /pty/<id> WebSocket, with a
-// pseudo-terminal (pty4j) on this side. Its first job is running an interactive `claude` for a
-// documentation revision pass, started from /docs-pass.html with one sentence of direction — so
-// the agent works through the pass and the human answers it in place, instead of `claude -p`.
+// pseudo-terminal (pty4j) on this side. Its first job is running an interactive `claude` on one
+// handoff batch of the documentation revision pass, started from that batch on /docs-pass.html
+// with one sentence of direction — so the agent works through the batch's handoffs and the human
+// answers it in place, instead of copying a command into a terminal of their own.
 //
 // This hands out a process on this machine, so the boundary is the revision pass's and nothing
 // looser: loopback and same-site, annotation hatches shut ([docsPassPolicy]), on the launch and
-// list routes and on the WebSocket upgrade. And the client never names a command: it picks one of
-// the [TerminalLaunch] kinds, and the server builds the argv. There is no "run this shell line".
+// list routes and on the WebSocket upgrade. And the client never names a command or a directory:
+// it picks one of the [TerminalLaunch] kinds, and the server builds the argv and finds the
+// directory. There is no "run this shell line".
 //
 // Protocol on /pty/<id>: server → client binary frames are terminal output (the scrollback first,
 // on every connect, so a reload re-attaches); a text frame `{"type":"exit","code":N}` ends it.
@@ -55,9 +57,14 @@ import kotlin.concurrent.thread
 // keeps running until it exits or is killed through POST /api/terminal/<id>/kill.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** What the page may start. [kind] is `claude` (plain, optional first message) or `docs-pass`. */
+/**
+ * What the page may start. [kind] is `claude` (in the checkout, [text] as an optional first
+ * message), `handoff-batch` (in [batch]'s open session worktree, [text] as the human's direction),
+ * or `land-watch` (`tools/land.py status --watch` in the checkout, for /land.html; [text] is ignored;
+ * plain glyphs, since xterm.js has no Nerd Font).
+ */
 @Serializable
-data class TerminalLaunch(val kind: String, val text: String = "", val cols: Int = 120, val rows: Int = 36)
+data class TerminalLaunch(val kind: String, val text: String = "", val batch: String = "", val cols: Int = 120, val rows: Int = 36)
 
 @Serializable
 data class TerminalInfo(
@@ -68,51 +75,59 @@ data class TerminalInfo(
     val startedAtEpochMs: Long,
     val running: Boolean,
     val exitCode: Int? = null,
+    /** The handoff batch a `handoff-batch` terminal works on, so the page can show it there. */
+    val batch: String = "",
 )
+
+/** What a launch runs, and where. */
+internal data class TerminalPlan(val argv: List<String>, val directory: Path, val title: String)
 
 private val terminalJson = Json { encodeDefaults = true; explicitNulls = true; ignoreUnknownKeys = true }
 
-/** The argv and directory for [launch], or a readable refusal. Pure, so the tests can pin it. */
-internal fun terminalCommand(launch: TerminalLaunch, checkout: Path, claude: String, docsNotes: List<String>): Result<List<String>> {
+/**
+ * The argv and directory for [launch], or a readable refusal. Pure, so the tests can pin it:
+ * [sessionWorktree] answers "where is this batch's open session", and nothing else is consulted.
+ */
+internal fun terminalPlan(launch: TerminalLaunch, checkout: Path, claude: String, uv: String = "uv", sessionWorktree: (String) -> Path?): Result<TerminalPlan> {
     val text = launch.text.trim()
     if (text.length > 4000 || text.any { it.code < 0x20 && it != '\n' && it != '\t' }) {
         return Result.failure(IllegalArgumentException("the text must be at most 4000 characters, without control characters"))
     }
     return when (launch.kind) {
-        "claude" -> Result.success(listOf(claude) + if (text.isEmpty()) emptyList() else listOf(text))
-        "docs-pass" -> {
-            if (text.isEmpty()) return Result.failure(IllegalArgumentException("say what the pass should do"))
-            Result.success(listOf(claude, docsPassBrief(text, docsNotes, checkout)))
+        "claude" -> Result.success(TerminalPlan(listOf(claude) + if (text.isEmpty()) emptyList() else listOf(text), checkout, "claude"))
+        "handoff-batch" -> {
+            if (launch.batch !in docsPassBatches) return Result.failure(IllegalArgumentException("unknown batch '${launch.batch}'"))
+            val worktree = sessionWorktree(launch.batch)
+                ?: return Result.failure(IllegalStateException("the ${launch.batch} batch has no open session; start one first"))
+            val title = "${launch.batch}" + if (text.isEmpty()) "" else ": ${text.take(60)}"
+            Result.success(TerminalPlan(listOf(claude, handoffBatchBrief(text)), worktree, title))
         }
+        "land-watch" -> Result.success(TerminalPlan(listOf("/usr/bin/env", "FIELD_LAND_PLAIN=1", uv, "run", "python", "tools/land.py", "status", "--watch"), checkout, "landing queue"))
         else -> Result.failure(IllegalArgumentException("unknown terminal kind '${launch.kind}'"))
     }
 }
 
-/** The first message for a `docs-pass` session: the human's sentence, and how a pass is run end to end. */
-internal fun docsPassBrief(direction: String, docsNotes: List<String>, checkout: Path): String {
-    val cli = docsNotes.joinToString(" ") { if (it.any { c -> c.isWhitespace() || c in "'\"$`\\" }) "'" + it.replace("'", "'\\''") + "'" else it }
+/** The first message for a `handoff-batch` terminal: the session brief, then the human's sentence. */
+internal fun handoffBatchBrief(direction: String): String {
+    val said = if (direction.isEmpty()) "" else "\n\nThe human's direction for this batch:\n\n> ${direction.replace("\n", "\n> ")}"
     return """
-        |Run a documentation revision pass from start to finish. The human's direction for this pass:
+        |Read HANDOFF_SESSION.md, then work through its handoffs in order.$said
         |
-        |> ${direction.replace("\n", "\n> ")}
-        |
-        |The pass is driven by `tools/docs_notes.py pass …` (read `public/docs/docs_notes.md` first). In
-        |this checkout ($checkout) the command is:
-        |
-        |    $cli pass <subcommand>
-        |
-        |Work through every stage: `pass status`; `pass create` if no pass is open; `pass revise` (narrow
-        |it with `--tag`/`--page` if the direction names pages or topics); read `pass diff` and
-        |`pass discard` any change that goes against the direction or AGENTS.md; `pass rebuild --mode
-        |incremental`; `pass commit`; `pass land`, then wait for the lander with the `tools/land.py
-        |wait <id>` it prints. Do not stop between stages to ask for confirmation: the human said what
-        |they want above, and is watching this terminal. Where the revision agents left questions or
-        |decision handoffs that the direction already answers, answer them (`reply`, `resolve`,
-        |`handoff-close`) and keep going. Stop only on a real failure — a build error, a capture showing
-        |Field's error marker, a lander bounce — or a decision the direction does not cover; then say
-        |exactly what it is.
+        |Do not stop between handoffs to ask for confirmation: the human is watching this terminal and
+        |has said what they want. Close each handoff as the brief describes when it is done, and land
+        |the branch through the queue as it says. Stop only on a real failure (a build error, a capture
+        |showing Field's error marker, a lander bounce) or a decision the direction does not cover, and
+        |then say exactly what it is.
     """.trimMargin()
 }
+
+/** The open session worktree for [batch], from the file `docs_notes.py handoff-session` writes. */
+internal fun handoffSessionWorktree(checkout: Path, batch: String): Path? = runCatching {
+    val sessions = Json.parseToJsonElement(Files.readString(checkout.resolve(".field-backdoor/docs-pass/sessions.json")))
+    (sessions as kotlinx.serialization.json.JsonArray).map { it.jsonObject }
+        .lastOrNull { it["batch"]?.jsonPrimitive?.content == batch }
+        ?.get("worktree")?.jsonPrimitive?.content?.let { Path.of(it) }
+}.getOrNull()?.takeIf { Files.isDirectory(it) }
 
 /** [name] on PATH or in the usual install places: a Field started from the Dock has a thin PATH. */
 internal fun terminalExecutable(name: String): String {
@@ -190,7 +205,9 @@ private object TerminalSessions {
 
     @Synchronized fun list() = sessions.values.map { it.snapshot() }
 
-    fun start(launch: TerminalLaunch, command: List<String>, directory: Path): Result<TerminalInfo> {
+    fun start(launch: TerminalLaunch, plan: TerminalPlan): Result<TerminalInfo> {
+        val command = plan.argv
+        val directory = plan.directory
         synchronized(this) {
             if (sessions.values.count { it.exitCode == null } >= MAX_RUNNING) {
                 return Result.failure(IllegalStateException("$MAX_RUNNING terminals are already running; close one first"))
@@ -208,8 +225,8 @@ private object TerminalSessions {
             return Result.failure(IllegalStateException("could not start ${command.first()}: $error"))
         }
         val id = UUID.randomUUID().toString()
-        val title = if (launch.kind == "docs-pass") "docs pass: ${launch.text.trim().take(60)}" else "claude"
-        val session = TerminalSession(TerminalInfo(id, launch.kind, title, directory.toString(), System.currentTimeMillis(), true), process)
+        val info = TerminalInfo(id, launch.kind, plan.title, directory.toString(), System.currentTimeMillis(), true, batch = launch.batch)
+        val session = TerminalSession(info, process)
         lprintln("server", "Terminal $id (${launch.kind}) in $directory: ${command.first()}")
         synchronized(this) {
             sessions[id] = session
@@ -268,10 +285,9 @@ internal fun Route.installTerminalRoutes(policy: DocsAccessPolicy) {
         val checkout = docsImprovementCheckout()
             ?: return@post call.respond(HttpStatusCode.ServiceUnavailable, "The checkout is not usable; set $DOCS_IMPROVEMENT_DIRECTORY_ENV.")
         val launch = call.receive<TerminalLaunch>()
-        val docsNotes = docsNotesPython() + listOf("tools/docs_notes.py", "--store", docsAnnotationStorePath().toString(), "--repo", checkout.toString())
-        val command = terminalCommand(launch, checkout, terminalExecutable("claude"), docsNotes)
+        val plan = terminalPlan(launch, checkout, terminalExecutable("claude"), terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
             .getOrElse { return@post call.respond(HttpStatusCode.BadRequest, it.message ?: "bad request") }
-        TerminalSessions.start(launch, command, checkout)
+        TerminalSessions.start(launch, plan)
             .onSuccess { call.respondTerminal(it) }
             .onFailure { call.respond(HttpStatusCode.Conflict, it.message ?: "could not start") }
     }

@@ -72,7 +72,8 @@ For each round the lander:
    [Building & Testing](building_and_testing.md#running-the-tests)), runs the guard once, and
    commits `Land <branch> (<who>)`;
 4. fast-forwards `main` to that commit, starting over if `main` moved in the meantime;
-5. on any failure, bounces the item with the reason and log path and leaves `main` alone.
+5. on a red guard, gives [the fixer](#the-fixer) one chance; otherwise bounces the item with the
+   reason and log path and leaves `main` alone.
 
 It takes up to eight of the oldest items per round, merges each as its own commit, and runs one
 regeneration and one guard for all of them. If the round fails, it splits the batch in half and
@@ -82,7 +83,37 @@ only with another branch in the same batch waits for a later round instead of bo
 The commit is fixed when you enqueue. Later commits on the branch are not landed until you
 enqueue again, and re-enqueueing keeps the branch's place in the queue.
 
-To fix a bounce, fix the branch, commit, and enqueue again. To bring `main` into your branch while
+## The fixer
+
+Most bounces are small: a count nobody updated, a citation pointing at a function that moved, a
+KDoc above the wrong declaration. Fixing one takes a minute, but the bounce costs much more: the
+agent that wrote the branch has to notice, fix, and enqueue again, and in a batch the lander first
+spends an hour halving its way down to the culprit.
+
+So when a round goes red, the lander hands the failure to `claude -p` before it bounces anything.
+The fixer works in the lander's own worktree, on the exact tree that failed, with the build still
+warm. It decides whether the failure is a mechanical slip that one branch plainly made. If it is,
+it makes the smallest edit that fixes it and re-runs just the check that failed. If the failure is
+about behaviour, timing, or design, it declines and says why, and that diagnosis goes into the
+bounce.
+
+An edit is only accepted if it stays small (at most 6 files and 60 lines), deletes nothing, does
+not switch a test off, and leaves alone what decides whether a change is acceptable: the registers
+of accepted test failures, the guard scripts, the git hooks, the Gradle build, and the lander
+itself. The lander, not the fixer, commits it, as a commit by `Field lander fixer` on top of the
+culprit's own commit, on a new branch `fixup/<branch>`. The culprit's branch is never moved, since
+it is usually checked out in someone's worktree. If the edit does not apply to that branch on its
+own, it was not that branch's slip alone, and the round falls back to bisecting.
+
+Then the whole round goes again with the full guard, which is what decides whether it lands. Each
+item gets one attempt. The `Land ...` commit on `main` records the fixup, and `mine` tells the
+branch's owner about it, with the command to take it: `git merge fixup/<branch>`.
+
+Every attempt, fixed, declined or rejected, is a line in `fixer.jsonl` in the queue directory, and
+the most recent ones go back into the fixer's prompt. `FIELD_LAND_FIXER=off` in the lander's
+environment turns the fixer off, and `FIELD_LAND_FIXER_MIN` changes its time limit.
+
+To fix a bounce yourself, fix the branch, commit, and enqueue again. To bring `main` into your branch while
 you work, use `tools/merge_regen.py main`, which regenerates generated files instead of making you
 hand-merge them.
 
