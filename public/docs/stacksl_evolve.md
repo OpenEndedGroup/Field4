@@ -2,7 +2,7 @@
 
 Give Field a small picture and it will search for a StackSL program that draws it. The search is genetic programming over the program's words: it mutates, recombines and keeps the programs whose renders look closest to the target, rendering every candidate on the CPU, with no window and no GPU. What you get back is a short StackSL program you can paste into a shader box.
 
-On its own the search finds programs that score better than random ones, and it rarely finds one that actually draws the target. With a language model proposing edits as it goes, it usually does: across twelve test targets it drew 23 of 29 runs almost exactly, where the search alone drew none. [The watchmaker](#the-watchmaker) below is how to switch that on and what it costs.
+On its own the search finds programs that score better than random ones, and it rarely finds one that actually draws the target. With a language model proposing edits as it goes, it usually does: on simple targets of flat shapes and a few colours it draws most of them almost exactly, where the search alone almost never does. [The watchmaker](#the-watchmaker) below is how to switch that on and what it costs.
 
 ## Evolve toward a target
 
@@ -93,11 +93,11 @@ Then comes a second look. The model is shown what each of its own programs draws
 
 ![the target checkerboard labelled T, then eight 64-pixel squares labelled P1 to P8 showing what the model's first eight programs drew: seven magenta and teal checkerboards, some in the target's phase and some with the colours swapped, and one plain magenta square, P5](assets/stacksl_evolve/watchmaker-drafts.png)
 
-It is the part that matters most. A model that knows exactly what it wants still writes StackSL that draws something else, and it only finds out by seeing the render. P5 above ends `2 mod 1 1 < mix`, which compares two constants, so its mask is the same everywhere and it draws one colour; the second pass replaced it, and put the checkerboards that had the colours the wrong way round into the target's phase. In earlier runs it was the whole first draft that came out blank: `2 mod 1 >` is never true. Both passes' programs are offered to the search, and the search's own mutation and crossover go on refining whatever does well. The two work on each other's programs. On the disc target the model drew the disc at radius 0.25, then 0.26, and the search's jitter of numbers found 0.28, the target's own. On the rings, the model's `p length 16 * floor 2 mod` was jittered to 12.59 by the search, and the model's next edit took it to 12.7. `evolution.improvements` lists every new best program with where it came from.
+This second look does more than anything else here. A model that knows exactly what it wants still writes StackSL that draws something else, and it only finds out by seeing the render. P5 above ends `2 mod 1 1 < mix`, which compares two constants, so its mask is the same everywhere and it draws one colour; the second pass replaced it, and put the checkerboards that had the colours the wrong way round into the target's phase. Both passes' programs are offered to the search, and the search's own mutation and crossover go on refining whatever does well. The two work on each other's programs. On the disc target the model drew the disc at radius 0.25, then 0.26, and the search's jitter of numbers found 0.28, the target's own. On the rings, the model's `p length 16 * floor 2 mod` was jittered to 12.59 by the search, and the model's next edit took it to 12.7. `evolution.improvements` lists every new best program with where it came from.
 
 ### How well it works
 
-Each search below had 1,200 renders on each of twelve targets, over two or three seeds. The five built-in targets are the ones the prompt was written against. The seven others (a triangle, diagonal stripes, two discs, a cross, a bullseye, a tilted edge and a sunset with a smooth sky) were written afterwards, and nothing was changed after running them. Resemblance is measured by layout agreement, a score no search optimises (see [below](#what-beating-the-control-means)): 1 is the target exactly, 0 is no better than chance.
+Each search below had 1,200 renders on each of twelve targets, over two or three seeds. The five built-in targets are the ones the prompt was written against. The seven others (a triangle, diagonal stripes, two discs, a cross, a bullseye, a tilted edge and a sunset with a smooth sky) were added later, to check that the prompt was not tuned to the first five. Resemblance is measured by layout agreement, a score no search optimises (see [below](#what-beating-the-control-means)): 1 is the target exactly, 0 is no better than chance.
 
 | search | built-in five: mean layout | runs above 0.9 | other seven: mean layout | runs above 0.9 |
 | --- | --- | --- | --- | --- |
@@ -134,11 +134,11 @@ p length 12.699 * floor 2 mod 1- white *                           # rings
 
 A run of `watchmaker()` at 1,200 renders took 10 to 13 model calls (two per round), about 110,000 to 140,000 input tokens of which about 80% were read from the provider's cache, and 7,000 to 9,000 output tokens. It took 100 to 130 seconds, against about 30 for the search alone. Most of each request is the same on every call (what the job is, the rules of a StackSL program, and the whole [words guide](stacksl_cheatsheet.md)), and only a few hundred words and one small picture change, which is why so much comes from the cache. `evolution.usage` adds it up as the search goes, and `summary()` prints it.
 
-### Where it goes wrong
+### What it gets wrong
 
 - **It miscounts.** Seen at 64 pixels, a 4×4 checkerboard is often drawn 5×4 or 6×4. The search's scores catch it, and the correct count usually arrives within a few rounds, but not always.
 - **Fine stripes alias.** A program can draw stripes that match the target at 32 pixels and turn to moiré at 128. Look at `contactSheet()` at a large size before trusting a result.
-- **A negative scores well.** LPIPS barely tells a picture from its negative, and a search scored by LPIPS alone once kept concentric rings in inverted colours as its best. `wide()` and `watchmaker()` finish with LPIPS plus pixel error for this reason.
+- **A negative scores well.** LPIPS barely tells a picture from its negative, so a search scored by LPIPS alone can keep concentric rings in inverted colours as its best. `wide()` and `watchmaker()` finish with LPIPS plus pixel error for this reason.
 
 ## A gradient step on a program's numbers
 
@@ -157,7 +157,7 @@ showImg(montage(listOf(
 ), columns = 3, cellSide = 170), caption = "the disc's radius, moved by gradient descent")
 ```
 
-`literals = listOf(4)` lets only the fifth word, `0.4`, move. Leave it out and every number in the program may. The gradient goes through the threshold's hard edge by smoothing it slightly while the descent runs, and through LPIPS, which Field also differentiates. It is LPIPS plus pixel error, not LPIPS alone: on its own, LPIPS's indifference to a picture's negative let a descent turn a striped program's colours the wrong way round.
+`literals = listOf(4)` lets only the fifth word, `0.4`, move. Leave it out and every number in the program may. The gradient goes through the threshold's hard edge by smoothing it slightly while the descent runs, and through LPIPS, which Field also differentiates. The fit scores LPIPS plus pixel error, because LPIPS alone would let a descent turn a striped program's colours the wrong way round.
 
 `StackSLEvolveSettings(fitEvery = 4)` takes a step on the leader every four generations. It is off by default because, measured, it did not improve the results: once the words are right, the search's own jitter of numbers gets there too. Use `fit` by hand when you have a program that is nearly right.
 
@@ -203,7 +203,7 @@ showImg(
 :::endfold
 ```
 
-At this seed and budget both searches found stripes. Pixel error's are vertical, too many and in the wrong colours; LPIPS's are diagonal. Neither is the target. One run on one target is an anecdote, which is why the comparisons on this page are across targets and seeds.
+At this seed and budget both searches found stripes. Pixel error's are vertical, too many and in the wrong colours; LPIPS's are diagonal. Neither is the target.
 
 What the two scores reward is different. Average pixel error is satisfied first by getting the target's overall colour balance right, and a search finds that long before it finds the layout: a program that draws mostly the background colour scores well against a target that is mostly background, whether or not the shape is there. LPIPS gives no credit for colour balance alone.
 
@@ -254,7 +254,7 @@ Without the watchmaker, these are the five built-in targets' best programs at 1,
 ??? aside "How the watchmaker's figures and numbers were made"
     The comparison table, the two results figures and the watchmaker's pictures come from `afield.examples.stacksl.StackSLWatchmakerTrial`, run with OpenAI's `gpt-6-luna` as the fast model on 2026-10-08, and are committed images rather than runner captures, because a capture would call a paid model on every docs build. The trial saves every round's prompt, both pictures and the raw replies beside its results. To run it again: `run-jvm-main afield.examples.stacksl.StackSLWatchmakerTrial --arg=--budget --arg 1200 --arg=--seeds --arg 1,2,3` through the backdoor (about two hours for all arms), and `--arg=--figure --arg <dir>/trial.json` to draw a figure from the results. The model is not deterministic, so a rerun gives other programs and numbers near these.
 
-    The first live round was told the target's name, `spot`, and drew a disc at once; the name is no longer sent. The one-pass rows were measured before the second look existed, and `wide()` ended in LPIPS alone until the inverted-rings result moved it to LPIPS plus pixel error. Over the 29 runs, that change left the mean layout where it was (0.90 against 0.91), and on the seven new targets it drew 10 of 14 runs above 0.9 where LPIPS alone drew 6.
+    The first live round was told the target's name, `spot`, and drew a disc at once; the name is no longer sent. The one-pass rows were measured before the second look existed, and `wide()` ended in LPIPS alone until the inverted-rings result moved it to LPIPS plus pixel error.
 
 ??? aside "How the score came to be LPIPS"
     The first version of this search (2026-09-06) scored by average pixel error and produced the dark streaks and gradients described above. A home-made structural score (multi-scale SSIM plus colour error) was tried next, on 2026-10-07: it produced a white disc for the disc target and bands for the bands target, but its winner for the rings target was fine stripes that only looked like rings at 32 pixels. It was replaced with LPIPS rather than tuned. LPIPS is a published, learned metric with a reference implementation that Field's export is checked against (`tools/export_lpips_onnx.py`; agreement 1.2×10⁻⁷). Its gradient, which the fit uses, is a second export checked against PyTorch's to about 10⁻⁶.
