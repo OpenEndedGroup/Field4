@@ -275,7 +275,10 @@ showStudyBuilds("reports")
 ```
 
 The card lives in this box's output. It shows progress, elapsed time, cancellation and selectable
-error text. Progress reflects the worker's completed work; it is not a time estimate.
+error text. Progress reflects the worker's completed work; it is not a time estimate. While a build
+is queued or running the card updates twice a second. Otherwise it updates as soon as any build of
+this runner, or of a runner it depends on, starts or ends, and within about five seconds of an edit
+to the design.
 An agent's [geometry findings](geometry_review.md#let-the-agent-point-something-out)
 join this card when their `runId` matches the build's job ID. Each link opens the
 existing review thread in its Field output, with evidence and replies. Open errors
@@ -351,7 +354,10 @@ individual attempt inspections retain them.
 An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
 It cannot become the current result. Changing a dependency result or `recipeVersion` also
 invalidates downstream results. Use `builds.currentFile(stage, path)` when a viewer or export
-needs a current result; it refuses stale, missing or changed artifacts.
+needs a current result; it refuses stale, missing or changed artifacts. A result file is checked
+against the SHA-256 recorded when it was built. Field reads the whole file again only when its size,
+timestamps or inode have changed since the last check, so a card over gigabytes of
+results costs almost nothing while it sits idle.
 
 Throw `StudyBuildFailure(StudyBuildProblem(...))` for an actionable failure with a code, message,
 suggestions and structured details.
