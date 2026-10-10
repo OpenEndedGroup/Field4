@@ -87,7 +87,9 @@ the wording above:
   value hashes that evidence. "Re-checks when it starts" is a re-evaluation against the current design when a queued
   attempt starts: a closed gate fails it with `gate-closed` before the recipe runs.
 - A request is folded into the attempt's `fingerprint`, but currency still compares the stage's design fingerprint
-  (`ranAgainst`), so a requested result is current. `StartStudyBuildRequest.request` has string values.
+  (`ranAgainst`), so a requested result is current. `StartStudyBuildRequest.request` is a JSON object in a string
+  (it was a `Map<String, String>` until 2026-10-10, which openai-java's strict schema validation refused, failing every
+  turn that loaded the builds tools; `AgentToolSchemaTest` now checks every tool's schema).
 - `resumeFrom(jobId, paths, sameDesign = true)` refuses an attempt that built other inputs, dependency results or
   recipe; that is the guard the house-machine-8 bug needed. Copies are hashed and recorded in `resumedFrom`.
 - Added `StudyBuilds.await(jobId)`, which the docs examples and a model-free corpus need to run stages in order.
