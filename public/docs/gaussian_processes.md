@@ -405,7 +405,7 @@ val ticks = arch.frames(ts).map { f ->
     }
 }
 val draws = (0L..3L).map { seed ->
-    plot(arch.posterior(ts).sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.5); thickness = 1.0 }
+    plot(arch.posterior(ts).sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.85); thickness = 1.2 }
 }
 val mean = plot(arch.posterior(ts).meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
 lines(draws + ticks + mean, w = 700.0, h = 420.0, fitToSize = true)
