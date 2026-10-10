@@ -43,14 +43,14 @@ import kotlin.test.assertTrue
  * and `f − r` preserves that — so `fieldNotes()` on the target comes back **empty**, and the residual
  * below is a fact about shape. That emptiness is asserted first, before anything else runs.
  *
- * # Why LBFGS is not the default here
+ * # Why this test runs Adam
  *
- * It is the default in [SolidFitOptions] and it is the wrong choice for this problem. A three-sphere
- * chain has a genuinely rough landscape — each sphere's derivative saturates when the blend clamp
- * does, so the loss is piecewise-smooth with the pieces meeting at the clamp boundaries — and a line
- * search across such a boundary keeps failing and reporting convergence. `OptimizeMethod.ADAM` walks
- * through it, which is what `SolidFitOptions.method`'s KDoc says it is for; this test is where that
- * sentence was learned.
+ * Not because LBFGS fails here. This header used to say it did — that a three-sphere chain's
+ * piecewise-smooth landscape made a line search keep failing — and that was measured while `adBox3`'s
+ * interior gradient was `NaN`. `SolidSLOptimizerComparisonTest` re-ran this problem with both
+ * methods from four starts: LBFGS reaches the same residual (`8.02%` of the target's rms here) in
+ * 16 to 19 iterations against Adam's ~370. The test keeps Adam so that the non-default method stays
+ * covered on a real problem.
  */
 class SolidSLApproximationTest {
 
