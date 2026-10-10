@@ -1,6 +1,6 @@
 # Gaussian process implementation and validation
 
-The public tutorial is `public/docs/gaussian_processes.md`, dedicated to David J. C. MacKay.
+The public tutorial is `public/docs/gaussian_processes.md`.
 
 ## Model and ownership
 
@@ -93,19 +93,23 @@ then near the `GpNumerics` tolerances and the pivoted sampler truncates it.
 Every tutorial snippet was run in a live Field (backdoor, port 9561, each with the snippets it
 depends on prepended) with no compile or runtime errors, without any `import`.
 
-The scientific figures are generated from production Kotlin output by GaussianProcessFiguresTest.
-The Python plotting script only renders those numerical results. They are not Field UI captures.
+## Figures and verification (2026-10-10)
 
-To regenerate the committed scientific figures:
+The page's figures were originally matplotlib plots (tools/gp/render_figures.py over CSV written by
+GaussianProcessFiguresTest), not Field captures, and every fence was `diffstatic` (never run by the
+docs runner). Since 2026-10-10 every figure on `public/docs/gaussian_processes.md` is a docs-runner
+capture of a `diffstatic_runner` fence written as box code (`lines(...)`, `showHeatmap(...)`), so
+the build both regenerates the figure and proves the snippet compiles and runs:
 
 ```bash
-FIELD_GP_FIGURE_DATA="$PWD/build/gp-figure-data" ./gradlew jvmTest --tests afield.math.gp.GaussianProcessFiguresTest --rerun-tasks
-python tools/gp/render_figures.py build/gp-figure-data public/docs/assets/gaussian_processes
+FIELD_DOCS_RUNNER_MODE=always uv run --project . --group docs python tools/build_zensical_docs.py --page gaussian_processes.md
 ```
 
-The renderer needs numpy and matplotlib. Inspect the output images at documentation column width.
-The explicit rerun matters: changing an environment variable alone need not invalidate Gradle's
-up-to-date test task.
+Figures: conditioning, kernels, field2d, field3d, curve, frames (velocity pins + tangentAngleStd
+ticks + curvature), slopes (slope observation), evidence (scanGpEvidence + periodicMixture draws).
+Box outputs are SVG (y down), so the snippets flip y with `FLine.transform` before `lines(...)`.
+The remaining static fences continue from the first fence's `gp`/`grid`/`xs`/`ys`.
+render_figures.py and the CSV hook in GaussianProcessFiguresTest no longer feed the page.
 
 ## Deliberate limits
 

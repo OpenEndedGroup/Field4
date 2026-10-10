@@ -5,7 +5,7 @@ do not edit here. Stack effects read `a b -- c`, top of stack on the right. Sear
 for a word rather than reading it all. Texture sampling (`sample`, `prev`, feedback) is left out:
 a study renders single-pass programs and refuses those words.
 
-## Mental model
+## How a program runs
 
 The smallest complete program is one word and a clamp:
 
@@ -274,7 +274,7 @@ palette
 
 ## Volumetric noise
 
-`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so a `vec4` carrying a position and a time is flattened into a plane, with z entering at a fourteenth of the weight of x. That is a shear, not a third dimension: on a volume seen down z it reads as one fixed pattern imprinted at every depth. These words read `input.xyz` (and `.xyzw`) properly.
+`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so z barely changes the result: a volume seen along z shows the same pattern at every depth. Use these words when you need noise in three or four dimensions; they read `input.xyz` (or all of `.xyzw`).
 
 | Word | Stack | What it does |
 | --- | --- | --- |
@@ -329,7 +329,7 @@ input 8 * [0,0,0.1,0.3] t * phnoise x 0.5 * 0.5 +
 | `ryb`, `ryb2rgb`, `from-ryb` | convert paint-like RYB color to RGB without clamping. |
 | `ryb.c`, `ryb2rgb.c`, `from-ryb.c` | clamped RYB-to-RGB conversion. |
 
-Good trick: do math in `rgb2oklab`, especially channel offsets and contrast, then return through `oklab`.
+Colour offsets and contrast changes look more even in OKLab: convert with `rgb2oklab`, do the math, then convert back with `oklab`.
 
 ## Definitions
 
