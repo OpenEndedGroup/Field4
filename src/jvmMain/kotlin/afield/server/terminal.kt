@@ -59,7 +59,9 @@ import kotlin.concurrent.thread
 
 /**
  * What the page may start. [kind] is `claude` (in the checkout, [text] as an optional first
- * message) or `handoff-batch` (in [batch]'s open session worktree, [text] as the human's direction).
+ * message), `handoff-batch` (in [batch]'s open session worktree, [text] as the human's direction),
+ * or `land-watch` (`tools/land.py status --watch` in the checkout, for /land.html; [text] is ignored;
+ * plain glyphs, since xterm.js has no Nerd Font).
  */
 @Serializable
 data class TerminalLaunch(val kind: String, val text: String = "", val batch: String = "", val cols: Int = 120, val rows: Int = 36)
@@ -86,7 +88,7 @@ private val terminalJson = Json { encodeDefaults = true; explicitNulls = true; i
  * The argv and directory for [launch], or a readable refusal. Pure, so the tests can pin it:
  * [sessionWorktree] answers "where is this batch's open session", and nothing else is consulted.
  */
-internal fun terminalPlan(launch: TerminalLaunch, checkout: Path, claude: String, sessionWorktree: (String) -> Path?): Result<TerminalPlan> {
+internal fun terminalPlan(launch: TerminalLaunch, checkout: Path, claude: String, uv: String = "uv", sessionWorktree: (String) -> Path?): Result<TerminalPlan> {
     val text = launch.text.trim()
     if (text.length > 4000 || text.any { it.code < 0x20 && it != '\n' && it != '\t' }) {
         return Result.failure(IllegalArgumentException("the text must be at most 4000 characters, without control characters"))
@@ -100,6 +102,7 @@ internal fun terminalPlan(launch: TerminalLaunch, checkout: Path, claude: String
             val title = "${launch.batch}" + if (text.isEmpty()) "" else ": ${text.take(60)}"
             Result.success(TerminalPlan(listOf(claude, handoffBatchBrief(text)), worktree, title))
         }
+        "land-watch" -> Result.success(TerminalPlan(listOf("/usr/bin/env", "FIELD_LAND_PLAIN=1", uv, "run", "python", "tools/land.py", "status", "--watch"), checkout, "landing queue"))
         else -> Result.failure(IllegalArgumentException("unknown terminal kind '${launch.kind}'"))
     }
 }
@@ -282,7 +285,7 @@ internal fun Route.installTerminalRoutes(policy: DocsAccessPolicy) {
         val checkout = docsImprovementCheckout()
             ?: return@post call.respond(HttpStatusCode.ServiceUnavailable, "The checkout is not usable; set $DOCS_IMPROVEMENT_DIRECTORY_ENV.")
         val launch = call.receive<TerminalLaunch>()
-        val plan = terminalPlan(launch, checkout, terminalExecutable("claude")) { handoffSessionWorktree(checkout, it) }
+        val plan = terminalPlan(launch, checkout, terminalExecutable("claude"), terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
             .getOrElse { return@post call.respond(HttpStatusCode.BadRequest, it.message ?: "bad request") }
         TerminalSessions.start(launch, plan)
             .onSuccess { call.respondTerminal(it) }
