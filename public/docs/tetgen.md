@@ -121,36 +121,33 @@ bores would not come through it round.
 `targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
 takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
 
-A coarse request gets you almost exactly what no request gets you, because **the input surface
-sets a floor that `targetEdgeLength` cannot lift**. TetGen conforms to the triangles it is given, and this bracket's
-618 triangles are already about 10 mm across; the quality refinement then subdivides from there. A
-coarse request is silently ignored, and there is no warning, so check `cellCount` rather than
-assuming the number you passed did something.
+The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
+this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that
+changes nothing and gives no warning. Check `cellCount` rather than assuming the size you passed
+took effect.
 
-Finer requests behave: cost grows roughly in proportion to the element count, about 11–14 µs per
-element, so a 36,000-element mesh takes about half a second. That is fast enough to re-mesh on every
-geometry edit, which is what `afield.tetgen` expects; nothing in it updates a mesh in place. The
-measured sweep is under [Measurements](#measurements).
+Finer requests work as expected. Cost grows roughly in proportion to the element count, about
+11–14 µs per element, so a 36,000-element mesh takes about half a second: fast enough to re-mesh on
+every geometry edit. `afield.tetgen` has no way to update a mesh in place, so re-meshing is how you
+follow an edit. The measured sweep is under [Measurements](#measurements).
 
 ## Into Kratos
 
-`structural.bodyFitted` is what this feeds. It runs a small-displacement element on the supplied mesh
-with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is the
-protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat `positions`/`cells`
-layout matches the wire format, so nothing is reshaped in between. The mesh
-picks the element: four nodes per cell gets `SmallDisplacementElement3D4N`, ten gets
-`SmallDisplacementElement3D10N`. There is no parameter, so there is nothing for the two ends to
-disagree about.
+A mesh from here goes to Kratos's `structural.bodyFitted` solve, which runs a small-displacement
+element on it with a clamp region, gravity and a total force spread over a load region. Open it with
+`KratosSession.openMeshAsync` from Kotlin (`createBodyMesh` in the protocol); `TetMesh`'s flat
+`positions`/`cells` arrays are sent as they are. The mesh decides the element type: four nodes per
+cell gives `SmallDisplacementElement3D4N`, ten gives `SmallDisplacementElement3D10N`.
 
-That matters, because the 4-node tetrahedron is a **constant-strain** element. Its four corners
-carry a linear displacement field, so strain is one value for the whole element and cannot vary
-inside it. Bending is precisely the case where strain has to vary across a section: tension on one
-face, compression on the other. An element that cannot represent that resists it instead. It
-**locks**, and is far too stiff, converging on the right answer from below and slowly.
+Use 10-node elements for anything that bends. The 4-node tetrahedron is a constant-strain element:
+its corners carry a linear displacement field, so strain has one value across the whole element.
+Bending needs strain to vary across a section, tension on one face and compression on the other, so
+4-node elements resist it and come out far too stiff (this is called locking). They approach the
+right answer from below, and slowly.
 
-Refining is not a way out of it. On a cantilever under self-weight, the 4-node element reaches 62% of
+Refining does not fix this. On a cantilever under self-weight, the 4-node element reaches 62% of
 the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-node element is within
-5% at *thirty*. So if you are bending anything, pass `order = 2` and mesh coarsely, rather than
+5% at thirty. If you are bending anything, pass `order = 2` and mesh coarsely, rather than
 passing `order = 1` and refining. `optional/kratos/VERIFICATION.md` has the per-mesh numbers, the
 axial-extension control, and why landing just under 100% is right.
 
@@ -295,7 +292,8 @@ shape for Delaunay refinement, so judge a mesh by its tail rather than by its me
 
 ### Input surfaces
 
-Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
+What `Tetgen.tetrahedralize` does with common malformed surfaces, next to a closed cube for
+comparison:
 
 <div class="field-data-table" markdown>
 
