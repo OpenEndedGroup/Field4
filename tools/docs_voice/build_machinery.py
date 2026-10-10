@@ -80,7 +80,7 @@ SUBJECT_PAGES = {
 }
 
 # A section a reader reaches by asking for it.  `## Which code on this page runs` carries
-# a pinned `{ #which-code-on-this-page-runs }` anchor on both pages that have it, so it is
+# a pinned `{ #which-code-on-this-page-runs }` anchor where it appears (onnx.md), so it is
 # a link target, not something a reader wades through -- the same argument as the
 # provenance table row and the collapsed aside.
 PROVENANCE_HEADINGS = re.compile(
