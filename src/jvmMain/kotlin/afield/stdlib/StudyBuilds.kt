@@ -6,15 +6,22 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import java.io.File
+import java.io.IOException
 import java.nio.channels.FileChannel
+import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.BasicFileAttributes
+import java.nio.file.attribute.FileTime
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
 
 /** A build's execution state. Currency against the design is reported separately by [StudyStageState]. */
@@ -199,6 +206,8 @@ class StudyBuildContext internal constructor(private val store: StudyBuilds, val
  * Reading [stages] recomputes currency, so later source edits invalidate downstream results even
  * without an explicit notification. A failed retry preserves a previous result if it still matches.
  * Result files and the manifest must remain together; missing or changed files invalidate currency.
+ * A result file is hashed again only when its size, modification or status-change time, or file
+ * identity has changed since it was last read, so reading [stages] of large results stays cheap.
  *
  * One instance owns a directory through an OS file lock. After a crash, queued/running records become
  * interrupted on reopen, with an explicit retry instruction. Reopening never resubmits side effects.
@@ -222,6 +231,18 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
     private val channel: FileChannel
     private val lock: java.nio.channels.FileLock
     @Volatile private var closed = false
+    @Volatile private var changes = REVISIONS.incrementAndGet()
+    private val knownHashes = ConcurrentHashMap<File, KnownHash>()
+
+    /** Whole-file hashes this runner has computed; tests count them. */
+    internal val fileHashes = AtomicLong()
+
+    /**
+     * How long after its last change a file's metadata is trusted to stand for its contents. A file
+     * rewritten within one tick of a coarse file-system clock keeps its times, so until then it is hashed
+     * on every read. Tests that inspect the cache set it to 0.
+     */
+    internal var hashSettleNanos = 2_000_000_000L
 
     private data class Manifest(val schema: Int = 1, val heads: Map<String, String> = emptyMap(), val records: List<StudyBuildRecord> = emptyList())
 
@@ -270,6 +291,20 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
     fun stages(): List<StudyStageState> {
         val snapshot = snapshot()
         return synchronized(monitor) { ensureOpen(); Evaluation(snapshot).all().values.toList() }
+    }
+
+    /**
+     * A value that changes whenever this runner records anything, or a runner it depends on through
+     * `dependsOn` does or is replaced. Cheap: it reads no inputs and no files. Design edits do not change it.
+     */
+    internal fun revision(): List<Long> {
+        val reading = READING.get()
+        if (!reading.add(this)) return emptyList()
+        try {
+            return listOf(changes) + crossDependencies.map { it.substringBefore('/') }.distinct().flatMap { runner ->
+                runCatching { upstream(runner)?.revision() }.getOrNull() ?: listOf(-1L)
+            }
+        } finally { reading.remove(this) }
     }
 
     /** A retained attempt, including obsolete, failed and interrupted attempts. */
@@ -386,8 +421,10 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
         val deleted = records.keys.filter { it !in kept }
         val freed = deleted.sumOf { directoryBytes(attemptDirectory(it)) } + unrecorded.sumOf(::directoryBytes)
         if (!dryRun) {
+            val gone = (deleted.map(::attemptDirectory) + unrecorded).map { it.canonicalFile.toPath() }
             deleted.forEach { records.remove(it); attemptDirectory(it).deleteRecursively() }
             unrecorded.forEach { it.deleteRecursively() }
+            knownHashes.keys.removeIf { file -> gone.any { file.toPath().startsWith(it) } }
             persist()
         }
         StudyBuildPruneReport(directory, records.keys.filter { it in kept }, deleted, freed, dryRun)
@@ -666,10 +703,40 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
     }
 
     internal fun verifiedFile(id: String, artifact: StudyBuildArtifact): File = artifactFile(id, artifact.path).also {
-        check(it.isFile && it.length() == artifact.bytes && hashFile(it) == artifact.sha256) { "Artifact '${artifact.path}' from build '$id' changed or is missing" }
+        check(it.isFile && it.length() == artifact.bytes && contentHash(it) == artifact.sha256) { "Artifact '${artifact.path}' from build '$id' changed or is missing" }
     }
 
-    private fun persist() = atomicWrite(File(directory, "builds.json"), mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(Manifest(heads = heads, records = records.values.toList())))
+    /** What cheap metadata says about a file: when any of it changes, its contents may have. */
+    private data class FileStamp(val bytes: Long, val modified: FileTime, val statusChanged: FileTime?, val key: Any?)
+
+    private class KnownHash(val stamp: FileStamp, val sha256: String)
+
+    private fun stamp(file: File): FileStamp? = try {
+        val path = file.toPath()
+        val basic = Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        if (!basic.isRegularFile) null
+        else FileStamp(basic.size(), basic.lastModifiedTime(),
+            if (UNIX_ATTRIBUTES) Files.getAttribute(path, "unix:ctime", LinkOption.NOFOLLOW_LINKS) as FileTime else null, basic.fileKey())
+    } catch (e: IOException) { null }
+
+    /**
+     * The SHA-256 of [file], from the last hash while its stamp is unchanged. A hash is remembered only
+     * when the file kept one stamp throughout the read and that stamp had settled ([hashSettleNanos]).
+     */
+    private fun contentHash(file: File): String {
+        val before = stamp(file)
+        knownHashes[file]?.let { if (it.stamp == before) return it.sha256 }
+        val sha = hashFile(file)
+        val newest = before?.let { maxOf(it.modified, it.statusChanged ?: it.modified).toInstant() }
+        val settled = newest != null && java.time.Duration.between(newest, Instant.now()).toNanos() >= hashSettleNanos
+        if (before != null && settled && stamp(file) == before) knownHashes[file] = KnownHash(before, sha) else knownHashes.remove(file)
+        return sha
+    }
+
+    private fun persist() {
+        atomicWrite(File(directory, "builds.json"), mapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(Manifest(heads = heads, records = records.values.toList())))
+        changes = REVISIONS.incrementAndGet()
+    }
     private fun ensureOpen() = check(!closed) { "Build runner is closed; run its source box to reopen it." }
 
     override fun close() = synchronized(monitor) {
@@ -694,6 +761,7 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
     }
 
     private fun hashFile(file: File): String {
+        fileHashes.incrementAndGet()
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input -> val bytes = ByteArray(65536); while (true) { val n = input.read(bytes); if (n < 0) break; digest.update(bytes, 0, n) } }
         return digest.digest().joinToString("") { "%02x".format(it) }
@@ -703,6 +771,9 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
         private val JOB_ID = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
         private val CROSS_DEPENDENCY = Regex("[a-zA-Z0-9_-]{1,80}/[a-zA-Z0-9_-]{1,80}")
         private val ACTIVE = setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING)
+        // Shared, so a replaced runner never repeats a revision its predecessor reported.
+        private val REVISIONS = AtomicLong()
+        private val UNIX_ATTRIBUTES = "unix" in FileSystems.getDefault().supportedFileAttributeViews()
         // The runners this thread is reading, so a dependency cycle across runners is refused instead of recursing.
         private val READING = ThreadLocal.withInitial { mutableSetOf<StudyBuilds>() }
         private fun now(): String = Instant.now().toString()
