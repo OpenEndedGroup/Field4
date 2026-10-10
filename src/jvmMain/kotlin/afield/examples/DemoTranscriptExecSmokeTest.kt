@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
+        "stacksl_fit_demo",
         "particle_video_reader",
         // The staged-project starting place: a level edited through guarded tools, three study-build
         // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
@@ -708,6 +710,19 @@ object DemoTranscriptExecSmokeTest {
         // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
         // holds the page's fences to the document.
         "sonicpi_pattern_demo",
+        // fieldml_host_bridge.md's demos. Their boxes are FieldML under a FieldML root, a guest
+        // language this harness cannot run (it does not install the @RunsAt language registry), so
+        // only the Kotlin window-and-renderer boxes of the GPU ones are compiled here;
+        // FieldMLSmokeExamplesTest and FieldMLSourceMacroTest run the FieldML documents themselves.
+        "fieldml_macro_demo",
+        "fieldml_host_bridge_demo",
+        "fieldml_lambda_demo",
+        "fieldml_afield_four_demo",
+        "fieldml_frames_demo",
+        "fieldml_macro_module_demo",
+        "fieldml_mesh_demo",
+        // stacksl_examples.md's gallery draws into a native window.
+        "stacksl_gallery",
     )
 
     /**

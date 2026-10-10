@@ -1297,8 +1297,8 @@ continuing inside the shape because the distance is signed.
 <img src="assets/rectsl/rectsl-sdf-contours.png" alt="iso-distance contour lines"
      style="width:100%;max-width:520px;border-radius:8px;">
 
-To put it on screen and moving, replay
-`dev_docs/agents/transcripts/rectsl_sdf_live.yaml` into a fresh document: two
+To put it on screen and moving, open the
+[`rectsl_sdf_live`](agent_transcripts.md#rectsl_sdf_live) starting point: two
 boxes, a Window + Renderer and one box that compiles a scene, emits the field,
 wraps it in a look, and draws it with a fullscreen triangle and a clock.
 
@@ -1306,11 +1306,15 @@ wraps it in a look, and draws it with a fullscreen triangle and a clock.
 
 The shape is exact and the arithmetic is not quite, in a way you can plan around.
 
-The emitted geometry is checked against the CPU sampler to `1e-9` across the whole
-gallery, and every gallery scene is compiled through shaderc as part of the build,
-so a shader that will not compile fails the build rather than the pipeline. On a
-GPU the sampler works in `double` and the shader in `float`, so expect the two to
-part company at about `1e-6` of a wall unit; the guard is `1e-5`.
+On a GPU the sampler works in `double` and the shader in `float`, so expect the
+two to part company at about `1e-6` of a wall unit.
+
+??? aside "What the build checks"
+    The emitted geometry is checked against the CPU sampler to `1e-9` across the
+    whole gallery, every gallery scene is compiled through shaderc as part of the
+    build, and the GPU agreement guard is `1e-5`. `dev_docs/RECTSL_SDF_AGREEMENT.md`
+    carries the probe-shader design, the per-class deviation figures, the
+    `->degrade` hash census, and which of all of it is asserted rather than printed.
 
 Almost nothing needs approximating, for the reason
 [above](#why-so-little-of-the-language-has-to-come-along): easings, time warps and
@@ -1335,6 +1339,3 @@ that report read aloud. Three classifications, and what each means for you:
 
 </div>
 
-`dev_docs/RECTSL_SDF_AGREEMENT.md` carries the probe-shader design, the per-class
-deviation figures, the `->degrade` hash census, and which of all of it is asserted
-rather than printed.
