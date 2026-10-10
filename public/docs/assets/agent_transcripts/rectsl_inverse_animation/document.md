@@ -11,21 +11,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_inverse_fit" index="0" -->
 
 ```edn [field-box id="rectsl_inverse_fit" role="properties"]
-{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 78 "characters" 2930 "sha256" "b7f138b37e00ddb7bfac88972013b09d84e670a34d3e3c41d97969e21ae7b892"}]}
+{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 67 "characters" 2481 "sha256" "c77c40d3a3cfbd87f4cb054f444af59d4d05daca5114046d8fb098799b93e115"}]}
 ```
 
 ```kotlin [field-property box="rectsl_inverse_fit" name="code" path="rectsl_inverse_fit_code_.kt"]
 import afield.rectsl.*
-import afield.stdlib.Functions
-import java.util.Base64
-
-// A clamped identity in time — RectSL's own spelling of "follow the clock".
-fun clock(d: Double): Track<Double> =
-    LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
 
 val duration = 4.0
 
-// amp * trig(rate*t + phase) + centre, with amp / phase / centre all unknown.
+// A clamped identity in time: RectSL's way of saying "follow the clock".
+fun clock(d: Double): Track<Double> =
+    LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
+
 fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
     BinaryDoubleTrack(
         BinaryDoubleTrack(
@@ -58,41 +55,33 @@ val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, 
 val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
 
 fun miss(x: Track<Double>, y: Track<Double>): Double =
-    waypoints.maxOf { kotlin.math.hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
-val seedMiss = miss(seedX, seedY)
-val fittedMiss = miss(fitX.fitted, fitY.fitted)
+    waypoints.maxOf { hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
 
-val png = RectSLFitFigure.render(
+display("figure", RectSLFitFigure.render(
     bands = listOf(
         RectSLFitFigure.Band(
             "target", constantTrack(0.0), constantTrack(0.0),
-            afield.Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
+            Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
         ),
         RectSLFitFigure.Band(
-            "seed", seedX, seedY, afield.Color4(1.0, 0.42, 0.28),
-            note = "worst miss %.2fm".format(seedMiss)
+            "seed", seedX, seedY, Color4(1.0, 0.42, 0.28),
+            note = "worst miss %.2fm".format(miss(seedX, seedY))
         ),
         RectSLFitFigure.Band(
-            "fitted", fitX.fitted, fitY.fitted, afield.Color4(0.29, 0.83, 0.7),
-            note = "worst miss %.1em".format(fittedMiss)
+            "fitted", fitX.fitted, fitY.fitted, Color4(0.29, 0.83, 0.7),
+            note = "worst miss %.1em".format(miss(fitX.fitted, fitY.fitted))
         )
     ),
     markers = waypoints,
     wall = WallSpec(18.0, 8.0, UnitKind.Meters),
     rectSize = Vec2d(1.5, 1.5),
     times = (0..32).map { it * duration / 32.0 }
-)
-display(
-    "figure",
-    "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
-        "style='width:100%;border-radius:5px;display:block'/>"
-)
+))
 
 """x: ${fitX.initialParameters} -> ${fitX.parameters}
 |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
 |y: ${fitY.initialParameters} -> ${fitY.parameters}
-|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}
-|worst waypoint miss: seed $seedMiss m -> fitted $fittedMiss m""".trimMargin()
+|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}""".trimMargin()
 ```
 
 ## 2. the free-param word
@@ -100,14 +89,14 @@ display(
 <!-- field-box id="rectsl_free_param_word" index="1" -->
 
 ```edn [field-box id="rectsl_free_param_word" role="properties"]
-{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 39 "characters" 1162 "sha256" "000161ee012e56783e649b062e78e3fd842eda53043d146a3e51a2ba33b1f918"}]}
+{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 60 "characters" 1982 "sha256" "972b88a35de26fd8a85cce35cf70e004045b94d190c956623a8cafcbc9add0ca"}]}
 ```
 
 ```kotlin [field-property box="rectsl_free_param_word" name="code" path="rectsl_free_param_word_code_.kt"]
 import afield.rectsl.*
 
-// `free-param` is the RectSL word for a number you would rather have solved for. Every
-// backend still reads it as the constant it presently is, so the scene plays as authored.
+// `free-param` marks a number to be solved for. Until it is, every backend reads it as the
+// constant it is now, so the scene plays as written.
 val program = RectAnimationOracle.compile(
     """
     #rectsl
@@ -124,24 +113,45 @@ val program = RectAnimationOracle.compile(
       0x44d4b4 solid ->fill
     ;
     """.trimIndent()
-).programOrNull!!
+).program
 
-val x = program.nodes.filterIsInstance<RectNode>().single().x
+val node = program.nodes.filterIsInstance<RectNode>().single()
+val x = node.x
 
-// The IR prints as its own algebra now, not as nested constructors.
-val before = x.describe()
+// Two waypoints and two unknowns. The sweep follows the clock, so -4 at t=1 and +4 at t=3 means
+// gain = 4 and bias = -8.
+val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
 
-// Two waypoints, two unknowns: solve exactly.
-val fit = x.fitParameters(
-    listOf(TrackFitTarget(1.0, -6.0), TrackFitTarget(3.0, 6.0)),
-    iterations = 1200
-)
+fun missOf(track: Track<Double>): Double =
+    targets.maxOf { abs(track.sample(it.time) - it.value) }
 
-"""IR before:  $before
-|free params: ${x.freeParameters()}
-|solved:      ${fit.parameters}
-|IR after:    ${fit.fitted.describe()}
-|residual:    ${fit.initialResidual} -> ${fit.finalResidual}
-|x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}""".trimMargin()
+display("before / after", RectSLFitFigure.render(
+    bands = listOf(
+        RectSLFitFigure.Band(
+            "authored", x, node.y, Color4(1.0, 0.42, 0.28),
+            note = "${x.freeParameters()} — worst miss %.2fm".format(missOf(x))
+        ),
+        RectSLFitFigure.Band(
+            "solved", fit.fitted, node.y, Color4(0.29, 0.83, 0.7),
+            note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted))
+        )
+    ),
+    markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
+    wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+    rectSize = Vec2d(1.4, 1.4),
+    times = (0..32).map { it * 4.0 / 32.0 }
+))
+
+markdown("fit", """
+    ~~~
+    IR before:   ${x.describe()}
+    free params: ${x.freeParameters()}
+    solved:      ${fit.parameters}
+    IR after:    ${fit.fitted.describe()}
+    residual:    ${fit.initialResidual} -> ${fit.finalResidual}
+    x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}
+    ~~~
+""".trimIndent())
 ```
 
