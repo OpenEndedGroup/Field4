@@ -4324,8 +4324,6 @@ here rather than in a `.py` on disk, where a fresh checkout could be missing it.
 
 `src/jvmMain/kotlin/afield/python/PythonInterface.kt` — [read the source](source/jvmMain/afield/python/PythonInterface/)
 
-**Used in:** [Python in a box](../python.md)
-
 ### Top-level functions { #pythoninterface-kt-functions }
 
 | Declaration | Summary |
