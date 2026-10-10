@@ -7,11 +7,9 @@ source change grounded in what they show.
 
 ## What is logged
 
-Each `OpenAiIdeCodexBridge.send(...)` call normally creates one JSONL file under
-`~/.afield/logs/ai4_tool_io/`. That bridge serves the OpenAI and OpenRouter
-providers only. `AnthropicBridge` builds no logger, so a session run under
-`AFIELD_AI_PROVIDER=anthropic` leaves nothing in this directory and nothing for
-the review runs below to read. Records include session metadata and the prompt,
+Each AI4 send normally creates one JSONL file under `~/.afield/logs/ai4_tool_io/`, whichever
+provider runs it: `OpenAiIdeCodexBridge` (OpenAI, OpenRouter) and `AnthropicBridge`
+(`AFIELD_AI_PROVIDER=anthropic`) both write it through the same `AiToolIoLogger`. Records include session metadata and the prompt,
 response shape, tool calls, tool results, tool exceptions, and tool-round
 limits. Large string fields are clipped rather than written without bound.
 
