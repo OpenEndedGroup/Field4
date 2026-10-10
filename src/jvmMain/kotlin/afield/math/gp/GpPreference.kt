@@ -79,6 +79,28 @@ class GpPreference(
     /** Posterior latent utility at [parameters] (Laplace approximation); the prior before any answer. */
     fun utility(parameters: Map<String, Double>): GpPrediction = utilityUnit(toUnit(parameters))
 
+    /**
+     * Posterior of u([parameters]) − u([reference]). Because answers only constrain differences, this
+     * is the useful uncertainty to draw: it is zero at the reference and small wherever comparisons
+     * tie a point to it, whereas [utility]'s own variance keeps the unconstrained common offset.
+     */
+    fun utilityRelativeTo(reference: Map<String, Double>, parameters: Map<String, Double>): GpPrediction {
+        val a = toUnit(parameters); val b = toUnit(reference)
+        val pa = utilityUnit(a); val pb = utilityUnit(b)
+        val cov = covarianceUnit(a, b)
+        return GpPrediction(pa.mean - pb.mean, max(0.0, pa.variance + pb.variance - 2 * cov))
+    }
+
+    private fun covarianceUnit(a: DoubleArray, b: DoubleArray): Double {
+        val prior = kernel.covariance(a, b)
+        val f = laplace() ?: return prior
+        val ka = DoubleArray(points.size) { kernel.covariance(points[it], a) }
+        val kb = DoubleArray(points.size) { kernel.covariance(points[it], b) }
+        var reduce = 0.0
+        for (i in ka.indices) { var s = 0.0; for (j in kb.indices) s += f.m[i][j] * kb[j]; reduce += ka[i] * s }
+        return prior - reduce
+    }
+
     /** The shown point with the largest posterior mean utility; null before any answer. */
     val best: Map<String, Double>?
         get() {

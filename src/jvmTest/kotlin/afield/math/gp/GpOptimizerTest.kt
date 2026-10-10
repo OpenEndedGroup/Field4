@@ -120,6 +120,17 @@ class GpPreferenceTest {
     }
 
     @Test
+    fun relativeUtilityIsCertainAtTheReferenceAndNarrowerThanAbsolute() {
+        val pref = GpPreference("x" to 0.0..1.0, seed = 4)
+        repeat(10) { val p = pref.nextPair(); pref.choose(p, aWins = -(p.first["x"]!! - 0.6).pow(2) > -(p.second["x"]!! - 0.6).pow(2)) }
+        val best = pref.best!!
+        val self = pref.utilityRelativeTo(best, best)
+        assertEquals(0.0, self.mean, 1e-12); assertEquals(0.0, self.variance, 1e-9)
+        val near = mapOf("x" to best["x"]!! + 0.05)
+        assertTrue(pref.utilityRelativeTo(best, near).variance < pref.utility(near).variance)
+    }
+
+    @Test
     fun contradictoryAnswersStayFinite() {
         val pref = GpPreference("x" to 0.0..1.0, noise = 0.01)
         val a = mapOf("x" to 0.3); val b = mapOf("x" to 0.7)
