@@ -4,8 +4,8 @@ RectSL is Field's rectangle scene language. It creates animated rectangle geomet
 
 Every section below carries a short snippet and a pointer into
 [RectSL examples](rectsl_examples.md), where the same words appear as complete, rendered
-clips. The snippets here are fragments — they assume a scene header and are compiled
-inside one — so when you want a program to copy and run, follow the pointer.
+clips. The snippets here are fragments that assume a scene header, so when you want a
+program to copy and run, follow the pointer.
 
 To write a scene with an assistant, and watch it play as you talk, see
 [Talking a scene into existence](rectsl_conversation.md): a RectSL box in Field plays in the window
@@ -81,10 +81,9 @@ active object. The arrow is part of the word, not optional punctuation.
 
 Every scene opens by saying how big the wall is, in what units, and how long the clip
 runs. Below: a wall 1600×900 *pixels* wide, cropped to fill whatever it is drawn into,
-on a near-black background, four seconds at thirty frames a second — then one gold
-200-pixel square in the middle of it. Change `pixels` to `meters` and nothing about the
-geometry changes; the unit is a statement about what the numbers mean, which the
-renderer and the `afield.four` lowering both read.
+on a near-black background, four seconds at thirty frames a second, then one gold
+200-pixel square in the middle of it. Changing `pixels` to `meters` leaves the geometry
+as it is; the unit tells the renderer and the `afield.four` lowering what the numbers mean.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -102,8 +101,8 @@ Worked: [Kaleidoscope](rectsl_examples.md#kaleidoscope) for `->background`,
 [Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `->fit stretch`.
 
 Every word here is **prefix**: it reads its arguments forward out of the source rather
-than off the stack, so there is nothing to push first. `->background` is the one
-hybrid — a colour *literal* after it is read forward, anything else comes off the stack.
+than off the stack, so there is nothing to push first. `->background` accepts both: a
+colour literal after it is read forward, and anything else comes off the stack.
 
 <div data-code-lang="rectsl" markdown>
 
@@ -124,11 +123,10 @@ hybrid — a colour *literal* after it is read forward, anything else comes off 
 ## Objects and groups
 
 A scene is a tree of named rects and groups, and the names are how you get back to
-anything after you have moved on. Below: a group `orbit` holding two squares — one
-authored, one a `clone` of it shifted along +x, both tagged `petal`. Then the whole
-group is deep-copied into a `twin` three units lower, and finally every `petal`
-anywhere in the scene (four of them now, two per copy) is gathered out of its
-existing parent into a new group `petals`.
+anything after you have moved on. Below, a group `orbit` holds two squares tagged
+`petal`: one authored, and a `clone` of it shifted along +x. The whole group is then
+deep-copied into a `twin` three units lower, and finally every `petal` in the scene,
+in both copies, is gathered out of its parent into a new group `petals`.
 
 `clone` copies the active object; `copy-deep` copies a group *and its descendants*, so
 the `twin` gets its own cells rather than sharing them.
@@ -171,15 +169,14 @@ tree and exercises `rect?`, `group?`, `id` and `copy-deep` in one scene.
 
 Three rects, three different ways of being animated. `mark` sets each channel by hand:
 it slides from x=-5 to x=+5 while turning a full revolution, at eight-tenths scale and
-seven-tenths opacity, on draw layer 2 and at the front of it — and it exists only
+seven-tenths opacity, on draw layer 2 and at the front of it, and it exists only
 between t=0.5 and t=3.5. Wherever a channel takes a number it also takes a quote, and
-the quote becomes a keyed track; that is the whole of how motion is written.
+the quote becomes a keyed track. Motion is written this way throughout RectSL.
 
-`dart` gives up authoring rotation at all: it travels a curve in x and y, and
-`->face-travel` reads its heading back out of those two tracks by finite difference, so
-an elongated rect reads as an arrowhead pointing where it is going. `bullet` authors
-*one* crossing and then `->live` fires 24 copies of it down 24 lanes, each starting
-0.18 s after the last and alive for 2.5 s — an emitter with no simulation in it.
+`dart` sets no rotation of its own: it travels a curve in x and y, and `->face-travel`
+turns it to face along that path, so an elongated rect points where it is going.
+`bullet` authors one crossing, and `->live` fires 24 copies of it down 24 lanes, each
+starting 0.18 s after the last and alive for 2.5 s.
 
 ```diffstatic {data-lang=rectsl}
 "mark" rect
@@ -238,15 +235,15 @@ for `->appear`/`->vanish`/`->live`.
 ## Paint and material
 
 A rect is filled in one of three ways, and all three are here. `panel` takes a flat
-mid-blue built channel-by-channel, and places itself in normalised wall space — dead
-centre, four-fifths of the wall wide and two-fifths tall — rather than in wall units.
+mid-blue built channel-by-channel, and places itself in normalised wall space rather
+than in wall units: dead centre, four-fifths of the wall wide and two-fifths tall.
 `chip` takes a gold-to-magenta ramp baked across its own width on the CPU, *and* a
 StackSL material `tint` on top of it, fed four numbers of its own through `->shader`
 that the shader body can read. `ghost` shows the shorthand: a colour with alpha in it,
 no track needed.
 
-The `material tint '( … )` body is StackSL, not RectSL — a fragment program, compiled
-and checked with the rest of Field's shader stack.
+The `material tint '( … )` body is a StackSL fragment program, compiled with the rest of
+Field's shaders.
 
 ```diffstatic {data-lang=rectsl}
 material tint '(
@@ -272,8 +269,8 @@ Worked: [Paint & scene kit](rectsl_examples.md#paint-scene-kit) for `rgb`/`rgba`
 for a material on a whole selection.
 
 `rgb`, `rgba` and `material` are **prefix**: they read their arguments forward out of the
-source, not off the stack. So it is `rgb 0.9 0.4 0.2`, never `0.9 0.4 0.2 rgb` — and no
-expression can be spliced into those slots, only literals. Everything else in the table
+source, not off the stack. So it is `rgb 0.9 0.4 0.2`, never `0.9 0.4 0.2 rgb`, and
+those slots take only literals, not expressions. Everything else in the table
 is stack-based as written, `linear` included.
 
 <div data-code-lang="rectsl" markdown>
@@ -312,8 +309,7 @@ into an eased curve on the way in. Its scale gets a TCB curve slackened by `tcb!
 
 The last line is the other direction: `alpha-track` reads the opacity curve *back off*
 the rect, lifts every key by 0.1, clamps the result into `[0, 1]`, and assigns it again.
-Every animated channel can be read as well as written, which is what makes a track a
-value rather than a side effect.
+Every animated channel can be read as well as written.
 
 ```diffstatic {data-lang=rectsl}
 linear-track "rise" '( 0=-3  2=0  4=3 )
@@ -361,8 +357,8 @@ A track is a value, so it can be bent before it is assigned. All five rects belo
 the *same* three-key sweep from x=-8 to x=+8; only the time axis differs. `delayed`
 starts a second and a half late, `slower` spaces its keys 1.4× farther apart, `bounced`
 plays forward then backward over a two-second period, and `eased` shapes the
-interpolation with a Penner curve and then loops it. Stacked in rows, one motion falls
-into a round — which is the cheapest way to see what a retiming word actually did.
+interpolation with a Penner curve and then loops it. Stacked in rows, the one motion
+plays as a round, so you can see what each retiming word did.
 
 ```diffstatic {data-lang=rectsl}
 "plain"   rect  0  3 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) ->x ;
@@ -405,16 +401,16 @@ Worked: [Time canon](rectsl_examples.md#time-canon) for the retiming words side 
 ## Selection and transforms
 
 Build first, then sort the scene out by logic. `pip` is one spinning square tagged
-`spark`, reproduced nine times by `array` — each copy's opacity set from its centred
-fraction, so the row is brightest at the ends — and then spread 1.4 units apart by
+`spark`, reproduced nine times by `array` with each copy's opacity set from its centred
+fraction (so the row is brightest at the ends), and then spread 1.4 units apart by
 `->stagger`. The next four lines never name an individual rect again: a mirrored clone
 is folded across the axis x=3 and pushed to the front of its layer; every rect in the
 scene is dimmed a further 10%; every object *tagged* `spark` is scaled up; and the
 original's whole timeline is made to loop every two seconds.
 
 A selection is a value like a track is: `all`, `rects`, `children` and `descendants`
-produce one, `filter` narrows it, and `each`/`map` run a quote against every member.
-Which is how an operation applies to nine copies you never gave names to.
+produce one, `filter` narrows it, and `each`/`map` run a quote against every member,
+so an operation can reach copies you never named.
 
 ```diffstatic {data-lang=rectsl}
 "pip" rect  0 0 ->xy  0.8 ->square  "spark" ->tag
@@ -465,10 +461,10 @@ for the `*-all-time` family and `->stagger`,
 
 ## Loops and blocks
 
-Three loops, three shapes of the same idea. `times` runs its body eight times with the
-index in `i`, so the first row is eight cells spread 2.2 units apart — and their opacity
-comes out of a *predicate* rather than a curve: cells 2 through 6 are dimmed, the rest
-bright, written with comparisons and `not`. `range` counts over an explicit interval.
+The scene below uses three loops. `times` runs its body eight times with the index in
+`i`, so the first row is eight cells spread 2.2 units apart. Their opacity comes from a
+test rather than a curve: cells 2 through 6 are dimmed and the rest bright, written with
+comparisons and `not`. `range` counts over an explicit interval.
 `repeat` does the same but reaches for `loop-count` to normalise its index into `[0, 1]`
 first, which is how a loop places things by fraction rather than by step.
 
@@ -511,10 +507,10 @@ Array primitives *reproduce a subexpression with modification*: the Fischinger i
 
 The first scene below is one tall thin rect reproduced eight times around a circle of
 radius 3, each copy turned by its own share of a full turn (`f0 tau *`) so the whole
-thing reads as a flower rather than eight rects that happen to be in a ring. The second
-builds a 5×3 grid and gives each cell an opacity from its own distance out from the
-centre — `colc`/`rowc` are the *centred* column and row, so the middle cell is 0 — which
-is the shortest way to a field that falls off from the middle.
+thing reads as a flower rather than eight rects in a ring. The second builds a 5×3 grid
+and gives each cell an opacity from its distance out from the centre, so the field
+fades towards the edges. `colc`/`rowc` are the centred column and row, which makes the
+middle cell 0.
 
 Neither loop names a copy. The body sees only its position in the array (`f0` here,
 `colc`/`rowc` there), and everything else follows from that.
@@ -567,11 +563,11 @@ and [Splitting](rectsl_examples.md#splitting-one-shell-becomes-a-spray) with its
 
 Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0, 1]` into a perceptually-uniform colour; a **`Data`** value is a plain numeric list you can normalize and bind to size/colour; the **chart words** fold both into ready-made bar charts, heatmaps, and scatter plots. All three emit ordinary rects: `each`, `->stagger-time`, `group` and tracks all still apply to the result.
 
-Five figures, each one line of real work. The first is a colormap made visible: 24 thin
-rects laid across the wall, each filled with `viridis` sampled at its own fraction. The
-second is a bar chart of eight literal numbers — and because `bars` hands back a
-*selection*, the next two lines fade the bars in and stagger that fade 0.08 s per bar, so
-a static chart becomes an animated one without touching the chart word. The third
+The scene below makes five figures, each in a line or two. The first shows a colormap:
+24 thin rects laid across the wall, each filled with `viridis` sampled at its own
+fraction. The second is a bar chart of eight literal numbers. Because `bars` returns a
+selection, the next two lines fade the bars in, 0.08 s apart, without changing the chart
+word. The third
 computes its own field (48 samples of a sine) and tiles it into an 8×6 heatmap; the
 fourth plots y against x; the last reads a list's min, max, length and one element
 without consuming it, then charts it anyway.
@@ -649,9 +645,9 @@ on its own — [Colormap legend](rectsl_examples.md#colormap-legend),
 
 The chart idioms above each normalize by their own extent and fill the wall. The **plotting layer** adds a *shared* coordinate frame so several series overlay in one domain, with axes, ticks, numeric labels, and legends. Set a `->domain` (or let the first series adopt its own extent) and optional `->frame`/`->margins`; then `axes`, the domain-aware series (`line`/`plot`, `area`, `points`), and `colorbar`/`legend` all map through it. `bars`, `heat` and `scatter` do not read that frame; they keep normalizing by their own extent, and the two sets of words sit side by side in one scene. RectSL has no text primitive, so tick and colorbar labels are numerals drawn as a 3×5 grid of rects: numbers only, no titles or series names.
 
-One figure, three series. The domain is stated once — x from 0 to 10, y from 0 to 1 — and
-margins are reserved around it, which is where the tick numerals go. `axes` draws the
-rules, nice-number ticks and gridlines *first*, so the data paints over them. Then the
+The next figure overlays three series. The domain is stated once (x from 0 to 10, y from
+0 to 1), with margins around it for the tick numerals. `axes` draws the rules, ticks at
+round numbers, and gridlines first, so the data paints over them. Then the
 same 40-sample sine appears as a filled area, a cosine as a polyline, and a coarser
 12-sample sine as points; all three land in the one coordinate system, so they can be
 compared rather than merely stacked. A continuous colour bar and a five-swatch key
@@ -694,17 +690,15 @@ which shows the same figure both with `->frame`/`->domain` and with the axes set
 
 </div>
 
-## Musicality — the pattern language as scene structure
+## Musicality: patterns as scene structure
 
-RectSL's array primitives distribute copies in *space*. The musical layer distributes them in
-*time*, by borrowing [Field's Tidal-inspired pattern language](pattern_language.md) whole. The two
-fit together because they are already the same shape. A RectSL track is `sample(t)`; a pattern is
-`events(arc)`. Both are pure functions of time, with no simulation state. So a pattern **is** a
-track, and a pattern event, which carries an onset and a real duration, **is** a `->live` window.
+RectSL's array primitives distribute copies in space. The musical layer distributes them in
+time, using [Field's Tidal-inspired pattern language](pattern_language.md). A pattern can be used
+anywhere a track can, and each pattern event, with its onset and duration, can become a `->live`
+window.
 
-Everything the mini-notation can say therefore arrives intact: polymeter `{a b c}%8`, Euclid
-`bd(3,8)`, per-cycle alternation `<a b>`, `?` degrade, `.` grouping, `@` elongation. RectSL does
-not parse any of it.
+All of the mini-notation works: polymeter `{a b c}%8`, Euclid
+`bd(3,8)`, per-cycle alternation `<a b>`, `?` degrade, `.` grouping, `@` elongation.
 
 ### Clock
 
@@ -714,8 +708,7 @@ it as a musician would. The two spellings of tempo commute: `->tempo` remembers 
 
 Below, no time in the program is written in seconds. `->tempo 120` with four beats to
 the cycle makes a bar two seconds long, and `->duration-cycles 4` makes the clip four
-bars — eight seconds, nowhere stated. The two rects then *compute* positions out of
-musical units: one beat is 0.5 s, two cycles is 4 s, `cycle-secs` is 2, and
+bars, or eight seconds. The two rects then compute positions from musical units: one beat is 0.5 s, two cycles is 4 s, `cycle-secs` is 2, and
 `scene-cycles` is 4. Change the tempo and every one of those numbers moves with it.
 
 ```diffstatic {data-lang=rectsl}
@@ -748,8 +741,8 @@ source. The four conversions are ordinary stack words.
 ### `pat`: one copy per event
 
 `pat` is `array` indexed by rhythm instead of by ordinal. `"bd*4"` is four events a bar,
-so over four bars the `kick` template below becomes sixteen copies — one per strike, each
-alive for exactly its own quarter-note and no longer. Its body is authored in *local*
+so over four bars the `kick` template below becomes sixteen copies, one per strike, each
+alive for its own quarter-note. Its body is authored in *local*
 time, where 0 is that copy's own birth: every strike drops from y=5.5 to 0 over 0.34 s
 and flashes up and out over half a second. `step` is the index within the bar, so the
 sixteen strikes also march across the wall and restart at each bar line.
@@ -817,8 +810,7 @@ name still errors rather than silently becoming zero.
 Seven rects, seven kinds of pattern, all of them assigned straight into `->x` with no
 conversion word. `smooth` takes a raw sine, scaled to span the wall, and a second copy of
 it into rotation. `stepped` is the *same* sine put through `segment 8`, which samples it
-eight times a bar — so it holds, then snaps, which is the quality that reads as musical
-rather than as easing. `steps` is a bare mini-notation string of numbers. `held` uses
+eight times a bar, so it holds and then jumps instead of easing. `steps` is a bare mini-notation string of numbers. `held` uses
 `hold-pat` so the rest in `"-6 ~ 6"` keeps the previous value instead of dropping to
 zero. The last three remap a triangle into `[-5, 5]`, round a saw onto a quarter grid,
 and centre seeded Perlin noise around zero.
@@ -862,14 +854,13 @@ against `euclid`.
 
 ### Pattern transforms
 
-Time transforms that work on rhythms and signals alike. Repetition is cheap; repetition
-that *differs* is what reads as alive, and these are the operators that make bar `n+1`
-unlike bar `n`.
+These time transforms work on rhythms and signals alike, and make one bar differ from
+the next.
 
-Six rows, all the same three-hit figure, each varied a different way. `plain` is the
+The scene below has six rows, all the same three-hit figure, each varied a different way. `plain` is the
 reference. `faster` doubles its speed but only on cycles 0, 3, 6…, so the row lurches
-once every three bars. `walking` rotates the bar a further quarter each cycle — the
-walking feel, with no quote needed. `echoed` superimposes a copy shifted an eighth of a
+once every three bars. `walking` rotates the bar a further quarter each cycle, with no
+quote needed. `echoed` superimposes a copy shifted an eighth of a
 cycle, with each of *its* events doubled. `swung` delays every second subdivision of an
 eighth-note grid in exact rational time, so the row is swung yet still quantised.
 `sometimes` squeezes a deterministic half of its events into the back of their own slots,
@@ -917,24 +908,20 @@ transforms not shown here.
 </div>
 
 The quote in `every`/`off`/`superimpose`/`inside`/`outside`/`sometimes-by` runs **once, at compile
-time**, against a pattern the implementation names. That is why Tidal's `chunk` is absent: it
-applies its transform to a different slice of the bar on every cycle, so there is no one pattern
-to hand the quote, and a pattern holding a live interpreter would be re-entered from the render
-loop. `iter` gives the same walking feel without a quote.
+time**. For that reason Tidal's `chunk`, which transforms a different slice of the bar on every
+cycle, is not available; `iter` gives a similar walking feel.
 
 ### Variation on a selection
 
 These apply the same ideas to scene objects rather than to rhythms, which makes them useful on
 material that has nothing to do with patterns.
 
-`flash` is the one a loop cannot do: a full-wall white rect at zero opacity, sitting
-behind everything, which comes up to 0.14 *only on every fourth bar*. Both versions of
-the track are kept and chosen between per sample, so any mutator can be made conditional
-this way. `twin` gets a mirrored, dimmer partner — left and right being the spatial
-reading of stereo pan. `echo` gets a copy of itself half a second late and fainter. `row`
-is eight copies whose entry times are staggered, with every odd one pushed a further
-0.6 of a step late — swing applied to space — and then a deterministic quarter of them
-dropped out, per object, per cycle.
+`flash` is a full-wall white rect at zero opacity, behind everything, which comes up to
+0.14 only on every fourth bar; any mutator can be made conditional this way. `twin` gets
+a mirrored, dimmer partner on the other side, the spatial version of stereo pan. `echo`
+gets a copy of itself half a second late and fainter. `row` is eight copies with
+staggered entry times, every odd one pushed a further 0.6 of a step late (swing), and a
+repeatable quarter of them dropped out per object, per cycle.
 
 ```diffstatic {data-lang=rectsl}
 ->tempo 90
@@ -976,10 +963,8 @@ for `->jux`, `->off`, `->stagger-swing` and `->degrade`.
 
 `strip` is `pat` spending the subdivision on *where* rather than on *when*: one cycle
 spans the wall, and each copy is centred on its event and as wide as the event is long.
-So `"bd [sd sd] hh*4"` comes out as a ruler — one wide mark, two half-width, four
-quarter-width — from the same string that `pat` would read as a rhythm. That is visual
-music read literally rather than metaphorically, and it is why mini-notation belongs on
-the geometry side at all.
+So `"bd [sd sd] hh*4"`, which `pat` would read as a rhythm, comes out as a ruler: one
+wide mark, two half-width, four quarter-width.
 
 The second rect lays sixteen equal slots across the wall and then lets the figure decide
 which stay lit. The off-steps are hidden rather than deleted; RectSL has no node removal.
@@ -1021,15 +1006,11 @@ Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afie
 Three arrays, three distributions. The first spreads nine copies evenly and eases their
 opacity across the array with an elastic overshoot, so the fade overshoots and settles
 rather than ramping. The second is spaced evenly too, but takes its opacity from a
-gaussian *sampled at the array fraction* — bright in the middle, dark at the edges — and
-its rotation from seeded value noise, which is scatter you get the same every run. The
+gaussian sampled at the array fraction (bright in the middle, dark at the edges), and
+its rotation from seeded value noise, which scatters the same way every run. The
 third shows the two curve combinators: `tile 3` repeats one bell into a comb of three
 identical bumps across sixteen copies, and `reflect` mirrors a noise curve about 0.5
 before it nudges each copy sideways.
-
-`f` is the array fraction, already in `[0, 1]`, which is exactly the domain these curves
-are defined over. That is the whole of the bridge.
-
 ```diffstatic {data-lang=rectsl}
 # alpha eased across the array with an elastic overshoot
 "c" rect  1 ->square
@@ -1089,19 +1070,19 @@ For anything the built-in words don't cover, `{{ … }}` drops into Kotlin (in a
 ;
 ```
 
-Cost: each unique escape is compiled to a lambda **once** (~76 ms of K2 compile, plus ~5 ms), then **invoked per use** as a plain JVM call. An escape inside an `array` body pays that compile once rather than per copy. It needs a live Kotlin engine. A Field box has one (or pass it via `compileRectSL(source, engine = …)`), so escapes work while live-editing. Inside a long-running graphics render the box's *own* engine is unusable: it is busy running the render behind a single-threaded REPL. The render harness therefore pre-warms every escape on a separate idle engine before the render starts (`prewarmRectSLEscapes` → `compileRectSL(…, precompiledEscapes = …)`) and then only invokes cached lambdas. Gallery `.rectsl` programs get a dedicated engine of their own and can carry escapes too: see the `inline-functions` example.
+Each distinct escape is compiled once, when the scene compiles, and then called like an ordinary function, so an escape inside an `array` body is not recompiled per copy. Escapes need a Kotlin engine: a Field box has one, so they work while live-editing (outside a box, pass one with `compileRectSL(source, engine = …)`). Graphics renders and gallery `.rectsl` programs can use escapes too; see the `inline-functions` example.
 
 ## Stack and scalar operators
 
 One `grid`, and every number in it computed rather than typed. Each cell knows its own
 centred column and row, so `colc dup * rowc dup * + sqrt` is its distance out from the
-middle — and from that one quantity the cell derives its opacity (a smoothstepped falloff,
-floored at 0.05 and clamped), its size (a power curve of the same distance, so cells
-shrink outward non-linearly), and its rotation (the two axes averaged, then quantised to
-quarter-turns of π, so the field reads as banded rather than smooth).
+middle. From that distance the cell derives its opacity (a smoothstepped falloff,
+floored at 0.05 and clamped), its size (a power curve, so cells shrink faster towards the
+edge), and its rotation (the two axes averaged, then rounded to quarter-turns of π, so
+the field falls into bands).
 
-`dup`, `over`, `swap` and `drop` are how a value gets used twice without being named.
-There are no variables here; the stack *is* the working set.
+There are no variables: `dup`, `over`, `swap` and `drop` let a value on the stack be used
+more than once.
 
 ```diffstatic {data-lang=rectsl}
 12 7 '(
@@ -1117,10 +1098,9 @@ There are no variables here; the stack *is* the working set.
 
 Worked: [Grid field](rectsl_examples.md#grid-field) is this scene animated, and
 [Selection & logic](rectsl_examples.md#selection-logic) covers the comparison and
-boolean words. The whole
+boolean words. The
 [operator-coverage set](rectsl_examples.md#operator-coverage-the-rest-of-the-language)
-is guaranteed to exercise every word in this cheatsheet at least once — a test fails
-if that stops being true.
+uses every word in this cheatsheet at least once.
 
 <div data-code-lang="rectsl" markdown>
 
@@ -1166,21 +1146,15 @@ sdf.notes                // fidelity caveats; empty means nothing was approximat
 
 ### Why so little of the language has to come along
 
-RectSL is a *staged* language, and that is what makes this small. The stack VM
-runs once, at compile time, and everything expressive about the language is
-spent there: `array`, `grid`, `radial`, `sunflower`, every selection word,
-`each` / `filter` / `map`, the chart and plotting layers, the `{{ … }}` Kotlin
-escapes. What survives into the `SceneProgram` is a flat list of rects whose
-channels are tracks, and *that* is what reaches the GPU. A hundred-copy
-`phyllotaxis` does not need a GPU implementation of `phyllotaxis`; by the time
-the emitter sees it, it is a hundred rects.
-
-So the answer to "how much of RectSL ports to GLSL" is: the part you never
-write by hand.
+The stack program runs once, when the scene compiles. `array`, `grid`, `radial`,
+`sunflower`, the selection words, `each` / `filter` / `map`, the chart and plotting
+layers and the `{{ … }}` Kotlin escapes all finish there, leaving a flat list of rects
+whose channels are tracks. Only that list reaches the GPU, so a hundred-copy
+`phyllotaxis` arrives as a hundred rects and every word in the language lowers.
 
 ### What comes out
 
-This scene —
+This scene
 
 ```diffstatic {data-lang=text}
 #rectsl
@@ -1195,7 +1169,7 @@ This scene —
 ;
 ```
 
-— lowers to three curve functions, one shape, and a union. The `->y` curve is
+lowers to three curve functions, one shape, and a union. The `->y` curve is
 shown; the `->x` and `->rot` curves are elided:
 
 ```diffstatic {data-lang=glsl}
@@ -1228,9 +1202,8 @@ float scene(vec2 p, float t) {
 }
 ```
 
-Nothing is sampled into a table. The TCB track came out as cubic Hermite spans
-with its tangents already solved on the CPU, which is why a curve that needs a
-tension/continuity/bias solver in Kotlin is four multiply-adds in the shader.
+Nothing is sampled into a table. The TCB track comes out as cubic Hermite spans
+with their tangents solved on the CPU, so each span costs the shader four multiply-adds.
 Easings are emitted as the Penner closed forms, time warps as arithmetic on `t`,
 and RectSL's guards travel with them: a `/` still returns `0` on a zero
 divisor, and `mod` still truncates where GLSL's `mod()` would floor.
@@ -1241,10 +1214,9 @@ copies of the curve.
 
 ### What survives the lowering
 
-It is shape, not picture. A RectSL scene is painter's-algorithm 2D (z-sorted
-rects composited with per-rect alpha, fill, and material), and a distance field
-is a set, where `min` is union and layering has no meaning. Fill, material, and
-draw order are dropped.
+Only the shape survives. A RectSL scene paints sorted rects over each other with
+per-rect alpha, fill and material, but a distance field only says where the shape is,
+so fill, material and draw order are dropped.
 
 Visibility is not dropped: a rect gated to zero by `->appear`, `->vanish`, or
 `->live` contributes no silhouette, exactly as it draws nothing on the CPU.
@@ -1273,8 +1245,7 @@ for (int i = 0; i < 8; ++i) {
 }
 ```
 
-Rects can also *combine*, which RectSL itself has no vocabulary for. This one
-is not a look: it changes the set, so it happens in the emitter. Pass
+Rects can also merge into each other, which RectSL itself cannot express. Pass
 `RectSLSdfOptions(blendRadius = k)` and the `min` inside the union tree becomes a
 polynomial smooth minimum, and the copies of an `array` fuse into one body as they
 pass each other. (Rects gated invisible are excluded from the blend; their `1e9`
@@ -1303,9 +1274,8 @@ from it, and `RectSLSdfLook.PRESETS` carries one worked example per capability:
 
 All eight are rendered on
 [the examples page](rectsl_examples.md#the-scene-as-a-distance-field-on-the-gpu),
-next to the raster-versus-SDF counterfactual and the resolution pair. Two of
-them sit together here, because a description does not convey the difference:
-the same scene under `min` and under `smin`:
+next to a raster-versus-SDF comparison and a resolution pair. Here are two of
+them, the same scene under `min` and under `smin`:
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">
 <figure style="margin:0;">
@@ -1321,9 +1291,8 @@ the same scene under `min` and under `smin`:
 </figure>
 </div>
 
-And the one that shows what the field is, rather than what it draws: iso-distance
-lines every 0.22 wall units, continuing inside the shape because the distance is
-signed.
+The `contours` look draws the field itself: iso-distance lines every 0.22 wall units,
+continuing inside the shape because the distance is signed.
 
 <img src="assets/rectsl/rectsl-sdf-contours.png" alt="iso-distance contour lines"
      style="width:100%;max-width:520px;border-radius:8px;">
