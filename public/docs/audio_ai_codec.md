@@ -1,4 +1,4 @@
-# EnCodec reconstruction microscope
+# EnCodec round trip
 
 *To run the examples on this page, open the [audio_ai_codec](agent_transcripts.md#audio_ai_codec) starting point.*
 

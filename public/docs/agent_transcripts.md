@@ -1884,8 +1884,6 @@ confidence, monophonic F0, voicing and polyphonic notes on synchronized timeline
 boxes are model-free and remain runnable without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 
-![The analysis board with a shared playhead across three cards: beats (onset strength, two local-tempo traces at 116 and 112 bpm, and their confidences), pitch mono (a pYIN F0 arc between C3 and C4 over a voiced-probability trace), and pitch poly (a Basic Pitch piano roll with its activation and active-pitch count), over a zoomable waveform of the model-free synchronized source](assets/audio_ai_analysis/synchronized_analysis.png)
-
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_analysis/metadata.edn)
 
 ### audio_ai_speech_embeddings
@@ -2051,7 +2049,7 @@ explains the 165-chunk album training set and the source-conditioned controls; b
 worker request and presents the durable candidate board with source, seed, model revisions, and
 checkpoint provenance. The optional authenticated GPU worker is compiled here and remains an explicit
 interactive action.
-Walkthrough: [Experiment in Terror with an Underfit LoRA](audio_ai_underfit_mancini.md),
+Walkthrough: [Generating with a LoRA](audio_ai_underfit_mancini.md),
 with the actual MJQ source excerpt, matched no-LoRA baseline and archived LoRA take.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_underfit_mancini/metadata.edn)

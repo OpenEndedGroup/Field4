@@ -110,5 +110,5 @@ at zero, so hovering, zooming, clicking and playback stay aligned between the tw
 card also lists the window's timestamps in its source and the ids of the windows before and after
 it. Placing a neighbour on a timeline is not supported.
 
-See also: the [EnCodec reconstruction microscope](audio_ai_codec.md) for the token representation,
+See also: the [EnCodec round trip](audio_ai_codec.md) for the token representation,
 and [Short-time spectral spaces](audio_ai_spectral_embeddings.md).

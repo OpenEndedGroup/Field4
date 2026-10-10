@@ -1300,10 +1300,8 @@ different operations in the same zoomable, pannable timeline:
 - monophonic pYIN pitch and voicing confidence;
 - Basic Pitch polyphonic note rectangles and activity summaries.
 
-![Three stacked analysis panels over a twelve-second timeline, above the source waveform and its transport: beats, with onset, local tempo and tempo confidence lanes; pitch mono, with a pYIN curve against a C3 to C4 grid and a voicing track; pitch poly, with a Basic Pitch piano roll over activation and active-pitch curves](assets/audio_ai_analysis/synchronized_analysis.png)
-
-That board is `analysisPreviewDashboardHtml(...)` drawing model-free previews; the code that
-produces it is on the [beat and pitch analysis walkthrough](audio_ai_analysis.md#the-views).
+The [beat and pitch analysis walkthrough](audio_ai_analysis.md#running-all-three-from-one-box) runs
+all three jobs on a recording and draws the board.
 
 ```diffstatic {data-lang=kotlin}
 val client = FieldAudioClient()

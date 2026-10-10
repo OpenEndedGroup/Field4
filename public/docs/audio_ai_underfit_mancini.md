@@ -1,4 +1,4 @@
-# Experiment in Terror with an Underfit LoRA
+# Generating with a LoRA
 
 *To run the examples on this page, open the [audio_ai_underfit_mancini](agent_transcripts.md#audio_ai_underfit_mancini) starting point.*
 
