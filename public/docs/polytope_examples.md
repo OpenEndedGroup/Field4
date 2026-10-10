@@ -26,6 +26,7 @@ val solid = if (run.converged) run.polyhedron else chain.polyhedron
 // from. Not by position, not by normal, not by size — `sourceElements` walks each output face's
 // lineage back through kis, through truncate, through ambo, to a single seed element. The
 // symmetry you can see is therefore a picture of the incidence structure, not of the geometry.
+:::fold colour each face by the seed pentagon its lineage flattens to, and draw
 fun hsv(hue: Double, s: Double, v: Double): Triple<Double, Double, Double> {
     val h = ((hue % 1.0) + 1.0) % 1.0
     val i = Math.floor(h * 6).toInt()
@@ -39,7 +40,6 @@ fun hsv(hue: Double, s: Double, v: Double): Triple<Double, Double, Double> {
     }
 }
 
-:::fold colour each face by the seed pentagon its lineage flattens to, and draw
 // Which of the dodecahedron's twelve pentagons does an output face descend from? Element ids are
 // allocated rank by rank, so "the lowest source id" would silently pick a vertex every time — ask
 // for the rank-2 sources specifically. A face over the interior of one pentagon has exactly one; a
@@ -465,8 +465,7 @@ directly, composites after primitives:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/operator_chaining.png" wait="2.0" capture="box" open-outputs="true" w="900" h="360" padding="14"}
 :::static
-// Each of these is a composite applied to the result of a primitive. Before the thirteen were
-// named on both receivers, none of them compiled.
+// Each of these is a composite applied to the result of a primitive.
 val chains = listOf(
     "cube().ambo().bevel()" to cube().ambo().bevel(),
     "cube().kis().needle()" to cube().kis().needle(),
@@ -1015,7 +1014,6 @@ threeGrid(
     view = MeshView(wireframe = false, distance = 3.2),
 )
 val dev = recovered.polyhedron.symmetryDeviation()
-// The three routes were prose pretending to be a table; they are a table.
 val spectralOnly = spectral.canonicalDiagnostics()
 val sci = { v: Any? -> "%.3e".format(v) }
 val routes = Table(listOf("route", "tangency spread", "dihedral mean (rad)"))
@@ -1099,9 +1097,7 @@ val counts = Table(listOf(
         listOf(name, s.vertices, s.edges, s.polygons, s.cells, s.eulerCharacteristic,
             s.cellPolygonCounts, manifold)
     })
-    // Both claims the paragraph under this figure makes, as expectations rather than as prose to
-    // check by eye. The manifold one asserts *false*: a 4-polytope is not a surface, so a validator
-    // answering true would be the bug.
+    // A 4-polytope is not a surface, so the manifold check should answer false.
     .expect("V-E+F-C", because = "the Euler relation for a convex 4-polytope") { it == 0 }
     .expect("closed 2-manifold?", because = "a 4-polytope is not a surface") { it == false }
 
@@ -1263,7 +1259,7 @@ val geometry = solid.triangulate()
 val rimTriangles = (0 until geometry.triangleCount).count { geometry.sourceFace(it) == windowed.id }
 val manifold = topology.validate(checkManifold = true)
 
-// Everything a holed face refuses, and the message it refuses with. Caught, not described.
+// Everything a holed face refuses, and the message it refuses with.
 val refusals = listOf<Pair<String, () -> Any>>(
     "topology.dual()" to { topology.dual() },
     "solid.bevel()" to { solid.bevel() },
