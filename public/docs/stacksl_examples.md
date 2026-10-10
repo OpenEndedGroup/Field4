@@ -983,9 +983,8 @@ Every discovered `stack.auto.*` name becomes an assignable property on the
 shader module. Assigning it compiles the StackSL first and only swaps the
 running shader if that succeeds, so a bad program leaves the previous one in
 place and you can type into a running window. The box's `code` builds the
-module from those two properties and binds the slot. `fromContext()` finds the
-renderer by walking up the box's parents, so the box has to be connected beneath
-the one that opened the window:
+module from those two properties and binds the slot. Connect the box beneath
+the renderer box that opened the window; `renderer` is then in scope:
 
 ```diffstatic {data-lang=kotlin}
 val module = moduleHere { }
@@ -1011,9 +1010,9 @@ The two stills below are what this box draws, cropped to a square; in a window
 the same picture is stretched to the window's shape.
 
 ??? aside "How this snippet was checked"
-    Nothing in the docs build runs this code, since the stills come from the
-    gallery harness. On 2026-09-27 it was run by hand in a scratch document
-    beneath a renderer box, and its window captures match the stills.
+    The stills come from the gallery harness. The docs build runs this code
+    beneath its renderer through `assets/transcripts/stackauto_numbers_setup.yaml`,
+    for the card and editor figures further down.
 
 Before, running `uv 4.0 * fbm palette saturate`:
 
@@ -1090,7 +1089,7 @@ From Kotlin, the block is an ordinary uniform of the module:
 ```diffstatic {data-lang=kotlin}
 module.program_numbers["program_wire_2"] = 9f   // taking hold of the block makes the slot live
 
-val scope = afield.stdlib.KeyframeScope()
+val scope = KeyframeScope()
 scope.stackAuto(module, "program")          // the slot's text, which recompiles when a key applies
 scope.stackAutoNumbers(module, "program")   // its numbers, as lanes program.k0, program.k1, …
 ```
