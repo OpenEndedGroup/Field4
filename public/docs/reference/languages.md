@@ -49,8 +49,6 @@ reader; `dev_docs/small_language_anatomy.md` is the map of the integration point
 
 `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt` — [read the source](source/jvmMain/afield/clojure/ClojureInterface/)
 
-**Used in:** [Clojure in a box](../clojure.md)
-
 ### Top-level functions { #clojureinterface-kt-functions }
 
 | Declaration | Summary |

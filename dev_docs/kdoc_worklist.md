@@ -30,7 +30,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Filters.kt](../src/jvmMain/kotlin/afield/four/synth/Filters.kt) | Synthesis | subharmonic_sound, agent_transcripts | 11 | 28 | 15% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 11 | 14 | 16% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |
-| [ClojureInterface.kt](../src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt) | Languages | clojure | 10 | 16 | 43% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/four/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [FunctionStudyTools.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudyTools.kt) | Function | function_conversation | 9 | 14 | 41% |
 | [NanoInterface.kt](../src/jvmMain/kotlin/afield/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
@@ -165,6 +164,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PythonInterface.kt](../src/jvmMain/kotlin/afield/python/PythonInterface.kt) | Languages | — | 13 | 27 | 4% |
 | [JoltPhysicsWorld.kt](../src/jvmMain/kotlin/afield/four/physics/JoltPhysicsWorld.kt) | Simulation | — | 11 | 70 | 30% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 11 | 9 | 27% |
+| [ClojureInterface.kt](../src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt) | Languages | — | 10 | 16 | 43% |
 | [AbletonSetDebugDrawing.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonSetDebugDrawing.kt) | Audio | — | 7 | 19 | 0% |
 | [Sampling.kt](../src/jvmMain/kotlin/afield/four/synth/Sampling.kt) | Synthesis | — | 6 | 39 | 38% |
 | [ArchitecturalGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt) | Solvers | — | 5 | 62 | 50% |
@@ -314,12 +314,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | Declaration | Kind | Where |
 | --- | --- | --- |
-| `StreamingWriter` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:67` |
-| `CompileError` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:98` |
-| `CompileOnlyResult` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:102` |
-| `EvalValue` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:107` |
-| `EvalResult` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:120` |
-| `ClojureExecution` | class | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:903` |
 | `FabricateRenderPlan` | class | `src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlan.kt:28` |
 | `FabricateRenderQueue` | class | `src/jvmMain/kotlin/afield/four/fabricated/FabricateRenderPlan.kt:39` |
 | `FabricateNode` | class | `src/jvmMain/kotlin/afield/four/fabricated/FabricateScene.kt:196` |
@@ -434,5 +428,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `CIf` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:71` |
 | `CorePattern` | interface | `src/jvmMain/kotlin/afield/ml/core/Core.kt:78` |
 | `CPWildcard` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:82` |
+| `CPVar` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:83` |
+| `CPInt` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:84` |
+| `CPBool` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:85` |
+| `CPString` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:86` |
+| `CPTuple` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:87` |
+| `CPList` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:88` |
 
 …and **696 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
