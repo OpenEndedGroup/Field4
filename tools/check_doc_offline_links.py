@@ -122,6 +122,11 @@ CARRIER_PAGES = {
     "public/docs/solid_notation.md",
     "public/docs/sound_paths.md",
     "public/docs/stacksl_examples.md",
+    # Added 2026-10-10: `b451515bc` landed the staged-project page with a starting-point link and
+    # left this ledger behind (red on `main`). Shape checked:
+    # `offline.html?file=assets/agent_transcripts/staged_project/metadata.edn`, no leading slash,
+    # target exists.
+    "public/docs/staged_projects.md",
     "public/docs/stipple_transport.md",
     "public/docs/streaming_diffusion.md",
     "public/docs/three_output.md",
