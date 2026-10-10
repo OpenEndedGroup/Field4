@@ -88,7 +88,7 @@ class SoundPathMapGuardTest {
      * Every path a `page` claims is a page that exists, and every path with no page is a real gap.
      *
      * The `null`s are the finding, so they are pinned: five of the nineteen paths have no published
-     * page, `audio-patch-seam` — the seam the whole realtime stack is built on — among them.
+     * page, `box-audio` — the seam the whole realtime stack is built on — among them.
      *
      * Five, not six, after `pat-spatial` arrived: it was declared and documented in the same change,
      * so this set is the one number in the file that a new path does not have to move. That is the
@@ -98,7 +98,7 @@ class SoundPathMapGuardTest {
     fun `the set of undocumented paths is pinned`() {
         val undocumented = SoundPathMap.PATHS.filter { it.page == null }.map { it.id }.toSet()
         assertEquals(
-            setOf("dough-engine", "audio-patch-seam", "spatial-openal", "device-input", "wav-file-in"),
+            setOf("dough-engine", "box-audio", "spatial-openal", "device-input", "wav-file-in"),
             undocumented,
             "the set of render paths with no documentation changed. If it shrank, good — update this " +
                 "set. If it grew, a path shipped undocumented.",
@@ -141,13 +141,13 @@ class SoundPathMapGuardTest {
      *
      * `FaustPoly.kt` — a polyphonic, pattern-driven Faust instrument — was in the tree undeclared
      * for a month and every one of these tests passed, because it opens no device and encodes no
-     * WAV. That is the failure the `seam-stereo-node` marker was added for, so the claim is pinned
+     * WAV. That is the failure the `box-audio-stereo-node` marker was added for, so the claim is pinned
      * the same way the OpenAL control is: drop the file from the declaration and assert that the
      * sweep still finds it. If this ever stops holding, the hole is open again.
      */
     @Test
     fun `the seam marker sees the source that slipped through`() {
-        val marker = SoundPathMap.MARKERS.first { it.id == "seam-stereo-node" }
+        val marker = SoundPathMap.MARKERS.first { it.id == "box-audio-stereo-node" }
         val victim = "src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt"
         val crippled = SoundPathMap.Marker(
             id = marker.id,
