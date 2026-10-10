@@ -179,6 +179,31 @@ AI completions stream in a few seconds later and merge (they no longer block the
 fixed in `fieldSuggest.js`). For an AI-completion shot, wait a beat longer after the first row so
 the `AI` section is populated.
 
+### Live UI over a renderer (`capture="ui" graphics-context=true`)
+
+UI that only exists while a box draws through the renderer — the **stack.auto numbers** card, a
+StackSL stage note inside a Kotlin string — needs both: add `graphics-context=true` to the
+`capture="ui"` fence. The runner then launches `agent_graphics_context` and waits for its frames
+*before* the `transcript=` setup runs, so the setup can `connect` its boxes beneath the renderer and
+`launch` them. The drive then only waits for the real DOM (`.stack-auto-card .field-slider`,
+`.afield-line-note img`) and clips. Worked example: the three stack.auto fences in
+`stacksl_examples.md` with `assets/transcripts/stackauto_numbers_setup.yaml`.
+
+When such a capture comes out empty, find out which side is failing before you touch the drive:
+
+- **Poll the DOM from the drive** (`repeat(30) { println(ui.eval("…")); ui.pause(200) }`) rather than
+  trusting one `waitForSelector`. A `waitForSelector` on a note that never came returned without
+  failing once; the figure showed no note at all.
+- **Call the server side directly** from a probe box connected beneath `agent_graphics_context` in the
+  same backdoor invocation (`new-box`, `connect agent_graphics_context @last`, `run @last --file …`).
+  Find the target box by walking `thisBox.parents.flatMap { it.children }`. `afield.box(id)` returns
+  null from box code.
+- **Box code runs on the main thread.** Anything that waits for a renderer frame (the StackSL GPU
+  rasterizer) must run on a `Thread` that writes its result to a file, which a later `wait-file`
+  reads. Joining that thread from the box deadlocks, because the main thread is the one that draws.
+- Providers behind `runCatching { … }.getOrNull()` (line notes, the card) show a failure as "no
+  note". Replicate their steps one by one in the probe to see which returns null.
+
 `field_probes.md` deliberately omits its card capture until the hook can frame the output area of
 the real GPU-driven probe. The former CPU-created `FieldProbeSnapshot` stand-in was removed because
 it exercised only card rendering, not the documented probe path.

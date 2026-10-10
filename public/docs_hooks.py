@@ -4993,6 +4993,25 @@ def graphics_launch_timeout(options: RunnerOptions) -> float:
     return max(float(options.timeout), GRAPHICS_LAUNCH_TIMEOUT_FLOOR_SECONDS)
 
 
+def graphics_renderer_launch_commands(*, options: RunnerOptions, repo_root: Path) -> list[str]:
+    """Bring up the docs renderer, `agent_graphics_context`, and wait until it draws."""
+    renderer_macro_path = graphics_renderer_transcript_path(repo_root)
+    launch_timeout = graphics_launch_timeout(options)
+    return [
+        shlex.join([
+            "macro", "write", "graphics_renderer_launch",
+            "--file", str(renderer_macro_path),
+            "--timeout", str(launch_timeout),
+        ]),
+        shlex.join(["macro", "run", "graphics_renderer_launch", "--timeout", str(launch_timeout)]),
+        shlex.join([
+            "wait-native-renderer", "agent_graphics_context",
+            "--frames", "3",
+            "--timeout", str(launch_timeout),
+        ]),
+    ]
+
+
 def generated_graphics_child_transcript(*, target_uid: str, options: RunnerOptions) -> str:
     transcript: dict[str, Any] = {
         "name": f"{target_uid}_setup",
@@ -5171,6 +5190,10 @@ def build_backdoor_command(
         backdoor_commands.append("playwright-open --electron")
 
     if options.capture == "ui":
+        # graphics-context=true: the renderer first, so the setup transcript can connect its boxes
+        # beneath `agent_graphics_context`.
+        if options.graphics_context:
+            backdoor_commands.extend(graphics_renderer_launch_commands(options=options, repo_root=repo_root))
         # Optional setup: run a transcript= file of create/launch ops FIRST, in the same
         # backdoor session, so its boxes exist when the drive runs. Needed for captures
         # that require scene setup a drive fragment can't do itself (a drive fragment runs
@@ -5241,27 +5264,7 @@ def build_backdoor_command(
     default_target_uid = options.capture_box or options.run_box or (generated_target_uid if options.graphics_context else "@last")
     language = options.language_key.strip().lower()
     if options.graphics_context:
-        renderer_macro_path = graphics_renderer_transcript_path(repo_root)
-        launch_timeout = graphics_launch_timeout(options)
-        backdoor_commands.append(shlex.join([
-            "macro",
-            "write",
-            "graphics_renderer_launch",
-            "--file", str(renderer_macro_path),
-            "--timeout", str(launch_timeout),
-        ]))
-        backdoor_commands.append(shlex.join([
-            "macro",
-            "run",
-            "graphics_renderer_launch",
-            "--timeout", str(launch_timeout),
-        ]))
-        backdoor_commands.append(shlex.join([
-            "wait-native-renderer",
-            "agent_graphics_context",
-            "--frames", "3",
-            "--timeout", str(launch_timeout),
-        ]))
+        backdoor_commands.extend(graphics_renderer_launch_commands(options=options, repo_root=repo_root))
     if options.macro_file:
         macro_path = resolve_macro_file_path(repo_root=repo_root, page_path=page_path, macro_file=options.macro_file)
         macro_name = macro_name_for_options(options=options, page_path=page_path, block_index=block_index)
