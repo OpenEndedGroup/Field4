@@ -119,6 +119,7 @@ CORPUS = {
     # `dev_docs/agents/transcripts/gpu_probe_bench.yaml` is registered `COMPILE_ONLY`, because box 1
     # opens a Window. It was parked under `artifacts/` for one day to avoid editing a file a
     # concurrent session held, and nothing under `artifacts/` is named by any registry in the tree.
+    "gp_drawing",
     "gpu_probe_bench",
     "interaction_nets_lambda",
     "keyframe_key_discovery",

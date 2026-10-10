@@ -333,6 +333,9 @@ object DemoTranscriptExecSmokeTest {
         // SMPTE timecode (2026-10-08): drop-frame arithmetic, LTC round trip under gain/noise/speed
         // ramp, MTC into a TimecodeClock, a clock following LTC. Pure CPU, no audio or MIDI device.
         "smpte_timecode",
+        // GP drawing (2026-10-10): a closed periodic loop through six pins, 1-D conditioning and a
+        // 2-D field, with controls. Pure CPU, FLines and heatmaps only.
+        "gp_drawing",
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",

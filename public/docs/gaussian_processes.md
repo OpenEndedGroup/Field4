@@ -50,6 +50,9 @@ to the prior.
 
 ![Five blue draws and a thick orange mean pass through four white observation dots; thin orange interval lines pinch in at the dots and open wide at both ends, and the draws pass slightly to either side of the third dot](assets/gaussian_processes/conditioning.png)
 
+To play with the closed loop, the 1-D example and the 2-D field with live controls, open
+[the `gp_drawing` document](agent_transcripts.md#gp_drawing).
+
 ## Three different things to draw
 
 The **mean** is the expected function value at each position. The **variance** describes how much
