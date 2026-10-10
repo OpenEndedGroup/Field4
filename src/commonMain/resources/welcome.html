@@ -1458,6 +1458,29 @@
                 opacity: 1;
             }
 
+            /* Hovering a thumbnail expands it in place: the row's clip is lifted and the image is
+               scaled from its right edge (towards the gutter's open space, away from the list), so
+               layout and the neighbouring rows don't move. The cap keeps the expanded image inside
+               the gutter. */
+            .doc-thumbs:has(img.doc-thumb:hover) {
+                overflow: visible;
+                z-index: 20;
+            }
+
+            img.doc-thumb {
+                pointer-events: auto;
+                transform-origin: right center;
+                transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+            }
+
+            img.doc-thumb:hover {
+                transform: scale(3);
+                position: relative;
+                z-index: 1;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+                border-color: rgba(72, 201, 255, 0.6);
+            }
+
             /* Thumbnails scale with the row height (so they grow in the tall search-result rows)
                while preserving a landscape aspect ratio — width follows height via aspect-ratio.
                The max-height is derived from the available gutter so two side-by-side always fit
