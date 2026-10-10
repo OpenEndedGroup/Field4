@@ -107,7 +107,7 @@ private val docsPassJson = Json { encodeDefaults = true; explicitNulls = true }
 private val quickDocsPassActions = setOf("stop", "stop-now", "discard", "close-handoff", "reply", "resolve", "cancel-job", "group-handoffs", "set-batch")
 
 /** The batches `tools/docs_notes.py` knows, in the order they are worked through. */
-private val docsPassBatches = setOf("decisions", "navigation", "captures", "site", "code", "elsewhere")
+internal val docsPassBatches = setOf("decisions", "navigation", "captures", "site", "code", "elsewhere")
 
 private val docsPassTag = Regex("[a-z][a-z0-9_-]{0,63}")
 private val docsPassPage = Regex("[A-Za-z0-9_./-]{1,200}")
