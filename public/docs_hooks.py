@@ -3140,7 +3140,8 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 line_number=start_line,
                 options=options,
             )
-            code = wrap_runnable_code_for_language(code=code, language_key=language_key)
+            if not runs_in_language_root(options):
+                code = wrap_runnable_code_for_language(code=code, language_key=language_key)
             options = maybe_enable_output_wait(options=options, code=code)
             runner_code = code_with_macro_digest(
                 code=code,
@@ -4955,6 +4956,16 @@ def docs_runner_fieldml_root_alias(*, target_uid: str) -> str:
 # language needs a root. `fieldml` predates the set and produces byte-identical commands through it.
 
 
+def runs_in_language_root(options: RunnerOptions) -> bool:
+    """Whether the fence runs as a box of its own language, under a `mainLanguage` root.
+
+    A launched Forth fence does too: `frame` needs a real ForthField strand, which the one-shot
+    `renderForthDocsSnippet` wrapper cannot give it.
+    """
+    language = options.language_key.strip().lower()
+    return language in MAIN_LANGUAGE_ROOT_LANGUAGES or (language == "forth" and options.execution == "launch")
+
+
 def docs_runner_language_root_alias(*, target_uid: str, language: str) -> str:
     return safe_transcript_id(f"{target_uid}_{language}_root")
 
@@ -5333,7 +5344,7 @@ def build_backdoor_command(
             setup_macro_name,
             "--timeout", str(options.timeout),
         ]))
-    elif language in MAIN_LANGUAGE_ROOT_LANGUAGES:
+    elif runs_in_language_root(options):
         root_alias = docs_runner_language_root_alias(target_uid=generated_target_uid, language=language)
         backdoor_commands.append(shlex.join([
             "new-box",

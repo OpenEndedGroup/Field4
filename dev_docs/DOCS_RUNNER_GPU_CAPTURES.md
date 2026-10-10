@@ -204,6 +204,21 @@ When such a capture comes out empty, find out which side is failing before you t
 - Providers behind `runCatching { … }.getOrNull()` (line notes, the card) show a failure as "no
   note". Replicate their steps one by one in the probe to see which returns null.
 
+### Animating a box written in another language
+
+A launched box in a language other than Kotlin records like a Kotlin one (`capture="box"`
+`execution="launch"` `video=` `duration=`) once two things hold, both true for Forth since
+2026-10-10 (`forth_examples.md`, `forth-frame-spinner`):
+
+- **The fence runs as a box of that language.** `runs_in_language_root` in `public/docs_hooks.py`
+  sends it through a `mainLanguage` root. A Forth fence that only runs once is still wrapped in
+  `renderForthDocsSnippet`, which has no strand, so `frame` fails there.
+- **The runtime publishes `box.currentRunningStates[strand]`** while its strand runs, as `Phased.kt`
+  does for Kotlin. The video recorder relaunches through `box.ke` (the box's own execution) and opens
+  only when that state's watermark passes the stopped generation. A runtime that only sends
+  `is-running` times out with "waiting for relaunched video target to reach its first active frame",
+  and the trace shows `currentRunningStates={}`.
+
 `field_probes.md` deliberately omits its card capture until the hook can frame the output area of
 the real GPU-driven probe. The former CPU-created `FieldProbeSnapshot` stand-in was removed because
 it exercised only card rendering, not the documented probe path.
