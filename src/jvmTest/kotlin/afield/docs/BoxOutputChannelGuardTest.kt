@@ -55,6 +55,21 @@ class BoxOutputChannelGuardTest {
     }
 
     /**
+     * `orca_duet`: a helper whose first parameter is `channel` names it positionally, so
+     * `showThing("a", 1)` and `showThing("b", 2)` are two channels, not two writes of the default.
+     */
+    @Test
+    fun aPositionalChannelOnAChannelFirstHelperIsRead() {
+        val repo = repoWithDemo(
+            """
+            showThing("a", 1)
+            showThing("b", 2)
+            """.trimIndent()
+        )
+        assertEquals(emptyList(), BoxOutputChannelGuard.audit(repo).problems)
+    }
+
+    /**
      * The `confluence_grid` shape: one write before the loop so the opening state is on screen, one
      * per iteration inside it, one after so the settled state is not an iteration stale. Three
      * writes, one animation, no lost figure.
