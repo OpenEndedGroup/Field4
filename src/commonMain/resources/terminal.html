@@ -84,6 +84,17 @@ term.onBinary(data => {
 });
 term.onResize(sendResize);
 new ResizeObserver(() => fit.fit()).observe($("terminal"));
+// The first fit can measure the fallback font, which is wider than Iosevka, and leave the grid too
+// few columns for the panel; measure again once the web font is in. xterm caches glyph metrics and
+// ignores an unchanged option, so the family is changed and changed back to make it re-measure.
+const refitForFonts = () => {
+    const family = term.options.fontFamily;
+    term.options.fontFamily = "monospace";
+    term.options.fontFamily = family;
+    fit.fit();
+};
+document.fonts.ready.then(refitForFonts);
+document.fonts.addEventListener("loadingdone", refitForFonts);
 
 $("kill").addEventListener("click", async () => {
     if (!confirm("End this process?")) return;
