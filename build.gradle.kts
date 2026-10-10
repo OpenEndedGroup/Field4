@@ -2140,6 +2140,17 @@ tasks.register<JavaExec>("formatBoxCode") {
     jvmArgs(requiredRunJvmArgs())
 }
 
+tasks.register<JavaExec>("boxImportCensus") {
+    group = "reporting"
+    description = "Reports what every published box's imports are for, and which packages could join the box intro; changes no box."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxImportCensus")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<Exec>("checkBoxIdioms") {
     group = "verification"
     description = "Flags redundant renderer lookups, bindPushConstant calls, Box.context lookups and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."

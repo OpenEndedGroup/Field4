@@ -1,5 +1,6 @@
 package afield.examples
 
+import afield.formatBoxKotlin
 import afield.formatCodeProperty
 import java.io.File
 import kotlin.system.exitProcess
@@ -14,16 +15,22 @@ import kotlin.system.exitProcess
  * that guessed would be worse than one that skipped.
  *
  * `./gradlew formatBoxCode --args="<file>..."`, or with no arguments every top-level transcript.
- * `--check` reports what would change and exits 1 if anything would. Follow a real run with
- * `./gradlew checkBoxCodeCompiles`.
+ * `--check` reports what would change and exits 1 if anything would. `--imports` also removes each
+ * `code` block's redundant and unused imports ([formatBoxKotlin]); `--k2` adds the code-use sidecar's
+ * resolution evidence to that. Follow a real run with `./gradlew checkBoxCodeCompiles`.
  */
 object BoxCodeFormat {
+    private var imports = false
+    private var k2 = false
+
     private val BLOCK_KEY = Regex("""^(\s*)(?:-\s+)?(\w+):\s*\|[-+]?\s*$""")
 
     @JvmStatic
     fun main(args: Array<String>) {
         val check = "--check" in args
-        val files = args.filter { it != "--check" }.map(::File).ifEmpty {
+        imports = "--imports" in args
+        k2 = "--k2" in args
+        val files = args.filter { !it.startsWith("--") }.map(::File).ifEmpty {
             val dir = DemoTranscriptExecSmokeTest.locateTranscriptsDir()
             (dir.listFiles { f -> f.isFile && f.extension == "yaml" } ?: emptyArray()).sortedBy { it.name }
         }
@@ -77,7 +84,7 @@ object BoxCodeFormat {
     }
 
     private fun formatOrNull(property: String, code: String, label: String): String? = try {
-        formatCodeProperty(property, code)
+        if (imports && property == "code") formatBoxKotlin(code, useK2 = k2) else formatCodeProperty(property, code)
     } catch (t: Throwable) {
         println("skipped $label ($property): ${t.javaClass.simpleName}: ${t.message?.lineSequence()?.firstOrNull()}")
         null
