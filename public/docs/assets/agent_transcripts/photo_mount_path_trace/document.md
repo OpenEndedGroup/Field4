@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="photo_mount_trace" index="1" -->
 
 ```edn [field-box id="photo_mount_trace" role="properties"]
-{"id" "photo_mount_trace" "index" 1 "name" "photo_mount_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "photo_mount_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_mount_trace_code_.kt" "lines" 36 "characters" 1585 "sha256" "7db74bbc7dab3be9a6934a8ef496dfa125fe8d0dbbb82e36d26f37eaf2ad746d"}]}
+{"id" "photo_mount_trace" "index" 1 "name" "photo_mount_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "photo_mount_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_mount_trace_code_.kt" "lines" 35 "characters" 1553 "sha256" "fd62627bf9d4f49fbc3a8e128f93f58d8d6962c192d1b6f0b4e36edba20f7969"}]}
 ```
 
 ```kotlin [field-property box="photo_mount_trace" name="code" path="photo_mount_trace_code_.kt"]
@@ -39,7 +39,6 @@ import afield.four.fabricated.*
 import afield.four.util.Camera
 import afield.manifold.*
 import afield.stdlib.linalg.Vector3f
-import afield.stdlib.polytope.*
 import afield.examples.chain.PhotoToSolidChain
 import java.io.File
 prop<PathTracingRenderer>(tracer)

@@ -1,4 +1,3 @@
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()

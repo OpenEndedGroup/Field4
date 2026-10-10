@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 import afield.stdlib.MeshView
 import afield.stdlib.Vec3
 

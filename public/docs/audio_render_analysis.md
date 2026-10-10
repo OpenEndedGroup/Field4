@@ -1,5 +1,7 @@
 # Render Field music, then analyse it
 
+*To run the examples on this page, open the [audio_render_analysis](agent_transcripts.md#audio_render_analysis) starting point.*
+
 Write a Pat pattern in a box, render twelve cycles of it, and there is a finite WAV file on disk
 before you have heard it play. That file is all Field Audio ever sees of the music. Pat, Dirt,
 Dough and Faust render faster than real time and Sonic Pi records a real-time performance, but

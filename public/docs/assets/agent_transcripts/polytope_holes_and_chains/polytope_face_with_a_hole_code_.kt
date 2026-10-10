@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 
 // ***** CHANGE THIS LINE ***** the window's half-width, anywhere inside (0, 1).
 val solid = cubeWithWindow(side = 0.45f)

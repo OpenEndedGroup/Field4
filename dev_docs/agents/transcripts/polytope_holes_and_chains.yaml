@@ -16,7 +16,6 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
 
           // ***** CHANGE THIS LINE ***** the window's half-width, anywhere inside (0, 1).
           val solid = cubeWithWindow(side = 0.45f)
@@ -94,7 +93,6 @@ operations:
       frame: { x: 80.0, y: 220.0, w: 430.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
           import afield.stdlib.MeshView
           import afield.stdlib.Vec3
 
@@ -166,7 +164,6 @@ operations:
       frame: { x: 80.0, y: 360.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
           import afield.stdlib.MeshView
 
           // Until 2026-08-05 none of these compiled: the eight composites were declared on

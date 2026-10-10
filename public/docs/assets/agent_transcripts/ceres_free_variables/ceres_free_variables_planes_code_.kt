@@ -6,7 +6,6 @@ import afield.stdlib.ceres.FfmCeresBackend
 import afield.stdlib.ceres.PointCloud
 import afield.stdlib.ceres.SolveOptions
 import afield.stdlib.ceres.SolveRequest
-import afield.stdlib.polytope.*
 import java.nio.file.Files
 import java.nio.file.Path
 

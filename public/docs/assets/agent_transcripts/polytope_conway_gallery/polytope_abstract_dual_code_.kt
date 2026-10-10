@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 
 // Take the cube's coordinates away. The topology is untouched, and every combinatorial
 // question about the dual is still decidable.

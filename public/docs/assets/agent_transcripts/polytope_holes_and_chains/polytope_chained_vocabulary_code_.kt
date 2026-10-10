@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 import afield.stdlib.MeshView
 
 // Until 2026-08-05 none of these compiled: the eight composites were declared on

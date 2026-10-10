@@ -1,5 +1,7 @@
 # Experiment in Terror with an Underfit LoRA
 
+*To run the examples on this page, open the [audio_ai_underfit_mancini](agent_transcripts.md#audio_ai_underfit_mancini) starting point.*
+
 This example generates new music from a LoRA trained on one album, using Field Audio. The
 checkpoint, a rank-16 Underfit LoRA, trained for 1,000 steps on 165 lossless 12-second chunks
 from all 12 tracks on Henry Mancini's *Experiment in Terror*, is applied to Stable Audio 3's
