@@ -151,20 +151,23 @@ data class Layer(
     val velocity: Double,
 )
 
-data class Chosen(val layer: Layer, val net: BooleanNetwork, val attr: Attractor)
+data class Chosen(val layer: Layer, val seed: Long, val net: BooleanNetwork, val attr: Attractor)
 
 val layers =
     listOf(
         Layer(seed = 27L, stepDuration = 0.125, steps = 64, mode = BooleanTriggerMode.RISING_EDGE, basePitch = 36, label = "bd", color = "#69b8ff", velocity = 0.98),
         Layer(seed = 11L, stepDuration = 0.1875, steps = 48, mode = BooleanTriggerMode.CHANGE, basePitch = 50, label = "sn", color = "#ff8e5a", velocity = 0.76),
-        Layer(seed = 42L, stepDuration = 0.0625, steps = 64, mode = BooleanTriggerMode.ACTIVE, basePitch = 74, label = "hh", color = "#c4ff5f", velocity = 0.42),
+        Layer(seed = 42L, stepDuration = 0.0625, steps = 128, mode = BooleanTriggerMode.ACTIVE, basePitch = 74, label = "hh", color = "#c4ff5f", velocity = 0.42),
     )
 
 val chosen =
     layers.map { layer ->
-        val net = kauffmanNetwork(n = 5, k = 2, seed = layer.seed)
-        val attr = net.findAttractors().maxByOrNull { it.period }!!
-        Chosen(layer, net, attr)
+        // The first seed from the layer's own whose network has an attractor of period 4 or more:
+        // a fixed point never changes, so a CHANGE layer on one would fire once and stop.
+        (layer.seed until layer.seed + 80).firstNotNullOf { seed ->
+            val net = kauffmanNetwork(n = 5, k = 2, seed = seed)
+            net.findAttractors().filter { it.period >= 4 }.maxByOrNull { it.period }?.let { Chosen(layer, seed, net, it) }
+        }
     }
 
 val notes =
@@ -205,7 +208,7 @@ val process =
 
 val summary =
     chosen.joinToString("\n") { ch ->
-        "${ch.layer.label} seed ${ch.layer.seed} · period ${ch.attr.period} · ${ch.layer.mode} every ${ch.layer.stepDuration}s"
+        "${ch.layer.label} seed ${ch.seed} · period ${ch.attr.period} · ${ch.layer.mode} every ${ch.layer.stepDuration}s"
     }
 
 :::fold render the braided piano roll and the layer summary
@@ -220,13 +223,11 @@ $summary
 :::endfold
 ```
 
-As written, only the kick runs the full eight seconds. The shimmer's 64 sixteenth-steps last four seconds, so it stops halfway. The snare fires once, at time zero: its layer is picked with `maxByOrNull { it.period }` and no minimum, so it can land on a fixed point, and a `CHANGE` trigger on a network that never changes fires only on the first step. To get three live layers, filter the seeds by period the way the first example does.
+![a piano roll headed "three attractors, three clocks, one shared note space", eight seconds wide. Three bands run the full width on regular grids: small yellow-green marks in four rows near the top, orange bars in five rows around B3, and blue bars in three rows near the bottom. The header strip reads 8 on, 332 notes, B1 to B5](assets/boolean_network_music_examples/braided_rhythm.png)
 
-![a piano roll headed "three attractors, three clocks, one shared note space", eight seconds wide. A dense scatter of small yellow-green marks crowds the top of the range but stops dead halfway across, at about four seconds. Two blue lanes at the bottom of the range run the full eight seconds on a regular grid. A single orange bar sits at B3 at time zero and never recurs. The header strip reads 4 on, 140 notes, B1 to B5](assets/boolean_network_music_examples/braided_rhythm.png)
-
-Played through Dirt-Samples, the kick's eighths run the whole
-eight seconds. The snare is a single hit at time zero. The shimmer is a wash rather than a ticking hat,
-because in Dirt-Samples `hh:1` to `hh:4` are a crash and three long hits, and it stops at four seconds.
+Played through Dirt-Samples, the kick and snare carry the rhythm for the whole eight seconds. The
+shimmer is a wash rather than a ticking hat, because in Dirt-Samples `hh:1` to `hh:4` are a crash and
+three long hits.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/braid.wav" audio-spec="braid" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-braid-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("braid"): the fence's notes, through real Dirt-Samples.
