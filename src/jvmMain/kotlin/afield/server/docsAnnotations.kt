@@ -828,7 +828,6 @@ internal fun Route.installDocsAnnotationRoutes(
         else call.respond(HttpStatusCode.NotFound, "annotation not found")
     }
     installDocsPassRoutes(policy)
-    installTerminalRoutes(policy)
     installDocsSourceFileRoute(policy)
     // Gated like the annotations, and the reason is not the one you would guess.
     //
