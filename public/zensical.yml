@@ -121,6 +121,7 @@ nav:
       - Functions Examples: functions_examples.md
       - Functions Domains: functions_domains.md
       - Gaussian Processes: gaussian_processes.md
+      - "GP Optimisation and Preference": gaussian_process_optimization.md
       - Differentiating Functions: autodiff_examples.md
       - Proving a Function's Range: fn_intervals.md
     - Time & Signals:

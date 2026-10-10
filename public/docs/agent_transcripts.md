@@ -1691,6 +1691,17 @@ outside the declared frame is not cropped, it shrinks everything else.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/chart_clip/metadata.edn)
 
+### gp_instruments
+
+**Tuning by Gaussian process**, in three boxes. A `GpOptimizer` finds the three dials of a curve
+that match a hidden target in thirty tries, and charts the best misfit after each one. A
+`GpPreference` shows two rosettes and two buttons, learns from each "A or B?" click, and proposes
+the next pair. The third box answers the same questions for a judge whose ideal rosette is known,
+and draws the model's favourite after every six answers, then the ideal past a dividing line, in its own colour, with a chart of what the model believes about hue. See
+[Tuning by Gaussian process](gaussian_process_optimization.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gp_instruments/metadata.edn)
+
 ### gp_drawing
 
 **Drawing with Gaussian processes**, in three boxes to play with. A closed loop through six pins,
