@@ -29,7 +29,7 @@ generated, or `Box.displayAudioBytes` for an encoded clip you have in memory.
 
 `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt` — [read the source](source/jvmMain/afield/stdlib/AudioVisualizer/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md), [EnCodec reconstruction microscope](../audio_ai_codec.md)
+**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md), [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md)
 
 ### Top-level functions { #audiovisualizer-kt-functions }
 
