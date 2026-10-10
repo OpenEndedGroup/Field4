@@ -353,7 +353,7 @@ The host keeps hold of the resource; ForthField only names it.
 
 `frame` animates a launched ForthField box. The word below draws a line that turns a little each tick, and shows the tick count in a `debug` channel:
 
-```diffstatic {data-lang=forth}
+```diffstatic_runner {data-lang=forth video="assets/forth_examples/frame_spinner.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="6" fps="20" timeout="300" w="640" h="120" embed=true name="forth-frame-spinner" alt="Six seconds of the launched box. Its geom panel shows an FLine of 2 nodes: one pale blue line that starts falling to the right, flattens, and rises to the right as it turns, redrawn every tick. Under it the debug panel counts up, tick=7.0 near the start and tick=117.0 near the end."}
 variable tick
 variable line
 0 tick !
@@ -380,6 +380,9 @@ variable line
 
 spinner
 ```
+
+Above is the box launched for six seconds. The `geom` panel scales each tick's line to fit, so the
+turn shows as a changing slope, and the `debug` panel counts the ticks.
 
 `frame` hands control back to Field, and the word starts again on the next tick, so keep anything that must last between ticks in variables, not on the stack.
 
