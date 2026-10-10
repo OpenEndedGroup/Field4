@@ -2,9 +2,7 @@
 
 ForthField is Field's Forth: a data stack and a dictionary of words that push and pop it. A definition is usually one line long (`: sqr dup * ;` is a complete one), and the dictionary can be rewritten while the box is still running. Around that core sit the control-flow words, vec2 helpers, enough `FLine` vocabulary to sketch geometry, and a reflection bridge that lets ForthField call methods on any JVM object it can reach.
 
-To get a ForthField box, run **Set Main Language: ForthField** on a parent box; its children then run ForthField rather than Kotlin. Documents carrying the older `isForthRoot` property still work, but the action is the way to do it now.
-
-Every example below is raw ForthField, run through the same `ForthInterpreter` your boxes use. The interpreter's KDoc in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt` carries a few examples of its own; the ones here expand on them.
+To get a ForthField box, run **Set Main Language: ForthField** on a parent box; its children then run ForthField rather than Kotlin. Every example below is ForthField you can paste into such a box.
 
 ## A tiny stack language
 
@@ -207,7 +205,7 @@ f @ @? properties s"color" 0.95 0.95 1.0 1.0 vec4 2 @?! put
 f @
 ```
 
-`@?` is the heuristic form. It looks for a public field of that name first, then for methods of that name sorted by parameter count, preferring a zero-argument one and otherwise taking the first whose arity fits what is currently on the stack — which is why it can pick differently depending on how deep the stack happens to be. A field holding `null` pushes nothing at all, so the stack silently comes back one shorter than you expected; and on a `Class`, the member names `new` and `newInstance` mean "construct". `@?!` is the explicit-arity form, taking the object first and the argument count off the top of the stack, and it is the escape hatch when `@?` picks the wrong overload.
+`@?` guesses what you mean. It looks for a public field of that name first, then for a method, preferring one with no arguments and otherwise taking the first whose argument count fits what is on the stack. So it can pick a different overload depending on how deep the stack is. A field holding `null` pushes nothing, which leaves the stack one shorter than you might expect. On a `Class`, `new` and `newInstance` construct an instance. When `@?` picks the wrong overload, use `@?!`, which takes the object and then the argument count from the top of the stack.
 
 For styling, numeric and vector values are a good fit for reflected `properties.put(...)`. Boolean style toggles are better expressed with the dedicated `fline-*` words.
 
@@ -219,11 +217,11 @@ s"Vec3" class-for @? getName println
 s"Fli" class-matches println
 ```
 
-`class-for` tries the name as a fully-qualified one first and only then looks it up as a simple name. If a simple name matches more than one class it refuses rather than guessing, and the error lists up to eight candidates for you to pick from. `class-matches` takes a *prefix* instead and returns up to 64 fully-qualified names, which is how you find out what a class is actually called before trying to resolve it; `class-help` prints the same list, capped at 24.
+`class-for` takes a fully-qualified or a simple class name. If a simple name matches more than one class, the error lists candidates to choose from. `class-matches` takes a prefix and returns the fully-qualified names that start with it, which is how you find what a class is called; `class-help` prints a shorter version of the same list.
 
 ## Dictionary tools, recursion, and temporary stack storage
 
-These words are the first ones to reach for when ForthField starts feeling opaque. `words` shows the dictionary, `see name` prints a definition, and `forget name` removes a user-defined word when an experiment has gone stale.
+`words` shows the dictionary, `see name` prints a definition, and `forget name` removes a user-defined word when an experiment has gone stale.
 
 ```diffstatic {data-lang=forth}
 : sqr dup * ;
@@ -258,7 +256,7 @@ The return stack is a second, temporary stack. Use it sparingly, mostly to park 
 
 ## `again`, diagnostics, and display helpers
 
-`begin ... again` is an endless loop. In normal one-shot execution that is dangerous; in launch-mode animation it is useful when the loop contains `frame`, because `frame` yields back to Field for the next tick. In a one-shot example, pair it with `leave`.
+`begin ... again` loops forever. In a launched box that is what you want, as long as the loop calls `frame` to hand each tick back to Field. In a box that runs once, leave the loop with `leave`.
 
 ```diffstatic {data-lang=forth}
 variable n
@@ -353,7 +351,7 @@ The host keeps hold of the resource; ForthField only names it.
 
 ## Launch mode and `frame`
 
-The interpreter also has a cooperative `frame` primitive for launch-mode animation. This one needs a real, launched ForthField box to do anything — it animates, so there is nothing to print.
+`frame` animates a launched ForthField box. The word below draws a line that turns a little each tick, and shows the tick count in a `debug` channel:
 
 ```diffstatic {data-lang=forth}
 variable tick
@@ -383,10 +381,10 @@ variable line
 spinner
 ```
 
-`frame` yields immediately and the word starts again on the next tick, so persistent state belongs in variables rather than transient stack structure.
+`frame` hands control back to Field, and the word starts again on the next tick, so keep anything that must last between ticks in variables, not on the stack.
 
 ## When a definition misbehaves
 
-`words` shows the dictionary and `see name` prints a definition, which together answer most of "is the word I think I redefined actually the one running". A ForthField error already carries the token that failed, a snapshot of the data stack and the path of word calls that led there, so the usual next step is to read the error rather than to add prints.
+Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.
 
-Naming a word has one trap in it. Builtins and user definitions share a single flat dictionary, and `:` overwrites without complaint, so `: dup ... ;` replaces the real `dup` for the rest of the run. `forget` refuses to remove anything host-defined — but it will happily remove your replacement, and that leaves no entry at all rather than restoring the builtin underneath.
+Builtins and your own words share one dictionary, and `:` overwrites without warning, so `: dup ... ;` replaces the real `dup` for the rest of the run. `forget` will remove your replacement, but that leaves no `dup` at all; it does not bring the builtin back.
