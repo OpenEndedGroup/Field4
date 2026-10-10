@@ -367,8 +367,60 @@ val variation = fitted.sampleLine(seed = 29)
 Sampling a drawn stroke more densely adds more observations. With independent nonzero noise that
 means more evidence, so uncertainty shrinks. If the observations are really a few intentional
 control points, use `gpCurve` on those points rather than resampling the stroke hundreds of times.
-For a closed path, use `GpKernels.periodic(period = 1.0, ...)`; identical endpoints then represent
-the same random value. Contradictory exact endpoint values are not a consistent periodic model.
+### Closed loops
+
+For a closed path, use `GpKernels.periodic(period = 1.0, ...)` and place the pins on a parameter
+that runs once round the loop, from 0 up to (but not including) 1. With a period of one,
+`t = 0` and `t = 1` are the same point of the same function: every draw returns to where it
+started with the same position and the same direction, so there is no seam to hide. Do not pin
+both `t = 0` and `t = 1`; they are one observation. The curve mean defaults to the pins'
+centroid, which for a loop is its middle.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/loop.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
+:::static
+// six pins around a loop; move any of them and run again
+val pins = listOf(vec(1.0, 0.0, 0), vec(0.45, 0.8, 0), vec(-0.5, 0.95, 0),
+                  vec(-1.1, 0.0, 0), vec(-0.4, -0.75, 0), vec(0.6, -0.9, 0))
+// each pin's place on the loop's parameter, which runs once round from 0 to 1
+val at = DoubleArray(pins.size) { it.toDouble() / pins.size }
+
+// a periodic kernel with period 1 makes t = 0 and t = 1 the same point, value and slope
+val loop = gpCurve(at, pins,
+    kernel = GpKernels.periodic(period = 1.0, lengthScale = 0.6, variance = 0.04),
+    noiseStd = DoubleArray(pins.size) { 0.01 }, dimensions = 2)
+val t = DoubleArray(201) { it / 200.0 }
+val distribution = loop.posterior(t)
+
+fun plot(line: FLine) = line.transform { vec(it.x * 200, -it.y * 200, 0) }
+
+val draws = (0L..5L).map { seed ->
+    plot(distribution.sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.8); thickness = 1.5 }
+}
+val mean = plot(distribution.meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
+val dots = plot(FLine().apply { pins.forEach { moveTo(it.x, it.y) } }).apply {
+    stroked = false; pointed = true; pointSize = 3.0; color = vec(1, 1, 1, 1)
+}
+lines(draws + mean + dots, w = 600.0, h = 520.0, fitToSize = true)
+
+// the seam: a draw's last point is its first, and it turns there no more than anywhere else
+val p = distribution.samplePoints(seed = 0L)
+fun turn(a: Vec3, b: Vec3, c: Vec3): Double {
+    val ux = b.x - a.x; val uy = b.y - a.y; val vx = c.x - b.x; val vy = c.y - b.y
+    return abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy).toDouble())
+}
+val seamGap = hypot((p.last().x - p.first().x).toDouble(), (p.last().y - p.first().y).toDouble())
+val seamTurn = turn(p[p.size - 2], p[0], p[1])
+val maxTurn = (1 until p.size - 1).maxOf { turn(p[it - 1], p[it], p[it + 1]) }
+println("seam gap %.2e, turn at the seam %.4f rad, largest turn elsewhere %.4f rad"
+    .format(seamGap, seamTurn, maxTurn))
+```
+
+![An orange closed loop through six white pins, with six blue closed draws that pinch in at every pin and bulge apart between them; the seam at the rightmost pin, where each draw starts and ends, is as smooth as anywhere else](assets/gaussian_processes/loop.png)
+
+The box also measures the seam of one draw: its last point is exactly its first, and it turns
+less there than it does at its sharpest bend elsewhere. For an existing closed stroke,
+`stroke.gaussianProcess(...)` with the same periodic kernel does the same, since its parameter
+is normalised arc length.
 
 ### Tangents, frames and curvature
 
