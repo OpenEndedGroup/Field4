@@ -1,7 +1,5 @@
 # Drawing with Gaussian processes
 
-*In memory of David J. C. MacKay.*
-
 Pin a curve at a few places, then draw several ways it could pass between them. Or pin a scalar
 field at points in a plane or volume, and draw a whole field that respects those observations.
 A Gaussian process gives you a distribution over these possibilities: a mean, uncertainty, and
