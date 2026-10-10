@@ -58,7 +58,7 @@ The Python tool suites (`uv run --project . --group backdoor python tools/run_py
 the Gradle `checkPythonTools` task, about 6 minutes) are not run on every landing. The lander
 picks guards by changed path (`guards_for_paths` in `tools/check_staged_generated_artifacts.py`),
 and `checkPythonTools` is selected only by changes under `dev_docs/agents/demos/`. A branch that
-lands green has therefore not run `tools/test_*.py`, which is how `CARRIER_PAGES` in
+lands green has therefore not run `tools/test_*.py`, which is how the (since retired) `CARRIER_PAGES` ledger in
 `tools/check_doc_offline_links.py` stayed stale on `main` after f9f3910c5. If you touch
 `tools/`, `field.sh`, or a page those suites read, run the suite yourself before enqueueing.
 
