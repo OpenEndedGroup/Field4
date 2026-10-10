@@ -21,7 +21,7 @@ class TerminalCommandTest {
     private val sessions: (String) -> Path? = { if (it == "navigation") navigation else null }
 
     private fun plan(kind: String, text: String = "", batch: String = "") =
-        terminalPlan(TerminalLaunch(kind, text, batch), checkout, "/bin/claude", sessions)
+        terminalPlan(TerminalLaunch(kind, text, batch), checkout, "/bin/claude", sessionWorktree = sessions)
 
     @Test
     fun aPlainClaudeRunsInTheCheckoutWithTheTextAsItsFirstMessage() {
@@ -40,6 +40,12 @@ class TerminalCommandTest {
         assertEquals("navigation: yes to every merge", p.title)
         // No sentence is fine: the session brief alone is a complete instruction.
         assertFalse("The human's direction" in plan("handoff-batch", batch = "navigation").getOrThrow().argv[1])
+    }
+
+    @Test
+    fun theLandingQueueWatchRunsLandStatusInTheCheckoutAndIgnoresText() {
+        val p = terminalPlan(TerminalLaunch("land-watch", "rm -rf /"), checkout, "/bin/claude", "/bin/uv", sessions).getOrThrow()
+        assertEquals(TerminalPlan(listOf("/usr/bin/env", "FIELD_LAND_PLAIN=1", "/bin/uv", "run", "python", "tools/land.py", "status", "--watch"), checkout, "landing queue"), p)
     }
 
     @Test
