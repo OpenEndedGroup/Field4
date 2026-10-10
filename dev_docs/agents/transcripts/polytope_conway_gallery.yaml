@@ -16,7 +16,6 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 370.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
 
           // ***** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
           // operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and
@@ -58,7 +57,6 @@ operations:
       frame: { x: 1120.0, y: 80.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
 
           // Take the cube's coordinates away. The topology is untouched, and every combinatorial
           // question about the dual is still decidable.
@@ -100,7 +98,6 @@ operations:
       frame: { x: 80.0, y: 1000.0, w: 420.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
 
           // A scalar per face, written as an ordinary attribute. Selection and deployment are
           // separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.
@@ -183,7 +180,6 @@ operations:
       frame: { x: 1120.0, y: 1000.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
           import afield.stdlib.Vec3
           import kotlin.random.Random
 

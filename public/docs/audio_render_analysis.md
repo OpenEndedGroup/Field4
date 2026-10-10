@@ -1,5 +1,7 @@
 # Render Field music, then analyse it
 
+*To run the examples on this page, open the [audio_render_analysis](agent_transcripts.md#audio_render_analysis) starting point.*
+
 Write a Pat pattern in a box, render twelve cycles of it, and there is a finite WAV file on disk
 before you have heard it play. That file is all Field Audio ever sees of the music. Pat, Dirt,
 Dough and Faust render faster than real time and Sonic Pi records a real-time performance, but
@@ -30,7 +32,6 @@ renderer in the table below and the rest stays the same.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.synth.*
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -70,9 +71,6 @@ This captured drum pattern uses `pat("{bd ~ sd ~, hh*8}")` with the pinned Dirt 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/pat_analysis.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-pat" alt="Actual Pat Dirt render waveform, beat grid, pYIN and Basic Pitch lanes on a shared cursor"}
 :::static
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
@@ -163,9 +161,6 @@ This view requests the same render through Field Audio's waveform-summary endpoi
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/service_waveform.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-waveform" alt="Real service waveform envelopes of a Pat Dirt render" capture-profile="linux-nvidia"}
 :::static
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path

@@ -11,14 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="loris_spectral_whirlpool" index="0" -->
 
 ```edn [field-box id="loris_spectral_whirlpool" role="properties"]
-{"id" "loris_spectral_whirlpool" "index" 0 "name" "4 · a spectral whirlpool in seconds 6–9" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · a spectral whirlpool in seconds 6–9" "_tombstone" false "frame" #afield/rect [1120.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_spectral_whirlpool_code_.kt" "lines" 43 "characters" 1887 "sha256" "c5aea87aa6e244d1f28780f872c30e89880915133efdc2eff64410293cd771c4"}]}
+{"id" "loris_spectral_whirlpool" "index" 0 "name" "4 · a spectral whirlpool in seconds 6–9" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · a spectral whirlpool in seconds 6–9" "_tombstone" false "frame" #afield/rect [1120.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_spectral_whirlpool_code_.kt" "lines" 39 "characters" 1719 "sha256" "277a9896bb928649cbbdd28ce7f269d162b6be7f18baa0fda900a19d91551306"}]}
 ```
 
 ```kotlin [field-property box="loris_spectral_whirlpool" name="code" path="loris_spectral_whirlpool_code_.kt"]
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.path
 import kotlin.math.PI
 import kotlin.math.pow
@@ -65,15 +61,10 @@ client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav"
 <!-- field-box id="loris_edit_partials" index="1" -->
 
 ```edn [field-box id="loris_edit_partials" role="properties"]
-{"id" "loris_edit_partials" "index" 1 "name" "2 · select tracks, remove noise, lower frequencies" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · select tracks, remove noise, lower frequencies" "_tombstone" false "frame" #afield/rect [1120.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_edit_partials_code_.kt" "lines" 31 "characters" 1395 "sha256" "f37495ad8b81c4dbdc70a45bca2546e9fe246cdf19a5cbd19f196a899770e40f"}]}
+{"id" "loris_edit_partials" "index" 1 "name" "2 · select tracks, remove noise, lower frequencies" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · select tracks, remove noise, lower frequencies" "_tombstone" false "frame" #afield/rect [1120.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_edit_partials_code_.kt" "lines" 26 "characters" 1181 "sha256" "b09926f8ffd9974c25fc087b4735839a93bd7521824e4a752a8755662745e2d5"}]}
 ```
 
 ```kotlin [field-property box="loris_edit_partials" name="code" path="loris_edit_partials_code_.kt"]
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisFrequencyAxis
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.path
 
 val client = LorisClient()
@@ -107,14 +98,10 @@ client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav"
 <!-- field-box id="loris_two_resolutions" index="2" -->
 
 ```edn [field-box id="loris_two_resolutions" role="properties"]
-{"id" "loris_two_resolutions" "index" 2 "name" "3 · independent fine-time and fine-frequency passes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · independent fine-time and fine-frequency passes" "_tombstone" false "frame" #afield/rect [40.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_two_resolutions_code_.kt" "lines" 25 "characters" 1122 "sha256" "7c23995030f8b3623c3d8e6609051fbaf8a7445508c76c1078165cf1cf5f5f14"}]}
+{"id" "loris_two_resolutions" "index" 2 "name" "3 · independent fine-time and fine-frequency passes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · independent fine-time and fine-frequency passes" "_tombstone" false "frame" #afield/rect [40.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_two_resolutions_code_.kt" "lines" 21 "characters" 954 "sha256" "c311f1b7be73db7fe93e9f8786d5fa176324e7f460107d8a13e0d9f509f32562"}]}
 ```
 
 ```kotlin [field-property box="loris_two_resolutions" name="code" path="loris_two_resolutions_code_.kt"]
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.path
 import java.util.concurrent.CompletableFuture
 
@@ -143,15 +130,10 @@ CompletableFuture.allOf(*passes.toTypedArray()).exceptionally { error ->
 <!-- field-box id="loris_source_and_partials" index="3" -->
 
 ```edn [field-box id="loris_source_and_partials" role="properties"]
-{"id" "loris_source_and_partials" "index" 3 "name" "1 · source, analyze, partials and reconstruction" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · source, analyze, partials and reconstruction" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_source_and_partials_code_.kt" "lines" 29 "characters" 1321 "sha256" "e5f0837a56ff4dcaa0146ceb3c13af7d4121c46afd64043a09f7efb05028baf8"}]}
+{"id" "loris_source_and_partials" "index" 3 "name" "1 · source, analyze, partials and reconstruction" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · source, analyze, partials and reconstruction" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_source_and_partials_code_.kt" "lines" 24 "characters" 1114 "sha256" "ad884809ae492c1627af9a9d4c5ba32d52cd295f9b5b585642742c574ab48b6a"}]}
 ```
 
 ```kotlin [field-property box="loris_source_and_partials" name="code" path="loris_source_and_partials_code_.kt"]
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisNative
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.AudioVisualizer
 import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
@@ -183,20 +165,10 @@ client.analyzeWavAsync(path,
 <!-- field-box id="loris_label_align_morph" index="4" -->
 
 ```edn [field-box id="loris_label_align_morph" role="properties"]
-{"id" "loris_label_align_morph" "index" 4 "name" "5 · label, align and morph two phrases" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · label, align and morph two phrases" "_tombstone" false "frame" #afield/rect [40.0 4400.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_label_align_morph_code_.kt" "lines" 32 "characters" 1564 "sha256" "b783ea1480ec90c88d78c5c105a1d3c2022a765ba7bcd6090bef0a7bc8581de2"}]}
+{"id" "loris_label_align_morph" "index" 4 "name" "5 · label, align and morph two phrases" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · label, align and morph two phrases" "_tombstone" false "frame" #afield/rect [40.0 4400.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_label_align_morph_code_.kt" "lines" 22 "characters" 1155 "sha256" "0da62ded1f51d07b03110c3af656642e450281fcdbf7888343f4ff44f5f9aaca"}]}
 ```
 
 ```kotlin [field-property box="loris_label_align_morph" name="code" path="loris_label_align_morph_code_.kt"]
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisEnvelope
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisReference
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.crop
-import afield.stdlib.loris.dropUnlabeled
-import afield.stdlib.loris.labelCounts
-import afield.stdlib.loris.loudestTimeSeconds
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.path
 
 val client = LorisClient()

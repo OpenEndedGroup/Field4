@@ -116,11 +116,13 @@ object BooleanNetworkSoundDocs {
         val layers = listOf(
             Layer(27L, 0.125, 64, BooleanTriggerMode.RISING_EDGE, 36, "bd", 0.98),
             Layer(11L, 0.1875, 48, BooleanTriggerMode.CHANGE, 50, "sn", 0.76),
-            Layer(42L, 0.0625, 64, BooleanTriggerMode.ACTIVE, 74, "hh", 0.42),
+            Layer(42L, 0.0625, 128, BooleanTriggerMode.ACTIVE, 74, "hh", 0.42),
         )
         return layers.flatMap { layer ->
-            val net = kauffmanNetwork(n = 5, k = 2, seed = layer.seed)
-            val attr = net.findAttractors().maxByOrNull { it.period }!!
+            val (net, attr) = (layer.seed until layer.seed + 80).firstNotNullOf { seed ->
+                val net = kauffmanNetwork(n = 5, k = 2, seed = seed)
+                net.findAttractors().filter { it.period >= 4 }.maxByOrNull { it.period }?.let { net to it }
+            }
             net.scheduledNotes(initialState = attr.cycle.first(), stepDuration = layer.stepDuration, steps = layer.steps) { step ->
                 val lanes = when (layer.mode) {
                     BooleanTriggerMode.ACTIVE ->
@@ -190,7 +192,7 @@ object BooleanNetworkSoundDocs {
         ),
         Scene(
             name = "braid",
-            listenFor = "the shimmer stopping dead at 4 s, and the snare only at time zero",
+            listenFor = "kick, snare and shimmer all running the full eight seconds",
             seconds = 8.0,
             notes = ::braidNotes,
             // The page's shimmer tokens are hh:0 … hh:4, and in Dirt-Samples hh:1 to hh:4 are a

@@ -15,7 +15,6 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 450.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
           import afield.stdlib.Vec3
 
           // ---- the one parameter to change -------------------------------------------------

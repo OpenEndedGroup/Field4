@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="muscriptor_guide" index="0" -->
 
 ```edn [field-box id="muscriptor_guide" role="properties"]
-{"id" "muscriptor_guide" "index" 0 "name" "1 · MuScriptor guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · MuScriptor guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_guide_code_.kt" "lines" 11 "characters" 1271 "sha256" "1011c4bfcca2c21341b13b31db9a284e63292adc2b543a8f3d1d808bcb73d173"}]}
+{"id" "muscriptor_guide" "index" 0 "name" "1 · MuScriptor guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · MuScriptor guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_guide_code_.kt" "lines" 10 "characters" 1235 "sha256" "57e5e6a8c1adb9a1734edf0b9f8f31ef2c827fcf46299c4ff78e8bd8475a278f"}]}
 ```
 
 ```kotlin [field-property box="muscriptor_guide" name="code" path="muscriptor_guide_code_.kt"]
-import afield.stdlib.noir.audioai.*
 
 display("guide", """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
@@ -33,11 +32,10 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="muscriptor_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="muscriptor_visualizer_gallery" role="properties"]
-{"id" "muscriptor_visualizer_gallery" "index" 1 "name" "2 · synchronized instrument piano roll" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized instrument piano roll" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_visualizer_gallery_code_.kt" "lines" 13 "characters" 904 "sha256" "1314551d686724b7a3c8ef71c7410daf2a42c2d9fa216fa52f7ca0b462959773"}]}
+{"id" "muscriptor_visualizer_gallery" "index" 1 "name" "2 · synchronized instrument piano roll" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized instrument piano roll" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_visualizer_gallery_code_.kt" "lines" 12 "characters" 868 "sha256" "6517a2ee8cd442fa87c13e972d0d9bdda00ad3f776f7d7851edbd99b1f50119e"}]}
 ```
 
 ```kotlin [field-property box="muscriptor_visualizer_gallery" name="code" path="muscriptor_visualizer_gallery_code_.kt"]
-import afield.stdlib.noir.audioai.*
 import afield.stdlib.AudioVisualizer
 import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
@@ -57,12 +55,11 @@ display("transcription", source + analysisPreviewVisualizationHtml(preview, widt
 <!-- field-box id="transcribe_field_render" index="2" -->
 
 ```edn [field-box id="transcribe_field_render" role="properties"]
-{"id" "transcribe_field_render" "index" 2 "name" "3 · submit, monitor, audition, download MIDI" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, audition, download MIDI" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "transcribe_field_render_code_.kt" "lines" 66 "characters" 3400 "sha256" "a40808355334cb3e8625fcd67f6b0e9d9c6f06a45a8ad9540f46b53e3f7e0dd4"}]}
+{"id" "transcribe_field_render" "index" 2 "name" "3 · submit, monitor, audition, download MIDI" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, audition, download MIDI" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "transcribe_field_render_code_.kt" "lines" 65 "characters" 3364 "sha256" "678fdd5228b442e899f7b61bd1b9f9c2191f8f797cb9d3180cdf2923f3e61c77"}]}
 ```
 
 ```kotlin [field-property box="transcribe_field_render" name="code" path="transcribe_field_render_code_.kt"]
 import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()

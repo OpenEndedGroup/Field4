@@ -10,12 +10,20 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="polytope_expression_gallery" index="0" -->
 
+### Narrative
+
+From `code`
+
+**** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
+operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and
+the whole contact sheet rebuilds — including the captions, which are read off the
+topology and not off the pictures.
+
 ```edn [field-box id="polytope_expression_gallery" role="properties"]
-{"id" "polytope_expression_gallery" "index" 0 "name" "1 — Conway expressions, retype the list" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway expressions, retype the list" "_tombstone" false "frame" #afield/rect [80.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_expression_gallery_code_.kt" "lines" 36 "characters" 1703 "sha256" "4c8046873e1c5f0d5d4ca529a91a886f29c60c7b5fbd551eee4d6f84ef826289"}]}
+{"id" "polytope_expression_gallery" "index" 0 "name" "1 — Conway expressions, retype the list" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway expressions, retype the list" "_tombstone" false "frame" #afield/rect [80.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_expression_gallery_code_.kt" "lines" 35 "characters" 1671 "sha256" "ca7e2e94c3f0e7965be35f7215017f0e279578c287a47eace79623c179a1cee6"}]}
 ```
 
 ```kotlin [field-property box="polytope_expression_gallery" name="code" path="polytope_expression_gallery_code_.kt"]
-import afield.stdlib.polytope.*
 
 // ***** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
 // operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and
@@ -58,11 +66,10 @@ println(expressions.joinToString("\n") { source ->
 <!-- field-box id="polytope_realization_relax" index="1" -->
 
 ```edn [field-box id="polytope_realization_relax" role="properties"]
-{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 57 "characters" 2325 "sha256" "82e9709df1b599387060e1cbdf4d338de407ef7afa20ba55d0f753e08a5ffdeb"}]}
+{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 56 "characters" 2293 "sha256" "c08ba65b1ece128588cc094f7ca2222719e9ef57ba74616f38f8978fc22165a0"}]}
 ```
 
 ```kotlin [field-property box="polytope_realization_relax" name="code" path="polytope_realization_relax_code_.kt"]
-import afield.stdlib.polytope.*
 import afield.stdlib.Vec3
 import kotlin.random.Random
 
@@ -125,12 +132,18 @@ solved
 
 <!-- field-box id="polytope_parameter_field" index="2" -->
 
+### Narrative
+
+From `code`
+
+A scalar per face, written as an ordinary attribute. Selection and deployment are
+separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.
+
 ```edn [field-box id="polytope_parameter_field" role="properties"]
-{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 77 "characters" 3148 "sha256" "821d844c938df9c1c39cdeaab9b9f79b06ee7c285fa8aa3713fa017f923a780d"}]}
+{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 76 "characters" 3116 "sha256" "2cbe5ffe7560caa61042b6afd7ab8fce4a3aebb7c4435eede910beaebe4f4ae9"}]}
 ```
 
 ```kotlin [field-property box="polytope_parameter_field" name="code" path="polytope_parameter_field_code_.kt"]
-import afield.stdlib.polytope.*
 
 // A scalar per face, written as an ordinary attribute. Selection and deployment are
 // separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.
@@ -213,12 +226,18 @@ displayOpen("parameter-field")
 
 <!-- field-box id="polytope_abstract_dual" index="3" -->
 
+### Narrative
+
+From `code`
+
+Take the cube's coordinates away. The topology is untouched, and every combinatorial
+question about the dual is still decidable.
+
 ```edn [field-box id="polytope_abstract_dual" role="properties"]
-{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 36 "characters" 2289 "sha256" "5bf31509b244790b9bb502de7059f3b1785b48f4da14cb392bd8b65ce5c53ff4"}]}
+{"id" "polytope_abstract_dual" "index" 3 "name" "2 — a dual with no coordinates" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — a dual with no coordinates" "_tombstone" false "frame" #afield/rect [1120.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_abstract_dual_code_.kt" "lines" 35 "characters" 2257 "sha256" "1d625a4c02a8ba83f25d5ec3d4a7aaf99b292da58fc0e90a3f28466137dbb4f8"}]}
 ```
 
 ```kotlin [field-property box="polytope_abstract_dual" name="code" path="polytope_abstract_dual_code_.kt"]
-import afield.stdlib.polytope.*
 
 // Take the cube's coordinates away. The topology is untouched, and every combinatorial
 // question about the dual is still decidable.

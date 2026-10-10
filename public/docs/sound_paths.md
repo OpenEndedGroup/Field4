@@ -29,7 +29,7 @@ in.**
 * **"I want it in a file, or in a docs page."** → the `wav-file` sink. Offline, deterministic.
 * **"I want a player in the box's output."** → the `box-output-player` sink.
 * **"I want it out of the speakers, now."** → return `audio(signal)` from the box and the
-  `audio-patch-seam` does the rest.
+  `box-audio` does the rest.
 
 ---
 
@@ -65,7 +65,7 @@ the others'. The way back in is `link-audio-in`, below.
 
 | path | what it is | needs | page |
 | --- | --- | --- | --- |
-| `audio-patch-seam` | **the default.** Return `audio(signal)` from a box; one engine thread pulls blocks until the box stops. `internal interface Renderer` in `src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt` | an output device | — |
+| `box-audio` | **the default.** Return `audio(signal)` from a box; one engine thread pulls blocks until the box stops. `internal interface Renderer` in `src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt` | an output device | — |
 | `wav-file` | a 16-bit PCM `.wav` on disk. `fun writeStereo16` in `src/jvmMain/kotlin/afield/four/audio/WavFloatArrayWriter.kt` | nothing | [Sound](sound.md) |
 | `box-output-player` | samples encoded to a WAV in memory, base64'd into a `data:` URI, shown as an `<audio>` element in the box's output. `fun renderSamplesHtml` in `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt` | nothing | [Visualizers](visualizers.md) |
 | `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt` | an output device | — |
@@ -167,7 +167,7 @@ fills, and with no device pulling, that thread renders as fast as it can, so the
 offline as well. Like `faust-poly`, it opens no device and encodes no WAV.
 
 `AudioPatchSpec` is what every box that makes a noise returns. The paths with "—" in the page
-column (`audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`, `wav-file-in`) have no
+column (`box-audio`, `dough-engine`, `spatial-openal`, `device-input`, `wav-file-in`) have no
 page of their own; this page and [`afield.four.synth` in the generated reference](reference/synthesis.md)
 are their documentation.
 
