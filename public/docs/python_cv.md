@@ -3,7 +3,8 @@
 *`fieldcv` is a small library of webcam, movie and image-sequence computer vision for
 [Python boxes](python.md), built on OpenCV and Google's mediapipe. It finds point tracks, optical
 flow, moving foregrounds, body pose, hands and faces, and hands each result to the rest of Field as
-numpy arrays — which Kotlin boxes can read, and draw with the GPU, straight out of the same memory.*
+numpy arrays. Kotlin boxes can read those arrays, and draw them with the GPU, straight out of the
+same memory.*
 
 The quickest way in is the starting point. Open **Starting points** on the welcome screen, search
 for **fieldcv webcam**, and run its boxes from the top: your camera, mirrored, with tracks, pose,
@@ -61,8 +62,8 @@ print(r["faces"].shape)          # (faces, 478 landmarks, x y z)
 print(r["poses"][0, 0])          # the nose of the first person
 ```
 
-When a detector finds nothing it returns an empty array of the same shape — `(0, 33, 3)` for nobody
-in frame — never a list of `NaN`s, so code that loops over people simply does nothing.
+When a detector finds nothing it returns an empty array of the same shape (`(0, 33, 3)` for nobody
+in frame), never a list of `NaN`s, so code that loops over people simply does nothing.
 
 | detector | what it finds | result keys |
 | --- | --- | --- |
@@ -177,7 +178,7 @@ print({name: f"{ms:.1f} ms" for name, ms in p.latest["timings"].items()})
 print(len(p.latest["tracks"]), "tracks,", len(p.latest["poses"]), "people")
 ```
 
-The detectors list can be changed while it runs — `p.detectors = [cv4.Hands()]` — and `p.stop()`
+The detectors list can be changed while it runs, with `p.detectors = [cv4.Hands()]`, and `p.stop()`
 ends it from another cell.
 
 ## Into the graphics
@@ -208,8 +209,8 @@ p = cv4.Pipeline(cv4.sample("swing"), cv4.Tracks(), pose, on_result=publish).sta
 ```
 
 `cv4.edges` turns landmarks into one two-point line per bone, which is the shape a skeleton is
-drawn in. A Kotlin box under the renderer turns the shared image into a texture — one that uploads
-only when Python has published a new frame — and puts it on a quad that fills the window:
+drawn in. A Kotlin box under the renderer turns the shared image into a texture, which uploads
+only when Python has published a new frame, and puts it on a quad that fills the window:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/python_cv/native_shared_memory.png" alt="A native Field render window showing Katherine Murphy on the swing from Ballet Mécanique as a full-window texture, with green point tracks and a pink pose skeleton drawn over her as GPU line geometry." wait="6" timeout="300" capture="native-window" native-wait-frames="90" trim-native=true graphics-context=true embed=true name="python-cv-native-shared-memory" macro-file="../../python/fieldcv/examples/shared_memory.yaml" capture-box="cv_camera_quad" requires="jep,python:cv2,python:mediapipe"}
 :::static
@@ -278,8 +279,8 @@ frames {
 One detail in both boxes is easy to get backwards: Field's normalized device coordinates have `y`
 pointing up, while an image's rows run down, so an image point `(u, v)` lands at `(2u - 1, 1 - 2v)`.
 
-The whole scene — the Python box and both Kotlin boxes — is
-`python/fieldcv/examples/shared_memory.yaml` in the Field checkout.
+The whole scene, the Python box and both Kotlin boxes, is
+[`python/fieldcv/examples/shared_memory.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/python/fieldcv/examples/shared_memory.yaml).
 
 ## Your webcam
 
@@ -338,7 +339,7 @@ are in the public domain.
 ## How the memory is shared
 
 When a Java method hands Python a direct buffer through JEP, it arrives as a numpy array over the
-same bytes, and OpenCV can write into it in place — `cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA,
+same bytes, and OpenCV can write into it in place: `cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA,
 dst=camera.array)` is the whole of `camera.write`. What remains is timing: Python writes from the
 pipeline's thread whenever a frame is ready, and the renderer reads on its own thread at its own
 rate.
@@ -352,6 +353,7 @@ writer that publishes faster than the renderer consumes loses frames rather than
 which is what a live view wants.
 
 Python boxes share one interpreter, so the pipeline's thread is an ordinary Python thread: it keeps
-running after the cell that started it returns, it can call into the JVM, and Field's **Stop** closes
-it, since stopping a box cancels its asyncio tasks and a thread is not one. See also
+running after the cell that started it returns, and it can call into the JVM. Field's **Stop** on its
+own cancels only a box's asyncio tasks, so `fieldcv` registers each pipeline with the box that
+started it and closes it when that box stops. See also
 [Python in a Box](python.md) and [afield.four graphics](afield_four_graphics.md).
