@@ -84,5 +84,5 @@ client.submit(operation)
 GPU time. Re-evaluating an unchanged operation reuses the same content-addressed candidate family
 and its stored gesture measurements.
 
-See also the [EnCodec reconstruction microscope](audio_ai_codec.md) for token-level material, and
+See also the [EnCodec round trip](audio_ai_codec.md) for token-level material, and
 [beat and pitch analysis](audio_ai_analysis.md).

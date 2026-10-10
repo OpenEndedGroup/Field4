@@ -212,8 +212,8 @@ nav:
       - Multi-Instrument Transcription: audio_ai_muscriptor.md
       - Corpus Microscope: audio_ai_corpus_microscope.md
       - Render Field Music, Then Analyse It: audio_render_analysis.md
-      - Experiment in Terror with an Underfit LoRA: audio_ai_underfit_mancini.md
-      - EnCodec Reconstruction Microscope: audio_ai_codec.md
+      - Generating with a LoRA: audio_ai_underfit_mancini.md
+      - EnCodec round trip: audio_ai_codec.md
   - Networks & Dynamics:
     - Sorting Networks Examples: sorting_networks_examples.md
     - Interaction Nets Examples: interaction_nets_examples.md
