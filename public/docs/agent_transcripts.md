@@ -1697,7 +1697,7 @@ outside the declared frame is not cropped, it shrinks everything else.
 that match a hidden target in thirty tries, and charts the best misfit after each one. A
 `GpPreference` shows two rosettes and two buttons, learns from each "A or B?" click, and proposes
 the next pair. The third box answers the same questions for a judge whose ideal rosette is known,
-and draws the model's favourite after every six answers beside that ideal. See
+and draws the model's favourite after every six answers, then the ideal past a dividing line, in its own colour, with a chart of what the model believes about hue. See
 [Tuning by Gaussian process](gaussian_process_optimization.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gp_instruments/metadata.edn)

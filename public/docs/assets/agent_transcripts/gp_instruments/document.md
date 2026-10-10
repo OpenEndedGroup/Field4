@@ -54,7 +54,7 @@ show()
 <!-- field-box id="gp_judge" index="1" -->
 
 ```edn [field-box id="gp_judge" role="properties"]
-{"id" "gp_judge" "index" 1 "name" "3 - A or B? (a simulated judge)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A or B? (a simulated judge)" "_tombstone" false "frame" #afield/rect [1540.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_judge_code_.kt" "lines" 38 "characters" 2152 "sha256" "897285d20d058a556c950d137c9acefb09cea07b6c4400eb050eb7bcf78b3f83"}]}
+{"id" "gp_judge" "index" 1 "name" "3 - A or B? (a simulated judge)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A or B? (a simulated judge)" "_tombstone" false "frame" #afield/rect [1540.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_judge_code_.kt" "lines" 56 "characters" 3209 "sha256" "eaef08ebae6d4815b0760c299a142d2023683924b6a26c8877fb792da66bae1c"}]}
 ```
 
 ```kotlin [field-property box="gp_judge" name="code" path="gp_judge_code_.kt"]
@@ -62,7 +62,8 @@ import kotlin.math.*
 
 // The same loop with the human replaced by a judge whose taste we know: it likes dark-blue
 // five-petalled rosettes, deep and barely curled. Twenty-four answers, and we draw the
-// model's favourite after every six, ending beside the judge's ideal (grey, right).
+// model's favourite after every six, then - past a dividing line - the judge's ideal, in its
+// own colour, so shape and colour can both be compared.
 fun rosette(p: Map<String, Double>, dx: Double) = FLine().also { f ->
     val petals = p["petals"]!!.roundToInt()
     for (i in 0..600) {
@@ -86,9 +87,26 @@ repeat(24) { round ->
     taste.choose(pair, aWins = utility(pair.first) > utility(pair.second))
     if ((round + 1) % 6 == 0) snapshots += taste.best!!
 }
-lines(snapshots.mapIndexed { i, p -> rosette(p, 380.0 * i) } +
-    rosette(ideal, 380.0 * snapshots.size).also { it.color = vec(0.55, 0.55, 0.55, 1.0) },
+val divider = 380.0 * snapshots.size - 130.0
+val separator = FLine().moveTo(divider, -170.0).lineTo(divider, 170.0).also {
+    it.color = vec(0.7, 0.7, 0.7, 1.0); it.thickness = 1.5
+}
+lines(snapshots.mapIndexed { i, p -> rosette(p, 380.0 * i) } + separator +
+    rosette(ideal, 380.0 * snapshots.size + 120.0),
     w = 1000.0, h = 200.0, fitToSize = true)
+
+// What the model believes about colour: utility relative to its favourite as the hue sweeps,
+// with the other dials held at the favourite's. Answers only fix differences, hence relative.
+val best = taste.best!!
+val hues = (0..72).map { it * 5.0 }
+val u = hues.map { taste.utilityRelativeTo(best, best + ("hue" to it)) }
+val chart = Chart(title = "utility vs hue, relative to the favourite", xLabel = "hue", yLabel = "u - u(favourite)")
+    .line("+2 sd", hues, u.map { it.mean + 2 * it.std }, color = vec(1.0, 0.55, 0.2, 0.5))
+    .line("-2 sd", hues, u.map { it.mean - 2 * it.std }, color = vec(1.0, 0.55, 0.2, 0.5))
+    .line("mean", hues, u.map { it.mean }, color = vec(1.0, 0.55, 0.2, 1.0), thickness = 3.0)
+    .vrule(250.0, "judge's ideal hue")
+chart.width = 600.0; chart.height = 280.0
+showChart(chart, channel = "utility")
 snapshots.forEachIndexed { i, p ->
     println("after %2d answers: %s  utility %.3f".format(6 * (i + 1), p.mapValues { "%.2f".format(it.value) }, utility(p)))
 }
