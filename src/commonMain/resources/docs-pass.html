@@ -111,6 +111,13 @@
     </section>
 
     <section>
+        <h2>In one sentence</h2>
+        <p class="muted">Say what this pass should do, and an interactive <code>claude</code> runs the whole pass in a terminal (create, drain, review, rebuild, commit, land), stopping only on a real failure or a decision your sentence does not cover. Answer it in the terminal. Closing the terminal page leaves it running.</p>
+        <div class="row"><textarea id="one-sentence" rows="2" style="flex:1; font: inherit; color: var(--field-cyan); background: rgba(0,0,0,.8); border: 1px solid rgba(72,201,255,.35); border-radius: 7px; padding: 7px 10px;" placeholder="e.g. Drain every open note; yes to all the voice and accuracy edits, leave nav decisions to me."></textarea></div>
+        <div class="row"><button id="run-in-claude" type="button" class="primary">Run the pass in Claude</button><span id="terminals" class="muted"></span></div>
+    </section>
+
+    <section>
         <h2>1 · Worktree</h2>
         <div id="pass-summary"><p>…</p></div>
         <div class="row">
@@ -532,6 +539,26 @@
         }
         await closeHandoff(id, kind);
     });
+
+    // The one-sentence pass: an interactive claude in a pty (afield/server/terminal.kt), shown by /terminal.html.
+    const openTerminal = id => window.open(`/terminal.html?id=${encodeURIComponent(id)}`, `field-terminal-${id}`, "noopener");
+    const refreshTerminals = async () => {
+        try {
+            const list = await (await fetch("/api/terminal", { cache: "no-store" })).json();
+            $("terminals").innerHTML = list.filter(t => t.running).map(t =>
+                `<a href="/terminal.html?id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">${esc(t.title)}</a>`).join(" · ");
+        } catch (_) {}
+    };
+    $("run-in-claude").addEventListener("click", async () => {
+        const text = $("one-sentence").value.trim();
+        if (!text) { $("one-sentence").focus(); return; }
+        const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "docs-pass", text }) });
+        if (!response.ok) { await tell(await response.text()); return; }
+        openTerminal((await response.json()).id);
+        refreshTerminals();
+    });
+    refreshTerminals();
+    setInterval(() => { if (!document.hidden) refreshTerminals(); }, 5000);
 
     refresh();
     setInterval(() => { if (!document.hidden) refresh(); }, 2500);
