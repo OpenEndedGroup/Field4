@@ -27,6 +27,9 @@ if pathlib.Path("HANGS").exists():
     import time; time.sleep(600)
 if pathlib.Path("SLOW").exists():
     import time; time.sleep(1.5)
+if pathlib.Path("COUNT").exists() and pathlib.Path("COUNT").read_text().strip() == "wrong":
+    print("merge_regen: CountTest > count matches FAILED", file=sys.stderr)
+    sys.exit(1)
 if pathlib.Path("BREAKS").exists() or (pathlib.Path("PAIR_A").exists() and pathlib.Path("PAIR_B").exists()):
     print("merge_regen: a guard failed on the batch", file=sys.stderr)
     sys.exit(1)
@@ -46,6 +49,28 @@ pathlib.Path("public/field4/keyframe_editor/index.html").write_text("built docs"
 '''
 
 
+# Stands in for `claude -p` as the fixer, run in the lander's worktree with the prompt on stdin. The
+# mode file next to it says what it does: fix COUNT, decline, cheat through the accepted-reds
+# register, or blame a branch that is not in the round.
+FIXER_STUB = '''
+import json, pathlib, sys
+prompt = sys.stdin.read()
+here = pathlib.Path(__file__).parent
+(here / "FIXER_CALLS").write_text((here / "FIXER_CALLS").read_text() + "x" if (here / "FIXER_CALLS").exists() else "x")
+mode, culprit = (here / "FIXER_MODE").read_text().split()
+assert "CountTest" in prompt or mode == "decline", prompt[-2000:]
+if mode == "fix":
+    pathlib.Path("COUNT").write_text("right\\n")
+elif mode == "cheat":
+    pathlib.Path("dev_docs/testing").mkdir(parents=True, exist_ok=True)
+    pathlib.Path("dev_docs/testing/expected_test_failures.json").write_text("[]\\n")
+    pathlib.Path("COUNT").write_text("right\\n")
+verdict = "decline" if mode == "decline" else "fix"
+print("looked at it")
+print("FIXER-VERDICT: " + json.dumps({"verdict": verdict, "culprit": culprit, "reason": f"{mode} the count"}))
+'''
+
+
 class LandQueueTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -62,6 +87,8 @@ class LandQueueTest(unittest.TestCase):
             "FIELD_LAND_BY": "test-agent",
             # Never seed a private Gradle home from the real ~/.gradle in a test.
             "FIELD_LAND_GRADLE_HOME": "shared",
+            # Never ask the real claude; the fixer tests switch on a stub.
+            "FIELD_LAND_FIXER": "off",
         }
         self.primary.mkdir()
         self.git(self.primary, "init", "-q", "-b", "main")
@@ -271,6 +298,71 @@ class LandQueueTest(unittest.TestCase):
         return {item["branch"]: state
                 for state in ("pending", "landed", "bounced") for f in (queue / state).glob("*.json")
                 if (item := json.loads(f.read_text())).get("branch")}
+
+    def use_fixer(self, mode: str, culprit: str) -> Path:
+        root = Path(self._tmp.name)
+        (root / "fixer.py").write_text(FIXER_STUB)
+        (root / "FIXER_MODE").write_text(f"{mode} {culprit}\n")
+        self.env.update(FIELD_LAND_FIXER="on", FIELD_LAND_FIXER_CMD=f"{sys.executable} {root / 'fixer.py'}")
+        return root
+
+    def queue(self) -> Path:
+        return Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue"
+
+    def miscounted(self, name: str) -> None:
+        wt = self.branch_with(name, f"{name}.txt")
+        (wt / "COUNT").write_text("wrong\n")
+        self.git(wt, "add", "-A")
+        self.git(wt, "commit", "-q", "-m", f"{name} forgot to update the count")
+        self.land(wt, "enqueue")
+
+    def test_the_fixer_fixes_a_slip_in_a_batch_and_everything_lands_without_bisecting(self) -> None:
+        root = self.use_fixer("fix", "bad")
+        self.land(self.branch_with("ok1", "ok1.txt"), "enqueue")
+        self.miscounted("bad")
+        self.land(self.branch_with("ok2", "ok2.txt"), "enqueue")
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.states(), {"ok1": "landed", "bad": "landed", "ok2": "landed"})
+        self.assertEqual(self.guard_calls(), 2, "one red round, one green round, no bisect")
+        self.assertEqual((self.primary / "COUNT").read_text(), "right\n")
+        # The fixup sits on its own branch on top of the culprit's tip; the culprit's branch is untouched.
+        fixup = self.git(self.primary, "rev-parse", "fixup/bad")
+        self.assertEqual(self.git(self.primary, "rev-parse", "fixup/bad^"), self.git(self.primary, "rev-parse", "bad"))
+        self.assertIn("Lander-Fixup:", self.git(self.primary, "log", "-1", "--format=%B", fixup))
+        self.assertEqual(self.git(self.primary, "log", "-1", "--format=%an", fixup), "Field lander fixer")
+        mine = self.land(Path(self._tmp.name) / "bad", "mine")
+        self.assertIn("git merge fixup/bad", mine.stdout)
+        self.assertIn("forgot to update the count", mine.stdout, "the subject is the branch's, not the fixup's")
+        ledger = [json.loads(l) for l in (self.queue() / "fixer.jsonl").read_text().splitlines()]
+        self.assertEqual([e["outcome"] for e in ledger], ["fixed"])
+        self.assertEqual((root / "FIXER_CALLS").read_text(), "x")
+
+    def test_a_declined_fix_bounces_with_the_diagnosis_and_is_asked_only_once(self) -> None:
+        root = self.use_fixer("decline", "bad")
+        self.land(self.branch_with("ok1", "ok1.txt"), "enqueue")
+        self.miscounted("bad")
+        self.run_lander()
+        self.assertEqual(self.states(), {"ok1": "landed", "bad": "bounced"})
+        self.assertIn("fixer: decline the count", self.land(Path(self._tmp.name) / "bad", "mine").stdout)
+        self.assertEqual((root / "FIXER_CALLS").read_text(), "x", "the bisect rounds must not ask again")
+
+    def test_a_fix_that_edits_the_accepted_reds_register_is_rejected(self) -> None:
+        self.use_fixer("cheat", "bad")
+        self.miscounted("bad")
+        self.run_lander()
+        self.assertEqual(self.states(), {"bad": "bounced"})
+        ledger = (self.queue() / "fixer.jsonl").read_text()
+        self.assertIn("rejected", ledger)
+        self.assertIn("expected_test_failures.json", ledger)
+        self.assertNotIn("fixup/bad", self.git(self.primary, "branch", "--list", "fixup/*"))
+
+    def test_a_fix_blaming_a_branch_not_in_the_round_is_rejected(self) -> None:
+        self.use_fixer("fix", "nobody")
+        self.miscounted("bad")
+        self.run_lander()
+        self.assertEqual(self.states(), {"bad": "bounced"})
+        self.assertIn("not in the round", (self.queue() / "fixer.jsonl").read_text())
 
     def test_a_batch_shares_one_guard_and_keeps_one_commit_per_branch(self) -> None:
         names = ["b1", "b2", "b3", "b4", "b5"]

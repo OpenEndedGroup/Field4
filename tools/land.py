@@ -30,8 +30,18 @@ What the lander does with each round:
    the record of who landed what.
 4. Fast-forwards `main` to it. If `main` moved meanwhile (a human merged by hand), it starts the item
    again from step 1.
-5. On any failure it bounces the item: the reason and the log path go in `status`, and `main` is
-   untouched. Fix the branch, commit, and enqueue again.
+5. On a red guard it first asks the fixer (below). Otherwise, or if the fixer declines, it bounces
+   the item: the reason and the log path go in `status`, and `main` is untouched. Fix the branch,
+   commit, and enqueue again.
+
+The fixer: at a red round, `claude -p` runs in the lander's worktree on the exact tree that failed,
+once per item, for up to FIELD_LAND_FIXER_MIN (15) minutes. It decides whether the failure is a
+small mechanical slip one branch made (a missed count, a citation to something that moved, a
+misplaced KDoc). If so it edits; the lander checks the edit (at most 6 files and 60 lines, no
+deletions, no edits to the accepted-red registers, the guards, the hooks, the build or this script,
+no disabled tests), commits it on the culprit's tip as `fixup/<branch>` without moving the branch
+itself, and runs the whole round again with the full guard. If not, its diagnosis goes into the
+bounce. Every attempt is in `field-land-queue/fixer.jsonl`. FIELD_LAND_FIXER=off turns it off.
 
 `doc` is a queue barrier: preceding landings finish before it builds `public/field4/` in the
 checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
@@ -234,7 +244,7 @@ def _subject(item: dict) -> str:
     claude/distracted-mccarthy-deeb34 says nothing about what is landing."""
     if _is_doc(item):
         return "Build the local documentation site"
-    sha = item["sha"]
+    sha = item.get("fixup", {}).get("from", item["sha"])  # the branch's own subject, not the fixup's
     if sha not in _SUBJECTS:
         result = subprocess.run(["git", "log", "-1", "--format=%s", sha], stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL, text=True)
@@ -347,6 +357,8 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
         lines.append(f"         \u201c{_subject(item)}\u201d")
     if item.get("note"):
         lines.append(f"         note: {item['note']}")
+    if state == PENDING and item.get("fixup"):
+        lines.append(f"         lander fixup {item['fixup']['sha'][:9]} on {item['fixup']['branch']}: {item['fixup'].get('reason', '')}")
     if state == PENDING and item.get("started"):
         waited = (_when(item["started"]) - _when(item["enqueued"])).total_seconds() if _when(item.get("enqueued")) else 0
         running = _since(item["started"])
@@ -381,6 +393,10 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
             + (f", took {_span(took)} ({how})" if took is not None else "")
             + (f"; {item['reason']}" if item.get("reason") else "")
         )
+        if item.get("fixup"):
+            f = item["fixup"]
+            lines.append(f"         with a lander fixup {f['sha'][:9]} on {f['branch']} ({f.get('reason', '')}); "
+                         f"your branch lacks it: git merge {f['branch']}")
         if item.get("pushed_as"):
             lines.append(f"         pushed main {item['pushed_as'][:9]} to origin")
         elif item.get("push_error"):
@@ -1044,6 +1060,10 @@ def _message(item: dict) -> str:
     message = f"Land {item['branch']} ({item['by']})\n\nLanding queue item {item['id']}, commit {item['sha']}."
     if item.get("note"):
         message += f"\n\n{item['note']}"
+    if item.get("fixup"):
+        f = item["fixup"]
+        message += (f"\n\nThe guard failed on {f['from'][:12]}; the lander's fixer added {f['sha'][:12]} "
+                    f"({f['branch']}): {f.get('reason', '')}")
     return message
 
 
@@ -1308,6 +1328,231 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
     return f"{first_name}: {first_line[:220]}{more}; full messages: {path}"
 
 
+# ---------------------------------------------------------------------------- the fixer
+
+
+# Most bounces are a missed number, a citation pointing at a symbol that moved, a KDoc in the wrong
+# place: a minute's fix, followed by a re-enqueue and (in a batch) an hour of bisecting. At a red
+# round the lander gives `claude -p` one chance, in its own worktree on the exact tree that failed,
+# to make the fix and say whose branch it belongs to. A fix that passes the checks below is committed
+# onto that branch's tip as `fixup/<branch>` (the branch itself is never moved: it is usually checked
+# out in somebody's worktree) and the whole batch goes round again with the full guard. The guard,
+# not the fixer, decides whether it lands. FIELD_LAND_FIXER=off turns it off.
+FIXER = os.environ.get("FIELD_LAND_FIXER", "on")
+FIXER_MINUTES = float(os.environ.get("FIELD_LAND_FIXER_MIN", "15"))
+FIXUP_MAX_FILES = 6
+FIXUP_MAX_LINES = 60
+# Making the guard pass by changing the guard is not a fix: the registers of accepted reds, the guards
+# themselves, the landing machinery, and the hooks are refused outright.
+FIXUP_DENIED_PATHS = re.compile(
+    r"^(dev_docs/testing/expected_\w+\.json|tools/(land|merge_regen|install_git_hooks)\.py|tools/check_[^/]+\.py"
+    r"|\.githooks/|githooks/|build\.gradle\.kts|settings\.gradle\.kts|gradle/)")
+# ...and so is switching a test off.
+FIXUP_DENIED_ADDED = re.compile(r"@Ignore|@Disabled|pytest\.mark\.skip|unittest\.skip|\bxit\(|\bxdescribe\(")
+FIXER_VERDICT = "FIXER-VERDICT:"
+
+FIXER_PROMPT = """You are the landing queue's fixer for the Field repository. The lander merged the
+branches below onto main and the guard failed. You are in the lander's own worktree, on the exact
+merged tree that failed; build output is warm, and nothing else is building here. AGENTS.md in this
+directory is the repo guide.
+
+Your job is a judgement call: is this failure a small, mechanical slip that one of these branches
+obviously made (a count or number not updated, a citation pointing at something that moved or was
+renamed, a KDoc in the wrong place, a missing entry in a list a guard checks, a typo in a reference)?
+
+- If yes: fix it with the smallest edit that is plainly right, then re-run the narrowest command that
+  reproduces the failing check (one test class, one checker script, one Gradle task) and confirm it
+  passes. Do not run the whole guard; the lander does that afterwards.
+- If the failure is about behaviour, timing, flakiness, design, or anything you would have to explain
+  with "probably", or it needs more than a few lines, do not edit anything; say why. Your diagnosis
+  goes into the bounce and is useful on its own.
+
+Hard rules (the lander rejects a fix that breaks them):
+- Do not run git commands that change anything: no commit, stash, checkout, reset, merge, or branch.
+  The lander commits your edit itself.
+- Do not edit dev_docs/testing/expected_*.json, tools/check_*.py, tools/land.py, tools/merge_regen.py,
+  the git hooks, or the Gradle build files; do not delete files; do not disable or skip a test.
+- At most {max_files} files and {max_lines} changed lines.
+- The fix must belong to ONE branch below: the one whose change the failure follows from.
+
+End your reply with exactly one line, and nothing after it:
+{verdict} {{"verdict": "fix" or "decline", "culprit": "<branch name>" or null, "reason": "<one sentence>"}}
+
+"""
+
+
+def _fixer_command() -> list[str] | None:
+    custom = os.environ.get("FIELD_LAND_FIXER_CMD")
+    if custom:
+        import shlex
+        return shlex.split(custom)
+    claude = shutil.which("claude")
+    if not claude:
+        return None
+    return [claude, "-p", "--output-format", "text", "--permission-mode", "acceptEdits",
+            "--allowedTools", "Bash Read Edit Write Grep Glob"]
+
+
+def _fixer_context(members: list[dict], main_sha: str, wt: Path, log: Path, failures: str | None, queue: Path) -> str:
+    parts = [f"main before this round: {main_sha}\n\nBranches in the round, each merged as its own commit:"]
+    for m in members:
+        stat = _git(wt, "diff", "--stat=120", f"{main_sha}...{m['sha']}", check=False)
+        parts.append(f"\n## {m['branch']} ({m['sha'][:9]}, by {m['by']})\n{_subject(m) or ''}\n{stat}")
+    if failures:
+        parts.append(f"\nFailing tests (first): {failures}")
+        path = log.with_suffix(".failures.txt")
+        if path.exists():
+            parts.append(path.read_text(errors="replace")[:6000])
+    tail = log.read_text(errors="replace").splitlines()[-200:]
+    parts.append("\nThe end of the landing log:\n" + "\n".join(tail))
+    ledger = _fixer_ledger(queue)[-8:]
+    if ledger:
+        parts.append("\nWhat the fixer did on recent reds (for calibration):\n"
+                     + "\n".join(f"- {e.get('outcome')}: {e.get('reason', '')}" for e in ledger))
+    return "\n".join(parts)
+
+
+def _fixer_ledger(queue: Path) -> list[dict]:
+    try:
+        lines = (queue / "fixer.jsonl").read_text().splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        with contextlib.suppress(json.JSONDecodeError):
+            out.append(json.loads(line))
+    return out
+
+
+def _record_fixer(queue: Path, out, **fields) -> None:
+    fields = {"finished": _now(), **fields}
+    with (queue / "fixer.jsonl").open("a") as f:
+        f.write(json.dumps(fields) + "\n")
+    out.write(f"land: fixer: {fields.get('outcome')}: {fields.get('reason', '')}\n")
+    out.flush()
+
+
+def _run_fixer(cmd: list[str], prompt: str, wt: Path, env: dict, out) -> str | None:
+    """The fixer's whole reply, or None if it overran FIXER_MINUTES (its process group is stopped)."""
+    proc = subprocess.Popen(cmd, cwd=wt, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True, start_new_session=True)
+    awake = _hold_awake(proc.pid)
+    _CURRENT_BUILD["pgid"] = proc.pid
+    try:
+        reply, _ = proc.communicate(prompt, timeout=FIXER_MINUTES * 60)
+        return reply
+    except subprocess.TimeoutExpired:
+        _stop_group(proc.pid)
+        proc.communicate()
+        return None
+    finally:
+        _CURRENT_BUILD.pop("pgid", None)
+        if awake is not None and awake.poll() is None:
+            awake.terminate()
+        out.flush()
+
+
+def _fixer_verdict(reply: str) -> dict | None:
+    for line in reversed(reply.splitlines()):
+        if line.strip().startswith(FIXER_VERDICT):
+            with contextlib.suppress(json.JSONDecodeError):
+                verdict = json.loads(line.strip()[len(FIXER_VERDICT):])
+                return verdict if isinstance(verdict, dict) else None
+    return None
+
+
+def _fixup_problem(wt: Path, base: str) -> str | None:
+    """Why the staged edit is not acceptable as a fixup, or None."""
+    status = _git(wt, "diff", "--cached", "--name-status", base, check=False).splitlines()
+    if not status:
+        return "it changed nothing"
+    paths = [line.split("\t")[-1] for line in status]
+    if any(line.startswith("D") for line in status):
+        return "it deletes a file"
+    denied = [p for p in paths if FIXUP_DENIED_PATHS.search(p)]
+    if denied:
+        return f"it edits {', '.join(denied)}, which a fixup may not touch"
+    if len(paths) > FIXUP_MAX_FILES:
+        return f"it touches {len(paths)} files (at most {FIXUP_MAX_FILES})"
+    lines = 0
+    for row in _git(wt, "diff", "--cached", "--numstat", base, check=False).splitlines():
+        added, removed = row.split("\t")[:2]
+        lines += int(added) if added.isdigit() else FIXUP_MAX_LINES
+        lines += int(removed) if removed.isdigit() else 0
+    if lines > FIXUP_MAX_LINES:
+        return f"it changes {lines} lines (at most {FIXUP_MAX_LINES})"
+    diff = _git(wt, "diff", "--cached", "-U0", base, check=False)
+    if any(FIXUP_DENIED_ADDED.search(l) for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")):
+        return "it disables or skips a test"
+    return None
+
+
+def _try_fixer(members: list[dict], main_sha: str, wt: Path, queue: Path, log: Path, failures: str | None,
+               env: dict, out) -> tuple[dict, str] | None:
+    """Give the fixer one go at the red tree in [wt]. On an accepted fix returns (culprit item, the
+    fixup commit on the culprit's tip, also at refs/heads/fixup/<branch>); otherwise None, with the
+    fixer's reason in the log and the ledger. The caller resets [wt] either way."""
+    # One attempt per item: the bisect rounds after a decline would only ask the same question again.
+    eligible = [m for m in members if not _is_pull(m) and not m.get("fixer_tried")]
+    cmd = _fixer_command() if FIXER != "off" else None
+    if not eligible or cmd is None:
+        return None
+    for m in eligible:
+        m["fixer_tried"] = True
+    # The failed tree, regeneration output included, as a scratch commit on the lander's own branch:
+    # whatever the fixer changes is then exactly the diff against it. Plumbing, so no hook runs.
+    _git(wt, "add", "-A")
+    base = _git(wt, "commit-tree", _git(wt, "write-tree"), "-p", "HEAD", "-m", "lander: the tree that failed")
+    _git(wt, "update-ref", "HEAD", base)
+    names = ", ".join(m["branch"] for m in eligible)
+    out.write(f"\nland: {_now()} red; asking the fixer (up to {FIXER_MINUTES:.0f} min) about {names}\n")
+    out.flush()
+    prompt = FIXER_PROMPT.format(max_files=FIXUP_MAX_FILES, max_lines=FIXUP_MAX_LINES, verdict=FIXER_VERDICT)
+    reply = _run_fixer(cmd, prompt + _fixer_context(eligible, main_sha, wt, log, failures, queue), wt, env, out)
+    if reply is None:
+        _record_fixer(queue, out, outcome="timeout", reason=f"no verdict within {FIXER_MINUTES:.0f} min", branches=names)
+        return None
+    out.write("land: fixer reply:\n" + "\n".join("  | " + l for l in reply.splitlines()[-40:]) + "\n")
+    verdict = _fixer_verdict(reply) or {}
+    reason = " ".join(str(verdict.get("reason") or "no verdict line").split())[:300]
+    culprit = next((m for m in eligible if m["branch"] == verdict.get("culprit")), None)
+    for m in eligible:
+        m["fixer_note"] = reason
+    if verdict.get("verdict") != "fix":
+        _record_fixer(queue, out, outcome="declined", reason=reason, branches=names)
+        return None
+    if _git(wt, "rev-parse", "HEAD") != base:
+        _record_fixer(queue, out, outcome="rejected", reason=f"it moved HEAD itself ({reason})", branches=names)
+        return None
+    if culprit is None:
+        _record_fixer(queue, out, outcome="rejected", reason=f"culprit {verdict.get('culprit')!r} is not in the round ({reason})", branches=names)
+        return None
+    _git(wt, "add", "-A")
+    problem = _fixup_problem(wt, base)
+    if problem:
+        _record_fixer(queue, out, outcome="rejected", reason=f"{problem} ({reason})", branch=culprit["branch"])
+        return None
+    files = _git(wt, "diff", "--cached", "--name-only", base).split()
+    fix = _git(wt, "commit-tree", _git(wt, "write-tree"), "-p", base, "-m", "lander fixer edit")
+    # The same edit on the culprit's own tip: a three-way merge in the object store, nothing checked out.
+    merged = subprocess.run(["git", "merge-tree", "--write-tree", f"--merge-base={base}", culprit["sha"], fix],
+                            cwd=wt, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if merged.returncode != 0:
+        _record_fixer(queue, out, outcome="rejected", branch=culprit["branch"],
+                      reason=f"the fix does not apply to {culprit['branch']} on its own, so it is not that branch's alone ({reason})")
+        return None
+    message = (f"Lander fixup: {reason}\n\nMade by the landing queue's fixer (claude -p) when {log.stem} went red;\n"
+               f"the full guard ran again on it before landing.\n\n"
+               f"Lander-Fixup: {culprit['id']} {culprit['sha'][:12]}\n")
+    fixer_env = {**env, "GIT_AUTHOR_NAME": "Field lander fixer", "GIT_AUTHOR_EMAIL": "lander-fixer@field.invalid"}
+    tip = subprocess.run(["git", "commit-tree", merged.stdout.split()[0], "-p", culprit["sha"], "-m", message],
+                         cwd=wt, env=fixer_env, check=True, stdout=subprocess.PIPE, text=True).stdout.strip()
+    _git(wt, "update-ref", f"refs/heads/fixup/{culprit['branch']}", tip)
+    _record_fixer(queue, out, outcome="fixed", reason=reason, branch=culprit["branch"], item=culprit["id"],
+                  files=files, sha=tip)
+    return culprit, tip
+
+
 def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecting: int | None) -> str:
     """Land [items] together: one merge commit each, then one regeneration and one guard for all.
 
@@ -1397,11 +1642,24 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
             return "blocked"
         if code != 0:
             failures = _collect_failures(wt, round_started, log)
+            with log.open("a") as out:
+                fixed = _try_fixer(members, main_sha, wt, queue, log, failures, env, out)
             _reset(wt, main_sha)
+            if fixed:
+                culprit, tip = fixed
+                culprit["fixup"] = {"sha": tip, "branch": f"fixup/{culprit['branch']}", "from": culprit["sha"],
+                                    "reason": culprit.get("fixer_note", "")}
+                culprit["sha"] = tip
+                for item in members:
+                    item.pop("fixer_note", None)
+                    _requeue(queue, item, f"red {batch_id}; the fixer committed {tip[:9]} on fixup/{culprit['branch']}; "
+                                          f"the round goes again with the full guard")
+                return "fixed"
             if len(members) == 1:
                 item = members[0]
                 found = f" (found by bisecting a red batch of {bisecting})" if bisecting else ""
-                item.update(reason=(failures or _first_error(log)) + found, finished=_now())
+                note = f"; fixer: {item.pop('fixer_note')}" if item.get("fixer_note") else ""
+                item.update(reason=(failures or _first_error(log)) + found + note, finished=_now())
                 _move(queue, item, BOUNCED)
                 return "bounced"
             for item in members:
@@ -1535,7 +1793,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 wt = _lander_worktree(primary, args.worktree)  # re-created if something removed it
                 print(f"land: {_now()} landing {len(batch)}: " + ", ".join(i["branch"] for i in batch), flush=True)
                 result = _land_batch(batch, primary, wt, queue, bisecting)
-                if result == "blocked":
+                if result in ("blocked", "fixed"):
                     continue
                 if result == "red":
                     # Halve and retry from the oldest. Each round builds on the current main, so a pair
