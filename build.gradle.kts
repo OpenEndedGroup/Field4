@@ -1064,6 +1064,8 @@ kotlin {
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
+                // The pseudo-terminal behind /terminal.html (afield/server/terminal.kt).
+                implementation("org.jetbrains.pty4j:pty4j:0.14.0")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
                 val customKotlinVersion = "2.5.255-SNAPSHOT"
