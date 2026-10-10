@@ -1,0 +1,8 @@
+: ridge
+  fbm 0.45 0.08 pulse
+;
+
+p 5.0 * 0.2t + ridge
+p 7.0 * 0.13t - ridge
+0.5 * +
+palette

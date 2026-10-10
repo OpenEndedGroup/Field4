@@ -12,7 +12,8 @@ Every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `v
 
 Each program below runs in a fullscreen fragment shader that passes it
 `vec4(uv, hash, time)`, and the image is what the same program shows in a
-window. Every program is a box in one Field document, which you can browse
+window. Every program is a box in one Field document, the
+[`stacksl_gallery`](agent_transcripts.md#stacksl_gallery) starting point, which you can browse
 here: each box holds the StackSL, a fullscreen `fragment` and `vertex`, and the
 `code` that binds `module.program = stackSL`.
 
@@ -1259,8 +1260,8 @@ the gradient can and cannot pass through:
   that is mostly blown out leaves the fit almost nothing to follow.
 
 The loss is a per-pixel sum of squares with no term for structure, so judge a
-fit by the residual panel rather than the loss number. `public/docs/assets/stacksl_fit_demo/` is a
-Field document that runs this fit; open the directory in Field.
+fit by the residual panel rather than the loss number. The
+[`stacksl_fit_demo`](agent_transcripts.md#stacksl_fit_demo) starting point runs this fit.
 
 ## Built-in vocabulary
 
