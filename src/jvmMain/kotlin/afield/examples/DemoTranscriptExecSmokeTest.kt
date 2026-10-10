@@ -333,6 +333,9 @@ object DemoTranscriptExecSmokeTest {
         // SMPTE timecode (2026-10-08): drop-frame arithmetic, LTC round trip under gain/noise/speed
         // ramp, MTC into a TimecodeClock, a clock following LTC. Pure CPU, no audio or MIDI device.
         "smpte_timecode",
+        // GP instruments (2026-10-10): GpOptimizer tunes a curve to a target, a GpPreference A/B loop
+        // waits on two buttons, and the same loop runs against a simulated judge. Pure CPU, FLines only.
+        "gp_instruments",
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",

@@ -124,6 +124,8 @@ class AgentDemoRegistrationTest {
             // session that night. That routing was declared at the time and it cost exactly what
             // was predicted: nothing under `artifacts/` is named by any registry, so for one day
             // the only evidence its four boxes ran was that a human had run them once, by hand.
+            // 2026-10-10: Bayesian optimisation and A/B preference learning; registered EXECUTE.
+            "gp_instruments",
             "gpu_probe_bench",
             "interaction_nets_lambda",
             "keyframe_key_discovery",
