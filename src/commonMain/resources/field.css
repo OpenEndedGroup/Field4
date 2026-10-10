@@ -1975,6 +1975,31 @@ body.field-pane-resizing-h * {
     gap: 10px;
 }
 
+.field-slider:focus { outline: none; }
+.field-slider:focus-visible,
+.field-slider:focus-within {
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px var(--field-accent-text-soft);
+}
+.field-slider > .field-value { cursor: text; }
+.field-slider > .field-value:hover { text-decoration: underline dotted; }
+/* Shift-drag: the relative, ten-times-finer drag. The thumb grows a ring so the mode is visible. */
+.field-slider.fine .slider-thumb { stroke-width: 3; r: 7; }
+.field-slider.fine .field-value::after { content: " fine"; opacity: 0.6; }
+.field-value-edit {
+    font-family: var(--field-font);
+    font-size: 11px;
+    width: 64px;
+    flex: 0 0 auto;
+    text-align: right;
+    color: var(--field-accent-text);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--field-accent-text-soft);
+    outline: none;
+    padding: 0;
+}
+
 .field-slider .field-label {
     flex: 0 0 auto;
     color: var(--field-accent-text-soft);

@@ -1932,9 +1932,12 @@ function updateSlider(container, value, { send = false, announce = send } = {}) 
     }
 
     const valueDisplay = document.getElementById(`${sliderId}-value`);
+    const formatted = lawFormat(spec, v);
     if (valueDisplay) {
-        valueDisplay.textContent = lawFormat(spec, v);
+        valueDisplay.textContent = formatted;
     }
+    container.setAttribute('aria-valuenow', String(v));
+    container.setAttribute('aria-valuetext', formatted);
 
     // A page that owns its sliders (a study card previewing locally) listens for this rather than a
     // server round trip; `data-send="false"` keeps such a slider off the wire. Only a move is announced —
@@ -1948,33 +1951,156 @@ function updateSlider(container, value, { send = false, announce = send } = {}) 
 }
 window.updateFieldSlider = (container, value, options = {}) => updateSlider(container, value, { announce: true, ...options });
 
+/** The track's length in CSS pixels — what one full sweep of the pointer covers. */
+function sliderTrackPixels(container) {
+    const svg = container.querySelector('.field-slider-visual');
+    if (!svg) return 1;
+    const rect = svg.getBoundingClientRect();
+    const viewWidth = parseFloat(container.dataset.viewWidth || '320');
+    const padding = parseFloat(container.dataset.padding || '14');
+    return Math.max(1, rect.width * (viewWidth - padding * 2) / viewWidth);
+}
+
+/** How much finer a shift-drag (or alt-nudge) moves than a plain one. */
+const SLIDER_FINE = 0.1;
+
+function sliderCurrentT(container) {
+    const spec = sliderLaw(container);
+    const v = parseFloat(container.dataset.value);
+    return lawNormalizedFor(spec, isNaN(v) ? spec.min : v);
+}
+
+function setSliderT(container, t) {
+    updateSlider(container, lawValueAt(sliderLaw(container), clamp(t, 0, 1)), { send: true });
+}
+
+/**
+ * A plain press jumps the thumb to the pointer and follows it, as it always has. With shift held the
+ * press does not jump: the drag becomes relative and ten times finer, so a value can be walked into
+ * place from wherever it already is. Pressing or releasing shift mid-drag switches between the two
+ * without the thumb leaping; a drag that has once gone relative stays relative.
+ */
 function startSliderDrag(container, event) {
     event.preventDefault();
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
     }
-    const v = sliderValueFromPointer(container, event);
-    if (v !== null) {
-        updateSlider(container, v, { send: true });
+    try { container.focus({ preventScroll: true }); } catch (_) {}
+    const relative = !!event.shiftKey;
+    if (!relative) {
+        const v = sliderValueFromPointer(container, event);
+        if (v !== null) updateSlider(container, v, { send: true });
     }
     sliderState.active = container;
+    sliderState.relative = relative;
+    sliderState.lastX = event.clientX;
+    sliderState.t = sliderCurrentT(container);
+    container.classList.toggle('fine', relative);
     window.addEventListener('pointermove', dragSliderMove);
     window.addEventListener('pointerup', endSliderDrag);
 }
 
 function dragSliderMove(event) {
-    if (!sliderState.active) return;
-    const v = sliderValueFromPointer(sliderState.active, event);
+    const container = sliderState.active;
+    if (!container) return;
+    const dx = event.clientX - (sliderState.lastX ?? event.clientX);
+    sliderState.lastX = event.clientX;
+    if (event.shiftKey || sliderState.relative) {
+        sliderState.relative = true;
+        const gain = event.shiftKey ? SLIDER_FINE : 1;
+        sliderState.t = clamp(sliderState.t + gain * dx / sliderTrackPixels(container), 0, 1);
+        container.classList.toggle('fine', !!event.shiftKey);
+        setSliderT(container, sliderState.t);
+        return;
+    }
+    const v = sliderValueFromPointer(container, event);
     if (v !== null) {
-        updateSlider(sliderState.active, v, { send: true });
+        updateSlider(container, v, { send: true });
+        sliderState.t = sliderCurrentT(container);
     }
 }
 
 function endSliderDrag() {
+    if (sliderState.active) sliderState.active.classList.remove('fine');
     sliderState.active = null;
+    sliderState.relative = false;
     window.removeEventListener('pointermove', dragSliderMove);
     window.removeEventListener('pointerup', endSliderDrag);
 }
+
+/** Double-click on the track: back to the value the box declared (`data-default`). */
+function resetSlider(container) {
+    const d = parseFloat(container.dataset.default);
+    if (!isNaN(d)) updateSlider(container, d, { send: true });
+}
+
+/**
+ * Arrow keys nudge a focused slider. On a linear law one press is one `step` (shift ×10, alt ÷10);
+ * on a curved law it is 1% of travel, because a fixed step means nothing across 20 Hz–20 kHz.
+ * PageUp/PageDown are 10%, Home/End the ends, Enter types a value, Backspace/Delete resets.
+ * Returns true when the key was the slider's.
+ */
+function sliderKeyDown(container, event) {
+    const spec = sliderLaw(container);
+    const mult = event.shiftKey ? 10 : (event.altKey ? SLIDER_FINE : 1);
+    const dir = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[event.key];
+    const current = parseFloat(container.dataset.value);
+    if (dir) {
+        if (spec.law === 'linear' && spec.step > 0) {
+            updateSlider(container, (isNaN(current) ? spec.min : current) + dir * spec.step * mult, { send: true });
+        } else {
+            setSliderT(container, sliderCurrentT(container) + dir * 0.01 * mult);
+        }
+        return true;
+    }
+    switch (event.key) {
+        case 'PageUp': setSliderT(container, sliderCurrentT(container) + 0.1); return true;
+        case 'PageDown': setSliderT(container, sliderCurrentT(container) - 0.1); return true;
+        case 'Home': setSliderT(container, 0); return true;
+        case 'End': setSliderT(container, 1); return true;
+        case 'Backspace': case 'Delete': resetSlider(container); return true;
+        case 'Enter': beginSliderValueEdit(container); return true;
+        case 'Escape': container.blur(); return true;
+    }
+    return false;
+}
+
+/**
+ * Replace the readout with a text field. Enter or blur commits (the number is quantized and clamped
+ * like any other move, so typing 1e9 on a 0..1 slider lands on 1), Escape abandons. Anything that does
+ * not parse as a number leaves the value where it was.
+ */
+function beginSliderValueEdit(container) {
+    const readout = container.querySelector('.field-value');
+    if (!readout || container.querySelector('.field-value-edit')) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'field-value-edit';
+    input.value = readout.textContent.trim();
+    input.setAttribute('aria-label', 'value');
+    readout.style.display = 'none';
+    readout.after(input);
+    let done = false;
+    const finish = (commit) => {
+        if (done) return;
+        done = true;
+        const typed = parseFloat(input.value);
+        input.remove();
+        readout.style.display = '';
+        if (commit && !isNaN(typed)) updateSlider(container, typed, { send: true });
+        try { container.focus({ preventScroll: true }); } catch (_) {}
+    };
+    input.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    }, true);
+    input.addEventListener('keyup', (e) => e.stopPropagation(), true);
+    input.addEventListener('blur', () => finish(true));
+    input.focus();
+    input.select();
+}
+window.beginSliderValueEdit = beginSliderValueEdit;
 
 // Vec2 (2D) ---------------------------------------------------------------
 const vec2State = { active: null };
@@ -2286,6 +2412,30 @@ function addDelegatedListeners() {
     window.addEventListener('blur', releaseAllButtons);
     document.addEventListener('keydown', buttonKeyDown, true);
     document.addEventListener('keyup', buttonKeyUp, true);
+
+    // Sliders: double-click the track to reset, click the readout to type, keys when focused.
+    document.addEventListener('dblclick', (evt) => {
+        const vis = evt.target.closest?.('.field-slider-visual');
+        const container = vis?.closest('.field-slider');
+        if (!container) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        resetSlider(container);
+    }, true);
+    document.addEventListener('click', (evt) => {
+        const readout = evt.target.closest?.('.field-slider > .field-value');
+        if (!readout) return;
+        evt.stopPropagation();
+        beginSliderValueEdit(readout.closest('.field-slider'));
+    }, true);
+    document.addEventListener('keydown', (evt) => {
+        const container = evt.target;
+        if (!container?.classList?.contains('field-slider')) return;
+        if (sliderKeyDown(container, evt)) {
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+    }, true);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

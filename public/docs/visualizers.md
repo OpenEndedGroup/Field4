@@ -847,6 +847,32 @@ Available pieces include:
 
 The `vec2Control(...)` is the “xy thing” in the nicest sense: an XY pad with a vector line, magnitude, and angle readout.
 
+### Handling a slider
+
+Every slider, standalone, in `sliders(...)`, or in a `controlGroup`, answers the same hand:
+
+| Do this | To get |
+| --- | --- |
+| press and drag | the thumb jumps to the pointer and follows it |
+| hold **shift** while dragging | a relative drag, ten times finer, from wherever the value already is; pressing shift mid-drag does not make the thumb leap |
+| double-click the track | the slider's `initialValue` again |
+| click the number | type an exact value; **Enter** keeps it, **Esc** abandons it |
+| arrow keys (after a click) | one `step` per press; **shift** ×10, **alt** ÷10. A `law =` slider moves 1% of its travel instead |
+| **PageUp** / **PageDown**, **Home** / **End** | 10% of travel, or the ends |
+| **Backspace** | back to `initialValue` |
+
+A typed or nudged value is snapped to `step` and clamped to the range, the same as a drag, so the callback never sees a number the slider could not have produced.
+
+A `controlGroup` slider keeps its value across re-runs and in the saved document. A standalone `slider(...)` starts from `initialValue` every run. When the value should belong to the box, bind it to a property:
+
+```kotlin
+syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
+
+val gain = getPropertyRaw("gain") as Double
+```
+
+`syncToProperty` starts from the property's current value when it has one, so re-running the box keeps whatever you last dialled in, and the property is saved with the document.
+
 ### Build one surface with mixed control types
 
 `controlGroup(...)` is the easiest way to build a compact surface for one box. Pair it with a normal display channel when the controls need a readable status or preview panel.

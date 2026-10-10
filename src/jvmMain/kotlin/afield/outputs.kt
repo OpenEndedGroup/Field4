@@ -1182,6 +1182,8 @@ internal fun buildSliderHtml(
     // `send = false` to keep drags off the wire — `sliders.js` announces them as `field-slider-input`.
     extraAttributes: String = "",
     send: Boolean = true,
+    // What a double-click on the track (or Backspace on a focused slider) returns to.
+    defaultValue: Double = value,
 ): String {
     val stepDecimals = calculateDecimalPlaces(step)
     val clampedValue = value.coerceIn(minOf(min, max), maxOf(min, max))
@@ -1206,8 +1208,11 @@ internal fun buildSliderHtml(
              data-law-center="${spec.center}"
              data-significant-digits="$significantDigits"
              data-value="$value"
+             data-default="${defaultValue.coerceIn(minOf(min, max), maxOf(min, max))}"
              data-view-width="$viewWidth"
-             data-padding="$padding"$ownAttributes>
+             data-padding="$padding"
+             tabindex="0" role="slider" aria-label="${label.replace("\"", "&quot;")}"
+             aria-valuemin="${minOf(min, max)}" aria-valuemax="${maxOf(min, max)}" aria-valuenow="$clampedValue"$ownAttributes>
             <span class="field-label">$label</span>
             <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
                 <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="slider-hitbox"></rect>
@@ -2120,7 +2125,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         if (cached.previous?.value != null) {
             onUpdate(value)
         }
-        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits)
+        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits, defaultValue = initialValue)
         val control = ControllerControl(
             id = sliderId,
             type = "slider",
@@ -2548,63 +2553,69 @@ fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlG
     builder.runAfterShown()
 }
 
-// Convenience method for syncing controls to box properties
+/**
+ * Shows a control bound to the box property [propertyName] and marks that property persistent.
+ *
+ * The control's type follows [initialValue]: `Double` → [slider] over `0..1`, `Boolean` → [checkbox],
+ * `String` → [stringInput], `Vector2f` → [vec2Control], `Vector4f` → [colorPicker]. [initialValue] is
+ * only the value for a box that has never had the property: when the property already holds a value
+ * of the same type (set by an earlier run, or loaded from disk) the control starts there, so re-running
+ * the box does not throw the setting away. For a slider over another range use the overload that
+ * takes `min`/`max`.
+ */
 fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String = "controls", label: String = propertyName) {
-    when (initialValue) {
+    val stored = getPropertyRaw(propertyName)
+    val start = if (stored != null && initialValue::class.isInstance(stored)) stored else initialValue
+    val write: (Any) -> Unit = { setPropertyRaw(propertyName, it, doResync = true) }
+    when (start) {
         is Double -> {
-            var value = initialValue
-            slider(label, 0.0, 1.0, 0.01, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            // Mark as persistable
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
+            syncToProperty(propertyName, start, 0.0, 1.0, 0.01, channel, label)
+            return
         }
-        is Boolean -> {
-            var value = initialValue
-            checkbox(label, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
-        is String -> {
-            var value = initialValue
-            stringInput(label, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
-        is Vector2f -> {
-            var value = initialValue
-            vec2Control(label, value, channel = channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
-        is Vector4f -> {
-            var value = initialValue
-            colorPicker(label, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
+        is Boolean -> checkbox(label, start, channel) { write(it) }
+        is String -> stringInput(label, start, channel) { write(it) }
+        is Vector2f -> vec2Control(label, start, channel = channel) { write(it) }
+        is Vector4f -> colorPicker(label, start, channel) { write(it) }
         else -> {
             lprintln("warning,controls", "syncToProperty: unsupported type for property '$propertyName': ${initialValue::class}")
+            return
         }
+    }
+    markPersistent(propertyName)
+}
+
+/**
+ * [syncToProperty] for a number over [min]..[max]: a [slider] whose value lives in the box property
+ * [propertyName], persists with the document, and survives re-runs. A double-click on the track
+ * returns to [initialValue].
+ *
+ * ```kotlin
+ * syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
+ * val g = getPropertyRaw("gain") as Double
+ * ```
+ */
+fun Box.syncToProperty(
+    propertyName: String,
+    initialValue: Double,
+    min: Double,
+    max: Double,
+    step: Double = 0.01,
+    channel: String = "controls",
+    label: String = propertyName,
+    law: ControlLaw = ControlLaw.LINEAR,
+) {
+    val start = (getPropertyRaw(propertyName) as? Double) ?: initialValue
+    val sliderId = "slider-${UUID.randomUUID()}"
+    registerSliderCallback(sliderId) { setPropertyRaw(propertyName, it, doResync = true) }
+    val spec = ControlLawSpec(law, min, max).also { it.validate(label) }
+    display(channel, buildSliderHtml(sliderId, label, min, max, step, start, spec, defaultValue = initialValue))
+    if (getPropertyRaw(propertyName) == null) setPropertyRaw(propertyName, start, doResync = true)
+    markPersistent(propertyName)
+}
+
+private fun markPersistent(propertyName: String) {
+    if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
+        Box.ioPersistentProperties.add(propertyName)
     }
 }
 
