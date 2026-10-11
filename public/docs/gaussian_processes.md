@@ -143,7 +143,7 @@ val functions = prior.posterior(DoubleArray(300) { it / 60.0 }).samples(6, seed 
 
 For a nonzero baseline use a mean function. `gp1D(..., mean = { x -> 0.2 * x })` fits residuals
 around that line. Stationary kernels such as RBF return towards the prior mean and variance far
-from observations. The core does not secretly rescale either inputs or outputs.
+from observations. Inputs and outputs are used as given; nothing is rescaled.
 
 ## Pins, measurements and uncertainty
 
@@ -370,12 +370,13 @@ val variation = fitted.sampleLine(seed = 29)
 Sampling a drawn stroke more densely adds more observations. With independent nonzero noise that
 means more evidence, so uncertainty shrinks. If the observations are really a few intentional
 control points, use `gpCurve` on those points rather than resampling the stroke hundreds of times.
+
 ### Closed loops
 
 For a closed path, use `GpKernels.periodic(period = 1.0, ...)` and place the pins on a parameter
 that runs once round the loop, from 0 up to (but not including) 1. With a period of one,
 `t = 0` and `t = 1` are the same point of the same function: every draw returns to where it
-started with the same position and the same direction, so there is no seam to hide. Do not pin
+started with the same position and the same direction, so the join is as smooth as the rest. Do not pin
 both `t = 0` and `t = 1`; they are one observation. The curve mean defaults to the pins'
 centroid, which for a loop is its middle.
 
@@ -420,7 +421,7 @@ println("seam gap %.2e, turn at the seam %.4f rad, largest turn elsewhere %.4f r
 
 ![An orange closed loop through six white pins, with six blue closed draws that pinch in at every pin and bulge apart between them; the seam at the rightmost pin, where each draw starts and ends, is as smooth as anywhere else](assets/gaussian_processes/loop.png)
 
-The box also measures the seam of one draw: its last point is exactly its first, and it turns
+The box also measures the join of one draw: its last point is exactly its first, and it turns
 less there than it does at its sharpest bend elsewhere. For an existing closed stroke,
 `stroke.gaussianProcess(...)` with the same periodic kernel does the same, since its parameter
 is normalised arc length.
@@ -479,7 +480,7 @@ These differ: a straight mean between two loose pins has zero curvature, while e
 it bends. Planar curvature is signed, positive turning left.
 
 `sampleLine(seed, spread)` scales a draw's departure from the mean: `0.0` is the mean line,
-`1.0` an honest sample, `2.0` the same variation exaggerated. The same seed keeps the same shape
+`1.0` an unscaled sample, `2.0` the same variation exaggerated. The same seed keeps the same shape
 of departure as the spread changes.
 
 ## Slopes, gradients and integrals
@@ -580,7 +581,7 @@ alternative with a `converged` flag; it needs no Smile optimizer. Both propagate
 When one assumption matters most, such as a period, look at the evidence for each candidate
 instead of searching for a single best. `scanGpEvidence` fits once per candidate and returns
 their log evidence and the posterior weights over the candidates under a uniform prior on the
-grid. A broad set of weights is the honest answer when the data cannot decide. Here nine noisy
+grid. When the data cannot decide, the weights stay broad. Here nine noisy
 samples of something that repeats are scanned over two octaves of candidate periods:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/evidence.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
@@ -672,7 +673,7 @@ for sampling rank r. Kernels with expensive input maps add their own cost.
 | Exact draws at a few new positions | `samplePath(...)`; conditional extension, growing cache. |
 | A callable field for a large image or volume | `GpRbfFeatures(...).fit(...).samplePath(...)`; explicitly approximate. |
 
-Vector-valued curves currently use dense inference on `(parameter, coordinate)` pairs. A
+Vector-valued curves use dense inference on `(parameter, coordinate)` pairs. A
 three-coordinate curve with n observations trains on 3n scalar observations. The default guards
 limit training and joint distributions to 4096 **scalar** entries; this is a safety ceiling, not
 a claim that that size is interactive. `GpNumerics` makes the limits explicit and adjustable.
@@ -696,10 +697,10 @@ Use a richer kernel or justified measurement noise. Check `jitterUsed` and the l
 
 Use any suitable immutable Smile `MercerKernel<DoubleArray>` through `.asGpKernel()`. The covariance
 is reused directly, with Field retaining control of heteroscedastic noise, seeded sampling and
-semidefinite query distributions. The existing `smileGaussianProcess` wrapper also exposes
-`predictWithVariance` and `posterior`; fitting failures now propagate. Its legacy `noise` option
-is a **variance**, in normalised output units when normalisation is enabled, whereas the new API
-consistently calls its standard deviation `noiseStd`. Set `maxIter = 0` to keep Smile's kernel and
+semidefinite query distributions. The `smileGaussianProcess` wrapper also exposes
+`predictWithVariance` and `posterior`, and propagates fitting failures. Its `noise` option
+is a **variance**, in normalised output units when normalisation is enabled, whereas the rest of
+this API takes a standard deviation, `noiseStd`. Set `maxIter = 0` to keep Smile's kernel and
 noise settings fixed.
 
 Read [MacKay's *Information Theory, Inference, and Learning Algorithms*](https://www.inference.org.uk/mackay/itila/book.html),
@@ -722,8 +723,6 @@ See also [drawing with FLines](fline_examples.md#filters-and-gp),
 [functions and domains](functions_domains.md) and [statistics](statistics_examples.md).
 
 ??? aside "How these figures are made"
-    Every figure on this page is the docs runner's capture of the fence above it, run in Field.
-    The first version of the page (October 2026) carried matplotlib plots of CSV dumped by
-    `GaussianProcessFiguresTest`; they were replaced with these captures so that each snippet is
-    also checked to compile and run against the current `afield.math.gp`. Verification notes are
-    in [the implementation note](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GAUSSIAN_PROCESSES.md).
+    Every figure on this page is the docs runner's capture of the fence above it, run in Field,
+    so each snippet is also checked to compile and run against the current `afield.math.gp`.
+    Verification notes are in [the implementation note](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GAUSSIAN_PROCESSES.md).
