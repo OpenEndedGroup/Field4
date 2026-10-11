@@ -2069,7 +2069,7 @@ function sliderKeyDown(container, event) {
 }
 
 /**
- * Replace the readout with a text field. Enter or blur commits (the number is quantized and clamped
+ * Edit the readout in a text field floated over it. Enter or blur commits (the number is quantized and clamped
  * like any other move, so typing 1e9 on a 0..1 slider lands on 1), Escape abandons. Anything that does
  * not parse as a number leaves the value where it was.
  */
@@ -2081,15 +2081,32 @@ function beginSliderValueEdit(container) {
     input.className = 'field-value-edit';
     input.value = readout.textContent.trim();
     input.setAttribute('aria-label', 'value');
-    readout.style.display = 'none';
-    readout.after(input);
+    // Float the field over the readout from document.body rather than swapping it in: inserting a
+    // node inside the output area trips its content MutationObserver, which re-runs auto-size and
+    // shrinks the panel, and a different-width element in the row reflows the label and track.
+    // visibility (not display) keeps the readout's box, and attribute changes are not observed.
+    const r = readout.getBoundingClientRect();
+    const scale = readout.offsetHeight > 0 ? r.height / readout.offsetHeight : 1;
+    const fontPx = parseFloat(getComputedStyle(readout).fontSize) || 11;
+    const width = Math.max(r.width, 48 * scale);
+    Object.assign(input.style, {
+        position: 'fixed',
+        left: (r.right - width) + 'px',
+        top: r.top + 'px',
+        width: width + 'px',
+        height: r.height + 'px',
+        fontSize: (fontPx * scale) + 'px',
+        zIndex: '100000',
+    });
+    readout.style.visibility = 'hidden';
+    document.body.appendChild(input);
     let done = false;
     const finish = (commit) => {
         if (done) return;
         done = true;
         const typed = parseFloat(input.value);
         input.remove();
-        readout.style.display = '';
+        readout.style.visibility = '';
         if (commit && !isNaN(typed)) updateSlider(container, typed, { send: true });
         try { container.focus({ preventScroll: true }); } catch (_) {}
     };

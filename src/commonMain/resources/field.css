@@ -1988,12 +1988,10 @@ body.field-pane-resizing-h * {
 .field-slider.fine .field-value::after { content: " fine"; opacity: 0.6; }
 .field-value-edit {
     font-family: var(--field-font);
-    font-size: 11px;
-    width: 64px;
-    flex: 0 0 auto;
+    box-sizing: border-box;
     text-align: right;
     color: var(--field-accent-text);
-    background: transparent;
+    background: #000;
     border: none;
     border-bottom: 1px solid var(--field-accent-text-soft);
     outline: none;
