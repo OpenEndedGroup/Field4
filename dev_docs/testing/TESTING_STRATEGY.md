@@ -216,6 +216,10 @@ Run:
 uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
 
+Before running selected `slug` or `steamaudio` smoke tests, the runner builds their
+native prerequisites with Gradle. A full catalog run builds both through
+`buildSmokeNativePrerequisites`; unrelated targeted tests skip that setup.
+
 `tools/run_field_tests.py` does not accept a top-level `--timeout` flag. Per-test
 timeouts come from each `FIELD_TEST` annotation's `timeoutSec` value, and the
 runner passes that value through to `tools/field_backdoor.py` for the individual

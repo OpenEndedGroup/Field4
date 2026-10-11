@@ -2266,6 +2266,53 @@ def requires_sidecar(test: dict[str, Any]) -> bool:
     return test.get("requiresSidecar") is True
 
 
+def smoke_native_tasks(tests: list[dict[str, Any]]) -> list[str]:
+    """Build only the native helpers needed by the runnable selection."""
+    tags = {str(tag) for test in tests for tag in test.get("tags") or []}
+    slug = "slug" in tags
+    steam_audio = "steamaudio" in tags
+    if slug and steam_audio:
+        return ["buildSmokeNativePrerequisites"]
+    if slug:
+        return ["buildSlugNative"]
+    if steam_audio:
+        return ["fetchSteamAudioNatives"]
+    return []
+
+
+def prepare_smoke_natives(
+    tests: list[dict[str, Any]],
+    *,
+    environment: VerificationEnvironment | None,
+    heartbeat_interval: float,
+    progress: Callable[[str], None],
+) -> None:
+    tasks = smoke_native_tasks(tests)
+    if not tasks:
+        return
+    progress(f"Smoke native prerequisites: {', '.join(tasks)}")
+    token = environment.checkpoint(require_display=False) if environment else 0
+
+    def check_environment() -> None:
+        if environment:
+            environment.check(token, require_display=False)
+
+    result, _, timed_out = run_with_watchdog(
+        gradle_command(*tasks),
+        cwd=REPO_ROOT,
+        timeout=1200,
+        heartbeat_interval=heartbeat_interval,
+        heartbeat=progress,
+        label="smoke native prerequisites",
+        check_environment=check_environment,
+    )
+    if timed_out or result.returncode != 0:
+        detail = "\n".join((result.stdout + "\n" + result.stderr).splitlines()[-30:])
+        raise RunnerError(
+            f"Smoke native prerequisites failed ({'timed out' if timed_out else f'exit {result.returncode}'}):\n{detail}"
+        )
+
+
 def run(args: argparse.Namespace, environment: VerificationEnvironment | None = None) -> int:
     port_was_explicit = args.port is not None
     requested_port = args.port if port_was_explicit else DEFAULT_AUTOMATION_PORT
@@ -2427,6 +2474,10 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
 
     if tests:
         warn_if_node_too_old(progress)
+        prepare_smoke_natives(
+            tests, environment=environment,
+            heartbeat_interval=args.heartbeat_interval, progress=progress,
+        )
 
     # One completion sidecar for the run, when anything selected needs one. It is handed to the
     # persistent Field below, so every test of such a run completes the way a user's Field does.
