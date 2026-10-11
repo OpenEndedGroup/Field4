@@ -71,10 +71,9 @@ sees exact frames at the times it asks for rather than wherever the window's clo
 the recorded sessions an accepted edit, including its before/after preview, took 0.7–1.3 s; a sheet
 of three or four variants at three times took 0.9–2.4 s; a comparison took under 0.7 s.
 
-StackSL also has a CPU interpreter, which this study used first. It is exact, but a program built
-from several octaves of noise runs at a few thousand pixels per second, and a single variant sheet
-took most of a minute. It is still here: it renders when there is no window, and every result says
-which renderer drew it. The tests use it as an independent reference.
+StackSL also has a CPU interpreter. It is exact but slow: a program built from several octaves of
+noise runs at a few thousand pixels per second, so a single variant sheet takes most of a minute.
+It renders when there is no window, and every result says which renderer drew it.
 
 The window presents through an sRGB swapchain: the shader writes linear colour, and the display
 encodes it. The study encodes its images the same way, so the model and the person judge the same
@@ -346,8 +345,8 @@ background joints. Both were identical:
 
 ![Stage comparison at stage 20: the petal and hub field before and after the recolour, difference black](assets/stacksl_conversation/tiles/images/e1db8d56ac8d7c4b114d.png)
 
-That first comparison is why a stage that ends in a store now compares the value it stored — here,
-the grout field — and why a comparison of the program's input alone is reported as vacuous.
+A stage comparison now handles this case itself: a stage that ends in a store compares the value it
+stored (here, the grout field), and a comparison of the program's input alone is reported as vacuous.
 
 Then the person widened the grout by hand, changing `0.003 0.005 <joint smoothstep` to
 `0.007 0.009 <joint smoothstep`, and did not check it in.
@@ -614,7 +613,7 @@ sending a message continues from the last revision.
 - The window's clock runs freely. When the model captures the window, it sees whatever moment the
   window is at; tool images are the exact frames.
 
-??? aside "How these sessions were recorded, and what checks them"
+??? aside "How the sessions were recorded and tested"
 
     Each turn went through the `ai-assist` RPC that Field's chat panel sends; the prompts are in each
     document's `prompts/`. The person-side actions clicked the card's Adopt, Keep and Check in
