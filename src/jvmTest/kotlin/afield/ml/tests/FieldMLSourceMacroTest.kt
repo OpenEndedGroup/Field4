@@ -2,6 +2,7 @@ package afield.ml.tests
 
 import afield.Box
 import afield.SessionInformation
+import afield.ReactiveRuns
 import afield.macros.MacroRegistry
 import afield.ml.CompilationResult
 import afield.ml.FieldMLCompiler
@@ -48,6 +49,19 @@ var Box.macroTestFlag by Inheritance<Boolean>()
  *   all-null graph or on a graph where every answer was available locally.
  */
 class FieldMLSourceMacroTest {
+
+    @Test
+    fun reactiveNativeFormsShareTheInheritedSlotAndReportAChangedWrite() {
+        val parent = Box("fieldml-reactive-parent")
+        val child = Box("fieldml-reactive-child")
+        child.parents.add(parent)
+        ReactiveRuns.clearEvents()
+
+        assertEquals(4L, evaluate("""setPropUpDown "pulse" 4""", parent))
+        assertEquals(4L, evaluate("propUpDown \"pulse\"", child))
+        assertEquals(4L, evaluate("propDown \"pulse\"", child))
+        assertTrue(ReactiveRuns.recentEvents().any { "changed fieldml-reactive-parent.pulse" in it })
+    }
 
     // ---- premise ---------------------------------------------------------------------------------
 
@@ -185,8 +199,7 @@ class FieldMLSourceMacroTest {
      * Reachable means one of two things, both verified elsewhere in this file rather than asserted
      * here: a `CALL_SHAPED` route whose method reflection can find, or a `NATIVE_FORM` whose FieldML
      * prelude name reaches the same effect. The `NEEDS_KOTLIN` set is pinned **exactly**, not floored:
-     * the reactive property declarations need Kotlin's generated delegate until FieldML implements
-     * their pull and cascade semantics. Moving one out is a meaningful capability change.
+     * the remaining declaration forms genuinely need generated Kotlin.
      */
     @Test
     fun theReachableFractionOfTheMacroSurfaceIsFloored() {
@@ -208,13 +221,13 @@ class FieldMLSourceMacroTest {
         // registered. Adding an unreachable macro increases the denominator without removing a
         // capability; the exact NEEDS_KOTLIN set above guards that change instead.
         assertTrue(
-            reachable >= 15,
-            "only $reachable of $total source macros are reachable, expected at least 15\n$report",
+            reachable >= 18,
+            "only $reachable of $total source macros are reachable, expected at least 18\n$report",
         )
         assertEquals(
-            setOf("sourceBlock", "interpolant", "jsonParser", "graphLens", "ai", "propUp", "propDown", "propUpDown"),
+            setOf("sourceBlock", "interpolant", "jsonParser", "graphLens", "ai"),
             byReach[FieldMLMacroLayer.Reach.NEEDS_KOTLIN].orEmpty().map { it.macro }.toSet(),
-            "the macros that currently need Kotlin expansion or a native reactive form " +
+            "the macros that currently need Kotlin expansion " +
                 "are pinned by name\n$report",
         )
     }

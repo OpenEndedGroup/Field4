@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lprintln
+import afield.ml.FieldMLExecution
 import afield.macros.PREAMBLE_SELF_SUPPLIER
 import afield.macros.gatherPreambleUpwardsReport
 import afield.macros.preambleSupplierTag
@@ -202,8 +203,8 @@ object ReactiveRuns {
                 problems += "'${label(s)}' is itself waiting for a value, so running it would be a cycle"
                 continue
             }
-            if (s.ke !is KotlinExecution) {
-                problems += "'${label(s)}' is not a Kotlin box, and only Kotlin boxes can be pulled"
+            if (s.ke !is KotlinExecution && s.ke !is FieldMLExecution) {
+                problems += "'${label(s)}' has no Kotlin or FieldML execution to pull"
                 continue
             }
             // Someone else's pull of this supplier is under way (this read may be running inside its
@@ -342,7 +343,7 @@ object ReactiveRuns {
         fun lookup(uid: String): Box? = info.boxes[uid] ?: asking.parents.firstOrNull { it.id == uid }
         val declaration = declarationOf.getOrPut(name) { Regex("""\b(?:val|var)\s+Box\.${Regex.escape(name)}\s+by\b""") }
         val propCall = propCallOf.getOrPut(name) {
-            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*\)""")
+            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*\)|\bsetProp(?:Up|UpDown)\s+"${Regex.escape(name)}"""")
         }
 
         fun declaresInOwnCodeOrPreamble(b: Box): Boolean {
