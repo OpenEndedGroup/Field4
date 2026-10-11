@@ -1,8 +1,8 @@
 # From modules to reconstruction
 
-**Your module still renders the scene. Reconstruction is another consumer of its images.** Start with a `moduleHere()` module drawing into a `RenderToTexture`, give that render the depth and motion it needs for history, then record DLAA or Super Resolution after the source pass. Ray Reconstruction extends the same graph with raw lighting and material guides.
+Your module still renders the scene, and reconstruction reads the images it produces. Start with a `moduleHere()` module drawing into a `RenderToTexture`, give that render the depth and motion it needs for history, then record DLAA or Super Resolution after the source pass. Ray Reconstruction extends the same graph with raw lighting and material guides.
 
-Open **Starting points → reconstruction_plumbing** for the complete DLAA/SR wiring, or **Starting points → rr_plumbing** for the RTXDI/RR version. Both put the scheduling in the editable Kotlin box and the attachment writes in its **vertex** and **fragment** properties. Run the **renderer** box, then the scene box. The existing [Neural Reconstruction](neural_reconstruction.md) and [Ray Reconstruction](ray_reconstruction.md) Starting Points remain the comparison instruments with more controls.
+Open the [reconstruction_plumbing](agent_transcripts.md#reconstruction_plumbing) starting point for the complete DLAA/SR wiring, or [rr_plumbing](agent_transcripts.md#rr_plumbing) for the RTXDI/RR version. Both put the scheduling in the editable Kotlin box and the attachment writes in its **vertex** and **fragment** properties. Run the **renderer** box, then the scene box. The [Neural reconstruction](neural_reconstruction.md) and [Ray reconstruction](ray_reconstruction.md) pages have starting points with more controls for comparing modes.
 
 ![An editable module producing the inputs to Super Resolution](assets/reconstruction_plumbing/sr.png)
 
@@ -31,9 +31,9 @@ val inputSize = DlssReconstruction.recommend(renderer, outputSize, mode).optimal
 val neural = DlssReconstruction(renderer, inputSize, outputSize, mode)
 ```
 
-`DLAA` uses native resolution. `QUALITY`, `PERFORMANCE` and `ULTRA_PERFORMANCE` choose supported smaller inputs. On this machine their recommended inputs for 1080p are 1280 × 720, 960 × 540 and 640 × 360. Query your runtime instead of encoding those numbers into the renderer.
+`DLAA` uses native resolution. `QUALITY`, `PERFORMANCE` and `ULTRA_PERFORMANCE` choose supported smaller inputs. On the machine that built these docs, the recommended inputs for 1080p were 1280 × 720, 960 × 540 and 640 × 360. Query your runtime instead of encoding those numbers into the renderer.
 
-In **reconstruction_plumbing**, change `mode` at the top of the box and rerun it to recreate the resources. Its **Bypass reconstruction** control shows the *same source-sized render*, enlarged for display. This is useful for seeing what information SR receives; it is different from the native-resolution Source comparison on the main experiment page. Without NGX, this Starting Point allocates a native-resolution source and shows it with a diagnostic.
+In **reconstruction_plumbing**, change `mode` at the top of the box and rerun it to recreate the resources. Its **Bypass reconstruction** control shows the *same source-sized render*, enlarged for display. This is useful for seeing what information SR receives; it is different from the native-resolution Source comparison on the [Neural reconstruction](neural_reconstruction.md#open-the-experiment) page. Without NGX, this starting point allocates a native-resolution source and shows it with a diagnostic.
 
 ## Write a small G-buffer from `moduleHere()`
 
@@ -104,13 +104,13 @@ motion = (prevUV - nowUV) * inputSize;
 depth = gl_FragCoord.z;
 ```
 
-A point moving four input pixels right must write **(−4, 0)**. Keep object transforms as well as camera transforms from the previous rendered frame. Jitter goes into rasterization and the `ReconstructionFrame` value; it does not go into these motion vectors. The Starting Point's shaders contain the complete version, including background pixels.
+A point moving four input pixels right must write **(−4, 0)**. Keep object transforms as well as camera transforms from the previous rendered frame. Jitter goes into rasterization and the `ReconstructionFrame` value; it does not go into these motion vectors. The starting point's shaders contain the complete version, including background pixels.
 
-A shader can change color without moving a surface. That appearance change is not represented by fictional geometry motion. For a deliberate discontinuity, reset history or draw that layer after reconstruction. UI, coverage-dependent effects, and imagery whose temporal character must remain untouched are also good candidates for a later pass.
+A shader can change color without moving a surface. Motion vectors cannot describe that change, and you should not invent geometry motion to stand for it. For a deliberate discontinuity, reset history or draw that layer after reconstruction. UI, coverage-dependent effects, and imagery whose temporal character must remain untouched are also good candidates for a later pass.
 
 ## Record producer, then consumer
 
-The Starting Point installs one `Target` in `renderer.renderList.preTargets`. Its `render` method owns the sequence:
+The starting point installs one `Target` in `renderer.renderList.preTargets`. Its `render` method owns the sequence:
 
 ```diffstatic {data-lang=kotlin}
 source.render(command, index)
@@ -136,17 +136,17 @@ Advance the frame index and previous transforms when this target actually record
 
 ## Extend the graph to Ray Reconstruction
 
-Open **Starting points → rr_plumbing**. It reuses the existing Fabricate scene and RTXDI implementation, then makes the format/convention conversion visible in `moduleHere()`. The five guide attachments are:
+Open the [rr_plumbing](agent_transcripts.md#rr_plumbing) starting point. It reuses the Fabricate scene and RTXDI lighting, and converts their outputs into the formats and conventions RR expects in a `moduleHere()` you can edit. The five guide attachments are:
 
-| Attachment | Format | Origin in this experiment |
+| Attachment | Format | Where it comes from in this starting point |
 |---|---|---|
 | 0: depth | R32F | Fabricate position attachment's projected depth in `.w` |
 | 1: motion | RG32F | `-velocity.xy * inputDimensions` from Field's current-minus-previous UV velocity |
-| 2: diffuse albedo | RGBA16F | Actual linear RGB albedo of the Lambertian lighting bridge |
-| 3: specular albedo | RGBA16F | Zero RGB because this bridge has no specular lobe |
-| 4: normal + roughness | RGBA16F | World-space unit normal in RGB; roughness one for this bridge |
+| 2: diffuse albedo | RGBA16F | Actual linear RGB albedo of the Lambertian (purely diffuse) lighting |
+| 3: specular albedo | RGBA16F | Zero RGB because this lighting has no specular lobe |
+| 4: normal + roughness | RGBA16F | World-space unit normal in RGB; roughness one for this lighting |
 
-The source is the **raw** RTXDI output. The conversion module samples surface data with nearest filtering rather than inferring materials from the finished RGB image. Zero specular and roughness one are true of this diffuse bridge and of nothing glossier, so read those two rows as this scene's values and not as a template. The current adapter does not supply optional specular hit distance.
+The source is the **raw** RTXDI output. The conversion module samples surface data with nearest filtering rather than inferring materials from the finished RGB image. Zero specular and roughness one are true of this diffuse lighting and of nothing glossier, so read those two rows as this scene's values and not as a template. The current adapter does not supply optional specular hit distance.
 
 ```diffstatic {data-lang=kotlin}
 scene.bundle.gBuffer.render(command, index)
@@ -164,9 +164,9 @@ rr.evaluate(command,
 )
 ```
 
-The camera matrices passed to RR remain unjittered. Fabricate's separate `rasterJitterNdc` supplies the raster offset. All these inputs describe the same frame and the same BRDF. The sample removes their independent frame-graph registrations before taking ownership of their order.
+The camera matrices passed to RR remain unjittered. Fabricate's separate `rasterJitterNdc` supplies the raster offset. All these inputs describe the same frame and the same BRDF. The starting point unregisters each of these passes from the renderer, so that its own `Target` records them in this order.
 
-RR is created with `rayReconstruction = true` and is queried separately from SR. This Starting Point uses native 1080p so you can inspect the bridge without also changing render resolution. **Bypass to raw lighting** immediately exposes the unfiltered signal. RR replaces the denoising/reconstruction stage; the example neither spatially filters its input nor adds DLAA afterward.
+RR is created with `rayReconstruction = true` and is queried separately from SR. This starting point uses native 1080p so you can inspect the guide conversion without also changing render resolution. **Bypass to raw lighting** immediately exposes the unfiltered signal. RR replaces the denoising/reconstruction stage; the example neither spatially filters its input nor adds DLAA afterward.
 
 ![The editable guide conversion feeding Ray Reconstruction](assets/reconstruction_plumbing/rr.png)
 
@@ -174,7 +174,7 @@ RR is created with `rayReconstruction = true` and is queried separately from SR.
 
 The adapter owns its NGX view and reconstructed output; your graph owns source images, guide images, modules and meshes. Use one context per temporal view. Stop/recreate it at a frame boundary, and keep inputs alive until submitted GPU work completes. Remove scheduled passes before closing the adapter, then retire your own Vulkan resources through `renderer.cleanup`. Have that cleanup closure capture the exact allocation and renderer it was created with: reading a box property at cleanup time gets you whatever a rerun put there, or nothing at all if the parent has already stopped.
 
-Call `reset("reason")` for camera cuts, semantic shader/material edits and bypass transitions. A changed scene revision also resets history. The adapter detects replaced input images, skipped frame indices and resumed presentation. Size, mode or format changes require a new context and compatible targets. The Starting Points watch shader changes and include an explicit **Cut / reset history** button; after changes to bound textures or lighting semantics, use that button too. Layout changes require rerunning the box to rebuild its resources.
+Call `reset("reason")` for camera cuts, semantic shader/material edits and bypass transitions. A changed scene revision also resets history. The adapter detects replaced input images, skipped frame indices and resumed presentation. Size, mode or format changes require a new context and compatible targets. The starting points watch shader changes and include an explicit **Cut / reset history** button; after changes to bound textures or lighting semantics, use that button too. Layout changes require rerunning the box to rebuild its resources.
 
 A failed compatible shader compilation retains Field's last working module. Once a change succeeds, invalidate history. The SDK returns success for a reversed motion sign, a misread guide, or the wrong color space, so inspect the inputs yourself and compare movement against bypass.
 
@@ -184,4 +184,4 @@ The [learned shader workflow](learned_shader.md#train-on-your-own-modulehere-sha
 
 For the current `(screen x, screen y, parameter) → RGB` network, camera and other unrepresented inputs are fixed during training. It is not a learned scene representation that supports arbitrary new camera motion. Train and inspect that approximation first, then decide whether temporal reconstruction improves its intended look. The learned model, SR and RR are independently bypassable tools.
 
-The editable Starting Points are the reference implementations for this page; read them before writing your own. The [SR](neural_reconstruction.md#on-the-rtx-4090) and [RR](ray_reconstruction.md#cost-and-limits) pages carry measured GPU costs and their limits.
+The editable starting points are the reference implementations for this page; read them before writing your own. The [SR](neural_reconstruction.md#on-the-rtx-4090) and [RR](ray_reconstruction.md#cost-and-limits) pages carry measured GPU costs and their limits.
