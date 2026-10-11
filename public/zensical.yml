@@ -105,6 +105,9 @@ nav:
   # NOT here: see the comment on it under Internals, which places it beside server_surface.md as a
   # measurement contract rather than beside three_output.md as a knob.
   - Seeing Values:
+    # First in the section: where print and display go, channels, and how panels open, close and
+    # are removed. Everything else in Seeing Values is something you put in one of those panels.
+    - Box Output: box_output.md
     - Visualizers & Controls: visualizers.md
     - Field's 3D Output: three_output.md
     - Point to geometry and leave notes: geometry_review.md
