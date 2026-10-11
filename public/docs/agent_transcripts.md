@@ -6,24 +6,19 @@ worked examples an agent copies, runs, and adapts when [automating Field](automa
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
-search for it there and open an editable copy in your workspace. Five are not, and each says why in
-its own entry: two are integration probes rather than scenes, and two are the halves of the
-graphics-topology rule — a renderer with nothing to draw, and a draw box with no renderer. The fifth,
-`mega_texture_wall`, needs both an external renderer and a directory of images you supply. Needing a
-gesture, a headset or a service is *not* on that list. A scene you have to click once, or point at a
-device you own, is still a scene.
+search for it there and open an editable copy in your workspace. A few are not, and each says why in
+its own entry: some are integration probes rather than scenes, two are the halves of the
+graphics-topology rule (a renderer with nothing to draw, and a draw box with no renderer), and
+`mega_texture_wall` needs both an external renderer and a directory of images you supply. A scene
+that needs a gesture, a headset or a service is still offered: you click once, or point it at a
+device you own.
 
-Every transcript in `dev_docs/agents/transcripts/` has an entry below, and
-`checkAgentTranscriptIndex` keeps it that way: it fails on a transcript with no entry, an entry
-naming a transcript that is not there, an entry offering a starting point that was never generated,
-or an entry filed under a section whose claim about CI does not match how CI checks it. The entries
-are written by hand, one per transcript, because the useful thing to say about a scene is which
-number it prints and why that number matters, and no generator over the yaml can write that.
+Every transcript in `dev_docs/agents/transcripts/` has an entry below. Each entry says what the
+scene builds and which numbers it prints.
 
-About half the entries carry a figure, and every figure is that scene's own code running — nothing
-here is hand-drawn, mocked up or synthesized. The rest have none: nothing in the tree captures that
-scene, because it publishes to a headset, wants a camera or an external service, or opens a window
-the pipeline has never been pointed at. Those entries say what to run instead.
+About half the entries carry a figure captured from that scene's own code. The rest have none,
+because the scene publishes to a headset, wants a camera or an external service, or opens a window
+the docs build does not capture. Those entries say what to run instead.
 
 ## Running one
 
@@ -74,13 +69,15 @@ against today's stdlib. A second guard, `checkAgentTranscripts`, materializes ev
 a document and compares it byte-for-byte against the committed starting points, so the copy the
 welcome screen opens is the one the yaml produces today.
 
-There is a second corpus beside this one — the 22 saved documents under `dev_docs/agents/demos/` —
-and as of 21 September every one of them has a transcript here, so its box Kotlin is compiled on
-every build. That was not true until then, and the reason it is worth a sentence is what the last
-two arrivals cost: `skinned_characters`' `twist_compare` box had not compiled since the day it
-landed, for two days, with every gate green, because box code goes through the K2 REPL against a
-different import set from `jvmMain` and no Gradle task ever sees it. `AgentDemoRegistrationTest`
-holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
+The saved documents under `dev_docs/agents/demos/` each have a transcript here too, so their box
+Kotlin is compiled on every build.
+
+??? aside "Why the demos are registered here"
+    Box code goes through the K2 REPL against a different import set from `jvmMain`, so no Gradle
+    compile task sees it; a demo box can stop compiling with every gate green until a transcript
+    replays it. `AgentDemoRegistrationTest` holds the two-way registration and
+    `checkAgentTranscriptIndex` holds this page to the corpus; `dev_docs/GUARD_CORPORA.md` has the
+    method.
 
 ## Pure-compute scenes
 
@@ -176,10 +173,9 @@ boxes. The first runs two named coroutines — `Orbit`, stepping a phase on `ste
 `frames { }` loop, under an explicit `frameProfile("Playground", targetFps = 60.0,
 allocationKiB = 128.0)` with two named scopes, `Simulation` and `Vectors`. The second records three
 seconds with stacks and opens the timeline on its **Frames** tab, so the budget, the named scopes
-and the child lanes all arrive in one real capture rather than three. Nothing here is a service: the
-ordinary **launch**/**stop** controls own the coroutines, and the transcript proves it rather than
-claiming it — on stop the box's own `finally` counts the children that unwound, and the replay
-checks that count is exactly 2 alongside the lanes it expects (`Orbit` as a coroutine, `Vectors` as
+and the child lanes all arrive in one capture. Nothing here is a service: the ordinary
+**launch**/**stop** controls own the coroutines. On stop the box's own `finally` counts the children
+that unwound, and the replay checks that count is exactly 2 alongside the lanes it expects (`Orbit` as a coroutine, `Vectors` as
 a scope) and more than ten recorded frames. Replay records and then stops; launch the first box to
 watch it play. It carries the same `reuse` flag as `profiling_timeline`, over 2048 vectors: flip it
 and compare bytes per frame. See [Simulation time](profiling_timeline.md#simulation-time).
@@ -271,7 +267,7 @@ and compiled (about 5× apart); **controls** redraws a circle from a Lua slider;
 eight notes from a scale in Lua, measures them with `field.render` and loops them through Field's
 pattern voice with `play`. Needs `brew install luajit`. CI replays the graph and runs the Kotlin root,
 which needs no LuaJIT; the Lua boxes are a guest language, and `LuaStateTest`/`LuaBoxTest` run Lua
-against a real `lua_State`; every box was run by hand on 2026-09-30. See [Lua in a Box](lua.md).
+against a real `lua_State`. See [Lua in a Box](lua.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn)
 
@@ -298,11 +294,9 @@ it with `sim.addCloth(...)`, an explicit `loop { }` that runs the physics, and
 whisker per velocity) through `showPlane`, so the whole scene is CPU physics and Skia SVG with no
 Window and no Renderer. Its comments record what the numbers do: the constraint solve
 is force-based, so `stiffness * iterations` is the spring constant that decides everything, and on
-this sheet 60 x 16 settles at 11 % peak strain while 150 x 16 diverges to NaN. It is also the first
-`execute` transcript that *launches* rather than executes (a frame loop cannot run to completion),
-so CI launches it, advances 90 real runloop frames, and stops it.
-[Particles, Cloth & Constraints](physics.md) is the explainer behind it, and re-derives that ladder
-from scratch.
+this sheet 60 x 16 settles at 11 % peak strain while 150 x 16 diverges to NaN. A frame loop cannot
+run to completion, so CI launches it, advances 90 runloop frames, and stops it.
+[Particles, Cloth & Constraints](physics.md) explains the physics and derives that ladder.
 
 ![Four panels of the same cloth at stiffness-times-iterations products of 6, 64, 320 and 960, on one shared window so the rungs are comparable: at product 6 the sheet has stretched into a tall narrow web, at 64 it is a recognisable but slack cloth, and at 320 and 960 it is a sheet with shallow festoons between the pins. Each caption gives the product and the worst strain reached over four hundred frames](assets/physics/tuning_ladder.png)
 
@@ -328,8 +322,7 @@ sphere and the floor, and both ends of that sentence are asserted by
 Motion that survives being interrupted, as three boxes that get longer in
 that order. `inertial_hello` is five declarations: a `goal` that jumps between two values, an
 `inertialTo` chasing it, and `showSignals` on the last 240 readings — the smallest thing that
-wiggles. `inertial_vs_restarting` adds one line, a `startAt` on every frame, and that line is the
-whole argument: restarting a blend throws away the speed it had, which is what any one-shot ease does
+wiggles. `inertial_vs_restarting` adds one line, a `startAt` on every frame: restarting a blend throws away the speed it had, which is what any one-shot ease does
 each time you re-aim it, so against a target that never holds still the restarted arm never gets
 going at all. `movement_playground` is the interactive one — drag an XY pad and a character chases it
 through `MovementState`, with every parameter on a live slider, against a grey ghost of the same
@@ -352,7 +345,7 @@ on the left the colours stay in their sectors and on the right they turn to grey
 `million_pixels` makes every pixel of a 1024 x 1024 square a source point, scatters a million
 targets through three discs, and paints each pixel with where its target sits in its disc: hue for
 the angle, lightness for the distance from the centre. The result is three colour wheels, each
-stretched over the part of the square that drains into it. The seams between them are the BSP
+stretched over the part of the square that drains into it. The boundaries between them are the BSP
 splits; where the eight merged trees disagree, the edge goes grainy. The matcher splits along
 Gaussian-guided directions as the reference implementation does, and on these shapes it lands a few
 percent above the exact optimum (`BspOtTest` measures it against the Hungarian answer). CI executes
@@ -405,11 +398,11 @@ auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid f
 
 ### control_surface_laws
 
-The three affordances Field's control surface gained: a slider **law**
+Three controls beyond the plain slider: a slider **law**
 (logarithmic, taper, bipolar), a **momentary button**, and a read-only **meter** fed by a `source`
-lambda at 30 Hz. Four sliders over the same 20 Hz–20 kHz range make the point directly (1 kHz sits at
-56.6% of a logarithmic track and 4.90% of a linear one), and a button sits beside a checkbox so the
-difference between a gesture and a state is visible rather than described.
+lambda at 30 Hz. Four sliders cover the same 20 Hz–20 kHz range (1 kHz sits at 56.6% of a
+logarithmic track and 4.90% of a linear one), and a button sits beside a checkbox so you can feel
+the difference between a gesture and a state.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/control_surface_laws/metadata.edn)
 
@@ -449,10 +442,10 @@ slowly: `|+|`, `|+` and `+|` over `"0 1"` and `"10 20 30"` produce 4, 2 and 3 ev
 which side's structure the result keeps. *A parameter, not a staircase* attaches `sine().rangex(300,
 6000)` as a cutoff and prints the note count at `bd*4`, `bd*8` and `bd*16` to show it unchanged,
 then runs the control arm, `appBoth` over a segmented curve, which fragments the rhythm. *Hear the
-difference* measures its own render rather than asserting it: it detects the hat onsets and prints
+difference* measures its own render: it detects the hat onsets and prints
 the level coefficient of variation of the flat half beside the modulated half. *Voice leading*
-prints total movement as written against voice-led, and then both pitch-class sets, so the claim
-"the harmony did not change and the movement did" is two printed lines rather than a sentence.
+prints total movement as written against voice-led, and then both pitch-class sets: the harmony
+does not change and the movement does.
 *Groove* prints swung off-beats as exact rationals, a third of a subdivision late; *mini-notation
 markers* checks three shorthand/bracket pairs (`bd sd . hh hh hh` against `[bd sd] [hh hh hh]`, and
 the `_` and `!` forms) arc-for-arc and value-for-value and prints the boolean; and *playground* is
@@ -481,7 +474,7 @@ loud and fine quiet, because every coarse onset is also a fine one and at equal 
 collapses into a pile. Box 3 pins a player to the *canvas* rather than to an output, through the
 `customization` property, which is saved with the document.
 
-Three things the scene is careful about, each of which was wrong first. The bar is 24 slots, so at
+Three details of the scene. The bar is 24 slots, so at
 the docs-usual `cps = 2` it plays 24 hits a second and fuses into a growl; it runs at 0.35. The
 audio is `showDirtAudio`, which mixes the real Dirt-Samples offline, where `showPatAudio` renders
 `sd` and `hh` as filtered white noise; with no sample library on the machine every token falls back
@@ -555,8 +548,7 @@ mixed in with the rest. Box 4 reports where Field looked for the sample library 
 
 The other direction: sound back to notation. Five pure-compute
 boxes notate a pattern, render it offline, hear the audio back as pitched note events, and print a
-`pat("…")` string that re-renders, the arrow `audio_render_analysis` draws by hand and nothing in the
-repo could walk. Ground truth costs nothing here because Field authored the notation being scored
+`pat("…")` string that re-renders. Ground truth costs nothing here because Field authored the notation being scored
 against, so the reference is the audio's *cause* rather than an annotation of it: the clean box
 recovers 15 of 16 notes with a median pitch error of 0.3 cents. Two boxes are about failure. *A line
 with no attacks in it* is a single Dough oscillator whose frequency steps with continuous phase, so
@@ -722,8 +714,8 @@ each ring's depth and *signed* area, which is where the winding convention becom
 winding convention, and what happens without it* is the control arm: the same word rasterised with
 `honourHoles = true`, with it switched off (the counters close up solid), and under `EVEN_ODD` over
 the correct rings, then it prints the worst per-pixel difference between the last two, where 0.0
-means the two fill rules agree exactly. *Advances, kerning, tracking, alignment* prints two identities
-instead of claiming them: the laid-out advance width against the sum of the glyph advances, and the
+means the two fill rules agree exactly. *Advances, kerning, tracking, alignment* prints two identities:
+the laid-out advance width against the sum of the glyph advances, and the
 line widened by tracking against `(gaps × 0.16 em)`. Its kerning probe is written to survive a face
 with no kern table at all, and prints which happened. *Text on a curve* lays a ring by arc length and
 prints how many glyphs turned with the curve, plus that the original layout is untouched. *The
@@ -768,7 +760,7 @@ swallow two neighbours into **complete discs** (which makes its own cell a regio
 than a polygon) then verifies every boundary sample really is a score tie. *Contours* recovers the
 Voronoi diagram from a completely different algorithm by contouring the gap between the nearest and
 second-nearest site, and shows why asking for iso `0.0` finds *nothing*: that field is non-negative,
-it grazes zero on the seams, and marching squares locates sign changes. *Marching* puts the two
+it grazes zero on the cell boundaries, and marching squares locates sign changes. *Marching* puts the two
 decisions inside marching squares on inputs whose exact answer you know: a level set running through
 a whole column of grid samples, a circle passing exactly through grid corners, and the ambiguous
 saddle cell, and draws the sampling grid so you can see what the marcher had to work with.
@@ -797,8 +789,8 @@ activity)` behaviour space with MAP-Elites and prints coverage beside quality pe
 random sampling spreads over a descriptor space for free, so coverage on its own claims nothing. Box
 4 is the one that pins the shared machinery: `FunctionEvolve.evolve` is a one-line call to
 `PopulationSearch.evolve(mu = 1)`, and the FIELD_TEST `functions.evolve.worked-example` holds it to
-`bestScore = -0.15676727177844857` over 961 evaluations, bit for bit — which it still does: run
-headless on 2026-09-19 box 4 printed exactly that, with `acceptedMutations=12  evaluations=961`.
+`bestScore = -0.15676727177844857` over 961 evaluations, bit for bit, and box 4 prints that score
+with `acceptedMutations=12  evaluations=961`.
 The first *three* boxes each carry a control arm at the same budget under the same seed — a
 `PopulationSearch.random` run in boxes 1 and 2, a random-sampled archive in box 3 — because a
 generator good enough to stumble onto a decent rule occasionally looks exactly like a successful
@@ -827,7 +819,7 @@ and a watertight marched mesh. Every one of them prints the numbers the docs pag
 
 The moving ten are the same systems as time evolutions, through `Box.animateEvolution`: each one a
 schedule (how many steps, over how many seconds, on what ramp) plus a way to draw the state, with the step
-counter burned into every frame so a clip cannot lie about where it got to. They must be **launched**
+counter burned into every frame so each clip shows how far it got. They must be **launched**
 rather than run: a `Frames` that is only built never runs. None of the twenty opens a `Window` or a
 `Renderer`.
 
@@ -870,8 +862,7 @@ real Hz, with the centroid and the 85 % rolloff drawn in as dashed marks rather 
 −80 dB floor, and overlays the centroid trace on the heatmap. *Mel* runs two chirps crossing in
 opposite directions through a 48-band filter bank, so the picture is an X and the bands are the only
 thing you have to trust. *Resonator bank* is the control arm and does no transform at all: 96
-log-spaced resonators from 120 Hz to 3900 Hz recover the same structure by filtering, which is worth
-seeing beside the FFT. *Streaming features* pushes samples one at a time through
+log-spaced resonators from 120 Hz to 3900 Hz recover the same structure by filtering. *Streaming features* pushes samples one at a time through
 `EMAFilter then SpectralCentroidFilter`, plus flux and RMS, into two injected onsets planted a third
 and two thirds of the way through, so spectral flux has something it should spike at.
 
@@ -1092,8 +1083,8 @@ and it *costs* 0.006 units of reach.
 ![a four-link chain at rest, solved, and solved with a smoothness penalty](assets/autodiff/autodiff_ik.png)
 
 *Pack* packs twelve discs by descending `relu(overlap)²` pairwise plus `relu(penetration)²` against the
-walls, worst overlap 48.3 units → 0.35. This is where the library's even-split kink convention earns
-itself: at the instant two discs touch, the hinge's derivative is half a one-sided rule's, so the
+walls, worst overlap 48.3 units → 0.35. This is where the library's even-split kink convention shows:
+at the instant two discs touch, the hinge's derivative is half a one-sided rule's, so the
 packing settles instead of chattering across the contact.
 
 ![twelve discs before and after a differentiable packing](assets/autodiff/autodiff_pack.png)
@@ -1111,7 +1102,7 @@ thing β normally hides — copying a term you are about to use twice — become
 answer to the oracle with `alphaEquivalent` rather than `==`, because a readback invents its own binder
 names. The second draws `(λx. x x) (λy. y)` as five panels — the compiled net, then one per reaction,
 of which there are four (`beta-linear`, `dup-lam`, `beta-linear`, `fan-fan`) — and the agent counts go
-6, 4, 6, 4, 2 — *up* at `dup-lam`, which is the point: duplication is work done in the open rather than
+6, 4, 6, 4, 2 — *up* at `dup-lam`, because duplication is work done in the open rather than
 by copying a subtree behind your back. The third runs all 25 named closed terms under four schedulers:
 25 of 25 agree with the oracle and 25 of 25 give the same de Bruijn key whichever order fires, so the
 scheduler is a free choice and the answer is not. The surprise is in the first table — on the
@@ -1140,12 +1131,10 @@ equal. That second claim is the hard one, because `Net.relax` is 2D and path-dep
 four isomorphic graphs draw four different ways and the picture then claims the opposite of the theorem.
 The final pose is therefore a three-round Weisfeiler-Leman refinement — a node's label is its type folded
 with its neighbours' labels, in **port order** — so the ordering is a structural invariant and nothing
-reads an id or an insertion order. A BFS-depth-only pose was tried first and agreed on four rows before
-breaking on `3^3`, where ten `DUP`s leave sibling order ambiguous. The box also documents two traps in
-place: it does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
+reads an id or an insertion order. (A pose by BFS depth alone is not enough: on `3^3`, ten `DUP`s
+leave sibling order ambiguous.) The box also documents two traps in place: it does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
 *zero* ticks, so it drives its own clock with a sleep loop; and its output panel opens at 480 x 174 and
-ignores the size the viewer asks for, which is a real defect written up with its seven wrong hypotheses
-in `dev_docs/OUTPUT_PANEL_SIZING.md`. Drag the panel once and the size sticks.
+ignores the size the viewer asks for, a known defect described in `dev_docs/OUTPUT_PANEL_SIZING.md`. Drag the panel once and the size sticks.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/confluence_grid/metadata.edn)
 
@@ -1165,7 +1154,8 @@ happily return a design that is silently wrong at 5. *The recursive adder is not
 negative result: four drivers,
 including one *given* the SPLITs, all flatten well short of correct, and then the box hand-writes the
 ripple skeleton in the generator's own grammar and scores it through the same evaluator, so the target
-is provably inside the search space. The empty half of that cost plane is the finding.
+is provably inside the search space. The cost plane shows the two reference designs and nothing the
+search found.
 
 ![Four search drivers on a recursive eight-bit adder, every curve flattening short of zero, beside a cost plane holding only the two reference designs and nothing the search found](assets/morpho_examples/search-adder.png)
 
@@ -1246,12 +1236,12 @@ Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs
 
 ### fn_rewrite_kotlin_boxes
 
-The same hazard as the pair above, in the rewrite language, and the
-two spellings side by side so the difference is visible rather than described. A `@{...}` right-hand
+The same hazard as the pair above, in the rewrite language, with the
+two spellings side by side. A `@{...}` right-hand
 side in an `Fn` rewrite spec is Kotlin, and it is compiled in a live box's engine — but which box?
 `rewriteKotlin` answers "the one calling me", so calling it from a box body asks that engine to
-evaluate while the body is still running, and the body runs again: 172 nested entries and a stack
-overflow, measured, until the second hydration was refused. `rewriteFn` answers "the one you name",
+evaluate while the body is still running, and the body runs again. Left alone that was 172 nested
+entries and a stack overflow, so a second hydration is refused. `rewriteFn` answers "the one you name",
 and the box it names here comes from the topology — `parents.lastOrNull()` — so the snippets compile
 in whatever box this one is connected beneath, and dragging a different parent in moves them. The
 third box is the wrong way, kept runnable: its body still runs twice, which is what the refusal
@@ -1461,9 +1451,9 @@ cached under `~/.afield/onnx`), the imaging family normalises and smooths it, `I
 closes it into a watertight plaque, and Manifold does the Boolean. *Depth* prints the model's own raw
 window, which moves with resolution and is therefore read off the run rather than remembered, and
 shows why the solid comes out concave: the side walls and near floor are close, the far wall is not,
-so the room arrives as a basin. *Plaque* is the hop that did not exist until this page —
-`toHeightfieldMesh` returns a disc, `χ = 1` with one boundary loop, and `toSolid` refuses an open
-sheet — and prints `watertight=true manifold=true chi=2`, `boundary loops=0`, and a volume that
+so the room arrives as a basin. *Plaque* closes the sheet into a solid
+(`toHeightfieldMesh` returns a disc, `χ = 1` with one boundary loop, and `toSolid` refuses an open
+sheet) and prints `watertight=true manifold=true chi=2`, `boundary loops=0`, and a volume that
 Manifold and Field's own divergence-theorem sum agree on to the last digit despite sharing no code.
 *Boolean* checks inclusion–exclusion, `vol(A ∪ B) + vol(A ∩ B) = vol(A) + vol(B)`, rather than
 checking that the union got bigger, and shows the frame's genus going 1 → 0 as the plaque plugs its
@@ -1584,8 +1574,8 @@ declared way Field has of making, carrying out and bringing in sound straight fr
 `SoundPathMap.PATHS`, ending with how many meet the one `render` signature and which ones no page
 mentions. *One buffer, three paths* plays a two-second `bd ~ sd ~, hh*8` from real Dirt-Samples
 one-shots, then the same buffer through `ChamberlinLowpass` and through a Faust `fi.lowpass(1, 900)`,
-and prints the centroids (2856, 652 and 783 Hz), the two filters' similarity (0.9899) and the gain
-seam's worst disagreement, which is 0. It needs `./gradlew fetchDocsDirtSamples` once and says so if
+and prints the centroids (2856, 652 and 783 Hz), the two filters' similarity (0.9899) and the
+worst disagreement between a plain gain run through both paths, which is 0. It needs `./gradlew fetchDocsDirtSamples` once and says so if
 you skip it.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/sound_path_map/metadata.edn)
@@ -1668,12 +1658,10 @@ run twice is the same run, including across JVMs. `dev_docs/ALIFE.md` is the wri
 
 ### alife_walls
 
-**A world with walls.** Before this, `ScriptWorld` was a bare rectangle: the only spatial thing an
-agent could say was `avoidEdges(margin)`, and the only thing it could steer around was another agent.
-Now there are obstacles, the collision that stops an agent crossing one is **swept** rather than
-discrete, and `route()` plans a way round rather than pressing into it. Three boxes: one barrier and
-three answers to hitting it (`SLIDE`, `BOUNCE` with restitution, `STOP`, with the contact counts and
-end positions printed so the three are compared rather than described), routed seek against direct
+**A world with walls.** A `ScriptWorld` can hold obstacles: the collision that stops an agent
+crossing one is **swept** rather than discrete, and `route()` plans a way round rather than pressing
+into it. Three boxes: one barrier and three answers to hitting it (`SLIDE`, `BOUNCE` with
+restitution, `STOP`, with the contact counts and end positions printed), routed seek against direct
 seek on a maze, and following a wall while climbing a light. Swept collision is the part worth reading
 for — a discrete test lets a fast agent step straight through a thin wall between two frames, and that
 failure looks like an agent ignoring geometry rather than like a timestep problem.
@@ -1683,9 +1671,8 @@ failure looks like an agent ignoring geometry rather than like a timestep proble
 ### chart_clip
 
 **A figure that does not fit inside itself.** Four boxes: the corner plot as it looks now, the same
-figure with `clip = false` — the behaviour that shipped `sharp_edge.png` on the TetGen page — a long
-note wrapping and not wrapping, and the numbers behind both read off the drawn geometry rather than
-described. Run box 2 and the plot becomes a stamp in one corner of an empty rectangle. The switch is a
+figure with `clip = false`, a long note wrapping and not wrapping, and the numbers behind both read
+off the drawn geometry. Run box 2 and the plot becomes a stamp in one corner of an empty rectangle. The switch is a
 single word and it is that destructive because a panel fits the geometry's *own* bounds: anything
 outside the declared frame is not cropped, it shrinks everything else.
 
@@ -1728,8 +1715,8 @@ third-party JS chart.
 
 **Completion ranking at corpus scale**, over the checked-in recording of 578 carets — no GPU, no
 window, no sidecar. Three boxes: the corpus itself with its payload distribution, the *real*
-`KotlinSourceIndex.getCompletionCategoryForSymbol` called with the real recorded `declaredIn` rather
-than a fixture of what it used to answer, and the whole decision re-scored through the shipped
+`KotlinSourceIndex.getCompletionCategoryForSymbol` called with the real recorded `declaredIn`, and
+the whole decision re-scored through the shipped
 weights. The third box shells out to `tools/rank_weight_lab.py` and wants a spec file
 `afield.FieldSuggestPresentationTest` drops; if it says so, run that test once.
 `dev_docs/completion_rank_at_scale.md` is the written-up version, with the sweep and the falsification
@@ -1743,7 +1730,7 @@ behind it.
 `KeyframeScope` needs neither, and each box writes its key directory into a fresh temp dir so nothing
 lands in the document. Six keys named `a b c d d2 d3`, the shapes a real session actually produced,
 browsed twice in one box: the top panel uses the last pattern that session tried and finds two of the
-six, and now *says so*, with a button that widens it in one click. Then junk against damage — the two
+six, and says so, with a button that widens it in one click. Then junk against damage — the two
 are not the same and the browser has to tell them apart — and a saved slot that applies to nowhere.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_key_discovery/metadata.edn)
@@ -1751,12 +1738,11 @@ are not the same and the browser has to tell them apart — and a saved slot tha
 ### logging_layer
 
 **Channels, sinks, and the three different rules that select on a channel.** Six boxes, one per thing
-on the logging page, and every one reads the real objects a running Field is using rather than a
-description of them: `LogDispatcher`'s live sink list, `ConsoleMute`'s actual mute set, `LogStream`'s
+on the logging page, and every one reads the objects a running Field is using: `LogDispatcher`'s live sink list, `ConsoleMute`'s actual mute set, `LogStream`'s
 actual subscription filter. The reason to run these rather than read them is box 3 —
 `ConsoleMute.isMuted` compares the **whole** channel string, the pinned console splits on commas and
 compares a tag, and `LogStream`'s filter takes any case-insensitive substring, so one word selects
-three different sets of lines and box 3 makes a real subscriber prove it.
+three different sets of lines, and box 3 shows all three with a real subscriber.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/logging_layer/metadata.edn)
 
@@ -1774,8 +1760,8 @@ non-empty list is not evidence of hardware, and on a machine with no ports the h
 ports: it renders the clip offline through Gervill to a WAV and reports the peak amplitude, because a
 WAV of pure silence is exactly as large as a loud one — and if the JVM cannot reach
 `com.sun.media.sound.AudioSynthesizer.openStream` it renders nothing and tells you to use
-`clip.playTo("Gervill")` instead. Driven headless on 2026-09-19 it took the offline route: 2.00 s,
-peak 0.489, not silent.
+`clip.playTo("Gervill")` instead. Run headless, it takes the offline route and reports a 2.00 s
+render with a peak of 0.489.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/midi_clip/metadata.edn)
 
@@ -1789,10 +1775,9 @@ so a search that is wrong shows up as two lanes that do not coincide. Box 2 cond
 and recomputes every figure the search named, from `bjorklund` and `kolakoskiMask` rather than off the
 label: noise compresses about three times worse than a real figure, and that separation is the claim.
 Box 3 closes the loop — a bar rendered to samples, transcribed, and condensed back into `60(3,8,3)`,
-with nothing between the render and the transcription looking at the pattern. Opened on 2026-09-19 it
-recovered the grid at 0.2501 s/step over 8 steps with a worst residual of 0.001 step, and box 2's two
-medians were 0.613 for noise against 0.194 for `kolakoskiMask(16)` — the 3.2x separation the box
-claims, recomputed rather than quoted.
+with nothing between the render and the transcription looking at the pattern. It recovers the grid
+at 0.2501 s/step over 8 steps with a worst residual of 0.001 step, and box 2's two medians are 0.613
+for noise against 0.194 for `kolakoskiMask(16)`, a 3.2x separation.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pattern_condense/metadata.edn)
 
@@ -1837,8 +1822,7 @@ boxes, no Manifold, no GPU, no window — marching cubes and the mesh rasteriser
 The exact gradient checked against central differences on the spot, with `segments` **absent** from
 the slot list because an integer facet count has no derivative; an inverse fit that recovers three
 parameters seeded 42%, 45% and 112% wrong, the loss falling twenty orders of magnitude in fourteen
-iterations with the seed and fitted renders in the same box so the counterfactual is not a remembered
-number; then the seven refusals, which carry *reasons* rather than nulls, and the one failure mode
+iterations, with the seed and fitted renders in the same box; then the seven refusals, which carry *reasons* rather than nulls, and the one failure mode
 that matters — a swallowed child under a hard `Union` is dead, because a pointwise `min` gives the
 whole derivative to whichever child is nearest, and it presents as a *converged* optimisation.
 
@@ -2072,19 +2056,16 @@ evaluated here.
 **Python cells, with a Kotlin box as their language root.** Five boxes: a root that stays Kotlin and
 four children that run as Python because the root says so — print appearing inline beside the line that
 made it, a namespace shared across the cells because they are one interpreter rather than four, the JVM
-importable from Python, and `fig.show()` landing in the box. That the root stays Kotlin is the design
-rather than an accident: the toggle swaps the execution of a root's **children**, never of the root, and
-its `mainLanguage` property is what makes the four boxes below Python. This one has a prerequisite the
+importable from Python, and `fig.show()` landing in the box. The root stays Kotlin because the toggle
+swaps the execution of a root's **children**, never of the root; its `mainLanguage` property is what
+makes the four boxes below Python. This one has a prerequisite the
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
 started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
 
-It is also the one scene CI barely covers.
-`DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells** — they are
-not Kotlin, and the harness now says so rather than reporting every word as an unresolved reference —
-so one box of five is verified by the build. Driven by hand against a real interpreter on 2026-09-19
-the other four do work: Python 3.12.13, the numpy array printed inline, the namespace surviving into
-the next cell (`a is still here: (3, 4) 66`), and `java.lang.System` reachable from Python in a JVM
-reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be worth watching: with
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells**, because
+they are not Kotlin, so CI checks one box of five. Run against a real interpreter, the cells print
+the numpy array inline, keep the namespace into the next cell (`a is still here: (3, 4) 66`), and
+reach `java.lang.System` from Python. The last cell's `fig.show()` needs a browser attached to be worth watching: with
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
@@ -2117,8 +2098,7 @@ reads `'out' = 42.0`, live from the playing patch. **typo** has `[osc 440]` on l
 `[s level]`, send numbers to the drone with `pdBox("drone").pdSend(...)`, and render a patch offline:
 **offline** prints 440 upward zero crossings in one second at a peak of 0.2500. Needs libpd, built
 once with `./gradlew buildLibpdNative`. The build does not own that, so CI compiles the four Kotlin
-boxes and skips the three Pd ones, as it skips Python cells; every box was run by hand against a
-built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
+boxes and skips the three Pd ones, as it skips Python cells. [Pure Data](pure_data.md) has the walkthrough and captures.
 
 ![A Pure Data drone patch: frequency and cutoff receivers drive a filtered phasor into stereo output](assets/pure_data/drone-patch.png)
 
@@ -2138,8 +2118,7 @@ plays the reverb tail back as a Field signal. **through Csound, measured** print
 for a 1 kHz Field sine through `butterlp 500` (a Butterworth gives 0.2425), and **a table from
 Kotlin** writes a 4096-point ftable and reads it back equal. Needs libcsound, built once with
 `./gradlew buildCsoundNative`. The build does not own that, so CI compiles the Kotlin boxes and
-skips the Csound ones; every box was run by hand against a built Csound on 2026-10-02.
-[Csound](csound.md) has the walkthrough.
+skips the Csound ones. [Csound](csound.md) has the walkthrough.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
 
@@ -2217,9 +2196,8 @@ there is one stage structure carrying three values.
 The fourth box is why this scene is compiled rather than replayed. It sends three readers of the
 same bank into `patSpatial` as azimuth, filter cutoff and distance — pat → Dough → Steam Audio HRTF,
 in realtime — so running it opens an audio device, and a `patSynth` launch outlives the box that
-started it. The other three boxes would run happily. They stay here with the fourth rather than
-being split into a second transcript, because the point the document makes is that the bank does not
-know whether it is being drawn or heard, and that argument does not survive the split.
+started it. The other three boxes would run in CI, but they stay in one document with the fourth,
+because the document shows that the bank does not know whether it is being drawn or heard.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/marf_demo/metadata.edn)
 
@@ -2410,8 +2388,7 @@ it can only fetch over http — a path on your disk is not a URL it can reach, a
 which reads as the fix, sends a message no route in the server consumes. So the model here is the
 committed CC0 Khronos ToyCar, mounted at `/sample-assets`, and this scene needs nothing you do not
 already have. It carries no animation clips, so `play()` is a no-op that says so in the log; point
-it at a model with clips and the mixer moves. Until 2026-09-13 it referred to an external
-`robot.glb` no checkout contains, and was withheld from the welcome screen for exactly that reason.
+it at a model with clips and the mixer moves.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/remotear_scene_motion/metadata.edn)
 
@@ -2423,9 +2400,8 @@ browser window to arrange, and the Tone.js it plays through is vendored rather t
 is `// {{ tone }}` Kotlin — a `PolySynth` into a reverb, an arpeggio scheduled on the transport at
 96 bpm. One thing to know before you open it: a browser starts its `AudioContext` suspended and
 resumes it only after a real user gesture, so `Tone.start()` has to follow a click *inside* the
-head, and the box is named to say so. That is an instruction, not a defect, which is why this ships
-as a starting point from 2026-09-13 rather than staying agent-only. There is still nothing to hear
-in a headless build, which is why CI compiles this one and stops there.
+head, and the box is named to say so. There is nothing to hear in a headless build, so CI compiles
+this one and stops there.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/tone_synth_sequence/metadata.edn)
 
@@ -2437,8 +2413,8 @@ These are scenes that, when run, open a **native Vulkan window**, so the live im
 window, not an embedded frame. All but one build their own `Window` + `Renderer`; `mega_texture_wall`
 takes its renderer from an `agent_graphics_context` parent, for the reason its own entry gives, and
 so is the one here that is not offered as a starting point. The figures
-here are captures of that window, taken by the docs capture pipeline from *these* transcript files
-(`capture="native-window"`), so they are the real frame and not a synthesized still. Where an entry
+here are captures of that window, taken by the docs capture pipeline from these transcript files
+(`capture="native-window"`). Where an entry
 carries none, there is no such capture: run the scene yourself and grab its window with a follow-on
 `native-screenshot` backdoor command (with `--with-playwright`).
 
@@ -2467,8 +2443,8 @@ HTC-capable OpenXR runtime. See [the coordinate walkthrough](openxr_eye_intersec
 
 4D splat video: a sequence of PlayCanvas `.compressed.ply` files
 played as fifteen simultaneous sources arranged in a ring around the viewer, all decoded into **one**
-GPU buffer. The measurement that shaped it: on a real 15-file frame of 309,555 splats, reading each
-file and re-packing it took 59 ms against a 41.7 ms budget at 24 fps, while `readRaw` +
+GPU buffer. On a 15-file frame of 309,555 splats, reading each file and re-packing it takes 59 ms
+against a 41.7 ms budget at 24 fps, while `readRaw` +
 `GaussianSplatRenderer.packInto` (straight from the quantized payload to the 16-float layout, written
 absolutely into the mapped buffer) takes 22 ms, and 27 ms including a back-to-front CPU sort of the
 whole frame. Three things in it are not the obvious choice. The ring is fifteen *rotations* and no
@@ -2485,7 +2461,7 @@ absent, rather than shipping somebody's capture as a fixture.
 ### mega_texture_wall
 
 A directory of images as one wall, behind a virtual texture the **GPU**
-drives. The distinction is the whole scene: the fragment shader takes `dFdx`/`dFdy` of the image's
+drives: the fragment shader takes `dFdx`/`dFdy` of the image's
 own UVs, so it knows how many pixels across it is being drawn at, and `atomicMax`es the level it
 wants into a feedback buffer. A frame later the CPU reads that buffer, and that read is the entire
 input to its decoding, residency and eviction — it is never told where anything is, how large it
@@ -2572,15 +2548,14 @@ The capture below is this transcript instrumented on [Field probes](field_probes
 A **heterogeneous, multi-resolution** post-process chain in three boxes: a
 renderer, a grid of lit spheres, and one `addPassChain(...)` call that reduces the scene to a half and
 then a quarter, blurs the cheap small image with two aperture discs, and composites back at full
-resolution. Six passes, each with *its own* resolution — which is the thing the post stack could not
-express before, because `Bundle.addShaderEffect` sized every pass target to its source. Run the third
+resolution. Six passes, each with *its own* resolution, where `Bundle.addShaderEffect` sizes every
+pass target to its source. Run the third
 box and it prints the plan first: every pass with its resolved size, which sampler reads which earlier
 pass, which passes share a target, and the memory cost against one full-resolution target per pass.
 Then edit the three `setPush` numbers under it and run again — the discs widen or narrow and the
 composite crossfades with no pipeline rebuild and no target reallocated. Widening `aperture-far`
 *lowers* the frame's high-frequency energy rather than raising it, because a wider disc spreads a
-fixed amount of light and dims the whole image; that direction surprises people, and watching it is
-the point of declaring the chain rather than assembling it. `dev_docs/FOUR_PASS_CHAIN.md` is the
+fixed amount of light and dims the whole image. `dev_docs/FOUR_PASS_CHAIN.md` is the
 write-up, and `tools/run_field_tests.py --id four.pass-chain.smoke` is the same layer driven headlessly
 with assertions on the pixels.
 
@@ -2590,9 +2565,9 @@ with assertions on the pixels.
 
 Two GPU **simulations** declared as pass chains: a Stam stable fluid you paint into by dragging in the
 window, and a jump flood distance transform of a shape you move around, inset into a corner of the
-frame. The companion to `four_pass_chain`, and the thing that one could not express — a pass chain was
-strictly feed-forward over a single frame, and a fluid's velocity field this frame is a function of the
-velocity field *last* frame. A pass may now declare itself persistent, which gives it a ping-pong target
+frame. The companion to `four_pass_chain`, for state that carries between frames: a fluid's velocity
+field this frame is a function of the velocity field *last* frame. A pass can declare itself
+persistent, which gives it a ping-pong target
 whose previous frame any pass can read, including a pass that runs *earlier* in the list: `fluid-advect`
 is first and reads `fluid-velocity`, which is second to last. The fluid is twenty-seven passes — advect,
 curl, force, divergence, a twenty-pass Jacobi pressure solve, projection, dye advection — and the Jacobi
@@ -3079,7 +3054,7 @@ has to equal the sheet's 169 quads, which the box checks and says in words. See
 ### pattern_particles
 
 Four boxes and the whole chain from a rhythm to a GPU push constant.
-`patSynth` schedules `pat("bd*4, ~ 52 ~ 52, hh*16")` block by block on the audio seam, a `BandSplit`
+`patSynth` schedules `pat("bd*4, ~ 52 ~ 52, hh*16")` block by block in the audio render, a `BandSplit`
 of four `Biquad` band-passes measures what comes out, the four numbers become four push-constant
 floats, and 24,000 particles in four rings follow them, one band each. The audio box pulls the bank
 itself rather than handing it to the engine, so the figure comes out the same on a machine with no
@@ -3101,8 +3076,8 @@ the vertex shader from the burst's origin and age. See [the walkthrough](chain_p
 
 `LIFE3D_BLOB` for eight generations, then the question a volume of
 ones and zeros cannot answer for itself: how many separate things are left. Field's marching cubes
-and Manifold's level set both march the same density field, disagree about the genus, and the
-disagreement is the finding — `decompose()` returns 48 independent solids whose volumes sum exactly
+and Manifold's level set both march the same density field and disagree about the genus, and
+`decompose()` explains why: it returns 48 independent solids whose volumes sum exactly
 to the whole, and `1 - 48` is the negative genus. The box also marches the field at three spacings
 each way, because the count is a property of the surface and not only of the automaton. See
 [the walkthrough](chain_life3d_render.md).
@@ -3162,11 +3137,8 @@ nothing when it is right, and beauty still looks fine when it is wrong. The laye
 
 **The path tracer, with an instrument.** Six boxes: a renderer, the tracer with a log, the instrument
 in one line, the convergence curve, an integrator swapped live, and the integrator put back. The
-subject is one line — `display("output", tracer)` — and what it used to produce: 376 bytes, roughly 330
-of them the wrapper `<div>`, because `PathTracingRenderer` is not a data class and had no
-`registerValuePrinter` entry, so `ValueVisualizer` fell all the way to `formatFallbackObject`. Every
-`afield.four` type the tracer is built out of was in the same position: the object with the most to say
-about itself in a running renderer was the one that said the least. Boxes 4 and 5 swap the integrator
+subject is one line, `display("output", tracer)`, which shows the running tracer through its
+registered value printer rather than as a bare object. Boxes 4 and 5 swap the integrator
 underneath the instrument and put it back, which is the part a printed line cannot do.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/path_tracer_instrument/metadata.edn)
@@ -3273,10 +3245,9 @@ agrees with the library's.
 `ShaderNeuralParticles` over one trained pair, each with its weights set once and its `viewCenter`
 offset so the panels sit apart.
 
-It exists because a sweeping scene cannot be photographed: a capture lands on whatever `t` the
-clock happened to reach, so a figure and its caption drift apart the next time the page is built.
-Pinning each panel makes the picture on `neural_particles.md` mean the same thing every time. It is
-also the cheapest demonstration that the weight buffer is per-system — one trained pair drives any
+A capture of the sweeping scene lands on whatever `t` the clock happened to reach; pinning each
+panel makes the picture on [Neural particle systems](neural_particles.md) show the same three values every
+time. It is also the cheapest demonstration that the weight buffer is per-system — one trained pair drives any
 number of panels with no extra training and no extra shaders.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/letter_interpolation_panels/metadata.edn)
@@ -3285,12 +3256,10 @@ number of panels with no extra training and no extra shaders.
 
 **A rigged mesh you can bend, and a crowd of sixty-four of them.** Skeletal animation for
 `afield.four`: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated at
-a time, and linear blend skinning into a deformed surface. Before it landed, the only mention of a
-bone anywhere in `src/jvmMain` + `src/commonMain` was `PathTraceGltf.kt` *refusing* to render one —
-the codebase naming a missing capability in its own error message.
+a time, and linear blend skinning into a deformed surface.
 
 Eight boxes. A window and renderer the four GPU boxes hang beneath; a box that prints what the
-loader now reads out of the rig (nodes, bones, clips, the worst weight-sum error over all 60
+loader reads out of the rig (nodes, bones, clips, the worst weight-sum error over all 60
 vertices, and 60 of 60 vertices bit-identical to the unskinned mesh at the bind pose) and draws four
 poses side by side; two sliders driving a live re-skin, printing the tip's `x` so the pose is a
 number and not only a picture; the path tracer on the *deformed* mesh, cross-checked against the CPU
@@ -3300,13 +3269,8 @@ the vertex-shader version, where 64 characters at their own phases are one mesh,
 and one upload of 128 matrices per frame; and the candy wrapper again on the GPU, a linear-blend
 and a dual-quaternion tube side by side in one draw call, chosen by one word per instance.
 
-This transcript exists for a reason separate from the scene. From 19 to 20 September the candy
-wrapper box **did not compile**: a two-mesh-to-one-mesh rewrite left four `println`s naming the old
-version's `rL`, `rR`, `outR` and `rRest`, so the box failed with *"Unresolved reference 'rRest'"*
-from the day it landed, while `./gradlew check` stayed green throughout — box code is compiled by
-Field's K2 REPL against a different import set from `jvmMain`, and no Gradle task sees it. It was
-found by a person launching every box of the document one at a time. This file is that sweep, as
-CI. The numbers above are held far more sharply elsewhere: `GltfSkinningTest` asserts bind-pose
+Replaying the transcript in CI compiles every box of the document. The numbers above are held more
+sharply elsewhere: `GltfSkinningTest` asserts bind-pose
 bit-identity rather than a tolerance, and the captured frames are under
 `dev_docs/agents/evidence/skinning/` and `dev_docs/agents/evidence/gpu_skinning/`.
 
