@@ -275,13 +275,11 @@ class AgentDemoRegistrationTest {
      * launch ops; an EXECUTE transcript needs them added. Measured 2026-10-09.
      */
     private val ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS = setOf(
-        "ai_tool_demo",
         "brief_house_demo",
         "canonical_graphics",
         "fline_examples",
         "nano_examples",
         "rectsl_gallery",
-        "rtp_midi_demo",
         "stacksl_cpu_demo",
         "stacksl_surrogate_demo",
         "three_mesh_pick_demo",

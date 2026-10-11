@@ -536,7 +536,8 @@ Called on the glTF sample that ships with Field, it answers with 77429 vertices,
 ![The rendered mesh a model receives when it calls InspectGeometryFile](assets/ai_tool_demo/toycar_inspect.png)
 
 The full session (both descriptors, both calls, both results) is in
-`public/docs/assets/ai_tool_demo/session.md`; it needs no API key and no model.
+[`session.md`](https://github.com/OpenEndedGroup/Field4/blob/main/public/docs/assets/ai_tool_demo/session.md);
+it needs no API key and no model.
 
 If you have no scans handy, this makes some and runs both tools over them,
 including putting the picture the model would receive into the box's output:
@@ -589,8 +590,8 @@ display("<img src='" + image.dataUrl + "' style='width:100%'/>")
 `execute` takes a name and a JSON string, which is exactly the shape a model's
 tool call arrives in, so this runs the real tool path with the model left out.
 
-There is a loadable document with both examples side by side:
-`public/docs/assets/ai_tool_demo/metadata.edn`.
+Both examples are side by side in the
+[ai_tool_demo](agent_transcripts.md#ai_tool_demo) starting point.
 
 ### If your tool takes a path, or anything else from the outside
 

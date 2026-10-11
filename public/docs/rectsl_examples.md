@@ -804,8 +804,8 @@ for how a 64-bit hash fits in a shader that has no 64-bit integers.
 
 ### Open it
 
-`dev_docs/agents/transcripts/rectsl_sdf_live.yaml` replays into a fresh document
-and puts this on screen, moving, in two boxes: a Window + Renderer, and one box
+The [rectsl_sdf_live](agent_transcripts.md#rectsl_sdf_live) starting point puts
+this on screen, moving, in two boxes: a Window + Renderer, and one box
 that compiles the scene, emits the field, wraps it in a look and draws it with a
 fullscreen triangle. Change `preset("relief")` to `"contours"` or `"blend"` and
 re-run; edit the `#rectsl` string and re-run.

@@ -379,10 +379,9 @@ the renderer decides per value whether it is looking at colour data, a signed
 response, a pyramid, or a list of detections.
 
 !!! tip "Open the demo document"
-    `dev_docs/agents/transcripts/imaging_visualizers_demo.yaml` is a loadable
-    document with one box per visualizer on this page. Replay it into a fresh
-    Field with the agent backdoor (`field_run_transcript`) and look at each box's
-    output area — every box evaluates one imaging value as its last expression, so
+    The [imaging_visualizers_demo](agent_transcripts.md#imaging_visualizers_demo)
+    starting point has one box per visualizer on this page. Open it from the
+    welcome screen, run the boxes and look at each one's output area — every box evaluates one imaging value as its last expression, so
     there is no `showImg`, no `display(...)` and no explicit call at all. Then
     change a sigma or a threshold and re-run a box.
 
