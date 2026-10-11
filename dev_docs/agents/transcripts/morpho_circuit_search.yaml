@@ -40,7 +40,7 @@ description: >
   Replay this file into a fresh Field with the agent backdoor (field_run_transcript) to see all
   three, then turn a budget up, swap a driver, change the width family, or point MorphoProblems at
   a different oracle and re-run a box. Each `execute` op omits inline code, so it runs the box's
-  stored `code` property. The page is public/docs/morpho_examples.md.
+  stored `code` property. The page is public/docs/morpho_search.md.
 operations:
   - create:
       box: morpho_search_control

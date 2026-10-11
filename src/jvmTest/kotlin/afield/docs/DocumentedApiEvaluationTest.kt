@@ -190,6 +190,7 @@ class DocumentedApiEvaluationTest {
         // The oscquery_demo starting point (2026-10-09) is COMPILE_ONLY: its boxes publish a service on
         // fixed ports and loop until stopped. OscQueryRoundTripTest runs the server, client, mirror and
         // DNS-SD discovery these Box wrappers call.
+        "rtpMidi" to "rtp_midi_demo opens real RTP-MIDI sessions on UDP 5004-5007 and Bonjour, which CI does not own; RtpMidiLoopbackTest runs a session pair underneath",
         "oscQuery" to "oscquery_demo publishes on fixed ports; OscQueryRoundTripTest runs the server underneath",
         "oscQueryRemote" to "oscquery_demo; OscQueryRoundTripTest runs the client underneath",
         "oscQueryMirror" to "oscquery_demo; OscQueryRoundTripTest mirrors a Field server's tree",

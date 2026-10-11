@@ -3004,7 +3004,7 @@ rather than inferable from a gate count.
 
 `src/jvmMain/kotlin/afield/morpho/MorphoFLines.kt` — [read the source](source/jvmMain/afield/morpho/MorphoFLines/)
 
-**Used in:** [MorphoHDL in Field](../morpho_examples.md)
+**Used in:** [MorphoHDL in Field](../morpho_examples.md), [Searching for MorphoHDL Circuits](../morpho_search.md)
 
 ### Top-level functions { #morphoflines-kt-functions }
 
@@ -3139,7 +3139,7 @@ used only to steer generation. The compiler remains the judge; the model's accur
 
 `src/jvmMain/kotlin/afield/morpho/MorphoGenome.kt` — [read the source](source/jvmMain/afield/morpho/MorphoGenome/)
 
-**Used in:** [MorphoHDL in Field](../morpho_examples.md)
+**Used in:** [Searching for MorphoHDL Circuits](../morpho_search.md)
 
 ### MorphoLut { #morphogenome-kt-morpholut }
 
@@ -3311,8 +3311,6 @@ expansions, so the recursive division is visible in motion. `installMorpho` regi
 runtime; `installMorphoPlugin` starts the topology watcher.
 
 `src/jvmMain/kotlin/afield/morpho/MorphoInterface.kt` — [read the source](source/jvmMain/afield/morpho/MorphoInterface/)
-
-**Used in:** [MorphoHDL in Field](../morpho_examples.md)
 
 ### Top-level functions { #morphointerface-kt-functions }
 
@@ -3585,7 +3583,7 @@ redrawn every frame of a launched box while the search is still running.
 
 `src/jvmMain/kotlin/afield/morpho/MorphoSearchFLines.kt` — [read the source](source/jvmMain/afield/morpho/MorphoSearchFLines/)
 
-**Used in:** [MorphoHDL in Field](../morpho_examples.md)
+**Used in:** [Searching for MorphoHDL Circuits](../morpho_search.md)
 
 ### Top-level functions { #morphosearchflines-kt-functions }
 
@@ -3670,7 +3668,7 @@ to.
 
 `src/jvmMain/kotlin/afield/morpho/MorphoSpec.kt` — [read the source](source/jvmMain/afield/morpho/MorphoSpec/)
 
-**Used in:** [MorphoHDL in Field](../morpho_examples.md)
+**Used in:** [Searching for MorphoHDL Circuits](../morpho_search.md)
 
 ### MorphoPortRole { #morphospec-kt-morphoportrole }
 

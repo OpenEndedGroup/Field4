@@ -109,6 +109,6 @@ The viewer fetches chats and pictures from Field over `/api/chatlog/lens` and `/
 ??? aside "How this page was made"
     The `harbour` chat is a real AI4 conversation: a live run of the `ai4_paint_studio` starting point with OpenAI `gpt-6-astra` on 2026-10-05, a later run than the one whose paintings are on [AI4 Paints](ai4_painting.md). It is that document's saved chat with three changes, none to its text: the chat history's inline images are replaced by the same `ai4img:` references `ChatArchive` would give them, the 13 tool images are scaled down to 640 px, and the 132 MB of saved canvas states, which only a rewind reads, are left out. Four log paths in progress notes on rewound branches were shortened to `~/.afield/...`. The storyline lens was written by hand for this page; its record's statistics are the values `lensStats` printed in the capture above. The design and the measurements on long chats are in `dev_docs/ai/AI4_CHAT_PLAYGROUND_PLAN.md`.
 
-The four boxes on this page are also a document, `public/docs/assets/ai4_chat_archive/demo`, which reads the same example chat when Field runs from a checkout.
+The four boxes on this page are also the [ai4_chat_archive](agent_transcripts.md#ai4_chat_archive) starting point, which reads the same example chat when Field runs from a checkout.
 
 See also: [AI Tool-Use History](ai_tool_use_history.md) for the per-call tool logs, and [Experimenting with AI4](ai4_experiments.md).

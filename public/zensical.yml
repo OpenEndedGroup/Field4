@@ -252,14 +252,19 @@ nav:
     - Clojure in a Box: clojure.md
     - Lua in a Box: lua.md
     - Nano Examples: nano_examples.md
-    # The tail of this section is the three "make your own" pages, in ascending order of how much
-    # machinery they ask for, after the gallery that already uses them: MorphoHDL is a language
-    # brought in from outside, `rewrite { … }` is a syntax of your own with no language at all
-    # behind it — a preprocessor in a box — and Language Extensions is how any of them earns
-    # highlighting, diagnostics and a context lens in the editor. The last two arrived here from a
-    # "Writing Code in a Box" section that no longer exists: they read as advanced Kotlin-editor
-    # topics and are in fact the two pages this gallery is the evidence for.
-    - Bridging Another Language (MorphoHDL): morpho_examples.md
+    # MorphoHDL is a language brought in from outside (upstream's own compiler on GraalJS). Its
+    # page is a user page since 2026-10-11; the circuit-search study that used to fill its second
+    # half is the page after it, and the how-to for hosting a foreign runtime moved to
+    # dev_docs/MORPHO_LANGUAGE_BRIDGE.md.
+    - MorphoHDL in Field: morpho_examples.md
+    - Searching for MorphoHDL Circuits: morpho_search.md
+    # The tail of this section is the two "make your own" pages, in ascending order of how much
+    # machinery they ask for, after the gallery that already uses them: `rewrite { … }` is a
+    # syntax of your own with no language at all behind it — a preprocessor in a box — and
+    # Language Extensions is how any language earns highlighting, diagnostics and a context lens
+    # in the editor. Both arrived here from a "Writing Code in a Box" section that no longer
+    # exists: they read as advanced Kotlin-editor topics and are in fact the two pages this
+    # gallery is the evidence for.
     - Rewriting Your Own Syntax: pattern_rewrite.md
     - Language Extensions: language_extensions.md
   # Three pages here carry an in-page warning rather than a section-level one: vision.md opens

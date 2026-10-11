@@ -165,6 +165,15 @@ in audio-sized blocks. See [SMPTE Timecode](smpte_timecode.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/smpte_timecode/metadata.edn)
 
+### ai4_chat_archive
+
+**Reading a saved AI4 chat**, in four boxes: a lens viewer with the chat-log tools registered, the
+chat's outline, one branch read through, and the statistics of a storyline lens. They read the
+example chat that ships under `public/docs/assets/ai4_chat_archive`, so run Field from a checkout.
+See [Reading Saved AI4 Chats](ai4_chat_archive.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_chat_archive/metadata.edn)
+
 ### simulation_clock
 
 The same instrument pointed at *simulation* time rather than wall-clock time, in two
@@ -1140,7 +1149,7 @@ ignores the size the viewer asks for, a known defect described in `dev_docs/OUTP
 
 ### morpho_circuit_search
 
-Three boxes that search for circuits in
+The three searches from [Searching for MorphoHDL Circuits](morpho_search.md), for circuits in
 [somebody else's language](morpho_examples.md), where one unit of budget is one invocation of
 morpho's own compiler on GraalJS. *Does selection beat sampling?* gives random search, hill climbing
 and evolution the same generator, the same seed and the same budget on a one-bit full adder (whose
@@ -1923,6 +1932,24 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
+
+### rtp_midi_demo
+
+**Network MIDI** in three boxes, run in order: the first opens an RTP-MIDI session called "Field"
+and announces it over Bonjour, the second opens another session that joins it and lists the peer,
+and the third plays four notes and a controller from that peer, which the first box's outputs show.
+Nothing else needs to be on the network. See [Network MIDI](rtp_midi.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/rtp_midi_demo/metadata.edn)
+
+### ai_tool_demo
+
+**Giving the AI a tool**, in two boxes. The first is the whole mechanism: a function, the schema a
+model sees, and a call through `AgentToolExtensions.execute` with the JSON a model would send. The
+second is a geometry tool that answers with measurements and a rendered picture of the mesh. Neither
+needs an API key or a model. See [AI features](aiFeatures.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai_tool_demo/metadata.edn)
 
 ### chain_scene_to_light
 

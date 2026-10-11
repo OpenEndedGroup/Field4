@@ -98,6 +98,8 @@ object DemoTranscriptExecSmokeTest {
     internal val EXECUTE = setOf(
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
+        // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
+        "ai4_chat_archive",
         "particle_video_reader",
         // The staged-project starting place: a level edited through guarded tools, three study-build
         // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
@@ -716,6 +718,10 @@ object DemoTranscriptExecSmokeTest {
         // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
         // holds the page's fences to the document.
         "sonicpi_pattern_demo",
+        // rtp_midi.md's demo opens real RTP-MIDI sessions on UDP 5004-5007 and announces over Bonjour.
+        "rtp_midi_demo",
+        // aiFeatures.md's tool demo: its geometry tool renders a mesh for the model to look at.
+        "ai_tool_demo",
         // fieldml_host_bridge.md's demos. Their boxes are FieldML under a FieldML root, a guest
         // language this harness cannot run (it does not install the @RunsAt language registry), so
         // only the Kotlin window-and-renderer boxes of the GPU ones are compiled here;

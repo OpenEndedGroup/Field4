@@ -426,17 +426,11 @@ and a strategy can name them, but the strategy itself is not inherited.
 
 ## Try it
 
-Two demo transcripts exercise everything on this page:
+Two starting points exercise everything on this page. Open either from the welcome screen:
 
-- [`pattern_rewrite_worked_example.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml):
+- [pattern_rewrite_worked_example](agent_transcripts.md#pattern_rewrite_worked_example):
   negation, the precedence guard, the `isCallTo` termination guard, a variadic
   hole, `unquote`, and an inherited rule.
-- [`rewrite_strategies_demo.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/rewrite_strategies_demo.yaml):
+- [rewrite_strategies_demo](agent_transcripts.md#rewrite_strategies_demo):
   named rules driven by `once`, `topdown`, `bottomup`, `then`, `choice` and
   `repeat`, plus the nested pattern, each box checking its result.
-
-To replay them, with the other demo transcripts:
-
-```diffstatic {data-lang=bash}
-python3 tools/run_field_tests.py --id examples.demo-transcript.exec
-```
