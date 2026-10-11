@@ -67,21 +67,11 @@ being informative, the arrival time takes over.
 
 ---
 
-## What was already in the box
+## Which parts of morpho Field runs
 
-Two facts about Field made this a weekend's work instead of a port.
-
-**Field already runs other people's runtimes.** `afield.runtime.MainLanguageRegistry` is a
-five-field data class and a map. Registering a language is one call, and ForthField, Clojure, Python,
-Nano and RemoteJS were all in there already, so there was a shape to copy rather than a design to
-invent.
-
-**Field already ships GraalVM's JS and WASM.** `build.gradle.kts` declares
-`org.graalvm.polyglot:js` and `:wasm`, and `afield.four.synth.Dough` runs a WebAssembly synthesiser
-through a `Context.newBuilder("js", "wasm")`. MorphoHDL is implemented in JavaScript, so the
-question is never "how do we port this" but "how much of it can we just run".
-
-The answer is: all of the parts worth having.
+MorphoHDL is written in JavaScript, and Field runs it with GraalVM's JS and WASM engines, the same
+ones its other hosted languages use. Field runs upstream's compiler and layout kernel unchanged
+and drops upstream's browser rendering:
 
 | upstream file | lines | what it is | in Field? |
 | --- | --- | --- | --- |
@@ -94,25 +84,18 @@ The answer is: all of the parts worth having.
 | `js/grower.js` | 105 | expansion schedule | reimplemented, 40 lines — see below |
 | `viewer.js`, `layout_renderer.js`, `swissgl.js`, `hex_layout.js`, `bloom.js`, `figures.js`, `demo.js`, `article.js`, `presets.js` | ~2900 | canvas/WebGL rendering, DOM | **dropped** |
 
-Everything Field wrote for the bridge is in `src/jvmMain/kotlin/afield/morpho/` (seven files) plus
-two driver scripts and a Monaco grammar. The vendored tree is under `src/jvmMain/resources/morpho/`
-with a `PROVENANCE.md` recording exactly what it is and what was left out.
+Field's side of the bridge is in
+[`src/jvmMain/kotlin/afield/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/kotlin/afield/morpho),
+and the vendored upstream tree, with a `PROVENANCE.md` saying what was left out, is under
+[`src/jvmMain/resources/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/resources/morpho).
 
 ??? aside "Where this bridge is not upstream's code"
-    `grower.js` is the exception, and "we reimplemented a bit of it" is the sentence that turns a
-    bridge into a fork. Here is exactly which bit.
-
-    Its expansion *schedule* (largest-estimated-subtree first, chasing chains of single-child
-    expansions so a recursion that unrolls one cell at a time does not cost a frame per level) is
-    exactly what Field wants. But its constructor builds a `LayoutEngine` — the 2D layout Field is
-    replacing — and importing the schedule drags in the thing being dropped. The 40 lines of
-    schedule are reproduced in `morpho-field-driver.mjs`.
-
-    That reimplementation carries the most specific test in the bridge. `expansion order does not
-    change the circuit` compiles a 32-bit Brent–Kung both ways and asserts identical gate counts,
-    identical cell counts, **and** identical outputs over 512 random vectors. The schedule decides
-    *when* a cell expands, never *what* it expands into, and if that ever stops being true the test
-    says so.
+    `grower.js` is the exception. Its expansion schedule (largest estimated subtree first, chasing
+    chains of single-child expansions so a recursion that unrolls one cell at a time does not cost
+    a frame per level) is what Field wants, but its constructor builds upstream's 2D
+    `LayoutEngine`, which Field does not use. The schedule is reproduced in
+    `morpho-field-driver.mjs`, and a test compiles a 32-bit Brent–Kung both ways and checks that
+    the circuits are identical.
 
 ---
 
@@ -226,26 +209,18 @@ clip.
 
 ## Circuits laid out in three dimensions
 
-The layout kernel is the most capable thing in the repository, and it is not part of the language.
-
-`graphs_engine/main.wasm` is 11 KB of zig compiled to `wasm32-freestanding`. GraalWasm instantiates
-it with no shim whatsoever, because the module has **no import section at all**: it owns its memory
-and asks the host for nothing. Its 68 exports are its own linear memory, eleven entry points, and
-offset/length accessors onto every buffer it owns, and it is 3D throughout: stride-3 positions, an
-octree with a θ opening criterion, SIMD `v128` inner loops, and angular-momentum compensation via a
-full 3×3 inertia tensor.
-
-And then `force_layout.js`, upstream's own driver, does this on every particle on every frame:
+Morpho's layout kernel, `graphs_engine/main.wasm`, is a 3D Barnes–Hut force solver, and Field runs
+it as it is. Upstream's browser driver, `force_layout.js`, flattens every particle onto a plane on
+every frame:
 
 ```diffstatic {data-lang=javascript}
 this.pos[p * 3 + 2] = 0.0;
 this.vel[p * 3 + 2] = 0.0;
 ```
 
-The kernel is a 3D solver and the shipped demo pins it flat. Field's driver simply does not do that,
-and the circuits come out as solids. `MorphoLayout.flatness()` reports z extent over the larger of
-the x and y extents; across the designs on this page it runs from 0.73 to 1.33, and a 16×16 Wallace
-multiplier is *taller than it is wide*.
+Field's driver leaves z free, so the circuits come out as solids. `MorphoLayout.flatness()` reports
+the z extent over the larger of the x and y extents; a value near 1 means the circuit is as deep as
+it is wide.
 
 Three views of one circuit, sharing a window. The only thing that differs between the panels is
 where the camera is:
@@ -312,12 +287,7 @@ loop {
 
 <video controls muted loop playsinline preload="metadata" width="820" aria-label="a fully grown 32-bit Brent-Kung adder rotating slowly about its vertical axis, never flattening into a line at any angle, showing that the force-directed layout occupies three dimensions"><source src="assets/morpho_examples/orbit.mp4" type="video/mp4"></video>
 
-A projection of a plane collapses to a line twice per turn. This one never does, at any angle, and
-`wasm layout uses all three dimensions` fails if it ever starts to.
-
-This is the part that most repays bridging rather than porting. Nobody would have written a 3D
-Barnes–Hut kernel for this; it already existed, unused, inside a file that was being thrown away
-with the renderer.
+A flat layout would collapse to a line twice per turn. This one does not, at any angle.
 
 ---
 
@@ -352,13 +322,10 @@ def ripple_adder(a, b, c):
 
 ![an 8-bit ripple adder drawn as a chain of gates, the output of the MorphoHDL source above having been compiled, grown and laid out](assets/morpho_examples/as-a-language.png)
 
-That figure is not an illustration of the code above it — it *is* the code above it. The fence is
-`data-lang=morpho`, so what runs is that MorphoHDL text and nothing else. Sixteen gates, depth 8:
-the same 8-bit ripple adder whose exhaustive arithmetic check appears near the top of this page.
+The figure is what that MorphoHDL text produces when the box runs.
 
-The directive rides in a `#` comment because morpho's tokenizer discards comments wholesale: Field
-can annotate a program without the language ever seeing it, and the same file still parses in
-upstream's demo.
+The directive is a `#` comment, which morpho's tokenizer discards, so the same file still parses in
+upstream's own tools.
 
 An empty box inherits morpho's standard library. The shortest useful morpho program in Field is
 one line:
@@ -369,15 +336,11 @@ one line:
 
 ![a 32-bit Brent-Kung adder drawn as a branching prefix tree, produced by a MorphoHDL program consisting of a single directive line](assets/morpho_examples/one-liner.png)
 
-One line in, 190 gates out.
-
 **Execute** grows the circuit to completion. **Launch** grows it `grow` cells per frame and relaxes
-the layout `relax` iterations between expansions, which is how you watch the recursion happen
-rather than only its result.
+the layout `relax` iterations between expansions, so you can watch the recursion happen.
 
-There is no default signature. MorphoHDL cells are size-agnostic; any width a box assumed would be
-a silent guess at a different circuit. A box without a directive says so, and lists the cells it
-found.
+The directive's widths are required, because a MorphoHDL cell has no width of its own. A box
+without a directive says so, and lists the cells it found.
 
 ### From Kotlin
 
@@ -407,17 +370,12 @@ showPlaneGrid("${c.summary()}  |  $check" to c.flines(),
 
 ![a 16 by 16 bit Wallace multiplier drawn as a dense compression tree, titled with its cell and gate counts and a multiplication checked against Kotlin's own arithmetic](assets/morpho_examples/from-kotlin.png)
 
-That title line runs the whole bridge end to end. Morpho's compiler produced the netlist (872 gates,
-3711 nets), morpho's WASM kernel placed it in three dimensions (`z/xy 1.34`, taller than it is
-wide), Field's simulator pushed `48271 × 16807` through the gates, and Kotlin's own `*` agrees.
-
-Because box code takes an `import` line like any other Kotlin, the bridge lives in its own package
-rather than being poured into `afield.stdlib`; nothing here needs to be a global name.
+Morpho's compiler produced the netlist, its WASM kernel laid it out, and Field's simulator
+multiplied `48271 × 16807` through the gates; the title shows Kotlin's own `*` agreeing.
 
 `flines()` gives one `FLine` per wire and one point-set each for gates, inputs and outputs, coloured
-by signal arrival time, so the difference between a ripple adder and a Brent–Kung is a gradient you
-can see rather than a number you have to look up. Everything Field can already do to an `FLine`
-applies, SVG export and the plane grid included.
+by signal arrival time. Anything Field does with an `FLine` applies, SVG export and the plane grid
+included.
 
 To watch it grow instead:
 
@@ -434,24 +392,17 @@ loop {
 }
 ```
 
-The projection defaults to isometric, because the layout is genuinely 3D and dropping z throws that
-away. `MorphoProjection.XY` gives the view directly comparable with morpho's own renderer.
+The projection defaults to isometric, because the layout is 3D. `MorphoProjection.XY` gives the
+view that matches morpho's own renderer.
 
 ---
 
 ## Whether the circuits are right
 
-Two independent oracles, neither of which involves looking at a picture. The netlists are compiled
-through GraalJS, extracted into Kotlin and simulated against integer arithmetic — exhaustively for
-the 8-bit ripple adder, all 131 072 vectors, because a carry chain is the thing an off-by-one in pin
-indexing gets right on almost every input and wrong on the rare vector where a carry propagates the
-full width. And their gate counts are pinned against morpho's *other* implementation,
-`tiny_morpho.py`, which shares no code at all with the JavaScript: the two agree gate for gate on
-the adders, the multiplier optimized and not, and the shifter, and those counts are `assertEquals`
-in `MorphoBridgeTest`, so a recompile that changes one goes red.
-
-The corpus, both tables, and which of their numbers have a guard are in
-`dev_docs/MORPHO_AGREEMENT.md`.
+The compiled circuits are checked two ways. Field simulates them against integer arithmetic,
+exhaustively for the 8-bit ripple adder, where a wiring mistake would show only on the rare input
+whose carry runs the full width. And their gate counts match morpho's separate Python
+implementation, `tiny_morpho.py`, gate for gate on the adders, the multiplier and the shifter.
 
 ---
 
@@ -463,12 +414,8 @@ costs between about 20 ms and 1.5 s depending on size, and you rarely want it in
 `step(grow, relax)` in a `loop` spreads it over frames.
 
 Simulation is bit-parallel: each net holds a `Long` whose bit *s* is that net's value for sample
-*s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`. All
-131 072 vectors of the exhaustive 8-bit adder check evaluate in under 20 ms. This mirrors what
-`tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an array.
-
-Cell, gate, net, depth and expansion counts for every design on this page, and the timings above
-with the machine they came from, are in `dev_docs/MORPHO_MEASUREMENTS.md`.
+*s*, so one LUT evaluation covers 64 inputs at once, and the exhaustive 8-bit adder check takes a
+fraction of a second.
 
 ---
 
