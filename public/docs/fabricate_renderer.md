@@ -520,7 +520,7 @@ expect:
         lighter: [0.42, 0.28, 0.18, 0.18]
         marginGt: 6
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" alt="a magenta torus and a teal one in front of it, with a floor of grey tiles. The vignette pass darkens the frame towards its corners and warms what it leaves, so the tiles nearest the middle stay bright and the rest of the image falls away to black. This capture is the one figure on the page that is upside down: the tile floor runs across the top and the rings hang below it, and each ring's specular highlight sits at its bottom rather than its top. See CAPTURE_ROW_ORDER in dev_docs for why, and for the re-capture it is owed" source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" alt="a magenta torus and a teal one in front of it, with a floor of grey tiles. The vignette pass darkens the frame towards its corners and warms what it leaves, so the tiles nearest the middle stay bright and the rest of the image falls away to black." source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
 ```
 
 ## Tone mapping and bloom
