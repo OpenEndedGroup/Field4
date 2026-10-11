@@ -1,13 +1,14 @@
 # Flow grain and motion
 
-Open the **flow_grain** starting point and launch its numbered boxes in order. A small
-fluid moves through a bounded pool of world tiles. The image combines a short integral
-of random grain with finite particles drawn as thin velocity strokes. A rotating marker
-also writes previous-frame coordinates into a second render-target attachment.
+Open the [flow_grain](agent_transcripts.md#flow_grain) starting point and launch its
+numbered boxes in order. A small fluid moves through a bounded pool of world tiles. The
+image combines a short integral of random grain with finite particles drawn as thin
+velocity strokes. A rotating marker also writes previous-frame coordinates into a second
+render-target attachment.
 
-[Open the editable starting point](offline.html?file=assets/agent_transcripts/flow_grain/metadata.edn).
-The installer is `dev_docs/agents/transcripts/flow_grain.yaml`; running that macro in an
-empty document creates and launches the complete graph. It has no personal-source dependencies.
+The graph is installed by the macro
+[`flow_grain.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/flow_grain.yaml);
+running it in an empty document creates and launches every box.
 
 Each stage is an ordinary box: edit its shader, reload it, and inspect the result. The
 fluid storage helper is another editable box. Small reusable functions are included
@@ -96,7 +97,7 @@ previous energy, previous softness and a reserved scalar. Change `revision` when
 or material correspondence changes. Disappearing for a frame, reappearing after a gap,
 resetting or rewinding also invalidates history.
 
-The demo RTT's second attachment is `(previousU, previousV, valid, coverage)`. These are
+The second attachment of the demo's render target is `(previousU, previousV, valid, coverage)`. These are
 absolute texture coordinates with Field's top-left convention, **not** pixels per second.
 The world has camera correspondence; the rotating marker has camera plus object
 correspondence. Procedural grain moves with the world and so has camera correspondence
@@ -128,7 +129,7 @@ obstacle thinner than a step; use a segment mask or smaller steps where that mat
 
 Noise lives on fixed world grids. Pixel footprint selects and blends adjacent fixed
 scales; changing zoom never rescales noise around the world origin. If you mix motion
-from an image into the carrier, `flowImageVelocity` unprojects current and previous
+from an image into the grain, `flowImageVelocity` unprojects current and previous
 samples through their respective cameras. Pass the fetched motion texel's center,
 not the requesting pass's differently sized pixel coordinate.
 
