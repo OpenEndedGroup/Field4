@@ -89,7 +89,7 @@ PROVENANCE_HEADINGS = re.compile(
 
 # Verified false positives, kept live rather than left as noise.  Re-checked every firing.
 KEEPS = {
-    ("puppet_browser.md", 14): "a docs build is one of three example users of the "
+    ("puppet_browser.md", 12): "a docs build is one of three example users of the "
                                "renderer-free control half -- a capability list, and the "
                                "sentence is about what a reader can do with it",
 }
