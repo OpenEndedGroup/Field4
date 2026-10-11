@@ -1,5 +1,12 @@
 # Tuning by Gaussian process: optimisation and A/B preference
 
+Some parameters are tuned by trying them: a drawing's three dials, a synth patch, a simulation's
+constants. When each try is slow, or the judge is you, the number of tries is what matters.
+The box below is one such search. The grey curve is a target, and three dials (how far the
+curve wobbles, where the wobble starts, and how squashed it is) have to be set to match it. On
+the left are the first five guesses, spread over the ranges; on the right is the best of thirty
+tries. The chart shows how close the search had come after each try.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_process_optimization/converging.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 import kotlin.math.*
@@ -40,13 +47,6 @@ println("first five tries (blue, left): " + opt.history.take(5).joinToString { "
 ```
 
 ![Top: two copies of a thick grey five-lobed target curve; on the left the first five guesses in faint blue scatter around it, on the right the red best curve after thirty tries lies on the grey one. Below: a chart of log10 best misfit against tries, stepping down from about -1.2 to about -3.4, with the last large drop near try 24](assets/gaussian_process_optimization/converging.png)
-
-Some parameters are tuned by trying them: a drawing's three dials, a synth patch, a simulation's
-constants. When each try is slow, or the judge is you, the number of tries is what matters.
-The figure above is one such search. The grey curve is a target, and three dials (how far the
-curve wobbles, where the wobble starts, and how squashed it is) have to be set to match it. On
-the left are the first five guesses, spread over the ranges; on the right is the best of thirty
-tries. The chart shows how close the search had come after each try.
 
 Field has two tools for this, both in `afield.math.gp` and so available in every box without an
 import. Each one fits a [Gaussian process](gaussian_processes.md) to the tries so far and uses
@@ -237,7 +237,7 @@ Answering the same pair both ways is fine: the two settings end up tied.
 
 ## The demo
 
-The document `dev_docs/agents/demos/gp_instruments/` has three boxes. Box 1 tunes a curve to a
+The [gp_instruments](agent_transcripts.md#gp_instruments) document has three boxes. Box 1 tunes a curve to a
 target with `GpOptimizer` and charts the best misfit after each try. Box 2 is the A/B loop
 above, waiting for you to click. Box 3 runs the same loop with a simulated judge whose taste is
 known, and draws the favourite after every six answers next to that judge's ideal.
