@@ -216,6 +216,19 @@ class FLineMeasureTest {
         assertEquals(0, circle(0f, 0f, 50f).selfCrossings().size)
     }
 
+    @Test
+    fun aSingleLoopingCubicCrossesItselfOnce() {
+        val loop = FLine().moveTo(60f, 200f).cubicTo(Vec3(420f, 40f, 0f), Vec3(0f, 40f, 0f), Vec3(340f, 210f, 0f))
+        val hits = loop.selfCrossings()
+        assertEquals(1, hits.size, "$hits")
+        val h = hits[0]
+        assertTrue(h.t < h.otherT)
+        val c = loop.cursor()
+        assertTrue(c.setT(h.t).position().distance(h.point) < 0.05f)
+        assertTrue(c.setT(h.otherT).position().distance(h.point) < 0.05f)
+        assertEquals(1, loop.findSelfIntersections().size)
+    }
+
     // ---- defects in the older API, pinned here ----
 
     @Test

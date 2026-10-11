@@ -420,14 +420,32 @@ fun FLine.crossings(other: FLine, tolerance: Float = 0.01f): List<FLineCrossing>
  */
 fun FLine.selfCrossings(tolerance: Float = 0.01f): List<FLineCrossing> {
     val tol = tolerance.coerceAtLeast(1e-5f).toDouble()
-    val segs = drawnSegments()
+    // A single cubic can loop over itself, so each one is first cut where x' or y' is zero: a piece
+    // monotone in both x and y cannot cross itself, and the loop becomes a crossing between two
+    // pieces. Each piece remembers its parent segment and the u-range it covers.
+    class Piece(val seg: FLineSeg, val u0: Double, val u1: Double)
+    val pieces = ArrayList<Piece>()
+    for (s in drawnSegments()) {
+        if (s.straight) { pieces.add(Piece(FLineSeg(s.index, s.p0, s.p1, s.p2, s.p3, true), 0.0, 1.0)); continue }
+        fun roots(a: Float, b: Float, c: Float, d: Float) =
+            unitQuadraticRoots((-a + 3 * b - 3 * c + d).toDouble(), (2 * (a - 2 * b + c)).toDouble(), (b - a).toDouble())
+        val cuts = (listOf(0.0, 1.0) + roots(s.p0.x, s.p1.x, s.p2.x, s.p3.x) + roots(s.p0.y, s.p1.y, s.p2.y, s.p3.y))
+            .sorted().fold(ArrayList<Double>()) { acc, u -> if (acc.isEmpty() || u - acc.last() > 1e-6) acc.add(u); acc }
+        for (k in 0 until cuts.size - 1) {
+            val q = s.sub(cuts[k], cuts[k + 1])
+            pieces.add(Piece(FLineSeg(s.index, q[0], q[1], q[2], q[3], false), cuts[k], cuts[k + 1]))
+        }
+    }
     val hits = ArrayList<FLineCrossing>()
     val joinRadius = 4 * tol
-    for (i in segs.indices) for (j in i + 1 until segs.size) {
-        val a = segs[i]; val b = segs[j]
+    for (i in pieces.indices) for (j in i + 1 until pieces.size) {
+        val pa = pieces[i]; val pb = pieces[j]
+        val a = pa.seg; val b = pb.seg
         val raw = ArrayList<Triple<Double, Double, Vec3>>()
         crossSegs(a, b, tol, raw)
-        for ((u, v, p) in raw) {
+        for ((lu, lv, p) in raw) {
+            val u = pa.u0 + lu * (pa.u1 - pa.u0)
+            val v = pb.u0 + lv * (pb.u1 - pb.u0)
             // a join: a's end is b's start, or b's end is a's start (a closed contour), and the hit is there
             val atJoin = (a.p3.distance(b.p0) <= joinRadius && p.distance(b.p0) <= joinRadius * 4) ||
                 (b.p3.distance(a.p0) <= joinRadius && p.distance(a.p0) <= joinRadius * 4)
