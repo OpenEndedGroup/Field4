@@ -139,6 +139,7 @@ metadata_store/*
 !metadata_store/agent_demo/
 !metadata_store/shared_types_demo/
 !metadata_store/provide_delegate_defect/
+!metadata_store/controls_handling/
 # Compiled shared-type generations (see afield.SharedTypes) are build output, per document.
 metadata_store/*/.field-shared-types/
 # Runtime artefacts Field writes into a workspace, and the per-workspace agent guides

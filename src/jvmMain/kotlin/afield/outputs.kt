@@ -2569,7 +2569,7 @@ fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String 
     val write: (Any) -> Unit = { setPropertyRaw(propertyName, it, doResync = true) }
     when (start) {
         is Double -> {
-            syncToProperty(propertyName, start, 0.0, 1.0, 0.01, channel, label)
+            syncToProperty(propertyName, initialValue as Double, 0.0, 1.0, 0.01, channel, label)
             return
         }
         is Boolean -> checkbox(label, start, channel) { write(it) }

@@ -865,7 +865,7 @@ A typed or nudged value is snapped to `step` and clamped to the range, the same 
 
 A `controlGroup` slider keeps its value across re-runs and in the saved document. A standalone `slider(...)` starts from `initialValue` every run. When the value should belong to the box, bind it to a property:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
 
 val gain = getPropertyRaw("gain") as Double
