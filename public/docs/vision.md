@@ -118,7 +118,7 @@ not in a web view, and not in the animation path over the network. `geometry { �
 triangle mesh in the headset and hands the whole thing to Metal in one call, so nothing per-vertex
 crosses the wire at frame rate. Alongside a raw `vertex`/`triangle`/`quad` builder there are `cube`,
 `plane`, `sphere`, and `tube`, which sweeps a polygon along a polyline. The FLine viewer gives a
-stroke real thickness the same way. **[Building geometry in the headset](vision_geometry.md)**
+stroke real thickness the same way. [Building geometry in the headset](vision_geometry.md)
 covers the builder in full, with runnable starting points.
 
 Each part reloads on its own. Editing the shader and pressing **Reload MSL** recompiles the pipeline
@@ -341,7 +341,6 @@ in `dev_docs/VISION_LATENCY_MEASUREMENTS.md`.
 
 ## Hand tracking — on OpenXR, and read by the pointer layer
 
-Hands are absent from the rest of this page. This is where they do exist.
 `XR_EXT_hand_tracking` on the **OpenXR** path gives 26 per-joint poses per hand and a
 geometric `pinchStrength` interpolated from thumb-tip to index-tip distance, 50 mm to 10 mm
 (`OpenXRHmdTarget.kt:349#fun handState(hand: Hand)`). Confirmed against WiVRn on a Quest 3.
@@ -410,7 +409,7 @@ HTC's native structures follow its
 
 ## Status
 
-Read the third column first: it is the one that decays.
+The third column says how each state is known: on a device, in the simulator, or by a test.
 
 <div class="field-data-table" markdown>
 
@@ -448,12 +447,13 @@ per-eye separation, controller input, and every latency span on this page.
 
 ## Reference — where this lives
 
-Cross-checked against source on every `docsGates` run, so a rename here breaks the build rather than
-rotting unnoticed. The Swift rows are here because this is a two-machine protocol, and a page citing
-only the Kotlin end would be describing one side of it.
+The pose path runs across two machines, so the table lists the Swift files on the headset beside
+the Kotlin on the Mac.
 
-How the list is derived, and the two things that sit outside every census it draws on, are in
-`dev_docs/vision_frontend.md`.
+??? aside "How this table is kept current"
+    The table is cross-checked against source on every `docsGates` run, so a rename breaks the build.
+    How the list is derived, and the two things that sit outside every census it draws on, are in
+    `dev_docs/vision_frontend.md`.
 
 <div class="field-data-table" markdown>
 
@@ -508,7 +508,7 @@ Runnable without a headset, through the canonical runner
   plausible image with the wrong things in front.
 - **`visionpose.latency`** — recovers a known clock offset from a synthetic head, and pins that a
   congested sample cannot displace a clean one. A wrong offset yields a *plausible* latency rather
-  than a failure, which is the one kind of wrong nobody re-checks.
+  than a failure, so nothing downstream would notice it.
 
 Those three are the pose tests. Four more carry the same `visionos` tag and cover the Live Metal half:
 `visionmetal.kotlinjs-externals` (the Kotlin→JS geometry externals), `visionmetal.msl-language` (the
@@ -520,9 +520,9 @@ head, and `tools/vision_pose_simulator_smoke.sh` reaches a real compositor pose 
 simulator but the simulator reports **one** view where hardware reports two.
 
 The architecture note behind this page, with the decisions and the full verification map, is
-`dev_docs/vision_frontend.md`. Related pages: **[Building geometry in the
-headset](vision_geometry.md)**, **[Kotlin in the head](kotlin_in_the_head.md)**, **[RemoteJS and
-WebXR](ar_reference.md)** for the browser-based sibling, **[ImGui as a VR
-panel](imgui_vr_panel.md)** for the same side-by-side stereo path on the desktop, and
-**[afield.four Graphics](afield_four_graphics.md)** for `FieldRTTStreamer`, the producer half of the
+`dev_docs/vision_frontend.md`. See also [Building geometry in the
+headset](vision_geometry.md), [Kotlin in the head](kotlin_in_the_head.md), [RemoteJS and
+WebXR](ar_reference.md) for the browser-based sibling, [ImGui as a VR
+panel](imgui_vr_panel.md) for the same side-by-side stereo path on the desktop, and
+[afield.four Graphics](afield_four_graphics.md) for `FieldRTTStreamer`, the producer half of the
 streaming spine.
