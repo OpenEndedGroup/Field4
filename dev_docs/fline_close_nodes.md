@@ -34,7 +34,7 @@ at `7abe8736` and running that one test.)
 
 | function | file:line | what it did |
 |---|---|---|
-| `findSelfIntersections` | `FLineGeometry.kt:674` | threw |
+| `findSelfIntersections` (now via `selfCrossings`) | `FLineMeasure.kt:125` | threw |
 | `bySimplifying` | `:590` | threw |
 | `byConvexHull2D` | `:831` | threw |
 | `windingNumber`, and so `FLine.contains` | `:1110` | threw — no `Close` branch at all, unlike both its siblings |
