@@ -160,6 +160,10 @@ class DocumentDirectoryWriterLedgerTest {
             // ---- consult the read-only predicate ----
             "src/jvmMain/kotlin/afield/Server.kt" to GATED,
             "src/jvmMain/kotlin/afield/agent_backdoor.kt" to GATED,
+            // Arrived 2026-10-09 with propUp/propDown (`4462f1519`): the per-document dependency
+            // record. Its only disk write returns early on ReadOnlyDocuments.blocksWritesTo(filename),
+            // so read-only and scratch documents record in memory and never write.
+            "src/jvmMain/kotlin/afield/PropertyDependencies.kt" to GATED,
             // Arrived 2026-09-23 with the AI4 function workbench (`948602d5a`). Two separate
             // things matched here and both are answered. The mutator, `patch`, opens on
             // `check(!info.readOnly && !ReadOnlyDocuments.global)` and then edits through
