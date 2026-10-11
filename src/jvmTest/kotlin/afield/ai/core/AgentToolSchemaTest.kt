@@ -29,8 +29,8 @@ data class SchemaProbeMapRequest(val request: Map<String, String> = emptyMap())
  */
 class AgentToolSchemaTest {
 
+    @Suppress("UNCHECKED_CAST")
     private fun refusal(cls: Class<*>): String? =
-        @Suppress("UNCHECKED_CAST")
         runCatching { openAiTool(cls as Class<Any>) }.exceptionOrNull()?.let { "${cls.name}: ${it.message}" }
 
     private fun report(failures: List<String>) = "tool request classes openai-java refuses (a Map field is the usual " +
