@@ -15,14 +15,14 @@ tools that check, draw, compare and version the scene.
 
 ## Start
 
-In any document, select a box — press **n** to make one — and choose **Make a RectSL Scene** from
+In any document, select a box (press **n** to make one) and choose **Make a RectSL Scene** from
 the command palette. A root box, **RectSL window**, appears above it and opens a window; the box
 becomes a scene, a wall with one turning gold square, and plays in it. Select the scene and press
 **command/ctrl-4** to open AI4 chat. Configure an AI provider through Field's welcome page if you have
 not already; see [AI features](aiFeatures.md).
 
 The scene box edits its `rectSL` property, and the window follows every edit that compiles; a
-problem is marked on its line — `Unknown word: ->yy (did you mean '->xy' or '->y'?)` — and the window
+problem is marked on its line (`Unknown word: ->yy (did you mean '->xy' or '->y'?)`) and the window
 keeps the last scene that compiled. Running the box (command/ctrl-return) checks your scene in as a
 revision. The root holds no code: it is the box whose main language is RectSL, and it opens its
 window when a scene beneath it starts. Stopping the root, or closing the window, stops the scenes in
@@ -64,18 +64,18 @@ each scene keeps its own history under `studies/<box id>/` in its document.
 
 The editor and the window point at each other. Put the cursor on a line of the scene and the window
 outlines the rectangles that line makes: a `rect`, the copies an `array` below it makes, every part
-of a `group` from the group's line, or — from a comment — the statement beneath it. Click a
+of a `group` from the group's line, or, from a comment, the statement beneath it. Click a
 rectangle in the window and the editor goes to the line that made it, selecting the scene box if it
 was not selected.
 
 The editor also shows how far the scene has got at the cursor. Rest the cursor on a line, or open
-completion there, and the note beside the cursor — and the top of the completion popup — draws the
+completion there, and the note beside the cursor (and the top of the completion popup) draws the
 scene cut after that line's statement, at the time the window is showing, with the rectangles the
 line makes outlined. Completion itself offers every word RectSL knows, with its stack effect and the
 cheatsheet's description, and the scene's own definitions.
 
 The model sees the same thing: `InspectRectSLStudy`, which it reads before editing, reports the line
-the person's cursor is on, so "this one" names a line — as in the last turn of the
+the person's cursor is on, so "this one" names a line, as in the last turn of the
 [lanterns session](#lanterns-at-dusk), where it named the flame.
 
 ![The finished lanterns in their window at 13.5 seconds, with the editor's cursor on the flame's line: the small flame at the mouth of each lantern in view is outlined in pale blue](assets/rectsl_conversation/outline.png)
@@ -116,8 +116,8 @@ The **study card** in the scene box's output is the person's side of the study. 
   editor's line** ticked, the window follows the cursor instead;
 - a slider for every number in the scene, grouped under the line it is on and the comment that says
   what that line does, and a swatch for every colour. Each is labelled with what turning it changes
-  (see the StackSL page's card for where those names come from), from what the evaluator saw take the
-  number — the word, and which of its inputs — and, for a number inside a `material` quote, from what
+  (see the [StackSL page's card](stacksl_conversation.md) for where those names come from), from what the evaluator saw take the
+  number (the word, and which of its inputs) and, for a number inside a `material` quote, from what
   the StackSL compiler took it as. Clicking the label selects the number in the editor. Moving one previews the change **in the window** as you drag, without
   touching the program; **Keep these numbers** makes the new values a revision, **Reset** puts the
   window back;
@@ -165,21 +165,18 @@ preparing an edit, the stale edit is refused and your text stays. A refused or f
 nothing. The check refuses a scene that does not compile, or whose materials do not, with the
 problem and its line.
 
-Knowing where each rectangle came from is what several tools share. The compiler records the line
-of the word that made each rectangle — a `rect`, or the `array` that cloned it — so `Trace` can label
+Several tools rely on knowing where each rectangle came from. The compiler records the line
+of the word that made each rectangle (a `rect`, or the `array` that cloned it), so `Trace` can label
 a frame, `Timeline` can name the line behind each rectangle that enters, leaves, stops or fades, and
 `Compare` can report changes by line. Name the rectangles that matter (`"moon" rect`): comparisons match
 rectangles by name across revisions.
-
-A document can add tools of its own from a box, as
-[the StackSL page shows](stacksl_conversation.md#adding-a-tool-of-your-own); gate one on a
-conversation focused on `rectSL` and it sits beside these.
 
 ### Adding a tool of your own
 
 A document can teach the assistant something more, from a box: register a request class with the
 document as its scope, and gate it on the conversation's focus. Run the box and the next turn has
-the tool; two documents can each have their own tool of the same name.
+the tool, beside the ones above; two documents can each have their own tool of the same name.
+The [StackSL page](stacksl_conversation.md#adding-a-tool-of-your-own) shows the same pattern.
 
 <!-- rectsl-study-source:rectangles-tool -->
 ```diffstatic {data-lang=kotlin}
@@ -564,8 +561,8 @@ message continues from the last revision.
   than a pixel at that size can vanish from a frame without vanishing from the scene, and a
   comparison holds at pixel centres and at those times.
 - Visibility and events come from the scene, not the pixels: a rectangle is visible when it is not
-  transparent and meets the wall, even if another covers it. An object — a top-level group, or a
-  rectangle in none — enters with its first part and leaves with its last; touching is reported
+  transparent and meets the wall, even if another covers it. An object (a top-level group, or a
+  rectangle in none) enters with its first part and leaves with its last; touching is reported
   between objects of comparable size, so a lantern passing a star, or the sky it rises through, is not
   an event.
 - Comparisons match rectangles by name. An unnamed rectangle's id (`rect-12`) moves when a line
@@ -575,7 +572,7 @@ message continues from the last revision.
 - With the window closed, the CPU reference draws the evidence; it is exact for geometry and plain
   fills and interprets StackSL materials, more slowly. The tools report which drew each result.
 
-??? aside "How these sessions were recorded, and what checks them"
+??? aside "How these sessions were recorded"
 
     Each turn went through the `ai-assist` RPC that Field's chat panel sends; the prompts are in each
     document's `prompts/`. The person-side actions clicked the card's Adopt, Keep and Check in
