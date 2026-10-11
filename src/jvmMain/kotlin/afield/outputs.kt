@@ -748,21 +748,32 @@ fun Box.marco_printlnHere(contents: List<String>): Insert? {
     )
 }
 
-fun Box.tree(channel: String = "debug", a : Any?) {
-    val aa = a ?: "null"
-    val ln = Inspector.linkFor(aa, "/tree")
-    display(channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0;display:block;width:560px;height:220px;'></iframe>
-""")
+/**
+ * Shows [a] in output [channel] as an expandable tree: maps, lists, arrays, data classes and plain
+ * objects open lazily, one page of [afield.server.Inspector.DEFAULT_PAGE] children at a time, and
+ * each row names its type and a one-line summary. Rows that are open follow the value as it changes
+ * (about once a second). Keys: arrows to move and open, `/` to filter, `c` to copy, `r` to refresh.
+ *
+ * @param maxHeight the tallest the embed grows in the output panel before it scrolls, in pixels
+ */
+fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520) {
+    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/tree"), maxHeight))
 }
 
-fun Box.column(channel: String = "debug", a : Any?) {
-    val aa = a ?: "null"
-    val ln = Inspector.linkFor(aa, "/browse")
-    display(channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0;display:block;width:560px;height:220px;'></iframe>
-""")
+/**
+ * Shows [a] in output [channel] as Finder-style columns: choosing a row opens its contents in the
+ * next column. Same values, paging, live update and keys as [tree], plus `←`/`→` between columns.
+ *
+ * @param maxHeight the tallest a column grows before it scrolls, in pixels
+ */
+fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420) {
+    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/browse"), maxHeight))
 }
+
+/** The iframe for [tree] and [column]: full panel width, height from `iframe_autosize.js`. */
+internal fun inspectorIframe(link: String, maxHeight: Int): String =
+    "<iframe class='field-inspector' src='$link&maxh=${maxHeight.coerceAtLeast(80)}' " +
+        "style='border:none;padding:0;margin:0;display:block;width:100%;height:220px;'></iframe>"
 
 /**
  * Embeds Field's RemoteJS / WebXR browser head in this box's output pane and opens it, so the
@@ -925,7 +936,7 @@ fun Box.logs(
         if (latestOnly) append("&latestOnly=true")
     }
     display(channel, """
-<iframe src='/logs${qs}' style='border:none;padding:0;margin:0;width:100%;height:260px'>
+<iframe class='field-logs' src='/logs${qs}' style='border:none;padding:0;margin:0;display:block;width:100%;height:260px'></iframe>
 """)
 }
 
