@@ -1150,7 +1150,13 @@ function disclosureInterface(container) {
                 }
 
                 if (!d.contentMutationObserver && typeof MutationObserver !== "undefined") {
-                        d.contentMutationObserver = new MutationObserver(() => {
+                        // A control's transient UI (the slider's type-in field) is not
+                        // content: re-running auto-size for it shrinks the panel mid-edit.
+                        const isTransient = (n) => n.nodeType === 1 && n.classList.contains("field-transient");
+                        d.contentMutationObserver = new MutationObserver((records) => {
+                                if (records.every((r) => r.type === "childList"
+                                        && [...r.addedNodes, ...r.removedNodes].length > 0
+                                        && [...r.addedNodes, ...r.removedNodes].every(isTransient))) return;
                                 bindContentLoadEvents(id, d);
                                 observeContentTargets(id, d);
                                 markContentChanged(id, "mutation");
