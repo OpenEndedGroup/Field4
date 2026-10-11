@@ -636,9 +636,11 @@ of the target, so read the report with that in mind.
     the iteration count. At 6000 it converges on the gradient tolerance in 4176.
 
     So the angle costs about ten times the iterations of the same fit without it (4176 against
-    387). If you add an angle to a fit and it seems to stall, check the arithmetic before you change
-    optimizer: `iterations x learningRate` against the distance the parameter has
-    to travel.
+    387). If you add an angle to an ADAM fit and it seems to stall, check the arithmetic:
+    `iterations x learningRate` against the distance the parameter has to travel. Or leave
+    `method` at its LBFGS default, whose line search is indifferent to units: on this problem it
+    reaches the same loss in 36 iterations. The figures use ADAM because its small steps make a
+    readable filmstrip (`dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md`).
 
 !!! note "A cube hidden inside the bar gets zero gradient"
 
@@ -692,6 +694,76 @@ riskier here than under `fitParameters` for the same reason: `abs(f) − t` is z
 a shell can satisfy a cloud with the wrong one. `SolidCloudFit.unconstrainedParameters` is the
 point-cloud analogue of `deadParameters` and exists for the same reason — the failure arrives looking
 like convergence.
+
+#### A one-sided view
+
+Here the target is three lobes in a row, each with its own radius, and the cloud is cropped to
+`x < 0.10`, as a scanner looking from one side would see it. The right-hand lobe is centred at
+`x = 0.8`, so no point lands on it. `unconstrainedParameters` is computed from the gradient at the
+start, so a fit with `iterations = 0` reports it before the descent takes a single step:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/one_sided.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.solidsl.*
+import afield.stdlib.TriMesh
+
+// Three lobes on the X axis with independent radii.
+val template = smoothUnion(
+    smoothUnion(sphere(0.50), sphere(0.35).at(-0.80, 0.0, 0.0), 0.25),
+    sphere(0.42).at(0.80, 0.0, 0.0),
+    0.25,
+).parameterize {
+    param("middle", "SmoothUnion/a/SmoothUnion/a/Sphere.radius")
+    param("left", "SmoothUnion/a/SmoothUnion/b/Translate/Sphere.radius")
+    param("right", "SmoothUnion/b/Translate/Sphere.radius")
+}.orThrow()
+
+val truth = doubleArrayOf(0.50, 0.35, 0.42)
+val seed = doubleArrayOf(0.30, 0.56, 0.20)
+
+// The view from one side: everything right of x = 0.10 is never seen.
+val cloud = template.withValues(truth).samplePointCloud(count = 4000, seed = 4)
+    .filter { x, _, _ -> x < 0.10 }
+
+// Before the descent: zero iterations, so this is only the gradient at the seed.
+val before = template.fitToPointCloud(cloud, seed, SolidFitOptions(iterations = 0))
+println("before any step, unconstrained: ${before.unconstrainedParameters}")
+
+val fit = template.fitToPointCloud(cloud, seed)
+println(fit.report())
+
+// Each cloud point drawn as a tiny octahedron, so the cloud can sit in a mesh panel.
+fun dots(c: SolidPointCloud, r: Float = 0.014f): TriMesh {
+    val pos = FloatArray(c.size * 18)
+    val faces = intArrayOf(0, 2, 4, 2, 1, 4, 1, 3, 4, 3, 0, 4, 2, 0, 5, 1, 2, 5, 3, 1, 5, 0, 3, 5)
+    val idx = IntArray(c.size * 24)
+    for (i in 0 until c.size) {
+        val x = c.xs[i].toFloat(); val y = c.ys[i].toFloat(); val z = c.zs[i].toFloat()
+        floatArrayOf(x + r, y, z, x - r, y, z, x, y + r, z, x, y - r, z, x, y, z + r, x, y, z - r)
+            .copyInto(pos, i * 18)
+        for (k in faces.indices) idx[i * 24 + k] = i * 6 + faces[k]
+    }
+    return TriMesh(pos, idx)
+}
+
+val right = template.names.indexOf("right")
+fun m(e: SolidExpr) = e.march(resolution = 96, margin = 0.05)
+threeGrid(
+    "the cloud  ·  ${cloud.size} points, x < 0.10" to dots(cloud),
+    "seed  ·  right = %.2f".format(seed[right]) to m(template.withValues(seed)),
+    "fitted  ·  right = %.6f".format(fit.values[right]) to m(fit.fitted),
+    "truth  ·  right = %.2f".format(truth[right]) to m(template.withValues(truth)),
+    channel = "one_sided", columns = 4, height = 230,
+    view = MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false),
+)
+```
+
+![Four panels in a row, grey on a dark background, all seen from above with X running left to right. First, labelled "the cloud, 2065 points, x < 0.10", a scatter of small grey dots tracing the left and middle lobes, cut off sharply at its right edge. Second, labelled "seed, right = 0.20", a large left lobe joined to a smaller middle lobe, and a small separate ball far to the right. Third, labelled "fitted, right = 0.200000", a medium left lobe and a large middle lobe joined smoothly, with the same small ball now hanging off the middle by a thin neck. Fourth, labelled "truth, right = 0.42", three well-joined lobes with the right one nearly as large as the left](assets/solid_notation/one_sided.png)
+
+The left and middle lobes come back to within `4e-4` of the truth. `right` is still `0.200000`,
+the seed, after a descent that reports convergence, and `unconstrainedParameters` named it before
+the first step. The loss cannot see it: there are no points out there to be off the surface. More
+iterations, a different optimiser or a restart do not change that; more of the view does.
 
 ## Axis conventions
 

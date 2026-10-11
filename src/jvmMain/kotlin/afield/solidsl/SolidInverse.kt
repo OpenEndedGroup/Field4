@@ -434,16 +434,29 @@ private fun SolidTemplate.central(
  *
  * @param band clamps both the prediction and the target into `[-band, +band]` before differencing,
  *   turning a whole-field objective into a near-surface one. `null` leaves the residual alone. This
- *   is the standard truncated-SDF trick and it does exactly one thing here: it stops a sample far
- *   outside the shape, where every candidate is roughly equally wrong, from outvoting the samples
- *   that decide what the surface looks like. It also **kills the gradient** from those far samples
- *   outright — which is the honest description of "stops them outvoting", and is why the default is
- *   `null`: on a recovery problem the far field is informative and there is no reason to discard it.
- * @param method [OptimizeMethod.LBFGS] by default. A distance field's parameters are badly scaled
- *   against each other — [SolidExpr.gradientNotes] says an angle in degrees carries a π/180 and a
- *   [SolidExpr.Scale] factor carries a `1/s²` — and a line search handles that where a fixed learning
- *   rate does not. [OptimizeMethod.ADAM] is the fallback when the objective is rough enough that the
- *   line search keeps failing.
+ *   is the standard truncated-SDF trick. It stops a sample far outside the shape, where every
+ *   candidate is roughly equally wrong, from outvoting the samples that decide what the surface looks
+ *   like — and it does so by **killing the gradient** of every sample whose *prediction* is outside
+ *   the band, whatever the target says there. So only samples near the *model's* current surface
+ *   steer the descent: a sphere seeded at half its target's radius with `band = 0.1` still walks all
+ *   the way there, but a target sampled only where the model reads beyond the band leaves every
+ *   parameter in [SolidFit.deadParameters]. On an approximation the band trades the far field for the
+ *   surface (three spheres against a rounded rod, `band = 0.05`: near-surface rms `0.0595 → 0.0484`,
+ *   whole-field rms `0.0506 → 0.0620`). The default is `null` because on a recovery problem the far
+ *   field is informative. `SolidSLFitBandTest` pins all of this.
+ * @param method [OptimizeMethod.LBFGS] by default, and measured to be the right default on every fit
+ *   problem solidsl has (`SolidSLOptimizerComparisonTest`, four starts each, after `adBox3`'s
+ *   interior `NaN` was fixed): an exact plate recovery, three spheres approximating a rod, a cube and
+ *   bar approximating a sphere and bar, and the point-cloud lobes. On every one LBFGS reached the
+ *   same minimum Adam reached — or, on the exact recovery, a lower one — in 6 to 38 iterations
+ *   against Adam's 340 to 6000, and 4 to 130 times less wall time. The line search absorbs the bad
+ *   relative scaling [SolidExpr.gradientNotes] describes (an angle in degrees beside a length),
+ *   which is exactly what costs Adam's single [learningRate] thousands of iterations. Earlier advice
+ *   to prefer [OptimizeMethod.ADAM] on "rough" landscapes was measured while the gradient was `NaN`
+ *   inside every box, and does not survive the fix. Adam remains available; reach for it when an
+ *   LBFGS run stops on `line search` after very few iterations — but check
+ *   [SolidGradientCheck.nonFiniteAnalytic] first, because that is far more often a broken gradient
+ *   than a hard landscape.
  * @param iterations bounded, like everything else in `autodiff_optimize.kt`, so a descent cannot
  *   disappear into an animation loop.
  */
