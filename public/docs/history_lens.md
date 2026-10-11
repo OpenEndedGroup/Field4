@@ -82,13 +82,13 @@ Above, the lens is open under the line that sets `radius`, listing the values th
 
 Select the box, put your cursor on a line of its code (or select a range), **right-click**, and choose **Show History Lens for Line / Selection** from the editor context menu.
 
-The lens opens as a small zone directly beneath your selection. It has no keyboard shortcut; it is in the context menu only.
+The lens opens as a small zone directly beneath your selection. There is no keyboard shortcut for it.
 
 ## What it shows
 
 The lens follows the selected line or range back through the saved versions, even as lines above
-it are added or removed, and lists the versions where it changed, plus the save it was first
-changed from, so its oldest value is there too. Saves that left it alone are skipped.
+it are added or removed. It lists each version where the line changed, and the oldest value it
+had. Saves that left it alone are skipped.
 
 Each row is one matching version, labelled the same way the [history view](document_history.md)
 labels it (`#12`, `#11`, … and any name you gave it), with that version's value and the tokens that
