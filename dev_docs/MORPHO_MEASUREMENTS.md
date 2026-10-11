@@ -38,7 +38,7 @@ near 1 means the layout genuinely occupies three dimensions.
 
 ## The line-count census
 
-Displaced from `public/docs/morpho_examples.md`'s `### What it cost` on 2026-09-15. The page keeps
+Displaced from `public/docs/morpho_examples.md`'s `### What it cost` on 2026-09-15. That section now lives in `dev_docs/MORPHO_LANGUAGE_BRIDGE.md` (moved 2026-10-11), which keeps
 the conclusion drawn from these — registration proper is sixty lines and those sixty were a copy,
 so what a foreign language costs a host is the data boundary, the decision about what running the
 language means, and reading the other implementation carefully enough not to disagree with it by

@@ -1140,7 +1140,7 @@ ignores the size the viewer asks for, a known defect described in `dev_docs/OUTP
 
 ### morpho_circuit_search
 
-Three boxes that search for circuits in
+The three searches from [Searching for MorphoHDL Circuits](morpho_search.md), for circuits in
 [somebody else's language](morpho_examples.md), where one unit of budget is one invocation of
 morpho's own compiler on GraalJS. *Does selection beat sampling?* gives random search, hill climbing
 and evolution the same generator, the same seed and the same budget on a one-bit full adder (whose

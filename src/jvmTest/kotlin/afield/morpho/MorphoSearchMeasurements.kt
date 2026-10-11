@@ -3,8 +3,8 @@ package afield.morpho
 import kotlin.test.Test
 
 /**
- * Not an assertion — a measurement run, whose printed output is the source of every number on the
- * search half of `public/docs/morpho_examples.md`.
+ * Not an assertion — a measurement run, whose printed output is the source of every number on
+ * `public/docs/morpho_search.md`.
  *
  * ```
  * ./gradlew jvmMeasurements --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i
