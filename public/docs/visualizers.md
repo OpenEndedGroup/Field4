@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
 
-Field has a surprisingly rich vocabulary for showing values, not just computing them, and the cheapest way in is two keystrokes: put `.h` on the end of an expression and run the line.
+Field has many ways to show a value, and the quickest takes two keystrokes: put `.h` on the end of an expression and run the line.
 
 What comes back can land in several places. Some visuals appear **inline in the editor**, beside the line you ran. Some fill an **output area** under the box. Some output areas become **inspectors**, or **little control panels** whose sliders you drag while the code around them keeps running. And helpers like `.h` and `.h2` are about turning an arbitrary Kotlin value into something formatted well enough to read.
 
@@ -10,7 +10,7 @@ This page is a tour of the whole family.
 
 ## The value visualizer: what `.h` draws
 
-Before the instruments, the substrate. Most environments answer "what is this
+Most environments answer "what is this
 value?" with a line of `toString()`. Field answers with a *picture*: whenever you
 ask Field to show a value, the **value visualizer** turns it into a compact HTML
 view — a reflective tree for arbitrary objects, and, for the types Field draws
@@ -392,9 +392,7 @@ synth scopes.
 
 ## Inline editor visualizers
 
-These are the ones that make the editor itself feel alive.
-
-The core pattern is:
+These draw next to the line of code that produced the value. The core pattern is:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -406,7 +404,7 @@ The marker remembers a little state and renders HTML back into the editor gutter
 
 ### Histogram, history, and summary stats
 
-Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you the quick executive summary.
+Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you a one-line summary.
 
 The live examples below are all `loop { }` bodies, which is Field's frame loop: the body runs, then
 the frame advances, once per Runloop tick. What that tick is, and what stops one of these, is
@@ -515,6 +513,8 @@ loop {
 }
 ```
 
+The same loop is shorter written against the box's `time` instead of a phase it advances itself:
+
 ```diffstatic {data-lang=kotlin}
 :::static
 loop {
@@ -525,8 +525,7 @@ loop {
 }
 ```
 
-Run that as a launch, not a plain execute. When motion is not part of the behavior being taught,
-finite deterministic input is easier to reproduce while still exercising the real visualizer.
+Run either as a launch, not a plain execute.
 
 ### Piano rolls in the editor
 
@@ -582,11 +581,11 @@ loop {
 }
 ```
 
-This is wonderful for sequencers, generative rhythm systems, or anything where you want to see future note structure without leaving the code.
+Use it for sequencers, generative rhythm systems, or anything where you want to see future note structure without leaving the code.
 
 ## Display channels: the big canvas under the box
 
-Inline visuals are intimate. `display(...)` is theatrical.
+Inline visuals sit beside one line of code. `display(...)` has the whole area under the box.
 
 Anything you pass to `display("channel", thing)` becomes HTML in a named output area. That HTML can be handwritten, auto-generated, interactive, or even an embedded browser/inspector.
 
@@ -651,7 +650,7 @@ To see all of it at once, insert the **h2 Explorer Examples** template and run i
 
 ### Markdown for captions and tables
 
-The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)` — reliably longer than the code it was meant to illustrate, and reaching for a different shade of grey each time.
+The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)`, often longer than the code it illustrates.
 
 `markdown("channel", "…")` says the same thing in markdown, and picks up Field's own `--field-*` tokens instead of re-inventing them:
 
@@ -703,10 +702,10 @@ $report
 println("markdown figure ready")
 ```
 
-Three things make this work on real figures rather than just on prose:
+Three rules matter once a figure mixes computed values into the prose:
 
 - **HTML passes through, inline and block.** `.h`, `diffHtml()`, `graphSvg()` and friends already return HTML; interpolate them directly and they land verbatim, table cells included. Only text you actually wrote as markdown gets escaped.
-- **`value.md` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Escape anything you did not write yourself. The prefix spelling `mdEscape(value)` is the same function and still works; the suffix is what a row of six escapes wants, and it is the one used above.
+- **`value.md` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Escape anything you did not write yourself. `mdEscape(value)` is the same function, written as a call.
 - **Fenced bodies are interpolated at column zero**, hard left, the way `$report` is above. Inside a fence whitespace is the content, and splicing at the surrounding indentation would indent only the value's first line.
 
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written. The figure above uses both: the before/after row, and the `ok`, `warn` and `muted` spans on its status line.
@@ -714,11 +713,11 @@ Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, s
 ??? aside "Why the example closes its row with `:::end`"
     A bare `:::` also closes a row in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes, and swallows the rest of the card in the built page only.
 
-You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card, which matters for a docs `capture="box"` screenshot: that clips to the output card, so an unpinned card sized by its widest unbreakable line loses everything past the clip.
+You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card's width; without it the card is as wide as its widest unbreakable line.
 
 ### Trees and columns
 
-Sometimes the right answer is not “render this as a card”, it is “let me inspect this like a little filesystem”.
+For a value you want to browse like a little filesystem, open it in a tree or column browser.
 
 <!--
 FIELD_TEST
@@ -800,9 +799,7 @@ This is useful for demos, guided tutorials, and boxes that are meant to be rerun
 
 ## Controls: sliders, toggles, colors, text, and XY pads
 
-Some outputs are not there to be looked at. They are there to be touched.
-
-Field can build small, pleasant control surfaces directly into output areas.
+Field can build small control surfaces directly into output areas: sliders and pads you drag while the box runs.
 
 They also reach a phone. Open `/controllers?file=<document>` on it and the **Group** tab redraws the selected box's `controlGroup(...)` at thumb size, while **Outputs** shows its output areas with their controls still live. See [Field from your phone](mobile_controllers.md#the-six-tabs).
 
@@ -1147,8 +1144,8 @@ Waveform-envelope requests have a 15-second browser deadline; a stalled service 
 and reports a timeout instead of leaving the view permanently busy. Any subsequent pan, zoom, or
 resize retries normally.
 
-Small arrays and documentation fixtures can be self-contained. This example starts in a zoomed
-window with the playhead parked inside it so both pieces of state remain visible in a still capture.
+Short sample arrays can be embedded in the page. This example opens zoomed in, with the playhead
+parked inside the visible window.
 
 <!--
 FIELD_TEST
@@ -1362,9 +1359,9 @@ visualize path.
 
 ### Speech embedding phase portraits
 
-The real emotion2vec and WavLM views from the [speech walkthrough](audio_ai_speech_embeddings.md).
+The emotion2vec and WavLM views from the [speech walkthrough](audio_ai_speech_embeddings.md):
 
-![The real emotion2vec and WavLM views](assets/audio_ai_speech_embeddings/learned_spaces.png)
+![The emotion2vec and WavLM views](assets/audio_ai_speech_embeddings/learned_spaces.png)
 
 `speechEmbeddingVisualizationHtml(result)` turns the worker's cached learned-frame preview into two phase
 portraits: MDS axes 0×1 and 2×3. The complete 768-dimensional embedding remains in the immutable
@@ -1411,9 +1408,9 @@ the neural analysis.
 
 ### Short-time spectral phase portraits
 
-Three real distance spaces from the [spectral walkthrough](audio_ai_spectral_embeddings.md).
+Three distance spaces from the [spectral walkthrough](audio_ai_spectral_embeddings.md):
 
-![Three real distance spaces](assets/audio_ai_spectral_embeddings/spectral_spaces.png)
+![Three distance spaces](assets/audio_ai_spectral_embeddings/spectral_spaces.png)
 
 `spectralEmbeddingPreviewVisualizationHtml(preview)` uses the same two phase portraits and shared
 time bus for a Field-owned MDS or t-SNE projection of mel, log-mel, or MFCC frames. The lower strip
@@ -1448,9 +1445,9 @@ binary artifact → temporal pooling → three Field Smile spaces → bidirectio
 
 ### Instrument-labelled transcription
 
-A real recording and its recovered notes from the [MuScriptor walkthrough](audio_ai_muscriptor.md).
+A recording and its recovered notes from the [MuScriptor walkthrough](audio_ai_muscriptor.md):
 
-![A real recording and its recovered notes](assets/audio_ai_muscriptor/piano_roll.png)
+![A recording and its recovered notes](assets/audio_ai_muscriptor/piano_roll.png)
 
 The same `analysisVisualizationHtml` viewer recognizes `analysis.transcribe_music` results as a
 MuScriptor piano roll. Note colour follows the recovered instrument group; the two lower lanes show
@@ -1480,9 +1477,9 @@ lane on one sync group. The [render-to-analysis walkthrough](audio_render_analys
 
 ### Corpus neighbour microscope
 
-Real retrieved windows from the [corpus walkthrough](audio_ai_corpus_microscope.md).
+Retrieved neighbour windows from the [corpus walkthrough](audio_ai_corpus_microscope.md):
 
-![Real retrieved windows](assets/audio_ai_corpus_microscope/neighbours.png)
+![Retrieved neighbour windows](assets/audio_ai_corpus_microscope/neighbours.png)
 
 `corpusMicroscopeHtml(preview, queryAudio)` composes the same general `AudioVisualizer` into a
 source-relative A/B board. Each neighbour retains its real asset and source timestamp, but every
@@ -1503,7 +1500,7 @@ visualize path.
 
 This player fetches its envelopes from the live Field Audio waveform endpoint.
 
-![Real service waveform envelopes of a Pat Dirt render](assets/audio_render_analysis/service_waveform.png)
+![Service waveform envelopes of a Pat Dirt render](assets/audio_render_analysis/service_waveform.png)
 
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The
 visualizer adds these query parameters whenever its visible interval changes:
@@ -1526,8 +1523,8 @@ The endpoint returns one min/max envelope per channel:
 }
 ```
 
-Each channel array must contain `point_count` values. The tiny two-value arrays above are only
-abbreviated for readability. Keep the response cacheable: the component aborts stale requests while
+Each channel array must contain `point_count` values. The two-value arrays above are
+abbreviated. Keep the response cacheable: the component aborts stale requests while
 the user pans and asks for a fresh, pixel-sized envelope after zooming or resizing.
 
 ## Signal and synth visualizers
@@ -1598,7 +1595,7 @@ Good things to know here:
 - `env.stateSvg()` and `comp.stateSvg()` are compact SVG views for modulators / processors.
 - `noteProcess.pianoRollSvg()` is great when you want the piano roll in an output area instead of inline in the editor.
 
-So the choice is mostly about **where you want the visual to live**, not whether the visual exists.
+So the choice is mostly about **where you want the visual to live**.
 
 ## Choosing between inline and display
 
@@ -1609,12 +1606,6 @@ Here is the practical rule of thumb:
 - If the thing is large and structural, use `tree(...)`, `column(...)`, or `.h2`.
 - If the thing is tiny and human-readable, `.h` is often perfect.
 
-And if you are documenting or testing it:
-
-- use an **editor screenshot** for inline visuals
-- use a **box screenshot** for output channels and controls
-- remember that `histogram(...)` and `history(...)` are **passthrough probes** for debugging live values
-- prefer **finite deterministic input** when the visualizer does not need motion
-- save `loop {}` + launch for genuinely live examples
+`histogram(...)` and `history(...)` return the value they were given, so you can leave them in a computation while you debug it.
 
 All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
