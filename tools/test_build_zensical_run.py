@@ -13,6 +13,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -22,6 +23,7 @@ from build_zensical_docs import (  # noqa: E402
     install_site,
     missing_pages,
     page_output,
+    prepare_local_site_for_captures,
     process_cpu_seconds,
     run_zensical,
 )
@@ -149,6 +151,30 @@ class InstallSiteTests(unittest.TestCase):
         install_site(staging=self.staging, site_dir=self.site, previous=self.previous)
         self.assertTrue((self.site / "index.html").is_file())
         self.assertFalse(self.previous.exists())
+
+
+class LocalCaptureSiteTests(unittest.TestCase):
+    def test_missing_local_page_is_built_without_captures_before_the_drive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            public = root / "public"
+            (public / "docs").mkdir(parents=True)
+            (public / "docs/how_field_is_built.md").write_text("<!-- docs-capture-needs-local-site: landing_queue -->")
+
+            def build(*_args, **kwargs):
+                self.assertEqual(kwargs["env"]["FIELD_DOCS_RUNNER_MODE"], "never")
+                page = public / "field4/landing_queue/index.html"
+                page.parent.mkdir(parents=True)
+                page.write_text("<html>local</html>")
+                return type("Result", (), {"returncode": 0})()
+
+            with patch.dict("os.environ", {"FIELD_DOCS_RUNNER_MODE": "always"}), \
+                 patch("build_zensical_docs.subprocess.run", side_effect=build) as run:
+                kwargs = dict(public_dir=public, repo_root=root, page_filters=("how_field_is_built.md",),
+                              no_source_pages=False, skip_build=False)
+                self.assertEqual(prepare_local_site_for_captures(**kwargs), 0)
+                self.assertEqual(prepare_local_site_for_captures(**kwargs), 0)
+                self.assertEqual(run.call_count, 1)
 
 
 if __name__ == "__main__":

@@ -322,6 +322,7 @@ Reading these docs inside Field, you can select a passage, press `Ctrl+Shift+A` 
 Here is one being left on [Landing on `main`](landing_queue.md); the **DOC NOTES** panel beside the
 page lists it with its state and where it sits in the source:
 
+<!-- docs-capture-needs-local-site: landing_queue -->
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-notes-crop" screenshot="assets/how_field_is_built/notes_panel.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="docs-notes-panel" alt="Landing on main open in Field's docs pane with the DOC NOTES panel on the right. The sentence That queues the current branch at its current commit and returns immediately is highlighted in the text, and the panel lists one OPEN note on it: Show what a bounce looks like here, and where its failures file is, tagged @example, with the quoted sentence, the date, a reply box, and resolve and delete buttons."}
 // The docs open inside Field at /field-docs/. Load Landing on main into a frame wide enough for the
 // DOC NOTES panel to sit beside the text, select a sentence, and leave a note with the real keys.
@@ -340,8 +341,10 @@ var state = ""
 for (i in 0 until 80) {
     ui.pause(250)
     state = ui.eval("""
-        const d = document.getElementById("docs-notes-frame")?.contentDocument
+        const f = document.getElementById("docs-notes-frame")
+        const d = f?.contentDocument
         if (!d || !d.getElementById("f4-annotations") || !d.querySelector("article p")) return "loading"
+        if (f.contentWindow.__FIELD_DOCS_SOURCE__ !== "local") return "not local"
         return "ready"
     """.trimIndent()).toString()
     if (state.contains("ready")) break

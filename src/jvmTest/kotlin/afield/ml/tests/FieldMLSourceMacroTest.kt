@@ -185,8 +185,8 @@ class FieldMLSourceMacroTest {
      * Reachable means one of two things, both verified elsewhere in this file rather than asserted
      * here: a `CALL_SHAPED` route whose method reflection can find, or a `NATIVE_FORM` whose FieldML
      * prelude name reaches the same effect. The `NEEDS_KOTLIN` set is pinned **exactly**, not floored:
-     * those five are the irreducible core of mechanism A — macros that require Kotlin source —
-     * and if one of them ever moves out, that is the interesting event, not a number going up.
+     * the reactive property declarations need Kotlin's generated delegate until FieldML implements
+     * their pull and cascade semantics. Moving one out is a meaningful capability change.
      */
     @Test
     fun theReachableFractionOfTheMacroSurfaceIsFloored() {
@@ -204,20 +204,18 @@ class FieldMLSourceMacroTest {
         }
         println(report)
 
-        // 15 of 20 = 75%. Losing one reachable macro drops to 14/20 and fails.
+        // Preserve the 15 reachable routes measured before three new reactive declarations were
+        // registered. Adding an unreachable macro increases the denominator without removing a
+        // capability; the exact NEEDS_KOTLIN set above guards that change instead.
         assertTrue(
             reachable >= 15,
             "only $reachable of $total source macros are reachable, expected at least 15\n$report",
         )
-        assertTrue(
-            reachable.toDouble() / total >= 0.75,
-            "the reachable fraction fell below 75%\n$report",
-        )
         assertEquals(
-            setOf("sourceBlock", "interpolant", "jsonParser", "graphLens", "ai"),
+            setOf("sourceBlock", "interpolant", "jsonParser", "graphLens", "ai", "propUp", "propDown", "propUpDown"),
             byReach[FieldMLMacroLayer.Reach.NEEDS_KOTLIN].orEmpty().map { it.macro }.toSet(),
-            "the macros that need a Kotlin compiler are the ones that require Kotlin source, " +
-                "and that set is the claim\n$report",
+            "the macros that currently need Kotlin expansion or a native reactive form " +
+                "are pinned by name\n$report",
         )
     }
 

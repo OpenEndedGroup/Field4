@@ -43,6 +43,7 @@ SITE_DIR_NAME = "field4"
 STAGING_SITE_DIR_NAME = "site"
 PREVIOUS_SITE_DIR_NAME = "previous-site"
 BUILD_CONFIG_NAME = "zensical.generated.build.yml"
+LOCAL_SITE_CAPTURE = re.compile(r"<!--\s*docs-capture-needs-local-site:\s*([a-zA-Z0-9_/-]+)\s*-->")
 
 # Seconds `run_zensical` lets zensical go with no output and under STALL_CPU_SECONDS of CPU before it
 # calls the build wedged. A healthy build burns about one CPU-second per second throughout.
@@ -1233,12 +1234,53 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def prepare_local_site_for_captures(*, public_dir: Path, repo_root: Path,
+                                    page_filters: tuple[str, ...], no_source_pages: bool,
+                                    skip_build: bool) -> int:
+    """Build a local site before UI drives that open one of its pages, if that page is absent."""
+    if skip_build or os.environ.get("FIELD_DOCS_RUNNER_MODE", "incremental") == "never":
+        return 0
+    needed = set()
+    for source in (public_dir / "docs").rglob("*.md"):
+        relative = source.relative_to(public_dir / "docs")
+        if page_filters and not matches_page_filter(relative, page_filters):
+            continue
+        needed.update(LOCAL_SITE_CAPTURE.findall(source.read_text(encoding="utf-8")))
+    missing = sorted(page for page in needed if not (public_dir / SITE_DIR_NAME / page / "index.html").is_file())
+    if not missing:
+        return 0
+    print(f"Preparing local docs pages for UI captures: {', '.join(missing)}", flush=True)
+    env = os.environ.copy()
+    env["FIELD_DOCS_RUNNER_MODE"] = "never"
+    command = [sys.executable, str(Path(__file__).resolve()), "--public-dir", str(public_dir), "--clean"]
+    if no_source_pages:
+        command.append("--no-source-pages")
+    result = subprocess.run(command, cwd=repo_root, env=env, check=False)
+    if result.returncode:
+        print(f"{FAILURE_PREFIX}could not prepare the local docs site for UI captures.", file=sys.stderr)
+        return result.returncode
+    still_missing = [page for page in missing if not (public_dir / SITE_DIR_NAME / page / "index.html").is_file()]
+    if still_missing:
+        print(f"{FAILURE_PREFIX}local docs build omitted {', '.join(still_missing)}.", file=sys.stderr)
+        return 1
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
 
     repo_root = Path(__file__).resolve().parent.parent
     public_dir = (repo_root / args.public_dir).resolve()
     generated_root = public_dir / ".zensical-generated"
     generated_docs = generated_root / "docs"
+
+    # A UI drive can need a page from this checkout's /field-docs/ mirror before captures finish.
+    # The capture-free child build inherits this process's verification lock owner.
+    bootstrap = prepare_local_site_for_captures(
+        public_dir=public_dir, repo_root=repo_root, page_filters=tuple(args.page),
+        no_source_pages=args.no_source_pages, skip_build=args.skip_build,
+    )
+    if bootstrap:
+        return bootstrap
 
     if generated_docs.exists() and not remove_tree(generated_docs):
         print(f"{FAILURE_PREFIX}could not clear {generated_docs}", file=sys.stderr)

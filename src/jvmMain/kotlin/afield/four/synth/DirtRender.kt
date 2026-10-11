@@ -193,6 +193,8 @@ object DirtRender {
         val matched: Set<String>,
         /** Distinct tokens the library had nothing for, which fell back to the synth voice. */
         val unmatched: Set<String>,
+        /** Number of onset events actually mixed from a Dirt sample. */
+        val renderedEvents: Int,
     ) {
         /** One line fit to print in a box, so a demo can say which voice you are hearing. */
         fun describe(): String = when {
@@ -240,6 +242,7 @@ fun patRenderStereoDirt(
             usedSamples = false,
             matched = emptySet(),
             unmatched = emptySet(),
+            renderedEvents = 0,
         )
     }
 
@@ -250,6 +253,7 @@ fun patRenderStereoDirt(
 
     val matched = linkedSetOf<String>()
     val unmatched = linkedSetOf<String>()
+    var renderedEvents = 0
     val leftovers = mutableListOf<PatEvent<String>>()
 
     val events = pattern.events(PatArc(PatQ.ZERO, PatQ.of(cycles)))
@@ -272,6 +276,7 @@ fun patRenderStereoDirt(
 
         val startFrame = (event.arc.start.toDouble() * secondsPerCycle * sampleRate).toInt()
         if (startFrame >= frames) continue
+        renderedEvents++
 
         val gain = (event.annotations["gain"]?.toDoubleOrNull() ?: 1.0).coerceIn(0.0, 4.0)
         val pan = (event.annotations["pan"]?.toDoubleOrNull() ?: 0.5).coerceIn(0.0, 1.0)
@@ -311,6 +316,7 @@ fun patRenderStereoDirt(
         usedSamples = true,
         matched = matched,
         unmatched = unmatched,
+        renderedEvents = renderedEvents,
     )
 }
 
