@@ -42,8 +42,9 @@ val cutoff = 200.0 + 8000.0 * midi.knob(74)      // 0..1, 0 until the knob first
 val held = midi.held.keys.map { (_, pitch) -> pitch }
 ```
 
-`onMessage { message, peer -> }` receives everything, as a `javax.sound.midi.MidiMessage` — the
-same type `MidiDevices.openInput` gives you for a MIDI port on this machine — along with the peer that sent it.
+`onMessage { message, peer -> }` receives everything, as a `javax.sound.midi.MidiMessage`, along
+with the peer that sent it. It is the same type `MidiDevices.openInput` gives you for a MIDI port
+on this machine.
 
 ## Sending
 

@@ -389,7 +389,7 @@ notation.clear()
 
 ## Drawing your own
 
-Open drawn_paint from the welcome screen's starting points and run its boxes in order: `strokes`,
+Open the [drawn_paint](agent_transcripts.md#drawn_paint) starting point and run its boxes in order: `strokes`,
 `paint`, `crossings`, `drying`, `meadow` and `pencil`. Each reads the strokes in one region of the
 drawing. To paint your own, press `alt-d`, choose the pen (`p`) and draw in a region, then run the
 box that reads it. A tablet pen records pressure; a mouse does not, and for a mouse stroke
