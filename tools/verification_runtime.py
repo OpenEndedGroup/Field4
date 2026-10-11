@@ -557,6 +557,18 @@ def verification_lock(
     """
     lock_path = repo_root / ".field-backdoor" / "verification.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    # A verification command can launch a child that runs another supported command
+    # in the same checkout (the docs local-site bootstrap does this). The parent
+    # keeps the lock until that child exits, so acquiring it again would deadlock.
+    inherited_owner = os.environ.get(VERIFICATION_LOCK_OWNER_ENV)
+    if inherited_owner == str(os.getppid()):
+        try:
+            recorded_owner = json.loads(lock_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            recorded_owner = {}
+        if recorded_owner.get("pid") == os.getppid():
+            yield
+            return
     handle = lock_path.open("a+", encoding="utf-8")
     handle.seek(0)
     started = time.monotonic()

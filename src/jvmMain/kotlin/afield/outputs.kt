@@ -1184,6 +1184,7 @@ internal fun buildSliderHtml(
     send: Boolean = true,
     // What a double-click on the track (or Backspace on a focused slider) returns to.
     defaultValue: Double = value,
+    ariaLabel: String = label,
 ): String {
     val stepDecimals = calculateDecimalPlaces(step)
     val clampedValue = value.coerceIn(minOf(min, max), maxOf(min, max))
@@ -1229,7 +1230,7 @@ internal fun buildSliderHtml(
              data-default="${defaultValue.coerceIn(minOf(min, max), maxOf(min, max))}"
              data-view-width="$viewWidth"
              data-padding="$padding"
-             tabindex="0" role="slider" aria-label="${label.replace("\"", "&quot;")}"
+             tabindex="0" role="slider" aria-label="${ariaLabel.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")}"
              aria-valuemin="${minOf(min, max)}" aria-valuemax="${maxOf(min, max)}" aria-valuenow="$clampedValue"$ownAttributes>
             <span class="field-label" title="${label.replace("\"", "&quot;")}">$label</span>
             <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet">

@@ -130,7 +130,7 @@ object StackAutoCard {
                         registered += sliderId
                         val label = "<span class='locate' data-slot='${slot.name}' data-locate='${k.knob}' title='${esc(operand)} · ${esc(k.context)} — click to select ${esc(k.token)} in the editor'>" +
                             "k${k.knob} <span class='purpose'>${esc(names[k.knob] ?: operand)}</span></span>"
-                        append(buildSliderHtml(sliderId, label, minOf(lo, v), maxOf(hi, v), step, v, extraAttributes = "data-knob='${k.knob}' data-slot='${slot.name}'"))
+                        append(buildSliderHtml(sliderId, label, minOf(lo, v), maxOf(hi, v), step, v, extraAttributes = "data-knob='${k.knob}' data-slot='${slot.name}'", ariaLabel = "k${k.knob} ${names[k.knob] ?: operand}"))
                     }
                 }
                 append("<div style='margin-top:6px'>")

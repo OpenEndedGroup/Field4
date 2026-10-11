@@ -292,7 +292,7 @@ class RectSLStudyViewer(
                         }
                         val (lo, hi, step) = range(k)
                         val label = "<span $locate>k${k.knob} <span class='purpose'>${esc(names[k.knob] ?: k.role)}</span></span>"
-                        append(afield.buildSliderHtml("$id-k${k.knob}", label, minOf(lo, k.value), maxOf(hi, k.value), step, k.value, send = false, extraAttributes = "data-knob='${k.knob}'"))
+                        append(afield.buildSliderHtml("$id-k${k.knob}", label, minOf(lo, k.value), maxOf(hi, k.value), step, k.value, send = false, extraAttributes = "data-knob='${k.knob}'", ariaLabel = "k${k.knob} ${names[k.knob] ?: k.role}"))
                     }
                     shownCount++
                 }

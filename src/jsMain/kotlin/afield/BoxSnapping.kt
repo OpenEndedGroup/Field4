@@ -425,7 +425,11 @@ class BoxSnappingSystem {
         proposedX: Double,
         proposedY: Double,
         proposedW: Double,
-        proposedH: Double
+        proposedH: Double,
+        resizeLeft: Boolean,
+        resizeRight: Boolean,
+        resizeTop: Boolean,
+        resizeBottom: Boolean
     ): Rect {
         if (!isSnappingEnabled()) {
             clearSnapGuides()
@@ -463,7 +467,7 @@ class BoxSnappingSystem {
             
             // Snap right edge
             val rightToRightDist = abs(proposedRight - boxRight)
-            if (rightToRightDist < SNAP_THRESHOLD) {
+            if (resizeRight && rightToRightDist < SNAP_THRESHOLD) {
                 val lineTop = minOf(proposedTop, boxTop)
                 val lineBottom = maxOf(proposedBottom, boxBottom)
                 val snapLine = SnapLine(boxRight, lineTop, boxRight, lineBottom, isVertical = true)
@@ -476,7 +480,7 @@ class BoxSnappingSystem {
             }
             
             val rightToLeftDist = abs(proposedRight - boxLeft)
-            if (rightToLeftDist < SNAP_THRESHOLD) {
+            if (resizeRight && rightToLeftDist < SNAP_THRESHOLD) {
                 val lineTop = minOf(proposedTop, boxTop)
                 val lineBottom = maxOf(proposedBottom, boxBottom)
                 val snapLine = SnapLine(boxLeft, lineTop, boxLeft, lineBottom, isVertical = true)
@@ -490,7 +494,7 @@ class BoxSnappingSystem {
             
             // Snap left edge
             val leftToLeftDist = abs(proposedLeft - boxLeft)
-            if (leftToLeftDist < SNAP_THRESHOLD) {
+            if (resizeLeft && leftToLeftDist < SNAP_THRESHOLD) {
                 val lineTop = minOf(proposedTop, boxTop)
                 val lineBottom = maxOf(proposedBottom, boxBottom)
                 val snapLine = SnapLine(boxLeft, lineTop, boxLeft, lineBottom, isVertical = true)
@@ -504,7 +508,7 @@ class BoxSnappingSystem {
             }
             
             val leftToRightDist = abs(proposedLeft - boxRight)
-            if (leftToRightDist < SNAP_THRESHOLD) {
+            if (resizeLeft && leftToRightDist < SNAP_THRESHOLD) {
                 val lineTop = minOf(proposedTop, boxTop)
                 val lineBottom = maxOf(proposedBottom, boxBottom)
                 val snapLine = SnapLine(boxRight, lineTop, boxRight, lineBottom, isVertical = true)
@@ -519,7 +523,7 @@ class BoxSnappingSystem {
             
             // Snap bottom edge
             val bottomToBottomDist = abs(proposedBottom - boxBottom)
-            if (bottomToBottomDist < SNAP_THRESHOLD) {
+            if (resizeBottom && bottomToBottomDist < SNAP_THRESHOLD) {
                 val lineLeft = minOf(proposedLeft, boxLeft)
                 val lineRight = maxOf(proposedRight, boxRight)
                 val snapLine = SnapLine(lineLeft, boxBottom, lineRight, boxBottom, isVertical = false)
@@ -532,7 +536,7 @@ class BoxSnappingSystem {
             }
             
             val bottomToTopDist = abs(proposedBottom - boxTop)
-            if (bottomToTopDist < SNAP_THRESHOLD) {
+            if (resizeBottom && bottomToTopDist < SNAP_THRESHOLD) {
                 val lineLeft = minOf(proposedLeft, boxLeft)
                 val lineRight = maxOf(proposedRight, boxRight)
                 val snapLine = SnapLine(lineLeft, boxTop, lineRight, boxTop, isVertical = false)
@@ -546,7 +550,7 @@ class BoxSnappingSystem {
             
             // Snap top edge
             val topToTopDist = abs(proposedTop - boxTop)
-            if (topToTopDist < SNAP_THRESHOLD) {
+            if (resizeTop && topToTopDist < SNAP_THRESHOLD) {
                 val lineLeft = minOf(proposedLeft, boxLeft)
                 val lineRight = maxOf(proposedRight, boxRight)
                 val snapLine = SnapLine(lineLeft, boxTop, lineRight, boxTop, isVertical = false)
@@ -560,7 +564,7 @@ class BoxSnappingSystem {
             }
             
             val topToBottomDist = abs(proposedTop - boxBottom)
-            if (topToBottomDist < SNAP_THRESHOLD) {
+            if (resizeTop && topToBottomDist < SNAP_THRESHOLD) {
                 val lineLeft = minOf(proposedLeft, boxLeft)
                 val lineRight = maxOf(proposedRight, boxRight)
                 val snapLine = SnapLine(lineLeft, boxBottom, lineRight, boxBottom, isVertical = false)
