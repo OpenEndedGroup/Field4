@@ -160,8 +160,8 @@ data class KitManifest(val name: String, val roleProperty: String, val launchOrd
                 ?: throw IllegalArgumentException("$where needs \"$key\"")
             val schema = node.path("schema").asText("")
             require(schema == "field.kit.v1") { "Not a kit manifest (schema '$schema', expected field.kit.v1)" }
-            val roles = node.path("roles").fields().asSequence().associate { (key, role) ->
-                key to KitRole(role.path("name").asText(key), role.path("properties").fields().asSequence().associate { (property, entry) ->
+            val roles = node.path("roles").properties().asSequence().associate { (key, role) ->
+                key to KitRole(role.path("name").asText(key), role.path("properties").properties().asSequence().associate { (property, entry) ->
                     property to KitProperty(text(entry, "file", "roles.$key.$property"), text(entry, "sha256", "roles.$key.$property"),
                         entry.path("frozen").asBoolean(false))
                 })
@@ -169,7 +169,7 @@ data class KitManifest(val name: String, val roleProperty: String, val launchOrd
             val order = node.path("launchOrder").map { it.asText() }
             order.firstOrNull { it !in roles }?.let { throw IllegalArgumentException("launchOrder names '$it', which is not a role") }
             return KitManifest(text(node, "name", "kit.json"), node.path("roleProperty").asText(Kits.DEFAULT_ROLE_PROPERTY),
-                order, roles, node.path("assets").fields().asSequence().associate { it.key to it.value.asText() },
+                order, roles, node.path("assets").properties().asSequence().associate { it.key to it.value.asText() },
                 text(node, "revision", "kit.json"), directory?.path ?: node.path("directory").takeIf { it.isTextual }?.asText())
         }
     }
