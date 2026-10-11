@@ -1887,6 +1887,31 @@ function lawFormat(spec, value) {
     return fmt(value, spec.decimalPlaces);
 }
 
+/**
+ * A client-space point in an SVG's own (viewBox) coordinates. The controls' SVGs use
+ * `preserveAspectRatio="xMidYMid meet"`, so a panel wider than the viewBox's aspect scales the
+ * drawing by its height and centres it: mapping clientX across the element's full width then puts
+ * the value somewhere other than under the pointer. The screen CTM includes that letterboxing, and
+ * canvas zoom, exactly.
+ */
+function svgPointFromClient(svg, clientX, clientY, fallbackWidth, fallbackHeight) {
+    const ctm = svg.getScreenCTM && svg.getScreenCTM();
+    if (ctm && ctm.a !== 0 && ctm.d !== 0) {
+        const inv = ctm.inverse();
+        return {
+            x: inv.a * clientX + inv.c * clientY + inv.e,
+            y: inv.b * clientX + inv.d * clientY + inv.f,
+            scale: ctm.a,
+        };
+    }
+    const rect = svg.getBoundingClientRect();
+    return {
+        x: ((clientX - rect.left) / (rect.width || 1)) * fallbackWidth,
+        y: ((clientY - rect.top) / (rect.height || 1)) * (fallbackHeight || fallbackWidth),
+        scale: (rect.width || fallbackWidth) / fallbackWidth,
+    };
+}
+
 /** Where along a control's track a value sits, in the SVG's own coordinates. */
 function trackX(container, spec, value, fallbackWidth) {
     const viewWidth = parseFloat(container.dataset.viewWidth || fallbackWidth || '320');
@@ -1899,11 +1924,10 @@ function sliderValueFromPointer(container, event) {
     const svg = container.querySelector('.field-slider-visual');
     if (!svg) return null;
 
-    const rect = svg.getBoundingClientRect();
     const viewWidth = parseFloat(container.dataset.viewWidth || '320');
     const padding = parseFloat(container.dataset.padding || '14');
 
-    const viewX = ((event.clientX - rect.left) / rect.width) * viewWidth;
+    const viewX = svgPointFromClient(svg, event.clientX, event.clientY, viewWidth).x;
     const t = clamp((viewX - padding) / (viewWidth - padding * 2), 0, 1);
     // The pointer only ever produces a fraction of the track; turning that fraction into a value is
     // the law's entire job.
@@ -1961,7 +1985,9 @@ function sliderTrackPixels(container) {
     // An unlaid-out (collapsed) panel measures 0; treat it as the SVG's nominal width rather than
     // letting one pixel of travel sweep the whole range.
     if (!(rect.width > 0)) return viewWidth - padding * 2;
-    return Math.max(1, rect.width * (viewWidth - padding * 2) / viewWidth);
+    // One viewBox unit is `scale` CSS pixels on screen (height-limited under `meet`).
+    const scale = svgPointFromClient(svg, rect.left, rect.top, viewWidth).scale;
+    return Math.max(1, scale * (viewWidth - padding * 2));
 }
 
 /** How much finer a shift-drag (or alt-nudge) moves than a plain one. */
@@ -2069,7 +2095,7 @@ function sliderKeyDown(container, event) {
 }
 
 /**
- * Edit the readout in a text field floated over it. Enter or blur commits (the number is quantized and clamped
+ * Edit the readout in a text field laid over it. Enter or blur commits (the number is quantized and clamped
  * like any other move, so typing 1e9 on a 0..1 slider lands on 1), Escape abandons. Anything that does
  * not parse as a number leaves the value where it was.
  */
@@ -2081,25 +2107,23 @@ function beginSliderValueEdit(container) {
     input.className = 'field-value-edit';
     input.value = readout.textContent.trim();
     input.setAttribute('aria-label', 'value');
-    // Float the field over the readout from document.body rather than swapping it in: inserting a
-    // node inside the output area trips its content MutationObserver, which re-runs auto-size and
-    // shrinks the panel, and a different-width element in the row reflows the label and track.
-    // visibility (not display) keeps the readout's box, and attribute changes are not observed.
-    const r = readout.getBoundingClientRect();
-    const scale = readout.offsetHeight > 0 ? r.height / readout.offsetHeight : 1;
-    const fontPx = parseFloat(getComputedStyle(readout).fontSize) || 11;
-    const width = Math.max(r.width, 48 * scale);
+    // Lay the field over the readout inside the slider row rather than swapping it in: a
+    // different-width element in the flex row reflowed the label and track. Positioned in the
+    // row's own CSS pixels, it pans and zooms with the panel. `field-transient` tells the output
+    // area's MutationObserver this insertion is not new content, so auto-size does not re-run
+    // and shrink the panel. visibility (not display) keeps the readout's box.
+    input.classList.add('field-transient');
+    const width = Math.max(readout.offsetWidth, 48);
     Object.assign(input.style, {
-        position: 'fixed',
-        left: (r.right - width) + 'px',
-        top: r.top + 'px',
+        position: 'absolute',
+        left: (readout.offsetLeft + readout.offsetWidth - width) + 'px',
+        top: readout.offsetTop + 'px',
         width: width + 'px',
-        height: r.height + 'px',
-        fontSize: (fontPx * scale) + 'px',
-        zIndex: '100000',
+        height: readout.offsetHeight + 'px',
+        fontSize: getComputedStyle(readout).fontSize,
     });
     readout.style.visibility = 'hidden';
-    document.body.appendChild(input);
+    readout.after(input);
     let done = false;
     const finish = (commit) => {
         if (done) return;
@@ -2128,7 +2152,6 @@ const vec2State = { active: null };
 function vec2ValueFromPointer(container, event) {
     const svg = container.querySelector('.vec2-visual');
     if (!svg) return null;
-    const rect = svg.getBoundingClientRect();
     const viewSize = parseFloat(container.dataset.viewSize || '240');
     const padding = parseFloat(container.dataset.padding || '10');
     const area = Math.max(viewSize - padding * 2, 1);
@@ -2138,8 +2161,9 @@ function vec2ValueFromPointer(container, event) {
     const minY = parseFloat(container.dataset.minY);
     const maxY = parseFloat(container.dataset.maxY);
 
-    const viewX = ((event.clientX - rect.left) / rect.width) * viewSize;
-    const viewY = ((event.clientY - rect.top) / rect.height) * viewSize;
+    const p = svgPointFromClient(svg, event.clientX, event.clientY, viewSize, viewSize);
+    const viewX = p.x;
+    const viewY = p.y;
 
     const tx = clamp((viewX - padding) / area, 0, 1);
     const ty = clamp((viewY - padding) / area, 0, 1);
@@ -2751,10 +2775,9 @@ window.applyFieldControlUpdate = function(control) {
 
 // Alpha slider (SVG) -------------------------------------------------------
 function alphaValueFromPointer(svg, event) {
-    const rect = svg.getBoundingClientRect();
     const viewWidth = svg.viewBox?.baseVal?.width || parseFloat(svg.dataset.viewWidth || '320');
     const padding = parseFloat(svg.dataset.padding || '14');
-    const viewX = ((event.clientX - rect.left) / rect.width) * viewWidth;
+    const viewX = svgPointFromClient(svg, event.clientX, event.clientY, viewWidth).x;
     const t = clamp((viewX - padding) / (viewWidth - padding * 2), 0, 1);
     return t;
 }
