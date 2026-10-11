@@ -10,7 +10,7 @@ again by describing it.
 
 Each keeps its own record, for its own length of time. The tools:
 
-- **[Document history](document_history.md)** — a full-page timeline of the versions in the document's history store, with restore, cherry-pick and diff.
+- **[Document history](document_history.md)** — every earlier save of a document as a timeline; put back the whole document or just the boxes you pick, and compare any save with now.
 - **[Inline history: the History Lens](history_lens.md)** — scrub a single line or selection back through its versions without leaving the editor.
 - **[AI tool-use history](ai_tool_use_history.md)** — the per-send tool calls recorded by AI4, and a loop that reads those logs back to propose improvements.
 - **[AI documentation polish](ai_doc_polish.md)** — the cache of AI-generated documentation and the cycle that folds it back into real source comments.
