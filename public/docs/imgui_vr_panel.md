@@ -1,13 +1,13 @@
 # ImGui as an in-VR panel
 
-Field can float a live [Dear ImGui](https://github.com/ocornut/imgui) panel *inside* a 3D scene —
-a clickable control surface hanging in space in front of you. ImGui draws into a texture, the
+Field can float a live [Dear ImGui](https://github.com/ocornut/imgui) panel *inside* a 3D scene: a
+clickable control surface hanging in space in front of you. ImGui draws into a texture, the
 texture is mapped onto a quad, the quad is rendered once per eye into a side-by-side stereo image,
-and a controller ray is hit-tested against it so buttons and sliders actually work. On a headset the
+and a controller ray is hit-tested against it so buttons and sliders respond to it. On a headset the
 same stereo image feeds the eye swapchains; on the desktop it previews in the window.
 
 The side-by-side stereo target underneath this demo is the same one the Vision Pro front end renders
-through — see **[Apple Vision Pro](vision.md)**, where those eye matrices can come from an uplinked
+through. See [Apple Vision Pro](vision.md), where those eye matrices can come from an uplinked
 head pose instead of from OpenXR or the desktop mock.
 
 ![A single eye of the VR panel: a readable Dear ImGui window titled "Field · VR Panel" with body text, a Click me button, a checkbox, a gain slider, and a ray-hit UV readout](assets/imgui_vr_panel/imgui-vr-panel-eye.png)
@@ -50,9 +50,9 @@ one packed side-by-side image
       └─ copied into the OpenXR eye swapchains (what you see with one)
 ```
 
-Because the quad is drawn once per eye, you get correct stereo depth: the panel really sits at a
-distance in the scene, not pasted flat on the screen. Here is the full packed side-by-side frame —
-the same pixels a headset would show, one panel per eye:
+Because the quad is drawn once per eye, you get correct stereo depth: the panel sits at a distance in
+the scene rather than flat on the screen. Here is the full packed side-by-side frame, the same pixels a headset would show, one
+panel per eye:
 
 ![The full side-by-side stereo frame: the ImGui panel rendered twice, left eye and right eye, against a black background](assets/imgui_vr_panel/imgui-vr-panel.png)
 
@@ -79,4 +79,4 @@ misses the panel, the pointer is parked off-screen so nothing hovers.
     you.
 
 The developer-facing writeup (the `ImGuiPanel` helper API, the render-graph wiring, and the
-capture gotchas) lives in `dev_docs/imgui_vr_panel.md`.
+capture gotchas) lives in [`dev_docs/imgui_vr_panel.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/imgui_vr_panel.md).
