@@ -2095,44 +2095,50 @@ function sliderKeyDown(container, event) {
 }
 
 /**
- * Edit the readout in a text field laid over it. Enter or blur commits (the number is quantized and clamped
- * like any other move, so typing 1e9 on a 0..1 slider lands on 1), Escape abandons. Anything that does
- * not parse as a number leaves the value where it was.
+ * Edit a control's readout in a text field laid over it. Enter or blur commits, Escape abandons;
+ * `commit(text)` decides what the text means and does nothing for text it cannot read.
+ *
+ * The field is laid over the readout rather than swapped in: a different-width element reflowed the
+ * row's label and track. It is the readout's sibling, so it shares its offsetParent and is placed in
+ * that parent's own CSS pixels — it pans and zooms with the panel. `field-transient` tells the
+ * output area's MutationObserver the insertion is not new content, so auto-size does not re-run and
+ * shrink the panel. visibility (not display) keeps the readout's box.
  */
-function beginSliderValueEdit(container) {
-    const readout = container.querySelector('.field-value');
-    if (!readout || container.querySelector('.field-value-edit')) return;
+function beginValueEdit(readout, { text, commit, anchorRight = false, refocus = null }) {
+    const host = readout?.closest('.field-control');
+    if (!readout || !host || host.querySelector(':scope > .field-value-edit')) return;
     const input = document.createElement('input');
     input.type = 'text';
-    input.className = 'field-value-edit';
-    input.value = readout.textContent.trim();
+    input.className = 'field-value-edit field-transient';
+    input.value = text ?? readout.textContent.trim();
     input.setAttribute('aria-label', 'value');
-    // Lay the field over the readout inside the slider row rather than swapping it in: a
-    // different-width element in the flex row reflowed the label and track. Positioned in the
-    // row's own CSS pixels, it pans and zooms with the panel. `field-transient` tells the output
-    // area's MutationObserver this insertion is not new content, so auto-size does not re-run
-    // and shrink the panel. visibility (not display) keeps the readout's box.
-    input.classList.add('field-transient');
-    const width = Math.max(readout.offsetWidth, 48);
+    // Placed from measured rectangles in the control's own CSS pixels (the control is
+    // position: relative); the ratio of on-screen to layout width is the canvas zoom.
+    const hostRect = host.getBoundingClientRect();
+    const zoom = host.offsetWidth > 0 ? hostRect.width / host.offsetWidth : 1;
+    const want = readout.getBoundingClientRect();
+    const width = Math.max(want.width / zoom + 8, 48);
+    const leftScreen = anchorRight ? want.right - width * zoom : want.left;
     Object.assign(input.style, {
         position: 'absolute',
-        left: (readout.offsetLeft + readout.offsetWidth - width) + 'px',
-        top: readout.offsetTop + 'px',
+        left: ((leftScreen - hostRect.left) / zoom - host.clientLeft) + 'px',
+        top: ((want.top - hostRect.top) / zoom - host.clientTop) + 'px',
         width: width + 'px',
-        height: readout.offsetHeight + 'px',
+        height: Math.max(want.height / zoom, 12) + 'px',
         fontSize: getComputedStyle(readout).fontSize,
+        textAlign: anchorRight ? 'right' : 'left',
     });
     readout.style.visibility = 'hidden';
-    readout.after(input);
+    host.appendChild(input);
     let done = false;
-    const finish = (commit) => {
+    const finish = (ok) => {
         if (done) return;
         done = true;
-        const typed = parseFloat(input.value);
+        const typed = input.value;
         input.remove();
         readout.style.visibility = '';
-        if (commit && !isNaN(typed)) updateSlider(container, typed, { send: true });
-        try { container.focus({ preventScroll: true }); } catch (_) {}
+        if (ok) commit(typed);
+        try { refocus?.focus({ preventScroll: true }); } catch (_) {}
     };
     input.addEventListener('keydown', (e) => {
         e.stopPropagation();
@@ -2143,6 +2149,78 @@ function beginSliderValueEdit(container) {
     input.addEventListener('blur', () => finish(true));
     input.focus();
     input.select();
+}
+
+/** Every number in a piece of typed text, in order ("(0.25, -0.5)" → [0.25, -0.5]). */
+function numbersIn(text) {
+    return (String(text).match(/[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) || []).map(Number);
+}
+
+/**
+ * Type a slider's value. The number is quantized and clamped like any other move, so typing 1e9 on
+ * a 0..1 slider lands on 1; text that is not a number leaves the value where it was.
+ */
+function beginSliderValueEdit(container) {
+    const readout = container.querySelector(':scope > .field-value');
+    beginValueEdit(readout, {
+        anchorRight: true,
+        refocus: container,
+        commit: (text) => {
+            const typed = parseFloat(text);
+            if (!isNaN(typed)) updateSlider(container, typed, { send: true });
+        },
+    });
+}
+
+/**
+ * Type into a vec2 pad's readouts: X or Y alone, both as "(x, y)", the length |v| (keeping the
+ * angle) or the angle θ in degrees (keeping the length). Clamped and snapped like a drag.
+ */
+function beginVec2ValueEdit(container, readout) {
+    const x = parseFloat(container.dataset.x || '0');
+    const y = parseFloat(container.dataset.y || '0');
+    const id = container.dataset.controlId;
+    const set = (nx, ny) => { if (Number.isFinite(nx) && Number.isFinite(ny)) updateVec2(container, nx, ny, { send: true }); };
+    const mag = Math.hypot(x, y);
+    const ang = Math.atan2(y, x);
+    let edit;
+    if (readout.id === `${id}-x-value`) edit = { commit: (t) => set(numbersIn(t)[0], y) };
+    else if (readout.id === `${id}-y-value`) edit = { commit: (t) => set(x, numbersIn(t)[0]) };
+    else if (readout.id === `${id}-value`) edit = { anchorRight: true, commit: (t) => { const n = numbersIn(t); if (n.length >= 2) set(n[0], n[1]); } };
+    else if (readout.id === `${id}-mag`) edit = { text: mag.toFixed(2), anchorRight: true, commit: (t) => { const m = numbersIn(t)[0]; set(m * Math.cos(ang), m * Math.sin(ang)); } };
+    else if (readout.id === `${id}-angle`) edit = { text: (ang * 180 / Math.PI).toFixed(0), commit: (t) => { const a = numbersIn(t)[0] * Math.PI / 180; set(mag * Math.cos(a), mag * Math.sin(a)); } };
+    else return;
+    beginValueEdit(readout, edit);
+}
+
+/** Type a colour as "rgba(r, g, b, a)", "r g b [a]" in 0..1, or "#rrggbb"; or type the alpha alone. */
+function beginColorValueEdit(container, readout) {
+    const picker = container.querySelector('input[type="color"]');
+    const alpha = container.querySelector('.alpha-slider');
+    if (!picker || !alpha) return;
+    const apply = (r, g, b, a) => {
+        const c = (v) => Math.round(clamp(v, 0, 1) * 255).toString(16).padStart(2, '0');
+        if ([r, g, b].every(Number.isFinite)) picker.value = `#${c(r)}${c(g)}${c(b)}`;
+        if (Number.isFinite(a)) alpha.value = String(clamp(a, 0, 1));
+        window.handleColorAlphaInput(alpha);
+    };
+    if (readout.id === `${picker.id}-alpha-value`) {
+        beginValueEdit(readout, { anchorRight: true, commit: (t) => apply(NaN, NaN, NaN, numbersIn(t)[0]) });
+        return;
+    }
+    beginValueEdit(readout, {
+        anchorRight: true,
+        commit: (t) => {
+            const hex = String(t).match(/#([0-9a-f]{6})/i);
+            if (hex) {
+                const h = hex[1];
+                apply(parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255, numbersIn(t.replace(hex[0], ''))[0]);
+                return;
+            }
+            const n = numbersIn(t);
+            if (n.length >= 3) apply(n[0], n[1], n[2], n[3]);
+        },
+    });
 }
 window.beginSliderValueEdit = beginSliderValueEdit;
 
@@ -2467,10 +2545,16 @@ function addDelegatedListeners() {
         resetSlider(container);
     }, true);
     document.addEventListener('click', (evt) => {
-        const readout = evt.target.closest?.('.field-slider > .field-value');
-        if (!readout) return;
-        evt.stopPropagation();
-        beginSliderValueEdit(readout.closest('.field-slider'));
+        const readout = evt.target.closest?.('.field-value');
+        if (!readout || readout.classList.contains('field-value-edit')) return;
+        const slider = readout.parentElement?.classList.contains('field-slider') ? readout.parentElement : null;
+        const vec2 = readout.closest('.field-vec2');
+        const color = readout.closest('.field-color');
+        if (slider) { evt.stopPropagation(); beginSliderValueEdit(slider); return; }
+        // The vec2 X/Y readouts wrap the number in an inner span; edit that span.
+        const target = readout.querySelector('span[id]') || readout;
+        if (vec2) { evt.stopPropagation(); beginVec2ValueEdit(vec2, target); return; }
+        if (color) { evt.stopPropagation(); beginColorValueEdit(color, target); }
     }, true);
     document.addEventListener('keydown', (evt) => {
         const container = evt.target;

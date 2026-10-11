@@ -1934,6 +1934,7 @@ body.field-pane-resizing-h * {
 }
 
 .field-control {
+    position: relative; /* hosts the type-in field (sliders.js beginValueEdit) */
     font-family: var(--field-font);
     background: rgba(var(--field-black-rgb), 0.78);
     border: 1px solid var(--field-accent-border-faint);
@@ -1970,7 +1971,6 @@ body.field-pane-resizing-h * {
 }
 
 .field-slider {
-    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1982,7 +1982,10 @@ body.field-pane-resizing-h * {
     border-radius: 4px;
     box-shadow: 0 0 0 1px var(--field-accent-text-soft);
 }
-.field-slider > .field-value { cursor: text; }
+.field-slider > .field-value,
+.field-vec2 .field-value,
+.field-color .field-value { cursor: text; }
+.field-value:hover:not(.field-value-edit) { text-decoration: underline dotted; text-underline-offset: 3px; }
 .field-slider > .field-value:hover { text-decoration: underline dotted; }
 /* Shift-drag: the relative, ten-times-finer drag. The thumb grows a ring so the mode is visible. */
 .field-slider.fine .slider-thumb { stroke-width: 3; r: 7; }
