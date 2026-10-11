@@ -78,7 +78,7 @@ class StudyBuildProcessTest {
             assertEquals(StudyBuildStatus.FAILED, stalled.status)
             assertEquals("process-stalled", stalled.problem?.code)
             assertContains(stalled.problem!!.message, "made no progress for 1s (last: loading)")
-            assertEquals("process.log", stalled.problem!!.details["log"])
+            assertEquals("process.log", stalled.problem.details["log"])
             assertTrue(System.nanoTime() - started < 8_000_000_000, "the stall watchdog took too long")
             assertFalse(alive(attemptFile(builds, stalled, "child.pid")), "the program's child is still running")
         }
@@ -126,7 +126,7 @@ class StudyBuildProcessTest {
             val failed = builds.build("run")
             assertEquals("process-failed", failed.problem?.code)
             assertEquals(3, failed.problem!!.details["exitCode"])
-            assertContains(failed.problem!!.suggestions.single(), "process.log")
+            assertContains(failed.problem.suggestions.single(), "process.log")
         }
         StudyBuilds(temp(), listOf(shell("exit 3", check = false)), { emptyMap() }).use { builds ->
             assertEquals(3, builds.build("run").facts["exitCode"])

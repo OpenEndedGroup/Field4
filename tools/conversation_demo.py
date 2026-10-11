@@ -457,7 +457,8 @@ def settle_assets(output: Path, expected: dict[str, bytes], check: bool, label: 
                   captured: tuple[str, ...] = (), capture_script: str = "", gitignore: str | None = None) -> None:
     """Write [expected] under [output] and delete anything else, or with [check] refuse any
     difference. [captured] files are screenshots another script makes: required, never compared."""
-    written = {p.relative_to(output).as_posix() for p in output.rglob("*") if p.is_file() and p.name != ".gitignore"} if output.is_dir() else set()
+    written = {p.relative_to(output).as_posix() for p in output.rglob("*")
+               if p.is_file() and p.name not in {".gitignore", ".DS_Store"}} if output.is_dir() else set()
     if check:
         stale = sorted(n for n, data in expected.items() if not (output / n).is_file() or (output / n).read_bytes() != data)
         stale += [f"{n} (run {capture_script})" for n in captured if not (output / n).is_file()]

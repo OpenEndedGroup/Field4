@@ -318,12 +318,13 @@ delegate is a breadth-first walk over `parents`, and that walk is now shared cod
 rather than a coincidence test. `propOr`, `setProp`, `rootProp`, `setRootProp` and `once` complete the
 family.
 
-What is genuinely left is five macros whose effect needs Kotlin source rather than an ordinary
+What is genuinely left is eight macros whose effect needs Kotlin source rather than an ordinary
 host call — `sourceBlock` (a lambda whose body is the original Kotlin), `jsonParser` (a generated class),
 `graphLens` (a `::` reference synthesised from a path), `ai`, and `interpolant` (a saved Kotlin
-segment lambda). `hostMacroExpand` runs their expansions and hands the generated source back as
+segment lambda), plus `propUp`, `propDown`, and `propUpDown` (reactive property delegates whose
+supplier pull and reader reruns FieldML does not implement). `hostMacroExpand` runs their expansions and hands the generated source back as
 **text**, which is inspectable and occasionally
-useful, and is honestly as far as an interpreter goes. 15 of 20 reachable, and the five are pinned as
+useful, and is honestly as far as an interpreter goes. 15 of 23 reachable, and the eight are pinned as
 a set rather than as a count, because a set says which.
 
 ## `afield.four`: what blocks it, with citations

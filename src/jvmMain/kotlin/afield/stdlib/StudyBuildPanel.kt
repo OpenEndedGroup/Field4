@@ -47,7 +47,10 @@ internal class StudyBuildPanel(private val binding: BoxStudyBuildBinding, privat
                 refresh()
             } }
         }
-        executor.scheduleWithFixedDelay({ poll() }, 0, STUDY_BUILD_POLL_MS, TimeUnit.MILLISECONDS)
+        // Publish the first card during showStudyBuilds(), before a short-lived scratch session
+        // can close. The scheduled poll remains responsible for later worker and input changes.
+        refresh()
+        executor.scheduleWithFixedDelay({ poll() }, STUDY_BUILD_POLL_MS, STUDY_BUILD_POLL_MS, TimeUnit.MILLISECONDS)
     }
 
     private fun poll() {

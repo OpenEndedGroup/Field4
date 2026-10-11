@@ -8,6 +8,7 @@ import afield.stdlib.isTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -219,7 +220,7 @@ object ReactiveRuns {
             val st = runs[reader]
             val readerInRun = st != null && synchronized(st) { st.depth > 0 }
             if (readerInRun) {
-                if (!synchronized(st!!) { st.pulled.add(key) }) {
+                if (!synchronized(st) { st.pulled.add(key) }) {
                     problems += "'${label(s)}' already ran for '$name' during this run"
                     continue
                 }
@@ -297,6 +298,7 @@ object ReactiveRuns {
     }
 
     /** Wait for [done]: on the runloop by pumping it, elsewhere by blocking. Null on timeout. */
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun waitFor(done: CompletableDeferred<Boolean>, reader: Box): Boolean? {
         val deadline = System.currentTimeMillis() + pullTimeoutMs
         if (!Runloop.isMainThread) {

@@ -2368,6 +2368,7 @@ class KotlinExecution : BoxExecution {
             }
         }
         if (immediate) {
+            @OptIn(DelicateCoroutinesApi::class)
             GlobalScope.launch(Runloop.runLoop.main) { launchWork() }
         } else {
             enqueueLaunch("launch ${inside.id} strand=$strand", launchWork)

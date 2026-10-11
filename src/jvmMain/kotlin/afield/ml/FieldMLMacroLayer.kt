@@ -55,10 +55,11 @@ import afield.ml.core.FieldMLValue
  *
  * ## What is left, honestly
  *
- * Five macros need Kotlin source rather than an ordinary host call — `sourceBlock` (a lambda
+ * Eight macros need Kotlin source rather than an ordinary host call — `sourceBlock` (a lambda
  * whose body is Kotlin source), `jsonParser` (a generated class), `graphLens` (a `::` property
  * reference), `ai` (generated Kotlin from a prompt), and `interpolant` (a Kotlin lambda saved with
- * its source). Those are the irreducible core of mechanism A:
+ * its source), plus `propUp`, `propDown`, and `propUpDown` (reactive delegates that FieldML does not
+ * yet implement). Those are the current boundary of mechanism A:
  * reaching them needs a compiler, and [expand] gets no further than handing their generated text back as
  * a string. `prop`/`rootProp` also generate declarations, but their declaration is a *delegate* whose
  * semantics FieldML can implement natively — see `afield.stdlib.inheritedPropertyRaw` and the `prop`
@@ -190,6 +191,12 @@ object FieldMLMacroLayer {
             "the same declaration, targeting the document root (props.kt:88)",
             nativeForm = "rootProp / setRootProp",
         ),
+        Route("propUp", Reach.NEEDS_KOTLIN,
+            "generates a ReactiveInheritance delegate whose missing read runs its supplier; FieldML prop only reads the inherited slot"),
+        Route("propDown", Reach.NEEDS_KOTLIN,
+            "generates a ReactiveInheritance delegate whose changed write reruns readers; FieldML setProp has no reactive declaration"),
+        Route("propUpDown", Reach.NEEDS_KOTLIN,
+            "combines the supplier pull and reader reruns of ReactiveInheritance; FieldML implements neither declaration"),
         Route(
             "sourceBlock", Reach.NEEDS_KOTLIN,
             "rewrites to SourceBackedBlock(…) { <the original Kotlin body> } (source_block_macro.kt:11) — " +

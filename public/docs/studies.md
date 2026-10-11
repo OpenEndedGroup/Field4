@@ -596,7 +596,10 @@ id: docs.studies.process
 runner: backdoor-box
 tags: [docs, study, builds]
 timeoutSec: 90
-waitSec: 5.0
+waitOutput:
+  contains: "pass 2 of 4"
+  channel: builds
+  kind: display
 expect:
   outputContains:
     - "pass 2 of 4"
