@@ -3,23 +3,21 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [Graphics](reference/graphics.md) and [Data](reference/data.md).*
 
-You have a bag of points. That is the least structured thing in graphics, and almost everything
-interesting you can do with it is some form of the same question: **who owns which part of the
-plane, and where are the seams?**
+Given a set of points, much of what you might do with them comes down to one question: which part
+of the plane belongs to which point, and where are the boundaries between them?
 
-Field answers that question four different ways, all of them in `afield.stdlib`. This page is a
-worked example of all four:
+Field has four ways to answer it, all in `afield.stdlib`, and this page works through each:
 
-- **Delaunay triangulation and its Voronoi dual** — the classical answer, exact, JTS-backed.
-- **Apollonius (multiplicatively weighted Voronoi)** — the same question with the points given
-  *sizes*, where the answer stops being made of straight lines.
-- **Marching squares** — the seam of a *field* rather than of a point set, extracted as drawable
-  geometry.
-- **Clustering** — partitioning the cloud instead of the plane.
+- **Delaunay triangulation and its Voronoi dual**: the classical answer, exact, built on JTS.
+- **Apollonius (multiplicatively weighted Voronoi)**: the same question with the points given
+  *sizes*, where the boundaries become circular arcs.
+- **Marching squares**: the boundaries of a *field* rather than of a point set, extracted as
+  drawable geometry.
+- **Clustering**: grouping the points instead of dividing the plane.
 
 ## Where the family lives
 
-The filenames are misleading, and one of them is actively so:
+The filenames do not match their contents well, so here is what lives where:
 
 <div class="field-data-table" markdown>
 
@@ -34,9 +32,9 @@ The filenames are misleading, and one of them is actively so:
 
 </div>
 
-That last row is the one that makes the rest drawable. Every partitioner above answers with
-*structure* — vertex rings, circular arcs, triangle index triples, integer labels — rather than with
-geometry, and `spatial_field.kt` is the hop from one to the other. It is the plane counterpart of
+The last row makes the rest drawable. Every partitioner above answers with *structure* (vertex
+rings, circular arcs, triangle index triples, integer labels) rather than with geometry, and
+`spatial_field.kt` converts one to the other. It is the plane counterpart of
 `mesh_field.kt` in [Meshes & 3D Geometry](mesh_examples.md).
 
 ## Delaunay, and the Voronoi dual
@@ -47,8 +45,11 @@ Start with the classical pair, because they are the same object seen twice. Give
   to that site than to any other;
 - the **Delaunay triangulation** joins two sites exactly when their cells share an edge.
 
-Each determines the other, which is why `vec2VoronoiDualGraph(points)` is, in the source, one line
-that returns `vec2DelaunayGraph(points)`.
+Each determines the other, which is why `vec2VoronoiDualGraph(points)` simply returns
+`vec2DelaunayGraph(points)`.
+
+The example below triangulates a jittered grid of 54 sites, builds their Voronoi cells and convex
+hull, and draws all three in a grid of panels whose captions report the counts.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/delaunay_dual.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
@@ -118,28 +119,28 @@ showPlaneGrid(
 ![Three panels: 54 jittered sites triangulated, the same sites' Voronoi cells tinted per site, and both drawn together with the convex hull](assets/spatial_geometry_examples/delaunay_dual.png)
 
 Read the captions. The triangulation reports **97 triangles** against Euler's **2·54 − 2 − 9 = 97**,
-and **150 edges** against **3·54 − 3 − 9 = 150**, with **9 sites on the hull**. Those are not
-approximations: a planar triangulation of a given point set has exactly that many faces and edges or
-it is not a triangulation, so the two numbers are a complete structural check on the result. The
+and **150 edges** against **3·54 − 3 − 9 = 150**, with **9 sites on the hull**. Every triangulation
+of a given point set has exactly that many faces and edges, so the two numbers check the structure
+of the result. The
 third panel is the duality itself: every Delaunay edge crosses exactly one Voronoi edge, and crosses
 it at right angles, because a Voronoi edge *is* the perpendicular bisector of the two sites it
 separates. Every Voronoi vertex sits at the circumcentre of one Delaunay triangle.
 
 Two properties to know before you build on this:
 
-- **The cells on the hull are unbounded**, and JTS clips them to a bounding envelope rather than
-  returning infinite rings, a generous one. Here the cell vertices span **−423 … 799** in *x* while
-  the sites only span **7 … 369**, so a figure fitted to the cells collapses the diagram into a speck
-  in the middle. That is why the fence pins its own `window` and draws it: `showPlaneGrid` clips to
+- **The cells on the hull are unbounded**, and JTS clips them to a generous bounding envelope
+  rather than returning infinite rings. Here the cell vertices span **−423 … 799** in *x* while
+  the sites only span **7 … 369**, so a figure fitted to the cells shrinks the diagram to a speck
+  in the middle. That is why the example sets its own `window` and draws it: `showPlaneGrid` clips to
   the frame, and the caption reports how many cells are wholly inside it (**28 of 54**). A boundary
   cell's vertex ring is real geometry, but its *area* is an artefact of the clip, not of the sites.
-- **`VoronoiCell.vertices` is the ring, not a polygon object.** `polylineFrom(cell.vertices, closed =
-  true)` — or `VoronoiDiagram.toFLines()`, which does it for you and drops the empty cells JTS
-  returns for a duplicated site.
+- **`VoronoiCell.vertices` is the ring, not a polygon object.** Draw it with
+  `polylineFrom(cell.vertices, closed = true)`, or use `VoronoiDiagram.toFLines()`, which does it
+  for you and drops the empty cells JTS returns for a duplicated site.
 
-`vec2DelaunayGraph` is one of a family — Gabriel, Urquhart, relative-neighbourhood, β-skeleton, kNN,
-minimum spanning tree — all sharing `PointGraph` and all comparable in one drawing. That comparison
-is [its own page](graph_connectivity_examples.md); `PointGraph.toFLine(points)` draws any of them.
+`vec2DelaunayGraph` is one of a family (Gabriel, Urquhart, relative-neighbourhood, β-skeleton, kNN,
+minimum spanning tree) that all return a `PointGraph`, and `PointGraph.toFLine(points)` draws any
+of them. [Neighbors & Graphs](graph_connectivity_examples.md) compares them.
 
 ## When the bisector is a circle
 
@@ -157,8 +158,8 @@ different loudness, brush marks of different pressure.
 The consequence is geometric. Setting `score_i(x) = score_j(x)` for two sites
 gives, after clearing denominators, the equation of a **circle**, the Apollonius circle of the two
 points in the ratio `w_i : w_j`. It degenerates to a straight line only when `w_i = w_j`. So a
-weighted Voronoi cell is **not a polygon**, its boundary is made of circular arcs, and the API says
-so rather than flattening it for you:
+weighted Voronoi cell is **not a polygon**: its boundary is made of circular arcs, and the API hands
+you those arcs rather than flattening them:
 
 ```diffstatic {data-lang=kotlin}
 val diagram = CircularDirichlet.build(sites)     // sites are Vec3 of (x, y, weight)
@@ -168,6 +169,9 @@ piece.support                                    // SupportCircle(center, radius
 piece.samplePoint()                              // a point known to be on this boundary
 piece.toPolyline(maxChordError = 0.02f, clip = box)
 ```
+
+The figure keeps five sites in the same places and changes only their weights: all equal, mixed,
+and one site much heavier than the rest.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/apollonius.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
@@ -219,31 +223,30 @@ showPlaneGrid(
 
 ![Three panels of the same five sites: equal weights giving straight-line bisectors meeting at a Y junction, mixed weights bowing every one of those edges into a circular arc, and one site at weight 2.6 reducing its two lightest neighbours to complete circular discs](assets/spatial_geometry_examples/apollonius.png)
 
-In the middle panel those are arcs: they bulge *away* from the heavier site, and no amount of
-polygon machinery will produce them. The captions carry the check: at equal weights the diagram
-reports **16 straight bisectors and 0 arcs**, and at mixed weights **18 arcs and 0 straight**. Not "mostly" either way: the type of every piece is decided by an exact equality of
-weights, so the counts are all-or-nothing. Neither count is 20, the number of ordered site pairs: a
-bisector only becomes a boundary *piece* of a cell where it is actually the nearest tie, and with five
-sites several of the twenty pairs never surface.
+In the middle panel those are arcs: they bulge *away* from the heavier site, and no polygon
+construction will produce them. At equal weights the diagram reports **16 straight bisectors and
+0 arcs**, and at mixed weights **18 arcs and 0 straight**. The type of every piece is decided by an
+exact equality of weights, so the counts are all-or-nothing. Neither count is 20, the number of
+ordered site pairs: a bisector only becomes a boundary *piece* of a cell where it is actually the
+nearest tie, and with five sites several of the twenty pairs never appear.
 
-The third panel shows a cell that is not a ring at all. Raise one site to
-weight 2.6 and it does not merely take a larger share: **two** of its light neighbours end up
-*entirely enclosed*, and their cells are complete discs bounded by a single full-sweep arc. The heavy
+The third panel shows a cell that is not a ring at all. At weight 2.6 the heavy site does more than
+take a larger share: **two** of its light neighbours end up *entirely enclosed*, and their cells
+are complete discs bounded by a single full-sweep arc. The heavy
 site's own cell is then the region **outside** those two discs, which is why the diagram reports four
 full-circle pieces, two belonging to the enclosed cells and two to the cell enclosing them. It is a
 cell with holes, not a polygon, and not even simply connected.
 
 That is why `CellBoundary.toFLines(...)` returns **one `FLine` per piece rather than one per cell**.
-Joining them into a single path would be a lie about the topology. There is a closed form for the
-support: for two sites at `p_i`, `p_j` with weight ratio `k = w_j/w_i`, the Apollonius circle is
-centred at `(k² p_i − p_j) / (k² − 1)`, and that is asserted against `arc.support.center` on every
-build.
+Joining them into a single path would misrepresent the topology. The supporting circle has a closed
+form: for two sites at `p_i`, `p_j` with weight ratio `k = w_j/w_i`, the Apollonius circle is
+centred at `(k² p_i − p_j) / (k² − 1)`, which is what `arc.support.center` returns.
 
 ### Sweeping one site's weight
 
-Three still panels at three weights cannot show the bisector becoming a circle; the transition is
-between them. Here is the same construction with one number swept: site 1's weight, from 1.0 up to
-2.7 and back, eight seconds there and back.
+Three still panels cannot show a bisector turning into a circle, because that happens between
+them. Here is the same construction with one number swept: site 1's weight, from 1.0 up to 2.7 and
+back over eight seconds.
 
 Watch three things. First, only the edges that **touch site 1** bow. A bisector between two sites of
 *equal* weight stays exactly straight however heavy their neighbour gets, which is why the caption
@@ -254,17 +257,16 @@ heavy site.
 Second, those counts do not drift; they **jump**. The bulge grows until two of the light neighbours'
 cells pinch shut into complete discs (`enclosed` goes from 0 to 2 somewhere between weight 2.02 and
 2.45), and the total piece count *falls* when that happens, because a swallowed cell needs one
-full-sweep circle where it used to need several arcs and a line. The topology of the diagram is
-changing, not just its shape.
+full-sweep circle where it used to need several arcs and a line. The topology of the diagram
+changes along with its shape.
 
 Third, on the way back down the discs re-open and the arcs flatten, and at exactly 1.0 the whole
-diagram snaps back to straight lines. The snap is in the geometry, not in the drawing: the type of
-every boundary piece is decided by an *exact* equality of weights, so it is discontinuous there while
-the picture around it moves smoothly.
+diagram snaps back to straight lines. The type of every boundary piece is decided by an *exact*
+equality of weights, so the piece counts jump there while the picture around them moves smoothly.
 
-The sweep below is an `animate { }` reading `AnimationClock`, Field's frame model, described in
-[Frames and the animation loop](animation_time_model.md). Writing the sweep against the clock rather
-than against `frameNumber` is what makes the recorded clip identical on every build.
+The sweep below is an `animate { }` reading `AnimationClock`, described in
+[Frames and the animation loop](animation_time_model.md). Because it follows the clock rather than
+`frameNumber`, the sweep takes eight seconds however fast frames are drawn.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_geometry_examples/apollonius_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="apollonius-weight-sweep" alt="an Apollonius diagram of five sites with one site's weight rising from 1.0 to 2.7 and falling back, its straight bisectors bowing into circular arcs that grow until two neighbouring cells pinch shut into complete discs, then re-open and flatten"}
 :::static
@@ -321,9 +323,9 @@ animate {
 
 Three things to know about the implementation:
 
-- **It is aimed at modest site counts.** The construction is triple-nested over the sites — every
+- **It is aimed at modest site counts.** The construction is triple-nested over the sites: every
   bisector is intersected against every other, and each candidate piece is kept only if a midpoint
-  sample really is on the cell boundary. Dozens of sites, not thousands.
+  sample really is on the cell boundary. Use it for dozens of sites, not thousands.
 - **Unbounded pieces need a clip.** `LinePiece.toPolyline` throws without an `Aabb`, because a line
   running to infinity cannot be flattened. Clipping an *arc* can also cut it into several runs, which
   is why `ArcPiece.toPolylines` exists and returns a list.
@@ -335,15 +337,16 @@ approximate: it extracts patches by clipping a sampled surface mesh with the wei
 predicate, and its KDoc says it "prefers stable, wound boundary loops over exact symbolic patch
 topology". The exact 3D construction is the *unweighted* one, below.
 
-## A field, and the seam through it
+## Contours of a field
 
-The other kind of seam is a level set. `contours.kt` marches a `ScalarField2D` — a plain
-`(Double, Double) -> Double` — on a grid and stitches the crossings into polylines.
+The other kind of boundary is a level set. `contours.kt` samples a `ScalarField2D` (a plain
+`(Double, Double) -> Double`) on a grid with marching squares and stitches the crossings into
+polylines.
 
-The reason this belongs on the same page as Voronoi is that the two are the same idea at different
-resolutions: a Voronoi diagram *is* the set of ties in `argmin_i |x − p_i|`, and marching squares
-finds the ties in any scalar you like. Which also means you can get a soft, blobby Voronoi by
-contouring a difference of distances, and a hard one by triangulating.
+A Voronoi diagram is itself a level set: the set of ties in `argmin_i |x − p_i|`. Marching squares
+finds the level sets of any scalar you like, so you can get a soft, rounded Voronoi by contouring a
+difference of distances, and an exact one by triangulating. The example below does the first, then
+uses the same machinery to outline a stroke.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/contours.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
@@ -406,25 +409,25 @@ showPlaneGrid(
 ![Three panels: the Voronoi cells of six sites recovered as an iso-contour at 0.05, four nested iso levels shrinking each cell inwards, and a cubic FLine outlined by two tube radii](assets/spatial_geometry_examples/contours.png)
 
 The left panel contours `d₂ − d₁` at a *small positive* level, which recovers the Voronoi diagram of
-the six sites — **15 contours, 868 points** — from an entirely different algorithm than the panel two
-sections up. Contour the same field at **exactly zero** and you get nothing: **0 contours**, and that
-is correct. Marching squares locates *sign changes*, and `d₂ − d₁` is non-negative by construction
-(over that window its range is `1.6e-8 … 2.0`), so it touches zero along the seams and never crosses.
-A level set a field only grazes is invisible to a marcher, and a smaller epsilon will not rescue it.
-Every distance-gap, every absolute value, every `min`-of-distances field behaves this way, so ask a
-question the field can answer instead.
+the six sites (**15 contours, 868 points**) by a different algorithm from the Delaunay figure above.
+Contour the same field at **exactly zero** and you get **0 contours**, which is correct. Marching
+squares locates *sign changes*, and `d₂ − d₁` is never negative (over that window its range is
+`1.6e-8 … 2.0`), so it touches zero along the cell boundaries without crossing it. A marcher cannot
+see a level that the field only touches, and a smaller epsilon will not help. Every distance gap,
+absolute value or `min`-of-distances field behaves this way, so contour such fields at a small
+positive level instead.
 
 At 0.05 each cell comes back shrunk inwards by that margin. Raise the level further, as the middle
 panel does, and the cells shrink with **rounded** corners, because the field is smooth where three
-cells meet — a tessellation you cannot get by clipping half-planes at any tolerance. The contour count
+cells meet. Clipping half-planes cannot produce that shape at any tolerance. The contour count
 drops from 15 to 6 as the level rises: at 0.05 several cells still run out of the sampling window and
 arrive as open runs, while by 0.35 all six are closed loops entirely inside it.
 
 The right panel is the other entry point. `pointEdgeScalarField2D` builds a field from points and
-edges — or straight from an `FLine`, sampling its cubics — as the union of weighted discs and
+edges (or straight from an `FLine`, sampling its cubics) as the union of weighted discs and
 capsules, signed so that `iso = 0.0` is the tube boundary. `generateSmoothIsoContours` then fits cubic
-splines through the marched polylines, so what comes back is a smooth outline of a stroke and not a
-staircase. Raising the radius or lowering `iso` fattens it, and `pointRadius`/`edgeRadius` are
+splines through the marched polylines, so what comes back is a smooth outline of the stroke rather
+than a staircase. Raising the radius or lowering `iso` fattens it, and `pointRadius`/`edgeRadius` are
 separate knobs.
 
 To make a stroke *taper*, pass a `pointWeight` callback: `(nodeIndex, point) -> Double`, a multiplier
@@ -433,19 +436,19 @@ sample: integral at a `moveTo`/`lineTo` and interpolated across a `cubicTo`, the
 `FLine.uniform_linearize` hands the renderer to look up per-node colour. `line.isoWeights()` builds
 one for you out of `isoWeight` properties set on the nodes themselves, treating the nodes that set it
 as keyframes and ramping linearly between them. An edge's capsule always takes the *minimum* of its
-two endpoints' weights: a capsule has one radius for its whole length and so cannot taper, the taper
-is the union of densely sampled discs, and the minimum keeps a capsule from bulging out past the thin
-end it is feeding into.
+two endpoints' weights. A capsule has one radius for its whole length and so cannot taper; the taper
+comes from the union of densely sampled discs, and taking the minimum keeps a capsule from bulging
+out past the thin end it feeds into.
 
 ### Two decisions inside the marcher, and one rough edge
 
-Marching squares has exactly two decisions in it, and both are places where a plausible
-implementation is wrong without saying so.
+Marching squares makes two decisions, and a plausible implementation can get either one silently
+wrong. The figures below show how Field's marcher makes them.
 
 **A sample exactly at the iso level.** The natural test for "does this grid edge carry a crossing" is
-a strict sign change on both ends. It is also wrong: a sample landing *precisely* on `iso` is then
-neither inside nor outside, and the crossing on **every** edge out of that corner is suppressed. This
-is not exotic; it is what a symmetric field on a symmetric grid does constantly.
+a strict sign change between its ends. That test fails when a sample lands *precisely* on `iso`: the
+sample is then neither inside nor outside, and the crossing on **every** edge out of that corner is
+lost. A symmetric field on a symmetric grid does this all the time.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/grid_corner.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
@@ -513,19 +516,19 @@ showPlaneGrid(
 
 ![Three panels, each drawn over its own faint sampling grid: a straight vertical contour recovered from a 4x4 grid whose middle column of samples sits exactly on it, a closed 28-point circle recovered from a 16x16 grid that it passes exactly through at the four axis points, and the two branches of x*y = 0 on an 8x8 grid, of 8 and 10 points, each an elbow that turns inside the one cell containing the origin with the marcher's chosen pairing visible as a short diagonal across it](assets/spatial_geometry_examples/grid_corner.png)
 
-The parenthesised numbers in the captions are what the strict test returns. `f(x, y) = x` at
-`iso = 0` on a grid with an even cell count puts a whole column of samples on the level, and a strict
-test gives **no contour at all**; the unit circle at `nx = 16` passes exactly through a grid corner
-at each of the four axis points, and a strict test severs it into **four disconnected 6-point arcs**.
-Here they come back as one 5-point line and one closed 28-point loop whose perimeter is within a
-percent of 2π.
+The parenthesised numbers in the captions are what a strict sign-change test returns. `f(x, y) = x`
+at `iso = 0` on a grid with an even cell count puts a whole column of samples on the level, and a
+strict test gives **no contour at all**. The unit circle at `nx = 16` passes exactly through a grid
+corner at each of the four axis points, and a strict test cuts it into **four disconnected 6-point
+arcs**. Field's marcher returns one 5-point line and one closed 28-point loop whose perimeter is
+within a percent of 2π.
 
-The convention that gets there is the one `marchingCubes` in `mesh_sdf.kt` uses, one dimension down:
+It uses the same convention as `marchingCubes` in `mesh_sdf.kt`, one dimension down:
 a corner is inside iff its sample is **strictly below** `iso`, so "exactly at `iso`" is a definite
 side rather than a third state, and the crossing parameter is then clamped a thousandth of a cell off
 the endpoints so that the several edges out of such a corner do not all interpolate onto the corner
-itself. With `inside` two-valued, an odd number of crossings around a cell is impossible, an
-invariant rather than a rare degenerate case to handle.
+itself. With `inside` two-valued, a cell can never have an odd number of crossings, so there is no
+degenerate case left to handle.
 
 **The saddle cell.** When the four corners alternate inside/outside there are four crossings and two
 ways to pair them, and the two choices give *different topology*: either the inside region is
@@ -533,22 +536,23 @@ connected through the middle of the cell or the outside one is. Picking arbitrar
 sharing an edge can disagree, and the contour tears there. The resolution is the **asymptotic
 decider**: the cell's bilinear interpolant has exactly one saddle, at value
 `(s₀s₂ − s₁s₃) / (s₀ + s₂ − s₁ − s₃)` with every `s` measured from `iso`, and whichever diagonal pair
-of corners shares a side with that saddle is the pair the centre connects. It is a pure function of
-the cell's own four corner values, so the neighbour always agrees, which is the property the
-stitcher needs, and the one an arbitrary pairing cannot give.
+of corners shares a side with that saddle is the pair the centre connects. It depends only on the
+cell's own four corner values, so neighbouring cells always agree, which an arbitrary pairing
+cannot guarantee.
 
 The third panel is the case where the decider has nothing to say. `x·y = 0` is the two axes
 crossing, and a marcher cannot draw an X, so at the saddle cell it joins the four crossings in pairs
 and the zero set comes back as two right-angled branches meeting at the origin. But `x·y` is *itself*
 bilinear, so the cell's interpolant reproduces it exactly and the saddle value is exactly `iso`. Both
 pairings are equally correct, and the decider is looking at a numerator that is zero in exact
-arithmetic and ±10⁻²⁰ in doubles, which is to say at rounding. The tie is broken deterministically
-instead, and `nx = 8` gives **8 and 10** points. The two branches should not be equal: the sampling
+arithmetic and ±10⁻²⁰ in doubles, that is, at rounding error. The marcher breaks the tie
+deterministically instead, and `nx = 8` gives **8 and 10** points. The two branches are not
+expected to be equal: the sampling
 window is `[-1.05, 1.03] × [-1.02, 1.07]`, so the origin sits at cell `(4.04, 3.90)` and the two arms
 of the X are cut by the grid at different places.
 
-Where the decider *does* earn its keep is any cell whose saddle value is genuinely off `iso`, and what
-it reads there is the corner **magnitudes**, not their signs. Give one cell the values
+The decider matters in any cell whose saddle value is genuinely off `iso`, and there it reads the
+corner **magnitudes** as well as their signs. Give one cell the values
 `(−3, +1, −3, +1)`: the saddle is at `−1`, on the same side as the `−3` diagonal, so those two corners
 join through the centre and the crossings cut the two `+1` corners off. Now keep the same sign pattern
 and swap which diagonal is the deep one, `(−1, +3, −1, +3)`. Exactly the same corners are inside, but
@@ -559,13 +563,12 @@ long diagonals across one of the two cells where the decider draws short corner 
 There is a matching invariant in the other direction:
 **negating every corner value must leave the crossing exactly where it was.** `{f = 0}` and
 `{−f = 0}` are the same set of points, so a marcher that moved the curve would be reporting two
-different answers for one curve. It works out because the two flips cancel: negation swaps which
-corners are inside *and* flips the sign of the saddle value, and the decider compares the two. Both
-properties are asserted, with a control arm confirming that a strict-sign-change marcher fails the
-first.
+different answers for one curve. The two flips cancel: negation swaps which corners are inside
+*and* flips the sign of the saddle value, and the decider compares the two.
 
-Both halves of that, the decision and the tie, fit in one figure, because a single cell with four
-prescribed corner values is a complete input to `generateIsoContours`.
+The next figure shows both the decision and the tie. A single grid cell with four prescribed corner
+values is a complete input to `generateIsoContours`, so the top row feeds it the two cells above;
+the bottom row is `x·y` at two resolutions.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/saddle_decider.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
@@ -686,42 +689,34 @@ println("negating every corner value leaves the crossing put: $negationIsInvaria
 
 ![Four panels. Top left: a unit cell with two blue and two orange corner dots and two short green segments cutting off the pair of corners nearer the iso level. Top right: the same sign pattern with the deep diagonal swapped, and the two green cuts now isolating the other pair. Bottom left and right: the two branches of x times y equals zero over an 8x8 and a 32x32 grid, both showing the same elbow pairing at the origin](assets/spatial_geometry_examples/saddle_decider.png)
 
-The top row is the decider working. **The two cells have the
-same sign pattern**, the same two corners inside in both, and the crossings still land on
-opposite diagonals, because all that changed is which diagonal is the *deep* one and therefore which
-side of `iso` the saddle falls on. Nothing but the four corner values went in, so nothing but the four
-corner values can have decided it: that is the property that lets two cells sharing an edge agree
-about the crossing on it, and the one a fixed pairing cannot promise.
+In the top row the two cells have **the same sign pattern**, with the same two corners inside, and
+the crossings still land on opposite diagonals. All that changed is which diagonal is the *deep*
+one, and therefore which side of `iso` the saddle falls on. Only the four corner values decide the
+pairing, which is what lets two cells sharing an edge agree about the crossing on it.
 
-The box also prints the invariant from the other side: negating *every* corner value leaves the
-crossing exactly where it was. It has to, because `{f = 0}` and `{−f = 0}` are the same curve. And
-it does: negation flips which corners are inside *and* the sign of the saddle, and the decider
-compares the two.
+The box also prints the negation check: negating *every* corner value leaves the crossing exactly
+where it was, as it must, because `{f = 0}` and `{−f = 0}` are the same curve.
 
-The bottom row is the decider having nothing to say. Read the
-numerators in the captions: `-1.7e-21` and `0.0` are both *zero*, so the saddle is exactly on `iso`,
-the level set through that cell is an X meeting at a point, and both pairings are equally correct.
-Left to the numerator's sign the pairing would be decided by which way a multiplication rounded, and
-would flip with grid resolution, and on a numerator of ±10⁻²¹ between two runs of the same code on
-the same input. The two panels agree because the tie is settled by `SADDLE_TIE_RELATIVE_EPSILON`
-instead.
+In the bottom row the decider has nothing to go on. The numerators in the captions, `-1.7e-21` and
+`0.0`, are both *zero*, so the saddle is exactly on `iso`, the level set through that cell is an X
+meeting at a point, and both pairings are equally correct. Left to the numerator's sign, the pairing
+would depend on which way a multiplication rounded, and could change with grid resolution. The two
+panels agree because the marcher settles the tie with `SADDLE_TIE_RELATIVE_EPSILON` instead.
 
-**What is still rough:** the segment stitcher joins crossings by proximity and is O(*m*²) in the
+**The rough edge:** the segment stitcher joins crossings by proximity and is O(*m*²) in the
 number of segments, so a very high grid resolution gets expensive. `marchingCubes` avoids this
-entirely by keying shared vertices on grid-edge identity; the 2D marcher does not, yet.
+by keying shared vertices on grid-edge identity; the 2D marcher does not yet.
 
 ### Sweep the level through the saddle
 
-Everything above argues about a single cell. The reason that cell matters is what happens to the
-*whole* level set when the iso level crosses a saddle, and no still can show it, because the event is
-a change of topology at one particular level.
+The saddle cell matters because of what happens to the *whole* level set when the iso level passes
+through a saddle: its topology changes at that one level, which a still image cannot show.
 
-Two Gaussian bumps, then, and one number swept: the iso level, from 0.18 up to 0.78 and back. The col
-between the two peaks sits at **0.391** (the box computes it as `field(0.0, 0.0)` rather than taking
-it on trust) and is marked in orange. Below it there is **one** contour enclosing both peaks; above
-it there are **two**, one per peak; and the changeover is a single frame in which the marcher is looking
-at a cell whose four corners give it no unambiguous answer. Each contour is coloured by its index, so
-the merge is visible as a colour vanishing, not just as a number in the caption changing.
+This example uses two Gaussian bumps and sweeps the iso level from 0.18 up to 0.78 and back. The
+col (the low point of the ridge between the two peaks) sits at **0.391**, computed in the box as
+`field(0.0, 0.0)`, and is marked in orange. Below it there is **one** contour enclosing both peaks;
+above it there are **two**, one per peak. Each contour is coloured by its index, so you see the
+merge as a colour vanishing as well as in the caption's count.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_geometry_examples/iso_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="iso-level-sweep" alt="the level set of two Gaussian bumps as the iso level sweeps from 0.18 to 0.78 and back: one large loop enclosing both peaks pinches at the saddle marked in orange and separates into two loops, one per peak, then rejoins on the way back down"}
 :::static
@@ -783,11 +778,11 @@ animate {
 The last family asks the question the other way round: not "which part of the plane belongs to which
 point" but "which points belong together".
 
-**There is no k-means in Field, and that is deliberate.** Every algorithm in `clustering.kt` returns
-either a *hierarchy* or a centre that is meaningful for the data it summarises. A **medoid** is one of
-your own samples: the actual document, the actual frame, the actual brush mark. A **median** is
+**There is no k-means in Field, by design.** Every algorithm in `clustering.kt` returns either a
+*hierarchy* or a centre that is meaningful for the data it summarises. A **medoid** is one of your
+own samples: the actual document, the actual frame, the actual brush mark. A **median** is
 coordinate-wise robust. A k-means centroid is neither, and on a cloud with one outlier it is the one
-that moves. The three doors:
+that moves. The three entry points:
 
 ```diffstatic {data-lang=kotlin}
 val tree = vec2Agglomerative(points, AgglomerativeLinkage.WARD)  // the whole merge hierarchy
@@ -801,13 +796,11 @@ vec2KMedians(points, k, KMediansOptions(randomSeed = 11L))   // L1 Lloyd, robust
 
 Each of `Float`, `Vec2`, `Vec3` and `Vec4` has all three (`floatKMedoids`, `vec3Agglomerative`, …),
 and every result converts to a `ClusterLayer`, a name plus one integer label per sample, which is
-the currency the visualisers take.
+the form the visualisers take.
 
-A comparison needs data that can tell the things compared *apart*, and three well-separated Gaussian
-blobs cannot: every strategy below recovers them exactly, to four significant figures. So here is a
-cloud with exactly **one** thing wrong with it: three tight blobs of 28 points, and a
-single 85th point sitting nine units away from all of them. Nothing else is unusual. Watch what each
-strategy does with that one point.
+On three well-separated Gaussian blobs every strategy below gives the same answer, so the example
+adds one complication: three tight blobs of 28 points, plus a single 85th point nine units away from
+all of them. Watch what each strategy does with that one point.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/clustering.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="1080" padding="14"}
 :::fold plant three tight blobs of 28 — and one lone stray nine units out
@@ -879,55 +872,56 @@ showPlaneGrid(
 
 ![Four panels of the same 85-point cloud, all at one scale: the Ward cut at k=3 colouring the single far stray as a cluster of its own while two of the three tight blobs share a colour; the same tree cut at 6, where the stray is alone and the blobs are separate again; k-medoids, which absorbs the stray into its nearest blob and keeps all three whole; and k-medians doing the same with its three robust centres marked](assets/spatial_geometry_examples/clustering.png)
 
-**The four strategies do not agree, and each disagreement is the reason you would pick that strategy.**
+The four strategies disagree, and each disagreement is a reason to pick one over another.
 
 **Ward spends a whole cluster on one point.** The k=3 cut is **1 / 28 / 56**: the stray alone, one blob
-intact, and *two genuine blobs merged into one*. That is the objective doing its job. Agglomerative
+intact, and *two genuine blobs merged into one*. That follows from Ward's objective. Agglomerative
 Ward merges whichever pair raises the within-cluster sum of squares least, and merging clusters of
 `n₁`, `n₂` whose centroids are `d` apart costs `n₁n₂/(n₁+n₂) · d²`. Merging two 28-point blobs 2.408
 apart costs `14 · 5.80 = 81.2`. Absorbing the stray into its nearest blob (9.72 away) costs
-`28/29 · 94.5 = 91.2`. **91.2 > 81.2**, so the stray stays out and two real clusters pay for it. The
-whole mechanism is that one *squaring*: a point three times further away is nine times as expensive.
+`28/29 · 94.5 = 91.2`. **91.2 > 81.2**, so the stray stays out and two real clusters pay for it. It
+all comes from the *squaring*: a point three times further away is nine times as expensive.
 
-That prediction is testable, and it holds: the threshold should sit at `d = √(81.2 / 0.966) = 9.17`,
-and moving the stray inward, the cut flips from `1 / 28 / 56` to `28 / 28 / 29` between
-**d = 8.32 and d = 9.72**, the two sampled distances that bracket 9.17; that bracket is asserted.
+The same arithmetic predicts where the behaviour changes: at `d = √(81.2 / 0.966) = 9.17`. Moving the
+stray inward, the cut flips from `1 / 28 / 56` to `28 / 28 / 29` between **d = 8.32 and d = 9.72**,
+the two sampled distances that bracket 9.17.
 
-**k-medoids and k-medians both shrug the stray off, and they are the right answer here.** Both minimise
+**k-medoids and k-medians both absorb the stray, and here they give the right answer.** Both minimise
 a sum of *distances*, so that point costs 9.72 rather than 94.5, and absorbing it as one eccentric
-member of the nearest blob is obviously cheaper than tearing a real blob apart. Both return
+member of the nearest blob is much cheaper than splitting a real blob apart. Both return
 **28 / 28 / 29**, both recover all three planted blobs whole, and every medoid is still one of your own
 samples. Scored on one ruler, the L1 objective in the code above, Ward's cut costs **103.113** where
 k-medians reaches **55.383**: **1.86×** as much.
 
-**The hierarchy is still the only one of the four you can argue with after the fact.** Cut the *same
-tree* at 6 and you get **1 / 11 / 12 / 16 / 17 / 28**: the stray is a singleton,
-and the two blobs Ward merged at k=3 are separate again. Every planted blob is a union of k=6 clusters
-even though the k=3 cut cut across them. That cost nothing (no re-run, no re-seed, no new random
-number) because the finer cut is **nested** inside the coarser one. Which is the trade the family is
-really offering: k-medoids and k-medians give a better answer to the question you asked, and the
-hierarchy lets you discover you asked the wrong question.
+**The hierarchy is the only one of the four you can revisit after the fact.** Cut the *same tree*
+at 6 and you get **1 / 11 / 12 / 16 / 17 / 28**: the stray is a singleton, and the two blobs Ward
+merged at k=3 are separate again. Every planted blob is a union of k=6 clusters even though the k=3
+cut ran across them. That costs nothing (no re-run, no re-seed, no new random number) because the
+finer cut is **nested** inside the coarser one. So k-medoids and k-medians give a better answer to
+the question you asked, and the hierarchy lets you discover you asked the wrong question.
 
-Two more things:
+Two more things about `vec2KMedoids`:
 
-- **`vec2KMedoids` is Field's own, not Smile's.** Smile 5's `KMedoids` is CLARANS and floors an
-  internal `maxNeighbor` at `min(100, k·(n−k))`, reachable through no option, then rejects any value
-  above *n*, so for `k ≥ 2` it throws `IllegalArgumentException: Too large maxNeighbor: 100` for
-  every sample count below about a hundred. `clustering.kt` implements the alternating algorithm
-  instead, beside its k-medians, with D²-weighted seeding and `runs` restarts, so a `randomSeed`
-  makes it reproducible.
-- **It is O(n²) in memory**, because it precomputes the full distance matrix. Fine for the thousands;
-  not for the millions.
+- **It is Field's own implementation**, the alternating algorithm, beside the k-medians in
+  `clustering.kt`, with D²-weighted seeding and `runs` restarts, so a `randomSeed` makes it
+  reproducible.
+- **It is O(n²) in memory**, because it precomputes the full distance matrix. Fine for thousands of
+  points; not for millions.
+
+??? aside "Why not Smile's KMedoids"
+    Smile 5's `KMedoids` is CLARANS and floors an internal `maxNeighbor` at `min(100, k·(n−k))`,
+    reachable through no option, then rejects any value above *n*, so for `k ≥ 2` it throws
+    `IllegalArgumentException: Too large maxNeighbor: 100` for every sample count below about a
+    hundred.
 
 ### The linkage is the model
 
 One stray point was enough to separate the three *algorithms*. It is not enough to separate the seven
-`AgglomerativeLinkage` values, because all seven agree that a lone far point is its own cluster. What
-they disagree about is what a cluster is at all, and seeing that needs a shape rather than an
-outlier.
+`AgglomerativeLinkage` values, because all seven agree that a lone far point is its own cluster. They
+disagree about what a cluster is, and showing that needs a shape rather than an outlier.
 
-Two long parallel bands with a narrow gap and a few stragglers in it is the standard discriminator,
-because it separates the two rival definitions of "cluster". One is *connectivity*: a set of things
+The example uses two long parallel bands with a narrow gap and a few stragglers in it, a standard
+test because it separates the two rival definitions of "cluster". One is *connectivity*: a set of things
 each close to **something** in the set, which follows an elongated shape wherever it goes. The other
 is *compactness*: a set of things all close to **each other**, which prefers a blob and will break an
 elongated shape rather than accept it. Single linkage is the first; complete, Ward and the averages are
@@ -995,35 +989,27 @@ and the remaining straggler as a singleton. Every other linkage ignores the gap 
 *both* bands into three vertical slabs (pink, green, blue left to right) because for a compactness
 criterion a 10-by-0.3 band is not a cluster at all, and three slabs are rounder than two bands.
 
-A pixel census of two 780 x 40 strips through the `SINGLE` panel, one along each band, finds 9230
-pixels of one hue in the upper strip and 9064 of a *different* hue in the lower, with nothing else
-above noise, and 232 pixels of a third hue on the straggler. The same two strips through the `WARD` panel find all
-three hues in *both*: 3251 / 2676 / 1827 above and 3211 / 1957 / 1387 below. One linkage put a colour
-per band; the other put every colour in every band.
-
 Neither is the better setting. They answer different questions, and the gap in this data is
 narrower than the bands are long, so "close" genuinely means two different things here.
 
-The figure also declines to show the failure it was set up for. Single linkage's notorious weakness
-is *chaining*: a thin bridge of points lets it merge two groups that are nowhere near each other.
-This data has a bridge, three stragglers sitting in the gap, so the expected result is that
-dropping to `k = 2` lets the chain across and swallows everything. **It does not.** The number after
-the semicolon in `SINGLE`'s caption is the largest cluster at `k = 2`, and it is **43**, not 82: the
-third straggler joins the band it was already nearest, and the two bands stay apart.
+Single linkage is known for *chaining*: a thin bridge of points lets it merge two groups that are
+nowhere near each other. This data has a bridge, three stragglers sitting in the gap, and still the
+two bands stay apart at `k = 2`. The number after the semicolon in `SINGLE`'s caption is the largest
+cluster at `k = 2`, and it is **43**, not 82: the third straggler joins the band it was already
+nearest.
 
-Chaining needs a condition this data does not meet: the bridge has to be *denser than the groups it
-bridges*. Along a band the nearest-neighbour spacing is
-about 0.25; the shortest hop from a straggler to the far band is about 0.55. Single linkage merges the
-cheapest pair available at every step, so every within-band link is consumed long before any
-gap-crossing one, and there is no `k` at which the chain wins. Chaining is not a property of single
-linkage alone; it is a property of single linkage *and* a bridge sampled finely enough.
+Chaining happens only when the bridge is *denser than the groups it bridges*. Along a band the
+nearest-neighbour spacing is about 0.25; the shortest hop from a straggler to the far band is about
+0.55. Single linkage merges the cheapest pair available at every step, so every within-band link is
+used up long before any gap-crossing one, and there is no `k` at which the chain wins. It takes
+single linkage *and* a finely sampled bridge.
 
 The practical reading: reach for `WARD` (the default) when you want compact groups of similar size,
 `SINGLE` when you are looking for connected filaments and *want* to follow them, `COMPLETE` when one
 outlier must not be allowed to merge two real groups, and `AVERAGE` when you have no opinion.
 `CENTROID` and `MEDIAN` can produce *inversions* (a merge at a lower height than one of its children),
-so a dendrogram drawn from them is not monotone; that is a property of the method, not of this
-implementation.
+so a dendrogram drawn from them is not monotone. Every implementation of those two methods does
+this.
 
 There is also a `visualizeVec2ClusterLayers3D(points, layers)` (and `Vec3`/`Float` siblings, and
 `tree.visualizeVec2(2..6)`) which stacks several `ClusterLayer`s along one axis into a *3D* drawing
@@ -1046,13 +1032,16 @@ face.polygon                                // wound CCW along face.plane.normal
 cell.bounded                                // false if any face is a clip face or touches the box
 ```
 
-**And it is a different object from the 2D diagram, not a generalisation of it.** The two live in
-different files and the names do not warn you: a plane slice through a 3D Voronoi diagram is **not**
+**A 3D diagram is a different object from the 2D one.** The two live in different files and the
+names do not warn you: a plane slice through a 3D Voronoi diagram is **not**
 the 2D Voronoi diagram of the sites projected onto that plane. The slice's cells are bounded by the
 bisectors of *3D* distances, so a site far above or below the slice plane still owns territory in it, and two sites that look adjacent from above may not
 share a face at all. If what you want is the flat thing, you want
 [`graph_connectivity.kt`](graph_connectivity_examples.md) and `vec2VoronoiDiagram`, JTS-backed and
 exact, not this file.
+
+The figure slices a random 48-site 3D diagram, draws the 2D diagram of the same sites flattened
+beside it, and slices a cubic lattice whose answer is known in advance.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/voronoi3d_slice.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
@@ -1162,9 +1151,8 @@ println("interior cells that are bounded six-face cubes: $interiorCubes of ${cub
 
 ![Three panels at the same scale. Top left: an irregular tiling of convex polygons, the slice of a 3D Voronoi diagram. Top right: a visibly different irregular tiling of the same square with a yellow dot at each site, the 2D Voronoi diagram of the same points flattened. Bottom left: a two-by-two block of equal squares, the slice through the interior of a cubic lattice](assets/spatial_geometry_examples/voronoi3d_slice.png)
 
-Put the top two panels side by side and the point makes itself: same 48 points, same square, two
-different partitions, and neither is a distortion of the other. Both are correct; they answer
-different questions. The counts are the other half of it: only the *bounded* cells are drawn in the
+The top two panels show the same 48 points in the same square, partitioned two different ways.
+Both are correct; they answer different questions. Only the *bounded* cells are drawn in the
 slice, because an unbounded cell's clip-box faces are as big as the clip box and slicing them draws
 rays across the whole panel that say nothing about the tiling.
 
@@ -1174,26 +1162,24 @@ that as a measured boolean, every slice's bounding box within 10⁻³ of 1 × 1.
 plane actually passes through are drawn, and `z = 1.2` rather than `1.5`, because `1.5` is exactly
 the boundary between two layers of cells and would slice them degenerately.
 
-**How face membership is decided** is the 2D marcher's exact-iso corner wearing different clothes.
+**How face membership is decided** is the same problem as the 2D marcher's exact-iso corner.
 The obvious rule (a corner is on a face if it is within some tolerance of that face's plane) is wrong
 where four or more bisectors nearly meet, which happens whenever five sites are near-cospherical, and
 that is common: about a third of the interior cells of a 72-site random lattice have such a corner.
 The genuine corners near such a cluster are separated by *less* than any tolerance scaled off the
-point cloud, so every face passing near the cluster claims every corner in it. What that produces is
+point cloud, so every face passing near the cluster claims every corner in it. The result is
 a **T-junction**: a 4.5 × 10⁻³-long edge listed by four faces, and the two long edges radiating from
 its ends listed by one each. That is a hairline crack in any mesh built from those faces, and no weld
 tolerance repairs it, because the defect is a face claiming a corner that is not on it.
 
 Membership is instead **combinatorial**: a corner records which three planes produced it, and a face's
-polygon is exactly the corners recording that plane, the incidence information the distance test was
-trying to recover from geometry. A second pass adds a plane that passes through a corner within that
+polygon is exactly the corners recording that plane. A second pass adds a plane that passes through a corner within that
 corner's *own* uncertainty (from a first-order error bound on Cramer's rule), which is what handles
 exactly symmetric input, where seven bisectors really do meet at each corner of a cubic lattice cell.
 
-**The residual.** This is a `Float` clipper and the guarantee is not absolute. Over a sweep,
-**4 of 465 bounded cells** and **12 of 447 clipped cells** fail the strict closure check: every edge
-walked by exactly two faces in opposite directions. Those counts are pinned with `<=`, so they can
-improve but cannot regress silently. Cell volumes tile the clip box to 1 × 10⁻⁴ relative, and cells
+**Limits.** This is a `Float` clipper and the guarantee is not absolute. Over a sweep,
+**4 of 465 bounded cells** and **12 of 447 clipped cells** fail the strict closure check
+(every edge walked by exactly two faces in opposite directions). Cell volumes tile the clip box to 1 × 10⁻⁴ relative, and cells
 of a cubic lattice come out as exact unit cubes. If you are building a mesh from the faces, use
 `VoronoiCell3.toTriMesh(shrink)` / `VoronoiLattice.toTriMesh(...)` from
 [Meshes & 3D Geometry](mesh_examples.md), which is where the pictures of 3D cells live and where the
@@ -1235,7 +1221,10 @@ bridge does its own repair.
 
 ??? aside "How these figures are captured"
     The numbers the figures above carry are asserted in
-    `src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`.
+    `src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`, including the Apollonius circle
+    centres and the marcher's negation invariant, with a control arm confirming that a
+    strict-sign-change marcher fails the exact-iso case. The 3D closure-failure counts are pinned
+    with `<=` in `VoronoiFaceTopologyTest.kt`, so they can improve but not regress.
 
     A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of
     date, and that decision comes from a fixed digest list (`RUNNER_DIGEST_SOURCE_FILES` in
