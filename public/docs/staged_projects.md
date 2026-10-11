@@ -5,17 +5,18 @@ step takes a while and a mistake in an early one spoils everything after it: a b
 machine part. The starting point on this page is a level for a puzzle shooter-looter, small enough to
 build in seconds.
 
-The strategy, in one paragraph:
+The document is set up like this:
 
-- The document holds one editable source of truth, changed only through guarded tools: a tool
-  refuses an edit made against a revision that is no longer current.
-- Everything else is a derived build with recorded inputs, so a result is either current or visibly
-  stale. Every build reports what it measured, in notes the agent reads.
-- A measurement becomes a gate, a step the next stage waits behind, once it is trusted.
-- Rules the builds follow change only after a replay on real cases, with a case that must fail, and
-  only a person approves a change to a case's recorded outcome.
-- A corpus runs the same machine on many variants without a model, side by side.
-- The agent is asked to evaluate the results themselves, not only the checks.
+- One part of it is the source you edit, and it changes only through tools that check each edit: a
+  tool refuses an edit made against a revision that is no longer current.
+- Everything else is built from that source, with its inputs recorded, so a result is either current
+  or visibly out of date. Every build reports what it measured, in notes the agent reads.
+- Once you trust a measurement, you can make it a gate: a condition the next stage waits behind.
+- The rules the builds follow change only after they are replayed on saved cases, including one
+  that must fail, and only a person approves a change to a case's recorded outcome.
+- A corpus box builds many variants of the source the same way, side by side, without asking a
+  model.
+- The agent is asked to look at the results themselves, not only at whether the checks pass.
 
 ## Open the starting point
 
@@ -161,8 +162,8 @@ Ask the agent in any box's chat. It can read the brief in `guides/start-here.md`
 `loot.*` tools. When a stage takes minutes rather than seconds, it can end its turn and let Field
 wait for the build, as [Let AI4 Wait for Long Builds](ai4_long_builds.md) describes.
 
-The brief ends with the sentence that matters most: evaluate the results, not only the checks. An
-agent shown only checks works until the checks pass. Ask it what it sees in the paths and the
+The brief ends by asking the agent to evaluate the results, not only the checks, because an agent
+shown only checks stops working once they pass. Ask it what it sees in the paths and the
 placement, and look at them yourself.
 
 ## Make it yours
