@@ -215,19 +215,6 @@ object FieldMLMacroLayer {
             "asks a model for Kotlin and inserts it (ai_macro.kt:490); generated Kotlin, by definition",
         ),
         Route(
-            "propUp", Reach.NEEDS_KOTLIN,
-            "generates `var Box.<name> by ReactiveInheritance<T>(Reactive.UP)` plus Once/Why accessors " +
-                "(reactiveProps.kt); the pull runs upstream suppliers through ReactiveRuns, which FieldML has no form for",
-        ),
-        Route(
-            "propDown", Reach.NEEDS_KOTLIN,
-            "the same declarations with Reactive.DOWN (reactiveProps.kt): a write re-runs downstream readers",
-        ),
-        Route(
-            "propUpDown", Reach.NEEDS_KOTLIN,
-            "the same declarations with Reactive.UP_DOWN (reactiveProps.kt)",
-        ),
-        Route(
             "showMeshGrid", Reach.CALL_SHAPED,
             "@LabelsArgumentsFromSource: rewrites showMeshGrid(cube, ball) to showMeshGrid(\"cube\" to cube, " +
                 "\"ball\" to ball) — same callee, only the labels are added, so a FieldML call that passes " +
