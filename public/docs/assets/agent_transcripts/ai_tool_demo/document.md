@@ -26,7 +26,7 @@ public/docs/aiFeatures.md      — "Give the AI a tool of your own"
 dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not covered
 
 ```edn [field-box id="ai-tool-demo-minimal" role="properties"]
-{"id" "ai-tool-demo-minimal" "index" 0 "name" "Give the AI a tool — the whole mechanism" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Give the AI a tool — the whole mechanism" "_tombstone" false "frame" #afield/rect [60.0 60.0 620.0 700.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-minimal_code_.kt" "lines" 101 "characters" 4632 "sha256" "dc03b4ef9a50f6c7c1012aa4cf4973dfb9fab5fd3798a1997f814f72a77e2b4c"}]}
+{"id" "ai-tool-demo-minimal" "index" 0 "name" "Give the AI a tool — the whole mechanism" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Give the AI a tool — the whole mechanism" "_tombstone" false "frame" #afield/rect [60.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-minimal_code_.kt" "lines" 101 "characters" 4632 "sha256" "dc03b4ef9a50f6c7c1012aa4cf4973dfb9fab5fd3798a1997f814f72a77e2b4c"}]}
 ```
 
 ```kotlin [field-property box="ai-tool-demo-minimal" name="code" path="ai-tool-demo-minimal_code_.kt"]
@@ -153,7 +153,7 @@ This box builds a mesh, writes it somewhere the tools are allowed to read, and t
 them exactly as a model would. No API key, no model.
 
 ```edn [field-box id="ai-tool-demo-geometry" role="properties"]
-{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 700.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 80 "characters" 4054 "sha256" "6f980c3bf539b90fde0b770d7608064752727cfc6397b885a5ba48f9e7811e52"}]}
+{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 80 "characters" 4054 "sha256" "6f980c3bf539b90fde0b770d7608064752727cfc6397b885a5ba48f9e7811e52"}]}
 ```
 
 ```kotlin [field-property box="ai-tool-demo-geometry" name="code" path="ai-tool-demo-geometry_code_.kt"]
