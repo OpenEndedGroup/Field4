@@ -93,8 +93,8 @@ ui.pause(300)
 Each task card has a status line that updates by itself when a task finishes a run, writes a
 report or rebuilds the index.
 
-A task's run button starts the work and opens its inspection page in a new tab. Those pages are the
-subject of the rest of this section.
+A task's run button starts the work and opens its inspection page in a new tab. The pages linked
+above describe each one.
 
 ## Picking a tool
 
