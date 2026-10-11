@@ -1,24 +1,24 @@
 # Learn from a shader on the GPU
 
-The [learned shader](learned_shader.md) workflow can now train directly from a Field render target without exporting a pixel dataset. Your `moduleHere()` shader renders its normal image; a GPU pass samples that image, Slang differentiates a small network, and cooperative-vector operations accumulate its weight gradients. You can watch the approximation improve while editing the source.
+The [learned shader](learned_shader.md) workflow can train directly from a Field render target, with no exported pixel dataset. Your `moduleHere()` shader renders its normal image; a GPU pass samples that image, Slang differentiates a small network, and cooperative-vector operations accumulate its weight gradients. You can watch the approximation improve while editing the source.
 
 ![Source shader, GPU-trained approximation and absolute RGB error multiplied by eight](assets/gpu_shader_learning/comparison.png)
 
 ## Open the experiment
 
-Build the optional shaders with `./gradlew buildLearnedShaders`, then open **Starting points → gpu_shader_learning**. It needs enabled cooperative-vector **training**, not just inference. Field now uses the shared, checksummed **Slang 2026.19** compiler; the optional shader build uses that pin and makes it available to the existing Slang runtime. Explicit runtime compiler overrides retain their normal priority.
+Build the optional shaders with `./gradlew buildLearnedShaders`, then open **Starting points → gpu_shader_learning**. Your GPU and driver must support cooperative-vector training as well as inference. The shader build uses Field's pinned Slang compiler (2026.19); a Slang compiler you set explicitly still takes priority.
 
-The three panels are **source**, **learned output** and **absolute RGB error × 8**. The purple stripe sits in the middle of each source/learned panel: its two hard edges make a deliberately discontinuous target. Training visits thirteen normalized time values. Turning off **Learn on GPU** animates through intermediate values, so you can see how the fit interpolates. Select **1: Learned** with learning disabled to stop executing the teacher entirely. The learned texture remains available as `lab.model.output`.
+The three panels are **source**, **learned output** and **absolute RGB error × 8**. The purple stripe sits in the middle of each source/learned panel: its two hard edges are there to give the network something difficult to fit. Training visits thirteen normalized time values. Turning off **Learn on GPU** animates through intermediate values, so you can see how the fit interpolates. Select **1: Learned** with learning disabled to stop executing the teacher entirely. The learned texture remains available as `lab.model.output`.
 
 <video controls muted loop playsinline preload="metadata" src="assets/gpu_shader_learning/animation.mp4" width="1920" height="1080" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
-Edit the **fragment** property to change what is learned. Successful shader changes reset the fit in this Starting Point; a failed compilation retains the working shader. **Reset model and optimizer** restores the seeded initial weights and clears Adam's history. Uniform, texture, camera or other semantic changes are yours to reset explicitly.
+Edit the **fragment** property to change what is learned. In this starting point a shader that compiles resets the fit; one that fails to compile leaves the previous shader running. **Reset model and optimizer** restores the seeded initial weights and clears Adam's history. Changing a uniform, texture or camera does not reset anything; press reset yourself if the fit should start again.
 
 ![GPU learning, reset and checkpoint controls](assets/gpu_shader_learning/controls.png)
 
 ## Start with the shader you want to learn
 
-Here is the complete teacher **fragment** shader from the Starting Point, formatted for reading. This is the source to edit. `p.state.xy` holds the render target's width and height; `p.state.z` is the normalized training parameter, −1…1. The shader turns pixel coordinates into the same normalized x/y domain used by the learner.
+The shader being learned is called the teacher. Here is its complete **fragment** property from the starting point; this is the code to edit. `p.state.xy` holds the render target's width and height; `p.state.z` is the normalized training parameter, −1…1. The shader turns pixel coordinates into the same normalized x/y domain used by the learner.
 
 ```diffstatic {data-lang=glsl}
 :::fold Fragment interface
@@ -74,7 +74,7 @@ This is still a learned **(screen x, screen y, one parameter) → RGB** function
 
 ## Keep and reuse the result
 
-**Save frozen weights** writes a new directory under `build/shader-learning/`. Between frames, Field converts the driver-specific training matrices into the existing portable row-major layout, reads back the small model once, and writes `weights.f16` and a checksummed `weights.json`. Training and evaluation themselves have no CPU image or weight readback.
+**Save frozen weights** writes a new directory under `build/shader-learning/`. Between frames, Field converts the driver-specific training matrices into the portable row-major layout the offline learner also uses, reads back the small model once, and writes `weights.f16` and a checksummed `weights.json`. Training and evaluation themselves have no CPU image or weight readback.
 
 ```diffstatic {data-lang=kotlin}
 lab.model.save(File("build/my-fit-001"),
@@ -90,7 +90,7 @@ The saved model works through cooperative-vector inference or `cooperative=false
 
 ## What training actually does
 
-The network has the same fixed architecture as the existing learner: sixteen positional features, two 32-unit ReLU layers, and three linear RGB outputs. Slang's reverse-mode derivative computes the chain rule. The layer derivative uses real Vulkan cooperative-vector outer-product and reduction operations. Matrices use the queried training-optimal layout; FP32 master weights and Adam moments update FP16 published weights. Gradients accumulate in FP16 with fixed loss scaling. This is an inspectable small-function experiment, not a general model-training framework.
+The network has the same fixed architecture as the [offline learner](learned_shader.md): sixteen positional features, two 32-unit ReLU layers, and three linear RGB outputs. Slang's reverse-mode derivative computes the chain rule. The layer derivative uses real Vulkan cooperative-vector outer-product and reduction operations. Matrices use the queried training-optimal layout; FP32 master weights and Adam moments update FP16 published weights. Gradients accumulate in FP16 with fixed loss scaling. It is meant for fitting one small function you can inspect, and it is not a general model-training framework.
 
 ### The complete learning shader
 
@@ -206,7 +206,7 @@ Edit the teacher's **fragment** property to change the function being fitted. To
 
 ### Measured fit and cost
 
-Eight minibatches of 256 samples are a useful starting point. Every eighth hashed pixel is withheld from sampling; the GPU check additionally evaluates an entire image at time **0.173**, absent from the thirteen training slices. After 4,001 updates on the striped teacher, its RGB MSE fell from **0.350** to about **0.00186**. See the [measurement record](assets/gpu_shader_learning/measurements.json) for the measured training batch time and allocations. The checkpoint test compares reloaded inference with the live trained model; a first-step numerical test checks Adam's weights and both moments against a CPU calculation.
+Eight minibatches of 256 samples are a good default. Every eighth hashed pixel is withheld from sampling, and the measurement also evaluates an entire image at time **0.173**, absent from the thirteen training slices. After 4,001 updates on the striped teacher, its RGB MSE fell from **0.350** to about **0.00186**. See the [measurement record](assets/gpu_shader_learning/measurements.json) for the measured training batch time and allocations.
 
 The purple stripe is part of the learned function. Its sharp source edges become finite transitions in the approximation; the error panel makes them conspicuous. Within 0.02 normalized x units of either edge, RGB MSE was **0.0233**, versus **0.000974** away from those bands. The bands cover 3.96% of the image, and maximum individual channel error was **0.409**. A small whole-image average does not mean the discontinuity was reproduced exactly.
 
@@ -214,4 +214,4 @@ Eight 256-sample updates measured **0.188 ms median / 0.200 ms p95** in the reco
 
 These measurements include sample gathering, gradient clearing, differentiation, optimizer dispatches and their synchronization. They exclude the teacher render and full-resolution evaluation, which remain separate work. Float16 accumulation is not bitwise deterministic; the seed fixes initialization and sampled coordinates, not atomic summation order.
 
-No new NVIDIA SDK or Python worker is required for this training path beyond Field's existing optional Slang setup. The pinned RTXNS inference example remains separate; this shader uses Slang's built-in differentiation support. On devices without training support, [offline capture and training](learned_shader.md#train-on-your-own-modulehere-shader) remains available. Ordinary docs builds neither compile these optional shaders nor run the GPU experiment.
+This training path needs no NVIDIA SDK or Python worker beyond Field's optional Slang setup; the shader uses Slang's built-in differentiation rather than RTXNS. On a GPU without training support, use [offline capture and training](learned_shader.md#train-on-your-own-modulehere-shader) instead.
