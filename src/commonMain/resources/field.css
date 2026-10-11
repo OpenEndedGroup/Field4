@@ -2003,7 +2003,12 @@ body.field-pane-resizing-h * {
 }
 
 .field-slider .field-label {
-    flex: 0 0 auto;
+    /* One label width for every slider, so tracks start (and, at their fixed drawn length, end)
+       at the same x in every panel; long labels ellipsize with the full text as a tooltip. */
+    flex: 0 0 var(--field-slider-label-width, 96px);
+    width: var(--field-slider-label-width, 96px);
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--field-accent-text-soft);
     font-size: 11px;
     letter-spacing: 0.2px;
@@ -2303,12 +2308,18 @@ body.field-pane-resizing-h * {
 
 .vec2-shell .vec2-tl {
     top: 4px;
-    left: 6px;
+    left: 8px;
 }
 
 .vec2-shell .vec2-tr {
     top: 4px;
-    right: 6px;
+    right: 8px;
+}
+
+/* The readouts on the left read from the left edge (.field-value right-aligns by default). */
+.vec2-shell .vec2-angle,
+.vec2-shell .vec2-x {
+    text-align: left;
 }
 
 .vec2-shell .vec2-angle {
@@ -2596,7 +2607,9 @@ body.field-pane-resizing-h * {
 }
 
 .alpha-row .alpha-label {
-    flex: 0 0 auto;
+    /* Swatch (52px) + the row gap (12px) + this = a slider's label, so the alpha track starts
+       where every slider's track starts. */
+    flex: 0 0 calc(var(--field-slider-label-width, 96px) - 64px);
 }
 
 .alpha-row .field-value {

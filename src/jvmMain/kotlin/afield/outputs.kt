@@ -1229,8 +1229,8 @@ internal fun buildSliderHtml(
              data-padding="$padding"
              tabindex="0" role="slider" aria-label="${label.replace("\"", "&quot;")}"
              aria-valuemin="${minOf(min, max)}" aria-valuemax="${maxOf(min, max)}" aria-valuenow="$clampedValue"$ownAttributes>
-            <span class="field-label">$label</span>
-            <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
+            <span class="field-label" title="${label.replace("\"", "&quot;")}">$label</span>
+            <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet">
                 <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="slider-hitbox"></rect>
                 $ticks$zeroMark$defaultNotch
                 <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="slider-track"></line>
@@ -1543,7 +1543,7 @@ private fun buildColorPickerHtml(
                 <div class="alpha-column">
                     <div class="alpha-row">
                         <span class="field-label alpha-label">&alpha;</span>
-                        <svg class="alpha-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet"
+                        <svg class="alpha-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet"
                              data-view-width="$viewWidth" data-view-height="$viewHeight" data-padding="$padding">
                             <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="alpha-hitbox"></rect>
                             <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="alpha-track"></line>
@@ -1670,7 +1670,7 @@ private fun buildMeterHtml(
              data-view-width="$viewWidth"
              data-padding="$padding">
             <span class="field-label">$escaped</span>
-            <svg class="field-meter-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
+            <svg class="field-meter-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet">
                 <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="meter-track"></line>
                 <rect x="$padding" y="${centerY - 4}" width="$width" height="8" class="meter-fill"></rect>
             </svg>
