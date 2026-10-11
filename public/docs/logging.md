@@ -323,7 +323,7 @@ display("main", Table(
     .expect("depth", because = "two nested blocks cannot nest deeper than two") { (it as Int) <= 2 })
 ```
 
-Look at the footnote. The nesting is carried in an `indent` string kept separately for each
+The footnote shows how nesting is stored: it is carried in an `indent` string kept separately for each
 thread, and it holds one block UUID and a tab per level rather than spaces
 (`logger.kt:69#val added = "${u}\t"`). `PinnedConsole` parses those tokens back out to find
 which open block a line belongs to, which is what they are for. `StdoutLog` does not: it
