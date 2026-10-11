@@ -179,16 +179,15 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 ## What you hear on the other pages
 
 The mini-notation cards on [Patterns & Rhythm](pattern_language.md) play the Dirt-Samples drums.
-Some of the longer clips there, and on a few other pages, use the stand-in synth: noise-burst hats
-dense enough that a sampled hat would blur, and pitched lines whose checks need a clean tone.
+Some of the longer clips there, and on a few other pages, use the stand-in synth: its noise-burst
+hats stay distinct where a sampled hat would blur, and its pitched lines have a clean tone.
 
 Other pages use other voices. The effects on [DoughDSP Sound Examples](dough_dsp_sound.md) run on real
 signals, and [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) plays its own
 instruments. [Subharmonic Synthesis](subharmonic_sound.md) plays a new tone under three real
 sources: a synth bassline, Dirt-Samples drums and the dialogue of a 1968 film. The clips on
 [A pattern in space](pat_spatial.md) are the mono source before spatialisation and one binaural
-render through Steam Audio. The drums on
-[How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
+render through Steam Audio. The drums on [How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
 [Boolean network music examples](boolean_network_music_examples.md) are real Tidal samples.
 
 ---

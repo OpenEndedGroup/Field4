@@ -10,7 +10,7 @@ AI4 tools. This page is the layer underneath them: the ten verbs every study sha
 document's own box becomes a study with the same tools.
 
 Everything here is `afield.stdlib`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
-`SourceFramesStudy` in `SourceFramesStudy.kt`. Every picture on the page is a box's real output.
+`SourceFramesStudy` in `SourceFramesStudy.kt`.
 
 ## The ten verbs
 
@@ -284,8 +284,8 @@ join this card when their `runId` matches the build's job ID. Each link opens th
 existing review thread in its Field output, with evidence and replies. Open errors
 are red, open warnings amber and decisions cyan; closed discussions are grey and say
 **resolved**. Closing a discussion never changes the build verdict.
-Unlaunched review sources retain their historical findings and explain that the
-source must run before its viewer can open.
+Findings whose review source has not been launched are still listed, with a note that the source
+must run before its viewer can open.
 
 When an edit changes a stage's inputs, its latest attempt describes an earlier design. Its
 findings collapse to one grey line, such as "2 findings from an attempt with earlier inputs;
@@ -296,15 +296,14 @@ the inputs again, so its findings and failure come back.
 
 AI4 can discover the same runner with `ListStudyBuildsRequest`, inspect it with
 `InspectStudyBuildsRequest`, and start it with `StartStudyBuildRequest`, quoting the stage's current
-`fingerprint`. Starting returns a job ID immediately. `WaitStudyBuildRequest` observes that same
-job for up to 900 seconds and streams progress into chat during the wait. Agents can use
-`waitSeconds=600` for long work, leaving `afterUpdated` empty, so progress does not require
-repeated model turns. Completion returns early; `afterUpdated` can instead request an early
-return on a progress change. A wait timeout leaves the build running;
-wait again using the same job ID. Optionally supply `afterUpdated` from a previous response to
-return when progress changes. After completion, inspect the stage to check that its result is
-still current. **Queued** does not mean **built**, and an earlier successful build may no longer
-be current. Stopping an observation does not cancel the build. AI4 sees what the card shows:
+`fingerprint`. Starting returns a job ID immediately. `WaitStudyBuildRequest` follows that job for
+up to 900 seconds and streams its progress into the chat. For long work an agent can pass
+`waitSeconds=600` and leave `afterUpdated` empty: the wait returns when the build completes, so
+progress costs no extra model turns. To return at the next progress change instead, pass the
+`afterUpdated` value from a previous response. A wait that times out leaves the build running;
+wait again with the same job ID. Stopping a wait does not cancel the build. After completion,
+inspect the stage to check that its result is still current: **Queued** does not mean **built**,
+and an earlier successful build may no longer be current. AI4 sees what the card shows:
 an attempt against earlier inputs is marked `fromEarlierInputs`, and its findings are left out of
 `openFindings`, so the agent does not report them as current errors. The geometry notes behind
 those findings carry the same mark when the agent reads them with `ReadGeometryReviewsRequest`.
@@ -346,10 +345,10 @@ Warnings show **Current · Needs review**; `StudyBuildNoticeKind.ERROR` shows
 implying a problem. The same notes appear in native agent inspection and the completion stream.
 The adapter must be fast and pure: read the supplied record's retained facts, never the live
 design, and perform no build work. It also works over existing attempt history. A formatter
-failure exposes a review notice while preserving the result. These are explanations, not gates:
-they do not change fingerprints, acceptance, or dependency availability. Keep actual qualification
-requirements in build/input contracts. Stale results lose their current-result notices; their
-individual attempt inspections retain them.
+failure shows a review notice and keeps the result. Notes only explain: they do not change
+fingerprints, acceptance, or whether downstream stages can use the result. A requirement a result
+must meet belongs in the recipe or in a [gate](#wait-until-a-measurement-passes). A stale result
+drops its notes from the current-result view; inspecting that attempt still shows them.
 
 An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
 It cannot become the current result. Changing a dependency result or `recipeVersion` also
@@ -719,7 +718,8 @@ on the welcome screen's starting points) is this page as a document: `rings` def
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
 in order.
 
-`study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
-drives all ten verbs on a document's study through the same tool registry an agent calls, with no
-model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one registrar
-for the standard verbs".
+??? aside "Tests and design notes"
+    `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
+    drives all ten verbs on a document's study through the same tool registry an agent calls, with
+    no model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one
+    registrar for the standard verbs".

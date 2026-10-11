@@ -1,24 +1,17 @@
 # RectSL examples
 
-Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page, and every example is a whole program you can paste into a `#rectsl` box and start pulling apart. They come in order: array primitives that multiply one shape across a wall, then emitters that split and cascade, then the pattern language borrowed whole so a scene can be laid out by rhythm, then charts and plotted figures, and last the same scenes lowered into a single GLSL distance function. The host side is normal Field Kotlin calling `afield.rectsl.*`.
+Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page, and every example is a whole program you can paste into a `#rectsl` box and start pulling apart. The page starts with array primitives that multiply one shape across a wall, and emitters that split and cascade. Then come the same scenes lowered into a single GLSL distance function, the pattern language used to lay a scene out by rhythm, charts and plotted figures, and a longer gallery that covers the rest of the language. The host side is normal Field Kotlin calling `afield.rectsl.*`.
 
 ## Rendered gallery
 
 Unlike StackSL (a fullscreen fragment), a RectSL program is a whole *scene*: a
 wall, a duration, rectangles, animation tracks, groups, and StackSL materials. It
 compiles to a `SceneProgram`; each frame is sampled, lowered to a triangle mesh,
-and drawn through the shared `RECT_ANIMATION_VERTEX_SHADER` plus a
-StackSL-compiled material fragment (the same path as `RectSLRenderRunner`).
-`RectSLGalleryHarness` produces the whole gallery inside one Field document (one
-renderer, one graphics context), reading back a still per program at `stillTime`
-and sweeping each program's timeline to an mp4.
+and drawn with a StackSL-compiled material.
 
-The programs are not baked into the harness. Each is an editable file in a
-workspace at `assets/rectsl_gallery/` (`<name>_rectsl_.rectsl` plus a
-`<name>_metadata_.yaml` carrying `docOrder`/`stillTime`/`animate`). That workspace
-is also an openable Field document. In the offline viewer below you can browse,
-live-edit, run, and download every example on this page. A `window + renderer` box sets
-up the graphics context, and each example is a child of it, inheriting `renderer`
+Every example on this page is also a box in one Field document. In the viewer below
+you can browse, live-edit, run, and download each of them. A `window + renderer` box
+sets up the graphics context, and each example is a child of it, inheriting `renderer`
 and drawing its scene live:
 
 <iframe
@@ -29,12 +22,19 @@ and drawing its scene live:
   allowfullscreen>
 </iframe>
 
-The gallery directory is a declared build input of the `rectsl-gallery` and
-`rectsl-animations` render scenes (`FABRICATE_SCENE_INPUTS` in
-`public/fabricate_docs_scenes.py`), so editing or adding a `*_rectsl_.rectsl` file
-re-renders the stills and mp4s on the next docs build
-(`tools/build_zensical_docs.py`), and `tools/check_doc_assets.py` fails that build
-if a referenced clip was never rendered and committed.
+??? aside "How the gallery is rendered"
+    `RectSLGalleryHarness` renders the whole gallery inside one Field document (one
+    renderer, one graphics context), drawing through the shared
+    `RECT_ANIMATION_VERTEX_SHADER` (the same path as `RectSLRenderRunner`), reading
+    back a still per program at `stillTime` and sweeping each timeline to an mp4.
+    The programs live in the workspace at `assets/rectsl_gallery/`
+    (`<name>_rectsl_.rectsl` plus a `<name>_metadata_.yaml` carrying
+    `docOrder`/`stillTime`/`animate`). That directory is a declared build input of the
+    `rectsl-gallery` and `rectsl-animations` render scenes (`FABRICATE_SCENE_INPUTS` in
+    `public/fabricate_docs_scenes.py`), so editing or adding a `*_rectsl_.rectsl` file
+    re-renders the stills and mp4s on the next docs build, and
+    `tools/check_doc_assets.py` fails that build if a referenced clip was never
+    rendered and committed.
 
 <!--
 FIELD_TEST
@@ -137,7 +137,7 @@ material bloom '(
 A centered `grid` of fifty cells: `colc`/`rowc` place each cell symmetrically,
 a looping `->scale` oscillator makes them breathe, and `->delay-all-time` phased by
 Manhattan distance from the centre (`colc abs rowc abs +`) turns that breath into
-a concentric ripple: pure Fischinger *Studie*.
+a concentric ripple, in the manner of Fischinger's *Studien*.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -343,7 +343,7 @@ and `->face-travel`s so it points down its own trajectory.
 `->split` composes: because a shard's flight is authored around the origin in
 split-relative local time, a *nested* `->split` inside a shard's own modifiers just
 works: the grand-shard's split time adds onto its parent's, and it is born on the
-parent's split-point. That single fact turns one word into a fireworks cascade. An
+parent's split-point. So a nested `->split` is enough for a fireworks cascade. An
 off-centre mortar arcs up and bursts into a wide, gravity-drooped, `turbo`-tinted fan;
 then every shard splits *again* into a smaller self-orienting spray, at a
 per-shard-staggered time `2.2 + f·1.3`, so the secondary sprays ripple outward around
@@ -543,13 +543,15 @@ array fraction `f` inline, then multiplied by a looping oscillator:
 <img src="../assets/rectsl/rectsl-inline-functions.png" alt="inline Functions escape driving an array"
      style="width:100%;max-width:640px;border-radius:8px;">
 
-The escape compiles once (K2) and is invoked per copy. A headless render is a
-long-running graphics loop on the box's own Kotlin engine, and an escape cannot
-compile lazily on an engine that is mid-render. The harness therefore pre-warms every
-escape on a separate idle engine before drawing and then only invokes the cached
-lambdas. The CPU gallery smoke compiles escape-bearing files on an engine of its
-own too, for a milder reason: `jvm-main` is not a render loop, and the lazy
-synchronous compile path would have been safe there.
+The escape compiles once and is invoked per copy.
+
+??? aside "Escapes in the gallery harness"
+    A headless render is a long-running graphics loop on the box's own Kotlin engine,
+    and an escape cannot compile lazily on an engine that is mid-render. The harness
+    therefore pre-warms every escape on a separate idle engine before drawing and then
+    only invokes the cached lambdas. The CPU gallery smoke also compiles escape-bearing
+    files on an engine of its own, although `jvm-main` is not a render loop and the
+    lazy synchronous compile path would have been safe there.
 
 ### Evolving a distribution toward a target
 
@@ -677,8 +679,8 @@ The scene is an ordinary one. One animated template, six copies from
 ;
 ```
 
-Six rects, ten emitted curves, a 7.8KB fragment shader. Nothing in the scene text
-knows about any of what follows.
+Nothing in the scene text mentions distance fields: every look below is chosen on
+the host side.
 
 ### What each look does
 
@@ -744,8 +746,8 @@ answers for them.</figcaption>
 </figure>
 </div>
 
-The motion blur repays watching in motion. The streak is not a fixed smear; it
-tracks the velocity, which comes from a TCB spline the CPU solved once.
+In motion, the streak follows the velocity, which comes from a TCB spline the CPU
+solved once:
 
 <video src="../assets/rectsl/rectsl-sdf-motion-blur.mp4" poster="../assets/rectsl/rectsl-sdf-motion-blur.png"
        autoplay loop muted playsinline
@@ -781,30 +783,24 @@ resolution, and it could have blending, boolean ops, normals and motion blur too
 Visibility is *not* dropped. A rect gated to zero by `->appear`, `->vanish` or
 `->live` contributes no silhouette, exactly as it draws nothing on the CPU.
 
-### Checking the field against the CPU sampler
+The shader and the CPU sampler agree to about 1e-6 of a wall unit (`float` in the
+shader against `double` on the CPU). That holds for `->degrade` too, which is a 64-bit
+integer hash lowered into the shader rather than sampled: the GPU drops the same
+copies the CPU does. See [the cheatsheet's Fidelity section](rectsl_cheatsheet.md#fidelity)
+for how a 64-bit hash fits in a shader that has no 64-bit integers.
 
-None of the images above gets written unless the shader and the CPU agree. Before
-it draws any of the looks, the harness renders a *probe* shader — the same field,
-reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing it —
-reads the framebuffer back, and compares it against `program.sample(t)`, the same
-sampler the raster path draws from. `double` on the CPU against `float` in a
-shader agrees to about 1e-6 of a wall unit, which is what that difference is worth
-and not the ulp.
-
-The full report — every pass, its point count and its worst disagreement — is
-regenerated on each re-capture and committed beside the images as
-`assets/rectsl/rectsl-sdf-agreement.txt`. `dev_docs/RECTSL_SDF_AGREEMENT.md` has
-how the probe recovers the pixel→wall mapping and how a scene earns its place in
-the gallery spread.
-
-The most sensitive pass is the one that looks least like it. One of them is built
-from `->degrade` and a mini-notation pattern, and `->degrade` is a
-64-bit integer hash that is *lowered* rather than sampled. If the shader's hash
-disagreed with the CPU's by a single bit, a different set of rectangles would
-vanish: the disagreement would be the size of a rectangle, not 1e-6. Reading 1e-6
-there means every copy the CPU drops on that cycle is the copy the GPU drops. See
-[the cheatsheet's Fidelity section](rectsl_cheatsheet.md#fidelity) for how a 64-bit
-hash fits in a shader that has no 64-bit integers.
+??? aside "How the agreement is checked"
+    Before it draws any of the looks, the harness renders a *probe* shader (the same
+    field, reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing
+    it), reads the framebuffer back, and compares it against `program.sample(t)`, the
+    sampler the raster path draws from. No image is written unless they agree. One
+    pass is built from `->degrade` and a mini-notation pattern: a single-bit hash
+    mismatch there would show up as a disagreement the size of a rectangle. The full
+    report (every pass, its point count and its worst disagreement) is regenerated on
+    each re-capture and committed beside the images as
+    `assets/rectsl/rectsl-sdf-agreement.txt`. `dev_docs/RECTSL_SDF_AGREEMENT.md` has
+    how the probe recovers the pixel→wall mapping and how a scene earns its place in
+    the gallery spread.
 
 ### Open it
 
@@ -819,23 +815,23 @@ re-run; edit the `#rectsl` string and re-run.
 The array primitives above multiply a shape across *space*. This section multiplies it across
 *time*, by borrowing [Field's Tidal-inspired pattern language](pattern_language.md) whole.
 
-The bridge is thin rather than a translation because both languages are already the same shape
-underneath. A RectSL track is a pure function of time; so is a pattern:
+The two languages fit together with very little glue, because a RectSL track is a pure function
+of time, and so is a pattern:
 
 ```diffstatic {data-lang=kotlin}
 RectSL   interface Track<out T> { fun sample(t: Double): T }
 Pattern  class PatPattern<A>    { fun events(arc: PatArc): List<PatEvent<A>> }
 ```
 
-Neither simulates, and both answer any time in any order with the same value. Two consequences do
-all the work:
+Neither simulates, and both answer any time in any order with the same value. That gives two
+rules:
 
 - **A pattern is a track.** `sine ->alpha` needs no conversion word: the coercion happens at
   RectSL's single `Value → Track` site, upstream of *every* track-taking mutator (`->x`, `->rot`,
   `->w`, `->layer`, …) and every scalar operator. All of them take a pattern for free.
 - **An event is a life window.** A pattern event carries an onset and a real duration; `->live`
   wants exactly an onset and a duration. So `pat` is `array` indexed by rhythm instead of by
-  ordinal, and the mapping is exact rather than approximate.
+  ordinal, and each copy lives for exactly its event.
 
 So the whole mini-notation arrives intact (polymeter, Euclid, `<a b>` alternation, `?` degrade,
 `.` grouping, `@` elongation) without RectSL parsing a character of it. See the
@@ -856,7 +852,7 @@ wall, restarting at every bar line.
 The hats do the same across space: sixteen copies laid out by `array`, then thinned to a
 five-against-sixteen figure by `->euclid`, with the whole ring turned by `saw` — a pattern read as
 a rotation track. The accent is `->every 4`: one white flash that only fires on the fourth bar,
-which is the thing a loop cannot do and a groove must.
+so the four bars are not all the same.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -916,14 +912,12 @@ end
 
 Read the last two blocks together: `"bd*4"` and `"bd [sd sd] hh*4"` are the same notation, and
 `pat` and `strip` are the same reproduction. One spends the subdivision on *when*, the other on
-*where*. That is "visual music" read literally rather than metaphorically, and it is why
-mini-notation belongs on the geometry side at all.
+*where*.
 
 ### Variation operators
 
-Repetition is cheap; repetition that *differs* is what reads as alive. These are the operators
-that make bar `n+1` unlike bar `n`, and they are worth reaching for even on material that has
-nothing to do with rhythm.
+These operators make bar `n+1` unlike bar `n`. They are useful on material that has nothing to
+do with rhythm, too.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -960,8 +954,7 @@ nothing to do with rhythm.
 </video>
 
 `swing` delays every second subdivision of a `2n` grid in **exact rational time**, so a swung
-figure is still perfectly quantised, just not straight. That is the difference between swing and
-jitter, and why it lives in the pattern language rather than in a random offset.
+figure is still perfectly quantised, just not straight, unlike a random jitter.
 
 ### Signals, stepped and smooth
 
@@ -1757,12 +1750,14 @@ end-group
 
 ## Operator coverage — the rest of the language
 
-The gallery above is chosen for beauty; the clips below are chosen for *coverage*. Together
-they exercise every operator in the [cheatsheet](rectsl_cheatsheet.md) at least once, and
-`checkCheatsheetCoverage` in `RectSLExamples.kt` fails if that ever stops being true, treating
-aliases (`add`/`+`, `lte`/`<=`, `clone`/`copy`, …) as one. It needs the Kotlin compiler and the
-gallery workspace, so it runs as the `rectsl.examples.smoke` field test rather than under
-`./gradlew check`. Its programs live in the same `assets/rectsl_gallery/` workspace as the rest.
+The clips below fill in the rest of the language: together with the gallery above they use
+every operator in the [cheatsheet](rectsl_cheatsheet.md) at least once.
+
+??? aside "The coverage check"
+    `checkCheatsheetCoverage` in `RectSLExamples.kt` fails if some cheatsheet operator stops
+    appearing in an example, treating aliases (`add`/`+`, `lte`/`<=`, `clone`/`copy`, …) as
+    one. It needs the Kotlin compiler and the gallery workspace, so it runs as the
+    `rectsl.examples.smoke` field test rather than under `./gradlew check`.
 
 ### Easing ladder
 
@@ -2086,6 +2081,9 @@ material chip '(
 </video>
 
 ## Rendering JPG frames
+
+To write a program out as a JPG sequence, give `RectSLRenderRunner` the pixel scale,
+frame rate and output folder, and run it inside `frames {}`:
 
 ```diffstatic {data-lang=kotlin}
 import afield.rectsl.*

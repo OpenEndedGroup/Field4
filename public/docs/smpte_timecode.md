@@ -18,7 +18,7 @@ A `Timecode` is a frame count at a `TimecodeRate`: `FPS_24`, `FPS_25`, `FPS_30`,
 29.97 frames a second with drop-frame labels. Adding and subtracting frames is integer arithmetic on
 the count; the hours, minutes, seconds and frame fields are worked out from it.
 
-Drop-frame needs that care. NTSC video runs at 30000/1001 frames a second, slightly slower than 30,
+Counting frames this way is what makes drop-frame simple. NTSC video runs at 30000/1001 frames a second, slightly slower than 30,
 so a clock that labelled 30 frames a second would fall 3.6 seconds behind the wall each hour.
 Drop-frame keeps up by skipping the labels `;00` and `;01` at the start of every minute except every
 tenth minute. No frames are dropped, only labels. A `;` before the frames marks a drop-frame
@@ -135,7 +135,7 @@ cleanly. Played backwards, frames come out in descending order with `reverse` se
 noise from producing a frame: the polarity bit makes every genuine frame's count of ones even, and a
 frame's 80 bits must be evenly spaced.
 
-!!! note "LTC does not say whether it is 24, 25 or 30 fps"
+!!! note "Tell the decoder the frame rate"
     The bits carry a drop-frame flag and nothing else about the rate. Pass the rate to
     `LtcDecoder(sampleRate, rate)` when you know it. Without one it guesses from the measured bit
     length, which is right only when the source plays at close to real time: 24 and 25 fps are 4 %

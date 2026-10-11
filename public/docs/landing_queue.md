@@ -12,14 +12,8 @@ uv run python tools/land.py enqueue
 
 That queues the current branch at its current commit and returns immediately. You can go back to
 work; the lander will merge it, regenerate the generated artifacts, run the full guard once, and
-fast-forward `main`, or bounce it back with a reason.
-
-## Why a queue
-
-Before the queue, every agent landed its own work: merge `main`, run about 45 minutes of guards,
-discover that `main` had moved in the meantime, merge again, run the guards again. With a dozen
-sessions doing this at once they mostly collided with each other. Now only the lander writes to
-`main`, so there is nothing to race against and nobody has to wait around for their own landing.
+fast-forward `main`, or bounce it back with a reason. Because only the lander writes to `main`,
+branches never race each other to land, and nobody has to wait for their own landing.
 
 ## Watching it
 
@@ -85,12 +79,11 @@ enqueue again, and re-enqueueing keeps the branch's place in the queue.
 
 ## The fixer
 
-Most bounces are small: a count nobody updated, a citation pointing at a function that moved, a
-KDoc above the wrong declaration. Fixing one takes a minute, but the bounce costs much more: the
-agent that wrote the branch has to notice, fix, and enqueue again, and in a batch the lander first
-spends an hour halving its way down to the culprit.
+Many bounces are small slips: a count nobody updated, a citation pointing at a function that
+moved, a KDoc above the wrong declaration. When a round goes red, the lander hands the failure to
+`claude -p` before it bounces anything, so a slip like that can be fixed without sending the
+branch back and halving the batch to find it.
 
-So when a round goes red, the lander hands the failure to `claude -p` before it bounces anything.
 The fixer works in the lander's own worktree, on the exact tree that failed, with the build still
 warm. It decides whether the failure is a mechanical slip that one branch plainly made. If it is,
 it makes the smallest edit that fixes it and re-runs just the check that failed. If the failure is
@@ -113,9 +106,9 @@ Every attempt, fixed, declined or rejected, is a line in `fixer.jsonl` in the qu
 the most recent ones go back into the fixer's prompt. `FIELD_LAND_FIXER=off` in the lander's
 environment turns the fixer off, and `FIELD_LAND_FIXER_MIN` changes its time limit.
 
-To fix a bounce yourself, fix the branch, commit, and enqueue again. To bring `main` into your branch while
-you work, use `tools/merge_regen.py main`, which regenerates generated files instead of making you
-hand-merge them.
+To fix a bounce yourself, fix the branch, commit, and enqueue again. To bring `main` into your
+branch while you work, use `tools/merge_regen.py main`, which regenerates generated files
+instead of making you hand-merge them.
 
 ??? aside "Where the queue lives"
     The queue is plain JSON files in the clone's common git directory

@@ -140,8 +140,8 @@ slowly still. `brush.set(...)` changes how the hairs behave:
   set straightens again;
 - `cohesion`, 0..1, how strongly the liquid in a full brush draws neighbouring tips together.
 
-The values are estimates for hair and hog bristle; none of them is limited to a range beyond what
-makes sense physically (friction can't be negative, cohesion is a share).
+The defaults are estimates for hair and hog bristle. Any value that makes physical sense is
+accepted: friction can't be negative, and cohesion is a share.
 
 Below, two hog flats loaded the same way and drawn along the same line at the same light pressure.
 The lower one was first scrubbed hard back and forth for a few seconds. Its bristles have taken a

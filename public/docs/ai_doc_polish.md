@@ -47,10 +47,6 @@ declaration retires its record, and bumping `COMPLETION_DOC_PROMPT_VERSION` reti
 at once. Drafts the pass declined are listed by key in
 `generated_completion_docs.declined.json` beside the cache.
 
-??? aside "Before the docs pass"
-    Polishing used to be its own Gradle task, `polishCompletionDocs`, with a page at
-    `/completion-doc-polish.html`. It wrote into the running checkout with no review or landing
-    step, and nothing it learned reached the next run. Moving it into the revision pass gave it
-    worktrees, memories, questions and `tools/land.py`. The comparison is in
-    `dev_docs/agents/COMPLETION_DOC_POLISH_DESIGN.md`. This page has no capture of the docs pass
-    page yet.
+??? aside "Design notes"
+    Why polishing runs inside the revision pass, rather than as a task of its own, is in
+    `dev_docs/agents/COMPLETION_DOC_POLISH_DESIGN.md`.

@@ -18,12 +18,11 @@ live, given that both the CPU and the GPU write it? What is it before frame one?
 "current", and how does a second box find out? And when the force law itself is the thing you are
 editing, how do you change it without stopping?
 
-This page answers those. Most of the answers are decisions rather than code, and most of them only
-have one workable shape.
+This page answers those. Most of the answers are decisions rather than code.
 
-The running example is `dev_docs/agents/transcripts/gpu_state.yaml`: three boxes, 40,000 particles held
-on a noise field, a force law you can retype while it runs, and a GPU-side histogram of speed. It is
-[the last section](#open-it) if you want to open it before reading about it.
+The running example is the [gpu_state](agent_transcripts.md#gpu_state) starting point: three boxes,
+40,000 particles held on a noise field, a force law you can retype while it runs, and a GPU-side
+histogram of speed. [The last section](#open-it) says how to open it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/particle-field.png" capture="native-window" native-wait-frames="1500" embed=true hidden=true force=true timeout="150" duration="0" name="gpu-state-field" alt="40,000 GPU particles held on a noise field, warm where the field is fast and cool where it is slow, with density voids where it diverges" macro-file="../../dev_docs/agents/transcripts/gpu_state.yaml" capture-box="gs_renderer"}
 // Built and launched from dev_docs/agents/transcripts/gpu_state.yaml
@@ -50,8 +49,7 @@ var inData = defaultBuffer { size = N.vec4s }.buffer
 It is a good default: `defaultBuffer` gives you a buffer that is host-visible, usable as a storage
 buffer, and addressable by `buffer_reference`
 (`src/jvmMain/kotlin/afield/four/buffers/magic.kt:25#fun defaultBuffer`). On a machine with resizable
-BAR everything can be all three at once, which is why one line has been enough for every example so
-far.
+BAR a buffer can be all three at once, so for most examples one line is enough.
 
 It is enough right up until you have four buffers instead of two, and they are not alike. Inside the
 block you can say what this particular buffer is *for*, and the vocabulary is small:
@@ -75,8 +73,7 @@ All five are members of the buffer block, in the order above:
 `src/jvmMain/kotlin/afield/four/buffers/magic.kt:136#fun streamReads` and
 `src/jvmMain/kotlin/afield/four/buffers/magic.kt:126#fun readOccasionallyForDebugging`
 (`zeroInit()` and `debugReads()` are aliases for the last two). None is more than half a dozen lines:
-each sets an access pattern and some memory-property bits, and the whole residency vocabulary is
-short enough to read in one sitting.
+each sets an access pattern and some memory-property bits.
 
 Each one is a claim about who writes the buffer and how often, and the wrong claim is a real cost paid
 every frame. `streamReads()` exists because a readback out of write-combined memory on an NVIDIA card
@@ -135,10 +132,11 @@ frame one integrates from.
 
 Run the example with `listOf(stateA)` in that loop and the picture survives it. Every particle spends
 frame one at the origin, the restoring force in this scene pulls each one back to its anchor, and
-after that the two runs are not merely similar, they are on the same trajectory:
-`dev_docs/GPU_STATE_MEASUREMENTS.md` has what the probe read from each of them.
+after that the two runs are not merely similar, they are on the same trajectory
+([`GPU_STATE_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GPU_STATE_MEASUREMENTS.md)
+has what the probe read from each of them).
 
-Which makes it worse, not better. A bug whose only symptom is one bad frame at startup is a bug that
+That makes the bug worse, not better. A bug whose only symptom is one bad frame at startup is a bug that
 hides, and it hides here only because this scene has a spring in it that forgets its initial
 condition. Take the spring out (a pure advected flow, a cloth with no rest length, anything
 accumulating into a history buffer) and nothing forgets it: frame one's zeroes stay in the
@@ -275,12 +273,11 @@ Three things in that program repay a second look.
 
 **`fbm4`, and not `fbm`.** StackSL's plain `fbm` is two-dimensional. It lowers to `fbm(vec2)` over
 `coord.xy + coord.zw * 0.07`, so a single call fed a 3D position gives you a field in *(x, y)* with
-*z* entering at a fourteenth of the weight of *x*: a shear, not a third dimension. The workaround
-people wrote before there was an alternative was to sum three sheared slices, *f(x,y) + f(y,z) +
-f(z,x)*, which costs three `fbm`s and is still three 2D fields rather than one 3D one. StackSL now
-has a genuinely volumetric family instead — `noise3`, `fbm3`, `fbmd3`, `warp3`, `curl3`, `worley3`,
-`noise4` and `fbm4`, which read `input.xyz`, or the whole `vec4`, as a real coordinate. The [StackSL Cheatsheet](stacksl_cheatsheet.md) has the table; in new code, reach
-for those.
+*z* entering at a fourteenth of the weight of *x*: a shear, not a third dimension. Summing three sheared slices, *f(x,y) + f(y,z) + f(z,x)*, costs
+three `fbm`s and is still three 2D fields rather than one 3D one. Use the volumetric family instead
+(`noise3`, `fbm3`, `fbmd3`, `warp3`, `curl3`, `worley3`, `noise4` and `fbm4`), which reads
+`input.xyz`, or the whole `vec4`, as a real coordinate. The
+[StackSL Cheatsheet](stacksl_cheatsheet.md) has the table.
 
 `fbm4` rather than the three-dimensional `fbm3` because this field has to move. The shader hands the
 program `vec4(anchor, pc.knobs.x)` — position in `.xyz`, the clock in `.w`, which is StackSL's own
@@ -300,7 +297,7 @@ one 2D `fbm` and nothing else, and no other line changed anywhere:
 A scalar `fbm` broadcast to all three components is the same push on every axis, so every particle
 moves along the same diagonal, by an amount that varies in only two of the three. The disc does not
 become a noisier disc; it collapses into folded sheets with hard creases where the shear reverses, and
-the whole thing is dragged bodily off-centre. The drag is the second thing.
+the whole thing is dragged bodily off-centre. The drag comes from a bias, which is the next point.
 
 **Nothing in the program corrects a bias.** `fbm`'s five octave amplitudes sum to 0.96875 rather than
 1, so a raw 2D `fbm` runs 0 to 0.96875 and the usual `0.5 -` leaves about −0.016 per channel. A
@@ -309,9 +306,9 @@ it is a cloud leaving the window — the figure above is what that looks like wi
 the restoring force too weak to hold it. Every fractal word in the `3` and `4` family accumulates
 its amplitude sum in the shader and divides it out
 (`src/jvmMain/kotlin/afield/stacksl/VolumetricNoise.kt:330#fun fbm4`), so `fbm4` is exactly `0..1`
-for any octave count, lacunarity and gain, and `0.5 -` is unbiased. A `1.032258` — that is
-`1 / 0.96875` — belongs only in front of a 2D `fbm`, and the better reason to prefer the family is
-that the constant stops being something you have to know.
+for any octave count, lacunarity and gain, and `0.5 -` is unbiased. A correction of `1.032258`
+(`1 / 0.96875`) belongs only in front of a 2D `fbm`; with the family there is no constant to
+remember.
 
 **`>c` and not `=c`.** A definition must consume its input and leave its result. `=name` copies
 (`a -- a`), `>name` moves (`a --`); opening `vfield` with `=c` leaves the input underneath the result,
@@ -378,8 +375,7 @@ thing and you would never leave it switched on.
 It ships as a starting point, so the shortest route is the welcome screen, or open the document
 directly:
 
-[Open ↗](offline.html?file=assets/agent_transcripts/gpu_state/metadata.edn), or open
-`public/docs/assets/agent_transcripts/gpu_state/metadata.edn` from a Field workspace.
+[Open ↗](offline.html?file=assets/agent_transcripts/gpu_state/metadata.edn).
 
 Three boxes appear and a window opens. The knobs worth turning, in the order they teach something:
 
@@ -395,13 +391,12 @@ Three boxes appear and a window opens. The knobs worth turning, in the order the
   `input xyz 2.0 * fbm x 0.5 - 8.0 *` — one 2D `fbm` over a 3D position — and watch the disc collapse
   into the stripes the figure above shows.
 - **Name a definition after a builtin and it refuses.** `: fbm3 … ;` does not shadow `fbm3`, it is an
-  error: `Definition 'fbm3' shadows a built-in StackSL word`. That is how the three-slice version of
-  this program stopped compiling the day the volumetric family landed, so if you are retyping that
-  workaround to see it, give the word a name of your own.
+  error: `Definition 'fbm3' shadows a built-in StackSL word`. If you retype the three-slice sum to
+  compare it, give the word a name of your own.
 - **`sim.knobs`**, whose `.x` is the clock the noise walks through and `.y` the force gain. Both are
   lambdas, so both are live.
 
-Agents replaying this headlessly want the transcript rather than the document:
+To replay it from a script without the browser, run the transcript through the backdoor:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py --port 9483 --graphics-context \
@@ -409,7 +404,7 @@ python3 tools/field_backdoor.py --port 9483 --graphics-context \
   --command "transcript run gpustate"
 ```
 
-`dev_docs/assets/gpu_state/README.md` lists every knob and what each one does to the picture.
+The example's [README](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/assets/gpu_state/README.md) lists every knob and what each one does to the picture.
 
 ## Where to go next
 

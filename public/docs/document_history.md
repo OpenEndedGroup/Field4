@@ -143,9 +143,6 @@ can briefly read `0 boxes`.
 - **name this version** labels the selected version (`#12 before the refactor`); named versions
   are listed in the sidebar, and the [History Lens](history_lens.md) shows the same labels.
 
-To follow one line or selection back through its versions without leaving the editor, use the
-[History Lens](history_lens.md).
-
 ## Where versions come from
 
 History is read from files in the document's folder:

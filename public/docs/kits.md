@@ -1,4 +1,4 @@
-# Give Many Documents the Same Machine
+# Kits for Many Documents
 
 When several documents are the same kind of thing, such as levels of one game or variants of one
 design, they share their working parts: the boxes that do the work, the rules those boxes follow,
@@ -162,7 +162,7 @@ If a role fails to run, the migration stops there and the document still records
 Fix the role in the kit, rehash, and migrate again: what was already installed matches the kit and is
 left as it is.
 
-## What a migration refuses, and why
+## When a migration refuses
 
 A migration compares three versions of each part: the one the document recorded when it was last
 migrated, the one the document holds now, and the kit's. If the document holds the recorded version,
@@ -228,7 +228,7 @@ level-one: kit level-kit dad7f4dc -> 9ac4aa45
 
 AI4's `InspectKitRequest` tool reports the same thing as the card: the kit, the recorded revision,
 the kit's revision now, and each part that differs and what a migration would do with it. It changes
-nothing. Ask the agent whether the document is up to date with its kit before relying on a provider
+nothing. Ask the agent whether the document is up to date with its kit before relying on its boxes
 behaving as the kit describes.
 
 ## Pin the code a kit depends on
@@ -265,13 +265,3 @@ builds, and [Let AI4 Wait for Long Builds](ai4_long_builds.md).
     directories written as `~/kits` and `~/.afield/templates`; the script fails when the page quotes
     anything else.
 
-??? aside "What the kit design learned from an earlier one"
-    A private project ran a kit like this across seven documents before it moved into Field. Two of
-    its lessons shaped this page. Hashing a whole provider file to fingerprint its builds made every
-    edit to that file, even to a read-only tool in it, mark every document's builds stale; fingerprint
-    the classes that do the build's work instead (`classIdentity`, and `RuntimeIdentity` for code
-    outside the kit). And an identity that pinned a native library by its path failed the day the
-    project moved to another worktree on 2026-10-08, although the library was the same; `RuntimeIdentity`
-    keeps the path only to say where a mismatched library came from. A frozen baseline that nothing
-    upgraded went stale the next day: every document's copy predated a rule the kit had gained, and
-    the check rejected every candidate that used it. A migration now replaces frozen copies.
