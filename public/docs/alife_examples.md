@@ -19,15 +19,16 @@ graph-rewriting half lives in [`growing.kt`](reference/data.md#growing-kt) and
 decaying graph with it is [graphs that change while you
 watch](dynamic_graph_systems_examples.md).
 
-Almost any local rule applied to noise looks organic, so **every claim on this page is a number with
-a control arm beside it that gets the number wrong**. A glider's every live cell is displaced by
-exactly `(1, 1)` after four generations, and the same seed under a rule one birth-count away is
-displaced by nothing at all. A flock of 400 agents reaches a polarization of 0.69 where 400
-independent headings would give 0.044, and the same initial state with the alignment term zeroed
-reaches 0.073.
+Almost any local rule applied to noise looks organic, so each example here prints a measurement
+beside a *control*: the same setup with one ingredient removed, which gets the number wrong. A
+glider's every live cell is displaced by exactly `(1, 1)` after four generations, and the same seed
+under a rule one birth-count away is displaced by nothing at all. A flock of 400 agents reaches a
+polarization of 0.69 where 400 independent headings would give 0.044, and the same initial state
+with the alignment term zeroed reaches 0.073.
 
-`afield.examples.stdlib.AlifeGallery` renders the figures below in CI and asserts, for each, the
-statistic its control arm fails, so the numbers printed here are the numbers it asserts.
+??? aside "Where the numbers come from"
+    `afield.examples.stdlib.AlifeGallery` renders the figures below in CI and asserts, for each, the
+    statistic its control fails, so the numbers printed here are the numbers it asserts.
 
 ## Source files
 
@@ -71,11 +72,9 @@ in their state and never in what they are trying to do:
   `seek` arrives 0.990 of the time against 0.000 for direct `seek` at the same budget.
 
 Both are worked through in [section 12](#12-agents-that-run-programs-and-a-world-to-run-them-in),
-and both also ship as loadable Field documents — `dev_docs/agents/demos/alife_script/` and
-`dev_docs/agents/demos/alife_walls/` — because the point of a scripted agent is that you edit its
-program and re-run it.
+which also says where to find them as documents you can open and edit.
 
-Things it does not do, so you are not surprised:
+Limits:
 
 - **CPU only.** These are reference implementations you can read. The GPU story is
   [`afield.four`](reference/graphics.md), [StackSL](stacksl_examples.md) and
@@ -539,8 +538,7 @@ What to watch, with the step counter in the caption as your clock:
   free ends, which is where a labyrinth still has somewhere to go. That is why the section's numbers are
   stable enough to assert.
 
-Those five events are not spread evenly through the 6000 steps, and that is the whole reason this clip is
-paced the way it is.
+Those five events are not spread evenly through the 6000 steps, so the clip is not paced evenly either.
 
 ??? aside "The step schedule here is geometric, not linear"
     Reaction–diffusion is a **log-time** process: step 60 to step 600 and step 600 to step 6000 are about
@@ -1065,10 +1063,9 @@ showImg(
 
 ### The order the branches arrived in
 
-A DLA cluster's shape is a record of *when*, and this is the one clip on the page where saying exactly what
-is being replayed matters, so: the cluster is grown **once**, by `dlaCluster`, and `Aggregate.points` is the
-order the particles stuck in. The clip reveals that recorded order at a uniform rate. It is not a
-re-simulation and it is not uniform in the original walk's wall-clock either: a late particle takes far
+A DLA cluster's shape is a record of *when*. The cluster is grown **once**, by `dlaCluster`, and
+`Aggregate.points` is the order the particles stuck in. The clip reveals that recorded order at a
+uniform rate. It is not a re-simulation and it is not uniform in the original walk's wall-clock either: a late particle takes far
 longer to arrive than an early one, because it has to random-walk in from a larger circle past a bigger
 target. What is uniform is particle *count*.
 
@@ -1302,8 +1299,7 @@ bridges, all into machinery that was already here:
     Each is right to better than 0.4 % of its own circle, so the geometry is sound, but
     `loops.sumOf { flineSignedArea(...) }` reads 67 % high for a shape with a hole; the right answer is
     the *difference* of the magnitudes (0.006 % out). Anything that fills, booleans or exports these
-    curves has to find the hole by containment or by area, not by orientation. `contours.kt` promises no
-    winding convention, so CI asserts this one to keep it from changing silently.
+    curves has to find the hole by containment or by area, not by orientation.
 
 ??? aside "An empty mesh is vacuously watertight"
     A dead volume meshes to **zero triangles** and passes a watertight check, so the triangle count is
@@ -1371,9 +1367,6 @@ two, and it is the one number on this page that is a *topological* measurement r
 one: it changes by integers, at the moment a thing happens. The contours stay locked to the field's
 level set as it moves.
 
-The step budget carries one extra cost here, 36 marching-squares passes a second as well as the
-reaction, and the caption's step counter is what shows whether the clip kept up.
-
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/bridges.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-bridges-video" alt="a Gray-Scott spots field evolving beside its iso-contours, re-extracted every frame, with the loop count rising as spots divide"}
 :::static
 :::fold pin the contour panel's framing to the field's extent
@@ -1411,15 +1404,14 @@ Every section above picks a rule and measures what it does. This one runs the qu
 a measurement, find a rule that scores well on it.
 
 The statistics the sections above measure with are the fitness functions this one searches on:
-`alife.kt`'s 816 lines of `polarization`, `blobShapes`, `correlationLength`, `massRadiusDimension`,
+`alife.kt`'s `polarization`, `blobShapes`, `correlationLength`, `massRadiusDimension`,
 `stateEntropyBits` and `centroidDrift`, read as a score instead of as a readout.
 
-**The control arm is the entire argument, so it goes first.**
-[`PopulationSearch.random`](reference/search.md#populationsearch-kt) is not a fourth search driver. It
-draws from exactly the distribution `evolve` mutates within, at the same budget, under the same seed,
-and every claim below is a margin over it. Without it none of these numbers would mean anything: a
-generator good enough to stumble onto a decent rule now and then looks identical, from the outside, to a
-search that works.
+Each search is compared with a control,
+[`PopulationSearch.random`](reference/search.md#populationsearch-kt). It draws from exactly the
+distribution `evolve` mutates within, at the same budget, under the same seed, and every result below
+is a margin over it. Without it the numbers would mean nothing: a generator good enough to stumble
+onto a decent rule now and then looks identical, from the outside, to a search that works.
 
 ### A Lenia rule that travels
 
@@ -1685,9 +1677,8 @@ All three of the above run on the same engine, and so does a fourth client with 
 with them. `FunctionEvolve.evolve`, over `Fn` graphs, is `PopulationSearch.evolve(mu = 1,
 crossoverRate = 0, immigrantRate = 0)` on an `FnGenomeOps`, and its random stream is bit-identical to a
 hand-rolled `(1 + λ)` climb's: the core skips the parent draw when the population holds one individual,
-and skips the crossover and immigrant draws when their rates are exactly zero.
-
-The FIELD_TEST `functions.evolve.worked-example` checks this against committed numbers:
+and skips the crossover and immigrant draws when their rates are exactly zero. The box below runs that
+search, and should print these numbers exactly:
 
 ```diffstatic {data-lang=text}
 initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
@@ -1805,10 +1796,9 @@ lines(*w.trailFLines().toTypedArray(), channel = "program", w = 620.0, h = 320.0
 
 One trail, three behaviours, and you can see the joins: the circle is `orbit` holding station, the
 chord across it is `arrive` going more or less straight at the centre once the orbit releases, and
-the tangle is `wander`. They are one agent's program rather than three modes of a world, which is
-the whole distinction this section is about — though note the trail is a single `FLine` in a single
-colour, so the *boundaries* between phases are inferred from the shape rather than drawn. `w.events`
-has them exactly, which is what the printed phase list above is for.
+the tangle is `wander`. They are one agent's program rather than three modes of a world. The trail
+is a single `FLine` in a single colour, so the phase boundaries are read from the shape rather than
+drawn; `w.events` records them exactly, and the box prints the first few.
 
 ### A wall, and three answers to hitting it
 
@@ -1926,8 +1916,8 @@ showSignals(
 
 ![a dark step plot: the blue routed trace climbs from zero at about step 900 to just under 1.0 by step 1800, while the orange direct trace stays flat on zero for the whole run](assets/alife_examples/walls-routing.png)
 
-The same comparison at a larger budget — 8 seeds x 12 agents, 96 per arm, with the floors asserted
-rather than printed — is `AlifeWallsGallery.kt`'s counterfactual, and it reads **0.990 against 0.000**.
+At a larger budget (8 seeds of 12 agents, 96 per arm) the same comparison reads **0.990 against
+0.000**.
 
 Both files ship as loadable Field documents as well, at `dev_docs/agents/demos/alife_script/` and
 `dev_docs/agents/demos/alife_walls/`, because the point of a scripted agent is that you edit its
@@ -1951,16 +1941,16 @@ meaning and named in the caption**, never derived from the frame:
 
 Auto-ranging here has a specific victim. **A saturated Lenia field is constant at 1.** Normalise it
 per-frame and it maps to the *dark* end of the colour map and renders solid black, pixel-for-pixel
-indistinguishable from a field that died. A view is worse than a figure in this respect: a figure is
-regenerated when you ask, a view every time you look at a value.
+indistinguishable from a field that died. On the fixed scale a `DEATH` run is the bottom of
+`inferno` and a `SATURATION` run the top, and an unseeded `GrayScottState` renders as one flat
+colour, where `Img`'s auto-normalising thumbnail would turn its numerical dust into a texture.
 
-So the views are checked at the pixel rather than by eye. `AlifeGallery`'s `inline-view` figure decodes
-the base64 PNG back out of the emitted HTML and asserts individual pixels: all five of a glider's live
-cells read `#ffffff` and all 139 dead ones read `#000000` at coordinates taken from the grid (which is
-also how "one pixel per cell" is asserted); a `DEATH` run's centre pixel reads
-`#000004`, the bottom of `inferno`, and a `SATURATION` run's reads `#fcffa4`, the top; and an unseeded
-`GrayScottState`, the `v = 0` control arm, renders as exactly one colour, the bottom of `magma`,
-where `Img`'s own auto-normalising thumbnail would have turned its numerical dust into a texture.
+??? aside "How the views are checked"
+    `AlifeGallery`'s `inline-view` figure decodes the base64 PNG back out of the emitted HTML and
+    asserts individual pixels: all five of a glider's live cells read `#ffffff` and all 139 dead ones
+    read `#000000` at coordinates taken from the grid (which is also how "one pixel per cell" is
+    asserted); a `DEATH` run's centre pixel reads `#000004` and a `SATURATION` run's reads `#fcffa4`;
+    and the unseeded `GrayScottState` renders as exactly one colour, the bottom of `magma`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/inline-view.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -1994,16 +1984,14 @@ display("f. Lenia, saturation", leniaRun(leniaSeed(64, 64, sat, blobRadii = 1.6,
 
 ## Loading all of this into a live Field
 
-Every box above is one box of a shipped agent transcript, so you can open the page as a document and
-edit it rather than retyping it. Sections 1 to 10 are
+Every box above is one box of a shipped starting point, so you can open the page as a document and
+edit it rather than retyping it: open it from the welcome screen. Sections 1 to 10 are
 [`alife_worked_example`](agent_transcripts.md), and section 11 is
-[`alife_evolution`](agent_transcripts.md), kept separate because the four search boxes take about
-fifty seconds between them and the other twenty do not:
+[`alife_evolution`](agent_transcripts.md), kept separate because its four search boxes take about
+fifty seconds between them. Every box runs on its own and prints the numbers this page quotes; none
+of them opens a `Window` or a `Renderer`. To replay them from a terminal instead:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
 ```
-
-or open the materialized starting point from the welcome screen. Every box runs on its own and prints
-the numbers this page quotes; none of them opens a `Window` or a `Renderer`.
