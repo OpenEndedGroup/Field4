@@ -2,574 +2,463 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Lazy Inspector — Tree</title>
+    <title>Inspector — Tree</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      The `tree(...)` embed (afield/outputs.kt -> /tree, protocol in afield/server/browsing.kt).
+      Entries arrive as [name, id, kind, type, summary, flag]; kind lets a row draw its twisty
+      without opening the child, and a directory longer than one page ends in a "more" row.
+      Colours come from field.css tokens so the embed matches the panel it sits in.
+    -->
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field.css">
     <style>
-        @import url("/iosevka.css");
-
         :root{
-            --bg:        #1e1e1e;
-            --fg:        #ddd;
-            --fg-hover:  #fff;
-            --border:    #000;
-            --header-bg: #000;
-            --header-hover: rgba(255,255,255,0.10);
-
-            --indent-step: 10px;
-            --row-gutter:  6px;
-            --rail-offset: 6px;
-            --row-pad-y:   4px;
-            --row-pad-x:   8px;
-
-            --sep:   rgba(0,0,0,0.65);
-            --rail:  rgba(0,0,0,0.65);
-
-            --sb-size: 8px;
-            --sb-thumb: rgba(255,255,255,.22);
-            --sb-thumb-hover: rgba(255,255,255,.35);
+            --bg:        var(--field-surface, #000);
+            --fg:        var(--field-fg, #ddd);
+            --fg-strong: var(--field-fg-strong, #fff);
+            --muted:     var(--field-fg-dim, rgba(255,255,255,.53));
+            --soft:      var(--field-fg-soft, rgba(255,255,255,.74));
+            --accent:    rgb(var(--field-accent-rgb, 72,201,255));
+            --danger:    rgb(var(--field-danger-rgb, 255,80,80));
+            --warning:   rgb(var(--field-warning-rgb, 235,150,70));
+            --hover:     rgba(255,255,255,0.07);
+            --selected:  rgba(var(--field-accent-rgb, 72,201,255), 0.14);
+            --sep:       rgba(255,255,255,0.05);
+            --rail:      rgba(255,255,255,0.12);
+            --indent:    14px;
+            --sb-thumb:  rgba(255,255,255,.22);
+            --maxh:      520px;
         }
+        *{ box-sizing:border-box; font-family:"Iosevka Web",ui-monospace,Menlo,monospace; outline:none; }
+        body{ margin:0; background:var(--bg); color:var(--fg); font-weight:300; font-size:12px; line-height:1.2; }
 
-        *{ box-sizing:border-box; font-family:"Iosevka Web",system-ui,Avenir,Helvetica,Arial,sans-serif;             outline:none;}
-        body{ margin:0; background:var(--bg); color:var(--fg); font-weight:300; font-size:12px; line-height:1.15; }
-
-        .status{ display:none; }
-
-        #treeWrap{ padding: 6px; }
-        #tree{
-            list-style:none; margin:0; padding:0;
-            max-height: calc(100vh - 12px);
-            overflow:auto;
-            border:2px solid var(--border);
-            border-radius:5px;
-            background: var(--header-bg);
-            outline:none;
-            color: var(--fg);
+        #bar{ display:flex; align-items:center; gap:8px; padding:4px 6px; border-bottom:1px solid var(--sep); }
+        #rootType{ color:var(--accent); white-space:nowrap; }
+        #rootSummary{ color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; }
+        #filter{
+            flex:0 1 160px; min-width:70px; background:rgba(255,255,255,0.06); color:var(--fg);
+            border:1px solid transparent; border-radius:3px; padding:2px 6px; font-size:11px;
         }
+        #filter:focus{ border-color: rgba(var(--field-accent-rgb, 72,201,255), .5); }
+        #status{ color:var(--muted); font-size:10px; white-space:nowrap; }
+        #status.bad{ color:var(--danger); }
 
+        #tree{ list-style:none; margin:0; padding:2px 0; max-height:calc(100vh - 30px); overflow:auto; }
+        html[data-afield-output-iframe="true"] #tree{ max-height: var(--maxh); }
+        #tree, #tree *{ scrollbar-width:thin; scrollbar-color:var(--sb-thumb) transparent; }
+        ul.children{ list-style:none; margin:0; padding:0; position:relative; }
         li.node{ list-style:none; margin:0; padding:0; }
+        li.node.filtered-out{ display:none; }
 
         .row{
-            position: relative;
-            display:flex; align-items:center; gap:6px;
-            padding: var(--row-pad-y) var(--row-pad-x);
-            border-bottom:1px solid var(--sep);
-            cursor: default;
-            background: var(--header-bg);
-            user-select:none;
-            outline:none;
-            min-height: 24px;
+            position:relative; display:flex; align-items:baseline; gap:6px;
+            padding:3px 8px 3px calc(8px + var(--depth, 0) * var(--indent));
+            min-height:22px; cursor:default; user-select:none; white-space:nowrap;
         }
-        .row:last-child{ border-bottom:none; }
-        .row:hover{ background: var(--header-hover); }
-
-        .row.selected::before{
-            content:""; position:absolute; left:0; top:0; bottom:0; width:2px;
-            background: var(--fg);
+        .row:hover{ background:var(--hover); }
+        .row.selected{ background:var(--selected); }
+        .row.selected::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--accent); }
+        .row[data-depth]:not([data-depth="0"])::after{
+            content:""; position:absolute; top:0; bottom:0; width:1px; background:var(--rail);
+            left: calc(12px + (var(--depth) - 1) * var(--indent));
         }
 
-        .row.has-rail::after{
-            content:""; position:absolute;
-            left: calc(var(--indentPx, 0px) + var(--rail-offset));
-            top: 50%;
-            width: calc(var(--indent-step) - var(--rail-offset));
-            height: 1px;
-            background: var(--rail);
-            transform: translateY(-50%);
-            pointer-events: none;
-        }
-
-        .tw{
-            position: relative;
-            width: 14px; height: 14px;
-            display:inline-flex; align-items:center; justify-content:center;
-            cursor:pointer; background:transparent; border:none;
-            margin-left: -5px; margin-right: 6px; flex: 0 0 auto;
-        }
+        .tw{ flex:0 0 10px; width:10px; height:10px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); }
         .row[data-kind="dir"] .tw::before{
-            content:"";
-            width:0; height:0;
-            border-top: 5px solid transparent;
-            border-bottom: 5px solid transparent;
-            border-left: 7px solid var(--fg);
-            opacity:.9;
-            transition: transform .18s ease, border-left-color .18s ease, opacity .18s ease;
+            content:""; border-top:4px solid transparent; border-bottom:4px solid transparent; border-left:6px solid currentColor;
+            transition: transform .12s ease;
         }
-        .row[data-kind="dir"]:hover .tw::before{ border-left-color: var(--fg-hover); opacity: 1; }
         .row.open[data-kind="dir"] .tw::before{ transform: rotate(90deg); }
+        .row[data-kind="leaf"] .tw::before{ content:"·"; }
+        .row:hover .tw{ color:var(--fg-strong); }
 
-        .row[data-kind="leaf"] .tw::before{
-            content:"+";
-            color: rgba(255,255,255,.35);
-            font-weight:700; font-size:12px; line-height:1;
-            transition: color .18s ease, opacity .18s ease;
+        .name{ color:var(--fg); flex:0 0 auto; }
+        .row[data-kind="dir"] .name{ color:var(--fg-strong); }
+        .type{ color:var(--muted); font-size:10px; flex:0 0 auto; }
+        .summary{ color:var(--soft); overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
+        .row.open .summary{ color:var(--muted); }
+        .row[data-flag="cycle"] .summary{ color:var(--warning); }
+        .row[data-flag="error"] .summary, .row[data-flag="error"] .name{ color:var(--danger); }
+
+        .copy{
+            flex:0 0 auto; visibility:hidden; border:none; background:transparent; color:var(--muted);
+            cursor:pointer; font-size:10px; padding:0 2px;
         }
-        .row[data-kind="leaf"]:hover .tw::before{ color: var(--fg-hover); }
-        .row.leaf-open[data-kind="leaf"] .tw::before{ content:"−"; }
-
-        .label{ background:transparent; border:none; color:var(--fg); text-align:left; cursor:pointer; padding:0; margin:0; font: inherit; flex: 1 1 auto; }
-        .name{ white-space:pre; padding-left: calc(var(--row-gutter)); font-style:italic; }
-
-        /* Children rail: ALWAYS at absolute left edge, no hover highlight */
-        ul.children{
-            position: relative;
-            list-style:none; margin:0; padding:0;
-            background: var(--header-bg);
-        }
-        ul.children::before{
-            content:"";
-            position:absolute; top:0; bottom:0;
-            left: 0;                                /* <-- fixed to left edge */
-            width: 2px;
-            background: var(--border);
-            opacity:.9;
-            pointer-events: none;
-        }
-
-        #tree:has(> .node > .row.open) > .node > .row:not(.open) {
-            opacity: 0.6;
-        }
-
+        .row:hover .copy, .row.selected .copy{ visibility:visible; }
+        .copy:hover{ color:var(--fg-strong); }
+        .copy.done{ color:var(--accent); visibility:visible; }
 
         .leaf{
-            margin: 4px 8px 10px 0;
-            padding: 4px 6px;
-            border:1px solid var(--border);
-            border-radius:4px;
-            background: rgba(255,255,255,0.05);
-            color: var(--fg);
-            overflow:auto;
-            max-height: 50vh;
-            white-space: normal;
-            margin-left: var(--leaf-left, 0px);
-            font-size: 10px;
-            outline:none;
+            margin:2px 8px 6px calc(26px + var(--depth, 0) * var(--indent));
+            padding:4px 6px; border-left:2px solid var(--rail);
+            background:rgba(255,255,255,0.03); color:var(--fg);
+            max-height:240px; overflow:auto; font-size:11px; white-space:pre-wrap; word-break:break-word;
         }
+        .more{ color:var(--accent); cursor:pointer; }
+        .more:hover{ text-decoration:underline; }
+        .hint{ color:var(--muted); font-style:italic; padding:3px 8px 3px calc(26px + var(--depth, 0) * var(--indent)); }
+        .err{ color:var(--danger); padding:6px 8px; white-space:pre-wrap; }
+        .inspector-error{ color:var(--danger); }
 
-        .tostr .tok { opacity: .96 }
-
-        /* subtle distinctions; keep within your monochrome palette */
-        .tostr .tok.word  { /* pure letters */         color: rgba(255,255,255,.92);  }
-        .tostr .tok.sym   { /* words + symbols */      color: rgba(220,230,255,.85);  text-decoration: none; }
-        .tostr .tok.num   { /* numbers */              color: rgba(255,235,200,.95);  }
-        .tostr .tok.punc  { /* punctuation */          opacity: .7;  }
-
-        .hint{ color:var(--fg); opacity:.55; font-size:10px; padding:4px 8px; border-bottom:1px dashed var(--border); }
-
-        #tree, #tree * { scrollbar-width: thin; scrollbar-color: var(--sb-thumb) transparent; }
-        #tree::-webkit-scrollbar, .leaf::-webkit-scrollbar { width: var(--sb-size); height: var(--sb-size); }
-        #tree::-webkit-scrollbar-thumb, .leaf::-webkit-scrollbar-thumb {
-            background-color: var(--sb-thumb); border-radius: 6px; border: 2px solid transparent; background-clip: content-box;
-        }
-        #tree::-webkit-scrollbar-thumb:hover, .leaf::-webkit-scrollbar-thumb:hover { background-color: var(--sb-thumb-hover); }
-        #tree::-webkit-scrollbar-track, .leaf::-webkit-scrollbar-track,
-        #tree::-webkit-scrollbar-corner, .leaf::-webkit-scrollbar-corner { background: transparent; }
-
-        html[data-afield-output-iframe="true"] #tree{
-            max-height: none;
-            overflow: visible;
-        }
-        html[data-afield-output-iframe="true"] .leaf{
-            overflow: visible;
-            max-height: none;
-        }
+        .tostr .tok.word { color: var(--fg); }
+        .tostr .tok.sym  { color: rgba(220,230,255,.85); }
+        .tostr .tok.num  { color: rgba(255,235,200,.95); }
+        .tostr .tok.punc { opacity:.7; }
     </style>
 </head>
 <body>
-<div class="status" id="status">disconnected</div>
-<div id="treeWrap">
-    <ul id="tree" role="tree" tabindex="0" aria-label="Inspector tree"></ul>
+<div id="bar">
+    <span id="rootType"></span><span id="rootSummary"></span>
+    <input id="filter" type="search" placeholder="filter  /" aria-label="Filter rows" spellcheck="false">
+    <span id="status">connecting…</span>
 </div>
+<ul id="tree" role="tree" tabindex="0" aria-label="Inspector tree"></ul>
 
 <script src="/iframe_autosize.js"></script>
 <script>
-        const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
+(() => {
+    const params = new URLSearchParams(location.search);
+    const ROOT_TOKEN = params.get('root');
+    if (params.get('maxh')) document.documentElement.style.setProperty('--maxh', parseInt(params.get('maxh'), 10) + 'px');
 
-        (() => {
-                const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
-                const CHANNEL = "__browsing__";
+    const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+    const CHANNEL = "__browsing__";
+    const treeEl = document.getElementById('tree');
+    const statusEl = document.getElementById('status');
+    const filterEl = document.getElementById('filter');
+    const rootTypeEl = document.getElementById('rootType');
+    const rootSummaryEl = document.getElementById('rootSummary');
 
-                const treeEl  = document.getElementById('tree');
-                const statusEl= document.getElementById('status');
+    let ws, reqSeq = 1, rootId = null;
+    const pending = new Map();
+    const watched = new Set();
 
-                let ws; let reqSeq = 1; const pending = new Map();
-                const openIds = new Set();
+    function setStatus(text, bad=false){ statusEl.textContent = text; statusEl.classList.toggle('bad', bad); }
 
-                function connect(){
-                        ws = new WebSocket(WS_URL);
-                        statusEl.textContent = "connecting…";
-                        ws.onopen = () => { statusEl.textContent = "connected"; getRoots(); };
-                        ws.onmessage = (ev) => {
-                                let msg; try { msg = JSON.parse(ev.data); } catch { return; }
-                                if (msg.reqId && pending.has(msg.reqId)) { const resolve = pending.get(msg.reqId); pending.delete(msg.reqId); resolve(msg); return; }
-                                if (msg.type === "changed" && msg.nodeId) {
-                                        const row = rowForId(msg.nodeId);
-                                        if (row && isRowOpen(row)) reopenRow(row, msg.version);
-                                }
-                        };
-                        ws.onclose = () => { statusEl.textContent = "disconnected"; openIds.clear(); setTimeout(connect, 1200); };
-                        ws.onerror = () => { statusEl.textContent = "error"; };
-                }
+    function connect(){
+        ws = new WebSocket(WS_URL);
+        setStatus('connecting…');
+        ws.onopen = () => { setStatus(''); refreshAll(); };
+        ws.onmessage = (ev) => {
+            let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+            if (msg.reqId && pending.has(msg.reqId)) { const r = pending.get(msg.reqId); pending.delete(msg.reqId); r(msg); return; }
+            if (msg.type === 'changed' && msg.nodeId) onChanged(msg.nodeId);
+        };
+        ws.onclose = () => { setStatus('disconnected — retrying', true); watched.clear(); setTimeout(connect, 1200); };
+        ws.onerror = () => setStatus('connection error', true);
+    }
+    function sendReq(op, payload = {}){
+        const reqId = String(reqSeq++);
+        return new Promise((resolve) => {
+            pending.set(reqId, resolve);
+            try { ws.send(JSON.stringify({ channel: CHANNEL, op, reqId, ...payload })); }
+            catch (e) { pending.delete(reqId); resolve({ ok:false, error:String(e) }); }
+        });
+    }
+    function fireAndForget(op, payload = {}){
+        try { ws && ws.readyState === 1 && ws.send(JSON.stringify({ channel: CHANNEL, op, reqId: String(reqSeq++), ...payload })); } catch {}
+    }
+    async function open(id){
+        const resp = await sendReq('open', { id, watch: true });
+        if (resp && resp.ok) watched.add(id);
+        return resp;
+    }
+    function unwatch(id){ if (watched.delete(id)) fireAndForget('unsubscribe', { id }); }
 
-                function sendReq(op, payload = {}){
-                        const reqId = String(reqSeq++);
-                        const msg = { channel: CHANNEL, op, reqId, ...payload };
-                        return new Promise((resolve) => { pending.set(reqId, resolve); ws.send(JSON.stringify(msg)); });
-                }
-                function fireAndForget(op, payload = {}){
-                        const reqId = String(reqSeq++);
-                        const msg = { channel: CHANNEL, op, reqId, ...payload };
-                        try { ws && ws.readyState === 1 && ws.send(JSON.stringify(msg)); } catch {}
-                }
+    const entry = (p) => ({ name: p[0], id: p[1], kind: p[2] || null, type: p[3] || '', summary: p[4] ?? '', flag: p[5] || '' });
 
-                const PROBE_LIMIT = 8;
-                let probeInflight = 0;
-                const probeQueue  = [];
-                function scheduleKindProbe(row, id){
-                        if (!id || row.dataset.kind) return;
-                        probeQueue.push({ row, id });
-                        pumpProbeQueue();
-                }
-                function pumpProbeQueue(){
-                        while (probeInflight < PROBE_LIMIT && probeQueue.length){
-                                const { row, id } = probeQueue.shift();
-                                probeInflight++;
-                                sendReq('open', { id, watch: false })
-                                    .then(resp => { if (resp && resp.ok) setRowKind(row, resp.type === 'dir' ? 'dir' : 'leaf'); })
-                                    .finally(() => { probeInflight--; pumpProbeQueue(); });
-                        }
-                }
+    // ---------------------------------------------------------------- rows
+    function makeRow(e, depth){
+        const li = document.createElement('li'); li.className = 'node';
+        const row = document.createElement('div'); row.className = 'row';
+        row.dataset.id = e.id; row.dataset.name = e.name; row.dataset.depth = String(depth);
+        row.style.setProperty('--depth', depth);
+        if (e.kind) row.dataset.kind = e.kind;
+        if (e.flag) row.dataset.flag = e.flag;
+        row.setAttribute('role', 'treeitem'); row.setAttribute('aria-level', String(depth + 1));
+        if (e.kind === 'dir') row.setAttribute('aria-expanded', 'false');
 
-                function rowForId(id){ return treeEl.querySelector(`.row[data-id="${id}"]`); }
-                function liFromRow(row){ return row.closest('li.node'); }
+        const tw = document.createElement('span'); tw.className = 'tw';
+        const name = document.createElement('span'); name.className = 'name'; name.textContent = e.name;
+        const type = document.createElement('span'); type.className = 'type'; type.textContent = e.type;
+        const summary = document.createElement('span'); summary.className = 'summary'; summary.textContent = e.summary;
+        summary.title = e.summary;
+        const copy = document.createElement('button'); copy.className = 'copy'; copy.textContent = 'copy'; copy.title = 'Copy value (c)';
+        row.append(tw, name, type, summary, copy);
+        li.appendChild(row);
 
-                // Rail is fixed at left edge now, so we don’t compute a depth-based left.
-                function childrenList(li){
-                        let ul = li.querySelector(':scope > ul.children');
-                        if (!ul){
-                                ul = document.createElement('ul');
-                                ul.className = 'children';
-                                ul.setAttribute('role','group');
-                                li.appendChild(ul);
-                        }
-                        return ul;
-                }
-                function leafView(li){ return li.querySelector(':scope > .leaf'); }
+        tw.addEventListener('click', (ev) => { ev.stopPropagation(); selectRow(row); toggleRow(row); });
+        row.addEventListener('click', () => selectRow(row));
+        row.addEventListener('dblclick', () => toggleRow(row));
+        copy.addEventListener('click', (ev) => { ev.stopPropagation(); copyRow(row); });
+        if (!e.kind) probeKind(row);
+        return li;
+    }
+    async function probeKind(row){
+        // Servers older than the [name,id,kind,...] rows send pairs; ask the child what it is.
+        const resp = await sendReq('open', { id: row.dataset.id, watch: false });
+        if (resp && resp.ok) row.dataset.kind = resp.type === 'dir' ? 'dir' : 'leaf';
+    }
+    const liOf = (row) => row.closest('li.node');
+    const rowFor = (id) => treeEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`);
+    const isOpen = (row) => row.classList.contains('open');
 
-                const INDENT_STEP = 10, GUTTER = 6;
+    function selectRow(row, {focus=true} = {}){
+        treeEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
+        row.classList.add('selected');
+        row.scrollIntoView({ block:'nearest' });
+        if (focus) treeEl.focus({ preventScroll:true });
+    }
 
-                function makeRow({ name, id, kind=null, depth=0 }){
-                        const li = document.createElement('li'); li.className = 'node';
-                        const row = document.createElement('div'); row.className = 'row'; row.tabIndex = -1;
-                        row.dataset.id = id || '';
-                        row.dataset.depth = String(depth);
-                        row.setAttribute('role','treeitem');
-                        row.setAttribute('aria-level', String(depth+1));
-                        if (kind) row.dataset.kind = kind;
+    function fillDir(ul, resp, depth, append=false){
+        if (!append) ul.innerHTML = '';
+        ul.querySelector(':scope > li.more-li')?.remove();
+        const entries = (resp.entries || []).map(entry);
+        if (!entries.length && !append){
+            const hint = document.createElement('li'); hint.className = 'hint'; hint.style.setProperty('--depth', depth); hint.textContent = 'empty';
+            ul.appendChild(hint);
+        }
+        entries.forEach(e => ul.appendChild(makeRow(e, depth)));
+        if (resp.more){
+            const shown = (resp.offset || 0) + entries.length;
+            const li = document.createElement('li'); li.className = 'node more-li';
+            const row = document.createElement('div'); row.className = 'row more-row'; row.style.setProperty('--depth', depth);
+            row.dataset.more = resp.id; row.dataset.offset = String(shown); row.dataset.depth = String(depth);
+            const tw = document.createElement('span'); tw.className = 'tw';
+            const label = document.createElement('span'); label.className = 'more';
+            label.textContent = resp.total != null ? `show more — ${shown} of ${resp.total}` : `show more — ${shown} shown`;
+            row.append(tw, label);
+            row.addEventListener('click', () => loadMore(row, ul));
+            li.appendChild(row); ul.appendChild(li);
+        }
+        applyFilter();
+    }
+    async function loadMore(moreRow, ul){
+        const resp = await sendReq('more', { id: moreRow.dataset.more, offset: parseInt(moreRow.dataset.offset, 10) });
+        if (!resp || !resp.ok){ setStatus(resp?.error || 'more failed', true); return; }
+        const added = (resp.entries || []).length;
+        fillDir(ul, resp, parseInt(moreRow.dataset.depth, 10), true);
+        if (added){ const rows = ul.querySelectorAll(':scope > li > .row:not(.more-row)'); selectRow(rows[rows.length - added]); }
+    }
 
-                        const tw = document.createElement('button'); tw.className = 'tw'; tw.tabIndex = -1;
-                        const label = document.createElement('button'); label.className = 'label'; label.tabIndex = -1;
-                        const txt = document.createElement('span'); txt.className = 'name'; txt.textContent = name || '…';
-                        label.appendChild(txt);
+    async function expandRow(row){
+        const li = liOf(row);
+        const resp = await open(row.dataset.id);
+        if (!resp || !resp.ok){ showLeaf(row, `<span class="inspector-error">${escapeHtml(resp?.error || 'failed')}</span>`, ''); row.classList.add('open'); return; }
+        const depth = parseInt(row.dataset.depth, 10);
+        row.classList.add('open'); row.setAttribute('aria-expanded', 'true');
+        if (resp.type === 'dir'){
+            row.dataset.kind = 'dir';
+            let ul = li.querySelector(':scope > ul.children');
+            if (!ul){ ul = document.createElement('ul'); ul.className = 'children'; ul.setAttribute('role', 'group'); li.appendChild(ul); }
+            fillDir(ul, resp, depth + 1);
+        } else {
+            row.dataset.kind = 'leaf';
+            showLeaf(row, resp.html ?? '', resp.value ?? '');
+        }
+    }
+    function showLeaf(row, html, value){
+        const li = liOf(row);
+        let lv = li.querySelector(':scope > .leaf');
+        if (!lv){ lv = document.createElement('div'); lv.className = 'leaf'; li.appendChild(lv); }
+        lv.style.setProperty('--depth', row.dataset.depth);
+        lv.innerHTML = String(html);
+        row.dataset.value = value;
+    }
+    function collapseRow(row){
+        const li = liOf(row);
+        li.querySelectorAll('.row').forEach(r => { if (r.dataset.id) unwatch(r.dataset.id); });
+        li.querySelector(':scope > ul.children')?.remove();
+        li.querySelector(':scope > .leaf')?.remove();
+        row.classList.remove('open');
+        if (row.dataset.kind === 'dir') row.setAttribute('aria-expanded', 'false');
+    }
+    function toggleRow(row){ if (row.dataset.more) return; isOpen(row) ? collapseRow(row) : expandRow(row); }
 
-                        const indentPx = GUTTER + depth * INDENT_STEP;
-                        row.style.setProperty('--indentPx', indentPx + 'px');
-                        txt.style.marginLeft = indentPx + 'px';
-                        if (depth > 0) row.classList.add('has-rail');
+    // ---------------------------------------------------------------- copy
+    async function copyRow(row){
+        let text = row.dataset.value;
+        if (text == null || text === ''){
+            if (row.dataset.kind === 'leaf'){
+                const resp = await sendReq('open', { id: row.dataset.id, watch: false });
+                text = resp && resp.ok ? (resp.value ?? '') : '';
+            } else {
+                text = `${row.dataset.name}: ${row.querySelector('.summary')?.textContent || ''}`;
+            }
+        }
+        try { await navigator.clipboard.writeText(text); }
+        catch {
+            const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch {} ta.remove();
+        }
+        const b = row.querySelector('.copy'); if (b){ b.textContent = 'copied'; b.classList.add('done'); setTimeout(() => { b.textContent = 'copy'; b.classList.remove('done'); }, 900); }
+        window.__lastCopied = text;
+    }
 
-                        tw.addEventListener('click', (e) => { e.stopPropagation(); toggleRow(row); });
-                        label.addEventListener('click', (e) => { e.stopPropagation(); toggleRow(row, true); });
+    // ---------------------------------------------------------------- filter
+    function applyFilter(){
+        const q = filterEl.value.trim().toLowerCase();
+        treeEl.querySelectorAll('li.node').forEach(li => li.classList.remove('filtered-out'));
+        if (!q) return;
+        // A row stays when it, or anything opened beneath it, matches. Deepest first.
+        const lis = Array.from(treeEl.querySelectorAll('li.node')).reverse();
+        const keep = new Set();
+        for (const li of lis){
+            const row = li.querySelector(':scope > .row');
+            if (!row || row.dataset.more) { keep.add(li); continue; }
+            const hay = (row.dataset.name + ' ' + (row.querySelector('.summary')?.textContent || '') + ' ' + (row.querySelector('.type')?.textContent || '')).toLowerCase();
+            const childKept = Array.from(li.querySelectorAll(':scope > ul.children > li.node:not(.more-li)')).some(c => keep.has(c));
+            if (hay.includes(q) || childKept) keep.add(li); else li.classList.add('filtered-out');
+        }
+    }
+    filterEl.addEventListener('input', applyFilter);
+    filterEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape'){ filterEl.value = ''; applyFilter(); treeEl.focus(); e.preventDefault(); }
+        if (e.key === 'Enter' || e.key === 'ArrowDown'){ const r = visibleRows()[0]; if (r) selectRow(r); e.preventDefault(); }
+    });
 
-                        row.addEventListener('click', () => selectRow(row));
-                        row.addEventListener('dblclick', () => toggleRow(row, true));
+    // ---------------------------------------------------------------- live update
+    const busy = new Set(), again = new Set();
+    async function onChanged(id){
+        if (id === rootId){ return refreshAll(); }
+        const row = rowFor(id);
+        if (!row || !isOpen(row)) return;
+        if (busy.has(id)){ again.add(id); return; }
+        busy.add(id);
+        try { await reopen(row); } finally { busy.delete(id); }
+        if (again.delete(id)) onChanged(id);
+    }
+    function openPaths(container){
+        // Names of the open rows beneath `container`, as paths, so a re-list can re-open them.
+        const out = [];
+        container.querySelectorAll('.row.open').forEach(r => {
+            const names = []; let li = liOf(r);
+            while (li && container.contains(li) && li !== container){
+                names.unshift(li.querySelector(':scope > .row').dataset.name);
+                li = li.parentElement?.closest('li.node');
+                if (li && !container.contains(li)) break;
+            }
+            out.push(names);
+        });
+        return out;
+    }
+    async function reopenUnder(ul, paths){
+        for (const p of paths.sort((a,b) => a.length - b.length)){
+            let scope = ul;
+            for (const nm of p){
+                const row = Array.from(scope.querySelectorAll(':scope > li > .row')).find(r => r.dataset.name === nm);
+                if (!row) break;
+                if (!isOpen(row)) await expandRow(row);
+                const next = liOf(row).querySelector(':scope > ul.children');
+                if (!next) break;
+                scope = next;
+            }
+        }
+    }
+    async function reopen(row){
+        const li = liOf(row);
+        const ul = li.querySelector(':scope > ul.children');
+        const paths = ul ? openPaths(ul) : [];
+        const sel = treeEl.querySelector('.row.selected')?.dataset.id;
+        const scroll = treeEl.scrollTop;
+        await expandRow(row);
+        const ul2 = li.querySelector(':scope > ul.children');
+        if (ul2) await reopenUnder(ul2, paths);
+        if (sel){ const r = rowFor(sel); if (r) selectRow(r, {focus:false}); }
+        treeEl.scrollTop = scroll;
+    }
 
-                        row.appendChild(tw); row.appendChild(label);
-                        li.appendChild(row);
+    // ---------------------------------------------------------------- roots
+    let firstLoad = true;
+    async function refreshAll(){
+        const paths = openPaths(treeEl);
+        const selName = treeEl.querySelector('.row.selected')?.dataset.name;
+        const scroll = treeEl.scrollTop;
+        Array.from(watched).forEach(id => unwatch(id));
+        const resp = await sendReq('getRoots', ROOT_TOKEN ? { root: ROOT_TOKEN } : {});
+        if (!resp || !resp.ok){ showError(resp?.error || 'failed to load'); return; }
+        treeEl.innerHTML = '';
+        rootTypeEl.textContent = resp.valueType || '';
+        if (resp.type === 'dir'){
+            rootId = resp.id;
+            if (resp.id){ fireAndForget('open', { id: resp.id, watch: true }); watched.add(resp.id); }
+            rootSummaryEl.textContent = resp.total != null ? `${resp.total} ${resp.total === 1 ? 'entry' : 'entries'}` : '';
+            fillDir(treeEl, resp, 0);
+            if (paths.length) await reopenUnder(treeEl, paths);
+            else if (firstLoad && (resp.entries || []).length === 1){
+                const only = treeEl.querySelector('.row');
+                if (only && only.dataset.kind === 'dir') await expandRow(only);
+            }
+        } else {
+            rootId = resp.nodeId;
+            rootSummaryEl.textContent = '';
+            const leaf = document.createElement('div'); leaf.className = 'leaf'; leaf.style.margin = '4px 8px';
+            leaf.innerHTML = String(resp.html ?? ''); treeEl.appendChild(leaf);
+        }
+        firstLoad = false;
+        const sel = selName && Array.from(treeEl.querySelectorAll('.row')).find(r => r.dataset.name === selName);
+        const target = sel || treeEl.querySelector('.row');
+        if (target) selectRow(target, {focus:false});
+        treeEl.scrollTop = scroll;
+    }
+    function showError(err){
+        treeEl.innerHTML = '';
+        const d = document.createElement('div'); d.className = 'err'; d.textContent = String(err ?? 'unknown error');
+        treeEl.appendChild(d);
+        setStatus('error', true);
+    }
 
-                        scheduleKindProbe(row, id);
-                        return li;
-                }
+    // ---------------------------------------------------------------- keyboard
+    const visibleRows = () => Array.from(treeEl.querySelectorAll('.row')).filter(r => r.offsetParent !== null);
+    function step(from, delta){
+        const rows = visibleRows(); if (!rows.length) return null;
+        let i = rows.indexOf(from); if (i < 0) i = 0;
+        return rows[Math.max(0, Math.min(rows.length - 1, i + delta))];
+    }
+    function parentRow(row){ return liOf(row)?.parentElement?.closest('li.node')?.querySelector(':scope > .row') || null; }
 
-                function setRowKind(row, k){ row.dataset.kind = k; }
-                function isRowOpen(row){ return row.classList.contains('open') || row.classList.contains('leaf-open'); }
+    document.addEventListener('keydown', async (e) => {
+        if (e.target === filterEl) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const sel = treeEl.querySelector('.row.selected') || visibleRows()[0];
+        if (e.key === '/'){ e.preventDefault(); filterEl.focus(); filterEl.select(); return; }
+        if (!sel) return;
+        switch (e.key){
+            case 'ArrowDown': e.preventDefault(); { const n = step(sel, +1); if (n) selectRow(n); } break;
+            case 'ArrowUp':   e.preventDefault(); { const n = step(sel, -1); if (n) selectRow(n); } break;
+            case 'Home':      e.preventDefault(); { const r = visibleRows()[0]; if (r) selectRow(r); } break;
+            case 'End':       e.preventDefault(); { const rs = visibleRows(); if (rs.length) selectRow(rs[rs.length-1]); } break;
+            case 'ArrowRight': e.preventDefault();
+                if (sel.dataset.more) { sel.click(); break; }
+                if (!isOpen(sel)) await expandRow(sel);
+                else { const c = liOf(sel).querySelector(':scope > ul.children > li > .row'); if (c) selectRow(c); }
+                break;
+            case 'Enter': e.preventDefault(); sel.dataset.more ? sel.click() : toggleRow(sel); break;
+            case 'ArrowLeft': e.preventDefault();
+                if (isOpen(sel)) collapseRow(sel); else { const p = parentRow(sel); if (p) selectRow(p); }
+                break;
+            case 'c': e.preventDefault(); if (!sel.dataset.more) copyRow(sel); break;
+            case 'r': e.preventDefault(); refreshAll(); break;
+            case 'Escape': if (filterEl.value){ filterEl.value = ''; applyFilter(); } break;
+        }
+    });
 
-                function selectRow(row){
-                        treeEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
-                        row.classList.add('selected');
-                        row.scrollIntoView({ block:'nearest', inline:'nearest' });
-                        treeEl.focus({preventScroll:true});
-                }
-
-                function toggleRow(row, preferOpen=false){
-                        const k = row.dataset.kind;
-                        if (k === 'leaf'){
-                                if (row.classList.contains('leaf-open')) collapseRow(row);
-                                else expandRow(row);
-                        } else {
-                                if (preferOpen || !row.classList.contains('open')) expandRow(row);
-                                else collapseRow(row);
-                        }
-                }
-
-                function collapseRow(row){
-                        const li = liFromRow(row);
-                        unsubscribeSubtree(li);
-
-                        const ul = li.querySelector(':scope > ul.children');
-                        if (ul) ul.remove();
-                        const lv = leafView(li);
-                        if (lv) lv.remove();
-
-                        row.classList.remove('open','leaf-open');
-                        row.setAttribute('aria-expanded','false');
-                }
-
-                function unsubscribeSubtree(li){
-                        const rows = li.querySelectorAll(':scope .row, :scope > .row');
-                        rows.forEach(r => {
-                                const nid = r.dataset.id;
-                                if (nid && openIds.has(nid)){
-                                        openIds.delete(nid);
-                                        fireAndForget('unsubscribe', { id: nid });
-                                }
-                        });
-                }
-
-                async function expandRow(row){
-                        const id  = row.dataset.id;
-                        const li  = liFromRow(row);
-                        if (!id || !li) return;
-
-                        const resp = await sendReq('open', { id, watch: true });
-                        if (!resp || !resp.ok) return;
-
-                        openIds.add(id);
-
-                        const kind = (resp.type === 'dir') ? 'dir' : 'leaf';
-                        setRowKind(row, kind);
-
-                        const depth = parseInt(row.dataset.depth||'0',10);
-
-                        if (resp.type === 'dir'){
-                                row.classList.add('open'); row.setAttribute('aria-expanded','true');
-                                const ul = childrenList(li);
-                                ul.innerHTML = '';
-                                const entries = (resp.entries || []).map(p => ({ name: p[0], id: p[1] }));
-                                if (entries.length === 0){
-                                        const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'empty';
-                                        ul.appendChild(hint);
-                                } else {
-                                        entries.forEach(({name, id: childId}) => {
-                                                const child = makeRow({ name, id: childId, depth: depth + 1 });
-                                                ul.appendChild(child);
-                                        });
-                                }
-                        } else {
-                                row.classList.add('leaf-open'); row.setAttribute('aria-expanded','true');
-                                let lv = leafView(li);
-                                if (!lv){ lv = document.createElement('div'); lv.className = 'leaf'; li.appendChild(lv); }
-                                const leafLeft = 6 + (depth + 1) * 10;
-                                lv.style.setProperty('--leaf-left', leafLeft + 'px');
-                                lv.innerHTML = String(resp.html ?? resp.value ?? '');
-                        }
-                }
-
-                async function reopenRow(row){
-                        const id  = row.dataset.id;
-                        const li  = liFromRow(row);
-                        if (!id || !li) return;
-                        if (!isRowOpen(row)) return;
-
-                        const openChildNames = Array.from(li.querySelectorAll(':scope > ul.children > li > .row.open'))
-                            .map(r => r.querySelector('.name')?.textContent);
-                        const openLeafNames  = Array.from(li.querySelectorAll(':scope > ul.children > li > .row.leaf-open'))
-                            .map(r => r.querySelector('.name')?.textContent);
-
-                        const wasSelected = row.classList.contains('selected');
-
-                        const resp = await sendReq('open', { id, watch: true });
-                        if (!resp || !resp.ok) return;
-
-                        const depth = parseInt(row.dataset.depth||'0',10);
-
-                        if (resp.type === 'dir'){
-                                setRowKind(row, 'dir');
-                                row.classList.add('open'); row.classList.remove('leaf-open'); row.setAttribute('aria-expanded','true');
-
-                                const ul = childrenList(li);
-                                ul.innerHTML = '';
-                                const entries = (resp.entries || []).map(p => ({ name: p[0], id: p[1] }));
-                                entries.forEach(({name, id: childId}) => {
-                                        const child = makeRow({ name, id: childId, depth: depth + 1 });
-                                        ul.appendChild(child);
-                                });
-
-                                for (const nm of openChildNames){
-                                        const childRow = Array.from(ul.querySelectorAll(':scope > li > .row'))
-                                            .find(r => r.querySelector('.name')?.textContent === nm);
-                                        if (childRow) await expandRow(childRow);
-                                }
-                                for (const nm of openLeafNames){
-                                        const childRow = Array.from(ul.querySelectorAll(':scope > li > .row'))
-                                            .find(r => r.querySelector('.name')?.textContent === nm);
-                                        if (childRow){ await expandRow(childRow); }
-                                }
-                        } else {
-                                setRowKind(row, 'leaf');
-                                row.classList.add('leaf-open'); row.classList.remove('open'); row.setAttribute('aria-expanded','true');
-                                let lv = leafView(li);
-                                if (!lv){ lv = document.createElement('div'); lv.className = 'leaf'; li.appendChild(lv); }
-                                const leafLeft = 6 + (depth + 1) * 10;
-                                lv.style.setProperty('--leaf-left', leafLeft + 'px');
-                                lv.innerHTML = String(resp.html ?? resp.value ?? '');
-                        }
-
-                        if (wasSelected) selectRow(row);
-                }
-
-                async function getRoots(){
-                        const resp = await sendReq('getRoots', ROOT_TOKEN ? { root: ROOT_TOKEN } : {});
-                        if (!resp || !resp.ok){ showError(resp?.error || 'failed to load roots'); return; }
-
-                        treeEl.innerHTML = '';
-
-                        if (resp.type === 'dir'){
-                                const entries = (resp.entries || []).map(p => ({ name: p[0], id: p[1] }));
-                                const frag = document.createDocumentFragment();
-                                entries.forEach(({name, id}) => { frag.appendChild(makeRow({ name, id, depth:0 })); });
-                                treeEl.appendChild(frag);
-                                if (resp.id){ fireAndForget('open', { id: resp.id, watch: true }); }
-                        } else if (resp.type === 'leaf'){
-                                const li = makeRow({ name: 'Root', id: resp.nodeId, kind:'leaf', depth:0 });
-                                treeEl.appendChild(li);
-                                const row = li.querySelector('.row');
-                                await expandRow(row);
-                        }
-
-                        const first = treeEl.querySelector('.row');
-                        if (first) {
-                                selectRow(first);
-                                if (document.documentElement.dataset.afieldOutputIframe === "true") {
-                                        await expandRow(first);
-                                }
-                        }
-                }
-
-                function showError(err){
-                        treeEl.innerHTML = '';
-                        const li = document.createElement('li'); li.className = 'node';
-                        const row = document.createElement('div'); row.className = 'row'; row.textContent = 'Error'; li.appendChild(row);
-                        const msg = document.createElement('div'); msg.className = 'leaf'; msg.textContent = String(err ?? 'unknown'); li.appendChild(msg);
-                        treeEl.appendChild(li);
-                }
-
-                function flatRows(){ return Array.from(treeEl.querySelectorAll('.row')); }
-                function nextRow(from, delta){
-                        const rows = flatRows(); if (!rows.length) return null;
-                        let idx = rows.indexOf(from); if (idx < 0) idx = 0;
-                        idx = Math.max(0, Math.min(rows.length - 1, idx + delta));
-                        return rows[idx];
-                }
-                function parentRow(row){
-                        const li = liFromRow(row); if (!li) return null;
-                        const parentLi = li.parentElement?.closest('li.node'); if (!parentLi) return null;
-                        return parentLi.querySelector(':scope > .row') || null;
-                }
-                function firstChildRow(row){
-                        const li = liFromRow(row); if (!li) return null;
-                        const first = li.querySelector(':scope > ul.children > li > .row'); return first || null;
-                }
-
-                document.addEventListener('keydown', async (e) => {
-                        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-                        const sel = treeEl.querySelector('.row.selected') || treeEl.querySelector('.row');
-                        if (!sel) return;
-
-                        switch (e.key){
-                                case 'ArrowDown': e.preventDefault(); { const n = nextRow(sel, +1); if (n) selectRow(n); } break;
-                                case 'ArrowUp':   e.preventDefault(); { const n = nextRow(sel, -1); if (n) selectRow(n); } break;
-                                case 'ArrowRight':
-                                case 'Enter': {
-                                        e.preventDefault();
-                                        if (sel.dataset.kind === 'dir' && !sel.classList.contains('open')) { await expandRow(sel); }
-                                        else {
-                                                const ch = firstChildRow(sel);
-                                                if (ch) selectRow(ch);
-                                                else await expandRow(sel);
-                                        }
-                                        break;
-                                }
-                                case 'ArrowLeft': {
-                                        e.preventDefault();
-                                        if (sel.classList.contains('open') || sel.classList.contains('leaf-open')) {
-                                                collapseRow(sel);
-                                        } else {
-                                                const p = parentRow(sel);
-                                                if (p) selectRow(p);
-                                        }
-                                        break;
-                                }
-                                case 'r': { e.preventDefault(); await refreshAll(); break; }
-                                default: break;
-                        }
-                });
-
-                async function refreshAll(){
-                        const paths = [];
-                        const selectedPath = [];
-
-                        function pathForRow(row){
-                                const names = [];
-                                let r = row;
-                                while (r){
-                                        const nm = r.querySelector('.name')?.textContent || '';
-                                        names.push(nm);
-                                        r = parentRow(r);
-                                }
-                                return names.reverse();
-                        }
-
-                        treeEl.querySelectorAll('.row.open, .row.leaf-open').forEach(r => { paths.push(pathForRow(r)); });
-
-                        const sel = treeEl.querySelector('.row.selected');
-                        if (sel) selectedPath.push(...pathForRow(sel));
-
-                        await getRoots();
-
-                        paths.sort((a,b)=>a.length-b.length);
-                        for (const p of paths){ await openPathByNames(p); }
-
-                        if (selectedPath.length){
-                                const row = await openPathByNames(selectedPath, true);
-                                if (row) selectRow(row);
-                        }
-                }
-
-                async function openPathByNames(names, selectLast=false){
-                        if (!names || !names.length) return null;
-                        let parentUl = treeEl;
-                        let foundRow = null;
-
-                        for (let depth=0; depth<names.length; depth++){
-                                const want = names[depth];
-                                const row = Array.from(parentUl.querySelectorAll(':scope > li > .row'))
-                                    .find(r => r.querySelector('.name')?.textContent === want);
-                                if (!row) return foundRow;
-                                foundRow = row;
-                                selectRow(row);
-
-                                if (!isRowOpen(row)) await expandRow(row);
-
-                                const li = liFromRow(row);
-                                parentUl = li.querySelector(':scope > ul.children') || parentUl;
-                        }
-                        if (selectLast && foundRow) selectRow(foundRow);
-                        return foundRow;
-                }
-
-                treeEl.addEventListener('pointerdown', () => treeEl.focus({preventScroll:true}));
-                window.addEventListener('beforeunload', () => { openIds.forEach(id => fireAndForget('unsubscribe', { id })); openIds.clear(); });
-                document.addEventListener('DOMContentLoaded', () => { treeEl.focus({preventScroll:true}); connect(); });
-        })();
+    function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    window.addEventListener('beforeunload', () => { watched.forEach(id => fireAndForget('unsubscribe', { id })); });
+    // Probe for agents and UI regressions.
+    window.inspectorTreeState = () => ({
+        rows: treeEl.querySelectorAll('.row:not(.more-row)').length,
+        visible: visibleRows().filter(r => !r.dataset.more).length,
+        more: Array.from(treeEl.querySelectorAll('.more')).map(m => m.textContent),
+        watched: watched.size,
+        status: statusEl.textContent,
+        root: rootTypeEl.textContent + ' ' + rootSummaryEl.textContent,
+        rowsByName: Object.fromEntries(Array.from(treeEl.querySelectorAll('.row:not(.more-row)')).slice(0, 60).map(r =>
+            [r.dataset.name, { kind: r.dataset.kind, type: r.querySelector('.type')?.textContent, summary: r.querySelector('.summary')?.textContent, flag: r.dataset.flag || '' }])),
+    });
+    connect();
+})();
 </script>
 </body>
 </html>

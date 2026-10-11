@@ -4,16 +4,18 @@
     <meta charset="utf-8" />
     <title>Log Stream</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The `logs(...)` embed (afield/outputs.kt -> /logs, server side afield/server/logstream.kt). -->
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field.css">
     <style>
-        @import url("/iosevka.css");
         :root{
-            --bg: #0f0f0f;
-            --panel: #111;
-            --fg: #e7e7e7;
-            --muted: #9aa0a6;
-            --accent: #7fd0ff;
-            --warn: #ffc66d;
-            --error: #ff8a80;
+            --bg: var(--field-surface, #000);
+            --panel: var(--field-surface, #111);
+            --fg: var(--field-fg, #e7e7e7);
+            --muted: var(--field-fg-dim, #9aa0a6);
+            --accent: rgb(var(--field-accent-rgb, 127,208,255));
+            --warn: rgb(var(--field-warning-rgb, 255,198,109));
+            --error: rgb(var(--field-danger-rgb, 255,138,128));
             --border: #000;
             --sep: rgba(255,255,255,0.08);
             --sb-size: 8px;
@@ -23,21 +25,25 @@
         *{ box-sizing:border-box; font-family:"Iosevka Web", system-ui, sans-serif; }
         body{ margin:0; background:rgba(0,0,0,1); color:var(--fg); font-weight:300; font-size:12px; line-height:1.25; }
         #chrome{ padding:6px; display:flex; flex-direction:column; gap:6px; background:transparent; }
-        #filters{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            /* float: right; */
-            position: absolute;
-            backdrop-filter: blur(4px);
-            right: 4px;
-            top: 4px;
-            background: none;
+        #bar{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+        #filters{ display:flex; flex-wrap:wrap; gap:6px; flex:1 1 auto; }
+        #find{
+            flex:0 1 180px; min-width:80px; background:rgba(255,255,255,0.06); color:var(--fg);
+            border:1px solid transparent; border-radius:3px; padding:2px 6px; font-size:11px; outline:none;
         }
+        #find:focus{ border-color: rgba(var(--field-accent-rgb, 72,201,255), .5); }
+        .tool{ background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:11px; padding:2px 4px; }
+        .tool:hover{ color:var(--fg); }
+        #jump{ display:none; color:var(--accent); }
+        #jump.show{ display:inline-block; }
+        #conn{ color:var(--muted); font-size:10px; }
+        #conn.bad{ color:var(--error); }
+        .row.hidden, .block-group.hidden{ display:none; }
         .pill{
-            padding: 4px 8px;
-            color: var(--fg);
-            font-size: 11px;
+            padding: 2px 6px;
+            color: var(--muted);
+            border:1px solid var(--sep); border-radius:999px;
+            font-size: 10px;
         }
         #log{
             /*border:2px solid var(--border); border-radius:6px;*/
@@ -51,6 +57,7 @@
             align-items:flex-start;
         }
         .row.block{ border-left:2px solid rgba(255,255,255,0.12); }
+        .row.empty{ display:block; color:var(--muted); font-style:italic; }
         .row.block-level-1{ margin-left:24px; }
         .row.block-level-2{ margin-left:40px; }
         .row.block-level-3{ margin-left:56px; }
@@ -93,7 +100,13 @@
 </head>
 <body>
 <div id="chrome">
-    <div id="filters"></div>
+    <div id="bar">
+        <div id="filters"></div>
+        <input id="find" type="search" placeholder="find  /" aria-label="Show only rows containing" spellcheck="false">
+        <button class="tool" id="jump" title="Scroll to the newest row">↓ 0 new</button>
+        <button class="tool" id="clear" title="Clear (k)">clear</button>
+        <span id="conn">connecting…</span>
+    </div>
     <div id="log" aria-live="polite"></div>
 </div>
 <script src="/iframe_autosize.js"></script>
@@ -140,7 +153,7 @@
     if (latestOnly) pill("latest only");
 
     const wsProto = document.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${wsProto}://${document.location.host}/ws`);
+    let ws = null;
     let open = false;
 
     function escape(text){
@@ -156,6 +169,8 @@
         return "";
     }
 
+    // A block id is data, not a pattern: "(1)" or "a+b" must not throw or match something else.
+    function reEscape(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
     function blockLevel(indent){
         if (!indent) return 0;
         const tokens = indent.split(/\t/).map(s => s.trim()).filter(Boolean);
@@ -163,14 +178,14 @@
     }
 
     function cleanBeginMessage(msg, blockId){
-        let out = msg.replace(/^BEGIN\\s+/i, "");
-        if (blockId) out = out.replace(new RegExp(`-\\s*['"]?${blockId}['"]?$`), "").trim();
+        let out = msg.replace(/^BEGIN\s+/i, "");
+        if (blockId) out = out.replace(new RegExp(`-\\s*['"]?${reEscape(blockId)}['"]?$`), "").trim();
         return out;
     }
 
     function stripBlockId(msg, blockId){
         if (!blockId) return msg;
-        const re = new RegExp(`^['"]?${blockId}['"]?\\s*[:\\-]?\\s*`, "i");
+        const re = new RegExp(`^['"]?${reEscape(blockId)}['"]?\\s*[:\\-]?\\s*`, "i");
         return msg.replace(re, "").trim();
     }
 
@@ -189,7 +204,7 @@
         }
 
         const row = document.createElement("div");
-        row.className = `row block block-level-${level}`;
+        row.className = (evt.blockId || level) ? `row block block-level-${level}` : "row";
         const messageText = (evt.boundary === "BEGIN" && evt.blockId)
             ? cleanBeginMessage(evt.message, evt.blockId)
             : stripBlockId(evt.message, evt.blockId);
@@ -221,14 +236,41 @@
             const max = filter.limit || 500;
             while (logEl.children.length > max) logEl.removeChild(logEl.firstChild);
         }
+        logEl.querySelector(":scope > .row.empty")?.remove();
+        applyFind(row);
         if (shouldStick) {
             logEl.scrollTop = logEl.scrollHeight;
+        } else {
+            unseen++; showJump();
         }
+    }
+    const findEl = document.getElementById("find");
+    const jumpEl = document.getElementById("jump");
+    const connEl = document.getElementById("conn");
+    let unseen = 0;
+    function showJump(){ jumpEl.textContent = `↓ ${unseen} new`; jumpEl.classList.toggle("show", unseen > 0); }
+    jumpEl.addEventListener("click", () => { logEl.scrollTop = logEl.scrollHeight; autoScroll = true; unseen = 0; showJump(); });
+    function applyFind(row){
+        const q = findEl.value.trim().toLowerCase();
+        row.classList.toggle("hidden", !!q && !row.textContent.toLowerCase().includes(q));
+    }
+    findEl.addEventListener("input", () => {
+        logEl.querySelectorAll(".row").forEach(applyFind);
+        logEl.querySelectorAll(".block-group").forEach(g => g.classList.toggle("hidden", !g.querySelector(".row:not(.hidden)")));
+    });
+    findEl.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Escape"){ findEl.value = ""; findEl.dispatchEvent(new Event("input")); findEl.blur(); } });
+    document.getElementById("clear").addEventListener("click", () => { logEl.innerHTML = ""; blockGroups.clear(); unseen = 0; showJump(); });
+    function showEmpty(){
+        if (logEl.children.length) return;
+        const row = document.createElement("div"); row.className = "row empty";
+        row.textContent = "No log events yet" + (filtersEl.children.length ? " matching this filter." : ".");
+        logEl.appendChild(row);
     }
 
     logEl.addEventListener("scroll", () => {
         const nearBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 8;
         autoScroll = nearBottom;
+        if (nearBottom && unseen){ unseen = 0; showJump(); }
     });
 
     function addSeparator(){
@@ -240,36 +282,54 @@
     }
 
     window.addEventListener("keydown", (e) => {
-        if (e.key === "k") {
-            logEl.innerHTML = "";
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key === "/") {
+            e.preventDefault(); findEl.focus();
+        } else if (e.key === "k") {
+            logEl.innerHTML = ""; blockGroups.clear();
         } else if (e.key === "t") {
             addSeparator();
         }
     });
 
-    ws.addEventListener("open", () => {
-        open = true;
-        ws.send(JSON.stringify({type:"logs/subscribe", subId, filter}));
-    });
-
-    ws.addEventListener("message", (ev) => {
-        try {
-            const msg = JSON.parse(ev.data);
-            if (!msg.type || !msg.type.startsWith("logs/")) return; // ignore non-log traffic on the shared socket
-            if (msg.subId && msg.subId !== subId) return;
-            if (msg.type === "logs/event") addRow(msg);
-        } catch (_){
-            // ignore parse errors from other traffic
-        }
-    });
-
+    // Reconnects (and re-subscribes) when the socket drops, e.g. across a Field restart.
+    function connect(){
+        ws = new WebSocket(`${wsProto}://${document.location.host}/ws`);
+        ws.addEventListener("open", () => {
+            open = true;
+            connEl.textContent = ""; connEl.classList.remove("bad");
+            ws.send(JSON.stringify({type:"logs/subscribe", subId, filter}));
+            setTimeout(showEmpty, 1500);
+        });
+        ws.addEventListener("message", (ev) => {
+            try {
+                const msg = JSON.parse(ev.data);
+                if (!msg.type || !msg.type.startsWith("logs/")) return; // ignore non-log traffic on the shared socket
+                if (msg.subId && msg.subId !== subId) return;
+                if (msg.type === "logs/event") addRow(msg);
+            } catch (_){
+                // ignore parse errors from other traffic
+            }
+        });
+        ws.addEventListener("close", () => {
+            open = false;
+            connEl.textContent = "disconnected — retrying"; connEl.classList.add("bad");
+            setTimeout(connect, 1500);
+        });
+    }
     function cleanClose(){
         if (open) {
             try { ws.send(JSON.stringify({type:"logs/unsubscribe", subId})); } catch(_){}
         }
     }
-
-    window.addEventListener("beforeunload", () => { cleanClose(); ws.close(); });
+    connect();
+    window.addEventListener("beforeunload", () => { cleanClose(); try { ws.close(); } catch(_){} });
+    window.logsEmbedState = () => ({
+        rows: logEl.querySelectorAll(".row:not(.empty)").length,
+        visible: logEl.querySelectorAll(".row:not(.empty):not(.hidden)").length,
+        last: Array.from(logEl.querySelectorAll(".row:not(.empty) .msg")).slice(-5).map(m => m.textContent),
+        conn: connEl.textContent,
+    });
 })();
 </script>
 </body>

@@ -2,23 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Lazy Inspector</title>
+    <title>Inspector — Columns</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      The `column(...)` embed (afield/outputs.kt -> /browse, protocol in afield/server/browsing.kt):
+      a Finder-style column view. Rows arrive as [name, id, kind, type, summary, flag].
+    -->
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field.css">
     <style>
-        @import url("/iosevka.css");
 
         /* ===== unified palette & spacing (matches tree.html) ===== */
         :root{
             --col-w:260px; --col-min-w:170px; --gap:3px;
 
-            --bg:        #1e1e1e;               /* page background if needed */
-            --fg:        #ddd;                   /* main text */
-            --fg-hover:  #fff;                   /* hover text accent */
-            --border:    #000;                   /* hard edges */
-            --header-bg: #000;                   /* panels/headers body */
-            --header-hover: rgba(255,255,255,0.10);
+            --bg:        var(--field-bg, #141414);
+            --fg:        var(--field-fg, #ddd);
+            --fg-hover:  var(--field-fg-strong, #fff);
+            --muted:     var(--field-fg-dim, rgba(255,255,255,.53));
+            --soft:      var(--field-fg-soft, rgba(255,255,255,.74));
+            --accent:    rgb(var(--field-accent-rgb, 72,201,255));
+            --danger:    rgb(var(--field-danger-rgb, 255,80,80));
+            --warning:   rgb(var(--field-warning-rgb, 235,150,70));
+            --border:    rgba(255,255,255,0.08);
+            --header-bg: var(--field-surface, #000);
+            --header-hover: rgba(255,255,255,0.07);
+            --selected:  rgba(var(--field-accent-rgb, 72,201,255), 0.16);
+            --maxh:      420px;
 
-            --sep:       rgba(0,0,0,0.65);       /* thin row separators */
+            --sep:       rgba(255,255,255,0.04);
 
             --pad-x:10px; --pad-y:8px;
 
@@ -33,7 +45,7 @@
             --sb-thumb-hover: rgba(255,255,255,.35);
         }
 
-        *{ box-sizing:border-box; font-family:"Iosevka Web",system-ui,Avenir,Helvetica,Arial,sans-serif; }
+        *{ box-sizing:border-box; font-family:"Iosevka Web",ui-monospace,Menlo,monospace; }
 
         /* Match tree: transparent surface (can sit on any background) */
         body{
@@ -214,6 +226,26 @@
             border:1px solid rgba(255,255,255,.15); background: transparent;
             color: var(--fg); border-radius:4px; padding:2px 6px; cursor: pointer;
         }
+        /* ==== rows with type + summary ======================================== */
+        .item{ display:flex !important; align-items:baseline; gap:6px; white-space:nowrap; }
+        .item .nm{ flex:0 0 auto; }
+        .item .ty{ flex:0 0 auto; color:var(--muted); font-size:10px; }
+        .item .sm{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; color:var(--soft); }
+        .item[data-kind="dir"]::after{ content:"›"; color:var(--muted); flex:0 0 auto; margin-left:auto; }
+        .item[data-flag="cycle"] .sm{ color:var(--warning); }
+        .item[data-flag="error"] .sm, .item[data-flag="error"] .nm{ color:var(--danger); }
+        .item.selected{ background: var(--selected); }
+        .item.more .nm{ color:var(--accent); }
+        .item.filtered-out{ display:none !important; }
+        .col-header{ gap:6px; white-space:nowrap; }
+        .col-header .ttl{ overflow:hidden; text-overflow:ellipsis; }
+        .col-header .meta{ color:var(--muted); font-weight:300; font-size:10px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; }
+        .col-header .copybtn{ border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:10px; }
+        .col-header .copybtn:hover{ color:var(--fg-hover); }
+        .col-filter{ margin:0; padding:2px 6px; border:none; border-bottom:1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--fg); font-size:11px; outline:none; }
+        .inspector-error{ color:var(--danger); }
+        html[data-afield-output-iframe="true"] .column .list,
+        html[data-afield-output-iframe="true"] .column .leaf{ max-height: var(--maxh); overflow:auto; }
     </style>
 </head>
 <body>
@@ -231,7 +263,9 @@
 
 <script src="/iframe_autosize.js"></script>
 <script>
-        const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
+        const PARAMS = new URLSearchParams(location.search);
+        const ROOT_TOKEN = PARAMS.get('root');
+        if (PARAMS.get('maxh')) document.documentElement.style.setProperty('--maxh', parseInt(PARAMS.get('maxh'), 10) + 'px');
 
         (() => {
                 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${document.location.host}/ws`;
@@ -291,7 +325,7 @@
                         cols.forEach(col => {
                                 widths.push(col.getBoundingClientRect().width);
                                 const sel = selectedIn(col);
-                                if (sel) names.push(sel.textContent);
+                                if (sel) names.push(sel.dataset.name);
                         });
                         return { names, widths, activeIdx };
                 }
@@ -305,7 +339,7 @@
                 }
 
                 // map pairs -> objects once
-                const mapEntries = pairs => (pairs || []).map(p => ({ name: p[0], id: p[1] }));
+                const mapEntries = pairs => (pairs || []).map(p => ({ name: p[0], id: p[1], kind: p[2] || null, type: p[3] || '', summary: p[4] ?? '', flag: p[5] || '' }));
 
                 async function refreshAll() {
                         const { names, widths, activeIdx } = snapshotState();
@@ -318,13 +352,13 @@
                         if (rootResp.type === 'dir') {
                                 const mapped = mapEntries(rootResp.entries);
                                 renderDir(
-                                    { id: rootResp.id || null, heading: rootResp.heading || 'Root', entries: mapped },
+                                    { id: rootResp.id || null, heading: rootResp.heading || 'Root', entries: mapped, resp: rootResp },
                                     null,
                                     { activate:true, autoselectFirst:false, width: widths[0] }
                                 );
                                 if (rootResp.id) fireAndForget('open', { id: rootResp.id, watch: true });
                         } else if (rootResp.type === 'leaf') {
-                                renderLeaf({ id: rootResp.nodeId, html: rootResp.html ?? rootResp.value, title: rootResp.heading || 'Root' },
+                                renderLeaf({ id: rootResp.nodeId, html: rootResp.html, value: rootResp.value, type: rootResp.valueType, title: rootResp.valueType || 'value' },
                                     null, { activate:true, width: widths[0] });
                                 return;
                         }
@@ -336,7 +370,7 @@
                                 const want = names[depth];
                                 if (!want) break;
 
-                                const btn = [...col.querySelectorAll('.item')].find(b => b.textContent === want);
+                                const btn = [...col.querySelectorAll('.item')].find(b => b.dataset.name === want);
                                 if (!btn) break;
 
                                 selectRow(btn, { scroll:false });
@@ -348,12 +382,12 @@
 
                                 if (resp.type === 'dir') {
                                         renderDir(
-                                            { id, heading: resp.heading, entries: mapEntries(resp.entries) },
+                                            { id, heading: want, entries: mapEntries(resp.entries), resp },
                                             depth,
                                             { activate:true, autoselectFirst:false, width: widths[depth+1] }
                                         );
                                 } else if (resp.type === 'leaf') {
-                                        renderLeaf({ id, html: resp.html, title: want }, depth,
+                                        renderLeaf({ id, html: resp.html, value: resp.value, type: resp.valueType, title: want }, depth,
                                             { activate:true, width: widths[depth+1] });
                                         break;
                                 }
@@ -399,7 +433,7 @@
                         if (focus) columnsEl.focus({ preventScroll:true });
                         scrollColumnIntoView(col, {smooth});
                 }
-                function itemsIn(col){ return Array.from(col.querySelectorAll('.item')); }
+                function itemsIn(col){ return Array.from(col.querySelectorAll('.item')).filter(b => !b.classList.contains('filtered-out')); }
                 function selectedIn(col){ return col.querySelector('.item.selected'); }
                 function selectRow(btn, {scroll=true} = {}){
                         const col = btn.closest('.column');
@@ -453,6 +487,18 @@
                                         break;
                                 }
                                 case 'r': { e.preventDefault(); refreshAll(); break; }
+                                case '/': { e.preventDefault(); openColumnFilter(active); break; }
+                                case 'c': {
+                                        e.preventDefault();
+                                        const sel = selectedIn(active);
+                                        const right = neighborColumn(active, +1);
+                                        if (active.dataset.value != null && !active.querySelector('.list')) copyText_(active.dataset.value, active.querySelector('.copybtn'));
+                                        else if (right && right.dataset.value != null) copyText_(right.dataset.value, right.querySelector('.copybtn'));
+                                        else if (sel) copyText_(`${sel.dataset.name}: ${sel.querySelector('.sm')?.textContent || ''}`);
+                                        break;
+                                }
+                                case 'Home': { e.preventDefault(); const l = itemsIn(active); if (l.length) selectRow(l[0]); break; }
+                                case 'End':  { e.preventDefault(); const l = itemsIn(active); if (l.length) selectRow(l[l.length-1]); break; }
                                 default: break;
                         }
                 });
@@ -512,11 +558,11 @@
 
                         if (resp && resp.ok) {
                                 if (resp.type === 'dir') {
-                                        const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
-                                        rebuildDirColumn(col, { heading: resp.heading, entries: mapped });
+                                        const mapped = mapEntries(resp.entries);
+                                        rebuildDirColumn(col, { heading: resp.heading, entries: mapped, resp });
                                 } else if (resp.type === 'leaf') {
                                         const title = col.dataset.title || 'Leaf';
-                                        rebuildLeafColumn(col, { title, html: resp.html });
+                                        rebuildLeafColumn(col, { title, html: resp.html, value: resp.value, type: resp.valueType });
                                 }
 
                                 setWidth(col, width);
@@ -534,110 +580,152 @@
                         if (reopenAgain.delete(id)) reopenNode(id, lastVersion.get(id) ?? undefined);
                 }
 
-                function renderDir({ id, heading, entries }, fromColIndex, opts = {}) {
-                        const { skipClear = false } = opts;
-                        if (!skipClear && Number.isInteger(fromColIndex)) clearRightOfColumn(fromColIndex);
-
-                        const col = document.createElement('section'); col.className = 'column';
-                        if (id) col.dataset.nodeId = id;
+                function headerFor(title, meta, copyText){
+                        const header = document.createElement('div'); header.className = 'col-header';
+                        const ttl = document.createElement('span'); ttl.className = 'ttl'; ttl.textContent = title ?? '…';
+                        const m = document.createElement('span'); m.className = 'meta'; m.textContent = meta || '';
+                        header.append(ttl, m);
+                        if (copyText != null) {
+                                const b = document.createElement('button'); b.className = 'copybtn'; b.textContent = 'copy'; b.title = 'Copy value (c)';
+                                b.addEventListener('click', (e) => { e.stopPropagation(); copyText_(copyText, b); });
+                                header.appendChild(b);
+                        }
+                        return header;
+                }
+                async function copyText_(text, btn){
+                        try { await navigator.clipboard.writeText(text); }
+                        catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch {} ta.remove(); }
+                        window.__lastCopied = text;
+                        if (btn) { btn.textContent = 'copied'; setTimeout(() => btn.textContent = 'copy', 900); }
+                }
+                function dirMeta(resp){
+                        if (!resp) return '';
+                        const t = (resp.valueType && resp.valueType !== resp.heading) ? resp.valueType : '';
+                        const n = resp.total != null ? `${resp.total} ${resp.total === 1 ? 'entry' : 'entries'}` : '';
+                        return [t, n].filter(Boolean).join(' · ');
+                }
+                function itemButton(col, e){
+                        const btn = document.createElement('button');
+                        btn.className = 'item'; btn.tabIndex = -1; btn.dataset.id = e.id; btn.dataset.name = e.name;
+                        if (e.kind) btn.dataset.kind = e.kind;
+                        if (e.flag) btn.dataset.flag = e.flag;
+                        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = e.name;
+                        const ty = document.createElement('span'); ty.className = 'ty'; ty.textContent = e.type || '';
+                        const sm = document.createElement('span'); sm.className = 'sm'; sm.textContent = e.summary || ''; sm.title = e.summary || '';
+                        btn.append(nm, ty, sm);
+                        btn.addEventListener('click', async () => {
+                                selectRow(btn);
+                                const idx = colIndexOf(col);
+                                const resp = await sendReq('open', { id: e.id, watch: true });
+                                if (!resp.ok) { showError(resp.error, idx); return; }
+                                if (resp.type === 'dir') {
+                                        renderDir({ id: e.id, heading: e.name, entries: mapEntries(resp.entries), resp }, idx);
+                                } else if (resp.type === 'leaf') {
+                                        renderLeaf({ id: e.id, html: resp.html, value: resp.value, type: resp.valueType, title: e.name }, idx);
+                                }
+                        });
+                        return btn;
+                }
+                function moreButton(col, list, resp, shown){
+                        const btn = document.createElement('button');
+                        btn.className = 'item more'; btn.tabIndex = -1; btn.dataset.name = '__more__';
+                        const nm = document.createElement('span'); nm.className = 'nm';
+                        nm.textContent = resp.total != null ? `show more — ${shown} of ${resp.total}` : `show more — ${shown} shown`;
+                        btn.appendChild(nm);
+                        btn.addEventListener('click', async () => {
+                                const r = await sendReq('more', { id: resp.id, offset: shown });
+                                if (!r || !r.ok) { showError(r?.error || 'more failed', colIndexOf(col)); return; }
+                                btn.remove();
+                                const added = mapEntries(r.entries);
+                                added.forEach(e => list.appendChild(itemButton(col, e)));
+                                if (r.more) list.appendChild(moreButton(col, list, r, shown + added.length));
+                                applyColumnFilter(col);
+                                const first = list.querySelector(`.item[data-id="${CSS.escape(added[0]?.id || '')}"]`);
+                                if (first) selectRow(first);
+                        });
+                        return btn;
+                }
+                function fillDirColumn(col, { heading, entries, resp }) {
+                        col.innerHTML = '';
                         col.dataset.title = heading || '';
-
-                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = heading ?? '…';
-                        const list = document.createElement('div'); list.className = 'list';
-
+                        col.appendChild(headerFor(heading, dirMeta(resp)));
                         if (!entries.length) {
                                 const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'empty';
-                                col.appendChild(header); col.appendChild(hint); appendColumn(col, opts); return;
+                                col.appendChild(hint); return;
                         }
+                        const list = document.createElement('div'); list.className = 'list';
+                        entries.forEach(e => list.appendChild(itemButton(col, e)));
+                        if (resp && resp.more) list.appendChild(moreButton(col, list, resp, (resp.offset || 0) + entries.length));
+                        col.appendChild(list);
+                }
+                function fillLeafColumn(col, { title, html, value, type }) {
+                        if (title) col.dataset.title = title;
+                        col.innerHTML = '';
+                        col.appendChild(headerFor(title ?? 'value', type || '', value ?? ''));
+                        const div = document.createElement('div'); div.className = 'leaf'; div.innerHTML = String(html ?? '');
+                        col.dataset.value = value ?? '';
+                        col.appendChild(div);
+                }
 
-                        entries.forEach(({ name, id: childId }) => {
-                                const btn = document.createElement('button');
-                                btn.className = 'item'; btn.textContent = name; btn.tabIndex = -1; btn.dataset.id = childId;
-                                btn.addEventListener('click', async () => {
-                                        selectRow(btn);
-                                        const idx = colIndexOf(col);
-                                        const resp = await sendReq('open', { id: childId, watch: true });
-                                        if (!resp.ok) { showError(resp.error, idx); return; }
-                                        if (resp.type === 'dir') {
-                                                const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
-                                                renderDir({ id: childId, heading: resp.heading, entries: mapped }, idx);
-                                        } else if (resp.type === 'leaf') {
-                                                renderLeaf({ id: childId, html: resp.html, title: name }, idx);
-                                        }
-                                });
-                                list.appendChild(btn);
-                        });
-
-                        col.appendChild(header); col.appendChild(list);
+                function renderDir(spec, fromColIndex, opts = {}) {
+                        const { skipClear = false } = opts;
+                        if (!skipClear && Number.isInteger(fromColIndex)) clearRightOfColumn(fromColIndex);
+                        const col = document.createElement('section'); col.className = 'column';
+                        if (spec.id) col.dataset.nodeId = spec.id;
+                        fillDirColumn(col, spec);
                         appendColumn(col, opts);
                 }
 
-                function rebuildDirColumn(col, { heading, entries }) {
-                        col.innerHTML = '';
-                        col.dataset.title = heading || '';
-
-                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = heading ?? '…';
-                        const list = document.createElement('div'); list.className = 'list';
-
-                        if (!entries.length) {
-                                const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'empty';
-                                col.appendChild(header); col.appendChild(hint); return;
-                        }
-
-                        entries.forEach(({ name, id: childId }) => {
-                                const btn = document.createElement('button');
-                                btn.className = 'item'; btn.textContent = name; btn.tabIndex = -1; btn.dataset.id = childId;
-                                btn.addEventListener('click', async () => {
-                                        selectRow(btn);
-                                        const idx = colIndexOf(col);
-                                        const resp = await sendReq('open', { id: childId, watch: true });
-                                        if (!resp.ok) { showError(resp.error, idx); return; }
-                                        if (resp.type === 'dir') {
-                                                const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
-                                                renderDir({ id: childId, heading: resp.heading, entries: mapped }, idx);
-                                        } else if (resp.type === 'leaf') {
-                                                renderLeaf({ id: childId, html: resp.html, title: name }, idx);
-                                        }
-                                });
-                                list.appendChild(btn);
-                        });
-
-                        col.appendChild(header); col.appendChild(list);
+                function rebuildDirColumn(col, spec) {
+                        const prevSel = selectedIn(col)?.dataset.name;
+                        const list0 = col.querySelector('.list'); const top = list0 ? list0.scrollTop : 0;
+                        fillDirColumn(col, { ...spec, heading: col.dataset.title || spec.heading });
+                        const list = col.querySelector('.list'); if (list) list.scrollTop = top;
+                        if (prevSel) { const b = [...col.querySelectorAll('.item')].find(x => x.dataset.name === prevSel); if (b) b.classList.add('selected'); }
+                        applyColumnFilter(col);
                 }
 
-                function rebuildLeafColumn(col, { title, html }) {
+                function rebuildLeafColumn(col, spec) {
                         const prevLeaf = col.querySelector('.leaf');
                         const savedScroll = prevLeaf ? { left: prevLeaf.scrollLeft, top: prevLeaf.scrollTop } : { left: 0, top: 0 };
-
-                        col.innerHTML = '';
-                        if (title) col.dataset.title = title;
-
-                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = title ?? 'Leaf';
-                        const div = document.createElement('div'); div.className = 'leaf'; div.innerHTML = String(html ?? '');
-
-                        col.appendChild(header); col.appendChild(div);
-
+                        fillLeafColumn(col, spec);
+                        const div = col.querySelector('.leaf');
                         // restore scroll so user-kept horizontal/vertical position stays put on updates
-                        if (savedScroll.left || savedScroll.top) {
-                                div.scrollLeft = savedScroll.left;
-                                div.scrollTop = savedScroll.top;
-                        }
+                        if (div && (savedScroll.left || savedScroll.top)) { div.scrollLeft = savedScroll.left; div.scrollTop = savedScroll.top; }
                 }
 
-                function renderLeaf({ id, html, title }, fromColIndex, opts = {}) {
+                function renderLeaf(spec, fromColIndex, opts = {}) {
                         const { skipClear = false } = opts;
                         if (!skipClear && Number.isInteger(fromColIndex)) clearRightOfColumn(fromColIndex);
-
                         const col = document.createElement('section'); col.className = 'column';
-                        if (id) col.dataset.nodeId = id;
-                        if (title) col.dataset.title = title;
-
-                        const header = document.createElement('div'); header.className = 'col-header'; header.textContent = title ?? 'Leaf';
-                        const div = document.createElement('div'); div.className = 'leaf'; div.innerHTML = String(html ?? '');
-                        col.appendChild(header); col.appendChild(div);
+                        if (spec.id) col.dataset.nodeId = spec.id;
+                        fillLeafColumn(col, spec);
                         appendColumn(col, opts);
                 }
 
+                /* ---------- per-column filter ("/") ---------- */
+                function applyColumnFilter(col){
+                        const f = col.querySelector('.col-filter'); const q = (f?.value || '').trim().toLowerCase();
+                        col.querySelectorAll('.item').forEach(b => {
+                                if (b.classList.contains('more')) return;
+                                const hay = (b.dataset.name + ' ' + (b.querySelector('.sm')?.textContent || '') + ' ' + (b.querySelector('.ty')?.textContent || '')).toLowerCase();
+                                b.classList.toggle('filtered-out', !!q && !hay.includes(q));
+                        });
+                }
+                function openColumnFilter(col){
+                        let f = col.querySelector('.col-filter');
+                        if (!f) {
+                                f = document.createElement('input'); f.className = 'col-filter'; f.type = 'search'; f.placeholder = 'filter'; f.spellcheck = false;
+                                col.querySelector('.col-header')?.after(f);
+                                f.addEventListener('input', () => applyColumnFilter(col));
+                                f.addEventListener('keydown', (e) => {
+                                        e.stopPropagation();
+                                        if (e.key === 'Escape') { f.remove(); applyColumnFilter(col); columnsEl.focus(); }
+                                        if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); const b = itemsIn(col)[0]; if (b) selectRow(b); }
+                                });
+                        }
+                        f.focus(); f.select();
+                }
                 function showError(err, fromColIndex){
                         if (Number.isInteger(fromColIndex)) clearRightOfColumn(fromColIndex);
                         const col = document.createElement('section'); col.className = 'column';
@@ -651,15 +739,15 @@
                         if (!resp.ok) { showError(resp.error); return; }
 
                         if (resp.type === 'dir') {
-                                const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
-                                renderDir({ id: resp.id, heading: resp.heading || 'Root', entries: mapped }, undefined);
+                                const mapped = mapEntries(resp.entries);
+                                renderDir({ id: resp.id, heading: resp.heading || 'Root', entries: mapped, resp }, undefined);
                                 if (resp.id) fireAndForget('open', { id: resp.id, watch: true });
                                 if (document.documentElement.dataset.afieldOutputIframe === "true") {
                                         const first = columnsEl.querySelector('.column .item');
                                         if (first) first.click();
                                 }
                         } else if (resp.type === 'leaf') {
-                                renderLeaf({ id: resp.nodeId, html: resp.html ?? resp.value, title: 'Root' }, undefined);
+                                renderLeaf({ id: resp.nodeId, html: resp.html, value: resp.value, type: resp.valueType, title: resp.valueType || 'value' }, undefined);
                                 if (resp.nodeId) fireAndForget('open', { id: resp.nodeId, watch: true });
                         }
                 }
@@ -671,6 +759,13 @@
                 });
 
                 document.addEventListener('DOMContentLoaded', () => { columnsEl.focus({preventScroll:true}); connect(); });
+                // Probe for agents and UI regressions.
+                window.inspectorColumnsState = () => [...columnsEl.querySelectorAll('.column')].map(c => ({
+                        title: c.dataset.title, meta: c.querySelector('.col-header .meta')?.textContent || '',
+                        items: [...c.querySelectorAll('.item')].filter(b => !b.classList.contains('filtered-out')).map(b => [b.dataset.name, b.dataset.kind || '', b.querySelector('.ty')?.textContent || '', b.querySelector('.sm')?.textContent || '']).slice(0, 60),
+                        count: c.querySelectorAll('.item:not(.more)').length,
+                        leaf: c.dataset.value != null ? c.dataset.value.slice(0, 200) : null,
+                }));
 
                 /* ==== Cheatsheet data + helpers ======================================= */
                 const CHEATS = [
@@ -678,6 +773,9 @@
                         ['←',              'Focus previous column'],
                         ['→  /  Enter',    'Open selected item'],
                         ['R',              'Refresh all open columns'],
+                        ['/',              'Filter the active column'],
+                        ['C',              'Copy the selected value'],
+                        ['Home / End',     'First / last row'],
                         ['Alt + drag',     'Resize left/right columns together'],
                         ['?  /  H',        'Toggle this help'],
                         ['Esc',            'Close this help']
