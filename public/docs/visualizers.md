@@ -861,6 +861,8 @@ Every slider, standalone, in `sliders(...)`, or in a `controlGroup`, answers the
 | **PageUp** / **PageDown**, **Home** / **End** | 10% of travel, or the ends |
 | **Backspace** | back to `initialValue` |
 
+The track carries guides: ticks at the quarters, thirds and middle of its travel (the ends and middle drawn taller), a small notch under the `initialValue` that double-click returns to, and a mark at zero when the range runs from negative to positive. On a `law =` slider the ticks sit at fractions of the travel, not of the value. The `vec2Control` pad has the same quarter and third gridlines, plus rings around the centre at a quarter, half, three quarters and the full half-width of the pad, so a vector's length reads at a glance.
+
 A typed or nudged value is snapped to `step` and clamped to the range, the same as a drag, so the callback never sees a number the slider could not have produced.
 
 A `controlGroup` slider keeps its value across re-runs and in the saved document. A standalone `slider(...)` starts from `initialValue` every run. When the value should belong to the box, bind it to a property:

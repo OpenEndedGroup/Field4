@@ -1195,6 +1195,22 @@ internal fun buildSliderHtml(
     val padding = 14
     val trackLength = viewWidth - (padding * 2)
     val cx = padding + (trackLength * spec.normalizedFor(clampedValue))
+    // Guides: ticks at the halves, thirds and quarters of the travel (the ends and middle taller),
+    // a notch where double-click returns to, and a mark at zero when the range straddles it.
+    val ticks = SLIDER_TICK_FRACTIONS.joinToString("") { f ->
+        val x = "%.2f".format(java.util.Locale.ROOT, padding + trackLength * f)
+        val major = f == 0.0 || f == 0.5 || f == 1.0
+        val h = if (major) 5 else 3
+        "<line x1=\"$x\" y1=\"${centerY - h}\" x2=\"$x\" y2=\"${centerY + h}\" class=\"slider-tick${if (major) " major" else ""}\"></line>"
+    }
+    val lo = minOf(min, max)
+    val hi = maxOf(min, max)
+    val defaultX = padding + trackLength * spec.normalizedFor(defaultValue.coerceIn(lo, hi))
+    val zeroMark = if (lo < 0.0 && hi > 0.0) {
+        val zx = "%.2f".format(java.util.Locale.ROOT, padding + trackLength * spec.normalizedFor(0.0))
+        "<line x1=\"$zx\" y1=\"${centerY - 8}\" x2=\"$zx\" y2=\"${centerY + 8}\" class=\"slider-zero\"></line>"
+    } else ""
+    val defaultNotch = "<path d=\"M ${"%.2f".format(java.util.Locale.ROOT, defaultX)} ${centerY + 7} l -3 5 l 6 0 z\" class=\"slider-default\"></path>"
     val ownAttributes = (if (send) "" else " data-send=\"false\"") + (if (extraAttributes.isBlank()) "" else " $extraAttributes")
     return """
         <div class="field-control field-slider"
@@ -1216,6 +1232,7 @@ internal fun buildSliderHtml(
             <span class="field-label">$label</span>
             <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
                 <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="slider-hitbox"></rect>
+                $ticks$zeroMark$defaultNotch
                 <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="slider-track"></line>
                 <line x1="$padding" y1="$centerY" x2="$cx" y2="$centerY" class="slider-fill"></line>
                 <circle cx="$cx" cy="$centerY" r="5" class="slider-thumb"></circle>
@@ -1225,6 +1242,9 @@ internal fun buildSliderHtml(
         </div>
     """.trimIndent()
 }
+
+/** Where the slider's tick marks (and the vec2 pad's gridlines) sit, as fractions of the travel. */
+private val SLIDER_TICK_FRACTIONS = listOf(0.0, 0.25, 1.0 / 3.0, 0.5, 2.0 / 3.0, 0.75, 1.0)
 
 private fun calculateDecimalPlaces(step: Double): Int {
     if (step >= 1.0) return 0
@@ -1284,6 +1304,20 @@ private fun buildVec2Html(
     val angleDeg = Math.toDegrees(Math.atan2(initialValue.y.toDouble(), initialValue.x.toDouble()))
     val magnitude = kotlin.math.sqrt((initialValue.x * initialValue.x + initialValue.y * initialValue.y).toDouble())
     val center = viewSize / 2.0
+    // Guides: gridlines at the quarters and thirds of each axis, and rings at a quarter, half,
+    // three quarters and the full half-width around the centre (so |v| reads at a glance).
+    val grid = buildString {
+        for (f in SLIDER_TICK_FRACTIONS) {
+            if (f == 0.0 || f == 1.0 || f == 0.5) continue
+            val p = "%.2f".format(java.util.Locale.ROOT, padding + area * f)
+            append("<line x1=\"$p\" y1=\"$padding\" x2=\"$p\" y2=\"${viewSize - padding}\" class=\"vec2-grid\"></line>")
+            append("<line x1=\"$padding\" y1=\"$p\" x2=\"${viewSize - padding}\" y2=\"$p\" class=\"vec2-grid\"></line>")
+        }
+        append("<rect x=\"$padding\" y=\"$padding\" width=\"$area\" height=\"$area\" class=\"vec2-frame\"></rect>")
+        for (r in listOf(0.25, 0.5, 0.75, 1.0)) {
+            append("<circle cx=\"$center\" cy=\"$center\" r=\"${"%.2f".format(java.util.Locale.ROOT, area / 2.0 * r)}\" class=\"vec2-ring${if (r == 1.0) " unit" else ""}\"></circle>")
+        }
+    }
 
     return """
         <div class="field-control field-vec2"
@@ -1306,6 +1340,7 @@ private fun buildVec2Html(
                      width="$viewSize" height="$viewSize"
                      style="width:${viewSize}px;height:${viewSize}px;">
                     <rect x="0" y="0" width="$viewSize" height="$viewSize" class="vec2-pane"></rect>
+                    $grid
                     <line x1="${viewSize / 2}" y1="$padding" x2="${viewSize / 2}" y2="${viewSize - padding}" class="vec2-axis"></line>
                     <line x1="$padding" y1="${viewSize / 2}" x2="${viewSize - padding}" y2="${viewSize / 2}" class="vec2-axis"></line>
                     <line x1="$center" y1="$center" x2="$cx" y2="$cy" class="vec2-line"></line>

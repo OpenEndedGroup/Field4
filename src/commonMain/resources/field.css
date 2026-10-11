@@ -2040,6 +2040,23 @@ body.field-pane-resizing-h * {
     stroke-dasharray: 3 5;
 }
 
+.slider-tick {
+    stroke: var(--field-accent-muted);
+    stroke-width: 1;
+    opacity: 0.55;
+    pointer-events: none;
+}
+.slider-tick.major { opacity: 0.9; }
+.slider-zero {
+    stroke: var(--field-accent-text-soft);
+    stroke-width: 1;
+    pointer-events: none;
+}
+.slider-default {
+    fill: var(--field-accent-muted);
+    pointer-events: none;
+}
+
 .slider-fill {
     stroke: var(--field-accent);
     stroke-width: 2;
@@ -2325,6 +2342,28 @@ body.field-pane-resizing-h * {
     stroke-width: 1;
     stroke-dasharray: 2 4;
 }
+
+.vec2-grid {
+    stroke: var(--field-accent-muted);
+    stroke-width: 0.5;
+    opacity: 0.45;
+    pointer-events: none;
+}
+.vec2-frame {
+    fill: none;
+    stroke: var(--field-accent-muted);
+    stroke-width: 0.75;
+    opacity: 0.6;
+    pointer-events: none;
+}
+.vec2-ring {
+    fill: none;
+    stroke: var(--field-accent-muted);
+    stroke-width: 0.5;
+    opacity: 0.4;
+    pointer-events: none;
+}
+.vec2-ring.unit { opacity: 0.75; stroke-dasharray: 2 3; }
 
 .vec2-line {
     stroke: var(--field-accent);
