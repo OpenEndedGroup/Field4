@@ -50,7 +50,7 @@ Four modes decide how much is re-run:
 
 What makes `incremental` trustworthy is what goes into a capture's cache key: the block's own
 code and options, a hash of the capture machinery (the hooks file is hashed as a syntax tree, so
-editing a comment does not invalidate 830 captures), and a hash of the source files the code
+editing a comment does not invalidate every capture), and a hash of the source files the code
 reaches, found through the generated [codebase reference](reference/index.md). Edit the
 implementation of a stdlib function and the figures that call it are re-captured on the next
 build, without anyone having to know which those are.
@@ -146,8 +146,7 @@ A few rules keep a passing result from meaning less than it says:
 - **Accepted failures live in a register, and the register is checked both ways.** A failing test
   may be accepted only by an entry in `dev_docs/testing/expected_test_failures.json` (or the smoke
   equivalent) with an exact name, a reason and a document to read. A registered test that starts
-  passing, or stops running, fails the build until its entry is removed. Both registers are
-  currently empty.
+  passing, or stops running, fails the build until its entry is removed.
 - **Tests may not write into the source tree.** Every test task is wrapped in a check that
   snapshots the size and modification time of every tracked file and fails on any change,
   including a rewrite with identical bytes. Generators opt in by name.
@@ -169,8 +168,7 @@ uv run python tools/land.py enqueue
 
 A single process, the lander, takes up to eight queued branches at a time, merges them, regenerates
 the generated files, runs the guards the changed paths select, and fast-forwards `main`. A git hook
-refuses every other attempt to move `main`, so the queue is a fact rather than a convention. Its
-live view is a terminal dashboard:
+refuses every other attempt to move `main`. Its live view is a terminal dashboard:
 
 ![The landing queue's live view: the lander is up under launchd, one branch is landing with a progress bar against the typical landing time and the step it is on, one more is queued with an estimated start, and the five most recent landings are listed with how long each took](assets/landing_queue/status_watch.webp)
 
