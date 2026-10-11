@@ -142,6 +142,83 @@ before("end $B ok", "end $C ok")
 
 
 @scenario
+def fieldml_up_supplier(s: Scenario):
+    """A missing FieldML value pulls a FieldML supplier, with no Kotlin declaration involved."""
+    s.box("M", "A", "B")
+    s.steps.append(Step("set @" + s.p("M") + " mainLanguage fieldml"))
+    s.steps.append(Step("set @" + s.p("A") + " mainLanguage fieldml"))
+    s.connect("M", "A").connect("A", "B")
+    s.ctl("afield.runtime.refreshMainLanguageRuntimes(thisBox.inside.boxes.values)")
+    s.ctl(f'val m = thisBox.named("{s.p("M")}"); val a = thisBox.named("{s.p("A")}"); val b = thisBox.named("{s.p("B")}"); check(a.ke is afield.ml.FieldMLExecution && b.ke is afield.ml.FieldMLExecution) {{ "language root=${{m.getPropertyRaw("mainLanguage")}}, A=${{a.ke::class}}, B=${{b.ke::class}}" }}')
+    s.clear()
+    s.code("A", 'setPropUp "n" 4')
+    s.run("B", 'let v = propUp "n"\nsetProp "result" v')
+    s.check('''
+expectResult(B, 4L)
+before("pull $A for $B.n", "start $A launch")
+before("end $A ok", "end $B ok")
+''')
+
+
+@scenario
+def fieldml_down_reader(s: Scenario):
+    """A changed FieldML write reruns the FieldML box that read the old value."""
+    s.box("M", "A", "B")
+    s.steps.append(Step("set @" + s.p("M") + " mainLanguage fieldml"))
+    s.steps.append(Step("set @" + s.p("A") + " mainLanguage fieldml"))
+    s.connect("M", "A").connect("A", "B")
+    s.ctl("afield.runtime.refreshMainLanguageRuntimes(thisBox.inside.boxes.values)")
+    s.ctl(f'val m = thisBox.named("{s.p("M")}"); val a = thisBox.named("{s.p("A")}"); val b = thisBox.named("{s.p("B")}"); check(a.ke is afield.ml.FieldMLExecution && b.ke is afield.ml.FieldMLExecution) {{ "language root=${{m.getPropertyRaw("mainLanguage")}}, A=${{a.ke::class}}, B=${{b.ke::class}}" }}')
+    s.code("A", 'setPropDown "n" 1')
+    s.run("A", 'setPropDown "n" 1')
+    s.code("B", 'let v = propDown "n"\nsetProp "result" v')
+    s.run("B", 'let v = propDown "n"\nsetProp "result" v')
+    s.clear()
+    s.run("A", 'setPropDown "n" 2')
+    s.sleep(1.0)
+    s.check('''
+expectResult(B, 2L)
+before("changed $A.n by $A", "cascade $B")
+''')
+
+
+@scenario
+def kotlin_to_fieldml_up(s: Scenario):
+    """A FieldML read pulls the Kotlin supplier on the same box graph."""
+    s.box("A", "M", "B")
+    s.steps.append(Step("set @" + s.p("M") + " mainLanguage fieldml"))
+    s.connect("A", "M").connect("M", "B")
+    s.ctl("afield.runtime.refreshMainLanguageRuntimes(thisBox.inside.boxes.values)")
+    s.clear()
+    s.code("A", "propUp<Long>(n)\nn = 7L")
+    s.run("B", 'let v = propUp "n"\nsetProp "result" v')
+    s.check('''
+expectResult(B, 7L)
+before("pull $A for $B.n", "start $A launch")
+''')
+
+
+@scenario
+def fieldml_to_kotlin_down(s: Scenario):
+    """A FieldML changed write reruns a Kotlin reader."""
+    s.box("M", "A", "B")
+    s.steps.append(Step("set @" + s.p("M") + " mainLanguage fieldml"))
+    s.connect("M", "A").connect("A", "B")
+    s.ctl("afield.runtime.refreshMainLanguageRuntimes(thisBox.inside.boxes.values)")
+    s.code("A", 'setPropDown "n" 1')
+    s.run("A", 'setPropDown "n" 1')
+    s.code("B", 'propDown<Long>(n)\nsetPropertyRaw("result", n)')
+    s.run("B", 'propDown<Long>(n)\nsetPropertyRaw("result", n)')
+    s.clear()
+    s.run("A", 'setPropDown "n" 2')
+    s.sleep(1.0)
+    s.check('''
+expectResult(B, 2L)
+before("changed $A.n by $A", "cascade $B")
+''')
+
+
+@scenario
 def up_chain_launch(s: Scenario):
     """The same chain, the leaf launched instead of run (it goes through the launch queue)."""
     s.box("A", "B", "C").connect("A", "B").connect("B", "C").clear()

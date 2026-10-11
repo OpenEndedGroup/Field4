@@ -76,6 +76,20 @@ private const val FIELDML_ACTIVE_LAUNCH_MODE = "launch"
  * between runs and hopping to the main thread before each one.
  */
 class FieldMLExecution(private val owner: Box) : BoxExecution {
+    private inline fun <T> reactiveRun(box: Box, mode: String, evaluate: () -> T): T {
+        val previous = Box.context.get()
+        Box.context.set(box)
+        afield.ReactiveRuns.runStarted(box, mode)
+        var ok = false
+        try {
+            val result = evaluate()
+            ok = true
+            return result
+        } finally {
+            afield.ReactiveRuns.runFinished(box, ok, mode)
+            if (previous == null) Box.context.remove() else Box.context.set(previous)
+        }
+    }
     /**
      * Run the selected text and print what it evaluated to.
      *
@@ -126,7 +140,9 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 val core = compileResult.core!!
                 try {
                     val output = TrackingOutput(inside.output)
-                    val value = Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(core)
+                    val value = reactiveRun(inside, "launch") {
+                        Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(core)
+                    }
                     val typeText = afield.ml.type.TypePrinter().print(compileResult.typed!!.type)
                     val valueText = renderFieldMLValue(value)
                     if (!output.printed) {
@@ -249,9 +265,11 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                     val output = TrackingOutput(inside.output)
                     val bound = ArrayList<Pair<Int, afield.ml.core.FieldMLValue>>()
                     val value = try {
-                        Evaluator(FieldMLRuntimePrelude.values(output, inside))
-                            .also { it.onTopLevelLet = { index, _, v -> bound += index to v } }
-                            .evaluate(result.core!!)
+                        reactiveRun(inside, mode) {
+                            Evaluator(FieldMLRuntimePrelude.values(output, inside))
+                                .also { it.onTopLevelLet = { index, _, v -> bound += index to v } }
+                                .evaluate(result.core!!)
+                        }
                     } finally {
                         recordFieldMLLineNotes(inside, execute, result.typed!!, bound)
                     }

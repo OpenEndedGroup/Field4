@@ -287,6 +287,12 @@ The `prop` functions are built into FieldML instead. In Kotlin, `prop<T>(name)` 
 | `prop`<br>`String -> Host` | Reads a named box property, searching this box and its ancestors. A missing property is an error. |
 | `propOr`<br>`String -> 'a -> Host` | `propOr name fallback` reads a property through the same inheritance chain and uses the fallback if it is absent. |
 | `setProp`<br>`String -> 'a -> 'a` | `setProp name value` writes locally and returns the value. This shadows an ancestor’s property without changing it. |
+| `propUp`<br>`String -> Host` | Reads an inherited slot; if absent, runs an upstream Kotlin or FieldML supplier before reading again. |
+| `propDown`<br>`String -> Host` | Reads an inherited slot and records the reader for a later reactive write. |
+| `propUpDown`<br>`String -> Host` | Combines the pull on a missing read with a recorded downstream reader. |
+| `setPropUp`<br>`String -> 'a -> 'a` | Writes a local slot that an upstream pull can find in this FieldML box. |
+| `setPropDown`<br>`String -> 'a -> 'a` | Writes locally; a changed value reruns boxes that read the old value. |
+| `setPropUpDown`<br>`String -> 'a -> 'a` | Combines an upstream supplier with a changed-write cascade. |
 | `rootProp`<br>`String -> Host` | Reads a named property from the document root. |
 | `setRootProp`<br>`String -> 'a -> 'a` | Writes a named property on the document root and returns the value, making it available through inheritance. |
 | `once`<br>`String -> ('a -> 'b) -> Host` | `once name f` computes and stores a value in this box’s own slot on first use. Later reads reuse that stored value; a JVM-null result is not cached. |
@@ -296,3 +302,8 @@ The `prop` functions are built into FieldML instead. In Kotlin, `prop<T>(name)` 
 A macro's arguments are source text, one string per piece: `hostMacroExpand "prop" ("<Double>", "(speed)")` stands for the Kotlin `prop<Double>(speed)`. `hostMacro` takes the same text and then the values to call with: `hostMacro "println" "(x)" (7, "hello")` expands `println`, then calls the function it expands to with line 7 and one value.
 
 Reading a `prop` that no box up the graph has set is an error, usually because the box that sets it has not run yet. `propOr` takes a fallback instead. Writing with `setProp` is always local: it shadows an ancestor's value for this box and everything below it rather than changing theirs. `setRootProp` puts the slot on the document root, so every box shares the one value. `once` computes on the first read and stores the result, so the second read does not recompute.
+
+For reactive properties, the read and write forms share the same slot as `prop` and `setProp`.
+Write `setPropUp "speed" 3` in a supplier box, then `propUp "speed"` in a child: a missing
+read runs the supplier first. Use the `Down` forms when changed writes should rerun boxes that
+previously read the slot. A writer that needs both directions uses `setPropUpDown`.
