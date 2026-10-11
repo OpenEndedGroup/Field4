@@ -4,7 +4,7 @@
 image to smooth edges. DLSS Super Resolution starts with a smaller render and reconstructs it to the
 same output size. Both run inside Field's Vulkan renderer; neither needs ray tracing.
 
-The **neural_reconstruction** Starting Point compares the original image, DLAA, Quality and Performance
+The [neural_reconstruction](agent_transcripts.md#neural_reconstruction) Starting Point compares the original image, DLAA, Quality and Performance
 at **1920 × 1080**, with Ultra Performance for pushing the source down to 360p.
 Its crossing rods, checkerboard surfaces and moving highlights make the differences
 easy to see. Switch to **Abstract colors and particles** to try less conventional imagery.
@@ -40,7 +40,7 @@ deliberate camera cut halfway through. All four modes use the same scene times a
 <video controls muted loop playsinline preload="metadata" src="assets/neural_reconstruction/geometry.mp4" poster="../assets/neural_reconstruction/dlaa-geometry.png" width="3840" height="2160" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
 Top left: Source. Top right: DLAA. Bottom left: Quality. Bottom right: Performance. Open the video
-fullscreen to inspect the thin edges. The source remains available at every stage of the experiment.
+fullscreen to inspect the thin edges.
 
 Neural reconstruction uses earlier frames. Geometric motion can describe a moving particle or camera,
 but cannot describe every changing fragment function. The abstract scene deliberately changes colors
@@ -49,8 +49,8 @@ without moving their surfaces, so it is also a way to inspect the limits of reco
 <video controls muted loop playsinline preload="metadata" src="assets/neural_reconstruction/abstract.mp4" poster="../assets/neural_reconstruction/dlaa-abstract.png" width="3840" height="2160" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
 For imagery whose abrupt changes should remain abrupt, use Source or draw that layer after
-reconstruction. Alpha coverage, translucent compositing and latent pigment channels are outside this
-first opaque RGB example. The adapter does not invent a velocity for changing colors.
+reconstruction. This example is opaque RGB only: it does not handle alpha coverage, translucent
+compositing or latent pigment channels. The adapter does not invent a velocity for changing colors.
 
 ## Push the source smaller
 
@@ -116,7 +116,7 @@ Create render targets at the returned input size, render with `ReconstructionJit
 call `evaluate(command, ReconstructionInputs(color, depth, motion), frame)` after the producer has
 finished its render pass. Present `output` or use it in another Field pass. Keep the source for bypass.
 
-The input contract is deliberately specific:
+Each input must follow these conventions:
 
 | Input | Convention |
 |---|---|
@@ -194,4 +194,4 @@ The next experiments are also Starting Points: [Ray Reconstruction](ray_reconstr
 [hardware optical flow](optical_flow.md), and [a learned shader function](learned_shader.md).
 Each has its own input contract and availability check.
 
-For the complete editable pass graph—from `moduleHere()` and three render attachments to this adapter—continue with [From modules to reconstruction](reconstruction_plumbing.md) and its **reconstruction_plumbing** Starting Point.
+For the complete editable pass graph—from `moduleHere()` and three render attachments to this adapter—continue with [From modules to reconstruction](reconstruction_plumbing.md) and its [reconstruction_plumbing](agent_transcripts.md#reconstruction_plumbing) Starting Point.
