@@ -2471,7 +2471,55 @@ function updateMeter(container, value) {
     if (readout) readout.textContent = lawFormat(spec, clamped);
 }
 
+/**
+ * Stretch a control's track to its row. The SVGs keep their viewBox height (so the thumb and
+ * strokes keep their size) and take a viewBox width matching the element's on-screen aspect;
+ * the track, guides and thumb are then laid out again in that width. Widening the output area
+ * therefore lengthens every slider instead of leaving it at its drawn 320 units.
+ */
+function fitControlTrack(svg) {
+    const w = svg.clientWidth, h = svg.clientHeight;
+    const vb = svg.viewBox?.baseVal;
+    if (!(w > 0 && h > 0) || !vb || !(vb.height > 0)) return;
+    const width = Math.max(Math.round(vb.height * w / h), 60);
+    if (Math.abs(width - vb.width) < 1) return;
+    svg.setAttribute('viewBox', `0 0 ${width} ${vb.height}`);
+    const container = svg.closest('.field-slider');
+    if (svg.classList.contains('field-slider-visual') && container) {
+        container.dataset.viewWidth = String(width);
+        const padding = parseFloat(container.dataset.padding || '14');
+        const len = Math.max(width - padding * 2, 1);
+        svg.querySelector('.slider-hitbox')?.setAttribute('width', width);
+        svg.querySelector('.slider-track')?.setAttribute('x2', width - padding);
+        svg.querySelectorAll('.slider-tick, .slider-zero').forEach((line) => {
+            const x = padding + len * parseFloat(line.dataset.f || '0');
+            line.setAttribute('x1', x);
+            line.setAttribute('x2', x);
+        });
+        const notch = svg.querySelector('.slider-default');
+        if (notch) notch.setAttribute('transform', `translate(${padding + len * parseFloat(notch.dataset.f || '0')} 0)`);
+        const value = parseFloat(container.dataset.value);
+        if (!Number.isNaN(value)) updateSlider(container, value, { send: false });
+    } else if (svg.classList.contains('alpha-visual')) {
+        svg.dataset.viewWidth = String(width);
+        svg.querySelector('.alpha-hitbox')?.setAttribute('width', width);
+        const alphaSlider = svg.closest('.field-color')?.querySelector('.alpha-slider');
+        if (alphaSlider) updateAlphaVisual(alphaSlider, parseFloat(alphaSlider.value));
+    }
+}
+
+const controlTrackObserver = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver((entries) => entries.forEach((entry) => fitControlTrack(entry.target)))
+    : null;
+
 function refreshControls(root = document) {
+    if (controlTrackObserver && root.querySelectorAll) {
+        root.querySelectorAll('.field-slider-visual, .alpha-visual').forEach((svg) => {
+            if (svg.__fieldTrackObserved) return;
+            svg.__fieldTrackObserved = true;
+            controlTrackObserver.observe(svg);
+        });
+    }
     root.querySelectorAll('.field-meter').forEach((container) => {
         const initial = parseFloat(container.dataset.value);
         if (!Number.isNaN(initial)) updateMeter(container, initial);
@@ -2672,7 +2720,7 @@ window.handleColorInput = function(colorElement) {
     // Update the value display
     const valueDisplay = document.getElementById(controlId + '-value');
     if (valueDisplay) {
-        valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${a.toFixed(2)})`;
+        setRgbaReadout(valueDisplay, r, g, b, a);
     }
     sendViaAfield('color-update', {
         controlId: controlId,
@@ -2682,6 +2730,12 @@ window.handleColorInput = function(colorElement) {
         a: a
     });
 };
+
+/** The colour readout, with each channel's number in its channel's colour (alpha in grey). */
+function setRgbaReadout(el, r, g, b, a) {
+    const n = (cls, v) => `<span class="rgba-${cls}">${v.toFixed(2)}</span>`;
+    el.innerHTML = `rgba(${n('r', r)}, ${n('g', g)}, ${n('b', b)}, ${n('a', a)})`;
+}
 
 // Color alpha slider support
 window.handleColorAlphaInput = function(alphaSlider) {
@@ -2705,7 +2759,7 @@ window.handleColorAlphaInput = function(alphaSlider) {
         // Update the main value display
         const valueDisplay = document.getElementById(controlId + '-value');
         if (valueDisplay) {
-            valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${alpha.toFixed(2)})`;
+            setRgbaReadout(valueDisplay, r, g, b, alpha);
         }
         updateAlphaVisual(alphaSlider, alpha);
         sendViaAfield('color-update', {
@@ -2775,7 +2829,7 @@ function normalizedRgbToHex(r, g, b) {
 function updateColorDisplays(controlId, r, g, b, a) {
     const valueDisplay = document.getElementById(`${controlId}-value`);
     if (valueDisplay) {
-        valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${a.toFixed(2)})`;
+        setRgbaReadout(valueDisplay, r, g, b, a);
     }
     const alphaDisplay = document.getElementById(`${controlId}-alpha-value`);
     if (alphaDisplay) {

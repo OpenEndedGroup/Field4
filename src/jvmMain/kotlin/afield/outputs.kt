@@ -1201,16 +1201,18 @@ internal fun buildSliderHtml(
         val x = "%.2f".format(java.util.Locale.ROOT, padding + trackLength * f)
         val major = f == 0.0 || f == 0.5 || f == 1.0
         val h = if (major) 5 else 3
-        "<line x1=\"$x\" y1=\"${centerY - h}\" x2=\"$x\" y2=\"${centerY + h}\" class=\"slider-tick${if (major) " major" else ""}\"></line>"
+        "<line x1=\"$x\" y1=\"${centerY - h}\" x2=\"$x\" y2=\"${centerY + h}\" data-f=\"$f\" class=\"slider-tick${if (major) " major" else ""}\"></line>"
     }
     val lo = minOf(min, max)
     val hi = maxOf(min, max)
-    val defaultX = padding + trackLength * spec.normalizedFor(defaultValue.coerceIn(lo, hi))
+    val defaultF = spec.normalizedFor(defaultValue.coerceIn(lo, hi))
+    val defaultX = padding + trackLength * defaultF
     val zeroMark = if (lo < 0.0 && hi > 0.0) {
-        val zx = "%.2f".format(java.util.Locale.ROOT, padding + trackLength * spec.normalizedFor(0.0))
-        "<line x1=\"$zx\" y1=\"${centerY - 8}\" x2=\"$zx\" y2=\"${centerY + 8}\" class=\"slider-zero\"></line>"
+        val zf = spec.normalizedFor(0.0)
+        val zx = "%.2f".format(java.util.Locale.ROOT, padding + trackLength * zf)
+        "<line x1=\"$zx\" y1=\"${centerY - 8}\" x2=\"$zx\" y2=\"${centerY + 8}\" data-f=\"$zf\" class=\"slider-zero\"></line>"
     } else ""
-    val defaultNotch = "<path d=\"M ${"%.2f".format(java.util.Locale.ROOT, defaultX)} ${centerY + 7} l -3 5 l 6 0 z\" class=\"slider-default\"></path>"
+    val defaultNotch = "<path d=\"M 0 ${centerY + 7} l -3 5 l 6 0 z\" transform=\"translate(${"%.2f".format(java.util.Locale.ROOT, defaultX)} 0)\" data-f=\"$defaultF\" class=\"slider-default\"></path>"
     val ownAttributes = (if (send) "" else " data-send=\"false\"") + (if (extraAttributes.isBlank()) "" else " $extraAttributes")
     return """
         <div class="field-control field-slider"
@@ -1534,7 +1536,7 @@ private fun buildColorPickerHtml(
         <div class="field-control field-color">
             <div class="field-header">
                 <span class="field-label">$label</span>
-                <span class="field-value" id="${controlId}-value">${String.format("rgba(%.2f, %.2f, %.2f, %.2f)", initialValue.x, initialValue.y, initialValue.z, initialValue.w)}</span>
+                <span class="field-value" id="${controlId}-value">${String.format(java.util.Locale.ROOT, "rgba(<span class=\"rgba-r\">%.2f</span>, <span class=\"rgba-g\">%.2f</span>, <span class=\"rgba-b\">%.2f</span>, <span class=\"rgba-a\">%.2f</span>)", initialValue.x, initialValue.y, initialValue.z, initialValue.w)}</span>
             </div>
             <div class="color-row">
                 <label class="color-swatch">
