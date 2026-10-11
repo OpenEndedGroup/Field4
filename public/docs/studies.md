@@ -431,7 +431,7 @@ val builds = studyBuilds("loot", listOf(
         StudyBuildProduct(listOf("placed.txt"))
     }), gates = listOf(reachable)) { mapOf("loot" to thisBox.getPropertyRaw("loot", "").toString()) }
 
-builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!)
+builds.await(builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!).id)
 showStudyBuilds("loot")
 ```
 
@@ -521,7 +521,7 @@ val loot = studyBuilds("loot", listOf(
         StudyBuildProduct(listOf("loot.txt"))
     })) { emptyMap() }
 
-level.start("blockout", level.stages().single().fingerprint!!)
+level.await(level.start("blockout", level.stages().single().fingerprint!!).id)
 showStudyBuilds("loot")
 ```
 
