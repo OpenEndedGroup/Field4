@@ -1020,7 +1020,7 @@ class FLinesAndJavaShapes {
                     val r: Cuboid = cache.computeIfAbsent(
                         c,
                         Function<CubicSegment3, Cuboid> { x: CubicSegment3? -> c.boundingBox() })
-                    if (Math.max(r.w, r.y) < sz) a.add(c)
+                    if (Math.max(r.w, r.h) < sz) a.add(c)
                     else {
                         val lr = c.split(0.5f)
                         a.add(lr.first)
@@ -1032,7 +1032,7 @@ class FLinesAndJavaShapes {
                     val r: Cuboid = cache.computeIfAbsent(
                         c,
                         Function<CubicSegment3, Cuboid> { x: CubicSegment3? -> c.boundingBox() })
-                    if (Math.max(r.w, r.y) < sz) b.add(c)
+                    if (Math.max(r.w, r.h) < sz) b.add(c)
                     else {
                         val lr = c.split(0.5f)
                         b.add(lr.first)
@@ -1626,7 +1626,7 @@ class FLinesAndJavaShapes {
                 for (c in na) {
                     val r: Rect =
                         cache.computeIfAbsent(c, Function<CubicSegment2, Rect> { x: CubicSegment2? -> c.boundingBox() })
-                    if (Math.max(r.w, r.y) < sz) a.add(c)
+                    if (Math.max(r.w, r.h) < sz) a.add(c)
                     else {
                         val lr = c.split(0.5f)
                         a.add(lr.first)
@@ -1637,7 +1637,7 @@ class FLinesAndJavaShapes {
                 for (c in nb) {
                     val r: Rect =
                         cache.computeIfAbsent(c, Function<CubicSegment2, Rect> { x: CubicSegment2? -> c.boundingBox() })
-                    if (Math.max(r.w, r.y) < sz) b.add(c)
+                    if (Math.max(r.w, r.h) < sz) b.add(c)
                     else {
                         val lr = c.split(0.5f)
                         b.add(lr.first)
@@ -2533,8 +2533,16 @@ class FLinesAndJavaShapes {
                 dc.cross(db, Vec3()).dot(
                     da.cross(db, Vec3())
                 ) / da.cross(db, Vec3()).lengthSquared()
+            // s places the hit on segment a; it is only a hit if it is also on segment b. This
+            // used to check s alone, so two segments whose *lines* crossed reported a point even
+            // when b stopped well short of a (a 0..100 horizontal and a vertical from y=10 to 50
+            // "met" at (50, 0)).
             if (s >= 0.0 && s <= 1.0f) {
-                return a1 + da * s
+                val hit = a1 + da * s
+                val dbl = db.lengthSquared()
+                val r = if (dbl == 0f) 0f else Vec3(hit).sub(b1).dot(db) / dbl
+                if (r < -1e-6f || r > 1f + 1e-6f) return null
+                return hit
             }
 
             return null
@@ -2644,13 +2652,17 @@ class FLinesAndJavaShapes {
                     val roots = ci.findYZeroRoots()
                     roots.forEach(Consumer<Float> { xx: Float ->
                         val vv: Vec3 = ci.evaluate(xx)
-                        vv.x += x
+                        // the segment was shifted by -x in y, so the shift comes back off y
+                        // (this was `vv.x += x`, copied from intersectX: every hit landed at y≈0)
+                        vv.y += x
                         ret.add(vv)
                     })
                 } else if (ni is FLine.LineTo) {
                     val aa: Vec3 = a.endPointOf(i - 1)
                     val bb: Vec3 = ni.to
-                    if (Math.min(aa.x, bb.x) <= x && Math.max(aa.x, bb.x) >= x) {
+                    // a horizontal at y = x is crossed when the segment spans x in **y** (this
+                    // compared the segment's x range, so steep segments were missed)
+                    if (Math.min(aa.y, bb.y) <= x && Math.max(aa.y, bb.y) >= x) {
                         val ii: Vec3? = intersectTwoLineSegments(
                             aa, bb, Vec3(Math.max(aa.x, bb.x) + 1, x, 0.0f), Vec3(
                                 Math.min(aa.x, bb.x) - 1, x, 0.0f

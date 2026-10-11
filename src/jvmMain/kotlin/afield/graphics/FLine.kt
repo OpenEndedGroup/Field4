@@ -796,7 +796,9 @@ class FLine : HasProperties {
 
         var d = FLine()
         for (i in this.nodes.indices) {
-            if (this.nodes[i] is MoveTo) {
+            // a run before the first MoveTo (a line opening with lineTo) is its own piece; it was
+            // dropped, because the FLine it went into was never added
+            if (this.nodes[i] is MoveTo || ff.isEmpty()) {
                 d = FLine()
                 ff.add(d)
             }

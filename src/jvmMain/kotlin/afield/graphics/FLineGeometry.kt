@@ -656,42 +656,27 @@ private fun perpendicularDistance(point: Vec3, lineStart: Vec3, lineEnd: Vec3): 
 // ==================== INTERSECTIONS ====================
 
 /**
- * Find all self-intersections in a curve.
- * @param tolerance intersection detection tolerance
- * @return list of intersection points
+ * Every point where this line crosses itself, located to within [tolerance] drawing units.
+ *
+ * A thin wrapper over [selfCrossings], which also returns the parameter of each crossing on both
+ * passes. This used to compare cubic segments only, so a polyline (a bowtie, a scribble sampled
+ * into `lineTo`s) never crossed itself, and it reported each crossing as a cluster of nearby
+ * points, one per surviving subdivision box.
+ *
+ * @param tolerance how closely each crossing is located; hits within `4 * tolerance` merge
+ * @return one point per crossing, in order along the line
  */
-fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3> {
-    val intersections = mutableListOf<Vec3>()
-
-    for (i in 1 until this.nodes.size) {
-        for (j in i + 2 until this.nodes.size) {
-            val ni = this.nodes[i]
-            val nj = this.nodes[j]
-
-            if (ni is FLine.CubicTo && nj is FLine.CubicTo) {
-                // endPointOf, not `.to`: the node a cubic starts from can be a Close — `close()`
-                // leaves the pen at the start of the subpath it closed, and drawing on from there
-                // is legal — and a Close stores no point, so `.to` throws.
-                val ci = CubicSegment3(endPointOf(i - 1), ni.c1, ni.c2, ni.to)
-                val cj = CubicSegment3(endPointOf(j - 1), nj.c1, nj.c2, nj.to)
-
-                val found = ci.intersection(cj, tolerance)
-                found.forEach { pair ->
-                    intersections.add(Vec3(pair.first.a).add(pair.first.d).mul(0.5f))
-                }
-            }
-        }
-    }
-
-    return intersections
-}
+fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3> =
+    selfCrossings(tolerance).map { it.point }
 
 /**
- * Find intersections between two curves.
+ * Every point where this line crosses [other], located to within [tolerance] drawing units.
+ *
+ * A thin wrapper over [crossings], which also returns the parameter of each crossing on both lines.
+ * It used to ignore [tolerance], skip `Close` segments, and report clusters of duplicates.
  */
-fun FLine.findIntersectionsWith(other: FLine, tolerance: Float = 1f): List<Vec3> {
-    return FLinesAndJavaShapes.intersect(this, other)
-}
+fun FLine.findIntersectionsWith(other: FLine, tolerance: Float = 1f): List<Vec3> =
+    crossings(other, tolerance).map { it.point }
 
 // ==================== CURVATURE ANALYSIS ====================
 
