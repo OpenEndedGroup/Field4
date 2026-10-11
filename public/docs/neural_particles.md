@@ -5,15 +5,15 @@
 // (renderer, an offline training box, and the live system).
 ```
 
-Three hundred thousand particles, each one asking a small neural network where to go next, every
-frame. Nobody wrote the rule that assembles them into that word — it was fitted, offline, in about
-a second of Kotlin, and then compiled into a shader.
+Three hundred thousand particles, each asking a small neural network where to go next, every
+frame. The rule that assembles them into that word was fitted in about a second of Kotlin and then
+compiled into a shader.
 
-A particle system is normally something you *write*: a few lines of arithmetic, run over a million
-points. That is a good deal when you know the arithmetic. It stops being one when what you have is
-not a rule but a **wish** — a shape you want the cloud to become, a motion you want it to have, a
-behaviour you can recognise but not write down. Tuning coefficients until a picture looks right is
-the usual answer, and it is slow, unrepeatable, and gets harder with every parameter you add.
+A particle system is normally something you write: a few lines of arithmetic, run over a million
+points. That works when you know the arithmetic. When what you have is a shape you want the cloud
+to become, or a behaviour you can recognise but not write down, the usual answer is tuning
+coefficients until the picture looks right, which is slow, hard to repeat, and gets harder with
+every parameter you add.
 
 Fit the rule instead when:
 
@@ -25,25 +25,23 @@ Fit the rule instead when:
   seconds and swaps a buffer; the shader is never recompiled. In the first scene below the target
   is a string you can edit while it runs.
 
-The catch: a trained rule that *looks* convincing is very cheap to obtain, and almost worthless as
-evidence. Almost any attraction-and-repulsion rule
-with a speed limit produces something an audience will accept as flocking. So everything here is
-graded against a rule we already have, and the numbers are in
-`dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`.
+A trained rule that looks convincing is easy to get: almost any attraction-and-repulsion rule with
+a speed limit produces something an audience will accept as flocking. So the learned rules here are
+compared against a written rule that does the same job.
 
-The machinery in between — taking a network trained in Kotlin and turning it into a GLSL forward
-pass that runs per-particle — is reusable on its own, and is the first thing below.
+The first section covers the part in between, which you can use on its own: turning a network
+trained in Kotlin into a GLSL forward pass that runs once per particle.
 
 ## Particle rules that were trained
 
-There are two kinds of rule a particle can follow. The first reads only its own state — a velocity
-field `v(x, t)`, blind to every other particle in the buffer. The second reads its neighbours — a
-force that depends on the company it keeps.
+There are two kinds of rule a particle can follow. The first reads only its own state: a velocity
+field `v(x, t)`, blind to every other particle in the buffer. The second reads its neighbours: a
+force that depends on the particles nearby.
 
-Field fits either one, and the difference matters more than it sounds. A velocity field is a
-**map**: every particle is travelling somewhere specific and will arrive, which is what makes
-shapes and words reachable. An interaction is a **force**, which is what makes flocks, swarms and
-crowds — and which needs a neighbour search underneath it before any of it is affordable.
+Field fits either one. A velocity field is a **map**: every particle is travelling somewhere
+specific and will arrive, which is what makes shapes and words reachable. An interaction is a
+**force**, which is what makes flocks, swarms and crowds, and it needs a neighbour search underneath
+it to be affordable.
 
 The two are built in that order below: tier one is sections 1 to 3, the neighbour search is
 section 4, and tier two is sections 5 to 7.
@@ -57,12 +55,12 @@ section 4, and tier two is sections 5 to 7.
 | `afield/stdlib/flowmatching.kt` | `flowMatch`, `contourComponents`, `mixtureSource` — the CPU half, shared with [Flow matching](flow_matching.md) |
 | `afield/stdlib/deepsets.kt` | `trainDeepSets`, `trainEquivariant`, and their GLSL emitters — tier two's learned rule |
 | `afield/four/util/GpuNeighbourGrid.kt` | hash, sort, ranges: the neighbour search both flocks share |
-| `afield/four/physics/ShaderBoids.kt` | `ShaderBoids`, `BoidSettings` — the written rule and the learned one, in one system |
+| `afield/four/physics/ShaderBoids.kt` | `ShaderBoids`, `BoidSettings`: the written rule and the learned one, in one system |
 
 Four transcripts open as complete documents from [Agent transcripts](agent_transcripts.md) or the
 welcome screen: **`neural_particles`**, **`learned_boids`**, **`letter_interpolation`** and
 **`letter_interpolation_panels`**. Everything below is reachable from one of them, and they are
-the fastest way in — open one, edit a number, watch it change.
+the fastest way in: open one, edit a number, watch it change.
 
 ---
 
@@ -80,7 +78,7 @@ val glsl = export.glsl("neuralField")        // place this immediately after #ve
 `export()` is a snapshot: the weights flat and layer-major, plus the centring and scaling the
 network was trained in, plus the source cloud so the system knows where particles start.
 `glsl(name)` emits an unrolled forward pass that reads those weights out of a storage buffer rather
-than baking them in as literals — so **retraining swaps a buffer between frames and never
+than baking them in as literals, so **retraining swaps a buffer between frames and never
 recompiles a shader**. The layer loop is unrolled and the dot products are not, so the emitted
 source stays proportional to the *depth* of the network: a five-thousand-parameter net is still
 readable GLSL.
@@ -102,22 +100,21 @@ Each particle is a struct rather than a texel, because of the two unusual fields
 struct Particle { vec2 position; vec2 start; vec2 velocity; float t; float pad; };
 ```
 
-A flow is a *map*, not a field of forces. A particle is not wandering; it is travelling from one
-specific source point to wherever the field takes it by `t = 1`, and when it arrives it goes back
+A flow is a map. Each particle travels from one specific source point to wherever the field takes it by `t = 1`, and when it arrives it goes back
 and does it again. `start` and `t` are what make that possible, and neither fits in a four-channel
 texel.
 
 One forward pass per particle per frame. The default flow-matching network is `11 -> 64 -> 64 -> 2`,
 about five thousand multiply-adds, so two hundred thousand particles is roughly a GFLOP a frame.
-**Width is the cheaper dial than count** — a `32 x 32` network is four times less work, and a 2D
+**Width is a cheaper dial than count**: a `32 x 32` network is four times less work, and a 2D
 flow rarely needs 64.
 
-### The setting that decides whether you can see anything
+### When the picture is a haze
 
-`dwellCycles` is not a cosmetic control and it is the first thing to reach for if the picture is a
-haze. A particle that resets the instant it reaches `t = 1` is on the target for exactly one frame
-out of `stepsPerCycle`, so with phases spread out only a hundred and fiftieth of the cloud is ever
-on the shape and the rest — all still in transit — drown it. At `0f` a correctly trained
+If the picture is a haze, reach for `dwellCycles` first. A particle that resets the instant it
+reaches `t = 1` is on the target for exactly one frame out of `stepsPerCycle`, so with phases
+spread out only a hundred and fiftieth of the cloud is ever on the shape, and the rest, still in
+transit, drown it. At `0f` a correctly trained
 300,000-particle system renders a featureless smudge that looks exactly like an undertrained field.
 At the default of `3f` a particle spends three quarters of its life arrived.
 
@@ -133,7 +130,7 @@ any target that comes in more than one part.
 
 Integrating a velocity field is a continuous invertible map. It can deform a blob but it cannot
 tear one into five, so **a standard Gaussian source cannot become the five disjoint outlines of a
-word** — not with more training and not with a bigger network. `mixtureSource` fixes it by giving
+word**, however long you train and however big the network. `mixtureSource` fixes it by giving
 the source the target's *topology*: one ellipse per closed subpath, fitted to that subpath's own
 mean and covariance, in point-for-point correspondence with the contour it has to become.
 
@@ -147,8 +144,8 @@ val field = flowMatch(pairing.to, pairing.from, FlowMatchOptions(coupling = Flow
 length; `mixtureSource` fits an ellipse to each and pairs it, point for point, with its contour.
 `FlowCoupling.PAIRED` is what tells `flowMatch` to respect that pairing instead of drawing its own.
 
-Here is that construction on its own, on the CPU, with no GPU involved — the source it builds
-against the target it has to reach:
+Here is that construction on its own, on the CPU: the source it builds, drawn against the target
+it has to reach.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/neural_particles/mixture.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="470" padding="16" embed=true alt="The letters Fi in grey outline on black, with a green ellipse fitted over each of the three closed subpaths — a large one across the F, a small circle on the dot of the i, a narrow one down its stem — and thin orange threads running from ellipse to outline showing the point-for-point pairing; below, a table reading closed subpaths found 3, points per component 1583, 623, 193, paired points 2399"}
 :::static
@@ -188,13 +185,13 @@ paired points           ${pairing.from.size}
 :::endfold
 ```
 
-Grey is the target — the letter outlines. Teal is the source the flow starts from: one ellipse per
+Grey is the target, the letter outlines. Teal is the source the flow starts from: one ellipse per
 closed subpath, so the "i" arrives as *two* components, its stem and its dot, each with its own
-ellipse. A letter with a counter — a "D", an "e" — would contribute two as well, outer and inner.
+ellipse. A letter with a counter (a "D", an "e") would contribute two as well, outer and inner.
 Orange threads are the correspondence, every hundredth pair. The flow's whole job is to shorten
 those threads.
 
-Three choices inside that construction each earn their default:
+Three choices inside that construction have defaults you should keep:
 
 | what | if you turn it off | why |
 |---|---|---|
@@ -202,9 +199,8 @@ Three choices inside that construction each earn their default:
 | `alignPhase = true` | identity pairing | a contour's arc-length origin has nothing to do with angle zero on its ellipse, so every component carries an arbitrary rotation the flow must unwind |
 | no jitter on the source | `jitter` above zero | the ellipse thickens to an annulus and the correspondence blurs |
 
-`alignPhase` is the least obvious of the three and the one that changes the result most. The
-transcript's `neural_particles` scene has a deliberate failure to try: set it to `false`, retrain,
-and watch the letters arrive twisted.
+`alignPhase` is the least obvious of the three and changes the result most. To see it, open the
+`neural_particles` scene, set it to `false`, retrain, and watch the letters arrive twisted.
 
 Almost every setting in that scene is live, including the text. Retraining takes a couple of
 seconds.
@@ -220,12 +216,11 @@ val blended = fieldA.blendWith(fieldB, t)     // t from 0 to 1
 particles.updateWeights(blended.network)      // a buffer write; nothing recompiles
 ```
 
-This is not the obvious morph. Interpolating the *targets* — sending point `i` to
-`(1-t)·A_i + t·B_i` — is a straight-line crossfade that needs no network and holds no surprises.
-Interpolating the weights gives a field that was **never trained on anything**, and where it sends
-a particle is a nonlinear function of `t`.
+Interpolating the *targets*, sending point `i` to `(1-t)·A_i + t·B_i`, is a straight-line
+crossfade that needs no network. Interpolating the weights gives a field that was **never trained
+on anything**, and where it sends a particle is a nonlinear function of `t`.
 
-The two are a long way apart. Measured at `t = 0.5`, the weight-space landing sits **0.85 of the
+The two give very different results. Measured at `t = 0.5`, the weight-space landing sits **0.85 of the
 whole width of the morph** from where the crossfade would put it — nearly as far as the two
 letters are from each other.
 
@@ -234,17 +229,14 @@ letters are from each other.
 // (renderer, one training box, and three pinned systems side by side).
 ```
 
-Those are `t = 0.25`, `0.5` and `0.78` between a "C" and an "S" — and none of them is a C, an S,
-or a blend of the two. They are letters from an alphabet nobody wrote. The outer two are the ones
-worth looking at: a ring with the S's spine pressing into it, caught before it has finished being
-a ring.
+Those are `t = 0.25`, `0.5` and `0.78` between a "C" and an "S", and none of them is a C, an S,
+or a blend of the two. The outer two show a ring with the S's spine pressing into it, before it has
+finished being a ring.
 
-Because what the interpolation actually does is **seal the C into a closed ring and re-open it the
-other way**. It never slides the C's mouth shut. The middle panel is that ring, and it is the
-tidiest thing in the family rather than the messiest: walked in source order, its landing cloud
-measures about **0.6 of a letter's perimeter** — *shorter* than either endpoint, because a circle
-is the shortest closed curve there is. The middle of two letters, in this space, is simpler than
-either of them.
+The interpolation **seals the C into a closed ring and re-opens it the other way**; it never slides
+the C's mouth shut. The middle panel is that ring, and it is the tidiest shape in the sequence:
+walked in source order, its landing cloud measures about **0.6 of a letter's perimeter**, shorter
+than either endpoint, because a circle is the shortest closed curve there is.
 
 !!! warning "What `blendWith` needs from the two fields"
 
@@ -259,8 +251,8 @@ either of them.
     functions through different permutations of the same machinery, and averaging across a
     permutation should produce nothing.
 
-The `letter_interpolation` transcript sweeps `t` slowly and continuously — forty seconds there and
-back — and `letter_interpolation_panels` is the still above. Both need letters that are a **single
+The `letter_interpolation` transcript sweeps `t` slowly and continuously, forty seconds there and
+back, and `letter_interpolation_panels` is the still above. Both need letters that are a **single
 closed contour** in the typeface: C, S, E, F, L, T, V, Z and so on. An O or a D has two, and one
 circle cannot be paired with two contours at once.
 
@@ -289,12 +281,12 @@ your own.
 
 Four steps, each avoiding something a compute shader cannot cheaply do:
 
-1. **hash** — one invocation per particle writes `key = cell index`, `value = particle index`.
-2. **sort** — `GpuRadixSort` sorts the pairs, so a cell's members become a contiguous run. This is
-   the step that turns a scatter problem into a gather problem.
-3. **ranges** — one invocation per sorted entry compares its key with its neighbours' and writes
+1. **hash**: one invocation per particle writes `key = cell index`, `value = particle index`.
+2. **sort**: `GpuRadixSort` sorts the pairs, so a cell's members become a contiguous run. This
+   turns a scatter problem into a gather problem.
+3. **ranges**: one invocation per sorted entry compares its key with its neighbours' and writes
    each run's bounds. No atomics: an entry can tell whether it begins a run by looking left.
-4. **read** — a consumer walks the 3x3 block of cells around its own.
+4. **read**: a consumer walks the 3x3 block of cells around its own.
 
 Cells are row-major rather than Morton-ordered. A hierarchy needs a node's *children* contiguous; a
 flat grid needs a *cell's members* contiguous, and row-major does that while making the nine
@@ -302,10 +294,11 @@ indices of a 3x3 neighbourhood plain arithmetic instead of a bit interleave.
 
 !!! warning "Cell size is the interaction radius"
 
-    The 3x3 block covers one cell width, so `cellSize` — `domainSize / cellsPerSide` — is the
+    The 3x3 block covers one cell width, so `cellSize` (`domainSize / cellsPerSide`) is the
     largest radius the query answers correctly. Make the cells smaller than your interaction radius
-    and the query silently misses neighbours: the shader still runs, the flock still flocks, and it
-    is wrong. Nothing tells you. Size the grid from the radius, not from the particle count.
+    and the query silently misses neighbours: the shader still runs and the flock still flocks, but
+    the result is wrong and nothing reports it. Size the grid from the radius, not from the
+    particle count.
 
 Particles outside the domain are clamped into the edge cells rather than dropped, because a lost
 particle is a particle that silently stops interacting.
@@ -318,7 +311,7 @@ something like it, install once rather than once per module.
 
 ## 5. Boids on the grid
 
-`ShaderBoids` is the reference consumer — classical Reynolds, three terms, on top of that grid:
+`ShaderBoids` runs classical Reynolds boids, with its three terms, on top of that grid:
 
 ```diffstatic {data-lang=kotlin}
 val written = ShaderBoids(grid, count = 12_000) {
@@ -337,8 +330,8 @@ written.installDrawInto()                           // defaults to renderer.rend
     `0.02 / 1.2 / 0.8` is what every boids tutorial gives, and at this density it produces an
     evenly spaced gas rather than a flock. The weights are **not scale-free**: separation *sums*
     over neighbours while alignment and cohesion take *means*, so their relative strength depends
-    on the density and the interaction radius. Measured in this scene — 57 neighbours a boid,
-    separation summing terms of about 137, cohesion meaning an offset of about 0.003 — the textbook
+    on the density and the interaction radius. In this scene (57 neighbours a boid, separation
+    summing terms of about 137, cohesion averaging an offset of about 0.003) the textbook
     numbers put separation 27x above alignment and 4600x above cohesion.
 
     So expect to retune all three whenever you change `radius` or the particle count, and tune them
@@ -347,19 +340,18 @@ written.installDrawInto()                           // defaults to renderer.rend
 
 `separationRadiusFraction` is the other dial that decides the shape. One radius for all three terms
 cannot clump: separation wants to be short-range while alignment and cohesion want the whole
-neighbourhood. Shrinking separation's reach to a quarter is what turns one even disc into groups.
+neighbourhood. Shrinking separation's reach to a quarter turns one even disc into groups.
 
-It exists to be the thing the learned rule is graded against, but it stands alone perfectly well as
-a fast flocking system. The force it computes is also the oracle that generates tier two's training
-data, which is why this is a *written* rule and not a recorded one: learning from recorded motion
-would leave nothing exact to compare against.
+`ShaderBoids` works on its own as a fast flocking system. Its force also generates tier two's
+training data and is what the learned rule is compared against, which is why it is a written rule
+rather than recorded motion: recorded motion would leave nothing exact to compare against.
 
 ---
 
 ## 6. A learned interaction
 
-A velocity field is blind to the other particles. An interaction is the other kind of rule, and
-Deep Sets is the right family for it:
+A velocity field is blind to the other particles. An interaction reads them, and Field fits one
+with Deep Sets, a network that takes a set of neighbours of any size:
 
 ```diffstatic {data-lang=text}
 a_i = phi( v_i, SUM_j psi(x_j - x_i, v_j - v_i), MEAN_j psi(...) )
@@ -368,15 +360,15 @@ a_i = phi( v_i, SUM_j psi(x_j - x_i, v_j - v_i), MEAN_j psi(...) )
 Two small networks and a reduction. The aggregation is permutation-invariant and takes any number
 of neighbours, so one set of weights serves a particle with three neighbours and a particle with
 three hundred. Classical Reynolds is one particular choice of `psi` and `phi`, so the family
-provably contains something worth finding.
+contains at least one good answer.
 
-**Both the sum and the mean are fed to `phi`, and one reduction cannot do.** Separation is a *sum* —
-being crowded by twenty neighbours pushes harder than by two — while alignment and cohesion are
-*means*. That branch is worth a factor of four.
+**Both the sum and the mean are fed to `phi`**, because one reduction is not enough. Separation is
+a *sum* (being crowded by twenty neighbours pushes harder than by two) while alignment and cohesion
+are *means*. Feeding both is worth a factor of four.
 
-Training is one call. You supply a batch of `InteractionExample` — a velocity, a list of
-neighbours, and the acceleration the rule you are imitating produced — and because you *have* the
-rule, no simulation is needed to generate them:
+Training is one call. You supply a batch of `InteractionExample`, each a velocity, a list of
+neighbours, and the acceleration the rule you are imitating produced. Because you have the rule,
+no simulation is needed to generate them:
 
 ```diffstatic {data-lang=kotlin}
 fun sample(): InteractionExample {
@@ -401,7 +393,7 @@ val learned = ShaderBoids(grid, count = 12_000, equivariant = learnedRule) { /* 
 
     Draw up to *seventy* neighbours, not a handful. A flock runs at around fifty-seven neighbours
     per boid once cohesion has gathered it, and a model trained only on sparse neighbourhoods is
-    extrapolating in deployment — which bites hard here, because cohesion is weighted against the
+    extrapolating when it runs. That hurts here, because cohesion is weighted against the
     *mean* offset, so a small error in the meaned branch becomes a large force.
 
 `trainDeepSets` and `trainEquivariant` fit by reverse-mode autodiff over `ADTape`, because Smile's
@@ -410,7 +402,7 @@ weights. Both halves of either form come out as ordinary `MlpWeights`, so the GL
 section 1 applies to them unchanged.
 
 **Prefer `trainEquivariant`.** The true rule satisfies `a(R x) = R a(x)` identically, and nothing in
-the plain Deep Sets form makes it do so — a network with scalar weights on Cartesian components has
+the plain Deep Sets form makes it do so: a network with scalar weights on Cartesian components has
 a preferred direction baked in by its initialisation. The symptom is a flock that drifts steadily in
 one direction, and the residual *grows with crowding* because it rides on the aggregated message.
 `EquivariantWeights` removes it by construction: `psi` sees only invariants of a neighbour and emits
@@ -418,9 +410,9 @@ scalars, the vectors come from the neighbour's own direction and velocity differ
 only the lengths of the aggregates. Rotate every input and nothing any network sees changes.
 Constraining it this way also *improved* the fit, which is the usual result when a symmetry is real.
 
-`ShaderBoids` runs either rule, branching only where the force is computed — same buffer, same
-neighbour search, same integration, same speed limit — so the two flocks are an A/B of the rule and
-nothing else:
+`ShaderBoids` runs either rule, branching only where the force is computed. The buffer, neighbour
+search, integration and speed limit are shared, so two flocks side by side differ only in the
+rule:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/neural_particles/flocks.png" capture="native-window" wait="180" native-wait-frames="30" embed=true hidden=true timeout="900" duration="0" name="neural-particles-flocks" alt="Two flocks of points on black, each a sweeping arc: on the left a blue-grey flock, on the right a warm-toned one, both curled around the wandering point they are fleeing" macro-file="../../dev_docs/agents/transcripts/learned_boids.yaml" capture-box="lb_renderer"}
 // Built and launched from dev_docs/agents/transcripts/learned_boids.yaml
@@ -431,14 +423,13 @@ Left is the written rule, right the learned one, twelve thousand boids each, see
 random draw into their own halves of the domain, both fleeing a point that wanders on the same
 smooth random walk about each flock's own centre.
 
-The difference that remains is the one that should: a relative force error of about a quarter is a
-flock that behaves *like* boids, not a flock that *is* boids, and over ten thousand chaotic steps
-the two are never the same picture.
+The learned force has a relative error of about a quarter. That gives a flock that behaves like
+boids, and over ten thousand chaotic steps the two flocks never look the same.
 
-!!! note "Editing the written rule does not move the learned flock"
+!!! note "Retrain after editing the written rule"
 
-    It learned the rule as it was when you trained it. Re-run the training box to catch it up —
-    a few seconds. Leaving the two out of step on purpose is how you see how far they can
+    The learned flock follows the rule as it was when you trained it. Re-run the training box to
+    catch it up; it takes a few seconds. Leaving the two out of step on purpose is how you see how far they can
     be pulled apart.
 
 ### Cost
@@ -454,9 +445,8 @@ radius. At 12,000 boids a flock:
 | an `8x8` `psi`, message width 4 | 71.2 |
 | the equivariant `8x8`, both flocks, driven | **77** |
 
-The first row is the control that identifies the bottleneck: the written flock runs at the same
-speed on the identical grid whatever `psi` is doing, so there is no point tuning cells or particle
-counts. **Depth is the part to keep** — a single hidden layer of 16 costs *more* than two of 8 and
+The written flock runs at the same speed on the same grid whatever `psi` is doing, so the cost is
+in `psi`, and tuning cells or particle counts will not help. **Keep the depth**: a single hidden layer of 16 costs *more* than two of 8 and
 fits worse than either.
 
 ---
@@ -464,11 +454,9 @@ fits worse than either.
 ## 7. The driver
 
 With the symmetry built in and no external forcing, the flock settles into something that reads as
-static: an evenly spaced disc that barely changes. That is the rule working, not a failure — the
-drift the plain Deep Sets form produced had been supplying the apparent motion all along, and
-removing it left what the rule on its own does here.
-
-So the motion comes from outside the interaction:
+static: an evenly spaced disc that barely changes. That is what the rule does on its own here; the
+drift of the plain Deep Sets form was what made it look lively. To get motion, add it from outside
+the interaction:
 
 ```diffstatic {data-lang=kotlin}
 boids.settings.driverStrength = -1.5f     // negative flees, positive pursues
@@ -478,8 +466,7 @@ boids.driver = { wanderingPoint() }       // read once a frame
 
 `driverStrength` adds a pull toward, or a push away from, a point you supply each frame. It is
 applied after the rule exactly like `containment`, defaults to zero, and **the network knows nothing
-about it** — which keeps it forcing rather than a modelling error, so an A/B of two rules still
-compares only the rules. No retraining is needed to add or change it.
+about it**, so two flocks side by side still differ only in their rule. No retraining is needed to add or change it.
 
 ---
 
@@ -550,16 +537,18 @@ compute-only dispatch needs a `Window` for the device to exist.
   Scored on a settled flock, the learned rule does only a little better than predicting exactly
   zero, and its forces come out about half the size they should be. On scattered neighbourhoods
   like the ones it was trained on, it is far closer.
-- **A flock that behaves like boids is not boids**, and the picture is not evidence either way.
-  Almost any attraction-plus-repulsion rule with a speed limit produces something an audience
-  accepts, which is why nothing here is graded by eye.
-- **No video of the GPU window.** The native surface is stills-only, so the figures on this page are
-  screenshots of a live system rather than recordings of one.
+- **A flock that behaves like boids is not boids**, and the picture cannot tell you how close the
+  learned rule is. Compare its forces against the written rule instead.
 
 ## See also
 
 [Flow matching](flow_matching.md) is the CPU half of tier one and worth reading first.
 [afield.four Graphics](afield_four_graphics.md) is the compute-then-draw shape both systems are
 built on. The API is in [Machine learning](reference/machine-learning.md) and
-[Simulation](reference/simulation.md). `dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md` has the numbers,
-the falsification tests, and the six measurement problems this work actually consisted of.
+[Simulation](reference/simulation.md).
+
+??? aside "Where the numbers come from"
+
+    The measurements quoted on this page are in `dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`. The
+    figures are screenshots of the live system, because the native window capture takes stills
+    only.
