@@ -4,7 +4,7 @@ Slug renders a filled `FLine` as analytic curve coverage on the GPU. The path ca
 contain straight edges, cubic curves and holes. Its six-vertex bounding quad moves
 with the camera; the fragment shader evaluates the actual outline within it.
 
-Use this experimental path when you want a filled planar shape whose boundary
+Slug is experimental. Use it when you want a filled planar shape whose boundary
 stays smooth as its size changes. It does not replace FLine strokes or triangulation.
 
 ## Start with the example
@@ -76,13 +76,8 @@ must follow the render target, particularly when resizing or rendering offscreen
 
 ## Limits
 
-This is one shape per atlas, with 512-wide packed textures. It is a Linux/macOS
-native preparation prototype, not a Windows distribution or a font shaping API.
-Strokes, glyph loading, multiview VR and incremental atlas packing are outside this
-slice. Near-plane crossings and nearly edge-on planes need further investigation;
-keep the example's filled plane comfortably in front of the camera.
-
-The automated GPU regression uses actual render-target readback to check holes,
-edge coverage, alpha, scale changes and atlas replacement. Decoder and shader tests
-also run without a Vulkan device. These checks do not certify every projection,
-HDR composite or extreme curve configuration.
+Each atlas holds one shape, in 512-wide packed textures. The native helper builds
+on Linux and macOS only, and Slug does not shape fonts. Strokes, glyph loading,
+multiview VR and incremental atlas packing are not supported. A plane that crosses
+the near plane or is seen nearly edge-on may not draw correctly, so keep the filled
+plane comfortably in front of the camera.
