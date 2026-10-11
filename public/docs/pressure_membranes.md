@@ -12,7 +12,9 @@ stress-free or cuttable reference surface.
 
 ## A complete small example
 
-This deliberately coarse octahedron is a mechanics example, not a fabrication pattern.
+This example inflates a coarse octahedron to 1000 Pa and prints why the solver stopped and the
+remaining force residual. The octahedron is only there to exercise the solver; it is not a
+fabrication pattern.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.physics.pressure.*
@@ -79,6 +81,8 @@ and restart along a sampled unstable direction; it does not certify a global min
 not as collision prevention. Refine meshes and compare physical quantities before
 trusting a visually smooth result.
 
-Independent tests cover analytic force derivatives, packed/reference agreement across
-material branches, sealed gas, translation invariance, mesh validation, cancellation,
-and convergence toward the spherical Laplace pressure law under mesh refinement.
+??? aside "What the tests cover"
+
+    Independent tests cover analytic force derivatives, packed/reference agreement across
+    material branches, sealed gas, translation invariance, mesh validation, cancellation,
+    and convergence toward the spherical Laplace pressure law under mesh refinement.
