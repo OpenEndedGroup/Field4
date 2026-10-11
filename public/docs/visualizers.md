@@ -795,6 +795,8 @@ displayClearAll()
 ```
 
 This is useful for demos, guided tutorials, and boxes that are meant to be rerun frequently.
+`displayClear` removes the panel rather than emptying it; [Box Output](box_output.md) covers all
+four calls and the mouse gestures that do the same.
 
 ## Controls: sliders, toggles, colors, text, and XY pads
 
