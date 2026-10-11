@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chat-lens-viewer" index="0" -->
 
 ```edn [field-box id="chat-lens-viewer" role="properties"]
-{"id" "chat-lens-viewer" "index" 0 "name" "chat-lens-viewer" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-lens-viewer" "_tombstone" false "frame" #afield/rect [80.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-lens-viewer_code_.kt" "lines" 6 "characters" 231 "sha256" "9a5a7570af6f9a4ae9254513544d3e6c8b21a33cfddae7a827e1edc196464166"}]}
+{"id" "chat-lens-viewer" "index" 0 "name" "chat-lens-viewer" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-lens-viewer" "_tombstone" false "frame" #afield/rect [520.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-lens-viewer_code_.kt" "lines" 6 "characters" 231 "sha256" "9a5a7570af6f9a4ae9254513544d3e6c8b21a33cfddae7a827e1edc196464166"}]}
 ```
 
 ```kotlin [field-property box="chat-lens-viewer" name="code" path="chat-lens-viewer_code_.kt"]
@@ -28,7 +28,7 @@ showChatLens("harbour", "storyline", height = 600)
 <!-- field-box id="chat-archive-outline" index="1" -->
 
 ```edn [field-box id="chat-archive-outline" role="properties"]
-{"id" "chat-archive-outline" "index" 1 "name" "chat-archive-outline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-outline" "_tombstone" false "frame" #afield/rect [-400.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-outline_code_.kt" "lines" 6 "characters" 290 "sha256" "caf90a9eb40eb60bddd4dae89c7d5da51824895bf6b5847da164fb126240b332"}]}
+{"id" "chat-archive-outline" "index" 1 "name" "chat-archive-outline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-outline" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-outline_code_.kt" "lines" 6 "characters" 290 "sha256" "caf90a9eb40eb60bddd4dae89c7d5da51824895bf6b5847da164fb126240b332"}]}
 ```
 
 ```kotlin [field-property box="chat-archive-outline" name="code" path="chat-archive-outline_code_.kt"]
@@ -45,7 +45,7 @@ display("outline", "<pre style='margin:8px'>" + ChatLogViews.outline(tree).repla
 <!-- field-box id="chat-archive-read" index="2" -->
 
 ```edn [field-box id="chat-archive-read" role="properties"]
-{"id" "chat-archive-read" "index" 2 "name" "chat-archive-read" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-read" "_tombstone" false "frame" #afield/rect [80.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-read_code_.kt" "lines" 7 "characters" 365 "sha256" "3ec01f9a8914c9a90ec69b05783cd31a4504c4f29e16659452b531925718b30f"}]}
+{"id" "chat-archive-read" "index" 2 "name" "chat-archive-read" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-read" "_tombstone" false "frame" #afield/rect [520.0 40.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-read_code_.kt" "lines" 7 "characters" 365 "sha256" "3ec01f9a8914c9a90ec69b05783cd31a4504c4f29e16659452b531925718b30f"}]}
 ```
 
 ```kotlin [field-property box="chat-archive-read" name="code" path="chat-archive-read_code_.kt"]
@@ -63,7 +63,7 @@ display("night", "<pre style='margin:8px'>" + page.text.replace("<", "&lt;") + "
 <!-- field-box id="chat-archive-lens-stats" index="3" -->
 
 ```edn [field-box id="chat-archive-lens-stats" role="properties"]
-{"id" "chat-archive-lens-stats" "index" 3 "name" "chat-archive-lens-stats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-lens-stats" "_tombstone" false "frame" #afield/rect [-400.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-lens-stats_code_.kt" "lines" 9 "characters" 530 "sha256" "b6d564678150f6cade045c5985c540a873187a5a906c57ff72f6b2969f374e8d"}]}
+{"id" "chat-archive-lens-stats" "index" 3 "name" "chat-archive-lens-stats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-lens-stats" "_tombstone" false "frame" #afield/rect [40.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-lens-stats_code_.kt" "lines" 9 "characters" 530 "sha256" "b6d564678150f6cade045c5985c540a873187a5a906c57ff72f6b2969f374e8d"}]}
 ```
 
 ```kotlin [field-property box="chat-archive-lens-stats" name="code" path="chat-archive-lens-stats_code_.kt"]

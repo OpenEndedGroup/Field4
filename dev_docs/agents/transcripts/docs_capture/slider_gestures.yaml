@@ -1,0 +1,30 @@
+name: slider_gestures
+description: A live controlGroup slider for the interaction capture in visualizers.md.
+operations:
+  - create:
+      box: slider_gestures
+      name: slider gestures
+      frame: { x: 80.0, y: 100.0, w: 230.0, h: 105.0 }
+      properties:
+        code: |
+          fun showGain(value: Double) {
+              val percent = (value * 100).toInt()
+              display("gain preview", """
+                  <div style="width:480px;height:140px;background:#05080a;border:1px solid #136178;padding:8px;box-sizing:border-box">
+                    <div style="width:$percent%;height:100%;background:#0cc8ed"></div>
+                  </div>
+                  <div style="font:24px Iosevka,monospace;color:#0cc8ed;padding:8px 0">gain ${"%.2f".format(value)}</div>
+              """.trimIndent())
+          }
+          controlGroup("controls") {
+              slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { value ->
+                  setPropertyRaw("gain", value, true)
+                  showGain(value)
+              }
+          }
+          displayOpen("controls")
+          showGain(0.35)
+          displayOpen("gain preview")
+  - launch: { box: slider_gestures }
+  - wait:
+      millis: 800

@@ -9,7 +9,7 @@ operations:
   - create:
       box: "chat-lens-viewer"
       name: "chat-lens-viewer"
-      frame: { x: 80.0, y: 240.0, w: 420.0, h: 60.0 }
+      frame: { x: 520.0, y: 240.0, w: 420.0, h: 60.0 }
       properties:
         "autorun": false
         "code": |
@@ -22,7 +22,7 @@ operations:
   - create:
       box: "chat-archive-outline"
       name: "chat-archive-outline"
-      frame: { x: -400.0, y: 40.0, w: 420.0, h: 60.0 }
+      frame: { x: 40.0, y: 40.0, w: 420.0, h: 60.0 }
       properties:
         "autorun": false
         "code": |
@@ -35,7 +35,7 @@ operations:
   - create:
       box: "chat-archive-read"
       name: "chat-archive-read"
-      frame: { x: 80.0, y: 40.0, w: 420.0, h: 60.0 }
+      frame: { x: 520.0, y: 40.0, w: 420.0, h: 60.0 }
       properties:
         "autorun": false
         "code": |
@@ -49,7 +49,7 @@ operations:
   - create:
       box: "chat-archive-lens-stats"
       name: "chat-archive-lens-stats"
-      frame: { x: -400.0, y: 240.0, w: 420.0, h: 60.0 }
+      frame: { x: 40.0, y: 240.0, w: 420.0, h: 60.0 }
       properties:
         "autorun": false
         "code": |

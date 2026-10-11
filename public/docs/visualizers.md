@@ -847,6 +847,68 @@ The `vec2Control(...)` is the “xy thing” in the nicest sense: an XY pad with
 
 Every slider, standalone, in `sliders(...)`, or in a `controlGroup`, answers the same hand:
 
+This recording drags a live `controlGroup` slider, nudges it with the arrow key, then double-clicks
+the track to return to its starting value. The large bar is updated by the slider's callback, so it
+shows the value Field receives while the pointer moves.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x900" clip="65,205,560,350" video="assets/visualizers-slider-gestures.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/slider_gestures.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="slider-gestures" alt="A live GAIN slider starts at 0.35. The pointer drags its thumb to the right and the readout and large cyan bar follow, the right arrow nudges it once, then a double-click returns the thumb, readout and bar to 0.35."}
+ui.waitForSelector(".field-slider-visual", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+check("true" in ui.eval("return document.body.classList.contains('mode-no-editor')").toString())
+ui.pause(300)
+
+fun point(fraction: Double): Pair<Double, Double> {
+    val coords = ui.eval("""
+        const r = document.querySelector('.field-slider-visual').getBoundingClientRect();
+        return [r.left + r.width * $fraction, r.top + r.height / 2].join(',');
+    """).toString().trim('"').split(',').map { it.toDouble() }
+    return coords[0] to coords[1]
+}
+fun value(): Double = ui.eval("return document.querySelector('.field-slider').dataset.value")
+    .toString().trim('"').toDouble()
+
+check(kotlin.math.abs(value() - 0.35) < 0.001)
+val from = point(0.35)
+val to = point(0.75)
+val firstHit = ui.eval("""
+    const e = document.elementFromPoint(${from.first}, ${from.second});
+    return [e?.tagName, e?.className?.baseVal || e?.className,
+        !!e?.closest('.field-slider-visual')].join(' / ');
+""").toString()
+check("true" in firstHit) { "slider start is covered at $from: $firstHit" }
+ui.moveMouse(from.first, from.second, 12)
+ui.pause(100)
+ui.mouseDown()
+for (step in 1..30) {
+    ui.moveMouse(from.first + (to.first - from.first) * step / 30,
+        from.second, 1)
+    ui.pause(100)
+}
+ui.mouseUp()
+ui.pause(150)
+val dragged = value()
+check(dragged > 0.70) { "drag did not move the live slider: $dragged" }
+
+ui.press("ArrowRight")
+ui.pause(150)
+check(value() > dragged) { "arrow key did not nudge the focused slider" }
+
+val reset = point(0.5)
+val hit = ui.eval("""
+    const e = document.elementFromPoint(${reset.first}, ${reset.second});
+    return [!!e?.closest('.field-slider-visual'), e?.tagName, e?.className?.baseVal || e?.className,
+        e?.closest('.field-control')?.className].join(' / ');
+""").toString()
+check("true" in hit) { "slider track occluded at $reset: $hit" }
+ui.doubleClickAt(reset.first, reset.second)
+ui.pause(200)
+check(kotlin.math.abs(value() - 0.35) < 0.001) {
+    "double-click did not restore the starting value: value=${value()}, default=${ui.eval("return document.querySelector('.field-slider').dataset.default")}"
+}
+ui.moveMouse(790.0, 420.0, 8)
+ui.pause(100)
+```
+
 | Do this | To get |
 | --- | --- |
 | press and drag | the thumb jumps to the pointer and follows it |

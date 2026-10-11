@@ -8,7 +8,7 @@ operations:
   - create:
       box: "ai-tool-demo-minimal"
       name: "Give the AI a tool — the whole mechanism"
-      frame: { x: 60.0, y: 60.0, w: 620.0, h: 700.0 }
+      frame: { x: 60.0, y: 60.0, w: 620.0, h: 170.0 }
       properties:
         "code": |
           // Give Field's AI a tool of its own — the whole mechanism, in one box, and with no API key.
@@ -115,7 +115,7 @@ operations:
   - create:
       box: "ai-tool-demo-geometry"
       name: "A tool that hands the model a picture"
-      frame: { x: 720.0, y: 60.0, w: 620.0, h: 700.0 }
+      frame: { x: 720.0, y: 60.0, w: 620.0, h: 170.0 }
       properties:
         "code": |
           // A tool that hands the model a PICTURE.
