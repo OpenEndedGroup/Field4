@@ -39,7 +39,7 @@ Every candidate carries a `declaredIn`: a class's fully-qualified name for a mem
 row's **category**, which is the field that decides which **section** it renders under.
 
 It has to be `declaredIn` rather than the member's bare name, because bare names collide: in
-Field's source tree `scale` is declared in 42 categorised files, `close` in 21, `copy` in 16. The
+Field's source tree `scale`, `close` and `copy` are each declared in many categorised files. The
 categoriser, `KotlinSourceIndex.getCompletionCategoryForSymbol`, asks in three steps:
 
 <div class="field-data-table" markdown>
@@ -47,7 +47,7 @@ categoriser, `KotlinSourceIndex.getCompletionCategoryForSymbol`, asks in three s
 | step | question asked | answer if it hits |
 |---|---|---|
 | 1 | is `Owner.member` in the index? | that declaration's category — including *no category*, which does not fall through |
-| 2 | does `declaredIn`'s package contain a match? | the vote, scoped to one package instead of 42 files |
+| 2 | does `declaredIn`'s package contain a match? | the vote, scoped to one package instead of the whole tree |
 | 3 | `declaredIn` names something outside this tree | **decline** — a namesake here says nothing about `java.lang.Math` |
 
 </div>
@@ -99,9 +99,8 @@ finally a hair of the server's original index so that ties break in the order th
 
 ### It keeps the top 80
 
-`MAX_VISIBLE_ITEMS` is 80. This is why "is the right answer in the response" and "can a person see
-it" are two different questions, and only the second one is yours. A completion at index 159 of 249
-is in the payload and is nowhere on screen.
+`MAX_VISIBLE_ITEMS` is 80. A completion can be in the server's response and still never reach the
+screen: one at index 159 of 249 is in the payload and is nowhere in the popup.
 
 ### Last, it regroups into sections
 
@@ -126,18 +125,16 @@ no matter what it scored.
     is much further down than its score should put it, check which **section header** it ended up
     under before suspecting the ranking.
 
-That is easy to underestimate. Put five of `FLine`'s eight common members into someone else's
-category and their prior still works perfectly: it lifts each of them to the top of a section nobody
-is looking at, seventy-odd rows down. Same payload, same ranker, and one classification change moves
-`moveTo` from off-screen to first.
+Put five of `FLine`'s eight common members into someone else's category and their prior still
+works: it lifts each of them to the top of a section nobody is looking at, seventy-odd rows down.
+With the same payload and the same ranker, one classification change moves `moveTo` from off-screen
+to first.
 
 ## Seeing it
 
-Both figures below are photographs of a live Field rather than drawings.
-
-The first is a `ctrl-space` on a box containing `val f = FLine()` and a bare `f.`, driven by real
-keypresses, with the popup captured while it is open, served by the same Analysis API backend an
-ordinary `./field.sh` session uses.
+The first figure is a `ctrl-space` on a box containing `val f = FLine()` and a bare `f.`, with
+the popup captured while it is open. It is served by the same Analysis API backend an ordinary
+`./field.sh` session uses.
 
 ??? aside "Provenance"
     `docs_capture_audit --repeat 2` reproduces the popup byte-for-byte, and grades the prior table's
@@ -167,9 +164,9 @@ ui.pause(1400)
 
 All eight of `FLine`'s `@CommonMembers` are there, in the order the annotation lists them
 (`moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `rot`, `scale`, `copy`), and the first member the
-class says nothing about, `arcLength()`, comes ninth. One `GRAPHICS` header, which is the sectioning
-claim confirmed in the same picture: every `FLine` member is categorised from where it is declared,
-so they all land in one section, and inside one section the prior is free to decide.
+class says nothing about, `arcLength()`, comes ninth. There is one `GRAPHICS` header: every `FLine`
+member is categorised from where it is declared, so they all land in one section, and inside one
+section the prior decides the order.
 
 ### The K1 fallback { #the-k1-fallback }
 
@@ -190,10 +187,9 @@ order, out of the fallback backend.
 
 ### Asking Field for the prior in numbers
 
-A figure shows nine rows and the panel has rather more; behind it, one `f.` is a couple of hundred
-candidates, and eight of them carry a prior. This figure asks Field what that prior is. The box
-calls `afield.CommonMemberPrior`, the object the completion server calls once per candidate on every
-keystroke, so the table is the popup's own arithmetic and moves when the band moves.
+Behind the popup, one `f.` is a couple of hundred candidates, and eight of them carry a prior. The
+next box asks Field what that prior is, by calling `afield.CommonMemberPrior`, the object the
+completion server calls once per candidate on every keystroke.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/popup-decides-prior-table.png" capture="box" w="700" h="190" wait="1.2" timeout="120" embed=true hidden=true name="popup-decides-prior-table" alt="A Field box output panel labelled main. A heading reads: @CommonMembers on afield.graphics.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26."}
 :::static
@@ -284,7 +280,7 @@ class Ramp {
 }
 ```
 
-Four things to know about it:
+A few things to know about it:
 
 **Names, not callable references.** `"moveTo"` rather than `FLine::moveTo`, so that one
 entry covers every overload of a name (`FLine.moveTo` has four), and a property reads exactly the
@@ -346,12 +342,10 @@ eight of them `FLine`'s eight `@CommonMembers` in declared order:
 
 Ranks 1–8 carry a non-zero `commonMemberRank` and are in the annotation's order; rank 9 onwards is
 `commonMemberRank=0` and falls back to the alphabet within the same section. Every row reads
-`category="Graphics"`, which is why the prior is *visible* at all — put five of those eight in
-someone else's category and the same prior would put them at the top of five different sections,
-seventy rows down.
+`category="Graphics"`, which is why the prior shows at all (see
+[Last, it regroups into sections](#last-it-regroups-into-sections)).
 
-The cases it replays are real recorded `/complete` payloads, ranked by the verbatim
-`fieldSuggest.js`, so the numbers are the popup's own rather than a transcription of its formula.
+The cases it replays are recorded `/complete` payloads, ranked by `fieldSuggest.js` itself.
 Parameter lists are elided above; ranks, names and categories are verbatim, which is why `breakNext`
 occupies two rows. A function and a property of the same name are two separate completions, and the
 popup shows both.
@@ -397,5 +391,3 @@ In rough order of how often each turns out to be the answer:
 
 </div>
 
-Symbol names rather than line numbers: a line number in a page like this one is the first thing to
-rot, and a name survives every edit that does not rename it.
