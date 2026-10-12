@@ -66,6 +66,11 @@ these hooks:
   - `src/graphite.rs`: `hand_line_world` and `sketch_marks_world` (the old functions call them with
     no world arc).
 
+- Dry bristles on the tooth: `src/bristle.rs`, `Tool` gains `tooth` (0 in every preset; written
+  after a held brush's bristles in `field/state.rs` where it isn't 0); in `exchange`, as a bristle
+  dries, the height it reaches down to by pressure is drawn up toward `DRY_TH` (just above the ground's
+  local median) and its push falls, both by `tooth` times its dryness. At 0, exactly as before.
+
 ## Taking a newer upstream
 
 Copy `crates/paint/{Cargo.toml,build.rs,src}` of the new commit over this directory (keeping

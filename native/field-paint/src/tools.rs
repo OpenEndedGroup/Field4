@@ -161,8 +161,8 @@ fn tool_of(kind: i32, width: f32) -> Result<Tool, String> {
 
 /// The number of construction values `field_paint_brush_new_v2` reads and `field_paint_brush_config`
 /// writes after kind and width: bristles, length, stiffness, hair, run, lay, pickup, push, splay,
-/// ragged, point.
-pub const BRUSH_CONFIG: usize = 11;
+/// ragged, point, tooth.
+pub const BRUSH_CONFIG: usize = 12;
 
 /// A brush built from preset `kind` (0..5 as `field_paint_brush_new`, 6 the stippler) at `width`,
 /// then any of its construction changed: `cfg` holds `BRUSH_CONFIG` values, NaN keeping the
@@ -202,6 +202,7 @@ pub(crate) fn held_from(kind: i32, width: f32, seed: u64, engine: i32, cfg: *con
     set(v[8], &mut t.splay);
     set(v[9], &mut t.ragged);
     set(v[10], &mut t.point);
+    set(v[11], &mut t.tooth);
     t.validate()?;
     Ok(Held::new(t, seed).with_engine(engine_of(engine)?))
 }
@@ -219,7 +220,7 @@ pub extern "C" fn field_paint_brush_config(h: *const Held, out: *mut f32) -> i32
             paint::Kind::Rigger => 4.0,
             paint::Kind::Blender => 5.0,
         };
-        let v = [kind, t.width, t.bristles as f32, t.length, t.stiffness, t.hair, t.run, t.lay, t.pickup, t.push, t.splay, t.ragged, t.point];
+        let v = [kind, t.width, t.bristles as f32, t.length, t.stiffness, t.hair, t.run, t.lay, t.pickup, t.push, t.splay, t.ragged, t.point, t.tooth];
         unsafe { std::slice::from_raw_parts_mut(out, v.len()) }.copy_from_slice(&v);
         Ok(0)
     })

@@ -186,4 +186,24 @@ class StereoTest {
         println("pencil through the warp: $d px differ, without it: $dn; wash: $dw")
         assertTrue(dn > 4 * d, "without the warp the moved line lies on other grain: $dn vs $d")
     }
+
+    @Test
+    fun aDryBrushSkipsOverTheSameThreadsThroughTheWarp() {
+        if (!available()) return
+        // a hog flat run dry over linen (tooth 1, so it catches only the weave's peaks): the eye whose
+        // ground is warped paints its skips on the same threads as the reference, 5 px over
+        fun dry(warped: Boolean, moved: Boolean = warped) = PaintCanvas(400, aspect = 1.0, ground = PaintGround.Linen, groundColor = Vec4(0.95f, 0.94f, 0.9f, 1f), sizeMm = 100.0, seed = 3).use { c ->
+            if (warped) shifted(c, 12.5)
+            val dx = if (moved) -12.5 else 0.0
+            val b = c.brush(BrushKind.HogFlat, 120.0, config = BrushConfig(run = 250.0, tooth = 1.0), seed = 7).load(umber, amount = 0.3)
+            c.stroke(line(150.0 + dx, 500.0, 850.0 + dx, 500.0), b, pressure = 1.0..1.0, seed = 61)
+            c.render(relief = 0.0)
+        }
+        val (a, b) = dry(false) to dry(true)
+        val d = differing(a, b, 400, 5, 20, 380)
+        // and the same stroke moved without the warp falls on other threads
+        val dn = differing(a, dry(warped = false, moved = true), 400, 5, 20, 380)
+        println("dry brush through the warp: $d px differ, without it: $dn")
+        assertTrue(d * 4 < dn, "the dry brush's skips lie on the same threads through the warp: $d vs $dn differing")
+    }
 }
