@@ -129,7 +129,7 @@ march improves a polyhedral shape and bottoms out on a curved one at Manifold's 
 past a certain point you are paying for triangles that buy nothing.
 
 `crossCheck` builds a shape both ways and compares volume, area, genus and a symmetric Hausdorff
-distance, which is how the two are held to each other; `dev_docs/SOLIDSL_AGREEMENT.md` records what
+distance, which is how the two are held to each other; [`dev_docs/SOLIDSL_AGREEMENT.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOLIDSL_AGREEMENT.md) records what
 that costs and where the floors are.
 
 ## Refusals are in the type
@@ -640,7 +640,7 @@ of the target, so read the report with that in mind.
     `iterations x learningRate` against the distance the parameter has to travel. Or leave
     `method` at its LBFGS default, whose line search is indifferent to units: on this problem it
     reaches the same loss in 36 iterations. The figures use ADAM because its small steps make a
-    readable filmstrip (`dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md`).
+    readable filmstrip ([`dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md)).
 
 !!! note "A cube hidden inside the bar gets zero gradient"
 
