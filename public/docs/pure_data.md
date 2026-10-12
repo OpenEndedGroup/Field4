@@ -142,7 +142,7 @@ box line that holds it, with a suggestion; see [An object Pd cannot create](#an-
 `PdLaunch` has the same `writeArray`, `readArray`, `arraySize`, `noteOn`, `controlChange` and
 `onMidi` as the Pd underneath it, and `patch.pd` is that `PdInstance` when you need the rest.
 
-### Sliders from the patch's own
+### The patch's own sliders
 
 A patch drawn in Pd usually has its own `hsl`, `vsl`, `tgl` and `nbx` objects. `pdControls(patch)`
 turns each one that has a receive name into a Field control with the range and label from the patch,
