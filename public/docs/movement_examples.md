@@ -273,7 +273,7 @@ Here the instruction comes from a target running a figure-eight: point at it, an
 ask for four times the distance to it, capped at 650. So the character only asks
 for its top speed once it is more than 162 units behind, and the target — which
 runs its lap in six seconds, moving between 277 and 592 units per second — spends
-most of every lap putting it there. The grey chords connect the two at a dozen
+most of every lap putting it there. The pink chords connect the two at a dozen
 instants of the second lap:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/movement_examples/character_chase.png" wait="1.5" capture="box" open-outputs="true" name="movement-chase"}
