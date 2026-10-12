@@ -2431,7 +2431,7 @@ lines(listOf(a, b, mid, snippet), w = 420.0, h = 260.0, fitToSize = true)
 
 ### Contour-aware morphing: `FLineInterpolator`
 
-If `byBlendingWith(...)` is the “same control structure, just lerp it” tool, `FLineInterpolator` is the more serious morphing tool. It resamples, matches, and re-parameterizes one contour against another, so it copes much better when the two shapes have different point counts or different seams. Right now the reliable path is a single contour only: one `moveTo(...)`, with open contours as the safest default.
+If `byBlendingWith(...)` is the “same control structure, just lerp it” tool, `FLineInterpolator` is the more serious morphing tool. It resamples, matches, and re-parameterizes one contour against another, so it copes much better when the two shapes have different point counts or start their outlines at different places. It works reliably on a single contour only: one `moveTo(...)`, with open contours as the safest default.
 
 ```diffstatic {data-lang=kotlin}
 :::static
