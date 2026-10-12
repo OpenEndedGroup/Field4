@@ -583,10 +583,11 @@ showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-stiffness.png")
 ```
 
-`hairs` is how many hairs are simulated. Two hairs paint two separate bands; from about eight the
-stroke is whole, and more make it finer.
+`hairs` is how many guide hairs are simulated. Even two give a whole stroke on this flat. With few,
+the loop drags a dark wedge across the ring where it crosses itself; from about 48 the ring is evenly
+striped, and more hairs change little.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/hairs.png" source-image="/tmp/field-docs-paint-sweep-hairs.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. With 2 hairs the bar is two separate bands and the loop a pale smear; from 8 hairs up the stroke is whole and finer." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-hairs" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/hairs.png" source-image="/tmp/field-docs-paint-sweep-hairs.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Even with 2 hairs the bar is one whole band. With 2 and 4 hairs the loop drags a dark wedge across the ring where it crosses itself; from 48 up the ring is evenly striped with a toothed outer edge, and the stroke changes little from 48 to 1024." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-hairs" embed=true}
 :::static
 import afield.paint.*
 
@@ -1236,7 +1237,7 @@ Oil paint dries over days, and the oil in it decides how it looks dry. Below, th
 painted with more and less oil (`oil`, 1 is tube paint), dried, and lit from above so the gloss
 shows: lean paint dries dull, oily paint dark and glossy.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/gloss.png" source-image="/tmp/field-docs-paint-sweep-gloss.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. dried and lit from above. Lean paint dries dull grey; oil-rich paint dries darker and glossier." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-gloss" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/gloss.png" source-image="/tmp/field-docs-paint-sweep-gloss.png" alt="Six columns of the same black brushstroke painted side by side on off-white, dried and lit from above: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Lean paint, from no oil to 0.8, dries a dull grey; at 1.3 and 4 the oil-rich paint dries darker and glossier." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-gloss" embed=true}
 :::static
 import afield.paint.*
 
@@ -1316,7 +1317,7 @@ sheet.savePng("/tmp/field-docs-paint-sweep-gloss.png")
 On an absorbent ground (`prime(..., absorbent = 1.0)`) the ground draws oil out of the paint laid
 on it. Very oily paint is drawn in so fast that the stroke runs out sooner.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/absorbent.png" source-image="/tmp/field-docs-paint-sweep-absorbent.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. on an absorbent ground, dried and lit from above. Lean and ordinary paint look much alike; the oiliest paint is drawn into the ground and the stroke runs out at the scrub." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-absorbent" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/absorbent.png" source-image="/tmp/field-docs-paint-sweep-absorbent.png" alt="Six columns of the same black brushstroke painted side by side on off-white on an absorbent ground, dried and lit from above: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Lean and ordinary paint look much alike, a dull grey; at 1.3 the top of the bar is darker; at 4 the oiliest paint is drawn into the ground, the ring breaks into pale rings, and the stroke runs out at the scrub." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-absorbent" embed=true}
 :::static
 import afield.paint.*
 
@@ -1394,9 +1395,10 @@ sheet.savePng("/tmp/field-docs-paint-sweep-absorbent.png")
 ```
 
 A rag wiped across the paint shows how far it has set. Wiped within hours, black oil paint lifts
-almost to the ground; after a day only partly; and from four days it has set and does not move.
+almost to the ground; after a day only partly; after two days hardly at all; and from four days it
+has set and does not move.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/wipe.png" source-image="/tmp/field-docs-paint-sweep-wipe.png" alt="Seven columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. each crossed by three horizontal rag wipes, made after longer and longer. After minutes and 8 hours the wipes lift the black almost to the ground; after a day they only lighten it; from 2 days they barely show, and from 4 days the paint is set." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-wipe" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/wipe.png" source-image="/tmp/field-docs-paint-sweep-wipe.png" alt="Seven columns of the same black brushstroke painted side by side on off-white, each crossed by three horizontal rag wipes made after longer and longer: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Wiped at once or after 8 hours, the black lifts almost to the ground on the bar, the ring and the last stroke; after a day the wipe still lifts the bar but only lightens the ring and the last stroke; after 2 days it leaves a faint grey patch on the bar; from 4 days the paint is set and the wipes do not show." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-wipe" embed=true}
 :::static
 import afield.paint.*
 
@@ -1475,9 +1477,10 @@ sheet.savePng("/tmp/field-docs-paint-sweep-wipe.png")
 ```
 
 `drying` speeds or slows the paint's drying. Each stroke here is wiped 8 hours after it was
-painted: at the usual rate the paint is still open; four times as fast and it has begun to set.
+painted: at the usual rate the paint is still open; four times as fast and it has begun to set; from
+sixteen times the wipes do not show.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/drying.png" source-image="/tmp/field-docs-paint-sweep-drying.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. each wiped by a rag 8 hours after painting. Slow-drying paint lifts cleanly; from 4 times the usual rate it has begun to set and the wipe only lightens it; faster still, the wipes do not show." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-drying" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/drying.png" source-image="/tmp/field-docs-paint-sweep-drying.png" alt="Six columns of the same black brushstroke painted side by side on off-white, each wiped by a rag 8 hours after painting: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. At a quarter of the usual rate and at the usual rate the wipes lift cleanly; at 4 times the rate the bar still lifts but the ring and the last stroke barely do; from 16 times the paint has set and the wipes do not show." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-drying" embed=true}
 :::static
 import afield.paint.*
 
@@ -1559,7 +1562,7 @@ sheet.savePng("/tmp/field-docs-paint-sweep-drying.png")
 `tilt` is the handle's lean from upright in degrees, here past 90, where the handle leans back the
 way it came.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/tilt.png" source-image="/tmp/field-docs-paint-sweep-tilt.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. From upright to the handle laid well over and past it: tilted further, the bar gets narrower and the loop and scrub come out with a sharper diagonal crossing." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-tilt" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/tilt.png" source-image="/tmp/field-docs-paint-sweep-tilt.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Upright (0) the brush paints only the top of the bar and a faint ghost of the ring. At 30 the usual stroke; from 60 a dark diagonal band crosses the ring and the scrub; at 85 the ring and the last stroke are paler; at 120, with the handle leaning back, the last stroke is a dark band all the way to its end." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-tilt" embed=true}
 :::static
 import afield.paint.*
 
@@ -1639,7 +1642,7 @@ sheet.savePng("/tmp/field-docs-paint-sweep-tilt.png")
 The whole gesture faster or slower (`faster`, a factor on its speed). At 16 times as fast the
 hairs chatter on the last stroke; at 64 times the brush lands late and the loop is a blur.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/faster.png" source-image="/tmp/field-docs-paint-sweep-faster.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Slower and faster versions of the same gesture look much alike until 16 times as fast, where the last stroke breaks into chattering marks; at 64 the brush lands late, the bar starts low, and the loop is a blurred swirl." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-faster" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/faster.png" source-image="/tmp/field-docs-paint-sweep-faster.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Slowed down, the ring and scrub have crisp dark outlines and pale ridges. The versions look much alike up to 4 times as fast; at 16 the end of the last stroke breaks into chattering dashes; at 64 the brush lands late, leaving a few marks above a bar that starts low, the loop is a blurred swirl wider than the rest and the scrub a loose tangle." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-faster" embed=true}
 :::static
 import afield.paint.*
 
@@ -1720,7 +1723,7 @@ sheet.savePng("/tmp/field-docs-paint-sweep-faster.png")
 each corner the handle turns at once and the hairs whip round: with long chords the loop is a
 polygon with beaded corners.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/facets.png" source-image="/tmp/field-docs-paint-sweep-facets.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. With chords of 200 units the loop is a hexagon of straight bands with beaded corners; at 60 a beaded polygon; at 20 and below it is round again." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-facets" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/facets.png" source-image="/tmp/field-docs-paint-sweep-facets.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. With chords of 200 units the loop is a hexagon of straight bands and the scrub a tangle; at 60 the ring has a scalloped edge and a beaded inner rim; at 20 and below it is round again." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-facets" embed=true}
 :::static
 import afield.paint.*
 
@@ -1801,7 +1804,7 @@ Last, the moving brush beside an ordinary one along the same path with the same 
 ordinary brush has no timing and no tilt: its loop is smooth, and its last stroke narrows to a point
 as the pressure falls, where the moving brush stays wide and breaks up.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/moving.png" source-image="/tmp/field-docs-paint-sweep-moving.png" alt="Two columns. On the left, the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. On the right, the same path with an ordinary brush: a smooth bar and loop, a softer scrub, and a last stroke that tapers to a point." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-moving" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/moving.png" source-image="/tmp/field-docs-paint-sweep-moving.png" alt="Two columns of the same path on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. On the left, moving hairs: a wide bar, a ring with a toothed rim, a crisp zigzag scrub, and a last stroke that stays wide and breaks into streaks. On the right, an ordinary brush: a bar that narrows into the loop, a smooth ring, a softer scrub, and a last stroke that tapers to a point." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-moving" embed=true}
 :::static
 import afield.paint.*
 
