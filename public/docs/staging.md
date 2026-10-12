@@ -59,7 +59,7 @@ The section ends with pages about making your own. [Rewriting Your Own Syntax](p
 
 ## Graphics, GPU and headsets
 
-- [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of that page.
+- [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of this page.
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle: scene graph, render planning, frame graph, post stack, glTF import, material response, shadows and ambient occlusion.
 - [Aperture Playground](aperture_playground.md) is the worked multi-pass example: light bands, reductions, aperture filters and a composite, each in its own box, with every shader stage in the document. It shows defocus spreading a line rather than just dimming it.
 - [Field Probes](field_probes.md) instruments live shaders, with the CPU read-back `fieldProbe` and the GPU-resident `fieldStats` both demonstrated on one compute-shader particle system.
