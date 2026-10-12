@@ -122,6 +122,9 @@ exact ones. The optimizer, step size and target are the same.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/exact_fit.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="1000" padding="16"}
 :::static
+import afield.stdlib.Functions
+import afield.stdlib.FnGradientMode
+
 with(Functions) {
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
     val seed = cos(1.9) * sin(1.3, amplitude = 1.0)
@@ -142,7 +145,9 @@ with(Functions) {
         title = "RMSE per Adam step - same optimiser, different gradient",
         xTitle = "step", yTitle = "RMSE"
     )
-    // The refusal names every differentiable op in one long line; wrap it at commas.
+    // The refusal names every differentiable op, which is one ~700-character line. Left unwrapped it
+    // sets the width of the whole capture — the plots above end up small inside a very wide, mostly
+    // empty frame. Wrap it on comma boundaries so the figure is sized by its plots, not by its prose.
     fun wrap(text: String, at: Int = 96): String {
         val out = StringBuilder()
         var column = 0
@@ -193,10 +198,14 @@ creates a local minimum, and gradient descent cannot climb out of one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/abs_seed.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="900" padding="16"}
 :::static
+import afield.stdlib.Functions
+import afield.stdlib.FnGradientMode
+
 with(Functions) {
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
 
-    // The seed from the figure above, rectified.
+    // The seed from the figure above, and the same seed rectified. Until abs became a real op the
+    // second of these was refused outright, with `mapY` named as the culprit.
     val kinked = cos(1.9).abs() * sin(1.3, amplitude = 1.0)
 
     val fd = fitGradient(target, kinked, iterations = 400, lr = 0.05)
