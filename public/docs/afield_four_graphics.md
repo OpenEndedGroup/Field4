@@ -189,11 +189,11 @@ var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
 
-val camera = afield.four.util.Camera()
+val camera = Camera()
 camera.at = vec(-8,2,7)
 
-module.camera.m = camera.m()
-module.camera.p = camera.p()
+module.view.m = camera.m()
+module.view.p = camera.p()
 
 for (n in 1..80) {
     m.set(3 * n, 1 * n) {
@@ -209,7 +209,7 @@ for (n in 1..80) {
 }
 ```
 
-The shader declares a UBO named `camera`:
+The shader declares a UBO named `view`:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -217,7 +217,7 @@ layout (location = 0) in vec3 pos;
 layout (location = 1) in vec4 col;
 layout (location = 0) out vec4 fcol;
 
-layout (set=0, binding = 0) uniform camera {
+layout (set=0, binding = 0) uniform view {
     mat4 p;
     mat4 m;
 } cam;
@@ -229,9 +229,9 @@ void main()
 }
 ```
 
-Because the uniform block is named `camera`, the Kotlin side writes `module.camera.p` and `module.camera.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
+Because the uniform block is named `view`, the Kotlin side writes `module.view.p` and `module.view.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
 
-That same name is also why the Kotlin above says `afield.four.util.Camera()` in full rather than the usual bare `Camera()`. `moduleHere()` generates a Kotlin class per uniform block, capitalising the block's name, so this box's own preamble declares a `Camera`, and a declaration in the box beats any import, including the `afield.four.util.*` that every box already gets. Writing `import afield.four.util.Camera` does *not* help: the generated `Camera` still wins, `camera.at` then fails to resolve, and the example stops compiling. Rename the uniform block and the collision goes away.
+`moduleHere()` generates a Kotlin class per uniform block, named by capitalising the block's name. Name a block after something the box already uses (a block called `camera` would generate a `Camera` class) and that class hides the import: `Camera()` would then build the generated class, and `camera.at` would fail to resolve.
 
 ## Camera as push constants
 
@@ -659,7 +659,7 @@ void main()
 }
 ```
 
-The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing. The saved lesson in `canonical_graphics` binds two views against `ta[3]`, so running it as saved shows that error. Supply a third view, as above, or narrow the declaration to `ta[2]`.
+The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing.
 
 ## Loading a glTF model
 
@@ -748,7 +748,7 @@ void main()
 
 It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose. That is the hand-written form of the `model` default `applyToMesh` supplies, and the fix for any loop that assigns `modelView` itself.
 
-Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are absolute, so point them at your own copy of that collection. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
+Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are relative to the directory Field runs from, so clone that collection into your Field checkout or point the paths at your own copy. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
 
 ## Render to texture
 
@@ -1203,13 +1203,13 @@ void main()
 
     localColor = vec4(wrap(gl_VertexIndex,3),wrap(gl_VertexIndex,5),wrap(gl_VertexIndex,11),1.0);
 
-    if (gl_VertexIndex == 10) {
+    if (gl_VertexIndex == 0) {
         debugPrintfEXT("VS: index=%d, pos=(%f,%f)",gl_VertexIndex, pos.x, pos.y);
     }
 }
 ```
 
-Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`); without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. Note the guard in this example (`gl_VertexIndex == 10`) never fires for a three-vertex draw, which is the state the lesson is saved in: the plumbing is there to be switched on by changing the condition.
+Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`); without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. The guard here (`gl_VertexIndex == 0`) prints once per draw, for the first vertex.
 
 ## Debugging: texture probes
 
@@ -1477,9 +1477,6 @@ write `afield.four` code and want a known-good pattern to adapt, start from
 shader files, records the parent chain each one needs in order to run, and carries a reverse index
 from Field API name (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to
 the lessons that use it.
-
-A few lessons do not do what their names suggest when run as saved: the multi-texture lesson's
-sampler-array count and the printf lesson's guard are both described in their sections above.
 
 Each image is the lesson's own output, captured from a live Vulkan window. Sections without an
 image say why under the code: the lesson needs two boxes wired together, needs a file or tool the

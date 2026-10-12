@@ -81,6 +81,8 @@ class AgentDemoRegistrationTest {
             "alife_evolution",
             "alife_script",
             "alife_walls",
+            // 2026-10-12: tree()/column()/logs() inspector embeds; registered EXECUTE.
+            "browse_embeds",
             // 2026-09-23: interval-arithmetic envelopes for Fn; registered EXECUTE.
             "certified_envelope",
             "chart_clip",

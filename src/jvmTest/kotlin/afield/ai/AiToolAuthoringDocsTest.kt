@@ -253,7 +253,7 @@ class AiToolAuthoringDocsTest {
         val edn = File(evidenceDir, "metadata.edn")
         assertTrue(edn.isFile, "expected ${edn.absolutePath}")
         assertTrue(
-            "assets/ai_tool_demo/metadata.edn" in page(),
+            "agent_transcripts.md#ai_tool_demo" in page(),
             "the page must tell the reader where the loadable demo is",
         )
 

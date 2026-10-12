@@ -343,6 +343,8 @@ object DemoTranscriptExecSmokeTest {
         // GP drawing (2026-10-10): a closed periodic loop through six pins, 1-D conditioning and a
         // 2-D field, with controls. Pure CPU, FLines and heatmaps only.
         "gp_drawing",
+        // Inspector embeds (2026-10-12): tree(), column(), a live list and logs(). Pure CPU.
+        "browse_embeds",
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",

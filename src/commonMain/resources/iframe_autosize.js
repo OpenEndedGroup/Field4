@@ -43,17 +43,25 @@
         let width = Math.ceil(Math.max(frame.clientWidth || 0, frameRect.width || 0, rootRect.width || 0));
         let height = 0;
 
-        [document.documentElement, document.body].forEach((node) => {
-            if (!(node instanceof Element)) return;
-            height = Math.max(height, Math.ceil(node.scrollHeight || 0), Math.ceil(node.clientHeight || 0));
-        });
+        // Not documentElement and not clientHeight: both are at least the frame's current
+        // height, so measuring them only ever lets a frame grow, never shrink back.
+        if (document.body) height = Math.max(height, Math.ceil(document.body.scrollHeight || 0));
 
-        const descendants = Array.from(root.querySelectorAll("*"));
-        descendants.forEach((node) => {
-            if (!isVisible(node)) return;
-            const rect = node.getBoundingClientRect();
-            height = Math.max(height, Math.ceil(rect.bottom - rootRect.top), Math.ceil(node.scrollHeight || 0));
-        });
+        // Walk the tree, but not into an element that clips its own overflow (auto/scroll/hidden):
+        // that box is as tall as its rect, and its scrolled-away rows are not height the frame
+        // needs. (Measuring them made a capped 300-row list stretch its panel to 5000 px.)
+        const visit = (parent) => {
+            for (const node of parent.children) {
+                if (!isVisible(node)) continue;
+                const rect = node.getBoundingClientRect();
+                height = Math.max(height, Math.ceil(rect.bottom - rootRect.top));
+                const oy = getComputedStyle(node).overflowY;
+                if (oy === "auto" || oy === "scroll" || oy === "hidden" || oy === "clip") continue;
+                height = Math.max(height, Math.ceil(node.scrollHeight || 0));
+                visit(node);
+            }
+        };
+        visit(root);
 
         width = Math.max(width, 40);
         height = Math.max(height, Math.ceil(rootRect.height), 24);
