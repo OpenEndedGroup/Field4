@@ -2851,12 +2851,13 @@ class DocsUiDriver internal constructor(
 
     /** Open (and pan to) a box's code editor, reusing the screenshot editor-prep path. */
     fun openEditor(uid: String, property: String = "code") {
-        runBlocking(playwrightDispatcher) {
+        val response = runBlocking(playwrightDispatcher) {
             requestWindowScreenshot(
                 pageProvider(),
                 WindowScreenshotRequest(uid = uid, property = property, showEditor = true, panIntoView = true)
             )
         }
+        check(response.success) { "openEditor($uid, $property): ${response.message}" }
     }
 
     /** Screenshot the whole page to [path] *now* (script-timed — use for transient states). */

@@ -2954,6 +2954,10 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
         )
     }
 
+    if (req.showEditor && !isOverlayVisible(visibleMonacoContainer()?.querySelector(".monaco-editor"))) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
+    }
+
     if (req.showEditor && box != null && !editorHasRenderableContentFor(box, req.property)) {
         return WindowScreenshotResponse(
             uid = req.uid,
