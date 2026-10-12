@@ -707,10 +707,7 @@ class FLine : HasProperties {
      * Create a cursor positioned at the closest point to [closestTo].
      */
     fun cursor(closestTo: Vec3): Cursor {
-        val c = this.cursor()
-        val t = FLinesAndJavaShapes.closestT(this, closestTo)
-        c.setT(t)
-        return c
+        return this.cursor().setNearest(closestTo)
     }
 
     /**

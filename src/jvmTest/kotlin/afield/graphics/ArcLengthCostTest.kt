@@ -49,7 +49,7 @@ class ArcLengthCostTest {
             work += glyph.sampleByDistance(length / 120f).size
             work += glyph.byArcLengthParameterizing(length / 90f).nodes.size
             work += if (glyph.midPoint().x.isFinite()) 1 else 0
-            work += if (FLinesAndJavaShapes.closestT(glyph, glyph.midPoint()).isFinite()) 1 else 0
+            work += if ((glyph.nearestLocation(glyph.midPoint())?.t ?: Float.NaN).isFinite()) 1 else 0
         }
         return work
     }

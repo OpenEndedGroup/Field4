@@ -3,6 +3,11 @@ package field.graphics
 import afield.Rect
 import afield.graphics.FLine
 import afield.graphics.PathFlattener
+import afield.graphics.FLineLocation
+import afield.graphics.FLineSeg
+import afield.graphics.drawnSegmentEndingAt
+import afield.graphics.locate
+import afield.graphics.nearestSegmentParameter
 import afield.stdlib.*
 import org.apache.commons.math4.legacy.optim.MaxEval
 import org.apache.commons.math4.legacy.optim.nonlinear.scalar.GoalType
@@ -245,252 +250,104 @@ class FLinesAndJavaShapes {
         }
 
         /**
-         * returns the position of the cursor
+         * The drawn segment under the cursor and the parameter `u` on it.
+         *
+         * `t = i + u` is fraction `u` (by curve parameter) of the segment ending at node `i + 1`. At a
+         * node (`u == 0`) that is the *outgoing* segment, except at the very end of the line, which is
+         * the last segment at `u == 1`. A cursor inside a `MoveTo` jump snaps to the nearer drawn
+         * segment: the end of the one before it while `u < 0.5`, the start of the one after it from
+         * there on — the same rule [position] has always used. `null` only when nothing is drawn.
+         */
+        private fun here(): Pair<FLineSeg, Double>? {
+            val n = on.nodes.size
+            if (n < 2) return null
+            var end = index + 1
+            var u = alpha.toDouble()
+            if (end > n - 1) { end = n - 1; u = 1.0 }
+            if (end < 1) { end = 1; u = 0.0 }
+            on.drawnSegmentEndingAt(end)?.let { return it to u }
+            var after: FLineSeg? = null
+            for (i in end + 1 until n) { after = on.drawnSegmentEndingAt(i); if (after != null) break }
+            var before: FLineSeg? = null
+            for (i in end - 1 downTo 1) { before = on.drawnSegmentEndingAt(i); if (before != null) break }
+            return if (after != null && (before == null || u >= 0.5)) after to 0.0 else before?.let { it to 1.0 }
+        }
+
+        /** the frame here, without paying for the arc-length lookup that [location] does. */
+        private fun frameHere(): FLineLocation? = here()?.let { (s, u) -> s.locate(u, Float.NaN) }
+
+        /**
+         * The position of the cursor. On a line with nothing drawn (no nodes, or a single `moveTo`)
+         * it is that lone point, or the origin.
          */
         fun position(): Vec3 {
-            if (on.nodes.isEmpty()) return Vec3()
-            return if (segmentIsMove()) {
-                if (alpha < 0.5) Vec3(endOf(index))
-                else Vec3(on.nodes.get(clamp(index + 1)).to)
-            } else if (segmentIsLinear()) {
-                endOf(index).lerp(on.nodes.get(clamp(index + 1)).to, alpha, Vec3())
-            } else if (segmentIsClose()) {
-                endOf(index).lerp(closeTarget(), alpha, Vec3())
-            } else if (segmentIsCubic()) {
-                evaluateCubicFrame(
-                    endOf(index),
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1,
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2,
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to,
-                    alpha,
-                    Vec3()
-                )
-            } else throw IllegalStateException(" segment not implemented ")
-        }
-
-
-        fun tangentForward(): Vec3? {
-            if (index == on.nodes.size - 1) return null
-
-            return if (segmentIsMove()) {
-                null
-            } else if (segmentIsLinear()) {
-                on.nodes.get(clamp(index + 1)).to - endOf(index)
-            } else if (segmentIsClose()) {
-                closeTarget() - endOf(index)
-            } else if (segmentIsCubic()) {
-                evaluateDCubicFrame(
-                    endOf(index),
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1,
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2,
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to,
-                    alpha,
-                    Vec3()
-                )
-            } else throw IllegalStateException(" segment not implemented ")
-        }
-
-
-        fun tangentBackward(): Vec3? {
-            if (alpha != 0.0f) return tangentForward()
-            if (index == 0) return null
-
-            index--
-            alpha = 1.0f
-            try {
-                return tangentForward()
-            } finally {
-                index++
-                alpha = 0.0f
-            }
-        }
-
-
-        fun accelerationForward(): Vec3? {
-            return if (segmentIsMove()) {
-                null
-            } else if (segmentIsLinear()) {
-                Vec3()
-            } else if (segmentIsClose()) {
-                Vec3()
-            } else if (segmentIsCubic()) {
-                evaluateDDCubicFrame(
-                    endOf(index),
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1,
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2,
-                    (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to,
-                    alpha,
-                    Vec3()
-                )
-            } else throw IllegalStateException(" segment not implemented ")
-        }
-
-
-        fun accelerationBackward(): Vec3? {
-            if (alpha != 0.0f) return accelerationForward()
-            if (index == 0) return null
-
-            index--
-            alpha = 1.0f
-            try {
-                return accelerationForward()
-            } finally {
-                index++
-                alpha = 0.0f
-            }
-        }
-
-
-        fun binormalForward(): Vec3? {
-            val a: Vec3? = accelerationForward()
-            val t: Vec3? = tangentForward()
-
-            if (a == null || t == null) return null
-
-            return t.cross(a, Vec3())
-        }
-
-
-        fun binormalBackward(): Vec3? {
-            val a: Vec3? = accelerationBackward()
-            val t: Vec3? = tangentBackward()
-
-            if (a == null || t == null) return null
-
-            return t.cross(a, Vec3())
+            here()?.let { (s, u) -> return s.at(u) }
+            return Vec3(on.nodes.firstOrNull()?.toOrNull ?: Vec3())
         }
 
         /**
-         * returns the 'binormal' of the line, that is a vector that is perpendicular to both the tangent at this point and the acceleration. This is never interesting in the 2d case.
+         * Everything about the point under the cursor at once — position, unit tangent, the 3D
+         * Frenet frame and curvature, the explicitly-2D normal and signed curvature, and where it is
+         * as both a distance and a `t`. See [FLineLocation] for what each field means on straight
+         * runs and at degenerate ends. `null` only when the line draws nothing.
          */
-        fun binormal(): Vec3? {
-            val a: Vec3? = acceleration()
-            val t: Vec3? = tangent()
+        fun location(): FLineLocation? = here()?.let { (s, u) -> s.locate(u, d) }
 
-            if (a == null || t == null) return null
+        /** the unit direction of travel; see [FLineLocation.tangent]. `null` when nothing is drawn. */
+        fun tangent(): Vec3? = frameHere()?.tangent
 
-            return t.cross(a, Vec3())
-        }
+        /** the unit principal normal, towards the centre of curvature; `null` on straight runs. See [FLineLocation.normal]. */
+        fun normal(): Vec3? = frameHere()?.normal
 
+        /** `tangent × normal`; `null` on straight runs. See [FLineLocation.binormal]. */
+        fun binormal(): Vec3? = frameHere()?.binormal
 
-        fun normalForward(): Vec3? {
-            val a: Vec3? = binormalForward()
-            val t: Vec3? = tangentForward()
-
-            if (a == null || t == null) return null
-
-            return t.cross(a, Vec3())
-        }
-
-
-        fun normalBackward(): Vec3? {
-            val a: Vec3? = binormalBackward()
-            val t: Vec3? = tangentBackward()
-
-            if (a == null || t == null) return null
-
-            return t.cross(a, Vec3())
-        }
+        /** unsigned 3D curvature, `1 / radius`; 0 on straight runs. */
+        fun curvature(): Float = frameHere()?.curvature ?: 0f
 
         /**
-         * returns the normal at this point in the line. Note that this normal is parallel and in the direction of the acceleration. This means that, in the 2d case, it changes 'side' of
-         * the line as the line changes curvature (the normal is always on the side that the line is curving towards). For a simpler 2d definition of normal, use `normal2()`
+         * The unit normal in the xy plane, [tangent] turned a quarter turn: `(tangent.y, -tangent.x)`
+         * normalised. On Field's canvas (y down) that is to the left of the direction of travel.
+         * `null` when nothing is drawn or the line runs straight along z here. See [FLineLocation.normal2D].
          */
-        fun normal(): Vec3? {
-            val a: Vec3? = binormal()
-            val t: Vec3? = tangent()
+        fun normal2D(): Vec2? = frameHere()?.normal2D?.takeIf { it.x != 0f || it.y != 0f }
 
-            if (a == null || t == null) return null
-
-            val n = t.cross(a, Vec3())
-            if (n.length() == 0.0f) return n
-            n.normalize().mul(t.length())
-            return n
-        }
-
+        /** curvature of the xy projection, positive when the line bends towards [normal2D]. */
+        fun signedCurvature2D(): Float = frameHere()?.signedCurvature2D ?: 0f
 
         /**
-         * returns the normal at this point in the line. This is always perpendicular to the line at the current point.
-         *
-         * It is **not** normalized — it is [tangent] rotated a quarter turn, so its magnitude is
-         * `|B'(t)|`, which for a curve a few hundred units across is itself a few hundred. Divide by
-         * its own length before using it as a direction, or whatever you offset by it flies off the
-         * page.
-         */
-        fun normal2(): Vec2? {
-            val t: Vec3? = tangent()
-            val t2: Vec2? = if (t == null) null else Vec2(t.y, -t.x)
-
-            if (t2 == null) System.err.println("NORMAL2 failed :" + on.nodes + " / " + this.alpha)
-
-            return t2
-        }
-
-        /**
-         * this is a vector along the normal of the right length. i.e, you can draw this circle and it will be tangent at this point. This doesn't exist at if the current point is on a
-         * straight line.
+         * The vector from the cursor to the centre of its osculating circle: [normal] scaled by the
+         * radius `1 / curvature`. `null` on straight runs. Works on every kind of segment.
          */
         fun radiusOfCurvature(): Vec3? {
-            if (segmentIsCubic()) {
-                val p0: Vec3 = endOf(index)
-                val p1: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1
-                val p2: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2
-                val p3: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to
-
-                val c = CubicSegment3(p0, p1, p2, p3)
-                return Vec3(requireNotNull(normal())).normalize().mul(c.R(alpha))
-            } else return null
-        }
-
-
-        fun currentSegment(): CubicSegment3? {
-            if (segmentIsCubic()) {
-                val p0: Vec3 = endOf(index)
-                val p1: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1
-                val p2: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2
-                val p3: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to
-
-                val c = CubicSegment3(p0, p1, p2, p3)
-                return c
-            } else return null
+            val f = frameHere() ?: return null
+            val n = f.normal ?: return null
+            if (f.curvature <= 0f) return null
+            return Vec3(n).mul(1f / f.curvature)
         }
 
         /**
-         * returns the 'acceleration' vector at this point in the line. This is the direction that the 'velocity' of the line is changing.
+         * Move the cursor to the point on the line nearest [point] (3D distance). Exact on straight
+         * segments; on cubics a 32-sample scan refined by Newton's method. Paper.js
+         * `getNearestLocation`; `location()` afterwards gives the full answer.
          */
-        fun acceleration(): Vec3? {
-            if (alpha != 0.0f) return accelerationForward()
-            var t1: Vec3? = accelerationBackward()
-            var t2: Vec3? = accelerationForward()
-
-            if (t1 != null && t1.isNaN()) t1 = null
-            if (t2 != null && t2.isNaN()) t2 = null
-
-            if (t1 == null && t2 == null) return null
-
-            val t: Vec3 = Vec3(requireNotNull(if (t1 == null) t2 else t1))
-                .add(requireNotNull(if (t2 == null) t1 else t2))
-                .mul(0.5f)
-            return if (t.isNaN()) null else t
+        fun setNearest(point: Vec3): Cursor {
+            val best = on.nearestSegmentParameter(point) ?: return this
+            return setT(best)
         }
 
-        /**
-         * returns the 'tangent' vecotr at this point in the line. This is the direction that the line is heading in.
-         */
-        fun tangent(): Vec3? {
-            if (alpha != 0.0f) return tangentForward()
-            var t1: Vec3? = tangentBackward()
-            var t2: Vec3? = tangentForward()
+        /** the unit direction the line leaves this point along, or `null` if none (a `MoveTo` or the end). */
+        private fun directionOut(): Vec3? {
+            val s = on.drawnSegmentEndingAt(index + 1) ?: return null
+            if (index + 1 > on.nodes.size - 1) return null
+            return s.locate(alpha.toDouble(), Float.NaN).tangent.takeIf { it.lengthSquared() > 0f }
+        }
 
-            if (t1 != null && t1.isNaN()) t1 = null
-            if (t2 != null && t2.isNaN()) t2 = null
-
-            if (t1 == null && t2 == null) return null
-
-            val t: Vec3 = Vec3(requireNotNull(if (t1 == null) t2 else t1))
-                .add(requireNotNull(if (t2 == null) t1 else t2))
-                .mul(0.5f)
-            return if (t.isNaN()) null else t
+        /** the unit direction the line arrives at this point along, or `null` if none. */
+        private fun directionIn(): Vec3? {
+            if (alpha != 0.0f) return directionOut()
+            val s = on.drawnSegmentEndingAt(index) ?: return null
+            return s.locate(1.0, Float.NaN).tangent.takeIf { it.lengthSquared() > 0f }
         }
 
         /**
@@ -526,7 +383,7 @@ class FLinesAndJavaShapes {
         }
 
         /**
-         * returns a list of 't's where tangentForward doesn't equal tangentBackward
+         * returns a list of node 't's where the incoming and outgoing unit directions differ (corners), plus the ends of every drawn run
          */
         fun tangentBreaks(): List<Float> {
             return extremalOuterPoints(Predicate<Pair<Vec3, Vec3>> { p: Pair<Vec3, Vec3> ->
@@ -574,8 +431,8 @@ class FLinesAndJavaShapes {
             try {
                 for (i in 0 until lengthT()) {
                     setT(i.toFloat())
-                    val b: Vec3? = tangentBackward()
-                    val f: Vec3? = tangentForward()
+                    val b: Vec3? = directionIn()
+                    val f: Vec3? = directionOut()
                     if (b == null && f != null) q.add(i + 0.0f)
                     else if (b != null && f == null) q.add(i + 0.0f)
                     else if (b == null && f == null) {
@@ -604,29 +461,39 @@ class FLinesAndJavaShapes {
                 left.copyTo(on.nodes.get(i))
             }
 
-            if (segmentIsMove()) {
-                for (i in index + 1 until on.nodes.size) {
-                    right.copyTo(on.nodes.get(i))
+            // The right-hand tail. A Close in the cut subpath would now close back to the cut point
+            // (the tail's own moveTo), not to where the subpath started, so it becomes the straight
+            // run it stood for. Before this, splitting a closed square part-way along its first edge
+            // gave a right-hand piece whose last edge went back to the cut.
+            val cutStart = subpathStartAt(clamp(index))
+            fun tail(from: Int) {
+                var inCut = true
+                for (i in from until on.nodes.size) {
+                    val n = on.nodes.get(i)
+                    if (n is FLine.MoveTo) inCut = false
+                    if (inCut && n is FLine.Close) right.lineTo(cutStart) else right.copyTo(n)
                 }
+            }
+
+            if (alpha == 0.0f) {
+                // Exactly on a node: cut there, rather than appending a zero-length piece of the
+                // following segment to the left half (the old behaviour for lines and cubics alike).
+                if (!segmentIsMove()) right.moveTo(Vec3(endOf(index)))
+                tail(index + 1)
+            } else if (segmentIsMove()) {
+                tail(index + 1)
             } else if (segmentIsLinear()) {
                 left.lineTo(position())
                 right.moveTo(position())
-                for (i in index + 1 until on.nodes.size) {
-                    right.copyTo(on.nodes.get(i))
-                }
+                tail(index + 1)
             } else if (segmentIsClose()) {
                 // A Close is a straight segment back to the subpath start, so cutting inside one
-                // works like the linear case — except the right-hand piece is an open run from the
-                // cut point to that start, the contour no longer being closed. Without this branch
-                // `split()` fell straight through, returning a truncated left piece and an empty
-                // right one, so `splitD` could not cut past the last cubic of a closed line: asking
-                // a 1365-unit closed outline for a cut at 956 got one at 800.
+                // works like the linear case — the right-hand piece is an open run from the cut
+                // point to that start.
                 left.lineTo(position())
                 right.moveTo(position())
                 right.lineTo(closeTarget())
-                for (i in index + 2 until on.nodes.size) {
-                    right.copyTo(on.nodes.get(i))
-                }
+                tail(index + 2)
             } else if (segmentIsCubic()) {
                 val a: Vec3 = Vec3(endOf(index))
                 val c1: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1)
@@ -643,9 +510,7 @@ class FLinesAndJavaShapes {
                 left.cubicTo(c1, c12, m)
                 right.moveTo(m)
                 right.cubicTo(c21, c2, b)
-                for (i in index + 2 until on.nodes.size) {
-                    right.copyTo(on.nodes.get(i))
-                }
+                tail(index + 2)
             }
 
             return Pair(left, right)
@@ -679,7 +544,7 @@ class FLinesAndJavaShapes {
                     soFar = d[i]
                     right = s.second
                     val nextRight = right ?: return f
-                    cursor = Cursor(nextRight, 0.1f)
+                    cursor = Cursor(nextRight, tol)
                 }
                 f.add(right!!)
                 return f
@@ -2462,63 +2327,6 @@ class FLinesAndJavaShapes {
                 y + ctrlpts[8][10] * h + ctrlpts[8][11] * r
             )
             return into
-        }
-
-        /**
-         * returns the 't' (in the cursor sense) that's closest to this Vec3
-         */
-        fun closestT(to: FLine, point: Vec3): Float {
-            var best = Float.POSITIVE_INFINITY
-            var tt = 0.0
-
-            // The straight-segment case, shared by LineTo and Close — a Close *is* a straight
-            // segment, just one whose end point has to be resolved rather than read.
-            fun considerSegment(i: Int, p0: Vec3, p1: Vec3) {
-                val dir: Vec3 = Vec3(p1).sub(p0)
-                val len: Float = dir.length()
-                if (len == 0.0f) {
-                    val dd: Float = p1.distance(point)
-                    if (dd <= best) {
-                        best = dd
-                        tt = (i - 1).toDouble()
-                    }
-                    return
-                }
-                dir.mul(1 / len)
-                var d: Float = dir.dot(Vec3(point).sub(p0))
-                if (d < 0) d = 0.0f
-                if (d > len) d = len
-                val at: Vec3 = p0 + dir * d
-                val dd: Float = at.distance(point)
-                if (dd < best) {
-                    best = dd
-                    tt = (d / len + (i - 1)).toDouble()
-                }
-            }
-
-            for (i in 1 until to.nodes.size) {
-                val n1: FLine.Node = to.nodes.get(i)
-                // endPointOf, not `.to`: in a multi-subpath line the previous node can be a Close,
-                // which stores no point of its own.
-                val p0: Vec3 = to.endPointOf(i - 1)
-
-                when (n1) {
-                    is FLine.MoveTo -> continue
-                    is FLine.LineTo -> considerSegment(i, p0, n1.to)
-                    // This was an unguarded `else` casting to CubicTo, so a Close threw
-                    // ClassCastException — hit-testing blew up on every closed shape.
-                    is FLine.Close -> considerSegment(i, p0, to.endPointOf(i))
-                    is FLine.CubicTo -> {
-                        val t = CubicSegment3(p0, n1.c1, n1.c2, n1.to).closestToPoint(point)
-                        val dd: Float = evaluateCubicFrame(p0, n1.c1, n1.c2, n1.to, t, Vec3()).distance(point)
-                        if (dd < best) {
-                            best = dd
-                            tt = (t + (i - 1)).toDouble()
-                        }
-                    }
-                }
-            }
-            return tt.toFloat()
         }
 
         fun intersectTwoLineSegments(a1: Vec3, a2: Vec3, b1: Vec3, b2: Vec3): Vec3? {

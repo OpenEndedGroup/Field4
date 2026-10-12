@@ -214,7 +214,7 @@ class GlyphArcLengthTest {
             val reparam = glyph.byArcLengthParameterizing(length / 60f)
             val reversed = glyph.byReversing()
             val mid = glyph.midPoint()
-            val hit = FLinesAndJavaShapes.closestT(glyph, mid)
+            val hit = (glyph.nearestLocation(mid)?.t ?: Float.NaN)
             val cuts = glyph.cursor().splitD(listOf(0.2f, 0.45f, 0.7f).map { (length * it) })
 
             assertTrue(samples.size > 20, "glyph '$name' sampled to ${samples.size} points")
@@ -222,7 +222,7 @@ class GlyphArcLengthTest {
             assertTrue(reparam.nodes.size > 20, "glyph '$name' reparameterized to ${reparam.nodes.size} nodes")
             assertTrue(reversed.nodes.size == glyph.nodes.size, "glyph '$name' reversal changed the node count")
             assertTrue(mid.x.isFinite() && mid.y.isFinite(), "glyph '$name' midPoint = $mid")
-            assertTrue(hit.isFinite(), "glyph '$name' closestT = $hit")
+            assertTrue(hit.isFinite(), "glyph '$name' nearestLocation.t = $hit")
             assertTrue(cuts.size == 4, "glyph '$name' splitD gave ${cuts.size} pieces, expected 4")
 
             println(

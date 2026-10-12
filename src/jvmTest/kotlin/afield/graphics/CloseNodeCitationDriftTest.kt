@@ -53,8 +53,8 @@ class CloseNodeCitationDriftTest {
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 1369, "'z' -> f.close()"),
 
         Triple("src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt", 590, "val points = this.nodes.indices.map { Vec3(endPointOf(it)) }"),
-        // findSelfIntersections now wraps selfCrossings; the segment walk it relies on lives in FLineMeasure.kt
-        Triple("src/jvmMain/kotlin/afield/graphics/FLineMeasure.kt", 125, "val a = Vec3(endPointOf(i - 1))"),
+        // selfCrossings2D (which replaced findSelfIntersections); the segment walk it relies on lives in FLineMeasure.kt
+        Triple("src/jvmMain/kotlin/afield/graphics/FLineMeasure.kt", 148, "val a = Vec3(endPointOf(i - 1))"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt", 831, "val p = endPointOf(it); Vec2(p.x, p.y)"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt", 1006, "byUnionWith"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt", 1042, "byExclusiveOrWith"),

@@ -10,54 +10,78 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /*
- * Measuring, locating, trimming and crossing an [FLine] — the operations Paper.js puts on
- * `Path` / `CurveLocation` and Skia on `SkPathMeasure`, in one place and under one vocabulary.
+ * Measuring, locating, trimming and crossing an [FLine].
+ *
+ * There is one measurer: [FLine.cursor]. A cursor walks a line by distance (`setD`) or by node
+ * parameter (`setT`), and everything it reports about the point under it — position, unit tangent,
+ * Frenet frame, curvature — comes from the one segment evaluator in this file ([FLineSeg]: exact
+ * cubic first and second derivatives, lines degree-elevated, degenerate ends handled). `location()`
+ * hands the lot back as an [FLineLocation].
+ *
+ * The FLine-level functions here are front doors onto a cursor for the common one-shot questions:
+ * [length], [locationAt], [locationAtFraction], [nearestLocation], [trim], [splitAt]. Use a cursor
+ * yourself when you walk a line step by step.
  *
  * Two parameterisations run through all of it:
- *  - **distance** (`d`), in drawing units along the line, from 0 to [length]. This is the one to use
- *    when you want things evenly spaced: [locationAt], [trim], [splitAt].
- *  - **`t`**, the cursor's node parameter: `t = i + u` means fraction `u` of the way (by curve
- *    parameter, not by distance) along the segment that ends at node `i + 1`. It is what
- *    [FLine.cursor]`.setT` takes, and what [FLine.closestPoint] returns.
+ *  - **distance** (`d`), in drawing units along the line, from 0 to [length]. Use it when you want
+ *    things evenly spaced.
+ *  - **`t`**, the node parameter: `t = i + u` is fraction `u` of the way (by curve parameter, not by
+ *    distance) along the segment that ends at node `i + 1`.
+ * Every FLineLocation carries both.
  *
- * Every FLineLocation carries both, so you can go from one to the other.
+ * Everything whose answer only exists in the xy plane says so in its name: [FLineLocation.normal2D],
+ * [FLineLocation.signedCurvature2D], [tightBounds2D], [area2D], [isClockwise2D], [windingNumber2D],
+ * [contains2D], [crossings2D], [selfCrossings2D]. Everything else is 3D.
  */
 private const val EPS = 1e-9
 
 /**
- * A point on an [FLine], with the local frame a live-coder usually wants next.
+ * A point on an [FLine] with its local frame.
+ *
+ * At a node, the frame is the outgoing segment's (the incoming one's at the very end of the line).
  *
  * @property point where on the line
- * @property tangent unit direction of travel (zero vector only on a fully degenerate line)
- * @property normal [tangent] turned a quarter turn in the xy plane: `(-tangent.y, tangent.x, 0)`.
- *   With y pointing down (Field's canvas) that is to the right of the direction of travel; with y
- *   up it is to the left.
- * @property curvature signed curvature in the xy plane, `1 / radius`. Positive when the line turns
- *   towards [normal]; 0 on straight segments.
+ * @property tangent unit direction of travel. At a degenerate end — a cubic whose control point sits
+ *   on its end point, where the derivative vanishes — it is the limiting direction. Zero only on a
+ *   segment of zero length.
+ * @property normal the unit principal normal: perpendicular to [tangent], towards the centre of
+ *   curvature, in whatever plane the line is bending. `null` on straight runs, where there is no
+ *   such direction — there is no sensible fallback in 3D, and in 2D you want [normal2D] anyway.
+ * @property binormal `tangent × normal`, the axis the line is turning about; `null` where [normal] is.
+ * @property curvature unsigned 3D curvature `|r' × r''| / |r'|³`, i.e. `1 / radius`; 0 on straight runs.
+ * @property normal2D [tangent]'s xy part turned a quarter turn, `(tangent.y, -tangent.x)`, unit
+ *   length. On Field's canvas (y down) that is to the **left** of the direction of travel; with y up,
+ *   to the right. It is defined on straight runs too, and is the zero vector only where the line runs
+ *   straight along z. This is the normal to offset a 2D drawing along.
+ * @property signedCurvature2D curvature of the line's xy projection, positive when it bends towards
+ *   [normal2D]; 0 on straight runs.
  * @property distance distance along the line from its start, in drawing units
- * @property t the cursor node parameter of this point (see the file overview)
+ * @property t the node parameter of this point (see the file overview)
  * @property segment index of the node that ends the segment this point is on
  */
 data class FLineLocation(
     val point: Vec3,
     val tangent: Vec3,
-    val normal: Vec3,
+    val normal: Vec3?,
+    val binormal: Vec3?,
     val curvature: Float,
+    val normal2D: Vec2,
+    val signedCurvature2D: Float,
     val distance: Float,
     val t: Float,
     val segment: Int,
 )
 
 /**
- * One place where two lines (or one line with itself) cross.
+ * One place where two lines (or one line with itself) cross in the xy plane.
  *
  * @property point the crossing point
- * @property t the cursor node parameter on the line the method was called on
- * @property otherT the cursor node parameter on the other line (on the same line, for [selfCrossings])
+ * @property t the node parameter on the line the method was called on
+ * @property otherT the node parameter on the other line (on the same line, for [selfCrossings2D])
  */
 data class FLineCrossing(val point: Vec3, val t: Float, val otherT: Float)
 
-/** How [contains] decides "inside" when contours overlap or nest — the SVG / canvas `fill-rule`. */
+/** How [contains2D] decides "inside" when contours overlap or nest — the SVG / canvas `fill-rule`. */
 enum class FLineFillRule {
     /** inside when the winding number is not zero: overlapping same-direction contours stay filled. */
     NonZero,
@@ -114,94 +138,80 @@ internal class FLineSeg(val index: Int, val p0: Vec3, val p1: Vec3, val p2: Vec3
 }
 
 /**
- * Every drawn segment of this line, `Close` included (as the straight run back to its subpath
- * start); `MoveTo` jumps are not segments. A leading non-`MoveTo` node places the pen, exactly as the
- * renderer reads it.
+ * The drawn segment that ends at node [i], as a cubic (`LineTo` and `Close` degree-elevated, a
+ * `Close` running back to its subpath start), or `null` for a `MoveTo`, for node 0, or out of range.
+ * A leading non-`MoveTo` node places the pen, exactly as the renderer reads it.
  */
-internal fun FLine.drawnSegments(): List<FLineSeg> {
-    val out = ArrayList<FLineSeg>()
-    for (i in 1 until nodes.size) {
-        val n = nodes[i]
-        val a = Vec3(endPointOf(i - 1))
-        when (n) {
-            is FLine.MoveTo -> {}
-            is FLine.CubicTo -> out.add(FLineSeg(i, a, Vec3(n.c1), Vec3(n.c2), Vec3(n.to), false))
-            // a Close is the straight run back to its subpath start, which endPointOf resolves
-            is FLine.LineTo, is FLine.Close -> {
-                val b = Vec3(endPointOf(i))
-                val c1 = Vec3(a.x + (b.x - a.x) / 3, a.y + (b.y - a.y) / 3, a.z + (b.z - a.z) / 3)
-                val c2 = Vec3(a.x + 2 * (b.x - a.x) / 3, a.y + 2 * (b.y - a.y) / 3, a.z + 2 * (b.z - a.z) / 3)
-                out.add(FLineSeg(i, a, c1, c2, b, true))
-            }
-            else -> {}
+internal fun FLine.drawnSegmentEndingAt(i: Int): FLineSeg? {
+    if (i < 1 || i >= nodes.size) return null
+    val n = nodes[i]
+    val a = Vec3(endPointOf(i - 1))
+    return when (n) {
+        is FLine.CubicTo -> FLineSeg(i, a, Vec3(n.c1), Vec3(n.c2), Vec3(n.to), false)
+        is FLine.LineTo, is FLine.Close -> {
+            val b = Vec3(endPointOf(i))
+            val c1 = Vec3(a.x + (b.x - a.x) / 3, a.y + (b.y - a.y) / 3, a.z + (b.z - a.z) / 3)
+            val c2 = Vec3(a.x + 2 * (b.x - a.x) / 3, a.y + 2 * (b.y - a.y) / 3, a.z + 2 * (b.z - a.z) / 3)
+            FLineSeg(i, a, c1, c2, b, true)
+        }
+        else -> null
+    }
+}
+
+/** Every drawn segment of this line, `Close` included; `MoveTo` jumps are not segments. */
+internal fun FLine.drawnSegments(): List<FLineSeg> = (1 until nodes.size).mapNotNull { drawnSegmentEndingAt(it) }
+
+private fun len3(d: DoubleArray) = sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2])
+
+/**
+ * The location at parameter [u] on this segment — the one place Field computes a tangent, normal or
+ * curvature. [distance] is passed through (the caller owns the arc-length lookup).
+ */
+internal fun FLineSeg.locate(u: Double, distance: Float): FLineLocation {
+    val p = at(u)
+    // A degenerate end (control point on the end point) has a vanishing first derivative there;
+    // the frame is its limit, so evaluate just inside. A segment of zero length falls back to its chord.
+    var ue = u
+    var d1 = d1(ue)
+    if (len3(d1) < EPS) { ue = if (u < 0.5) u + 1e-4 else u - 1e-4; d1 = d1(ue) }
+    if (len3(d1) < EPS) d1 = doubleArrayOf((p3.x - p0.x).toDouble(), (p3.y - p0.y).toDouble(), (p3.z - p0.z).toDouble())
+    val d2 = if (straight) doubleArrayOf(0.0, 0.0, 0.0) else d2(ue)
+    val len = len3(d1)
+    val tx = if (len < EPS) 0.0 else d1[0] / len
+    val ty = if (len < EPS) 0.0 else d1[1] / len
+    val tz = if (len < EPS) 0.0 else d1[2] / len
+    val cx = d1[1] * d2[2] - d1[2] * d2[1]
+    val cy = d1[2] * d2[0] - d1[0] * d2[2]
+    val cz = d1[0] * d2[1] - d1[1] * d2[0]
+    val k = if (straight || len < EPS) 0.0 else sqrt(cx * cx + cy * cy + cz * cz) / (len * len * len)
+    var normal: Vec3? = null
+    var binormal: Vec3? = null
+    if (k > 1e-9) {
+        // the part of r'' perpendicular to the tangent points at the centre of curvature
+        val dot = d2[0] * tx + d2[1] * ty + d2[2] * tz
+        val nx = d2[0] - dot * tx; val ny = d2[1] - dot * ty; val nz = d2[2] - dot * tz
+        val nl = sqrt(nx * nx + ny * ny + nz * nz)
+        if (nl > EPS) {
+            normal = Vec3((nx / nl).toFloat(), (ny / nl).toFloat(), (nz / nl).toFloat())
+            binormal = Vec3(
+                (ty * normal.z - tz * normal.y).toFloat(),
+                (tz * normal.x - tx * normal.z).toFloat(),
+                (tx * normal.y - ty * normal.x).toFloat(),
+            )
         }
     }
-    return out
-}
-
-/**
- * The total drawn length of this line, in drawing units — `MoveTo` jumps do not count, `Close`
- * segments do. Paper.js `path.length`, Skia `SkPathMeasure.getLength` summed over contours.
- */
-fun FLine.length(): Float = if (nodes.size < 2) 0f else cursor().lengthD()
-
-/** the location at cursor parameter [t], with [distance] already known (or computed if `null`). */
-private fun FLine.locationAtT(t: Float, distance: Float?): FLineLocation? {
-    val segs = drawnSegments()
-    if (segs.isEmpty()) return null
-    val tt = t.coerceIn(0f, (nodes.size - 1).toFloat())
-    var nodeEnd = tt.toInt() + 1
-    var u = (tt - (nodeEnd - 1)).toDouble()
-    if (nodeEnd > nodes.size - 1) { nodeEnd = nodes.size - 1; u = 1.0 }
-    // a t that lands in a MoveTo jump snaps to the nearest drawn segment
-    val seg = segs.firstOrNull { it.index == nodeEnd } ?: run {
-        val after = segs.firstOrNull { it.index > nodeEnd }
-        val before = segs.lastOrNull { it.index < nodeEnd }
-        if (after != null && (before == null || u >= 0.5)) { u = 0.0; after } else { u = 1.0; before!! }
-    }
-    val p = seg.at(u)
-    var d1 = seg.d1(u)
-    // a degenerate end (control point on the end point) has zero derivative: step inside a little
-    if (hypot(hypot(d1[0], d1[1]), d1[2]) < EPS) d1 = seg.d1(if (u < 0.5) 1e-4 else 1 - 1e-4)
-    if (hypot(hypot(d1[0], d1[1]), d1[2]) < EPS) d1 = doubleArrayOf(
-        (seg.p3.x - seg.p0.x).toDouble(), (seg.p3.y - seg.p0.y).toDouble(), (seg.p3.z - seg.p0.z).toDouble()
+    val txy = hypot(tx, ty)
+    val n2 = if (txy < 1e-7) Vec2(0f, 0f) else Vec2((ty / txy).toFloat(), (-tx / txy).toFloat())
+    val lxy = hypot(d1[0], d1[1])
+    val k2 = if (straight || lxy < EPS) 0.0 else -cz / (lxy * lxy * lxy)
+    return FLineLocation(
+        p, Vec3(tx.toFloat(), ty.toFloat(), tz.toFloat()), normal, binormal, k.toFloat(),
+        n2, k2.toFloat(), distance, (index - 1 + u).toFloat(), index,
     )
-    val d2 = seg.d2(u)
-    val len = hypot(hypot(d1[0], d1[1]), d1[2])
-    val tan = if (len < EPS) Vec3() else Vec3((d1[0] / len).toFloat(), (d1[1] / len).toFloat(), (d1[2] / len).toFloat())
-    val k = if (seg.straight || len < EPS) 0.0 else (d1[0] * d2[1] - d1[1] * d2[0]) / (len * len * len)
-    val segT = (seg.index - 1 + u).toFloat()
-    val dist = distance ?: cursor().setT(segT).d
-    return FLineLocation(p, tan, Vec3(-tan.y, tan.x, 0f), k.toFloat(), dist, segT, seg.index)
 }
 
-/**
- * The location [distance] units along this line (clamped to `0..length()`), with its tangent,
- * normal and curvature. Paper.js `getLocationAt` / `getPointAt` + `getTangentAt` + `getNormalAt` +
- * `getCurvatureAt`; Skia `SkPathMeasure.getPosTan`. `null` for a line with nothing drawn in it.
- *
- * ```
- * val loc = circle.locationAt(25f)
- * marker(loc.point); line(loc.point, loc.point + loc.normal * 20f)
- * ```
- */
-fun FLine.locationAt(distance: Float): FLineLocation? {
-    if (drawnSegments().isEmpty()) return null
-    val c = cursor()
-    val total = c.lengthD()
-    val d = distance.coerceIn(0f, total)
-    c.setD(d)
-    return locationAtT(c.t, d)
-}
-
-/** [locationAt] by fraction of the [length]: 0 is the start, 1 the end, 0.5 half way by distance. */
-fun FLine.locationAtFraction(fraction: Float): FLineLocation? = locationAt(fraction.coerceIn(0f, 1f) * length())
-
-/**
- * The location on this line nearest to [point] — Paper.js `getNearestLocation`. Exact on straight
- * segments; on cubics, a coarse sample followed by Newton refinement.
- */
-fun FLine.nearestLocation(point: Vec3): FLineLocation? {
+/** the node parameter `t` of the point on this line nearest [point], or `null` if nothing is drawn. */
+internal fun FLine.nearestSegmentParameter(point: Vec3): Float? {
     val segs = drawnSegments()
     if (segs.isEmpty()) return null
     var bestSeg = segs[0]; var bestU = 0.0; var bestD = Double.MAX_VALUE
@@ -231,8 +241,39 @@ fun FLine.nearestLocation(point: Vec3): FLineLocation? {
             if (d < bestD) { bestD = d; bestSeg = s; bestU = u }
         }
     }
-    return locationAtT((bestSeg.index - 1 + bestU).toFloat(), null)
+    return (bestSeg.index - 1 + bestU).toFloat()
 }
+
+/**
+ * The total drawn length of this line, in drawing units — `MoveTo` jumps do not count, `Close`
+ * segments do. `cursor().lengthD()`; Paper.js `path.length`, Skia `SkPathMeasure.getLength`.
+ */
+fun FLine.length(): Float = if (nodes.size < 2) 0f else cursor().lengthD()
+
+/**
+ * The location [distance] units along this line (clamped to `0..length()`):
+ * `cursor().setD(distance).location()`. Paper.js `getLocationAt` and its `getTangentAt` /
+ * `getNormalAt` / `getCurvatureAt` family; Skia `SkPathMeasure.getPosTan`. `null` for a line with
+ * nothing drawn in it.
+ *
+ * ```
+ * val loc = circle.locationAt(25f)!!
+ * marker(loc.point); line(loc.point, loc.point + loc.normal2D * 20f)
+ * ```
+ */
+fun FLine.locationAt(distance: Float): FLineLocation? {
+    val c = cursor()
+    return c.setD(distance.coerceIn(0f, c.lengthD())).location()
+}
+
+/** [locationAt] by fraction of the [length]: 0 is the start, 1 the end, 0.5 half way by distance. */
+fun FLine.locationAtFraction(fraction: Float): FLineLocation? = locationAt(fraction.coerceIn(0f, 1f) * length())
+
+/**
+ * The location on this line nearest to [point], by 3D distance: `cursor(point).location()`.
+ * Paper.js `getNearestLocation`. `null` for a line with nothing drawn in it.
+ */
+fun FLine.nearestLocation(point: Vec3): FLineLocation? = cursor().setNearest(point).location()
 
 /**
  * The piece of this line between [from] and [to] units along it (both clamped to `0..length()`;
@@ -309,7 +350,6 @@ fun FLine.tightBounds2D(): Rect {
  * Positive when the contours run counter-clockwise with y pointing **up** — which is clockwise on
  * screen, where y points down. Paper.js `path.area`.
  *
- * [signedArea2D] is the older chord-only version; this one follows the curves.
  */
 fun FLine.area2D(): Float {
     // 0.5 * integral (x y' - y x') du, by 3-point Gauss-Legendre: exact for a cubic (degree 5).
@@ -344,7 +384,7 @@ fun FLine.area2D(): Float {
  * Whether this line winds clockwise **on screen** (y pointing down, as on Field's canvas and in SVG
  * / Paper.js) — i.e. [area2D] is positive. A line with no area answers `false`.
  */
-fun FLine.isClockwise(): Boolean = area2D() > 0f
+fun FLine.isClockwise2D(): Boolean = area2D() > 0f
 
 /** intersections of two segment cubics by recursive bounding-box subdivision, refined to [tol]. */
 private fun crossSegs(a: FLineSeg, b: FLineSeg, tol: Double, out: MutableList<Triple<Double, Double, Vec3>>) {
@@ -401,7 +441,7 @@ private fun dedupe(hits: List<FLineCrossing>, radius: Float): List<FLineCrossing
  * exactly; cubics by subdivision to [tolerance] drawing units. Hits closer than `4 * tolerance` are
  * one crossing. Sorted by [FLineCrossing.t]. Overlapping collinear runs report no isolated crossing.
  */
-fun FLine.crossings(other: FLine, tolerance: Float = 0.01f): List<FLineCrossing> {
+fun FLine.crossings2D(other: FLine, tolerance: Float = 0.01f): List<FLineCrossing> {
     val tol = tolerance.coerceAtLeast(1e-5f).toDouble()
     val hits = ArrayList<FLineCrossing>()
     val bs = other.drawnSegments()
@@ -418,7 +458,7 @@ fun FLine.crossings(other: FLine, tolerance: Float = 0.01f): List<FLineCrossing>
  * `getCrossings()` on one path. Neighbouring segments meeting at their shared node, and a closed
  * subpath meeting itself at its start, are joins, not crossings, and are not reported.
  */
-fun FLine.selfCrossings(tolerance: Float = 0.01f): List<FLineCrossing> {
+fun FLine.selfCrossings2D(tolerance: Float = 0.01f): List<FLineCrossing> {
     val tol = tolerance.coerceAtLeast(1e-5f).toDouble()
     // A single cubic can loop over itself, so each one is first cut where x' or y' is zero: a piece
     // monotone in both x and y cannot cross itself, and the loop becomes a crossing between two
@@ -456,13 +496,8 @@ fun FLine.selfCrossings(tolerance: Float = 0.01f): List<FLineCrossing> {
     return dedupe(hits, (4 * tol).toFloat())
 }
 
-/**
- * Whether [point] is inside this line under [rule], following its curves (cubics are flattened
- * finely), with every subpath treated as closed. The one-argument [contains] is the non-zero rule on
- * chords only; use this when the outline is curved or when a counter should be a hole regardless of
- * winding direction ([FLineFillRule.EvenOdd]).
- */
-fun FLine.contains(point: Vec2, rule: FLineFillRule): Boolean {
+/** the winding number and the plain crossing count of a rightward ray from [point], following curves. */
+private fun FLine.windingAndCrossings2D(point: Vec2): Pair<Int, Int> {
     var winding = 0
     var crossings = 0
     fun edge(ax: Double, ay: Double, bx: Double, by: Double) {
@@ -473,11 +508,10 @@ fun FLine.contains(point: Vec2, rule: FLineFillRule): Boolean {
     }
     var start: Vec3? = null
     var pen: Vec3? = null
-    val segs = drawnSegments().associateBy { it.index }
     fun closeOff() { val s = start; val p = pen; if (s != null && p != null) edge(p.x.toDouble(), p.y.toDouble(), s.x.toDouble(), s.y.toDouble()) }
     for (i in nodes.indices) {
         if (i == 0 || nodes[i] is FLine.MoveTo) { closeOff(); start = Vec3(endPointOf(i)); pen = Vec3(start!!); continue }
-        val s = segs[i] ?: continue
+        val s = drawnSegmentEndingAt(i) ?: continue
         val n = if (s.straight) 1 else 64
         var prev = s.p0
         for (k in 1..n) {
@@ -488,6 +522,24 @@ fun FLine.contains(point: Vec2, rule: FLineFillRule): Boolean {
         pen = Vec3(s.p3)
     }
     closeOff()
+    return winding to crossings
+}
+
+/**
+ * The winding number of this line about [point] in the xy plane, following its curves (cubics are
+ * flattened finely), with every subpath treated as closed back to its `moveTo`; the jump between
+ * subpaths is not a segment. Its sign follows the travel direction; non-zero means inside under the
+ * non-zero rule. A glyph's counter, wound the other way, cancels to 0 inside the hole.
+ */
+fun FLine.windingNumber2D(point: Vec2): Int = windingAndCrossings2D(point).first
+
+/**
+ * Whether [point] is inside this line in the xy plane under [rule] (non-zero by default), following
+ * its curves, with every subpath treated as closed. Use [FLineFillRule.EvenOdd] when a counter should
+ * be a hole regardless of its winding direction.
+ */
+fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): Boolean {
+    val (winding, crossings) = windingAndCrossings2D(point)
     return when (rule) {
         FLineFillRule.NonZero -> winding != 0
         FLineFillRule.EvenOdd -> crossings % 2 == 1

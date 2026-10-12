@@ -69,7 +69,7 @@ class CursorClosedLineTest {
         val total = cursor.lengthD()
         for (i in 0..40) {
             cursor.setD(total * i / 40f)
-            cursor.tangentForward() // must not throw
+            cursor.tangent() // must not throw
         }
     }
 }

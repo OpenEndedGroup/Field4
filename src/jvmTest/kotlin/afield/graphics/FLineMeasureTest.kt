@@ -67,7 +67,8 @@ class FLineMeasureTest {
             assertEquals(0f, loc.tangent.dot(loc.point), 0.05f * 50f, "tangent perpendicular to radius")
             // counter-clockwise (y up): curvature positive and the normal points to the centre
             assertEquals(1f / 50f, loc.curvature, 0.001f, "curvature at $f")
-            assertTrue(loc.normal.dot(loc.point) < 0f, "normal points inward at $f")
+            assertTrue(loc.normal!!.dot(loc.point) < 0f, "principal normal points inward at $f")
+            assertTrue(Vec3(loc.normal2D.x, loc.normal2D.y, 0f).dot(loc.point) * loc.signedCurvature2D < 0f, "normal2D * signedCurvature2D points inward at $f")
             assertEquals(f * c.length(), loc.distance, 0.05f)
         }
     }
@@ -159,34 +160,33 @@ class FLineMeasureTest {
         // an open L closes back to its start for the purposes of area
         assertEquals(5000f, FLine().moveTo(0f, 0f).lineTo(100f, 0f).lineTo(100f, 100f).area2D(), 0.01f)
         // isClockwise is on-screen (y down): the y-up CCW circle is clockwise there
-        assertTrue(circle(0f, 0f, 10f).isClockwise())
-        assertFalse(circle(0f, 0f, 10f).byReversing().isClockwise())
+        assertTrue(circle(0f, 0f, 10f).isClockwise2D())
+        assertFalse(circle(0f, 0f, 10f).byReversing().isClockwise2D())
     }
 
     @Test
     fun legacySignedAreaNoLongerBridgesSubpaths() {
         val two = square(0f, 0f, 100f)
         two.nodes.addAll(square(300f, 0f, 100f).nodes)
-        assertEquals(2e4f, two.signedArea2D(), 0.01f)
+        assertEquals(2e4f, two.area2D(), 0.01f)
     }
 
     @Test
     fun containsWithFillRules() {
         val ring = circle(0f, 0f, 100f)
         ring.nodes.addAll(circle(0f, 0f, 40f).nodes) // same direction: nonzero keeps the hole filled
-        assertTrue(ring.contains(Vec2(0f, 0f), FLineFillRule.NonZero))
-        assertFalse(ring.contains(Vec2(0f, 0f), FLineFillRule.EvenOdd))
-        assertTrue(ring.contains(Vec2(70f, 0f), FLineFillRule.EvenOdd))
+        assertTrue(ring.contains2D(Vec2(0f, 0f), FLineFillRule.NonZero))
+        assertFalse(ring.contains2D(Vec2(0f, 0f), FLineFillRule.EvenOdd))
+        assertTrue(ring.contains2D(Vec2(70f, 0f), FLineFillRule.EvenOdd))
         // follows the curve: just inside the circle at 45 degrees, where the chord of a quarter is far inside
         val p = (99f / kotlin.math.sqrt(2f))
-        assertTrue(circle(0f, 0f, 100f).contains(Vec2(p, p), FLineFillRule.NonZero))
-        assertFalse(circle(0f, 0f, 100f).contains(Vec2(p, p)), "the chord-only contains, for contrast")
+        assertTrue(circle(0f, 0f, 100f).contains2D(Vec2(p, p), FLineFillRule.NonZero))
     }
 
     @Test
     fun crossingsOfALineAndACircle() {
         val line = FLine().moveTo(-200f, 10f).lineTo(200f, 10f)
-        val hits = line.crossings(circle(0f, 0f, 50f))
+        val hits = line.crossings2D(circle(0f, 0f, 50f))
         assertEquals(2, hits.size, "$hits")
         val x = kotlin.math.sqrt(50f * 50f - 100f)
         assertEquals(-x, hits[0].point.x, 0.05f); assertEquals(x, hits[1].point.x, 0.05f)
@@ -198,7 +198,7 @@ class FLineMeasureTest {
 
     @Test
     fun crossingsOfTwoCircles() {
-        val hits = circle(0f, 0f, 50f).crossings(circle(60f, 0f, 50f))
+        val hits = circle(0f, 0f, 50f).crossings2D(circle(60f, 0f, 50f))
         assertEquals(2, hits.size, "$hits")
         for (h in hits) {
             assertEquals(30f, h.point.x, 0.1f)
@@ -209,38 +209,38 @@ class FLineMeasureTest {
     @Test
     fun selfCrossingsOfAPolylineFigureEight() {
         val bowtie = FLine().moveTo(0f, 0f).lineTo(100f, 100f).lineTo(100f, 0f).lineTo(0f, 100f).close()
-        val hits = bowtie.selfCrossings()
+        val hits = bowtie.selfCrossings2D()
         assertEquals(1, hits.size, "$hits")
         assertEquals(50f, hits[0].point.x, 1e-3f); assertEquals(50f, hits[0].point.y, 1e-3f)
-        assertEquals(0, square(0f, 0f, 100f).selfCrossings().size, "a square's corners are joins")
-        assertEquals(0, circle(0f, 0f, 50f).selfCrossings().size)
+        assertEquals(0, square(0f, 0f, 100f).selfCrossings2D().size, "a square's corners are joins")
+        assertEquals(0, circle(0f, 0f, 50f).selfCrossings2D().size)
     }
 
     @Test
     fun aSingleLoopingCubicCrossesItselfOnce() {
         val loop = FLine().moveTo(60f, 200f).cubicTo(Vec3(420f, 40f, 0f), Vec3(0f, 40f, 0f), Vec3(340f, 210f, 0f))
-        val hits = loop.selfCrossings()
+        val hits = loop.selfCrossings2D()
         assertEquals(1, hits.size, "$hits")
         val h = hits[0]
         assertTrue(h.t < h.otherT)
         val c = loop.cursor()
         assertTrue(c.setT(h.t).position().distance(h.point) < 0.05f)
         assertTrue(c.setT(h.otherT).position().distance(h.point) < 0.05f)
-        assertEquals(1, loop.findSelfIntersections().size)
+        assertEquals(1, loop.selfCrossings2D().map { it.point }.size)
     }
 
     // ---- defects in the older API, pinned here ----
 
     @Test
-    fun findSelfIntersectionsSeesStraightSegments() {
+    fun selfCrossings2DSeesStraightSegments() {
         val bowtie = FLine().moveTo(0f, 0f).lineTo(100f, 100f).lineTo(100f, 0f).lineTo(0f, 100f).close()
-        assertEquals(1, bowtie.findSelfIntersections().size)
+        assertEquals(1, bowtie.selfCrossings2D().map { it.point }.size)
     }
 
     @Test
-    fun findIntersectionsWithReportsEachCrossingOnce() {
+    fun crossings2DReportsEachCrossingOnce() {
         val line = FLine().moveTo(-200f, 10f).lineTo(200f, 10f)
-        assertEquals(2, line.findIntersectionsWith(circle(0f, 0f, 50f)).size)
+        assertEquals(2, line.crossings2D(circle(0f, 0f, 50f)).size)
     }
 
     @Test
