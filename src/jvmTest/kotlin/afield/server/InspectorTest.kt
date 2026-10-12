@@ -1,5 +1,9 @@
 package afield.server
 
+import afield.graphquery.GraphWalkOptions
+import afield.graphquery.LiveGraphEdge
+import afield.graphquery.LiveGraphInspectable
+import afield.graphquery.graphPath
 import afield.inspectorIframe
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -31,20 +35,22 @@ class InspectorTest {
         return Json.parseToJsonElement(Inspector.handle(text)).jsonObject
     }
 
-    private fun root(value: Any): JsonObject {
+    private fun root(value: Any, options: GraphWalkOptions = GraphWalkOptions()): JsonObject {
         val token = "test-${System.nanoTime()}"
-        Inspector.linkFor(value, "/tree", token)
+        Inspector.linkFor(value, "/tree", token, options)
         return ask("getRoots", ""","root":"$token"""")
     }
 
     private fun open(id: String) = ask("open", ""","id":"$id"""")
 
-    private class Row(val name: String, val id: String, val kind: String, val type: String, val summary: String, val flag: String)
+    private class Row(val name: String, val id: String, val kind: String, val type: String, val summary: String, val flag: String, val path: String)
 
     private fun rows(resp: JsonObject): List<Row> = resp["entries"]!!.jsonArray.map { e ->
         val a = (e as JsonArray).map { it.jsonPrimitive.content }
-        Row(a[0], a[1], a[2], a[3], a[4], a[5])
+        Row(a[0], a[1], a[2], a[3], a[4], a[5], a[6])
     }
+
+    private fun query(rootId: String, pattern: String) = ask("query", ",\"id\":\"$rootId\",\"query\":\"$pattern\"")
 
     private fun JsonObject.str(k: String) = this[k]!!.jsonPrimitive.content
 
@@ -62,11 +68,87 @@ class InspectorTest {
     }
 
     @Test
-    fun `a plain class shows its fields, private ones too, and a list child is a dir`() {
+    fun `a plain class shows its public properties, and a list child is a dir`() {
         val byName = rows(root(Plain())).associateBy { it.name }
-        assertEquals(setOf("count", "tags", "secret"), byName.keys)
+        assertEquals(setOf("count", "tags"), byName.keys)
         assertEquals("dir", byName["tags"]!!.kind)
         assertEquals("2 items", byName["tags"]!!.summary)
+    }
+
+    @Test
+    fun `private properties are listed when the walk options include them`() {
+        val names = rows(root(Plain(), GraphWalkOptions(includePrivate = true))).map { it.name }.toSet()
+        assertEquals(setOf("count", "tags", "secret"), names)
+    }
+
+    @Test
+    fun `every row's path resolves with graphPath to the value the row shows`() {
+        val scene = linkedMapOf<String, Any?>(
+            "p" to Point(1.0, 2.0, "p"),
+            "list" to listOf(Point(3.0, 4.0, "q")),
+            "set" to linkedSetOf("a", "b"),
+            "arr" to arrayOf("x", "y"),
+            "byKey" to mapOf(Point(0.0, 0.0, "o") to "origin"),
+        )
+        val top = rows(root(scene)).associateBy { it.name }
+        assertEquals("p", top["p"]!!.path)
+        val p = rows(open(top["p"]!!.id)).associateBy { it.name }
+        assertEquals("p/label", p["label"]!!.path)
+        assertEquals("p", scene.graphPath(p["label"]!!.path)!!.get())
+        val list = rows(open(top["list"]!!.id))
+        assertEquals("[0]", list[0].name)
+        assertEquals("list/0", list[0].path)
+        val inner = rows(open(list[0].id)).associateBy { it.name }
+        assertEquals(4.0, scene.graphPath(inner["y"]!!.path)!!.get())
+        assertEquals("set/1", rows(open(top["set"]!!.id))[1].path)
+        assertEquals("b", scene.graphPath("set/1")!!.get())
+        assertEquals("arr/1", rows(open(top["arr"]!!.id))[1].path)
+        val entry = rows(open(top["byKey"]!!.id)).single()
+        assertEquals("byKey/Point(x=0.0, y=0.0, label=o)", entry.path)
+        val kv = rows(open(entry.id)).associateBy { it.name }
+        assertEquals("", kv["key"]!!.path, "a key object is not reachable by a path")
+        assertEquals(entry.path, kv["value"]!!.path)
+        assertEquals("origin", scene.graphPath(entry.path)!!.get())
+    }
+
+    @Test
+    fun `primitive array elements and repeated map names have no path`() {
+        val top = rows(root(linkedMapOf("w" to doubleArrayOf(0.5), "m" to mapOf(1 to "a", "1" to "b"))))
+        assertEquals("", rows(open(top[0].id)).single().path)
+        assertEquals(listOf("m/1", ""), rows(open(top[1].id)).map { it.path })
+    }
+
+    class Custom : LiveGraphInspectable {
+        override fun liveGraphChildren() = listOf(LiveGraphEdge("gain") { 0.5 })
+    }
+
+    @Test
+    fun `LiveGraphInspectable edges are rows, as graphPaths sees them`() {
+        val c = rows(open(rows(root(mapOf("c" to Custom()))).single().id))
+        assertEquals(listOf("gain"), c.map { it.name })
+        assertEquals("c/gain", c.single().path)
+    }
+
+    @Test
+    fun `a Browsable dir is reachable by graphPath`() {
+        val b = object : Browsable { override fun dir() = mapOf("inner" to Point(1.0, 1.0, "i")) }
+        val inner = rows(open(rows(root(mapOf("b" to b))).single().id)).first { it.name == "inner" }
+        assertEquals("b/inner", inner.path)
+        assertEquals("i", mapOf("b" to b).graphPath("b/inner/label")!!.get())
+    }
+
+    @Test
+    fun `query runs graphPaths from the root and returns paths`() {
+        val scene = linkedMapOf("a" to Point(1.0, 2.0, "first"), "b" to listOf(Point(3.0, 4.0, "second")))
+        val id = root(scene).str("id")
+        val q = query(id, "**/label")
+        assertTrue(q["ok"]!!.jsonPrimitive.boolean, q.toString())
+        val matches = q["matches"]!!.jsonArray.map { (it as JsonArray).map { x -> x.jsonPrimitive.content } }
+        assertEquals(listOf("a/label", "b/0/label"), matches.map { it[0] })
+        assertEquals("\"second\"", matches[1][3])
+        assertEquals(2, q["total"]!!.jsonPrimitive.int)
+        assertEquals(2, query(id, "a/x | a/y")["total"]!!.jsonPrimitive.int)
+        assertFalse(query(id, "   ")["ok"]!!.jsonPrimitive.boolean)
     }
 
     @Test
@@ -173,9 +255,8 @@ class InspectorTest {
         val long = "x".repeat(500)
         val s = InspectorValues.summary(long)
         assertTrue(s.endsWith("(500 chars)") && s.length < 200, s)
-        assertEquals(null, InspectorValues.inspectableFields("a string"))
-        assertEquals(null, InspectorValues.inspectableFields(java.time.LocalTime.NOON))
-        assertNotNull(InspectorValues.inspectableFields(Point(0.0, 0.0, "")))
+        assertTrue(Inspector.edgeChildren(java.time.LocalTime.NOON, GraphWalkOptions()).isEmpty())
+        assertNotNull(Inspector.edgeChildren(Point(0.0, 0.0, ""), GraphWalkOptions()).firstOrNull())
     }
 
     @Test

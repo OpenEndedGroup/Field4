@@ -6,6 +6,11 @@ import afield.inMain
 import afield.installHandlers
 import afield.rawHandlers
 import afield.thisSession
+import afield.graphquery.GraphWalkOptions
+import afield.graphquery.GraphWalker
+import afield.graphquery.LiveGraphEdge
+import afield.graphquery.LiveGraphInspectable
+import afield.graphquery.graphPaths
 import io.ktor.websocket.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -29,10 +34,15 @@ import kotlin.reflect.full.superclasses
 // Public surface
 // -------------------------------------------------------------------------------------------------
 
-/** Anything you want to expose in the inspector implements this. */
-interface Browsable {
+/**
+ * Anything you want to expose in the inspector implements this. A [dir] is also this object's
+ * [LiveGraphInspectable] edges, so `graphPaths(...)` reaches the same children the inspector lists.
+ */
+interface Browsable : LiveGraphInspectable {
     fun heading(): String = this::class.simpleName ?: "…"
     fun dir(): Map<String, Any?>? = null
+    override fun liveGraphChildren(): Iterable<LiveGraphEdge> =
+        dir()?.keys?.map { k -> LiveGraphEdge(k) { dir()?.get(k) } } ?: emptyList()
     fun html(): String? = null
     fun version(): Long = 0
 }
@@ -93,16 +103,18 @@ object Inspector {
      * are process-local and may expire if the object is GC'ed. If you need absolute URLs, prepend your
      * own origin, e.g. "http://localhost:9092" + linkPathFor(obj).
      */
-    fun linkPathFor(obj: Any, browsePath: String = "/browse", uid : String? = null): String {
+    fun linkPathFor(obj: Any, browsePath: String = "/browse", uid : String? = null, options: GraphWalkOptions = GraphWalkOptions()): String {
         val token = uid ?: "r${idGen.getAndIncrement()}"
         linkTokens[token] = WeakReference(obj)
+        linkOptions[token] = options
         retainLinkToken(token, obj)
         return "$browsePath?root=$token"
     }
 
     /** Convenience alias naming matches your phrasing. */
     @OptIn(ExperimentalUuidApi::class)
-    fun linkFor(obj: Any, browsePath: String = "/browse", uid : String = Uuid.random().toString()): String = linkPathFor(obj, browsePath, uid)
+    fun linkFor(obj: Any, browsePath: String = "/browse", uid : String = Uuid.random().toString(), options: GraphWalkOptions = GraphWalkOptions()): String =
+        linkPathFor(obj, browsePath, uid, options)
 
     /** Notify watchers that a Browsable changed. Accepts Browsable, HasBrowsable, or raw object. */
     fun changed(obj: Any) {
@@ -123,8 +135,20 @@ object Inspector {
 
     private var rootsProvider: RootsProvider = { emptyMap() }
 
-    /** One named child of a directory. [value] is evaluated when the page is listed, never earlier. */
-    internal class Child(val name: String, val value: () -> Any?)
+    /**
+     * One named child of a directory. [value] is evaluated when the page is listed, never earlier.
+     * [segment] is the GraphQuery edge name that reaches it from its parent ([SAME] when the child
+     * is reached by the parent's own path, null when no path reaches it, e.g. a primitive array's
+     * element or a map key object).
+     */
+    internal class Child(val name: String, val segment: String? = name, val value: () -> Any?)
+
+    /** [Child.segment] for a child that has its parent's address (the `value` of a map entry). */
+    internal const val SAME = "\u0000same"
+
+    /** The walk policy for objects that are neither collections nor [Browsable]. Matches `graphPaths()`. */
+    internal fun edgeChildren(any: Any, options: GraphWalkOptions): List<Child> =
+        GraphWalker.edges(any, options).map { e -> Child(e.name, e.name.takeIf { '/' !in it }) { e.getter() } }
 
     internal sealed interface Resolved {
         val obj: Any?
@@ -150,6 +174,9 @@ object Inspector {
         val resolved: Resolved,
         /** The objects above this node, outermost first; used to flag a child that is one of them. */
         val ancestors: List<Any>,
+        /** This node's GraphQuery address from the root, or null when no path reaches it. */
+        val path: List<String>?,
+        val options: GraphWalkOptions,
         /** Stable child ids by name, so a re-listed directory keeps its ids and the client its open rows. */
         val childIds: ConcurrentHashMap<String, String> = ConcurrentHashMap(),
     ) {
@@ -162,6 +189,7 @@ object Inspector {
 
     // deep-link token store (weak so links don't pin objects)
     private val linkTokens = ConcurrentHashMap<String, WeakReference<Any>>()
+    private val linkOptions = ConcurrentHashMap<String, GraphWalkOptions>()
     private val retainedLinkTokens = LinkedHashMap<String, RetainedLink>()
     private val retainedLinkTokenTtlMs = 10 * 60 * 1000L
     private val retainedLinkTokenMax = 256
@@ -213,13 +241,13 @@ object Inspector {
     /** A map entry whose key is not a plain value: shown as a two-row directory, key then value. */
     internal class MapEntryView(val key: Any?, val value: Any?)
 
-    internal fun resolve(any: Any?, parent: Browsable?, title: String?): Resolved {
+    internal fun resolve(any: Any?, parent: Browsable?, title: String?, options: GraphWalkOptions = GraphWalkOptions()): Resolved {
         val b0 = unwrapToBrowsable(any)
         val type = InspectorValues.typeName(any)
 
         return when {
             // 1) The object already is Browsable (or HasBrowsable)
-            b0 != null -> browsableResolved(b0, any, parent, title, type)
+            b0 != null -> browsableResolved(b0, any, parent, title, type, options)
 
             // 2) Treat HasBrowsable with null like real null
             any == null || any is HasBrowsable -> Resolved.Leaf(html = { "<i>null</i>" }, text = { "null" }, obj = null, type = "null")
@@ -227,7 +255,7 @@ object Inspector {
             any is MapEntryView -> Resolved.Dir(
                 heading = title ?: "entry",
                 size = { 2 },
-                page = { o, l -> listOf(Child("key") { any.key }, Child("value") { any.value }).drop(o).take(l) },
+                page = { o, l -> listOf(Child("key", null) { any.key }, Child("value", SAME) { any.value }).drop(o).take(l) },
                 obj = any, type = "Map.Entry",
             )
 
@@ -245,7 +273,7 @@ object Inspector {
                 size = { any.size },
                 page = { o, l ->
                     val end = minOf(any.size, o + l)
-                    if (o >= end) emptyList() else (o until end).map { i -> Child("[$i]") { any[i] } }
+                    if (o >= end) emptyList() else (o until end).map { i -> Child("[$i]", "$i") { any[i] } }
                 },
                 obj = any, type = type,
             )
@@ -253,7 +281,7 @@ object Inspector {
             any is Iterable<*> -> Resolved.Dir(
                 heading = title ?: type,
                 size = { (any as? Collection<*>)?.size },
-                page = { o, l -> any.asSequence().drop(o).take(l).mapIndexed { i, v -> Child("[${o + i}]") { v } }.toList() },
+                page = { o, l -> any.asSequence().drop(o).take(l).mapIndexed { i, v -> Child("[${o + i}]", if (any is Collection<*>) "${o + i}" else null) { v } }.toList() },
                 obj = any, type = type,
             )
 
@@ -263,7 +291,9 @@ object Inspector {
                 page = { o, l ->
                     val n = java.lang.reflect.Array.getLength(any)
                     val end = minOf(n, o + l)
-                    if (o >= end) emptyList() else (o until end).map { i -> Child("[$i]") { java.lang.reflect.Array.get(any, i) } }
+                    // Object arrays are GraphQuery edges by index; primitive arrays are leaves to the walker.
+                    val seg = any is Array<*>
+                    if (o >= end) emptyList() else (o until end).map { i -> Child("[$i]", if (seg) "$i" else null) { java.lang.reflect.Array.get(any, i) } }
                 },
                 obj = any, type = type,
             )
@@ -271,16 +301,17 @@ object Inspector {
             // 3) Try adapters: turn arbitrary types into a Browsable wrapper
             else -> {
                 val adapted = BrowsableAdapters.adapt(any, parent, title)
-                if (adapted != null) return browsableResolved(adapted, any, parent, title, type)
+                if (adapted != null) return browsableResolved(adapted, any, parent, title, type, options)
 
-                // 4) Plain objects with fields of their own (data classes, user classes): a directory
-                // of those fields. Values (numbers, strings, enums, JDK types) stay leaves.
-                val fields = InspectorValues.inspectableFields(any)
-                if (fields != null && fields.isNotEmpty()) {
+                // 4) Plain objects (data classes, user classes): a directory of exactly the edges
+                // graphPaths() walks — LiveGraphInspectable children, then Kotlin properties in
+                // constructor order. Values (numbers, strings, enums, JDK types) stay leaves.
+                val edges = if (InspectorValues.isPlainValue(any)) emptyList() else edgeChildren(any, options)
+                if (edges.isNotEmpty()) {
                     Resolved.Dir(
                         heading = title ?: type,
-                        size = { fields.size },
-                        page = { o, l -> fields.drop(o).take(l).map { f -> Child(f.name) { f.get(any) } } },
+                        size = { edgeChildren(any, options).size },
+                        page = { o, l -> edgeChildren(any, options).drop(o).take(l) },
                         obj = any, type = type,
                     )
                 } else {
@@ -294,13 +325,15 @@ object Inspector {
         }
     }
 
-    private fun browsableResolved(b: Browsable, raw: Any?, parent: Browsable?, title: String?, type: String): Resolved {
+    private fun browsableResolved(b: Browsable, raw: Any?, parent: Browsable?, title: String?, type: String, options: GraphWalkOptions): Resolved {
         val dirNow = b.dir()
         return if (dirNow != null) {
+            // The walker's edges for b: its dir() first (Browsable is LiveGraphInspectable), then
+            // any public properties, so every row is a path graphPaths() resolves.
             Resolved.Dir(
                 heading = b.heading(),
-                size = { b.dir()?.size ?: 0 },
-                page = { o, l -> (b.dir() ?: emptyMap()).entries.asSequence().drop(o).take(l).map { (k, v) -> Child(k) { v } }.toList() },
+                size = { edgeChildren(b, options).size },
+                page = { o, l -> edgeChildren(b, options).drop(o).take(l) },
                 obj = raw,                                 // keep RAW object for change matching
                 type = type,
             )
@@ -324,7 +357,10 @@ object Inspector {
             if (i >= offset + limit) break
             if (i >= offset) {
                 val name = if (n == 1) base else "$base ($n)"
-                out += if (InspectorValues.isPlainValue(k)) Child(name) { v } else Child(name) { MapEntryView(k, v) }
+                // GraphQuery names a map edge key.toString() and skips null keys; a repeated name
+                // reaches only the first, so the later ones are not addressable.
+                val seg = if (k == null || n > 1 || '/' in base) null else base
+                out += if (InspectorValues.isPlainValue(k)) Child(name, seg) { v } else Child(name, seg) { MapEntryView(k, v) }
             }
             i++
         }
@@ -344,13 +380,15 @@ object Inspector {
         val root: String? = null, // deep-link token
         val offset: Int? = null,  // "more": first entry wanted
         val limit: Int? = null,   // page size, default DEFAULT_PAGE
+        val query: String? = null, // "query": a graphPaths() pattern, run from the root of node [id]
     )
 
     /**
-     * `entries` rows are `[name, id, kind, type, summary, flag]`. Clients written against the
+     * `entries` rows are `[name, id, kind, type, summary, flag, path]`. Clients written against the
      * original `[name, id]` pairs read the first two and ignore the rest. `kind` is `dir` or `leaf`,
      * so a client need not open a child to draw its disclosure triangle; `flag` is `""`, `cycle`
-     * (the child is one of its own ancestors) or `error` (reading it threw).
+     * (the child is one of its own ancestors) or `error` (reading it threw). `path` is the row's
+     * address from the root as a `graphPaths()` / `graphPath()` path, `""` when none reaches it.
      */
     @Serializable private data class DirResp(
         val reqId: String,
@@ -378,6 +416,17 @@ object Inspector {
         val valueType: String? = null,
     )
 
+    /** Reply to `query`: `matches` rows are `[path, kind, type, summary]`, at most `limit` of `total`. */
+    @Serializable private data class QueryResp(
+        val reqId: String,
+        val ok: Boolean = true,
+        val type: String = "query",
+        val query: String,
+        val matches: List<List<String>>,
+        val total: Int,
+        val truncated: Boolean = false,
+    )
+
     @Serializable private data class ErrorResp(val reqId: String, val ok: Boolean = false, val error: String)
     @Serializable private data class ChangedPush(val type: String = "changed", val nodeId: String, val version: Long? = null)
 
@@ -396,23 +445,29 @@ object Inspector {
         val more = page.size > limit
         val rows = page.take(limit).map { child ->
             val cid = item.childIds.computeIfAbsent(child.name) { newId() }
+            val childPath = when (val seg = child.segment) {
+                null -> null
+                SAME -> item.path
+                else -> item.path?.plus(seg)
+            }
+            val pathText = childPath?.joinToString("/").orEmpty()
             val (value, threw) = try { child.value() to null } catch (t: Throwable) { null to t }
             if (threw != null) {
                 val msg = "${threw::class.simpleName}: ${threw.message ?: ""}".trim()
                 items[cid] = Item(
                     Resolved.Leaf(html = { "<span class='inspector-error'>${escapeHtml(msg)}</span>" }, text = { threw.stackTraceToString() }, obj = null, type = "error"),
-                    ancestors,
+                    ancestors, childPath, item.options,
                 )
-                return@map listOf(child.name, cid, "leaf", "error", "threw $msg", "error")
+                return@map listOf(child.name, cid, "leaf", "error", "threw $msg", "error", pathText)
             }
-            val resolved = try { resolve(value, dir.obj as? Browsable, child.name) } catch (t: Throwable) {
+            val resolved = try { resolve(value, dir.obj as? Browsable, child.name, item.options) } catch (t: Throwable) {
                 Resolved.Leaf(html = { escapeHtml(t.toString()) }, text = { t.toString() }, obj = value, type = InspectorValues.typeName(value))
             }
-            items[cid] = Item(resolved, ancestors)
+            items[cid] = Item(resolved, ancestors, childPath, item.options)
             val cycle = value != null && !InspectorValues.isPlainValue(value) && ancestors.any { it === value }
             val kind = if (resolved is Resolved.Dir) "dir" else "leaf"
             val summary = if (cycle) "↺ " + InspectorValues.summary(value, resolved) else InspectorValues.summary(value, resolved)
-            listOf(child.name, cid, kind, resolved.type, summary, if (cycle) "cycle" else "")
+            listOf(child.name, cid, kind, resolved.type, summary, if (cycle) "cycle" else "", pathText)
         }
         return rows to more
     }
@@ -455,7 +510,8 @@ object Inspector {
                         val objAny = linkTokens[token]?.get()
                             ?: return error(req.reqId, "This inspector link has expired (the value it showed is gone). Run the box again.")
                         val rootId = newId()
-                        val item = Item(resolve(objAny, null, null), emptyList())
+                        val options = linkOptions[token] ?: GraphWalkOptions()
+                        val item = Item(resolve(objAny, null, null, options), emptyList(), emptyList(), options)
                         items[rootId] = item
                         return reply(req.reqId, rootId, item, 0, limit, parentId = null)
                     }
@@ -463,7 +519,7 @@ object Inspector {
                     // Default: enumerate global roots
                     val roots = rootsProvider()
                     val rootId = newId()
-                    val item = Item(Resolved.Dir("Root", { roots.size }, { o, l -> roots.entries.drop(o).take(l).map { (k, v) -> Child(k) { v } } }, null, "Roots"), emptyList())
+                    val item = Item(Resolved.Dir("Root", { roots.size }, { o, l -> roots.entries.drop(o).take(l).map { (k, v) -> Child(k) { v } } }, roots, "Roots"), emptyList(), emptyList(), GraphWalkOptions())
                     items[rootId] = item
                     reply(req.reqId, rootId, item, 0, limit, parentId = null)
                 }
@@ -482,6 +538,14 @@ object Inspector {
                     reply(req.reqId, id, item, (req.offset ?: 0).coerceAtLeast(0), limit, parentId = id)
                 }
 
+                "query" -> {
+                    val id = req.id ?: return error(req.reqId, "Missing id")
+                    val item = items[id] ?: return error(req.reqId, "Unknown id: $id")
+                    val pattern = req.query?.trim().orEmpty()
+                    if (pattern.isEmpty()) return error(req.reqId, "Empty query")
+                    query(req.reqId, item, pattern, (req.limit ?: QUERY_LIMIT).coerceIn(1, MAX_PAGE))
+                }
+
                 "unsubscribe" -> {
                     val id = req.id ?: return error(req.reqId, "Missing id")
                     unsubscribe(id, client)
@@ -497,6 +561,37 @@ object Inspector {
     }
 
     fun handle(text: String): String = handle(text, clientKey = Any()) { /* drop pushes */ }
+
+    /** Matches listed per `query` reply. */
+    const val QUERY_LIMIT = 500
+    /** The walk behind one `query` stops after this many slots, so `**` over a huge graph answers. */
+    private const val QUERY_MAX_REFS = 20_000
+
+    /**
+     * Run [pattern] with `graphPaths` from the root [item] belongs to — the node's own path is
+     * prefixed, so the query reads the same as it would in box code against the value given to
+     * `tree(...)`. Only an item with a path (every row reached by edges) can be queried.
+     */
+    private fun query(reqId: String, item: Item, pattern: String, limit: Int): String {
+        val base = item.path ?: return error(reqId, "This row has no path from the root, so it cannot be queried")
+        val target = item.obj
+        val options = item.options.copy(maxRefs = minOf(item.options.maxRefs, QUERY_MAX_REFS))
+        val found = target.graphPaths(pattern, options)
+        val rows = found.asSequence().take(limit).map { ref ->
+            val v = runCatching { ref.get() }.getOrNull()
+            val r = runCatching { resolve(v, null, ref.name, item.options) }.getOrNull()
+            listOf(
+                (base + ref.rawPath.split('/')).joinToString("/"),
+                if (r is Resolved.Dir) "dir" else "leaf",
+                InspectorValues.typeName(v),
+                InspectorValues.summary(v, r),
+            )
+        }.toList()
+        return json.encodeToString(
+            QueryResp.serializer(),
+            QueryResp(reqId, query = pattern, matches = rows, total = found.size, truncated = found.size >= options.maxRefs),
+        )
+    }
 
     /** Number of live node records; for tests that check re-listing reuses ids. */
     internal fun nodeCount(): Int = items.size
@@ -618,47 +713,6 @@ internal object InspectorValues {
     private fun overridesToString(v: Any): Boolean =
         runCatching { v.javaClass.getMethod("toString").declaringClass != Any::class.java }.getOrDefault(true)
 
-    private val jdkPrefixes = listOf("java.", "javax.", "jdk.", "sun.", "com.sun.", "kotlin.", "kotlinx.", "scala.", "org.lwjgl.")
-
-    /** A field of an inspectable object, made accessible once. */
-    class FieldRef(val name: String, private val field: java.lang.reflect.Field) {
-        fun get(target: Any): Any? = field.get(target)
-    }
-
-    private val fieldCache = ConcurrentHashMap<Class<*>, List<FieldRef>>()
-
-    /**
-     * The instance fields shown when a plain object is opened, or null when the object should be a
-     * leaf: plain values, JDK and Kotlin library types, lambdas. Backing fields rather than
-     * properties, so opening an object never runs a getter; a `by lazy` property shows as its
-     * `Lazy` (named without the `$delegate` suffix).
-     */
-    fun inspectableFields(v: Any): List<FieldRef>? {
-        if (isPlainValue(v) || isArray(v)) return null
-        val c = v.javaClass
-        if (c.isSynthetic || c.isAnonymousClass && c.interfaces.any { it.name.startsWith("kotlin.jvm.functions.") }) return null
-        if (jdkPrefixes.any { c.name.startsWith(it) }) return null
-        if (v is Function<*>) return null
-        return fieldCache.computeIfAbsent(c) { cls ->
-            val out = ArrayList<FieldRef>()
-            val seen = HashSet<String>()
-            var k: Class<*>? = cls
-            val chain = ArrayList<Class<*>>()
-            while (k != null && k != Any::class.java && jdkPrefixes.none { k!!.name.startsWith(it) }) { chain += k; k = k.superclass }
-            for (cl in chain.asReversed()) {
-                for (f in cl.declaredFields) {
-                    if (java.lang.reflect.Modifier.isStatic(f.modifiers) || f.isSynthetic) continue
-                    var name = f.name
-                    if (name.endsWith("\$delegate")) name = name.removeSuffix("\$delegate")
-                    if (name.contains('$')) continue
-                    if (!runCatching { f.trySetAccessible() }.getOrDefault(false)) continue
-                    if (seen.add(name)) out += FieldRef(name, f)
-                }
-            }
-            out
-        }
-    }
-
     private fun elementHash(v: Any?): Int = when {
         v == null -> 0
         isPlainValue(v) -> v.hashCode()
@@ -690,7 +744,8 @@ internal object InspectorValues {
             for (i in 0 until minOf(len, FINGERPRINT_ELEMENTS)) h = h * 31 + elementHash(java.lang.reflect.Array.get(v, i))
             h
         }
-        else -> inspectableFields(v)?.takeIf { it.isNotEmpty() }?.fold(17L) { h, f -> h * 31 + elementHash(runCatching { f.get(v) }.getOrNull()) }
+        else -> Inspector.edgeChildren(v, GraphWalkOptions()).takeIf { it.isNotEmpty() }
+            ?.fold(17L) { h, c -> h * 31 + elementHash(runCatching { c.value() }.getOrNull()) }
     }
 }
 

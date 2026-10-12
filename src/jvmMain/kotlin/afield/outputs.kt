@@ -752,12 +752,20 @@ fun Box.marco_printlnHere(contents: List<String>): Insert? {
  * Shows [a] in output [channel] as an expandable tree: maps, lists, arrays, data classes and plain
  * objects open lazily, one page of [afield.server.Inspector.DEFAULT_PAGE] children at a time, and
  * each row names its type and a one-line summary. Rows that are open follow the value as it changes
- * (about once a second). Keys: arrows to move and open, `/` to filter, `c` to copy, `r` to refresh.
+ * (about once a second). Keys: arrows to move and open, `/` to filter, `c` to copy the value, `p` to
+ * copy the row's path, `r` to refresh.
+ *
+ * Rows are the edges `afield.graphquery.graphPaths` walks, so the path `p` copies works in box code:
+ * `a.graphPath("particle/age")`. Typing a pattern containing `/`, `*` or `|` into the filter runs it
+ * with `graphPaths` from [a] and lists the matching paths.
  *
  * @param maxHeight the tallest the embed grows in the output panel before it scrolls, in pixels
+ * @param includePrivate also list private properties (as `GraphWalkOptions(includePrivate = true)`;
+ *   their paths then need that option in `graphPaths` too)
  */
-fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520) {
-    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/tree"), maxHeight))
+fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520, includePrivate: Boolean = false) {
+    val options = afield.graphquery.GraphWalkOptions(includePrivate = includePrivate)
+    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/tree", options = options), maxHeight))
 }
 
 /**
@@ -765,9 +773,11 @@ fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520) {
  * next column. Same values, paging, live update and keys as [tree], plus `←`/`→` between columns.
  *
  * @param maxHeight the tallest a column grows before it scrolls, in pixels
+ * @param includePrivate also list private properties, as for [tree]
  */
-fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420) {
-    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/browse"), maxHeight))
+fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420, includePrivate: Boolean = false) {
+    val options = afield.graphquery.GraphWalkOptions(includePrivate = includePrivate)
+    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/browse", options = options), maxHeight))
 }
 
 /** The iframe for [tree] and [column]: full panel width, height from `iframe_autosize.js`. */
