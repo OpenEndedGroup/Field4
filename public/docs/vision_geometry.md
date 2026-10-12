@@ -422,26 +422,25 @@ between them they are the examples this page is drawn from.
   the winding check catches.
   [Open ↗](offline.html?file=assets/agent_transcripts/vision_geometry_desk_preview/metadata.edn)
 
-## Where the pictures come from
+??? aside "Where the pictures come from"
+    Every preview on this page is a committed capture from the `vision.geometry-preview` FIELD_TEST, by
+    the route a live box takes: the box's Kotlin compiled by the real `KotlinToJsCompiler`, the emitted
+    JavaScript run under `node` against a mirror of `LiveMetalJavaScript.swift`, and the resulting packed
+    vertex array rasterized. Four of the five documents above supply their Kotlin to it verbatim, out of
+    the shipped [agent transcripts](agent_transcripts.md).
 
-This section is for anyone regenerating the page's figures. Every preview on this page is a committed capture from the `vision.geometry-preview` FIELD_TEST, by
-the route a live box takes: the box's Kotlin compiled by the real `KotlinToJsCompiler`, the emitted
-JavaScript run under `node` against a mirror of `LiveMetalJavaScript.swift`, and the resulting packed
-vertex array rasterized. Four of the five documents above supply their Kotlin to it verbatim, out of
-the shipped [agent transcripts](agent_transcripts.md).
+    ```diffstatic {data-lang=bash}
+    VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision-preview python3 tools/run_field_tests.py --id vision.geometry-preview
+    ```
 
-```diffstatic {data-lang=bash}
-VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision-preview python3 tools/run_field_tests.py --id vision.geometry-preview
-```
+    Render to a temp directory and copy the files in afterwards. Writing them straight into the working
+    tree, while the runner's Field server is watching it, takes the child process down mid-run.
 
-Render to a temp directory and copy the files in afterwards. Writing them straight into the working
-tree, while the runner's Field server is watching it, takes the child process down mid-run.
-
-The FIELD_TEST asserts as well as draws: the mesh invariants, the analytic vertex and triangle
-counts of every shape primitive, the packed stride against **both** `VISION_METAL_VERTEX_FLOATS` and
-the Swift `LiveMetalVertex` declaration, and image-level facts about each raster (painted fraction,
-colour spread, and for the sphere the roundness and area of its silhouette). Every entry's winding
-fraction is asserted too, so a primitive that starts winding the other way fails the build.
+    The FIELD_TEST asserts as well as draws: the mesh invariants, the analytic vertex and triangle
+    counts of every shape primitive, the packed stride against **both** `VISION_METAL_VERTEX_FLOATS` and
+    the Swift `LiveMetalVertex` declaration, and image-level facts about each raster (painted fraction,
+    colour spread, and for the sphere the roundness and area of its silhouette). Every entry's winding
+    fraction is asserted too, so a primitive that starts winding the other way fails the build.
 
 ## Further reading
 
