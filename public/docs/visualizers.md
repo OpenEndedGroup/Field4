@@ -774,12 +774,20 @@ These are especially good for nested maps, scene graphs, structured JSON-like da
 
 Both take any value, not only maps and lists. A data class or one of your own classes opens to its public properties, an `IntArray` or `DoubleArray` opens to its elements, and a map whose keys are objects opens each entry to its key and its value. Every row shows its name, its type and a one-line summary (`5000 items`, `"label"`, `Point(x=1.0, y=2.5, label=p)`), so you can read most of a structure without opening anything:
 
-```diffstatic {data-lang=kotlin}
-:::static
-data class Particle(val position: Vec3, val age: Double)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-tree-values.png" alt="A tree embed titled LinkedHashMap, 4 entries, with a filter box. Four folded rows, each a name, its type and the start of its summary: particle (Particle), weights (DoubleArray), many (ArrayList, 5000 items) and ring (Node, listing its fields). The selected row shows its path and copy buttons." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="tree-values"}
+data class Particle(val position: Vec3, val age: Double, val tag: String)
+class Node(val name: String) { var next: Node? = null }
 
-val particles = MutableList(5000) { Particle(Vec3(it * 0.1f, 0f, 0f), 0.0) }
-tree("particles", particles)
+val ring = Node("a")
+ring.next = Node("b").also { it.next = ring }
+
+val scene = linkedMapOf(
+    "particle" to Particle(Vec3(1f, 2f, 0.5f), 0.25, "spark"),
+    "weights" to doubleArrayOf(0.1, 0.4, 0.5),
+    "many" to List(5000) { it * it },
+    "ring" to ring,
+)
+tree("scene", scene)
 ```
 
 A long collection arrives 200 rows at a time; the last row says how many there are and loads the next 200. Open rows follow the value: if code that keeps running (a `frames { }` loop, say) adds to `particles`, the tree shows the new size within about a second, without re-running the box. An object that contains itself is marked with `↺` instead of being opened forever.
@@ -795,15 +803,43 @@ val age = scene.graphPath("particle/age")?.get()
 
 Type a pattern containing `/`, `*` or `|` into the filter and it runs `graphPaths` on the whole value instead of filtering one level: `**/tag` lists every `tag` at any depth, labelled by path. Choose one (Enter, or double-click) and the tree or columns open to it. Plain text still just filters the rows in view.
 
+This recording types `**/name` into the filter of a tree over a small scene of groups and layers. Every `name` at any depth is listed by its path; the arrow keys pick `groups/1/layers/1/name`, and Enter opens the tree down to it.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x900" clip-selector="iframe.field-inspector" video="assets/visualizers-inspector-search.mp4" fps="10" transcript="../../dev_docs/agents/transcripts/docs_capture/inspector_search.yaml" padding="6" wait="0" timeout="240" embed=true hidden=true name="inspector-search" alt="A tree embed over a scene with a title and two groups. The pointer clicks the filter and **/name is typed; the rows give way to five matches listed by path, groups/0/name through groups/1/layers/1/name. The arrow keys move down to groups/1/layers/1/name, Enter is pressed, and the tree opens groups, then [1], layers and [1], with the hatching layer's name row selected."}
+val frame = "document.querySelector('iframe.field-inspector')"
+ui.waitForSelector("iframe.field-inspector", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(600)
+fun tree(js: String) = ui.eval("return $frame.contentWindow.$js").toString()
+check("LinkedHashMap" in tree("inspectorTreeState().root"))
+val at = ui.eval("""
+    const f = $frame, r = f.getBoundingClientRect();
+    const i = f.contentDocument.getElementById('filter').getBoundingClientRect();
+    return [r.left + i.left + i.width / 2, r.top + i.top + i.height / 2].join(',');
+""").toString().trim('"').split(',').map { it.toDouble() }
+ui.moveMouse(at[0], at[1], 6)
+ui.clickAt(at[0], at[1])
+ui.typeSlowly("**/name", 220)
+ui.pause(500)
+check("groups/1/layers/1/name" in tree("inspectorTreeState().query")) { tree("JSON.stringify(inspectorTreeState())") + " at " + at }
+for (i in 1..5) { ui.press("ArrowDown"); ui.pause(200) }
+ui.press("Enter")
+ui.pause(900)
+check(tree("inspectorTreeState().selected") == "\"groups/1/layers/1/name\"") { tree("inspectorTreeState().selected") }
+ui.pause(300)
+```
+
 Private properties are left out, as `graphPaths` leaves them out by default. Pass `includePrivate = true` to `tree` or `column` to list them; their paths then need `graphPaths(pattern, GraphWalkOptions(includePrivate = true))`. A row has no path when nothing reaches it by name: an element of a primitive array, a map key that is an object, the second of two map keys that print alike.
 
-And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family:
+And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family. This box shows only the `demo` channel and logs a small job into it; rows that share a block id are grouped under the block's first line:
 
-```diffstatic {data-lang=kotlin}
-:::static
-logs("warnings", latestOnly = true) {
-    cat = "warning"
-}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-logs.png" alt="A logs embed with a channels: demo chip, a find box and a clear button. Below, one grouped block in the demo channel, each row with its time: starting a job, then step 1 of 3, step 2 of 3 and step 3 of 3, the block running on below the bottom of the panel." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="logs-demo"}
+logs("logs") { channel("demo") }
+
+val log = afield.ai.core.LogDispatcher
+log.log(afield.ai.core.LogEvent("demo", "starting a job", blockId = "job", boundary = afield.ai.core.BlockBoundary.BEGIN))
+for (i in 1..3) log.log(afield.ai.core.LogEvent("demo", "step $i of 3", blockId = "job"))
+log.log(afield.ai.core.LogEvent("demo", "done", blockId = "job", boundary = afield.ai.core.BlockBoundary.END))
 ```
 
 It gives you a live log iframe inside an output channel, which is often exactly what you want while instrumenting a system.
