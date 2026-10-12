@@ -84,12 +84,19 @@ data class BrushConfig(
     val ragged: Double? = null,
     /** 0 a blunt tuft .. 1 a fine point (the `point` argument of [PaintCanvas.brush], when given here instead). */
     val point: Double? = null,
+    /**
+     * How far a bristle's dryness keeps it on the canvas's tooth: 0 (as made), pressure pushes it
+     * into the weave's hollows however dry it is; 1, a bristle running dry rides only the peaks,
+     * however hard it is pressed, and breaks into dry-brush skips on a ground with grain (on a smooth
+     * one, none: it thins evenly). Past 1 drier still; below 0 the reverse.
+     */
+    val tooth: Double? = null,
 ) {
     internal fun values(): FloatArray = floatArrayOf(
         bristles?.toFloat() ?: Float.NaN, length?.toFloat() ?: Float.NaN, stiffness?.toFloat() ?: Float.NaN,
         hair?.toFloat() ?: Float.NaN, run?.toFloat() ?: Float.NaN, lay?.toFloat() ?: Float.NaN,
         pickup?.toFloat() ?: Float.NaN, push?.toFloat() ?: Float.NaN, splay?.toFloat() ?: Float.NaN,
-        ragged?.toFloat() ?: Float.NaN, point?.toFloat() ?: Float.NaN)
+        ragged?.toFloat() ?: Float.NaN, point?.toFloat() ?: Float.NaN, tooth?.toFloat() ?: Float.NaN)
 }
 
 /**
@@ -230,7 +237,7 @@ class PaintBrush internal constructor(internal val handle: MemorySegment, val ki
     /** How the brush is made: every construction value as it is, none left to the preset. */
     val config: BrushConfig get() = PaintNative.brushConfig(handle).let { v ->
         BrushConfig(v[2].toInt(), v[3].toDouble(), v[4].toDouble(), v[5].toDouble(), v[6].toDouble(), v[7].toDouble(),
-            v[8].toDouble(), v[9].toDouble(), v[10].toDouble(), v[11].toDouble(), v[12].toDouble())
+            v[8].toDouble(), v[9].toDouble(), v[10].toDouble(), v[11].toDouble(), v[12].toDouble(), v[13].toDouble())
     }
 
     /**

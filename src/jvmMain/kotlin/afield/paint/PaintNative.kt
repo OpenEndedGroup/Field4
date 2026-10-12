@@ -420,13 +420,13 @@ internal object PaintNative {
 
     /** [cfg] is the 11 construction values of `field_paint_brush_new_v2`, NaN for the preset's. */
     fun brushNewV2(kind: Int, width: Float, seed: Long, engine: Int, cfg: FloatArray): MemorySegment = Arena.ofConfined().use { a ->
-        require(cfg.size == 11)
+        require(cfg.size == 12)
         nonNull(brushNewV2H.invokeExact(kind, width, seed, engine, a.allocateFrom(F, *cfg)) as MemorySegment, "creating a brush")
     }
 
-    /** kind, width, bristles, length, stiffness, hair, run, lay, pickup, push, splay, ragged, point. */
+    /** kind, width, bristles, length, stiffness, hair, run, lay, pickup, push, splay, ragged, point, tooth. */
     fun brushConfig(b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
-        val out = a.allocate(F, 13)
+        val out = a.allocate(F, 14)
         check(brushConfigH.invokeExact(b, out) as Int, "reading the brush")
         out.toArray(F)
     }
@@ -629,7 +629,7 @@ internal object PaintNative {
     // ---- the segmented brush ----
 
     fun dbrushNew(c: MemorySegment, kind: Int, width: Float, cfg: FloatArray, hairs: Int, segs: Int, seed: Long): MemorySegment = Arena.ofConfined().use { a ->
-        require(cfg.size == 11)
+        require(cfg.size == 12)
         nonNull(dbrushNewH.invokeExact(c, kind, width, a.allocateFrom(F, *cfg), hairs, segs, seed) as MemorySegment, "making a segmented brush")
     }
     fun dbrushFree(b: MemorySegment) { dbrushFreeH.invokeExact(b) }
