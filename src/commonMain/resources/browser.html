@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--
       The `column(...)` embed (afield/outputs.kt -> /browse, protocol in afield/server/browsing.kt):
-      a Finder-style column view. Rows arrive as [name, id, kind, type, summary, flag].
+      a Finder-style column view. Rows arrive as [name, id, kind, type, summary, flag, path]; path is
+      the row's afield.graphquery address from the root. `p` copies it; a column filter containing
+      / * or | runs graphPaths(...) from the root (op "query") and lists the matching paths.
     -->
     <link rel="stylesheet" href="/iosevka.css">
     <link rel="stylesheet" href="/field.css">
@@ -148,8 +150,11 @@
             margin: 0 0 2px 0;
         }
 
+        /* In an output panel the iframe is as wide as the panel, so #columns must stay the horizontal
+           scroller (keyboard navigation scrolls it to reveal the active column); only its height is
+           natural, with each list scrolling itself up to --maxh. */
         html[data-afield-output-iframe="true"] #columns{
-            overflow: visible;
+            overflow-x: auto; overflow-y: hidden;
         }
         html[data-afield-output-iframe="true"] .column{
             max-height: none;
@@ -237,7 +242,13 @@
         .item.selected{ background: var(--selected); }
         .item.more .nm{ color:var(--accent); }
         .item.filtered-out{ display:none !important; }
-        .col-header{ gap:6px; white-space:nowrap; }
+        .col-header{ gap:6px; white-space:nowrap; position:sticky; top:0; z-index:2; }
+        .col-filter{ position:sticky; top:var(--row-min-h); z-index:2; }
+        .col-filter.query{ color:var(--accent); }
+        .qlist .item .nm{ color:var(--fg-hover); }
+        .qhead{ color:var(--muted); font-size:10px; padding:4px var(--row-pad-x); border-bottom:1px solid var(--sep); }
+        .qhead.error{ color:var(--danger); white-space:pre-wrap; }
+        .column.querying > .list{ display:none; }
         .col-header .ttl{ overflow:hidden; text-overflow:ellipsis; }
         .col-header .meta{ color:var(--muted); font-weight:300; font-size:10px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; }
         .col-header .copybtn{ border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:10px; }
@@ -339,7 +350,7 @@
                 }
 
                 // map pairs -> objects once
-                const mapEntries = pairs => (pairs || []).map(p => ({ name: p[0], id: p[1], kind: p[2] || null, type: p[3] || '', summary: p[4] ?? '', flag: p[5] || '' }));
+                const mapEntries = pairs => (pairs || []).map(p => ({ name: p[0], id: p[1], kind: p[2] || null, type: p[3] || '', summary: p[4] ?? '', flag: p[5] || '', path: p[6] ?? null }));
 
                 async function refreshAll() {
                         const { names, widths, activeIdx } = snapshotState();
@@ -435,11 +446,20 @@
                 }
                 function itemsIn(col){ return Array.from(col.querySelectorAll('.item')).filter(b => !b.classList.contains('filtered-out')); }
                 function selectedIn(col){ return col.querySelector('.item.selected'); }
+                /* Scroll the row's own list vertically, by hand: scrollIntoView would also scroll
+                   #columns (and the page around the iframe), and the smooth column scroll that
+                   setActiveColumn starts next cancels it. */
+                function revealRow(btn){
+                        const list = btn.closest('.list, .leaf'); if (!list) return;
+                        const r = btn.getBoundingClientRect(), lr = list.getBoundingClientRect();
+                        if (r.top < lr.top) list.scrollTop -= (lr.top - r.top);
+                        else if (r.bottom > lr.bottom) list.scrollTop += (r.bottom - lr.bottom);
+                }
                 function selectRow(btn, {scroll=true} = {}){
                         const col = btn.closest('.column');
                         itemsIn(col).forEach(b => b.classList.remove('selected'));
                         btn.classList.add('selected');
-                        if (scroll) btn.scrollIntoView({ block:'nearest', inline:'nearest' });
+                        if (scroll) revealRow(btn);
                         setActiveColumn(col, { focus:true });
                         return btn;
                 }
@@ -483,11 +503,17 @@
                                 }
                                 case 'ArrowLeft': {
                                         const prev = neighborColumn(active, -1);
-                                        if (prev) { e.preventDefault(); setActiveColumn(prev, {smooth:true, focus:true}); const sel = selectedIn(prev) || prev.querySelector('.item'); if (sel) selectRow(sel); prev.scrollIntoView({inline:'nearest'}); }
+                                        if (prev) { e.preventDefault(); setActiveColumn(prev, {smooth:true, focus:true}); const sel = selectedIn(prev) || prev.querySelector('.item'); if (sel) selectRow(sel); }
                                         break;
                                 }
                                 case 'r': { e.preventDefault(); refreshAll(); break; }
                                 case '/': { e.preventDefault(); openColumnFilter(active); break; }
+                                case 'p': {
+                                        e.preventDefault();
+                                        const sel = selectedIn(active);
+                                        copyPath_(sel ? sel.dataset.path : active.dataset.path, null);
+                                        break;
+                                }
                                 case 'c': {
                                         e.preventDefault();
                                         const sel = selectedIn(active);
@@ -580,11 +606,17 @@
                         if (reopenAgain.delete(id)) reopenNode(id, lastVersion.get(id) ?? undefined);
                 }
 
-                function headerFor(title, meta, copyText){
+                function headerFor(title, meta, copyText, path){
                         const header = document.createElement('div'); header.className = 'col-header';
                         const ttl = document.createElement('span'); ttl.className = 'ttl'; ttl.textContent = title ?? '…';
+                        if (path) ttl.title = path;
                         const m = document.createElement('span'); m.className = 'meta'; m.textContent = meta || '';
                         header.append(ttl, m);
+                        if (path) {
+                                const b = document.createElement('button'); b.className = 'copybtn pathbtn'; b.textContent = 'path'; b.title = 'Copy graphPath (p)';
+                                b.addEventListener('click', (e) => { e.stopPropagation(); copyPath_(path, b); });
+                                header.appendChild(b);
+                        }
                         if (copyText != null) {
                                 const b = document.createElement('button'); b.className = 'copybtn'; b.textContent = 'copy'; b.title = 'Copy value (c)';
                                 b.addEventListener('click', (e) => { e.stopPropagation(); copyText_(copyText, b); });
@@ -598,6 +630,15 @@
                         window.__lastCopied = text;
                         if (btn) { btn.textContent = 'copied'; setTimeout(() => btn.textContent = 'copy', 900); }
                 }
+                async function copyPath_(path, btn){
+                        if (!path) { statusFlash('no path reaches this row'); return; }
+                        await copyText_(path, null);
+                        if (btn) { btn.textContent = 'copied'; setTimeout(() => btn.textContent = 'path', 900); }
+                }
+                function statusFlash(text){
+                        const col = columnsEl.querySelector('.column.active'); const h = col?.querySelector('.col-header .meta');
+                        if (!h) return; const was = h.textContent; h.textContent = text; setTimeout(() => { h.textContent = was; }, 1500);
+                }
                 function dirMeta(resp){
                         if (!resp) return '';
                         const t = (resp.valueType && resp.valueType !== resp.heading) ? resp.valueType : '';
@@ -607,24 +648,27 @@
                 function itemButton(col, e){
                         const btn = document.createElement('button');
                         btn.className = 'item'; btn.tabIndex = -1; btn.dataset.id = e.id; btn.dataset.name = e.name;
+                        if (e.path != null) btn.dataset.path = e.path;
+                        if (e.path) btn.title = e.path;
                         if (e.kind) btn.dataset.kind = e.kind;
                         if (e.flag) btn.dataset.flag = e.flag;
                         const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = e.name;
                         const ty = document.createElement('span'); ty.className = 'ty'; ty.textContent = e.type || '';
                         const sm = document.createElement('span'); sm.className = 'sm'; sm.textContent = e.summary || ''; sm.title = e.summary || '';
                         btn.append(nm, ty, sm);
-                        btn.addEventListener('click', async () => {
-                                selectRow(btn);
-                                const idx = colIndexOf(col);
-                                const resp = await sendReq('open', { id: e.id, watch: true });
-                                if (!resp.ok) { showError(resp.error, idx); return; }
-                                if (resp.type === 'dir') {
-                                        renderDir({ id: e.id, heading: e.name, entries: mapEntries(resp.entries), resp }, idx);
-                                } else if (resp.type === 'leaf') {
-                                        renderLeaf({ id: e.id, html: resp.html, value: resp.value, type: resp.valueType, title: e.name }, idx);
-                                }
-                        });
+                        btn.addEventListener('click', () => openItem(col, btn, e));
                         return btn;
+                }
+                async function openItem(col, btn, e){
+                        selectRow(btn);
+                        const idx = colIndexOf(col);
+                        const resp = await sendReq('open', { id: e.id, watch: true });
+                        if (!resp.ok) { showError(resp.error, idx); return; }
+                        if (resp.type === 'dir') {
+                                renderDir({ id: e.id, heading: e.name, entries: mapEntries(resp.entries), resp, path: e.path }, idx);
+                        } else if (resp.type === 'leaf') {
+                                renderLeaf({ id: e.id, html: resp.html, value: resp.value, type: resp.valueType, title: e.name, path: e.path }, idx);
+                        }
                 }
                 function moreButton(col, list, resp, shown){
                         const btn = document.createElement('button');
@@ -642,13 +686,15 @@
                                 applyColumnFilter(col);
                                 const first = list.querySelector(`.item[data-id="${CSS.escape(added[0]?.id || '')}"]`);
                                 if (first) selectRow(first);
+                                btn.dispatchEvent(new Event('afield-more-done'));
                         });
                         return btn;
                 }
-                function fillDirColumn(col, { heading, entries, resp }) {
+                function fillDirColumn(col, { heading, entries, resp, path }) {
                         col.innerHTML = '';
                         col.dataset.title = heading || '';
-                        col.appendChild(headerFor(heading, dirMeta(resp)));
+                        if (path != null) col.dataset.path = path;
+                        col.appendChild(headerFor(heading, dirMeta(resp), null, col.dataset.path));
                         if (!entries.length) {
                                 const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'empty';
                                 col.appendChild(hint); return;
@@ -658,10 +704,11 @@
                         if (resp && resp.more) list.appendChild(moreButton(col, list, resp, (resp.offset || 0) + entries.length));
                         col.appendChild(list);
                 }
-                function fillLeafColumn(col, { title, html, value, type }) {
+                function fillLeafColumn(col, { title, html, value, type, path }) {
                         if (title) col.dataset.title = title;
+                        if (path != null) col.dataset.path = path;
                         col.innerHTML = '';
-                        col.appendChild(headerFor(title ?? 'value', type || '', value ?? ''));
+                        col.appendChild(headerFor(title ?? 'value', type || '', value ?? '', col.dataset.path));
                         const div = document.createElement('div'); div.className = 'leaf'; div.innerHTML = String(html ?? '');
                         col.dataset.value = value ?? '';
                         col.appendChild(div);
@@ -704,8 +751,75 @@
                 }
 
                 /* ---------- per-column filter ("/") ---------- */
+                // Text with / * or | is a graphPaths() pattern run from the root; anything else filters.
+                const isQuery = (q) => /[\/*|]/.test(q);
+                let queryTimer = null, querySeq = 0;
+                function rootNodeId(){ return columnsEl.querySelector('.column')?.dataset.nodeId || null; }
+                function endQuery(col){
+                        col.classList.remove('querying');
+                        col.querySelector('.qlist')?.remove();
+                        col.querySelector('.col-filter')?.classList.remove('query');
+                }
+                function runQuery(col, q){
+                        clearTimeout(queryTimer);
+                        col.classList.add('querying');
+                        col.querySelector('.col-filter')?.classList.add('query');
+                        queryTimer = setTimeout(async () => {
+                                const mine = ++querySeq;
+                                const resp = await sendReq('query', { id: rootNodeId(), query: q });
+                                const f = col.querySelector('.col-filter');
+                                if (mine !== querySeq || !f || !isQuery(f.value.trim())) return;
+                                col.querySelector('.qlist')?.remove();
+                                const list = document.createElement('div'); list.className = 'list qlist';
+                                const head = document.createElement('div'); head.className = 'qhead';
+                                list.appendChild(head);
+                                if (!resp || !resp.ok) { head.classList.add('error'); head.textContent = resp?.error || 'query failed'; col.appendChild(list); return; }
+                                const n = resp.matches.length;
+                                head.textContent = resp.total === 0 ? `no paths match ${q}`
+                                    : `${resp.total} ${resp.total === 1 ? 'match' : 'matches'}${n < resp.total ? `, first ${n}` : ''}${resp.truncated ? ' (walk stopped early)' : ''} — Enter reveals`;
+                                resp.matches.forEach(m => {
+                                        const btn = document.createElement('button');
+                                        btn.className = 'item qitem'; btn.tabIndex = -1; btn.dataset.name = m[0]; btn.dataset.path = m[0]; btn.dataset.kind = m[1] || 'leaf';
+                                        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = m[0];
+                                        const ty = document.createElement('span'); ty.className = 'ty'; ty.textContent = m[2] || '';
+                                        const sm = document.createElement('span'); sm.className = 'sm'; sm.textContent = m[3] || ''; sm.title = m[3] || '';
+                                        btn.append(nm, ty, sm);
+                                        btn.addEventListener('click', () => revealPath(m[0]));
+                                        list.appendChild(btn);
+                                });
+                                col.appendChild(list);
+                                const first = list.querySelector('.item'); if (first) { first.classList.add('selected'); }
+                        }, 180);
+                }
+                /** Rebuild the columns along a graphPath from the root, paging until each segment appears. */
+                async function revealPath(path){
+                        const segs = path.split('/');
+                        const root = columnsEl.querySelector('.column');
+                        if (!root) return false;
+                        endQuery(root); clearRightOfColumn(0);
+                        columnsEl.querySelectorAll('.col-filter').forEach(f => f.remove());
+                        for (let i = 0; i < segs.length; i++) {
+                                const col = columnsEl.querySelectorAll('.column')[i];
+                                if (!col) return false;
+                                const want = segs.slice(0, i + 1).join('/').toLowerCase();
+                                const find = () => [...col.querySelectorAll('.list .item')].find(b => (b.dataset.path || '').toLowerCase() === want);
+                                let btn = find();
+                                for (let pages = 0; !btn && pages < 100; pages++) {
+                                        const more = col.querySelector('.list .item.more'); if (!more) break;
+                                        await new Promise(res => { more.addEventListener('afield-more-done', res, { once:true }); more.click(); setTimeout(res, 3000); });
+                                        btn = find();
+                                }
+                                if (!btn) { statusFlash(`not found: ${segs.slice(0, i + 1).join('/')}`); return false; }
+                                if (i < segs.length - 1) await openItem(col, btn, { id: btn.dataset.id, name: btn.dataset.name, path: btn.dataset.path });
+                                else selectRow(btn);
+                        }
+                        return true;
+                }
+                window.inspectorRevealPath = revealPath;
                 function applyColumnFilter(col){
-                        const f = col.querySelector('.col-filter'); const q = (f?.value || '').trim().toLowerCase();
+                        const f = col.querySelector('.col-filter'); const raw = (f?.value || '').trim();
+                        if (isQuery(raw)) return;
+                        const q = raw.toLowerCase();
                         col.querySelectorAll('.item').forEach(b => {
                                 if (b.classList.contains('more')) return;
                                 const hay = (b.dataset.name + ' ' + (b.querySelector('.sm')?.textContent || '') + ' ' + (b.querySelector('.ty')?.textContent || '')).toLowerCase();
@@ -717,10 +831,25 @@
                         if (!f) {
                                 f = document.createElement('input'); f.className = 'col-filter'; f.type = 'search'; f.placeholder = 'filter'; f.spellcheck = false;
                                 col.querySelector('.col-header')?.after(f);
-                                f.addEventListener('input', () => applyColumnFilter(col));
+                                f.placeholder = 'filter, or **/name';
+                                f.title = 'Text filters this column; a pattern with / * or | runs graphPaths from the root';
+                                f.addEventListener('input', () => {
+                                        const q = f.value.trim();
+                                        if (isQuery(q)) runQuery(col, q); else { endQuery(col); applyColumnFilter(col); }
+                                });
                                 f.addEventListener('keydown', (e) => {
                                         e.stopPropagation();
-                                        if (e.key === 'Escape') { f.remove(); applyColumnFilter(col); columnsEl.focus(); }
+                                        if (e.key === 'Escape') { endQuery(col); f.remove(); applyColumnFilter(col); columnsEl.focus(); return; }
+                                        const ql = col.querySelector('.qlist');
+                                        if (ql && col.classList.contains('querying')) {
+                                                const items = [...ql.querySelectorAll('.item')];
+                                                const cur = ql.querySelector('.item.selected'); const i = Math.max(0, items.indexOf(cur));
+                                                const pick = (j) => { items.forEach(b => b.classList.remove('selected')); const b = items[j]; if (b) { b.classList.add('selected'); revealRow(b); } };
+                                                if (e.key === 'ArrowDown') { e.preventDefault(); pick(Math.min(items.length - 1, i + 1)); }
+                                                if (e.key === 'ArrowUp') { e.preventDefault(); pick(Math.max(0, i - 1)); }
+                                                if (e.key === 'Enter' && cur) { e.preventDefault(); revealPath(cur.dataset.path); }
+                                                return;
+                                        }
                                         if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); const b = itemsIn(col)[0]; if (b) selectRow(b); }
                                 });
                         }
@@ -765,6 +894,9 @@
                         items: [...c.querySelectorAll('.item')].filter(b => !b.classList.contains('filtered-out')).map(b => [b.dataset.name, b.dataset.kind || '', b.querySelector('.ty')?.textContent || '', b.querySelector('.sm')?.textContent || '']).slice(0, 60),
                         count: c.querySelectorAll('.item:not(.more)').length,
                         leaf: c.dataset.value != null ? c.dataset.value.slice(0, 200) : null,
+                        path: c.dataset.path ?? null,
+                        selected: c.querySelector('.item.selected')?.dataset.path ?? null,
+                        query: c.querySelector('.qlist') ? [...c.querySelectorAll('.qlist .qhead, .qlist .item .nm')].map(x => x.textContent).slice(0, 40) : null,
                 }));
 
                 /* ==== Cheatsheet data + helpers ======================================= */
@@ -775,6 +907,7 @@
                         ['R',              'Refresh all open columns'],
                         ['/',              'Filter the active column'],
                         ['C',              'Copy the selected value'],
+                        ['P',              'Copy the selected row\'s graphPath'],
                         ['Home / End',     'First / last row'],
                         ['Alt + drag',     'Resize left/right columns together'],
                         ['?  /  H',        'Toggle this help'],
