@@ -57,6 +57,8 @@ these hooks:
     tears and leading edge along the world arc.
   - `src/rag.rs`, `rag_wipe3` and `pad3`: `Seg` gains `ws`/`wk`; the pad's wander, pressure, frayed
     sides and creases along the world arc.
+  - `src/field/bristles.rs`, `stroke` (the brush of moving hairs): takes the world arc per sample
+    and sets `Surf::travel` for each substep's `exchange` from the sample window it is in.
   - `src/graphite.rs`: `hand_line_world` and `sketch_marks_world` (the old functions call them with
     no world arc).
 

@@ -78,9 +78,10 @@ class StereoTest {
     }
 
     /**
-     * A stroke receding in depth, one world line 300 mm long seen by two eyes: one sees it evenly,
-     * the other foreshortened toward its far end, as perspective does. With its world arc, the brush
-     * runs out at the same place along the line in both; without it, where the canvas length says.
+     * A stroke receding in depth, one world line (300 mm across and 300 deep) seen by two eyes: one
+     * sees it evenly, the other foreshortened toward its far end, as perspective does. With its world
+     * arc, the brush (and a brush of moving hairs) runs out at the same place along the line in both;
+     * without it, where the canvas length says.
      */
     @Test fun aStrokeRecedingInDepthRunsOutAtTheSameWorldLengthInBothEyes() {
         if (!available()) return
@@ -90,10 +91,11 @@ class StereoTest {
         val receding: (Double) -> Double = { u -> u / (u + 2.5 * (1 - u)) }
         fun proj(f: (Double) -> Double): (Vec3) -> Vec2 = { p -> Vec2((100 + 800 * f(p.x / 300.0)).toFloat(), 500f) }
         // the world length (mm) at which the paint along the stroke gives out
-        fun runsOut(f: (Double) -> Double, worldArc: Boolean): Double = PaintCanvas(400, aspect = 1.0, groundColor = Vec4(0.95f, 0.94f, 0.9f, 1f), sizeMm = 300.0, seed = 3).use { c ->
-            val brush = c.brush(BrushKind.HogFlat, 40.0, config = BrushConfig(run = 60.0), seed = 7).load(umber, amount = 0.6)
-            val g = c.gesture3d(world, proj(f), mmPerWorld = 1.0, speed = 150.0, pressure = listOf(0.8))
-            c.stroke(if (worldArc) g else TimedGesture(g.samples.map { it.copy(s = Double.NaN) }), brush, shake = 0.0, seed = 9)
+        fun runsOut(f: (Double) -> Double, worldArc: Boolean, moving: Boolean = false): Double = PaintCanvas(400, aspect = 1.0, groundColor = Vec4(0.95f, 0.94f, 0.9f, 1f), sizeMm = 300.0, seed = 3).use { c ->
+            val g0 = c.gesture3d(world, proj(f), mmPerWorld = 1.0, speed = 150.0, pressure = listOf(if (moving) 0.6 else 0.8), tilt = 30.0)
+            val g = if (worldArc) g0 else TimedGesture(g0.samples.map { it.copy(s = Double.NaN) })
+            if (moving) c.stroke(g, c.dynamicBrush(BrushKind.HogFlat, 40.0, hairs = 24, config = BrushConfig(run = 60.0), seed = 7).load(umber, amount = 0.6), seed = 9)
+            else c.stroke(g, c.brush(BrushKind.HogFlat, 40.0, config = BrushConfig(run = 60.0), seed = 7).load(umber, amount = 0.6), shake = 0.0, seed = 9)
             val px = c.render(wet = true)
             val (w, _) = c.pixelSize
             fun ink(x: Double): Double {
@@ -110,6 +112,12 @@ class StereoTest {
         assertTrue(abs(a - b) < 15.0, "with its world length the brush runs out at the same place in both eyes: $a vs $b mm")
         val (c, d) = runsOut(even, false) to runsOut(receding, false)
         assertTrue(abs(c - d) > 30.0, "without it, where each canvas's length says: $c vs $d mm")
+        // and a brush of moving hairs
+        val (e, g) = runsOut(even, true, moving = true) to runsOut(receding, true, moving = true)
+        val (h, k) = runsOut(even, false, moving = true) to runsOut(receding, false, moving = true)
+        assertTrue(e in 30.0..270.0, "the moving brush runs out partway: at $e mm")
+        assertTrue(abs(e - g) < 20.0, "moving hairs with world length: $e vs $g mm")
+        assertTrue(abs(h - k) > 30.0, "moving hairs without it: $h vs $k mm")
     }
 
     @Test fun aSeededWatercolourStrokeCorresponds() {

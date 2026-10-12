@@ -516,6 +516,21 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
     let id = c.next_stroke_ids(1);
     // (the caller's noise identity for this stroke, if it gave one: `Canvas::stroke_noise`)
     let noise = c.stroke_noise.take();
+    // (and its length in the world, `Canvas::stroke_arc`: the load runs down by it, so a stereo pair's
+    // eyes run out at the same place along a movement they see at different lengths)
+    let warc = c.take_arc_units(samples.len());
+    let travel_at = |t: f32| -> f32 {
+        let Some(w) = &warc else { return 1.0 };
+        let i = samples.windows(2).position(|p| t <= p[1].t).unwrap_or(samples.len().saturating_sub(2));
+        // the nearest sample window that moved, from this one back, then forward
+        let moved = |j: usize| {
+            let (a, b) = (&samples[j], &samples[j + 1]);
+            let d = (b.x - a.x).hypot(b.y - a.y);
+            (d > 1e-6).then(|| ((w[j + 1] - w[j]) / d).max(0.0))
+        };
+        if samples.len() < 2 { return 1.0 }
+        (0..=i).rev().chain(i + 1..samples.len() - 1).find_map(moved).unwrap_or(1.0)
+    };
     let pts: Vec<(f32, f32)> = samples.iter().map(|p| (p.x, p.y)).collect();
     let tool_for_tally = br.held.as_ref().map(|hd| hd.tool.clone()).unwrap_or_else(|| Tool::round_sable((br.width_mm / mmu).max(0.1)));
     c.tally.stroke(&tool_for_tally, &pts, mmu);
@@ -565,6 +580,7 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
             let lim = (0usize, 0usize, f.full_w, f.full_h);
             let mut sf = c.surf();
             sf.noise = noise;
+            sf.travel = travel_at(t);
             for (bi, b) in held.bristles.iter_mut().enumerate() {
                 let (g, off) = br.assign[bi];
                 match cts[g] {

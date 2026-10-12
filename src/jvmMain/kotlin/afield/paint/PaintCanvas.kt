@@ -589,6 +589,7 @@ class PaintCanvas internal constructor(
             v[7 * i + 4] = Math.toRadians(s.tilt).toFloat(); v[7 * i + 5] = Math.toRadians(s.azimuth).toFloat(); v[7 * i + 6] = Math.toRadians(s.roll).toFloat()
         }
         keyNoise(seed)
+        keyArc(gesture.samples)
         val r = PaintNative.dbrushStroke(handle, brush.handle, v, seedFor(seed))
         return DynamicReport(r[0].toLong(), r[1], r[2].toLong(), r[3], r[4], r[5], r[6], r[7])
     }
