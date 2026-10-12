@@ -292,7 +292,7 @@ looking, then use something else to describe what you found.
     Two consequences. A **constant predictor reads 0**: for a single tie group the numerator's
     expectation is `(n²−1)/3` against a denominator of `n(n²−1)/3`, so the closed form is exactly
     zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact, so compare
-    it against a tolerance, not against `0.0`; `dev_docs/STATISTICS_MEASUREMENTS.md` has the sweep
+    it against a tolerance, not against `0.0`; [`dev_docs/STATISTICS_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/STATISTICS_MEASUREMENTS.md) has the sweep
     that bound comes from. And a quantised predictor (a bucketed index, an integer
     control value, a thresholded signal) is answered correctly: heavy ties with a real relationship
     still read high (a ten-block staircase reads **0.891**), while heavy ties with no relationship
@@ -304,7 +304,7 @@ looking, then use something else to describe what you found.
 
     **Recorded xi values on tied `x` from before 2026-07-30 are wrong**, not merely different:
     x-ties then broke by input index, which scored how nearly `y` was a function of the order the
-    samples arrived in. `dev_docs/stdlib_behaviour_changes.md` owns that history and the
+    samples arrived in. [`dev_docs/stdlib_behaviour_changes.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/stdlib_behaviour_changes.md) owns that history and the
     `chatterjeeXi` KDoc points at it.
 
 ## Measuring the null yourself
@@ -673,6 +673,6 @@ size, a target distribution or an `n` and re-run one.
 For the signals themselves rather than these derived quantities, see
 [the time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves); for recovering a hidden state from noisy
 measurements, [State estimation](state_estimation_examples.md); and for the rolling-dependence
-fences in their original setting, [Values Over Time](interpolants_examples.md). For a distribution over whole functions, curves and
-fields — means, uncertainty and coherent draws from a few observations — see
+fences in their original setting, [Values Over Time](interpolants_examples.md). For a
+distribution over whole functions, curves and fields — means, uncertainty and coherent draws from a few observations — see
 [Drawing with Gaussian processes](gaussian_processes.md).
