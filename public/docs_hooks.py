@@ -1649,7 +1649,17 @@ class RunnerState:
         # The completion backend is decided by this env, at JVM start, and cannot be changed later: the
         # sidecar URL is read from `System.getenv`. So it has to be resolved BEFORE the server starts,
         # not lazily at the first completion capture.
-        server_env = automation_server_environment(self.backdoor_port)
+        # The general automation notebook also holds draft review notes made by other test
+        # runners. The notes-panel capture must see only notes from this docs runner, while
+        # still staying isolated from the user's real notebook.
+        server_env = automation_server_environment(
+            self.backdoor_port,
+            extra={
+                "AFIELD_DOCS_ANNOTATIONS_STORE": str(
+                    self.repo_root / "build" / "field-docs-runner-annotations.json"
+                )
+            },
+        )
         sidecar_url = self._ensure_semantic_sidecar()
         if sidecar_url:
             server_env[SIDECAR_URL_ENV] = sidecar_url

@@ -19,7 +19,8 @@ import kotlin.math.pow
 class KeyCamera(
     val renderer: Renderer = fromContext(),
     val camera: Camera = fromContext(),
-    val name: String = "__keycamera__"
+    val name: String = "__keycamera__",
+    private val acceptPhysicalKeys: Boolean = true,
 ) {
 
     // key → (currentAmount, action)
@@ -82,6 +83,7 @@ class KeyCamera(
     }
 
     private fun checkKeys(frameFactor: Double) {
+        if (!acceptPhysicalKeys) return
         val window = renderer.window
 
         // handle right-shift double tap before computing general "shift" state
