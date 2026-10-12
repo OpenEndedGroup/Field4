@@ -2,7 +2,7 @@
 layout(location = 0) out vec4 uFragColor;
 layout(location = 1) in vec2 ftc;
 
-layout(set = 0, binding = 0) uniform sampler2D ta[3];
+layout(set = 0, binding = 0) uniform sampler2D ta[2];
 
 void main()
 {

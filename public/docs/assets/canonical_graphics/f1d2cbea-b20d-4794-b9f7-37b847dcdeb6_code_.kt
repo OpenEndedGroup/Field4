@@ -1,4 +1,4 @@
-var (module, meshes) = gltfModelWithTextureHere("/Users/marc/temp/glTF-Sample-Models/2.0/TextureLinearInterpolationTest/glTF/TextureLinearInterpolationTest.gltf")
+var (module, meshes) = gltfModelWithTextureHere("glTF-Sample-Models/2.0/TextureLinearInterpolationTest/glTF/TextureLinearInterpolationTest.gltf")
 //var (module, meshes) = gltfModelWithTextureHere("/Users/marc/Desktop/badTexture.gltf")
 
 
