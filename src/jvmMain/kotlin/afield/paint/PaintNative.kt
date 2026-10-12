@@ -468,7 +468,7 @@ internal object PaintNative {
     fun ragWipe(c: MemorySegment, g: MemorySegment, xy: FloatArray, pressure: List<Double>, seed: Long): Double = Arena.ofConfined().use { a ->
         val pr = if (pressure.isEmpty()) MemorySegment.NULL else a.floats(pressure)
         val got = ragWipeH.invokeExact(c, g, a.allocateFrom(F, *xy), xy.size / 2, pr, pressure.size, seed) as Double
-        if (got < 0) error("a wipe") else got
+        if (got.isNaN()) error("a wipe") else got
     }
     /** load, soaked, damp. */
     fun ragState(c: MemorySegment, g: MemorySegment): FloatArray = Arena.ofConfined().use { a ->

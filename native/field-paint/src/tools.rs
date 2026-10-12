@@ -190,14 +190,11 @@ fn paint_of(r: f32, g: f32, b: f32, hiding: f32, scatter: f32, stiff: f32, dryin
     let base = if scatter.is_finite() {
         Paint::km([number(r, "red")?, number(g, "green")?, number(b, "blue")?], scatter.max(1e-6), stiff)
     } else {
-        Paint::new([number(r, "red")?, number(g, "green")?, number(b, "blue")?], within(hiding, 1e-4..=1.0, "hiding")?, stiff)
+        Paint::new([number(r, "red")?, number(g, "green")?, number(b, "blue")?], number(hiding, "hiding")?, stiff)
     };
     let oil = if oil.is_finite() { oil } else { 1.0 };
-    if oil < 0.0 {
-        return Err(format!("oil is a richness, 0 or more, not {oil}"));
-    }
     Ok(Paint {
-        solvent: if turps.is_finite() { within(turps, 0.0..=1.0, "turps (a share of the paint's volume)")? } else { 0.0 },
+        solvent: if turps.is_finite() { turps } else { 0.0 },
         oil,
         ..base.with_drying(number(drying, "drying")?.max(1e-4)).with_thinner(if thinner.is_finite() { thinner } else { 0.0 })
     })
@@ -219,7 +216,7 @@ pub extern "C" fn field_paint_brush_load_v2(
         }
         let p = paint_of(r, g, b, hiding, scatter, stiff, drying, thinner, turps, oil)?;
         // more than a full load overloads the brush, as a dip into a deep pile does
-        let amount = number(amount, "amount")?.max(0.0);
+        let amount = number(amount, "amount")?;
         let share = if share.is_finite() { within(share, 0.0..=1.0, "the dipped share of the brush")? } else { 1.0 };
         let side = if side.is_finite() { within(side, -1.0..=1.0, "the dipped side (-1 one edge, 1 the other)")? } else { 0.0 };
         let streak = if streak.is_finite() { within(streak, 0.0..=1.0, "streak")? } else { 0.0 };
@@ -415,10 +412,12 @@ pub extern "C" fn field_paint_rag_refold(c: *mut Studio, g: *mut Rag) -> i32 {
 }
 
 /// Wipe the rag along `n` points at the pressures in `pressure` (spread along the path; none is
-/// 0.5). One point is a blot. Returns the mm³ of paint lifted.
+/// 0.5). One point is a blot. Returns the mm³ of paint lifted: negative where a loaded rag left
+/// more than it took up, smearing paint it carried onto paint that is setting; NaN on failure.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_rag_wipe(c: *mut Studio, g: *mut Rag, xy: *const f32, n: i32, pressure: *const f32, pn: i32, seed: u64) -> f64 {
-    guard(-1.0, || {
+    // (NaN on failure: a loaded rag on setting paint can leave more than it lifts, a negative lift)
+    guard(f64::NAN, || {
         if n < 1 {
             return Err("a wipe needs at least one point".into());
         }

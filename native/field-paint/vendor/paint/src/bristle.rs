@@ -255,19 +255,12 @@ impl Tool {
         if let Some((k, v)) = finite.iter().find(|(_, v)| !v.is_finite()) {
             return Err(format!("tool {k} = {v} is not finite"));
         }
+        // (Field: the ranges a tool's values are meant for are not refused, only what would break the
+        // simulation: a brush needs some width and at least one bristle. Every other value is free,
+        // and guarded where it is used. `VENDORED.md`, "dials past their range".)
         let checks = [
             ("width > 0", self.width > 0.0),
             ("bristles >= 1", self.bristles >= 1),
-            ("length >= 0", self.length >= 0.0),
-            ("stiffness in 0..=1", (0.0..=1.0).contains(&self.stiffness)),
-            ("hair > 0", self.hair > 0.0),
-            ("run > 0", self.run > 0.0),
-            ("lay >= 0", self.lay >= 0.0),
-            ("pickup in 0..=1", (0.0..=1.0).contains(&self.pickup)),
-            ("push in 0..=1", (0.0..=1.0).contains(&self.push)),
-            ("splay >= 0", self.splay >= 0.0),
-            ("ragged >= 0", self.ragged >= 0.0),
-            ("point in 0..=1", (0.0..=1.0).contains(&self.point)),
         ];
         match checks.iter().find(|(_, ok)| !ok) {
             Some((rule, _)) => Err(format!("invalid tool: want {rule} ({self:?})")),
@@ -1577,10 +1570,12 @@ pub(crate) unsafe fn exchange(
         // along its length (the variation averages out across the brush).
         // A pointed tip's few hairs lie together already.
         // (the paint as it is on the brush: solvent makes it flow)
-        let ps = (br.hide[1] * (1.0 - br.hide[3]).powi(2)).clamp(0.0, 1.0);
+        // (Field: no upper limit, so paint stiffer than tube paint holds the hairs in fewer, wider
+        // clumps; `VENDORED.md`, "dials past their range")
+        let ps = (br.hide[1] * (1.0 - br.hide[3]).powi(2)).max(0.0);
         // how far the paint is stiff enough to hold hairs together: none in
         // fluid paint, rising steeply in stiff
-        let stiffen = ((ps - 0.4) / 0.6).clamp(0.0, 1.0);
+        let stiffen = ((ps - 0.4) / 0.6).max(0.0);
         let dep_total = if sf.clump && dep.is_none() && !fine && stiffen > 0.0 {
             let clump_u = tool.hair_radius() * (1.0 + 4.0 * stiffen * stiffen);
             let bands = (tool.width / (2.0 * clump_u)).clamp(2.0, 48.0);
@@ -1589,7 +1584,14 @@ pub(crate) unsafe fn exchange(
             let h0 = crate::rng::hash2(b0 as i64, id as i64, 0x51C0);
             let h1 = crate::rng::hash2(b0 as i64 + 1, id as i64, 0x51C0);
             let band = h0 + (h1 - h0) * crate::smoothstep(0.0, 1.0, f);
-            (dep_total * (1.0 + 0.6 * stiffen * (2.0 * band - 1.0))).min(liquid * 0.95)
+            // the ridges' contrast: 0.6 at tube paint's stiffness, as before; past it (Field) rising
+            // smoothly toward full (bare furrows between ridges) rather than past it, which would
+            // lay nothing at all
+            let contrast = if stiffen <= 1.0 { 0.6 * stiffen } else { 1.0 - 0.4 * (-1.5 * (stiffen - 1.0)).exp() };
+            // and a paste stiffer than tube paint is harder to push off the hair (Field): what it
+            // gives falls off slowly, with the log of how far past tube paint it is
+            let give = if stiffen <= 1.0 { 1.0 } else { 1.0 / (1.0 + 0.3 * stiffen.ln()) };
+            (dep_total * give * (1.0 + contrast * (2.0 * band - 1.0))).min(liquid * 0.95)
         } else {
             dep_total
         };
@@ -1718,7 +1720,9 @@ pub(crate) unsafe fn exchange(
                 // plough: move paint outward from the bristle's path, and ahead
                 if push_k > 0.0 {
                     let v = *sf.vol.add(i);
-                    let m = v * push_k * wt * fl;
+                    // (Field: never more than is there, so a push past 1 ploughs aside all of it rather
+                    // than leaving negative paint behind; `VENDORED.md`, "dials past their range")
+                    let m = (v * push_k * wt * fl).min(v.max(0.0));
                     if m > 1e-6 {
                         let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
                         let side = if (px - a.0) * nx + (py - a.1) * ny >= 0.0 { 1.0 } else { -1.0 };
