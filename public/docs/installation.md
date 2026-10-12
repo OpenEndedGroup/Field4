@@ -102,7 +102,7 @@ setup can install every missing tool through winget; install the other prerequis
 setup. Features your platform does not support, and NVIDIA-only features without a working
 `nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
 type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
-It shows the exact package-manager commands and requires typing `INSTALL`
+Setup then shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
@@ -286,7 +286,7 @@ _Field·4_ is still beta software. Report reproducible problems through the publ
 
 ## Updating
 
-Update it the same way:
+To update Field, pull the latest source into your checkout:
 
 ```diffstatic {data-lang=bash}
 git pull
