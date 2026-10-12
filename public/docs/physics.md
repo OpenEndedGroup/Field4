@@ -13,8 +13,8 @@ The API is in the [codebase reference](reference/simulation.md). This page cover
 surprises people: `stiffness` and `iterations` act as one knob.
 
 !!! note "If you just want the cloth on screen"
-    Open the **`cloth_simdverlet_start`** starting point from Field's welcome screen, also listed in
-    the [Agent Transcript Gallery](agent_transcripts.md): a 20 × 10 sheet, an explicit `loop { }`,
+    Open the [`cloth_simdverlet_start`](agent_transcripts.md#cloth_simdverlet_start) starting point
+    from Field's welcome screen: a 20 × 10 sheet, an explicit `loop { }`,
     and the debug view, already hanging. Come back here when you want to change the numbers.
     [Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop) has the same
     scene as a moving picture, and explains why an integrator wants a fixed `dt`.
@@ -336,7 +336,7 @@ adds into the same `ax/ay/az` the springs do, so at these strengths it is one mo
 rather than a stiffener.
 
 ??? aside "The repository records a different ladder"
-    `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` runs the same four rungs and reports different
+    [`SIMDVERLET_4_CONSTRAINTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md) runs the same four rungs and reports different
     numbers. Those are settled values read off a box that has stopped moving, on a scene with the
     curvature force on; the captions here are peaks over the fall with curvature off. The ordering
     is the same.
@@ -642,8 +642,8 @@ showPlaneGrid(
 ![Four panels. The top two are wireframe drawings of a hanging cloth, one correctly wired and one with a mis-wired constraint slot, and they look the same. The bottom two are the solver's own debug view of the same two sheets; the right-hand one has an extra long diagonal segment running across the sheet that is absent on the left.](assets/physics/debug_view.png)
 
 The top row is the picture you would naturally draw. The caption shows the two sheets more than a
-grid spacing apart at their furthest particle, yet the bug is invisible in that drawing, because `cloth.lines()` walks rows and columns *by
-index* and the grid it draws is still the grid you asked for. The bottom row is the same two sheets
+grid spacing apart at their furthest particle, yet the bug is invisible in that drawing, because
+`cloth.lines()` walks rows and columns *by index* and the grid it draws is still the grid you asked for. The bottom row is the same two sheets
 with the constraint set drawn instead, and the bug is the long diagonal running up across the
 right-hand panel.
 
@@ -689,23 +689,24 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 ## Where to look next
 
-- **[Simulation, in the codebase reference](reference/simulation.md)** — every public declaration in
+- [Simulation, in the codebase reference](reference/simulation.md) — every public declaration in
   this package, with the KDoc that sits beside it, on one browsable page. It is also where the two
   neighbours this page does not cover live: Kratos, which answers the same kind of question slowly
   and correctly instead of quickly and approximately, and
   [tetrahedral meshing](reference/simulation.md#tetgen-kt), which is what stands between a solid and
   a solver that wants elements.
-- **[Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop)** — the same
+- [Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop) — the same
   cloth as a moving picture, and the argument for a fixed `dt`. It also has the generator layer that
   `addPidPositionController` is written in.
-- **[Agent Transcript Gallery](agent_transcripts.md)** — `cloth_simdverlet_start`, the openable
+- [Agent Transcript Gallery](agent_transcripts.md#cloth_simdverlet_start) — `cloth_simdverlet_start`, the openable
   starting point.
-- **[FLine Examples](fline_examples.md)** — `debugLines()` and `cloth.lines()` both return `FLine`s,
+- [FLine Examples](fline_examples.md) — `debugLines()` and `cloth.lines()` both return `FLine`s,
   so everything you can do to a line applies to them.
-- **[Visualizers & Controls](visualizers.md)** and **[Field's 3D Output](three_output.md)** — where
+- [Visualizers & Controls](visualizers.md) and [Field's 3D Output](three_output.md) — where
   to send those lines other than `showPlane`.
 
 ??? aside "Design notes"
-    `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` has the four-slot design rationale and the list
-    of runnable entry points; `SIMDVERLET_5_WORLD.md` has the argument and measurements behind
+    [`SIMDVERLET_4_CONSTRAINTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md) has the four-slot design
+    rationale and the list of runnable entry points;
+    [`SIMDVERLET_5_WORLD.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/physics/SIMDVERLET_5_WORLD.md) has the argument and measurements behind
     colliders as projections.

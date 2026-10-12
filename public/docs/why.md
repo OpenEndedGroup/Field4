@@ -60,6 +60,7 @@ The same answer is available without writing any box code:
 
 - the backdoor: `why <box> <name>` or `why <box> --type <class>`, with `--expect-supplier`,
   `--expect-competing`, `--expect-shadowed` and `--expect-not-found` for smoke tests
-  (`dev_docs/agents/FIELD_BACKDOOR.md`, "Why does this value resolve here?");
+  (see "Why does this value resolve here?" in
+  [FIELD_BACKDOOR.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/FIELD_BACKDOOR.md));
 - the MCP bridge: `field_why`;
 - AI4 chat: the tool `WhyDoesThisResolve`, offered whenever a box is focused.

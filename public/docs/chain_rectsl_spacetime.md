@@ -177,7 +177,8 @@ with a sawtooth wherever neighbouring samples differ, because the jump to `sampl
     Outside the union that is exact; inside it under-estimates, because the nearest individual
     boundary can be much closer than the union's own. The zero set is unaffected, which is all a march
     reads, so the surface here is right. An erosion or an offset of this field would not be, and
-    `dev_docs/RECTSL_SOFT_RASTER.md` measures that bias where it matters.
+    [RectSL soft raster](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/RECTSL_SOFT_RASTER.md)
+    measures that bias where it matters.
 
 ## Where each piece is documented
 

@@ -82,7 +82,7 @@ the others'. The way back in is `link-audio-in`, below.
 Field has two ways to place a sound in space: OpenAL, which is this section, and Steam Audio, whose
 HRTF is what [A pattern in space](pat_spatial.md) uses. With `spatial-openal` you position sources
 from code, it opens its own OpenAL context, and it has an offline loopback mode, so a machine with no
-sound card can render and measure it. Neither has a clip on this site.
+sound card can render and measure it. It has no clip on this site.
 
 `spatial-openal` defaults to one shared engine. Two constructor arguments change that, and both
 exist so that spatial audio can happen somewhere other than the speakers of the machine you are
@@ -116,7 +116,7 @@ Soft library rather than an output device. A test or a docs build can use it.
 | --- | --- | --- | --- |
 | `device-input` | OpenAL capture as a `Signal`, so a microphone is just another node. `fun stereoInput()` in `src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt` | an input device + OS permission | — |
 | `link-audio-in` | another application's output as a `Signal`. `fun stereoInput(channelName…)` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
-| `video-audio` | a file decoded by FFmpeg and played through a **third** OpenAL context, kept in step by its own playback clock. `class AudioDecoder` in `src/jvmMain/kotlin/afield/four/texture/video/AudioDecoder.kt` | the bundled FFmpeg | `dev_docs/AUDIO_OPTIONS.md`, in the repo |
+| `video-audio` | a file decoded by FFmpeg and played through a **third** OpenAL context, kept in step by its own playback clock. `class AudioDecoder` in `src/jvmMain/kotlin/afield/four/texture/video/AudioDecoder.kt` | the bundled FFmpeg | [`dev_docs/AUDIO_OPTIONS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/AUDIO_OPTIONS.md) |
 | `wav-file-in` | a `.wav` off disk as `FloatArray`s — the counterpart of `wav-file`. `WavFloatArrayLoader` in `src/jvmMain/kotlin/afield/four/audio/WavFloatArrayLoader.kt` | nothing | — |
 
 Link Audio is how `sonic-pi` and Field reach each other without a virtual cable. The two directions
@@ -239,13 +239,15 @@ one `render` call, with no adapter in between.
     on every `check`, and cites each entry point by symbol, so a rename fails the build. It cannot
     find a player in another process (like `sonic-pi`) or a whole-buffer free function (like
     `patRenderStereo`); those are declared by hand in `SoundPathMap.kt`, and the marker literals and
-    tolerances are in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
+    tolerances are in
+    [`dev_docs/SOUND_PATH_MAP_AGREEMENT.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOUND_PATH_MAP_AGREEMENT.md).
 
 ---
 
 ## A box that plays the comparison
 
-Open **sound_path_map** from the welcome screen's starting points. It has two boxes: *The map*
+Open the [`sound_path_map`](agent_transcripts.md#sound_path_map) starting point from the welcome
+screen. It has two boxes: *The map*
 prints this page's tables from `SoundPathMap.PATHS`, and *One buffer, three paths* plays the three
 renders above back to back and plots their short-time brightness, so you can see the filters as well
 as hear them. The second box needs the Dirt-Samples folders once, from `./gradlew fetchDocsDirtSamples`;

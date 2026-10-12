@@ -276,4 +276,4 @@ from a rendered scene, and [OSC and TUIO](osc.md) for show-control messages.
 
 ??? aside "How the wire formats were checked"
     The protocol claims were checked against a decoder written separately from the encoder, in
-    Python, and against the third-party `sacn` package; the record is `dev_docs/dmx_lighting.md`.
+    Python, and against the third-party `sacn` package; the record is [dev_docs/dmx_lighting.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/dmx_lighting.md).

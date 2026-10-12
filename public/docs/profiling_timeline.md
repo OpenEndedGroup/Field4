@@ -533,15 +533,15 @@ says outright:
 > One scheduled continuation, ending when it returns/yields/suspends; gaps are not CPU work.
 > — `profiling.kt:27#/** One scheduled continuation, ending when it returns/yields/suspends; gaps are not CPU work. */`
 
-Read that sentence twice, because almost everything people get wrong here is in it.
+Most misreadings of the timeline come from forgetting what that sentence says.
 
 **A resume is not a frame.** It ends at the suspension point, not at the end of your
 iteration, so `loop { work; delay(16) }` produces *two* resumes per turn round the loop:
 one that does the work and suspends, and one that wakes up afterwards and immediately
 loops. The second one costs nothing. That makes a median-over-resumes a median over a
 population that is half empty, and it is why the panel warns that its percentiles are per
-resume rather than per frame. In the three-second recording measured for this page (the
-replay command is at the bottom), the box that allocates an array of 8,192 vectors every
+resume rather than per frame. In a three-second recording of the
+[profiling_timeline demo](#try-the-demo), the box that allocates an array of 8,192 vectors every
 turn showed **314 resumes: 157 that allocated a mean of 229,712 bytes and 157 that
 allocated a mean of 208**. Its median resume allocated 208 bytes. Its mean allocated
 114,966. Neither number is wrong; only one of them is about your work.
@@ -749,8 +749,7 @@ subdivided within a resume.
 
 **4. Follow a sample to a named line.** Open **Hot code**, brush the interval you care
 about, choose **Lines**, and switch between CPU and allocation samples. Then select the row
-and read its source. This is the step that actually works, and here is the real output of
-it on the demo, from the recording measured for this page. Grouped by innermost frame, the
+and read its source. Here is what that showed for the demo, in the same recording. Grouped by innermost frame, the
 allocation samples ranked:
 
 | sampled weight | events | innermost frame |
@@ -779,8 +778,8 @@ lane's exact `wallMs` found the CPU problem in the first second.
 
 **5. Jump to the box with the gutter heatmap on.** **Open box with gutter heatmap** puts
 you in Monaco with the sampled lines striped in the gutter, cyan for CPU and amber for
-estimated allocation. The mechanism is worth a paragraph, because it explains the one way
-this step disappoints people.
+estimated allocation. The stripes vanish in one case that surprises people, and the
+matching rule below explains why.
 
 A capture's source records carry more than a path. `ProfileStackSource`
 (`profiling.kt:50#data class ProfileStackSource(val id: Int, val path: String, val code: String,`)

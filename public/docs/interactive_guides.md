@@ -223,7 +223,7 @@ fail.
 ### Setting up the chat server
 
 Chat needs a small companion service, a Flask process that stores the messages. Field talks to it
-for the browser, so the browser only needs to reach Field.
+on the browser's behalf, so the browser only needs to reach Field.
 
 Install the dependencies and start the service alongside Field:
 
@@ -243,7 +243,7 @@ saved under `chat_data/`, one JSON file per slide, so a thread survives a restar
 
 ??? aside "Where the chat bridge is documented"
     The bridge's parts, the file layout under `chat_data/`, and what to do when Field and the
-    chat server disagree about a port are in `dev_docs/GUIDE_CHAT_QUICKSTART.md`.
+    chat server disagree about a port are in [`dev_docs/GUIDE_CHAT_QUICKSTART.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GUIDE_CHAT_QUICKSTART.md).
 
 ## Annotations and code callouts
 

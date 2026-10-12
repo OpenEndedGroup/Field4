@@ -472,7 +472,7 @@ away with `close()` (both are `AutoCloseable`, so `use { }` works).
 
 ## Building the library
 
-The simulation is Rust. Field calls it through a small wrapper library in `native/field-paint`,
+The simulation is Rust. Field calls it through a small wrapper library in [native/field-paint](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-paint),
 which is not part of the normal build. Install a current stable Rust toolchain (`cargo` and
 `rustc`); older distribution packages may be too old for this crate. `--setup` checks their
 versions before preparing paint. Build it once:
@@ -482,8 +482,8 @@ versions before preparing paint. Build it once:
 ```
 
 The crate is alice's [claude-paint](https://github.com/aliceisjustplaying/claude-paint) `paint`
-crate, kept in the repository at `native/field-paint/vendor/paint` under its MIT licence, with the
-upstream commit it was taken from in `VENDORED.md` there. Field's additions to it are in its
+crate, kept in the repository at [native/field-paint/vendor/paint](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-paint/vendor/paint) under its MIT licence, with the
+upstream commit it was taken from in [VENDORED.md](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-paint/vendor/paint/VENDORED.md). Field's additions to it are in its
 `src/field/` and are Field's, not alice's. The first build downloads the crate's dependencies from
 crates.io and takes a few minutes.
 Later builds take seconds. The library goes in `build/field-paint/release`, where Field finds it

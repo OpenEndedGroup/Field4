@@ -145,8 +145,8 @@ The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`,
 
 ## Looking at what you got
 
-A broken mesh often looks fine. A duplicated edge, a missing cap, an unwelded weld and a leaked marching-cubes surface all still render
-plausibly. One integer catches all four: the **Euler characteristic** `V - E + F`, which is exactly 2
+A broken mesh often looks fine. A duplicated edge, a missing cap, a row of vertices that were
+never welded and a leaked marching-cubes surface all still render plausibly. One integer catches all four: the **Euler characteristic** `V - E + F`, which is exactly 2
 for any closed genus-0 solid and `2 - 2g` for genus *g*.
 
 `summary()` prints the whole verdict in one line. The rest of the pieces are separately available:
@@ -516,7 +516,7 @@ showMeshGrid(
     face's polygon is exactly the corners recording that plane. That matters around a
     near-cospherical site cluster, where the genuine corners sit closer together than any usable
     distance tolerance, and a face decided by proximity claims corners that are not its own and
-    fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
+    fails to close. [`dev_docs/MESH_GEOMETRY.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_GEOMETRY.md) has the measurements.
 
 ## Recipes
 

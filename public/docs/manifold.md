@@ -439,7 +439,7 @@ display(swollen.toFLines())
 `TriMesh`'s positions are `Float` and Manifold's `MeshGL` is `float32`, so going **in** is exact and
 coming **out** narrows Manifold's internal doubles to precisely the precision `TriMesh` stores anyway.
 
-### Two forms of `toTriMesh`
+### Two meshes from `toTriMesh`
 
 `toTriMesh(normals = true)` is what you want for a picture and *not* what you want for a measurement,
 because a vertex on a hard edge needs a different normal per face and therefore cannot be shared:
@@ -512,8 +512,8 @@ does not establish a crease: adjacent Boolean patches can be coplanar.
 `Solid.scope { ... }` also closes its temporary native objects if the block throws.
 
 `planarContact(a, b, plane)` intersects the actual boundary polygons on a specified
-plane. Two infinite planes being coincident is insufficient; the finite polygons must
-overlap. `planarContacts(a, b)` discovers those finite patches automatically.
+plane. It reports a contact only where the finite polygons overlap, not wherever two faces
+lie in the same plane. `planarContacts(a, b)` finds those patches without being given a plane.
 
 ```diffstatic {data-lang=kotlin}
 :::static

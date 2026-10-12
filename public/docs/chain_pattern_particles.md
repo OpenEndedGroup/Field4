@@ -16,7 +16,8 @@ time instead, so `patSynth` is what connects the two.
 Each ring follows one band, in the same four colours the plot further down uses: the innermost is
 70 Hz and the outermost 8 kHz. In the frame above the kick had just landed, so the innermost ring has
 bloomed into a disc while the hats hold the outermost one thin. It is one frame of something moving,
-and that plot is the signal it is following.
+and that plot is the signal it is following. The document behind the figure is a starting point:
+[pattern_particles](agent_transcripts.md#pattern_particles).
 
 ## `patSynth`, the scheduler
 

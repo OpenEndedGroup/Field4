@@ -362,7 +362,7 @@ loop {
 ```
 
 Everything above except the grab and the two lines that drive it is
-the [`cloth_simdverlet_start`](agent_transcripts.md) starting point: open it from the welcome screen
+the [`cloth_simdverlet_start`](agent_transcripts.md#cloth_simdverlet_start) starting point: open it from the welcome screen
 and the sheet is already hanging. `addCloth` builds a `Cloth`, a grid of particles inside the
 `SimdVerlet` you already have, and `SimdVerlet.debugLines()` draws the solver's own state, so a mis-wired constraint
 or a missing pin is easy to see.
@@ -587,7 +587,7 @@ write an animation.
 
 ### The Runloop
 
-`Runloop.start()`, in `src/jvmMain/kotlin/afield/Runloop.kt`, is the whole scheduler:
+`Runloop.start()`, in [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt), is the whole scheduler:
 
 ```diffstatic {data-lang=kotlin}
 while (true) {
@@ -736,7 +736,7 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
     only return-based way to end a frame program.
 
     The throw is what runs your `.end { }`: the end phase lives in that `catch`, so a body that
-    left through a `false` return would skip it. `dev_docs/frames_stop_end_phase.md` has the three
+    left through a `false` return would skip it. [`dev_docs/frames_stop_end_phase.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/frames_stop_end_phase.md) has the three
     stop routes side by side.
 
 ??? aside "Running two frame programs at once with `a + b`"
@@ -748,7 +748,7 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
 
     One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
     through the same hook pair, so the box can report `"ending"` more than once for one stop.
-    `dev_docs/frames_stop_end_phase.md` records the rest.
+    [`dev_docs/frames_stop_end_phase.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/frames_stop_end_phase.md) records the rest.
 
 ### How a stop reaches the body
 
@@ -891,7 +891,7 @@ short, synchronous teardown list, registered with the internal `Box.registerStop
 `stopTrackedJobs` drains before it returns. `Box.streamProcess`, the one place in Field's own
 source that installs an `atEnd`, registers its kill in both, so an external command dies whether it
 was still running at stop or had already exited. The epoch mechanism and the caller sweep are in
-`dev_docs/frames_stop_end_phase.md`.
+[`dev_docs/frames_stop_end_phase.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/frames_stop_end_phase.md).
 
 ### Every name in `Phased.kt`
 
@@ -919,7 +919,7 @@ Every public name in `Phased.kt`, grouped by what it is for.
 
 | Name | What it is |
 | --- | --- |
-| `Frames.frame()` | Advance one frame: check the stop conditions, suspend until the next queue drain, increment `frameNumber`. Returns `false` if it is stopping. |
+| `Frames.frame()` | Advance one frame: check the stop conditions, suspend until the next queue drain, increment `frameNumber`. Returns `true`; when the animation is stopping it throws instead. |
 | `Frames.delay()` | Suspend for `ms` milliseconds of *real* time, then `frame()`. |
 | `Frames.wait()` | `while (!cancelled) frame()` — park here, advancing, until something stops us. |
 | `Frames.end()` | Ask to stop. Cancels the job, or marks the animation stillborn if it has not launched yet. |
@@ -987,13 +987,13 @@ Every public name in `Phased.kt`, grouped by what it is for.
 
 | what | file |
 | --- | --- |
-| `Frames`, the builders, `Framer`, the generator layer | `src/jvmMain/kotlin/afield/Phased.kt` |
-| the Runloop and `AnimationClock` | `src/jvmMain/kotlin/afield/Runloop.kt` |
-| `animate`, `start` | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt` — listed in [Workspace](reference/workspace.md) |
-| what happens when a box returns a `Frames` | `src/jvmMain/kotlin/afield/ReturnValueRegistry.kt` |
-| stop, generations and launch epochs | `src/jvmMain/kotlin/afield/Boxes.kt` |
-| the non-coroutine per-frame layers | `src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt` |
-| the behaviour on this page, as tests | `src/jvmTest/kotlin/afield/FramesSemanticsTest.kt` |
+| `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Phased.kt) |
+| the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt) |
+| `animate`, `start` | [`src/jvmMain/kotlin/afield/stdlib/stdlib.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/stdlib.kt) — listed in [Workspace](reference/workspace.md) |
+| what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ReturnValueRegistry.kt) |
+| stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Boxes.kt) |
+| the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt) |
+| the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/FramesSemanticsTest.kt) |
 
 `Phased.kt` is not part of the [codebase reference](reference/index.md): that is generated from
 `afield.stdlib`, `afield.visualization` and `afield.four.synth`, and `Phased.kt` sits in `afield`

@@ -13,6 +13,9 @@ The sphere the sheet is hanging on is not in the scene. It is a `SphereCollider`
 post-solve position projection rather than a piece of geometry, so it shapes the drape and then has
 nothing to contribute to a render.
 
+The document that makes this figure is a starting point:
+[physics_manifold_path_trace](agent_transcripts.md#physics_manifold_path_trace).
+
 ## From the cloth to the tracer
 
 `afield.four.physics` runs the simulation, `afield.manifold` welds, and `afield.four.fabricated`

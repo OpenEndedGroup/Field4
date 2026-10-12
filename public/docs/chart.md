@@ -192,8 +192,9 @@ letters.
     ```
 
     The docs runner does not rebuild them, so re-run that command after a change. What the gallery
-    asserts is in `dev_docs/chart_primitive.md`; the clipping before/after pairs are in
-    `dev_docs/chart_clip_and_note.md`. Dots are twelve-sided polygons rather than `pointed` nodes
+    asserts is in [`dev_docs/chart_primitive.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/chart_primitive.md);
+    the clipping before/after pairs are in
+    [`dev_docs/chart_clip_and_note.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/chart_clip_and_note.md). Dots are twelve-sided polygons rather than `pointed` nodes
     because Skia exports each `pointed` node to SVG as several kilobytes of curves.
 
     The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log

@@ -361,6 +361,8 @@ oldest with nothing in the console. Two galleries of nine would already be too m
 
 ### `threeGrid` — several meshes, each framing its own bounds
 
+This example lays four unrelated shapes out in a two-by-two sheet, with a fact line under each:
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/grid.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // Four unrelated shapes. Each panel frames its OWN bounds, so the small one is not lost beside the
@@ -405,6 +407,8 @@ threeGrid(
 ```
 
 ### `threeTurntable` — one mesh, several angles, one upload
+
+This example shows one twisted box from four angles in a row:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/turntable.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -508,6 +512,8 @@ compositing several meshes into one figure yourself.
     silently.
 
 ### The same mesh, both ways
+
+This example draws one marched solid twice, with the same `MeshView`, once on each renderer:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/renderers.png" wait="7.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -812,6 +818,7 @@ three(name = "lit-unlit", channel = "lit-unlit", width = 760, height = 340) {
 ```
 
 ![Two panels showing the same torus coloured from blue on its inner rim to red on its outer rim by Gaussian curvature. In the left, lit panel, the shading darkens and brightens the colours with the surface's angle to the lights; in the right, unlit panel, each colour is the colormap's own value wherever it sits on the surface.](assets/three_output/lit-unlit.png)
+
 For a smooth surface with per-element colours, compute normals on the connected geometry
 before duplicating vertices for discontinuous colours; colour boundaries are not creases.
 

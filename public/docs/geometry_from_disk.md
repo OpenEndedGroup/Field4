@@ -354,7 +354,7 @@ per-vertex colours only; `assimpToTriMesh` drops the material. For a textured, r
 no CPU point-cloud type, no surface reconstruction, and no downsampling. `convexHullMesh` over the
 positions and `voronoi3d` are what there is.
 
-**Gaussian splats** are better served. `SplatRaster` (`afield/four/modules/SplatRaster.kt`) renders a
+**Gaussian splats** are better served. `SplatRaster` ([`SplatRaster.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/modules/SplatRaster.kt)) renders a
 splat cloud on the CPU into PNG bytes, matching the GPU renderer's framing for the same `Config`.
 `SplatContactSheet` puts a whole capture in one image, and `SplatCloud` lets you crop, filter,
 decimate, transform and merge a cloud and write a `.compressed.ply` back out.
@@ -501,7 +501,7 @@ be off by a third of its volume.
 ??? aside "Where the repair measurements are"
 
     The table of deliberately broken meshes, what each row is broken in, and the per-row residuals
-    are in `dev_docs/MESH_REPAIR_MEASUREMENTS.md`.
+    are in [`dev_docs/MESH_REPAIR_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_REPAIR_MEASUREMENTS.md).
 
 ### Repairing ToyCar
 
@@ -632,8 +632,8 @@ negative volume. `fixWinding()` is the fix.
 
 ## Trying it yourself
 
-The ToyCar, round-trip and PLY examples are also a document you can open from the [transcript
-gallery](agent_transcripts.md), with the same three boxes live. Point the first box's `path` at a
+The ToyCar, round-trip and PLY examples are also a document you can open from the [`geometry_from_disk`](agent_transcripts.md#geometry_from_disk)
+starting point, with the same three boxes live. Point the first box's `path` at a
 mesh file of your own and re-run it, or change the second box's weld tolerance or the third's corner
 colours, and watch the numbers and the picture change. Boxes two and three write only into a temp
 directory they delete themselves.
@@ -806,4 +806,5 @@ Related pages: [Meshes and 3D geometry](mesh_examples.md) for everything you can
 once you have one; [the Fabricate renderer](fabricate_renderer.md) for textured PBR rendering of the
 same files; [afield.four graphics](afield_four_graphics.md) for the module/shader layer the GPU
 loaders plug into; [FLine examples](fline_examples.md) for `toFLines`, the route from a mesh back into
-Field's drawing. Developer notes: `dev_docs/MESH_GEOMETRY.md` and `dev_docs/ply_loader.md`.
+Field's drawing. Developer notes: [`dev_docs/MESH_GEOMETRY.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_GEOMETRY.md) and
+[`dev_docs/ply_loader.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/ply_loader.md).

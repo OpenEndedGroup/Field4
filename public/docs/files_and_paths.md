@@ -129,7 +129,8 @@ have to exist yet: until it does, the name resolves as if it were not registered
 `%document/` or `%project/` paths ignore these registrations.
 
 Field registers one of these itself, `field-slug`, pointing into the checkout it was started from.
-Build it once with `bash native/field-slug/build.sh` and `"field-slug".file` works from any
+Build it once with `bash native/field-slug/build.sh`
+([build.sh](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-slug/build.sh)) and `"field-slug".file` works from any
 document.
 
 ## Globs

@@ -66,7 +66,7 @@ export FIELD_AUDIO_UNDERFIT_LORA_ROOT=/path/to/audio-project/underfit-loras
 ```
 
 The worker also needs the Stable Audio 3 base model, found through
-`FIELD_AUDIO_UNDERFIT_MODELS_ROOT`. Then open the [Underfit Mancini example](agent_transcripts.md):
+`FIELD_AUDIO_UNDERFIT_MODELS_ROOT`. Then open the [Underfit Mancini example](agent_transcripts.md#audio_ai_underfit_mancini):
 its first box explains the setup, and its second imports the source, sends the LoRA request and
 shows the candidates on a board you can listen through.
 
