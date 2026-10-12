@@ -174,6 +174,7 @@ route changes; only the photograph does.
 
 * `reliefMesh` and `Img.toReliefMesh` are in
   [`mesh_generate.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt).
-* The whole route as one program is `afield.examples.chain.PhotoToSolidChain`.
+* The whole route as one program is
+  [`PhotoToSolidChain.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt).
 * The [photo_to_solid_chain](agent_transcripts.md#photo_to_solid_chain) starting point is the same
   route as a document.
