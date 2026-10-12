@@ -68,7 +68,11 @@ val luceneVersion = "10.3.2"
 val onnxRuntimeVersion = "1.27.0"
 val djlTokenizersVersion = "0.36.0"
 val javaToolchainVersion = 25
-val graalvmVersion = "25.0.2"
+// The org.graalvm.polyglot:* version, which is also the graalvm-ce-builds release tag
+// (`graal-<this>`). Since the 25 "Innovation" releases the JDK inside carries its own version,
+// pinned separately as the archive's build name: field.sh and field.ps1 read both lines.
+val graalvmVersion = "25.4.4.1.1"
+val graalvmJdkBuild = "25i4-25.0.4.1.1"
 
 // JVM args that unlock CPU vectorization on our GraalVM toolchain.
 //

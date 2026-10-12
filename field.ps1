@@ -197,11 +197,15 @@ function Ensure-FieldToolchains {
     $match = [regex]::Match((Get-Content "build.gradle.kts" -Raw), '(?m)^val graalvmVersion = "([^"]+)"')
     if (-not $match.Success) { throw "field: could not read graalvmVersion from build.gradle.kts" }
     $version = $match.Groups[1].Value
+    # Innovation releases carry a JDK versioned apart from Graal; field.sh explains the second pin.
+    $jdkMatch = [regex]::Match((Get-Content "build.gradle.kts" -Raw), '(?m)^val graalvmJdkBuild = "([^"]+)"')
+    if (-not $jdkMatch.Success) { throw "field: could not read graalvmJdkBuild from build.gradle.kts" }
+    $jdkBuild = $jdkMatch.Groups[1].Value
     $root = Join-Path $HOME ".field4\toolchains"
     $java = @(Get-ChildItem "$root\graalvm-community-*$version*\bin\java.exe" -ErrorAction SilentlyContinue)
     if ($java.Count -eq 0) {
         if ($env:AFIELD_OFFLINE -eq "1") { throw "field: offline but GraalVM $version is not cached; launch once online first" }
-        $url = "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-$version/graalvm-community-jdk-${version}_windows-x64_bin.zip"
+        $url = "https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-$version/graalvm-community-jdk-${jdkBuild}_windows-x64_bin.zip"
         $stage = Join-Path $root (".field-graalvm-staging-" + [guid]::NewGuid().ToString("N"))
         New-Item -ItemType Directory -Force $stage | Out-Null
         try {

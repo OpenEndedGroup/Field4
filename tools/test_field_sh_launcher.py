@@ -203,7 +203,9 @@ class FieldShSandbox:
         ).hexdigest(), "the sandbox copy of field.sh is not the shipped field.sh"
 
         # ensure_graalvm_toolchain reads this even when provisioning is skipped on some paths.
-        (self.checkout / "build.gradle.kts").write_text('val graalvmVersion = "25.0.2"\n')
+        (self.checkout / "build.gradle.kts").write_text(
+            'val graalvmVersion = "25.4.4.1.1"\nval graalvmJdkBuild = "25i4-25.0.4.1.1"\n'
+        )
         gradlew = self.checkout / "gradlew"
         gradlew.write_text("#!/bin/sh\necho \"stub gradlew $*\"\n")
         gradlew.chmod(0o755)

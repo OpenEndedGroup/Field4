@@ -432,7 +432,7 @@ check_platform() {
     case "$FIELD_PLATFORM" in
         Darwin/arm64|Linux/x86_64|Linux/aarch64) ;;
         Darwin/x86_64)
-            echo "field: Intel macOS is not supported by the pinned GraalVM 25.0.2 toolchain; use an Apple silicon Mac, Linux or Windows x64" >&2
+            echo "field: Intel macOS is not supported by the pinned GraalVM toolchain; use an Apple silicon Mac, Linux or Windows x64" >&2
             return 1 ;;
         *) echo "field: unsupported platform $FIELD_PLATFORM (see public/docs/installation.md)" >&2
            return 1 ;;
@@ -567,6 +567,15 @@ ensure_graalvm_toolchain() {
         echo "field: could not read graalvmVersion from build.gradle.kts" >&2
         return 1
     fi
+    # The Innovation releases ship a JDK whose version differs from the Graal one (graal 25.4.4.1.1
+    # carries jdk 25.0.4.1.1, in graalvm-community-jdk-25i4-25.0.4.1.1_*), so the archive's build
+    # name is pinned beside graalvmVersion. It unpacks to graalvm-community-<graal version>+..., so
+    # the probes below still match on GRAAL_VERSION.
+    GRAAL_JDK_BUILD="$(sed -n 's/^val graalvmJdkBuild = "\([^"]*\)".*/\1/p' build.gradle.kts | head -1)"
+    if [ -z "$GRAAL_JDK_BUILD" ]; then
+        echo "field: could not read graalvmJdkBuild from build.gradle.kts" >&2
+        return 1
+    fi
 
     JDKS_DIR="$HOME/.field4/toolchains"
     for probe in "$JDKS_DIR"/graalvm-community-*"$GRAAL_VERSION"*/bin/java \
@@ -590,7 +599,7 @@ ensure_graalvm_toolchain() {
         echo "field: offline but GraalVM $GRAAL_VERSION is not cached; run ./field.sh once online first" >&2
         return 1
     fi
-    GRAAL_URL="https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAAL_VERSION}/graalvm-community-jdk-${GRAAL_VERSION}_${GRAAL_OS}-${GRAAL_ARCH}_bin.tar.gz"
+    GRAAL_URL="https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-${GRAAL_VERSION}/graalvm-community-jdk-${GRAAL_JDK_BUILD}_${GRAAL_OS}-${GRAAL_ARCH}_bin.tar.gz"
 
     echo "field: provisioning the GraalVM $GRAAL_VERSION toolchain (~320MB; this happens once)…" >&2
     mkdir -p "$JDKS_DIR"
