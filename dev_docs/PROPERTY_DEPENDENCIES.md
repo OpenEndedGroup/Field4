@@ -176,12 +176,20 @@ launch queue, one rerun at a time, each awaited:
 
 ### Known limits
 
-- The pump drains `main.frame()` only, not `Runloop.preRun` / `postRun`, which carry the Vulkan
-  renderer's per-frame work. During a pull, `frames {}` loops advance (measured:
-  `up_pump_keeps_others_alive`), but a native window shows no new frames until the pull returns.
-- A supplier that blocks the thread (`Thread.sleep`, a busy loop) blocks the pump. The pull's
-  timeout (`-Dafield.reactiveProps.pullTimeoutMs`, default 120 s) only catches a supplier that
-  never starts or finishes asynchronously.
+- The pump drains `main.frame()` only, not `Runloop.preRun` / `postRun`. During a pull, `frames {}`
+  loops advance (`up_pump_keeps_others_alive`). A native window keeps rendering too, because a
+  renderer launched with `start(renderer::run)` is a coroutine that `main.frame()` services. Measured
+  2026-10-12: `renderer.frameCounter` advanced 39 frames during a 321 ms pull of a freshly compiled
+  supplier. `Runloop.frame` does not advance inside the pump.
+- A supplier that blocks the thread (`Thread.sleep`, a busy loop) blocks the pump, and the window
+  freezes for as long as it blocks. Running that supplier directly freezes the window for just as
+  long. The pull's timeout (`-Dafield.reactiveProps.pullTimeoutMs`, default 120 s) only catches a
+  supplier that never starts or finishes asynchronously.
+- Stop during a pull of a blocking supplier (measured 2026-10-12, an 8 s supplier, Stop sent at
+  2.5 s through `stop-box`). Stopping the reader does not stop the supplier: both run to the end,
+  and the reader is then reported cancelled. Stopping the supplier lets it run to the end and
+  reports it failed ("pulled … failed"), yet the reader still reads the value the supplier wrote
+  and ends ok. Neither wait can be interrupted, as with any box that blocks the runloop.
 - Only Kotlin boxes can be pulled.
 - An explicit launch (with a request id) queued behind a pull of the same box still runs: a chord
   that includes both the reader and its supplier can set the supplier up twice.
