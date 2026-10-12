@@ -750,6 +750,9 @@ pub(crate) struct Surf {
     solv: *mut f32,
     laid: *mut f32,
     laid_id: *mut u32,
+    /// (Field) The noise identity of the stroke this surface is painted with (`Canvas::stroke_noise`);
+    /// None: the stroke's id.
+    pub(crate) noise: Option<u32>,
 }
 // SAFETY: callers only run brushes concurrently on pixel sets that cannot
 // overlap (tiles separated by more than the largest stroke extent).
@@ -889,6 +892,7 @@ impl Canvas {
             solv: if self.wet.solv.len() == n { self.wet.solv.as_mut_ptr() } else { std::ptr::null_mut() },
             laid: if self.wet.laid.len() == n { self.wet.laid.as_mut_ptr() } else { std::ptr::null_mut() },
             laid_id: if self.wet.laid_id.len() == n { self.wet.laid_id.as_mut_ptr() } else { std::ptr::null_mut() },
+            noise: None,
         }
     }
 
@@ -925,7 +929,8 @@ impl Canvas {
         }
         self.tally.stroke(&held.tool, &g.pts, self.mm_per_unit);
         let id = self.next_stroke_ids(1);
-        let surf = self.surf();
+        let mut surf = self.surf();
+        surf.noise = self.stroke_noise.take();
         let mut scratch = Vec::new();
         // SAFETY: exclusive &mut self, single brush.
         let b = unsafe { drag_on(surf, held, g, clip.map(Clip::Mask), id, &mut scratch) };
@@ -1174,7 +1179,7 @@ pub(crate) unsafe fn drag_on(
         // the hand is never exact: the path drifts sideways a little and the
         // pressure breathes, both slowly along the stroke
         let lw = (tool.width * 2.5 + 6.0) * s;
-        let hs = id as u64 * 7919;
+        let hs = sf.noise.unwrap_or(id) as u64 * 7919;
         let off = g.shake * (0.05 * tool.width + 0.12) * s * (wander(d / lw, hs + 1) + 0.5 * wander(d / (lw * 0.37), hs + 2));
         let (hx, hy) = (hx - dir.1 * off, hy + dir.0 * off);
         let u = if total > 0.0 { d / total } else { 0.5 };
@@ -1581,8 +1586,9 @@ pub(crate) unsafe fn exchange(
             let bands = (tool.width / (2.0 * clump_u)).clamp(2.0, 48.0);
             let u = (br.rx.clamp(-1.0, 1.0) + 1.0) * 0.5 * bands;
             let (b0, f) = (u.floor(), u - u.floor());
-            let h0 = crate::rng::hash2(b0 as i64, id as i64, 0x51C0);
-            let h1 = crate::rng::hash2(b0 as i64 + 1, id as i64, 0x51C0);
+            let nk = sf.noise.unwrap_or(id) as i64;
+            let h0 = crate::rng::hash2(b0 as i64, nk, 0x51C0);
+            let h1 = crate::rng::hash2(b0 as i64 + 1, nk, 0x51C0);
             let band = h0 + (h1 - h0) * crate::smoothstep(0.0, 1.0, f);
             // the ridges' contrast: 0.6 at tube paint's stiffness, as before; past it (Field) rising
             // smoothly toward full (bare furrows between ridges) rather than past it, which would
@@ -1949,7 +1955,8 @@ impl Canvas {
         }
         self.tally.touch();
         let id = self.next_stroke_ids(1);
-        let surf = self.surf();
+        let mut surf = self.surf();
+        surf.noise = self.stroke_noise.take();
         let mut scratch = Vec::new();
         // SAFETY: exclusive &mut self, single brush.
         let b = unsafe { touch_on(surf, held, t, clip.map(Clip::Mask), id, &mut scratch) };
@@ -3053,7 +3060,7 @@ impl Canvas {
         let tears = self.engine >= 5;
         // (the paint the tears held back under the blade: back on it at the end)
         let (mut held, mut held_solvent) = (0.0f32, 0.0f32);
-        let tseed = (id as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0x7EA2;
+        let tseed = (self.stroke_noise.take().unwrap_or(id) as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0x7EA2;
         let height: *const f32 = self.height.as_ptr();
         let sf = self.surf();
         let s = sf.scale;

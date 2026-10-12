@@ -63,6 +63,25 @@ class PaintCanvas internal constructor(
     private var nextSeed = seed * 7919 + 1
     internal fun seed(): Long = nextSeed++
 
+    /**
+     * The seed for the [i]th native call of one operation: from [seed] when the caller gives one, so
+     * the same seed reaches the same call however many operations came before; otherwise the next of
+     * this canvas's own sequence.
+     */
+    private fun seedFor(seed: Long?, i: Int = 0): Long = if (seed == null) seed() else mix(seed, i)
+
+    /** Key the next native stroke's noise on [seed] (and its piece [i]) when the caller gives one. */
+    private fun keyNoise(seed: Long?, i: Int = 0) {
+        if (seed != null) PaintNative.strokeNoise(handle, (mix(seed, i) xor (mix(seed, i) ushr 32)).toInt())
+    }
+
+    private fun mix(seed: Long, i: Int): Long {
+        var z = seed + 0x9E3779B97F4A7C15uL.toLong() * (i + 1)
+        z = (z xor (z ushr 30)) * -0x40a7b892e31b1a47L
+        z = (z xor (z ushr 27)) * -0x6b2fb644ecceee15L
+        return z xor (z ushr 31)
+    }
+
     /** The engine version this canvas paints with ([PaintCanvas.invoke]'s `engine`). */
     val paintEngine: Int by lazy { PaintNative.canvasEngine(handle) }
 
@@ -72,8 +91,8 @@ class PaintCanvas internal constructor(
      * changes how it is made — how many bristles, how stiff and long, how much it lays and picks
      * up — from the kind's own.
      */
-    fun brush(kind: BrushKind = BrushKind.Round, width: Double = 20.0, point: Double = 0.0, config: BrushConfig? = null): PaintBrush =
-        PaintBrush(kind, width, point, seed(), paintEngine, config)
+    fun brush(kind: BrushKind = BrushKind.Round, width: Double = 20.0, point: Double = 0.0, config: BrushConfig? = null, seed: Long? = null): PaintBrush =
+        PaintBrush(kind, width, point, seedFor(seed), paintEngine, config)
 
     /**
      * A painting knife whose blade is [width] canvas units long (a 4 cm blade is about 60 units on a
@@ -82,7 +101,7 @@ class PaintCanvas internal constructor(
     fun knife(width: Double = 60.0): PaintKnife = PaintKnife(PaintNative.knifeNew(width.toFloat()))
 
     /** A clean cotton rag bunched into a pad [width] canvas units across. */
-    fun rag(width: Double = 50.0): PaintRag = PaintRag(PaintNative.ragNew(width.toFloat(), seed()))
+    fun rag(width: Double = 50.0, seed: Long? = null): PaintRag = PaintRag(PaintNative.ragNew(width.toFloat(), seedFor(seed)))
 
     /**
      * A graphite pencil of [grade] ("2H", "HB", "4B", ...) for [draw], [sketch] and [hatch]. Hard
@@ -117,8 +136,10 @@ class PaintCanvas internal constructor(
         along: Boolean = false,
         swell: List<Double> = emptyList(),
         spacing: Double = 2.0,
+        seed: Long? = null,
     ): PaintCanvas = apply {
-        for (xy in polylines(line, spacing)) {
+        for ((i, xy) in polylines(line, spacing).withIndex()) {
+            keyNoise(seed, i)
             PaintNative.drag(handle, brush.handle, xy, pressure.start.toFloat(), pressure.endInclusive.toFloat(),
                 shake.toFloat(), attack.toFloat(), release.toFloat(), along, swell)
         }
@@ -131,8 +152,9 @@ class PaintCanvas internal constructor(
      */
     fun touch(
         brush: PaintBrush, x: Double, y: Double, pressure: Double = 0.6,
-        drag: Pair<Double, Double> = 0.0 to 0.0, twist: Double = 0.0, angle: Double = 0.0,
+        drag: Pair<Double, Double> = 0.0 to 0.0, twist: Double = 0.0, angle: Double = 0.0, seed: Long? = null,
     ): PaintCanvas = apply {
+        keyNoise(seed)
         val (dx, dy) = drag
         PaintNative.touch(handle, brush.handle, toCanvasX(x).toFloat(), toCanvasY(y).toFloat(), pressure.toFloat(),
             toCanvasDx(dx).toFloat(), toCanvasDy(dy).toFloat(), twist.toFloat(), angle.toFloat())
@@ -260,17 +282,18 @@ class PaintCanvas internal constructor(
      */
     fun knife(
         line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.6..0.6,
-        angle: Double? = null, lay: Boolean = true, lift: Double = 0.3,
+        angle: Double? = null, lay: Boolean = true, lift: Double = 0.3, seed: Long? = null,
     ): PaintCanvas = apply {
-        for (xy in polylines(line, 2.0)) {
+        for ((i, xy) in polylines(line, 2.0).withIndex()) {
+            keyNoise(seed, i)
             PaintNative.knifeDrag(handle, knife.handle, xy, pressure.start.toFloat(), pressure.endInclusive.toFloat(),
                 angle?.toFloat() ?: Float.NaN, lay, lift.toFloat())
         }
     }
 
     /** Scrape wet paint off along [line] with [knife], pressed hard: [knife] with nothing laid. */
-    fun scrape(line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.9..0.9, angle: Double? = null): PaintCanvas =
-        knife(line, knife, pressure, angle, lay = false, lift = 0.0)
+    fun scrape(line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.9..0.9, angle: Double? = null, seed: Long? = null): PaintCanvas =
+        knife(line, knife, pressure, angle, lay = false, lift = 0.0, seed = seed)
 
     /**
      * Wipe [rag] along every subpath of [line] at [pressure] (one value, or values spread along the
@@ -279,12 +302,12 @@ class PaintCanvas internal constructor(
      * negative where a loaded rag left more than it took up, smearing its paint onto paint that is
      * setting.
      */
-    fun wipe(line: FLine, rag: PaintRag, pressure: List<Double> = listOf(0.6)): Double =
-        polylines(line, 2.0).sumOf { PaintNative.ragWipe(handle, rag.handle, it, pressure, seed()) }
+    fun wipe(line: FLine, rag: PaintRag, pressure: List<Double> = listOf(0.6), seed: Long? = null): Double =
+        polylines(line, 2.0).withIndex().sumOf { (i, xy) -> PaintNative.ragWipe(handle, rag.handle, xy, pressure, seedFor(seed, i)) }
 
     /** Press [rag] down at ([x], [y]) and lift it off: a crumpled patch. Returns the mm³ lifted. */
-    fun blot(rag: PaintRag, x: Double, y: Double, pressure: Double = 0.6): Double =
-        PaintNative.ragWipe(handle, rag.handle, floatArrayOf(toCanvasX(x).toFloat(), toCanvasY(y).toFloat()), listOf(pressure), seed())
+    fun blot(rag: PaintRag, x: Double, y: Double, pressure: Double = 0.6, seed: Long? = null): Double =
+        PaintNative.ragWipe(handle, rag.handle, floatArrayOf(toCanvasX(x).toFloat(), toCanvasY(y).toFloat()), listOf(pressure), seedFor(seed))
 
     /** Dip [rag]'s face in spirits, [amount] 0..1: damp, it lifts paint nearly to the ground until the spirits evaporate. */
     fun dampen(rag: PaintRag, amount: Double = 0.5): PaintCanvas = apply { PaintNative.ragDip(handle, rag.handle, amount.toFloat()) }
@@ -394,16 +417,16 @@ class PaintCanvas internal constructor(
      * Drag a watercolour [brush] along [line] at [speed] mm/s ([gesture]), the water on the sheet
      * flowing, sinking in and evaporating as it goes. What it laid and took up comes back.
      */
-    fun wash(line: FLine, brush: WaterBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0): WashReport =
-        wash(gesture(line, speed, pressure), brush)
+    fun wash(line: FLine, brush: WaterBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0, seed: Long? = null): WashReport =
+        wash(gesture(line, speed, pressure), brush, seed)
 
     /** Drag a watercolour [brush] through a timed [gesture]. */
-    fun wash(gesture: TimedGesture, brush: WaterBrush): WashReport {
+    fun wash(gesture: TimedGesture, brush: WaterBrush, seed: Long? = null): WashReport {
         val xytp = gesture.xytp()
         for (i in xytp.indices step 4) {
             xytp[i] = toCanvasX(xytp[i].toDouble()).toFloat(); xytp[i + 1] = toCanvasY(xytp[i + 1].toDouble()).toFloat()
         }
-        val r = PaintNative.wbrushStroke(handle, brush.handle, xytp, seed())
+        val r = PaintNative.wbrushStroke(handle, brush.handle, xytp, seedFor(seed))
         return WashReport(r[0], r[1], r[2], r[3], r[4])
     }
 
@@ -411,17 +434,18 @@ class PaintCanvas internal constructor(
      * A brush of [kind] whose hairs move ([DynamicBrush]): [hairs] guide hairs of [segments]
      * segments each, made as [config] says (its stiffness, length, point and so on).
      */
-    fun dynamicBrush(kind: BrushKind = BrushKind.Round, width: Double = 30.0, hairs: Int = 32, segments: Int = 5, config: BrushConfig? = null): DynamicBrush =
-        DynamicBrush(PaintNative.dbrushNew(handle, kind.code, width.toFloat(), (config ?: BrushConfig()).values(), hairs, segments, seed()), kind)
+    fun dynamicBrush(kind: BrushKind = BrushKind.Round, width: Double = 30.0, hairs: Int = 32, segments: Int = 5, config: BrushConfig? = null, seed: Long? = null): DynamicBrush =
+        DynamicBrush(PaintNative.dbrushNew(handle, kind.code, width.toFloat(), (config ?: BrushConfig()).values(), hairs, segments, seedFor(seed)), kind)
 
     /** Drag a [DynamicBrush] through a timed [gesture], in oil or watercolour as it was last loaded. */
-    fun stroke(gesture: TimedGesture, brush: DynamicBrush): DynamicReport {
+    fun stroke(gesture: TimedGesture, brush: DynamicBrush, seed: Long? = null): DynamicReport {
         val v = FloatArray(gesture.samples.size * 7)
         gesture.samples.forEachIndexed { i, s ->
             v[7 * i] = toCanvasX(s.x).toFloat(); v[7 * i + 1] = toCanvasY(s.y).toFloat(); v[7 * i + 2] = s.t.toFloat(); v[7 * i + 3] = s.pressure.toFloat()
             v[7 * i + 4] = Math.toRadians(s.tilt).toFloat(); v[7 * i + 5] = Math.toRadians(s.azimuth).toFloat(); v[7 * i + 6] = Math.toRadians(s.roll).toFloat()
         }
-        val r = PaintNative.dbrushStroke(handle, brush.handle, v, seed())
+        keyNoise(seed)
+        val r = PaintNative.dbrushStroke(handle, brush.handle, v, seedFor(seed))
         return DynamicReport(r[0].toLong(), r[1], r[2].toLong(), r[3], r[4], r[5], r[6], r[7])
     }
 
@@ -429,8 +453,8 @@ class PaintCanvas internal constructor(
      * Drag a [DynamicBrush] along [line] at [speed] mm/s, tilted [tilt] degrees and leaning the way it
      * goes ([gesture] makes the timing and the handle's pose).
      */
-    fun stroke(line: FLine, brush: DynamicBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0, tilt: Double = 30.0): DynamicReport =
-        stroke(gesture(line, speed, pressure, tilt = tilt), brush)
+    fun stroke(line: FLine, brush: DynamicBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0, tilt: Double = 30.0, seed: Long? = null): DynamicReport =
+        stroke(gesture(line, speed, pressure, tilt = tilt), brush, seed)
 
     /** Seconds of hair contact per pixel in the last [DynamicBrush] stroke (row major), or `null` before one. */
     fun contactMap(): FloatArray? = PaintNative.contactMap(handle, pixelSize.first * pixelSize.second)
@@ -526,24 +550,24 @@ class PaintCanvas internal constructor(
      *
      * @param ruler a ruled line: straight between the points, no tremor.
      */
-    fun draw(line: FLine, pencil: Pencil, pressure: List<Double> = listOf(0.6), tremor: Double = 0.4, ruler: Boolean = false): PaintCanvas = apply {
-        for (xy in polylines(line, 2.0)) {
-            pencil.worn += PaintNative.drawLine(handle, pencil, xy, pressure, toCanvasLength(tremor).toFloat(), !ruler, ruler, seed())
+    fun draw(line: FLine, pencil: Pencil, pressure: List<Double> = listOf(0.6), tremor: Double = 0.4, ruler: Boolean = false, seed: Long? = null): PaintCanvas = apply {
+        for ((i, xy) in polylines(line, 2.0).withIndex()) {
+            pencil.worn += PaintNative.drawLine(handle, pencil, xy, pressure, toCanvasLength(tremor).toFloat(), !ruler, ruler, seedFor(seed, i))
         }
     }
 
     /** [draw] with one pressure for the whole line. */
-    fun draw(line: FLine, pencil: Pencil, pressure: Double, tremor: Double = 0.4, ruler: Boolean = false): PaintCanvas =
-        draw(line, pencil, listOf(pressure), tremor, ruler)
+    fun draw(line: FLine, pencil: Pencil, pressure: Double, tremor: Double = 0.4, ruler: Boolean = false, seed: Long? = null): PaintCanvas =
+        draw(line, pencil, listOf(pressure), tremor, ruler, seed)
 
     /**
      * Sketch along [line]: [passes] light strokes per subpath, each wandering about [wander]
      * canvas units off the path and broken into pieces, the way a searching line is drawn.
      */
-    fun sketch(line: FLine, pencil: Pencil, pressure: Double = 0.5, passes: Int = 3, wander: Double = 2.0, tremor: Double = 0.4): PaintCanvas = apply {
-        for (xy in polylines(line, 2.0)) {
+    fun sketch(line: FLine, pencil: Pencil, pressure: Double = 0.5, passes: Int = 3, wander: Double = 2.0, tremor: Double = 0.4, seed: Long? = null): PaintCanvas = apply {
+        for ((i, xy) in polylines(line, 2.0).withIndex()) {
             pencil.worn += PaintNative.sketchLine(handle, pencil, xy, pressure.toFloat(), passes,
-                toCanvasLength(wander).toFloat(), toCanvasLength(tremor).toFloat(), seed())
+                toCanvasLength(wander).toFloat(), toCanvasLength(tremor).toFloat(), seedFor(seed, i))
         }
     }
 

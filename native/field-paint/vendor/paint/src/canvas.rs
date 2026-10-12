@@ -233,6 +233,11 @@ pub struct Canvas {
     pub(crate) engine: u32,
     /// The bare cloth of a raw canvas (None: a primed canvas): `soak`.
     pub(crate) soak: Option<Box<crate::soak::Soak>>,
+    /// (Field) The next stroke's noise identity, if the caller gives one: the hand's shake, the
+    /// knife's tears and stiff paint's clumping are keyed on it instead of on the stroke's id, so
+    /// two canvases (a stereo pair) painted with the same identities share that noise whatever
+    /// else each has painted. Taken by the next drag, touch, knife pull or segmented stroke.
+    pub(crate) stroke_noise: Option<u32>,
 }
 
 impl Canvas {
@@ -280,6 +285,7 @@ impl Canvas {
             hand_slice: None,
             engine: crate::ENGINE,
             soak: None,
+            stroke_noise: None,
         }
     }
 

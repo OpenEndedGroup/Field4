@@ -66,6 +66,15 @@ pub extern "C" fn field_paint_canvas_new_v2(
     })
 }
 
+/// Key the next stroke's noise on `noise` rather than on its order (`Canvas::set_stroke_noise`).
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_stroke_noise(c: *mut Studio, noise: u32) -> i32 {
+    guard(-1, || {
+        unsafe { &mut *c }.canvas.set_stroke_noise(noise);
+        Ok(0)
+    })
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_canvas_engine(c: *const Studio) -> i32 {
     guard(-1, || Ok(unsafe { &*c }.engine() as i32))
