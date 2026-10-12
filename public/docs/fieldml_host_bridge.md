@@ -299,7 +299,7 @@ Things to change:
 
 </div>
 
-For a machine with a GPU, the next describes an `afield.four` scene from FieldML. One box finds the `Renderer` above it, builds a shader module from two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }`, attaches a three-vertex mesh, and registers it with the render target. Connect it to whichever box owns your renderer.
+On a machine with a GPU, the `afield.four` demo builds a scene from FieldML. One box finds the `Renderer` above it, builds a shader module from two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }`, attaches a three-vertex mesh, and registers it with the render target. Connect it to whichever box owns your renderer.
 
 [Open ↗](offline.html?file=assets/fieldml_afield_four_demo/metadata.edn), or open the [`fieldml_afield_four_demo`](agent_transcripts.md#fieldml_afield_four_demo) starting point from the welcome screen.
 
