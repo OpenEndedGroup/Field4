@@ -81,17 +81,15 @@ testing and draws 3 + 39 × 36 vertices: one background triangle and 39 boxes (g
 import afield.controlGroup
 import afield.displayOpen
 import afield.four.neuralrendering.*
-import afield.four.modules.fromContext
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector4f
 
-val owner = fromContext<Renderer>()
+val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-fromContextWithNameOrNull<OpenDlssNrStudy>("lab")?.close()
+(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 lab = OpenDlssNrStudy(owner, size=768, name="nr-cubes", geometry=true,
     vertex=thisBox.getPropertyRaw("vertex") as String,
     fragment=thisBox.getPropertyRaw("fragment") as String)
 println(lab.availability.reason)
+:::fold the controls: network style, tone, structure, intensity and grade
 var style=1
 var tone=0f
 var structure=10f
@@ -115,6 +113,7 @@ controlGroup("neural cubes") {
     button("Reload edited shaders") {if(it)reload=true}
 }
 displayOpen("neural cubes")
+:::endfold
 println("SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.")
 val owned=lab
 frames {
@@ -279,13 +278,10 @@ Its [comparison shader](assets/opendlssnr/compare.frag) implements the headings 
 import afield.controlGroup
 import afield.displayOpen
 import afield.four.neuralrendering.*
-import afield.four.modules.fromContext
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector4f
 
-val owner = fromContext<Renderer>()
+val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-fromContextWithNameOrNull<OpenDlssNrStudy>("lab")?.close()
+(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 // Leave null for the editable fragment shader; try the bundled drawing or your own image.
 val imagePath: String? = null
 // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
@@ -293,6 +289,7 @@ lab = OpenDlssNrStudy(owner, size=768, imagePath=imagePath,
     vertex=thisBox.getPropertyRaw("vertex") as String,
     fragment=thisBox.getPropertyRaw("fragment") as String)
 println(lab.availability.reason)
+:::fold the controls: network style, tone, structure, intensity and grade
 var style=1
 var tone=0f
 var structure=10f
@@ -316,6 +313,7 @@ controlGroup("neural ink") {
     button("Reload edited shaders") {if(it)reload=true}
 }
 displayOpen("neural ink")
+:::endfold
 println("SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.")
 val owned=lab
 frames {
@@ -452,12 +450,11 @@ records. The record box contains all of this code:
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.neuralrendering.OpenDlssNrStudy
-import afield.four.modules.fromContext
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
 // Run beneath the live study box. The scene remains editable after recording.
-val study=fromContext<OpenDlssNrStudy>()
+val study=lab
 check(study.availability.ready) {study.availability.reason}
 check(!study.recording) {"A recording is already running"}
 val folder=Path.of("build/opendlssnr-study/clip").toAbsolutePath().also {it.createDirectories()}
