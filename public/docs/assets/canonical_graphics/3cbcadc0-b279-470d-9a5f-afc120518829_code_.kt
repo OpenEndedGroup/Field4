@@ -5,7 +5,7 @@ bbc.transferNow()
 var bbc2 = LoadedTexture("/Users/marc/Desktop/bbc2.jpg")
 bbc2.transferNow()
 
-var asArray : Array<ImageView> = arrayOf(bbc.imageView, bbc2.imageView)
+var asArray : Array<ImageView> = arrayOf(bbc.imageView, bbc2.imageView, bbc.imageView)
 
 prop<Array<ImageView>>(ta) = asArray
 

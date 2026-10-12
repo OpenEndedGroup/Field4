@@ -1,10 +1,9 @@
 import afield.four.neuralrendering.OpenDlssNrStudy
-import afield.four.modules.fromContext
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
 // Run beneath the live study box. The scene remains editable after recording.
-val study=fromContext<OpenDlssNrStudy>()
+val study=lab
 check(study.availability.ready) {study.availability.reason}
 check(!study.recording) {"A recording is already running"}
 val folder=Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also {it.createDirectories()}

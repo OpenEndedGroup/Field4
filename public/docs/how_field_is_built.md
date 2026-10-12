@@ -35,7 +35,7 @@ popup:
 `tools/build_zensical_docs.py` starts a Field, sends each block to it through
 [the backdoor](#agents-drive-field-the-way-the-browser-does), and captures the result: the box's
 output panel, the whole window, the editor, a native Vulkan window, a scripted walk through the
-UI, a video of any of these, or a WAV rendered by the audio engine. 909 blocks on 140 pages run
+UI, a video of any of these, or a WAV rendered by the audio engine. Most pages' examples run
 this way. A block that throws, prints an error, or produces an empty or all-black picture fails
 the build; `expect-error` turns that around for the pages that show an error on purpose.
 
@@ -124,7 +124,7 @@ expect:
 */
 ```
 
-`tools/run_field_tests.py` collects 325 of these, from Kotlin sources and from docs pages, into a
+`tools/run_field_tests.py` collects all of these, from Kotlin sources and from docs pages, into a
 catalog and runs them against one warm Field. A `jvm-main` test runs a `main()` in a child JVM
 with the same flags as Field; a `backdoor-box` test runs a block of box code and can check its
 output text, the kinds of events it produced, and regions of its screenshot. The runner watches
@@ -184,8 +184,7 @@ The details that make it pleasant to use:
   instead of bouncing; a build that goes silent for 30 minutes is killed and retried once.
 - `land.py doc` rebuilds this site from `main` at that point in the queue.
 
-In its first week the queue landed 232 branches, a median of about nine minutes each. Field's
-Welcome screen shows the result as its changelog.
+Field's Welcome screen shows what the queue landed as its changelog.
 
 ## Documents are scripts, and scripts become starting points
 
@@ -222,8 +221,8 @@ failing operation stops the rest, so a box whose prerequisite failed is never la
 records your own edits, moves and launches as a transcript, which you can page through and turn
 into a macro.
 
-The repository holds 206 of them, and every one is verified: 105 are replayed in full and must
-produce no error output, 94 are built and compiled, 7 are compiled to JavaScript. 200 of them are
+Every transcript in the repository is verified: most are replayed in full and must produce no
+error output, the rest are built and compiled, and a few are compiled to JavaScript. Most are
 turned into ready-made documents and committed. With the canonical graphics lessons, they make up
 the **Starting points** list on Welcome:
 
@@ -288,7 +287,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --with
   --command 'screenshot-box @last /tmp/field-smoke.png'
 ```
 
-Its 49 commands cover documents, boxes, connections, running and launching, waiting on output,
+Its commands cover documents, boxes, connections, running and launching, waiting on output,
 screenshots and video of a box, the editor or the window, keyboard and mouse input, and Field's
 own AI agent. A run command answers with the box's own verdict, so an agent learns that its code
 failed from the reply rather than from reading a screenshot. Two safety rules make it usable by
@@ -300,7 +299,7 @@ many agents in many checkouts at once:
 - **One verification per checkout.** The runners take a lock, and the Gradle build waits on it,
   so two builds never trample each other's compiled classes.
 
-`tools/field_mcp.py` offers the same reach as an MCP server: 22 tools of its own (snapshot,
+`tools/field_mcp.py` offers the same reach as an MCP server: tools of its own (snapshot,
 outline, read and create boxes, run transcripts and macros, screenshots, a debugger probe that
 samples a variable at a source line in the running JVM) plus every tool Field's in-editor AI has,
 discovered when it attaches.
@@ -309,7 +308,7 @@ Browsing is done by a Playwright that belongs to the Field JVM: one shared, GPU-
 Chromium (on macOS through Metal, about two and a half times faster for a full docs build than the
 software renderer), or Field's own Electron app when a capture needs something only the app shows.
 
-The same harness runs 60 browser UI regressions (`tools/run_ui_regressions.py`): the command
+The same harness runs the browser UI regressions (`tools/run_ui_regressions.py`): the command
 palette, Monaco, output panels, controllers, selection, split canvases, the three.js viewer, AI
 chat, completion. Each is a list of backdoor commands whose JavaScript assertions must all pass,
 and each keeps its last passing and failing screenshots.
@@ -583,15 +582,3 @@ If you build something similar, these are the parts that lift most easily into a
 5. Bisect red batches rather than landing branches one by one.
 6. Regenerate generated files after a merge instead of merging them.
 7. Give agents the same protocol as your UI, and have every verb return the real verdict.
-
-??? aside "Where the numbers on this page come from"
-    Measured on 2026-10-09 at `main` cc10af8b5. Runner blocks: fence-opening lines naming
-    `diffstatic_runner` or `diff_runner` under `public/docs`. Smoke annotations: lines that are
-    exactly `FIELD_TEST` under `src/jvmMain` and `public/docs`. Transcripts: `*.yaml` at the top of
-    `dev_docs/agents/transcripts/`, classified in `DemoTranscriptExecSmokeTest`; starting points:
-    `metadata.edn` files under `public/docs/assets/agent_transcripts/`. Landings: first-parent
-    `Land` commits on `main` since 2026-10-03, median time from the queue's own records.
-    Backdoor commands: the subcommands of `build_command_parser()` in `tools/field_backdoor.py`.
-    MCP tools: the `TOOLS` list in `tools/field_mcp.py`. UI regressions: `UiRegression(` in
-    `tools/run_ui_regressions.py`. None of these is pinned by a count marker yet, so they will
-    drift; the internal inventory with the full commands is `dev_docs/BUILD_INFRASTRUCTURE.md`.

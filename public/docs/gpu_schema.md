@@ -10,7 +10,6 @@ This example declares a `Particle` with a nested `Material`, and publishes its s
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.buffers.*
-import afield.stdlib.linalg.*
 
 @GpuStruct
 data class Material(
