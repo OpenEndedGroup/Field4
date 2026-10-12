@@ -1700,6 +1700,8 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // site navigation, which is neither Kotlin nor Markdown, so nothing else here invalidates on it.
     inputs.file("public/zensical.yml").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("build.gradle.kts").withPathSensitivity(PathSensitivity.RELATIVE)
+    // AgentDemoRegistrationTest uses Git ignore rules to exclude local scratch directories.
+    inputs.file(".gitignore").withPathSensitivity(PathSensitivity.RELATIVE)
     // The dev_docs pages these guards read, for the same reason as the line above: the citation
     // corpus and the server-surface ledger both live under dev_docs, which is not `public/docs`.
     inputs.files(fileTree("dev_docs") { include("**/*.md") })
