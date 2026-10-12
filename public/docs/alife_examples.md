@@ -182,7 +182,7 @@ long quieting-down toward something stationary.
 :::fold the two boards, integer-upscaled so a cell is a block you can count
 // Both boards are integer-upscaled to the same 384 pixels, so a cell is a block you can count:
 // twenty-four pixels for the glider's 16-cell torus, six for the R-pentomino's 64-cell walled
-// board. Small boards here -- see the note above this clip, which measures why.
+// board.
 fun boards(g: IntGrid, r: IntGrid, n: Int) = listOf(
     "glider, gen " + n to g.toImg(2).upscaleNearest(24),
     "R-pent " + n + ": " + r.population() + " live" to r.toImg(2).upscaleNearest(6)
@@ -715,8 +715,8 @@ than it gains and runs down to nothing. Same code, same seed, one number.
 :::static
 :::fold the two fields, on a fixed 0..1 inferno range
 // inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
-// is measured while you watch. See the note below this clip: an auto-ranged SATURATION field
-// renders black and becomes indistinguishable from death, which cost this family a figure once.
+// is measured while you watch. An auto-ranged field that saturates renders black and looks
+// the same as one that has died.
 fun fields(x: Img, y: Img, n: Int) = listOf(
     "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
     "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4)
@@ -958,8 +958,7 @@ uniform, at a share that stays near a fifth of the sensing run's.
 :::fold draw both trails on one derived colour range, and measure the share every frame
 // Both panels on ONE derived range, not on each other's maxima: a cell an agent occupies every
 // step accumulates `deposit` and keeps `decay` of what it had, so it converges to
-// deposit / (1 - decay) = 62.5. The first cut of this clip guessed 30 and clipped the network to
-// flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
+// deposit / (1 - decay) = 62.5. A lower ceiling clips the network to flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
 val p = PhysarumParams()
 val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
 fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = listOf(
@@ -1509,14 +1508,12 @@ what an average hides, and lexicase never averages.
 //
 // A life-like rule is a TABLE: which neighbour counts cause a birth, which cause survival. At a
 // radius-2 neighbourhood that is 24 birth bits and 25 survival bits, a fixed-length bit string, and
-// therefore a genome two parents can be recombined across. Field had exactly one other two-parent
-// crossover before this (afield.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
-// crossover over the rule table and it is real recombination, not a graft.
+// therefore a genome two parents can be recombined across. LifeRuleGenome.crossover is uniform
+// crossover over the rule table: real recombination, not a graft.
 //
 // Radius 2 rather than the classic Moore 8 is a deliberate choice and it is the most useful thing
 // in this box. At radius 1 the space is 2^17 rules, and a few hundred INDEPENDENT draws land close
-// to the optimum on their own -- the first version of this demo measured evolution winning by 3%
-// for exactly that reason. A control arm that nearly wins is telling you the problem is easy, not
+// to the optimum on their own, and evolution beats them by only about 3%. A control arm that nearly wins is telling you the problem is easy, not
 // that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 
 val ops = LifeRuleGenome(radius = 2)
@@ -1689,18 +1686,14 @@ acceptedMutations=12  evaluations=961
 :::static
 // The engine is SHARED, and that is the point of the whole exercise.
 //
-// Field had two population searches before tonight and they shared no code: afield.morpho's
-// (GraalJS, not stdlib) and FunctionEvolve's, over Fn graphs. Neither was parametric.
-//
-// FunctionEvolve.evolve no longer contains a search. Its body is
+// FunctionEvolve.evolve, over Fn graphs, does not contain a search of its own. Its body is
 // PopulationSearch.evolve(mu = 1, lambda = lambda, crossoverRate = 0, immigrantRate = 0) over an
-// FnGenomeOps -- the same engine the three ALife boxes run on. The random stream is IDENTICAL to
-// the hand-rolled version's, because the core skips the parent draw when the population holds one
+// FnGenomeOps -- the same engine the three ALife boxes run on. The core
+// skips the parent draw when the population holds one
 // individual and skips the crossover and immigrant draws when their rates are exactly zero. Each
 // of those is right on its own terms; together they make mu=1 a plain (1+lambda) climb.
 //
-// The proof is the FIELD_TEST functions.evolve.worked-example, whose committed numbers were
-// captured BEFORE the refactor and reproduce bit for bit after it:
+// The FIELD_TEST functions.evolve.worked-example pins this search's numbers:
 //
 //     initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
 //     acceptedMutations=12  evaluations=961
@@ -1919,8 +1912,8 @@ showSignals(
 At a larger budget (8 seeds of 12 agents, 96 per arm) the same comparison reads **0.990 against
 0.000**.
 
-Both files ship as loadable Field documents as well, at `dev_docs/agents/demos/alife_script/` and
-`dev_docs/agents/demos/alife_walls/`, because the point of a scripted agent is that you edit its
+Both files ship as starting points as well, [`alife_script`](agent_transcripts.md) and
+[`alife_walls`](agent_transcripts.md) on the welcome screen, because the point of a scripted agent is that you edit its
 program and re-run it. In the `alife_walls` document, change `route(goal, clearance = 3.5)` to `0.5`:
 the plan then runs inside the reach of the `avoidWalls(clearance = 3.0)` the same agent is running,
 the two terms fight round every corner, and the arrival fraction drops by roughly a fifth.

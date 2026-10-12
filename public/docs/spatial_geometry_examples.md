@@ -361,8 +361,8 @@ val gap: ScalarField2D = { x, y ->
 }
 
 // This field is NON-NEGATIVE: it touches zero exactly on the seams and is positive everywhere else.
-// Marching squares finds *sign changes*, so iso = 0.0 finds nothing at all — measured, 0 contours,
-// and correctly so. A small positive level instead traces each cell shrunk inwards by that margin,
+// Marching squares finds *sign changes*, so iso = 0.0 finds no contours, which is
+// correct. A small positive level instead traces each cell shrunk inwards by that margin,
 // and raising it shrinks them further. That is the useful knob.
 val levels = listOf(0.05, 0.35, 0.8, 1.4)
 val byLevel = levels.map { iso -> iso to generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, iso) }
@@ -453,8 +453,8 @@ lost. A symmetric field on a symmetric grid does this all the time.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/grid_corner.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
 // Three inputs whose exact answer you already know, each arranged so that grid samples land ON the
-// iso level. Before the fix in this branch, the first returned an empty list and the third came back
-// severed into four disconnected arcs.
+// iso level. A strict sign-change test returns no contour for the first and cuts the third into
+// four disconnected arcs.
 val plane: ScalarField2D = { x, _ -> x }                              // zero set: the y axis
 val circle: ScalarField2D = { x, y -> kotlin.math.hypot(x, y) - 1.0 } // zero set: the unit circle
 
@@ -501,9 +501,9 @@ val warm = listOf(vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95),
                   vec(0.98, 0.55, 0.62, 0.95), vec(0.6, 1.0, 0.72, 0.95))
 
 showPlaneGrid(
-    "f(x,y) = x at iso 0, grid aligned on x = 0\n${planeContours.size} contour of ${planeContours.sumOf { it.size }} points (was 0 contours)" to
+    "f(x,y) = x at iso 0, grid aligned on x = 0\n${planeContours.size} contour of ${planeContours.sumOf { it.size }} points" to
         (listOf(gridLines(-1.0, 1.0, -1.0, 1.0, 4, 4)) + dotted(planeContours, -1.0, 1.0, -1.0, 1.0, warm, 0.4)),
-    "unit circle at nx = 16, aligned\n1 loop of ${aligned[0].size} points, perimeter %.4f vs 2pi = %.4f (was 4 arcs)".format(perimeter(aligned[0]), 2 * PI) to
+    "unit circle at nx = 16, aligned\n1 loop of ${aligned[0].size} points, perimeter %.4f vs 2pi = %.4f".format(perimeter(aligned[0]), 2 * PI) to
         (listOf(gridLines(-2.0, 2.0, -2.0, 2.0, 16, 16)) + dotted(aligned, -2.0, 2.0, -2.0, 2.0, warm, 0.2)),
     "f = x*y at iso 0 — the saddle cell\n${branches.size} branches of ${branches.map { it.size }.joinToString(" and ")} points" to
         (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 8, 8)) + dotted(branches, -1.05, 1.03, -1.02, 1.07, warm, 0.2)),
@@ -954,7 +954,7 @@ val singletons = cuts.associate { (l, cut) ->
 
 // Single linkage's notorious failure mode is chaining across a gap. Does it happen HERE? Drop to
 // k = 2 and read the largest cluster: 82-ish would mean the chain crossed the gap through the
-// stragglers, 43 means it did not and the two bands survived. Measure rather than assume.
+// stragglers, 43 means it did not and the two bands survived.
 val singleAtTwo = vec2Agglomerative(banded, AgglomerativeLinkage.SINGLE).partition(2)
 val singleAtTwoLargest = (0 until singleAtTwo.clusterCount).maxOf { singleAtTwo.indices(it).size }
 :::fold draw the input and all seven cuts
@@ -1108,8 +1108,8 @@ fun sliceLines(l: VoronoiLattice, z0: Double, palette: List<Vec4>): List<FLine> 
         sliceOf(cell, z0)?.also { it.color = palette[i % palette.size] }
     }
 
-// The measured version of "the slice is a square grid": every slice of an interior cube must have a
-// 1x1 bounding box. Stating it as a number rather than an adjective is the only way it is a check.
+// "The slice is a square grid", as a check: every slice of an interior cube must have a
+// 1x1 bounding box.
 fun sliceIsUnitSquare(cell: VoronoiCell3, z0: Double): Boolean {
     val line = sliceOf(cell, z0) ?: return false
     val b = line.fast2DBounds()
@@ -1386,7 +1386,6 @@ Convert graphs, cells or clusters into Field drawings and interactive views.
 | `fun pointCloudFLine(points: List<Vec2>, color: Vec4 = vec(1.0, 1.0, 1.0, 0.85), pointSize: Double = 1.2, z: Number = 0): FLine` | The points themselves as one dot-drawn `FLine` — the layer every other figure here sits on top of. [API](reference/graphics.md#spatial-field-kt). |
 | `fun PointGraph.toFLine(points: List<Vec2>, color: Vec4 = vec(0.55, 0.68, 0.82, 0.55), thickness: Double = 1.4, z: Number = 0): FLine` | Every edge of this graph as one `FLine`, with `points` supplying the positions. [API](reference/graphics.md#spatial-field-kt). |
 | `fun delaunayTrianglesToFLine(points: List<Vec2>, triangles: List<Triple<Int, Int, Int>>, color: Vec4 = vec(0.62, 0.74, 0.88, 0.45), thickness: Double = 1.2, filled: Boolean = false, z: Number = 0): FLine` | The triangles of a triangulation as one `FLine` of closed triangle outlines. [API](reference/graphics.md#spatial-field-kt). |
-| `fun VoronoiDiagram.toFLines(color: Vec4 = vec(0.72, 0.82, 0.95, 0.7), palette: List<Vec4>? = null, thickness: Double = 1.3, filled: Boolean = false, z: Number = 0): List<FLine>` | One closed `FLine` per Voronoi cell, in cell order. [API](reference/graphics.md#spatial-field-kt). |
 | `fun VoronoiDiagram.toFLines(color: Vec4 = vec(0.72, 0.82, 0.95, 0.7), palette: List<Vec4>? = null, thickness: Double = 1.3, filled: Boolean = false, z: Number = 0): List<FLine>` | One closed `FLine` per Voronoi cell, in cell order. [API](reference/graphics.md#spatial-field-kt). |
 | `fun CircularDirichlet.CellBoundary.toFLines(clip: CircularDirichlet.Aabb? = null, maxChordError: Float = 0.02f, color: Vec4 = vec(0.8, 0.86, 0.98, 0.8), thickness: Double = 1.4, z: Number = 0): List<FLine>` | The boundary of one multiplicatively-weighted Voronoi cell, tessellated into `FLine`s. [API](reference/graphics.md#spatial-field-kt). |
 | `fun ClusterLayer.toFLines(points: List<Vec2>, centers: List<Vec2>? = null, palette: List<Vec4> = okhslSet(maxOf(1, clusterCount), saturation = 0.78, lightness = 0.62), pointSize: Double = 1.3, centerSize: Double = 3.0, drawSpokes: Boolean = true, spokeAlpha: Float = 0.18f, z: Number = 0): List<FLine>` | A cluster assignment drawn over the points it labels: one dot layer per cluster, plus optional spokes from each sample to its cluster's centre. [API](reference/graphics.md#spatial-field-kt). |
