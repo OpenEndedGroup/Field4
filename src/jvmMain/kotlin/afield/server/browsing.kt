@@ -390,7 +390,8 @@ object Inspector {
      * (the child is one of its own ancestors) or `error` (reading it threw). `path` is the row's
      * address from the root as a `graphPaths()` / `graphPath()` path, `""` when none reaches it.
      */
-    @Serializable private data class DirResp(
+    @Serializable
+    private data class DirResp(
         val reqId: String,
         val ok: Boolean = true,
         val type: String = "dir",
@@ -417,7 +418,8 @@ object Inspector {
     )
 
     /** Reply to `query`: `matches` rows are `[path, kind, type, summary]`, at most `limit` of `total`. */
-    @Serializable private data class QueryResp(
+    @Serializable
+    private data class QueryResp(
         val reqId: String,
         val ok: Boolean = true,
         val type: String = "query",
