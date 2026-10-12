@@ -74,6 +74,13 @@ In RectSL it reads:
 ;
 ```
 
+!!! note "Why the line moves with `linear`"
+
+    A quoted track such as `'( 0=-8  4=8 ) ->x` eases in and out by default. The CPU rasterizer
+    takes one sample per pixel centre and counts a centre exactly on an edge as inside, so an eased
+    edge that lands on a centre draws a line one pixel wider than it is. `linear` keeps the edges
+    off the centres in this scene.
+
 The second panel is the rig in its sent colours. The third is the same rig lit only by what the
 receiver decoded from the two universes that came back. The wall is 16 units by 8, which gives one
 fixture per unit, and the frame is drawn at 16 pixels per unit, so each fixture stands for a
@@ -244,7 +251,8 @@ that each sample point averages what its fixture ought to show.
 
 ## Running it live
 
-Open chain_scene_to_light from the welcome screen's starting points. No lights are needed: the
+Open [chain_scene_to_light](agent_transcripts.md#chain_scene_to_light) from the welcome screen's
+starting points. No lights are needed: the
 universes go to this machine on port 35690 and come back. Launch `1. Scene on the rig`: it draws
 the scene from this page, shrinks it to one pixel per fixture, and sends it on the 44 Hz clock,
 showing the look it sends. Launch `2. Receiver`: it listens on the same port and draws the rig from
@@ -264,10 +272,3 @@ for multicast.
   outputs and inputs, and `showUniverse`.
 * [A RectSL Animation as a Solid](chain_rectsl_spacetime.md) is the neighbouring chain: the same
   language read as a volume over *(x, y, t)* instead of a sequence of frames.
-
-!!! note "Why the line moves with `linear`"
-
-    A quoted track such as `'( 0=-8  4=8 ) ->x` eases in and out by default. The CPU rasterizer
-    takes one sample per pixel centre and counts a centre exactly on an edge as inside, so an eased
-    edge that lands on a centre draws a line one pixel wider than it is. `linear` keeps the edges
-    off the centres in this scene.
