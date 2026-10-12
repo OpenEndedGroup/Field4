@@ -303,7 +303,7 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
     window cap, a zoomed canvas and a drag, and checks the width and height after each.
     The lazy-output and value-viewer frames are not under any geometry check, and the two
     `isFillWidthIframe` copies are never compared. The full census is in
-    `dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md`.
+    [OUTPUT_PANEL_SIZING_COVERAGE.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md).
 
 ## See also
 
