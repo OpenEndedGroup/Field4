@@ -7,7 +7,7 @@ Sometimes the data is not a signal and not a table. It is a **set of things** pl
 each pair of them: how far apart those two are. Twenty words and an edit distance. A hundred and
 sixty samples along a curve and the number of hops between them. A thousand mel frames and a
 Wasserstein distance. There is nothing to plot, because the things have no coordinates, which is the
-whole problem, and it is what `afield/stdlib/smile_mds.kt` is for. Give it the distances and it
+whole problem, and it is what [`smile_mds.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/smile_mds.kt) is for. Give it the distances and it
 invents coordinates that reproduce them as closely as two dimensions allow.
 
 Two of the functions take vectors and compute the distances for you, which is what the
