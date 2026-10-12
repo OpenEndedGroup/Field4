@@ -524,6 +524,20 @@ class PaintCanvas internal constructor(
             PaintNative.ragWipe(handle, rag.handle, canvasXy(piece), swellOf(piece), seedFor(seed, i))
         }
 
+    /**
+     * Sketch along [gesture] ([sketch]), its searching strokes laid out along its world arc: a
+     * stereo pair's eyes break and wander the strokes at the same places along the line. The
+     * pressure is the gesture's mean.
+     */
+    fun sketch(gesture: TimedGesture, pencil: Pencil, passes: Int = 3, wander: Double = 2.0, tremor: Double = 0.4, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyArc(piece)
+            pencil.worn += PaintNative.sketchLine(handle, pencil, canvasXy(piece), piece.map { it.pressure }.average().toFloat(), passes,
+                toCanvasLength(wander).toFloat(), toCanvasLength(tremor).toFloat(), seedFor(seed, i))
+        }
+    }
+
     /** Draw [gesture] with [pencil], its tremor and pressure following its world arc. */
     fun draw(gesture: TimedGesture, pencil: Pencil, tremor: Double = 0.4, ruler: Boolean = false, seed: Long? = null): PaintCanvas = apply {
         for ((i, piece) in gesture.pieces.withIndex()) {

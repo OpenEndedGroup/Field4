@@ -72,6 +72,7 @@ class StereoTest {
             knife(line(150.0, 600.0, 850.0, 620.0), k, seed = 31)
             wipe(line(150.0, 700.0, 850.0, 700.0), rag(50.0, seed = 32), seed = 33)
             draw(line(150.0, 800.0, 850.0, 780.0), pencil("4B"), seed = 34)
+            sketch(gesture(line(150.0, 850.0, 850.0, 860.0), 120.0), pencil("2H"), passes = 5, wander = 3.0, seed = 37)
             stroke(line(150.0, 900.0, 850.0, 900.0), dynamicBrush(BrushKind.Round, 40.0, hairs = 16, seed = 35).load(umber), seed = 36)
         }
         assertContentEquals(a, b)
