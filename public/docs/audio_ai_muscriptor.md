@@ -30,7 +30,7 @@ Listen to the recording whose notes are shown above.
 The notes above are MuScriptor Small's reading of an eight-second Sonic Pi recording. Instrument
 colours are the model's guesses; they do not establish which instruments produced the sound.
 
-The model-neutral operation is `analysis.transcribe_music`. Its three concrete capabilities are:
+The operation is `analysis.transcribe_music`, served by any of three model sizes:
 
 | Field backend | Upstream scale | Good starting point |
 | --- | ---: | --- |
