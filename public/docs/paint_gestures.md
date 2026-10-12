@@ -142,10 +142,19 @@ slowly still. `brush.set(...)` changes how the hairs behave:
   by default);
 - `plasticity`, how fast a yielded joint takes on its bend, per second, and `recovery`, how fast a
   set straightens again;
-- `cohesion`, 0..1, how strongly the liquid in a full brush draws neighbouring tips together.
+- `cohesion`, how strongly the liquid in a wet brush draws its hairs together: 1 draws a full
+  brush's tips to a point, more pulls harder and closer, and below 0 pushes nearby hairs apart;
+- `clumping`, which way it does it: 0 (the default) draws the tips of neighbouring hairs together,
+  1 joins any wet hairs that come near each other by liquid bridges that snap when stretched, so the
+  brush gathers into clumps; between, a blend; past 1 or below 0, more or the reverse;
+- `splay`, `splayFan` (0 every pressed hair pushed out alike, 1 the outer ones furthest, so the
+  brush fans open) and `splayScatter` (each bundle of hairs buckling its own way).
+
+`stroke(gesture, brush, ...)` can vary any of the last five along a stroke: give it a function of
+the gesture's sample, such as `{ s -> 0.2 + 0.2 * PaintNoise.along(s) }`.
 
 The defaults are estimates for hair and hog bristle. Any value that makes physical sense is
-accepted: friction can't be negative, and cohesion is a share.
+accepted: friction can't be negative.
 
 Below, two hog flats loaded the same way and drawn along the same line at the same light pressure.
 The lower one was first scrubbed hard back and forth for a few seconds. Its bristles have taken a
@@ -313,10 +322,10 @@ it was then.
 | Friction | Coulomb's: a node sticks until its slip exceeds static friction times how hard it presses, then slides against kinetic friction | simulated |
 | Splay | a hair pressed into the surface is pushed out from the brush's middle by `splay` (in `BrushConfig`) times how far it is pressed in, against the same grip: hard enough, a flat parts in two | an approximation of buckling by one number |
 | A set | a joint bent past its yield (2% strain at the surface of a fibre whose thickness is estimated from the brush's stiffness) moves its rest angle toward the bend, and recovers slowly | simulated, with estimated rates |
-| Clumping | the liquid in a full brush draws neighbouring tips together | an approximation by one strength |
+| Clumping | by default the liquid in a full brush draws neighbouring tips together; with `clumping` 1, a liquid bridge forms where two wet hairs come near each other and pulls them together, harder toward the tips and the wetter and thinner the paint, and snaps when they are pulled a few spacings apart, further the more liquid it holds, so splay tears a wet brush into clumps | the tip pull is one strength; the bridges are simulated, their strength and reach estimates |
 | Oil paint | each of the brush's dense bristles follows the hair nearest it and trades paint where it touches, through claude-paint's own paint model | the paint is claude-paint's; the contact is Field's |
 | Watercolour | every touching hair trades with the sheet over a disc a clump of hairs wide, through the [watercolour](watercolor.md) model | simulated |
-| Hair count | 16–64 hairs stand for the thousands in a real brush; the dense bristles copy their hair's contact; hairs do not collide with each other except by clumping | approximated |
+| Hair count | 16–64 hairs stand for the thousands in a real brush; the dense bristles copy their hair's contact; hairs do not collide with each other except through their bridges | approximated |
 
 ??? aside "Where the code is"
     The hairs are `native/field-paint/vendor/paint/src/field/bristles.rs`, Field's addition to

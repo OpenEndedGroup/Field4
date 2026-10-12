@@ -33,7 +33,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -65,6 +66,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -113,7 +115,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -145,6 +148,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -192,7 +196,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -224,6 +229,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -273,7 +279,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -305,6 +312,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -352,7 +360,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -384,6 +393,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -434,7 +444,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -466,6 +477,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -518,7 +530,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -550,6 +563,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -598,7 +612,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -630,6 +645,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -680,7 +696,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -712,6 +729,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -762,7 +780,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -794,6 +813,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -842,7 +862,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -874,6 +895,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -923,7 +945,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -955,6 +978,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1004,7 +1028,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1036,6 +1061,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1085,7 +1111,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1117,6 +1144,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1166,7 +1194,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1198,6 +1227,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1231,13 +1261,17 @@ showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-splay.png")
 ```
 
-## Drying
 
-Oil paint dries over days, and the oil in it decides how it looks dry. Below, the strokes are
-painted with more and less oil (`oil`, 1 is tube paint), dried, and lit from above so the gloss
-shows: lean paint dries dull, oily paint dark and glossy.
+The moving hairs' clumping comes in two models, and `clumping` (set on the brush:
+`brush.set(clumping = ...)`) blends between them. At 0, as a brush is made, the liquid draws the tips
+of hairs that are neighbours at the root together. At 1 it joins any two wet hairs that come near
+each other with a bridge of paint, which pulls them together and snaps when they are pulled a few
+spacings apart, so the brush gathers into clumps that splay can tear apart, and the bristles they
+carry gather with them. Between, the two pull together; past 1 the bridges pull harder, and below 0
+the old model pulls harder while the bridges push. The sweep runs from -1 to 2 at cohesion 4,
+unsplayed and at splay 2.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/gloss.png" source-image="/tmp/field-docs-paint-sweep-gloss.png" alt="Six columns of the same black brushstroke painted side by side on off-white, dried and lit from above: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Lean paint, from no oil to 0.8, dries a dull grey; at 1.3 and 4 the oil-rich paint dries darker and glossier." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-gloss" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/clumping.png" source-image="/tmp/field-docs-paint-sweep-clumping.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away, painted with moving hairs at cohesion 4 and clumping from -1 to 2; unsplayed above, at splay 2 below. From -1 to 1 the strokes look much alike, the ring at 1 gathered into firmer concentric bands; at 1.5 and 2 the brush draws into narrower, sharper bands and the ring and last stroke go paler. In the splayed row the two halves of the bar get ragged inner edges as clumping rises, and the loop folds into an off-centre spiral." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-clumping" embed=true}
 :::static
 import afield.paint.*
 
@@ -1248,7 +1282,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1280,6 +1315,270 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+
+// the same columns twice: a row with moving hairs above a row with an ordinary brush
+fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
+    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+        val strokes = cells(moving)
+        name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
+    }
+    return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
+}
+:::endfold
+// moving hairs only (an ordinary brush has neither model): unsplayed above, splayed below
+val sheet = montage(listOf(0.0, 2.0).map { sp ->
+    val strokes = listOf(-1.0, 0.0, 0.5, 1.0, 1.5, 2.0).map { column("clumping $it", Settings(cohesion = 4.0, clumping = it, splay = sp)) }
+    "cohesion 4, splay $sp" to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
+}, columns = 1, cellSide = 4000, textScale = 3)
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-clumping.png")
+```
+
+`cohesion` is how strongly the liquid pulls. With liquid bridges it also sets how far a bridge
+reaches, so a stronger pull gathers the hairs into fewer, larger clumps, and past about 16 the
+gathered brush lays its paint sooner; below 0 the hairs push each other apart. A hog flat's own is
+0.35.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/cohesion.png" source-image="/tmp/field-docs-paint-sweep-cohesion.png" alt="Two rows of 7 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away, painted with moving hairs joined by liquid bridges, cohesion from -8 to 32; unsplayed above, at splay 3 fanned open below. Unsplayed, the stroke changes little up to 4; at 16 and 32 the bar fades early and the ring and last stroke are pale, gathered into fine dark bands. Fanned, the bar parts in two with ragged inner edges that widen with cohesion, the ring splits into concentric bands, and at 16 and 32 the bar's halves fray and the ring breaks into pale and dark rings." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-cohesion" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.0, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(bristles = s.bristles, hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+
+// the same columns twice: a row with moving hairs above a row with an ordinary brush
+fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
+    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+        val strokes = cells(moving)
+        name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
+    }
+    return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
+}
+:::endfold
+// liquid bridges (clumping 1); unsplayed above, fanned open below (`splayFan`, next)
+val sheet = montage(listOf(0.0, 3.0).map { sp ->
+    val strokes = listOf(-8.0, 0.0, 0.35, 1.0, 4.0, 16.0, 32.0).map { column("cohesion $it", Settings(cohesion = it, clumping = 1.0, splay = sp, splayFan = if (sp > 0) 1.0 else null)) }
+    (if (sp > 0) "liquid bridges, splay $sp fanned" else "liquid bridges, no splay") to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
+}, columns = 1, cellSide = 4000, textScale = 3)
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-cohesion.png")
+```
+
+`splay` pushes every pressed hair straight out from the brush's middle, so a flat can only part in
+two. `splayFan` 1 pushes each in proportion to how far out its root is, so the brush fans open and
+neighbours part everywhere; `splayScatter` turns each push off the outward by its own slowly drifting
+angle and amount, alike for hairs near each other, the way pressed hairs buckle in bundles. With
+liquid bridges, the bundles hold together and each leaves its own trail, braiding and crossing.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/scatter.png" source-image="/tmp/field-docs-paint-sweep-scatter.png" alt="Six columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away, painted by a flat half the usual width with 64 moving hairs, splay 3 fanned open and liquid bridges, the splay's scatter from 0 to 2. At 0 the bar is two narrow bands; at 0.3 it begins to waver; at 0.6 it tears into several wavy ropes; at 1 and 2 bundles of hairs braid and cross through the loop and the scrub, and the last stroke trails apart into separate strands." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-scatter" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.0, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(bristles = s.bristles, hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+
+// the same columns twice: a row with moving hairs above a row with an ordinary brush
+fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
+    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+        val strokes = cells(moving)
+        name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
+    }
+    return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
+}
+:::endfold
+// a flat half the usual width, 64 hairs, splay 3 fanned open, liquid bridges
+val sheet = run {
+    val strokes = listOf(0.0, 0.15, 0.3, 0.6, 1.0, 2.0).map { column("scatter $it", Settings(width = 100.0, hairs = 64, splay = 3.0, splayFan = 1.0, cohesion = 1.0, clumping = 1.0, splayScatter = it)) }
+    montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
+}
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-scatter.png")
+```
+
+## Drying
+
+Oil paint dries over days, and the oil in it decides how it looks dry. Below, the strokes are
+painted with more and less oil (`oil`, 1 is tube paint), dried, and lit from above so the gloss
+shows: lean paint dries dull, oily paint dark and glossy.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/gloss.png" source-image="/tmp/field-docs-paint-sweep-gloss.png" alt="Six columns of the same black brushstroke painted side by side on off-white, dried and lit from above: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Lean paint, from no oil to 0.8, dries a dull grey; at 1.3 and 4 the oil-rich paint dries darker and glossier." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-gloss" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.0, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(bristles = s.bristles, hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1328,7 +1627,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1360,6 +1660,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1409,7 +1710,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1441,6 +1743,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1491,7 +1794,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1523,6 +1827,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1573,7 +1878,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1605,6 +1911,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1653,7 +1960,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1685,6 +1993,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1734,7 +2043,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1766,6 +2076,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
@@ -1815,7 +2126,8 @@ data class Settings(
     val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48, val bristles: Int? = null,
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
-    val width: Double = 200.0, val hair: Double? = null,
+    val width: Double = 200.0, val hair: Double? = null, val cohesion: Double? = null, val clumping: Double? = null,
+    val splayFan: Double? = null, val splayScatter: Double? = null,
     val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
@@ -1847,6 +2159,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
             .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        brush.set(cohesion = s.cohesion, clumping = s.clumping, splayFan = s.splayFan, splayScatter = s.splayScatter)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt

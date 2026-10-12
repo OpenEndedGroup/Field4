@@ -12,7 +12,7 @@ use paint::field::watercolor::{self as wc, Sample, WaterBrush};
 use paint::Canvas;
 use std::ffi::{c_char, CStr};
 
-fn cstr<'a>(p: *const c_char) -> Result<&'a str, String> {
+pub(crate) fn cstr<'a>(p: *const c_char) -> Result<&'a str, String> {
     unsafe { CStr::from_ptr(p) }.to_str().map_err(|e| e.to_string())
 }
 
