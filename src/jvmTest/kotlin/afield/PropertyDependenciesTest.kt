@@ -172,4 +172,48 @@ class PropertyDependenciesTest {
             dir.deleteRecursively()
         }
     }
+
+    @Test
+    fun aCompletedFullRunRetiresTheReadsItDidNotRepeat() {
+        val dir = Files.createTempDirectory("dependencies-retire").toFile()
+        try {
+            val s = session("retire", dir.absolutePath)
+            val parent = boxIn(s, "parent")
+            val child = boxIn(s, "child")
+            parent.connect(child)
+            parent.setPropertyRaw("speed", 3.0)
+            parent.setPropertyRaw("size", 2.0)
+            child.running { inheritedPropertyRaw(child, "speed") }
+            child.running { inheritedPropertyRaw(child, "size") }
+            val store = PropertyDependencies.storeFor(s.filename)
+            fun historical(name: String) = store.edges.values.single { it.key.name == name }.historical
+
+            // A fragment, and a failed run, say too little to forget anything.
+            ReactiveRuns.runStarted(child, "fragment")
+            ReactiveRuns.runFinished(child, true, "fragment")
+            ReactiveRuns.runStarted(child, "run")
+            ReactiveRuns.runFinished(child, false, "run")
+            assertEquals(false to false, historical("speed") to historical("size"))
+
+            // A full run that reads only `size` retires `speed`.
+            ReactiveRuns.runStarted(child, "run")
+            child.running { inheritedPropertyRaw(child, "size") }
+            ReactiveRuns.runFinished(child, true, "run")
+            assertEquals(true to false, historical("speed") to historical("size"))
+            val flow = PropertyDependencies.graph(s).flows.single()
+            assertEquals(setOf("speed", "size"), flow.names.toSet(), "still drawn, to explain")
+            assertEquals(false, flow.historical, "the arrow still carries a live read")
+
+            // It stays retired across a save and reload, and a fresh read revives it.
+            PropertyDependencies.write(store, dir)
+            PropertyDependencies.forget(dir.absolutePath)
+            val reloaded = PropertyDependencies.storeFor(dir.absolutePath)
+            assertTrue(reloaded.edges.values.single { it.key.name == "speed" }.historical)
+            assertEquals(false, reloaded.edges.values.single { it.key.name == "size" }.historical)
+            child.running { inheritedPropertyRaw(child, "speed") }
+            assertEquals(false, reloaded.edges.values.single { it.key.name == "speed" }.historical)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
 }

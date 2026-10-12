@@ -491,6 +491,46 @@ before("end $C ok", "start $D launch")
 
 
 @scenario
+def down_dropped_read(s: Scenario):
+    """B reads A's x, then is edited so it no longer does and rerun. Changing x should leave B alone."""
+    s.box("A", "B").connect("A", "B")
+    s.run("A", "propDown<Int>(x)\nx = 1")
+    s.run("B", "propDown<Int>(x)\nsetPropertyRaw(\"result\", x)")
+    s.run("B", "setPropertyRaw(\"result\", 99)")
+    s.clear()
+    s.run("A", "propDown<Int>(x)\nx = 2")
+    s.sleep(3.0)
+    s.check('''
+none("start $B")
+expectResult(B, 99)
+''')
+
+
+@scenario
+def down_read_in_frames_kept(s: Scenario):
+    """B's rerun reads x only from its frames loop, after the run ends: that read stays live (it is
+    not retired with the run), and the loop picks up a change to x by itself, so no cascade."""
+    s.box("A", "B").connect("A", "B")
+    s.run("A", "propDown<Int>(x)\nx = 1")
+    s.run("B", "propDown<Int>(x)\nsetPropertyRaw(\"result\", x)")
+    s.run("B", "frames { while (frame()) { setPropertyRaw(\"result\", x) } }", launch=True)
+    s.sleep(1.0)
+    s.clear()
+    s.run("A", "propDown<Int>(x)\nx = 2")
+    s.sleep(2.0)
+    s.check('''
+expectResult(B, 2)
+val bBox = thisBox.named(B)
+val live = afield.PropertyDependencies.storeFor(bBox)!!.edges.values.filter {
+    it.key.reader == bBox.id && it.key.name == "x" && it.key.access == afield.PropertyDependencies.Access.READ
+}
+check(live.isNotEmpty() && live.none { it.historical }) { "B's read of x: ${live.map { it.historical }}\\n$evText" }
+none("cascade $B")
+''')
+    s.stop("B")
+
+
+@scenario
 def down_no_glitch(s: Scenario):
     """D reads x from A and y from B, which also reads x: B must rerun before D, and D once."""
     s.box("A", "B", "D").connect("A", "B", "D").connect("B", "D")
@@ -733,7 +773,38 @@ at("cascade $B")
         stop_field(port + 1)
 
 
-RESTARTS = {"startup": run_startup, "down_after_restart": run_down_after_restart}
+def run_dropped_read_after_restart(port: int, stamp: str, verbose: bool) -> tuple[bool, str]:
+    """A read B stopped making stays forgotten across a restart (historical in dependencies.edn)."""
+    name = "dropped_read_after_restart"
+    doc = f"reactive_{name}_{stamp}"
+    s = Scenario(name, doc=doc)
+    s.box("A", "B").connect("A", "B")
+    s.run("A", "propDown<Int>(x)\nx = 1")
+    s.run("B", 'setPropertyRaw("result", x * 2)')
+    s.run("B", 'setPropertyRaw("result", 99)')
+    s.ctl("// saved: running this edits a sidecar, which is what makes the autosave write")
+    s.sleep(7.0)
+    ok, detail = execute(s, port, verbose)
+    if not ok:
+        return False, "setup: " + detail
+    stop_field(port)
+    after = Scenario(name, doc=doc)
+    after.box("T")
+    after.run("T", f'val a = thisBox.named("{s.p("A")}")\n'
+                   'a.setPropertyRaw("code", "propDown<Int>(x)\\nx = 5")\na.begin()')
+    after.sleep(5.0)
+    after.check('''
+none("cascade $B")
+none("start $B")
+''')
+    try:
+        return execute(after, port + 1, verbose, reopen=True)
+    finally:
+        stop_field(port + 1)
+
+
+RESTARTS = {"startup": run_startup, "down_after_restart": run_down_after_restart,
+            "dropped_read_after_restart": run_dropped_read_after_restart}
 
 
 def stop_field(port: int) -> None:

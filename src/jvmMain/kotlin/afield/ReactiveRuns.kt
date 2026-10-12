@@ -108,6 +108,7 @@ object ReactiveRuns {
     }
 
     private val runs = ConcurrentHashMap<Box, RunState>()
+    private val FULL_RUN_MODES = setOf("run", "launch")
     private val lastRunStart = ConcurrentHashMap<String, Long>()
     /**
      * Boxes whose code is blocked in a pull, counted: a box's own animation frame can pull while
@@ -134,15 +135,20 @@ object ReactiveRuns {
         val st = runs[box] ?: return
         val changes: List<Change>
         val waiters: List<CompletableDeferred<Boolean>>
+        val startSeq: Long
         synchronized(st) {
             st.depth = (st.depth - 1).coerceAtLeast(0)
             if (st.depth > 0) return
+            startSeq = st.startSeq
             changes = st.changes.toList()
             waiters = st.waiters.toList()
             st.changes.clear()
             st.waiters.clear()
         }
         event("end ${label(box)} ${if (ok) "ok" else "failed"}")
+        // A completed run of the whole code says what the box reads now; a fragment, or a failed or
+        // stopped run, says too little to forget anything.
+        if (ok && mode in FULL_RUN_MODES) PropertyDependencies.retireReadsBefore(box, startSeq)
         waiters.forEach { it.complete(ok) }
         if (changes.isNotEmpty()) {
             if (ok) Downstream.submit(changes)
@@ -501,7 +507,7 @@ object ReactiveRuns {
                 val info = c.holder.inside
                 val store = PropertyDependencies.storeFor(info.filename)
                 for (e in store.edges.values) {
-                    if (e.key.access != PropertyDependencies.Access.READ) continue
+                    if (e.key.access != PropertyDependencies.Access.READ || e.historical) continue
                     if (e.key.supplier != c.holder.id || e.key.name != c.name) continue
                     val reader = info.boxes[e.key.reader] ?: continue
                     if (reader === c.writer || reader.getPropertyRaw("_tombstone").isTrue()) continue

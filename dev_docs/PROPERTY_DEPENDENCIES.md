@@ -58,10 +58,30 @@ upstream execution asks.
 
 A MISS that a later READ of the same (reader, name) answered is left out of the graph.
 
+## Forgetting: a completed run replaces the reader's dependencies
+
+When a box finishes a successful full run (`run` or `launch`, not a selected fragment), every
+access it made before that run began and did not repeat during it becomes **historical**
+(`PropertyDependencies.retireReadsBefore`, called from `ReactiveRuns.runFinished`). An edit that
+removes a read therefore takes effect at the next run: changing the value no longer reruns the box.
+
+- Historical edges stay in the record and on the layer (grey, dashed), to explain what happened.
+  They do not rerun the reader, they do not order a cascade, a historical MISS is not drawn as a
+  hole, and they come last among a `propUp` pull's remembered suppliers.
+- Any later access revives an edge. A read made by a `frames {}` loop or a callback after the run
+  ends is therefore live, even though the run itself did not make it. The gap is accepted: if the
+  value changes between the rerun and the loop's next read, the box is not rerun, and the loop picks
+  the new value up itself.
+- A failed, stopped or cancelled run forgets nothing (its reads are incomplete), and neither does
+  stopping a box or running a fragment.
+- Scenarios: `down_dropped_read`, `down_read_in_frames_kept`, `dropped_read_after_restart`; unit
+  test `PropertyDependenciesTest.aCompletedFullRunRetiresTheReadsItDidNotRepeat`.
+
 ## Persistence
 
 `<document>/dependencies.edn`, version 1: `{:version 1 :edges [{"reader" .. "supplier" ..
-"name" .. "mechanism" .. "access" .. "count" .. "firstSeen" .. "lastSeen" ..}]}`. It is loaded on
+"name" .. "mechanism" .. "access" .. "count" .. "firstSeen" .. "lastSeen" ..}]}`, plus
+`"historical" true` on a retired edge (absent means live, so older files load unchanged). It is loaded on
 first use (the first read recorded, or the layer's first request). It is written from the autosave
 loop in `Server.server()`:
 
@@ -87,7 +107,7 @@ pan, zoom and drags. Encoding:
 
 - amber: read in the last 2 s;
 - blue: read this session;
-- grey and dashed: remembered from disk only;
+- grey and dashed: remembered from disk only, or historical (the reader no longer makes the read);
 - red `? name` beside a box: an unanswered read, with dashed red arrows from its remembered
   suppliers.
 
@@ -157,7 +177,7 @@ launch queue, one rerun at a time, each awaited:
   before the change. This uses the shared `PropertyDependencies.clock`, not milliseconds.
   - A box that has read the value since (the puller of a `propUpDown` value) is up to date and
     doesn't rerun.
-  - Only boxes that have *read* the value are rerun, which includes reads remembered in
+  - Only boxes whose read is live (not historical) are rerun, which includes reads remembered in
     `dependencies.edn`. A box that never read it is not.
 - **Order.** The next box is the first waiting one that no other waiting box can reach through
   the recorded flows, followed transitively (`ReactiveRuns.orderNext`). A diamond's bottom runs

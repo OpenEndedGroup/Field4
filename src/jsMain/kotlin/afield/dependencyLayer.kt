@@ -23,7 +23,8 @@ import kotlin.math.sqrt
  *
  * - bright, while the read happened in the last couple of seconds;
  * - solid, for a read seen since the server started;
- * - faint and dashed, for one only remembered from an earlier session;
+ * - faint and dashed, for one only remembered from an earlier session, or one the reader has since
+ *   stopped making (it finished a full run without it), which no longer reruns the reader;
  * - a red `? name` tag on a box whose read found nothing, with a dashed red arrow from each box that
  *   supplied that name to it before — the box an upstream run would start.
  *
@@ -140,13 +141,14 @@ fun redrawDependencyLayer() {
         val b = rects[flow.to] ?: continue
         val age = graph.now - flow.lastSeen
         val (color, marker) = when {
+            flow.historical -> OLD to "dep-arrow-old"
             flow.sessionCount > 0 && age < HOT_MS -> HOT to "dep-arrow-hot"
             flow.sessionCount > 0 -> LIVE to "dep-arrow"
             else -> OLD to "dep-arrow-old"
         }
         val bow = if ((flow.to to flow.from) in pairs) 0.18 else 0.08
         val mid = drawCurve(layer, a, b, color, marker, width = if (color == HOT) 2.2 * px else 1.4 * px,
-            dashed = flow.sessionCount == 0L, bow = bow, px = px)
+            dashed = flow.sessionCount == 0L || flow.historical, bow = bow, px = px)
         if (mid != null) {
             val names = if (flow.names.size > 3) flow.names.take(3).joinToString(", ") + " +${flow.names.size - 3}" else flow.names.joinToString(", ")
             label(layer, mid.x, mid.y, names, color, px)
