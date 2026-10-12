@@ -374,10 +374,12 @@ showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-hiding.png")
 ```
 
-The paint's own stiffness (`stiff`) hardly changes a film this thin: it matters for thick paint,
-where it decides whether the paint holds the brush's ridges or levels out.
+The paint's own stiffness (`stiff`, 1 is tube paint). Up to tube paint it hardly changes a film
+this thin. Past it the paint is a stiffer paste than any tube: it gathers the hairs into fewer,
+wider clumps that leave bare furrows between their ridges, and comes off the hairs more reluctantly,
+so the black goes paler and more broken the stiffer it is.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/stiff.png" source-image="/tmp/field-docs-paint-sweep-stiff.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. All six look nearly alike: the paint's stiffness barely changes a stroke this thin." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-stiff" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/stiff.png" source-image="/tmp/field-docs-paint-sweep-stiff.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Up to tube paint the stroke is dense black; past it each column is paler and more finely striped, the ring fading toward its outer edge, until at 300 the bar and ring are a grey veil of fine stripes." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-stiff" embed=true}
 :::static
 import afield.paint.*
 

@@ -74,7 +74,9 @@ fn rheology_at(engine: u32, stiff: f32) -> (f32, f32) {
     if engine < 4 {
         return rheology(stiff);
     }
-    let s = stiff.clamp(0.0, 1.0);
+    // (Field: past 1, a stiffer paste than any tube, its viscosity and yield still rising; capped
+    // where they would overflow f32, far past where a film freezes in place. `VENDORED.md`)
+    let s = stiff.clamp(0.0, 10.0);
     (10f32.powf(0.3 + 3.0 * s), 5.0 * 600f32.powf(s))
 }
 
