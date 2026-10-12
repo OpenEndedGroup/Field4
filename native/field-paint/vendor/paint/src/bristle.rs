@@ -760,6 +760,9 @@ pub(crate) struct Surf {
     /// (Field) World distance per canvas distance where the bristle is now: what `exchange` scales a
     /// step's travel by, so a load runs down over the same world length in either eye. 1: none.
     pub(crate) travel: f32,
+    /// (Field) The canvas's stereo warp (`field::warp`), or null: tacky paint's grab is keyed on
+    /// the place on the reference canvas.
+    pub(crate) warp: *const crate::field::warp::Warp,
 }
 // SAFETY: callers only run brushes concurrently on pixel sets that cannot
 // overlap (tiles separated by more than the largest stroke extent).
@@ -903,6 +906,7 @@ impl Canvas {
             arc: std::ptr::null(),
             arc_n: 0,
             travel: 1.0,
+            warp: self.warp.as_deref().map_or(std::ptr::null(), |w| w as *const _),
         }
     }
 
@@ -1594,7 +1598,11 @@ pub(crate) unsafe fn exchange(
         };
         let dep_total = if matches!(clip, Some(Clip::Fence { .. })) { dep_total * (sum_k / sum_w).min(1.0) } else { dep_total };
         let dep_total = if tack > 0.0 {
-            let g = crate::drying::grab(tack) * crate::drying::stick(b.0, b.1, rb, br.seed, tack);
+            let g = crate::drying::grab(tack) * {
+                // (the warp is the canvas's, alive for the stroke: we are inside `exchange`'s unsafe)
+                let (wx, wy) = if sf.warp.is_null() { b } else { (*sf.warp).map(b.0, b.1) };
+                crate::drying::stick(wx, wy, rb, br.seed, tack)
+            };
             let d = match dep {
                 None => liquid * (1.0 - (-travel * g / tool.run).exp()) * touch,
                 Some(_) => dep_total * g,

@@ -10,6 +10,7 @@ pub mod state;
 pub mod aqueous;
 pub mod watercolor;
 pub mod bristles;
+pub mod warp;
 
 impl crate::Canvas {
     /// Key the next stroke's noise (the hand's shake, the knife's tears, stiff paint's clumping) on

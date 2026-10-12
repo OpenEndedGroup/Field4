@@ -244,6 +244,9 @@ pub struct Canvas {
     /// pressure profile, how fast the load runs down) follows it instead of the canvas length.
     /// Taken by the next drag, knife pull, wipe or line.
     pub(crate) stroke_arc: Option<Vec<f32>>,
+    /// (Field) Where this canvas's places are on a stereo pair's reference canvas, for texture
+    /// keyed on position (`field::warp`); `None` on the reference itself.
+    pub(crate) warp: Option<Box<crate::field::warp::Warp>>,
 }
 
 impl Canvas {
@@ -293,6 +296,7 @@ impl Canvas {
             soak: None,
             stroke_noise: None,
             stroke_arc: None,
+            warp: None,
         }
     }
 

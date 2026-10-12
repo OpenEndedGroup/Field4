@@ -66,6 +66,40 @@ pub extern "C" fn field_paint_canvas_new_v2(
     })
 }
 
+/// The canvas's stereo warp (`paint::field::warp`): a `gw × gh` grid, nodes `cell` canvas units
+/// apart, of where each node is on the reference canvas (`at`, canvas units, x then y). Null `at`
+/// clears it. With `ground` set, the ground (and a watercolour sheet) is pulled back through it now:
+/// give it to a fresh canvas, before any paint.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_warp(c: *mut Studio, gw: i32, gh: i32, cell: f32, at: *const f32, ground: i32) -> i32 {
+    guard(-1, || {
+        let st = unsafe { &mut *c };
+        if at.is_null() {
+            st.canvas.set_warp(None);
+            return Ok(0);
+        }
+        if gw < 2 || gh < 2 {
+            return Err(format!("a warp needs a grid of at least 2 × 2 nodes, not {gw} × {gh}"));
+        }
+        let f = st.canvas.frame();
+        let s = f.scale;
+        let v = unsafe { std::slice::from_raw_parts(at, 2 * (gw * gh) as usize) };
+        let nodes: Vec<[f32; 2]> = v.chunks_exact(2).map(|p| [p[0] * s, p[1] * s]).collect();
+        let warp = paint::field::warp::Warp::new(gw as usize, gh as usize, cell * s, nodes)
+            .ok_or("a warp's cell is some length and its places are finite")?;
+        if ground != 0 {
+            if let Some(w) = st.water.as_mut() {
+                w.warp_sheet(&warp, f.x0, f.y0);
+            }
+        }
+        st.canvas.set_warp(Some(warp));
+        if ground != 0 {
+            st.canvas.warp_ground();
+        }
+        Ok(0)
+    })
+}
+
 /// Give the next stroke its world arc, mm, at each of its `n` input points (`Canvas::set_stroke_arc`).
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_stroke_arc(c: *mut Studio, arc: *const f32, n: i32) -> i32 {

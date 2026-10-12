@@ -607,6 +607,8 @@ impl Canvas {
         let film = std::mem::take(&mut self.film);
         let wetv: Vec<bool> = hits.iter().map(|&(i, _, _)| self.wet.vol[i] > 1e-5).collect();
         let mut px = std::mem::take(&mut self.px);
+        // (Field) a stereo pair's grain at the place on the reference canvas (`field::warp`)
+        let warp = self.warp.take();
         {
             let d = self.drawing_mut();
             for (k, &(i, cov, p)) in hits.iter().enumerate() {
@@ -622,6 +624,7 @@ impl Canvas {
                 let bite = lead.bite_um * p.powf(1.2) + 3.0;
                 let contact = (-depth.max(0.0) / bite).exp();
                 let (gx, gy) = ((i % f.w + f.x0) as i64, (i / f.w + f.y0) as i64);
+                let (gx, gy) = match &warp { Some(w) => { let (x, y) = w.map(gx as f32 + 0.5, gy as f32 + 0.5); (x.floor() as i64, y.floor() as i64) } None => (gx, gy) };
                 let grain = 1.0 - crumble * hash2(gx, gy, seed);
                 let dep = (lead.rate * contact * cov * grain * touch(p)).clamp(0.0, 1.0);
                 let cap = lead.cap * (0.55 + 0.45 * p);
@@ -638,6 +641,7 @@ impl Canvas {
             }
         }
         self.px = px;
+        self.warp = warp;
         self.film = film;
         s.last().copied().unwrap_or(0.0) * mmu
     }

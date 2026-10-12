@@ -447,40 +447,26 @@ class PaintCanvas internal constructor(
         return TimedGesture(out)
     }
 
-    private fun dist3(a: Vec3, b: Vec3): Double = Math.sqrt(((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z)).toDouble())
-    private fun lerp3(a: Vec3, b: Vec3, u: Double): Vec3 =
-        Vec3((a.x + (b.x - a.x) * u).toFloat(), (a.y + (b.y - a.y) * u).toFloat(), (a.z + (b.z - a.z) * u).toFloat())
+    /**
+     * Make this canvas one eye of a stereo pair whose other eye (the reference) is painted without a
+     * warp: from now on texture keyed on the canvas's places (a pencil's grain, tacky paint's grab)
+     * is looked up where [warp] says each place is on the reference. With [ground], the ground (its
+     * weave, priming and colour, or a watercolour sheet's relief and fibres) is pulled back through
+     * it too, as if made on the reference, so give the warp to a fresh canvas, before any paint.
+     * [warp]'s canvas units are this canvas's own (1000 across), not its `view`'s.
+     */
+    fun warp(warp: StereoWarp, ground: Boolean = true): PaintCanvas = apply {
+        PaintNative.warp(handle, warp.columns, warp.rows, warp.cell.toFloat(), warp.at, ground)
+    }
 
-    /** Each subpath of [line] as points in 3D: straight segments every [spacing], curves finely. */
-    private fun polylines3d(line: FLine, spacing: Double): List<List<Vec3>> {
-        val out = mutableListOf<MutableList<Vec3>>()
-        var start: Vec3? = null
-        fun begin(p: Vec3) { out += mutableListOf(p); start = p }
-        fun to(p: Vec3) {
-            val from = out.last().last()
-            val n = kotlin.math.ceil(dist3(p, from) / spacing).toInt().coerceAtLeast(1)
-            for (k in 1..n) out.last() += lerp3(from, p, k.toDouble() / n)
-        }
-        for (node in line.nodes) {
-            val p = node.storage[0]
-            when (node) {
-                is FLine.MoveTo -> begin(p)
-                is FLine.LineTo -> if (out.isEmpty()) begin(p) else to(p)
-                is FLine.CubicTo -> {
-                    if (out.isEmpty()) { begin(p); continue }
-                    val p0 = out.last().last(); val c1 = node.storage[1]; val c2 = node.storage[2]
-                    val n = (kotlin.math.ceil((dist3(c1, p0) + dist3(c2, c1) + dist3(p, c2)) / spacing).toInt() * 2).coerceAtLeast(4)
-                    for (k in 1..n) {
-                        val u = k.toDouble() / n; val v = 1 - u
-                        val (w0, w1, w2, w3) = listOf(v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u)
-                        out.last() += Vec3((p0.x * w0 + c1.x * w1 + c2.x * w2 + p.x * w3).toFloat(), (p0.y * w0 + c1.y * w1 + c2.y * w2 + p.y * w3).toFloat(),
-                            (p0.z * w0 + c1.z * w1 + c2.z * w2 + p.z * w3).toFloat())
-                    }
-                }
-                else -> start?.let { if (out.isNotEmpty()) to(it) }
-            }
-        }
-        return out
+    /**
+     * The [StereoWarp] through [pins] (this canvas's FLine coordinates, its `view` if it has one),
+     * solved over this canvas ([StereoWarp.solve]), and given to it ([warp]).
+     */
+    fun warp(pins: List<StereoWarp.Pin>, cell: Double = 10.0, frame: Boolean = true, ground: Boolean = true): StereoWarp {
+        val inUnits = pins.map { p -> StereoWarp.Pin(Vec2(toCanvasX(p.here.x.toDouble()).toFloat(), toCanvasY(p.here.y.toDouble()).toFloat()),
+            Vec2(toCanvasX(p.there.x.toDouble()).toFloat(), toCanvasY(p.there.y.toDouble()).toFloat())) }
+        return StereoWarp.solve(inUnits, aspect, cell, frame).also { warp(it, ground) }
     }
 
     /** Hand a movement's world arc (from its start, mm, at each sample) to the next native stroke. */
@@ -991,4 +977,40 @@ fun pngRow(canvases: List<PaintCanvas>, gap: Int = 12, background: Int = 0xfffff
         x0 += pw + gap
     }
     return PngEncoder.encode(out, w, h)
+}
+
+internal fun dist3(a: Vec3, b: Vec3): Double = Math.sqrt(((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z)).toDouble())
+internal fun lerp3(a: Vec3, b: Vec3, u: Double): Vec3 =
+    Vec3((a.x + (b.x - a.x) * u).toFloat(), (a.y + (b.y - a.y) * u).toFloat(), (a.z + (b.z - a.z) * u).toFloat())
+
+/** Each subpath of [line] as points in 3D: straight segments every [spacing], curves finely. */
+internal fun polylines3d(line: FLine, spacing: Double): List<List<Vec3>> {
+    val out = mutableListOf<MutableList<Vec3>>()
+    var start: Vec3? = null
+    fun begin(p: Vec3) { out += mutableListOf(p); start = p }
+    fun to(p: Vec3) {
+        val from = out.last().last()
+        val n = kotlin.math.ceil(dist3(p, from) / spacing).toInt().coerceAtLeast(1)
+        for (k in 1..n) out.last() += lerp3(from, p, k.toDouble() / n)
+    }
+    for (node in line.nodes) {
+        val p = node.storage[0]
+        when (node) {
+            is FLine.MoveTo -> begin(p)
+            is FLine.LineTo -> if (out.isEmpty()) begin(p) else to(p)
+            is FLine.CubicTo -> {
+                if (out.isEmpty()) { begin(p); continue }
+                val p0 = out.last().last(); val c1 = node.storage[1]; val c2 = node.storage[2]
+                val n = (kotlin.math.ceil((dist3(c1, p0) + dist3(c2, c1) + dist3(p, c2)) / spacing).toInt() * 2).coerceAtLeast(4)
+                for (k in 1..n) {
+                    val u = k.toDouble() / n; val v = 1 - u
+                    val (w0, w1, w2, w3) = listOf(v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u)
+                    out.last() += Vec3((p0.x * w0 + c1.x * w1 + c2.x * w2 + p.x * w3).toFloat(), (p0.y * w0 + c1.y * w1 + c2.y * w2 + p.y * w3).toFloat(),
+                        (p0.z * w0 + c1.z * w1 + c2.z * w2 + p.z * w3).toFloat())
+                }
+            }
+            else -> start?.let { if (out.isNotEmpty()) to(it) }
+        }
+    }
+    return out
 }

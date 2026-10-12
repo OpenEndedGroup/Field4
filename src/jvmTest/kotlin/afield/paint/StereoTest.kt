@@ -133,4 +133,55 @@ class StereoTest {
         val diff = a.indices.count { a[it] != b[it] }
         assertTrue(diff < a.size / 50, "$diff of ${a.size} pixels differ")
     }
+
+    /** A warp that moves every place [shift] canvas units across (a disparity the same everywhere). */
+    private fun shifted(c: PaintCanvas, shift: Double) =
+        c.warp(listOf(0.0 to 0.0, 1000.0 to 0.0, 0.0 to 1000.0, 1000.0 to 1000.0, 500.0 to 500.0).map { (x, y) -> StereoWarp.Pin(Vec2(x.toFloat(), y.toFloat()), Vec2((x + shift).toFloat(), y.toFloat())) }, frame = false)
+
+    /** [a] and [b] (`w` px wide) where [b] is [a] moved [dx] px to the left, over [a]'s columns `from until to`. */
+    private fun differing(a: IntArray, b: IntArray, w: Int, dx: Int, from: Int, to: Int): Int =
+        (0 until a.size / w).sumOf { y -> (from until to).count { x -> a[y * w + x] != b[y * w + x - dx] } }
+
+    @Test fun aWarpedGroundIsTheReferenceGroundMoved() {
+        if (!available()) return
+        // 200 px over 1000 units: 25 units is 5 px
+        val (a, b) = listOf(false, true).map { warped ->
+            PaintCanvas(200, aspect = 1.0, ground = PaintGround.Oil, sizeMm = 100.0, seed = 3).use { c ->
+                if (warped) {
+                    val w = shifted(c, 25.0)
+                    assertTrue(abs(w.largest - 25.0) < 1e-3, "the sheet moves everything 25 units: ${w.largest}")
+                }
+                c.render(relief = 0.6)
+            }
+        }
+        assertFalse(a.contentEquals(b), "the warped ground moved")
+        assertTrue(differing(a, b, 200, 5, 10, 190) == 0, "the warped ground is the reference's, 5 px over")
+    }
+
+    @Test fun aPencilLineAndAWashThroughTheWarpFallOnTheSameGrainAndPaper() {
+        if (!available()) return
+        fun drawn(warped: Boolean) = PaintCanvas(200, aspect = 1.0, ground = PaintGround.Oil, sizeMm = 100.0, seed = 3).use { c ->
+            val dx = if (warped) { shifted(c, 25.0); -25.0 } else 0.0
+            c.draw(line(200.0 + dx, 300.0, 800.0 + dx, 700.0), c.pencil("4B"), seed = 51)
+            c.render(relief = 0.6)
+        }
+        val (a, b) = drawn(false) to drawn(true)
+        val d = differing(a, b, 200, 5, 10, 190)
+        assertTrue(d < 200 * 180 / 200, "the pencil line through the warp is the reference's, moved: $d pixels differ")
+        fun washed(warped: Boolean) = PaintCanvas.paper(200, aspect = 1.0, paper = Paper.ColdPress, sizeMm = 100.0, seed = 3).use { c ->
+            val dx = if (warped) { shifted(c, 25.0); -25.0 } else 0.0
+            c.wash(line(250.0 + dx, 500.0, 750.0 + dx, 500.0), c.waterBrush(60.0).load(Watercolors.burntSienna * 3.0), seed = 52)
+            c.render()
+        }
+        val (e, f) = washed(false) to washed(true)
+        val dw = differing(e, f, 200, 5, 10, 190)
+        assertTrue(dw < 200 * 180 / 100, "the wash on the warped sheet is the reference's, moved: $dw pixels differ")
+        // and without the warp the same moved line falls on different grain
+        val g = PaintCanvas(200, aspect = 1.0, ground = PaintGround.Oil, sizeMm = 100.0, seed = 3).use { c ->
+            c.draw(line(175.0, 300.0, 775.0, 700.0), c.pencil("4B"), seed = 51); c.render(relief = 0.6)
+        }
+        val dn = differing(a, g, 200, 5, 10, 190)
+        println("pencil through the warp: $d px differ, without it: $dn; wash: $dw")
+        assertTrue(dn > 4 * d, "without the warp the moved line lies on other grain: $dn vs $d")
+    }
 }
