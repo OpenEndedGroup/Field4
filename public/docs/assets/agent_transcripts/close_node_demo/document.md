@@ -20,7 +20,7 @@ MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 and the first Close has a whole arrowhead after it.
 
 ```edn [field-box id="close_node_arrow" role="properties"]
-{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2669 "sha256" "1be5a18c222f70b762b62f929af6315afd6c19a95f38155ddfcb174eeb2dbbb6"}]}
+{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2673 "sha256" "9cde80bfb40b7e0dc9d95b5d7a760cd4c36195f83e86f22b0100af252600f61f"}]}
 ```
 
 ```kotlin [field-property box="close_node_arrow" name="code" path="close_node_arrow_code_.kt"]
