@@ -33,10 +33,14 @@ interface HasOutput {
     /** Emits [message] followed by a newline. */
     fun println(message: Any?)
 
-    /** Displays [message] on the default output channel for this output target. */
+    /** Displays [message] on the default channel, `output`. */
     fun display(message: Any?)
 
-    /** Displays [message] on the named output [channel]. */
+    /**
+     * Displays [message] in the output panel named [channel], replacing what the panel held.
+     * A `String` is inserted as HTML; anything else is rendered with `.h` first. A channel whose
+     * name starts with `*` is a one-line row rather than a panel.
+     */
     fun display(channel: String, message: Any?)
 
     // an error of null,,-1 means 'clear errors'
@@ -84,19 +88,28 @@ private fun Box.sendOutputControl(action: String, channel: String? = null) {
     sendBoxOutput(this, Message("output-control").payload(OutputControl(uid = id, action = action, channel = channelValue)))
 }
 
-/** Opens the named output [channel] by sending an output-control message to this box. */
+/**
+ * Opens the output panel for [channel], making an empty one first if the channel has none yet.
+ * Panels made by [HasOutput.display] start closed; see `public/docs/box_output.md`.
+ */
 fun Box.displayOpen(channel: String) {
     sendOutputControl("open", channel)
 }
 
+/** Closes the output panel for [channel] to its title bar, keeping its content and size. */
 fun Box.displayClose(channel: String) {
     sendOutputControl("close", channel)
 }
 
+/**
+ * Removes the output panel for [channel] and its content (it does not merely empty it). The next
+ * display into [channel] makes a new, closed panel at the end of the list. `nested` is never removed.
+ */
 fun Box.displayClear(channel: String) {
     sendOutputControl("clear", channel)
 }
 
+/** Removes every output panel this box has, except `nested`, which holds its nested boxes. */
 fun Box.displayClearAll() {
     sendOutputControl("clear-all")
 }
