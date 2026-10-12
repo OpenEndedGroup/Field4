@@ -280,7 +280,7 @@ When something fails, ForthField errors include the current token, a stack snaps
 outer
 ```
 
-Reports the unknown word, shows that `10` was still on the data stack, and shows the path through `outer` into `inner`.
+The error names the unknown word, shows that `10` was still on the data stack, and shows the path through `outer` into `inner`.
 
 The small display vocabulary gives ForthField direct access to Field output areas without going through Kotlin:
 
