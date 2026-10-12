@@ -43,6 +43,7 @@ from verification_runtime import (  # noqa: E402
     automation_workspace,
     field_instance_info,
     field_instance_problem,
+    pinned_graalvm_args,
     select_automation_port,
 )
 from verification_runtime import env_seconds as _env_seconds  # noqa: E402
@@ -278,6 +279,7 @@ def gradle_command(*tasks_and_args: str) -> list[str]:
     return [
         str(GRADLE_WRAPPER),
         f"-Dorg.gradle.jvmargs={GRADLE_JVMARGS}",
+        *pinned_graalvm_args(REPO_ROOT),
         *tasks_and_args,
     ]
 

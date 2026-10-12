@@ -483,7 +483,8 @@ def _run_merge_check(repo: Path, since: str, report: bool = False, skip: frozens
         + ", ".join(guard.description for guard in selected)
         + f" (changed by {since}..HEAD)"
     )
-    command = [str(repo / "gradlew"), "--continue", *(guard.task for guard in selected)]
+    from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
+    command = [str(repo / "gradlew"), *pinned_graalvm_args(repo), "--continue", *(guard.task for guard in selected)]
     code = _run_with_change_list(command, repo, changed)
     if code != 0:
         tasks = " ".join(guard.task for guard in selected)
@@ -563,7 +564,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     print("generated-artifact guard: " + ", ".join(guard.description for guard in selected))
-    command = [str(repo / "gradlew"), "--continue", *(guard.task for guard in selected)]
+    from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
+    command = [str(repo / "gradlew"), *pinned_graalvm_args(repo), "--continue", *(guard.task for guard in selected)]
     if args.all:
         return subprocess.run(command, cwd=repo).returncode
     return _run_with_change_list(command, repo, staged)

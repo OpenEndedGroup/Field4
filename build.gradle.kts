@@ -661,9 +661,32 @@ java {
 //   "Error: VM option 'EnableJVMCI' is experimental and must be enabled via
 //    -XX:+UnlockExperimentalVMOptions"
 // — so the task dies before main(). Pin the vendor at the launcher too.
+//
+// A spec cannot name the build, though: any GraalVM 25 matches, and a stale foojay download in
+// ~/.gradle/jdks wins whenever the pinned one is not passed with -Dorg.gradle.java.installations.paths
+// (field.sh and the tools' Gradle calls pass it; a bare ./gradlew does not). That still runs, with the
+// polyglot $graalvmVersion jars on another Graal's JDK, so say so rather than fail.
+var warnedGraalvmMismatch = false
+fun warnOnGraalvmMismatch(launcher: JavaLauncher) {
+    if (warnedGraalvmMismatch) return
+    val home = launcher.metadata.installationPath.asFile
+    val found = home.resolve("release").takeIf { it.isFile }?.readLines()
+        ?.firstNotNullOfOrNull { Regex("^GRAALVM_VERSION=\"?([^\"]+)\"?").find(it)?.groupValues?.get(1) }
+    if (found == graalvmVersion) return
+    warnedGraalvmMismatch = true
+    logger.warn(
+        "field: GraalVM toolchain mismatch: build.gradle.kts pins $graalvmVersion but Gradle chose " +
+            "${found ?: "an unversioned GraalVM"} at $home. Run ./field.sh once to provision the pinned JDK, " +
+            "or pass -Dorg.gradle.java.installations.paths=<its home>."
+    )
+}
 fun JavaToolchainService.fieldLauncher(): Provider<JavaLauncher> = launcherFor {
     languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     vendor.set(JvmVendorSpec.GRAAL_VM)
+}.map { launcher -> warnOnGraalvmMismatch(launcher); launcher }
+// Test tasks (jvmTest above all) take the java.toolchain default rather than fieldLauncher().
+tasks.withType<Test>().configureEach {
+    doFirst { warnOnGraalvmMismatch(javaLauncher.get()) }
 }
 
 group = "afield"

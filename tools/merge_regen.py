@@ -28,6 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_staged_generated_artifacts import GUARDS, guards_for_paths  # noqa: E402
+from verification_runtime import pinned_graalvm_args  # noqa: E402
 
 # Guard task -> (Gradle arguments that rewrite the committed artifact, extra environment).
 REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
@@ -84,7 +85,7 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
             gradle_args += args
             env.update(extra_env)
         print(f"merge_regen: regenerating {', '.join(g.description for g in group)} ({' '.join(gradle_args)})")
-        code = subprocess.run([str(repo / "gradlew"), "--continue", *gradle_args], cwd=repo, env=env).returncode
+        code = subprocess.run([str(repo / "gradlew"), *pinned_graalvm_args(repo), "--continue", *gradle_args], cwd=repo, env=env).returncode
         if code != 0:
             print("merge_regen: regeneration failed; the merge is left uncommitted for you to inspect", file=sys.stderr)
             return code, set()

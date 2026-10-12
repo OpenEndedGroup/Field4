@@ -4989,9 +4989,10 @@ def ensure_completion_sidecar(selected: list[UiRegression], *, telemetry: bool) 
     url = f"http://127.0.0.1:{port}"
     log_path = REPO_ROOT / "build" / "code-use-semantic-sidecar" / "ui-regressions-sidecar.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
     wrapper = "gradlew.bat" if os.name == "nt" else "gradlew"
     command = [
-        str(REPO_ROOT / wrapper), "--no-daemon", "-p", "tools/code-use-semantic-sidecar", "run",
+        str(REPO_ROOT / wrapper), *pinned_graalvm_args(REPO_ROOT), "--no-daemon", "-p", "tools/code-use-semantic-sidecar", "run",
         f"--args=--port {port} --workspace {REPO_ROOT}",
     ]
     if telemetry:

@@ -741,8 +741,9 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
     # The task writes build/source-pages with declared inputs, so it is skipped when nothing it reads
     # changed and restored from the build cache in a fresh worktree; the copy below is what goes into
     # the docs tree this script wipes on every build.
+    from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
     result = subprocess.run(
-        [str(gradlew), "--no-daemon", "-q", "generateSourcePages"],
+        [str(gradlew), *pinned_graalvm_args(repo_root), "--no-daemon", "-q", "generateSourcePages"],
         cwd=repo_root,
         check=False,
     )
