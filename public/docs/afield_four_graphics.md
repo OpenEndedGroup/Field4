@@ -659,7 +659,7 @@ void main()
 }
 ```
 
-The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing. The saved lesson in `canonical_graphics` binds two views and declares `ta[2]`; this page's version binds three and declares `ta[3]`.
+The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing.
 
 ## Loading a glTF model
 
