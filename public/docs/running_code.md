@@ -409,7 +409,7 @@ What happens in each case:
 
 So `//%-` is how you set some state and then run a macro that reads it. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
-The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
+The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
 ---
 
