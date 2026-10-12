@@ -5633,6 +5633,8 @@ class Server {
          */
         fun stop(box: Box, entrypoint: String = "server.stop") {
             FlightRecorder.recordStopEntrypoint(entrypoint, box)
+            // If the runloop is blocked, this stop waits for it; the box's marker says so.
+            afield.server.StopWatch.watch(box)
             box.ke.stop(box)
             // If this box owns an afield.four Renderer (e.g. the agent graphics-context box),
             // cancelling its jobs never disposes the native window/surface. Do that now — before the

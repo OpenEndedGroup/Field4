@@ -260,6 +260,13 @@ data class LocalEval(val uid: String, val prompt: String, val kind: String)
 @Serializable
 data class Stop_box(val uid: String)
 
+/**
+ * Server → client: a stop asked for [uid] has not taken effect yet ([pending] true), or now has
+ * (false). Sent by `afield.server.StopWatch`; the box's status marker pulses while pending.
+ */
+@Serializable
+data class StopPending(val uid: String, val pending: Boolean)
+
 @Serializable
 data class InitialBoxFrame(val uid: String, val frame: Rect)
 

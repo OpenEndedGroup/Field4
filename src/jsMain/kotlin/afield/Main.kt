@@ -5903,6 +5903,12 @@ suspend fun main() {
 
         Handled.yes
     }
+    handlers.put("stop-pending") { message, _ ->
+        val stop = Json.decodeFromJsonElement<StopPending>(message.payload!!)
+        val setStopPending = window.asDynamic().setStopPending
+        if (setStopPending != null) setStopPending(stop.uid, stop.pending)
+        Handled.yes
+    }
     handlers.put("output") { message, _ ->
         val output = Json.decodeFromJsonElement<Output>(message.payload!!)
         routeMonacoOutput(output)
