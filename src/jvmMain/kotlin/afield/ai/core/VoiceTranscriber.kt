@@ -199,7 +199,9 @@ object VoiceTranscriber {
             } catch (t: Throwable) {
                 null
             } ?: run {
-                val alive = process?.isAlive == true
+                // The stdout reader preserves EOF in the queue. It can see the closed pipe
+                // before Process.isAlive observes the exit, especially under test load.
+                val alive = process?.isAlive == true && replies?.peek() != EOF
                 process?.destroyForcibly()
                 process?.waitFor(2, TimeUnit.SECONDS)
                 val stderr = stderrTail(stderrLog)
