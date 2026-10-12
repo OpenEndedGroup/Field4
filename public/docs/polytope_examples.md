@@ -91,7 +91,7 @@ markdown("what you are looking at", listOf(
 :::endfold
 ```
 
-![A near-spherical solid built from 360 small translucent triangles, layered so the far side shows through the near side. The colours run right around the spectrum — magenta, purple, blue, teal, green, yellow, orange — and gather into twelve rounded patches, one for each pentagon of the original dodecahedron, with blended in-between colours along the seams where a triangle straddles two pentagons. A readout underneath reports 182 vertices, 540 edges, 360 faces, twelve seed pentagons, and that 240 faces sit over one pentagon while 120 straddle two](assets/polytope_examples/hero.png)
+![A near-spherical solid built from 360 small translucent triangles, layered so the far side shows through the near side. The colours run right around the spectrum — magenta, purple, blue, teal, green, yellow, orange — and gather into twelve rounded patches, one for each pentagon of the original dodecahedron, with blended in-between colours along the original edges where a triangle straddles two pentagons. A readout underneath reports 182 vertices, 540 edges, 360 faces, twelve seed pentagons, and that 240 faces sit over one pentagon while 120 straddle two](assets/polytope_examples/hero.png)
 
 That is three chained Conway operators on a dodecahedron (`kis · bevel · D`, 360 output faces),
 canonicalized, and drawn as translucent polygons. Each output face asks `sourceElements` which of
@@ -122,7 +122,7 @@ rest of this page shows how. The hero example is long; the sections below start 
     | compact inspection values for a live prompt | `Summaries.kt`, `PolytopeVisualizers.kt` |
 
     The full architecture note, including the roadmap this page does *not* cover, is
-    `dev_docs/POLYTOPE_ALGEBRA.md` in the repository.
+    [`dev_docs/POLYTOPE_ALGEBRA.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/POLYTOPE_ALGEBRA.md).
 
 ## Ranked elements and incidence
 
@@ -983,7 +983,7 @@ the answer. When `canonicalize()` reports `converged = false`, try `relaxWithCer
     reports a small spread for a solid with a near-zero edge), so `canonicalConditions()` carries a
     one-sided floor under edge length, `MinEdgeLengthConstraint`, which is zero on a healthy solid.
     The Ceres path also carries each face's plane as a free unit normal plus an offset, and adds a
-    gauge term for the free rotation. `dev_docs/CERES.md` works through all three.
+    gauge term for the free rotation. [`dev_docs/CERES.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/CERES.md) works through all three.
 
 ### `realize(...)`: coordinates from the combinatorics alone
 
