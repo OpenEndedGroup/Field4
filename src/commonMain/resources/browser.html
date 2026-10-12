@@ -257,6 +257,17 @@
         .inspector-error{ color:var(--danger); }
         html[data-afield-output-iframe="true"] .column .list,
         html[data-afield-output-iframe="true"] .column .leaf{ max-height: var(--maxh); overflow:auto; }
+
+        /* User values read as content (Field orange / cyan); counts and types stay UI grey. */
+        .v-num{ color: rgb(var(--field-warning-rgb, 235,150,70)); }
+        .v-str{ color: var(--field-accent-text, rgb(72,201,255)); }
+        .v-word{ color: var(--field-accent-pale, #cfefff); }
+        .v-punc{ color: var(--muted); }
+        .v-null{ color: var(--muted); font-style: italic; }
+        .v-chrome{ color: var(--muted); }
+        .tostr .tok.num{ color: rgb(var(--field-warning-rgb, 235,150,70)) !important; }
+        .tostr .tok.word, .tostr .tok.sym{ color: var(--field-accent-pale, #cfefff) !important; }
+        .tostr .tok.punc{ color: var(--muted); opacity:1 !important; }
     </style>
 </head>
 <body>
@@ -273,6 +284,7 @@
 </div>
 
 <script src="/iframe_autosize.js"></script>
+<script src="/inspector_common.js"></script>
 <script>
         const PARAMS = new URLSearchParams(location.search);
         const ROOT_TOKEN = PARAMS.get('root');
@@ -450,10 +462,9 @@
                    #columns (and the page around the iframe), and the smooth column scroll that
                    setActiveColumn starts next cancels it. */
                 function revealRow(btn){
-                        const list = btn.closest('.list, .leaf'); if (!list) return;
-                        const r = btn.getBoundingClientRect(), lr = list.getBoundingClientRect();
-                        if (r.top < lr.top) list.scrollTop -= (lr.top - r.top);
-                        else if (r.bottom > lr.bottom) list.scrollTop += (r.bottom - lr.bottom);
+                        // Against what is on screen, not just the list: an output panel can clip
+                        // the iframe above the list's own bottom edge.
+                        inspectorRevealIn(btn.closest('.list, .leaf'), btn);
                 }
                 function selectRow(btn, {scroll=true} = {}){
                         const col = btn.closest('.column');
@@ -654,7 +665,8 @@
                         if (e.flag) btn.dataset.flag = e.flag;
                         const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = e.name;
                         const ty = document.createElement('span'); ty.className = 'ty'; ty.textContent = e.type || '';
-                        const sm = document.createElement('span'); sm.className = 'sm'; sm.textContent = e.summary || ''; sm.title = e.summary || '';
+                        const sm = document.createElement('span'); sm.className = 'sm'; sm.title = e.summary || '';
+                        if (e.flag) sm.textContent = e.summary || ''; else sm.innerHTML = inspectorValueHTML(e.summary || '', e.kind);
                         btn.append(nm, ty, sm);
                         btn.addEventListener('click', () => openItem(col, btn, e));
                         return btn;
@@ -782,7 +794,7 @@
                                         btn.className = 'item qitem'; btn.tabIndex = -1; btn.dataset.name = m[0]; btn.dataset.path = m[0]; btn.dataset.kind = m[1] || 'leaf';
                                         const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = m[0];
                                         const ty = document.createElement('span'); ty.className = 'ty'; ty.textContent = m[2] || '';
-                                        const sm = document.createElement('span'); sm.className = 'sm'; sm.textContent = m[3] || ''; sm.title = m[3] || '';
+                                        const sm = document.createElement('span'); sm.className = 'sm'; sm.innerHTML = inspectorValueHTML(m[3] || '', m[1]); sm.title = m[3] || '';
                                         btn.append(nm, ty, sm);
                                         btn.addEventListener('click', () => revealPath(m[0]));
                                         list.appendChild(btn);

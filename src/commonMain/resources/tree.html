@@ -119,6 +119,17 @@
         .tostr .tok.sym  { color: rgba(220,230,255,.85); }
         .tostr .tok.num  { color: rgba(255,235,200,.95); }
         .tostr .tok.punc { opacity:.7; }
+
+        /* User values read as content (Field orange / cyan); counts and types stay UI grey. */
+        .v-num{ color: rgb(var(--field-warning-rgb, 235,150,70)); }
+        .v-str{ color: var(--field-accent-text, rgb(72,201,255)); }
+        .v-word{ color: var(--field-accent-pale, #cfefff); }
+        .v-punc{ color: var(--muted); }
+        .v-null{ color: var(--muted); font-style: italic; }
+        .v-chrome{ color: var(--muted); }
+        .tostr .tok.num{ color: rgb(var(--field-warning-rgb, 235,150,70)) !important; }
+        .tostr .tok.word, .tostr .tok.sym{ color: var(--field-accent-pale, #cfefff) !important; }
+        .tostr .tok.punc{ color: var(--muted); opacity:1 !important; }
     </style>
 </head>
 <body>
@@ -131,6 +142,7 @@
 <ul id="results" role="listbox" tabindex="0" aria-label="Query matches" hidden></ul>
 
 <script src="/iframe_autosize.js"></script>
+<script src="/inspector_common.js"></script>
 <script>
 (() => {
     const params = new URLSearchParams(location.search);
@@ -199,7 +211,8 @@
         const tw = document.createElement('span'); tw.className = 'tw';
         const name = document.createElement('span'); name.className = 'name'; name.textContent = e.name;
         const type = document.createElement('span'); type.className = 'type'; type.textContent = e.type;
-        const summary = document.createElement('span'); summary.className = 'summary'; summary.textContent = e.summary;
+        const summary = document.createElement('span'); summary.className = 'summary';
+        if (e.flag) summary.textContent = e.summary; else summary.innerHTML = inspectorValueHTML(e.summary, e.kind);
         summary.title = e.summary;
         if (e.path) name.title = e.path;
         const copy = document.createElement('button'); copy.className = 'copy'; copy.textContent = 'copy'; copy.title = 'Copy value (c)';
@@ -227,7 +240,7 @@
     function selectRow(row, {focus=true} = {}){
         treeEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
         row.classList.add('selected');
-        row.scrollIntoView({ block:'nearest' });
+        inspectorRevealIn(treeEl, row);
         if (focus) treeEl.focus({ preventScroll:true });
     }
 
@@ -362,7 +375,7 @@
                 const tw = document.createElement('span'); tw.className = 'tw';
                 const name = document.createElement('span'); name.className = 'name'; name.textContent = m[0];
                 const type = document.createElement('span'); type.className = 'type'; type.textContent = m[2] || '';
-                const summary = document.createElement('span'); summary.className = 'summary'; summary.textContent = m[3] || ''; summary.title = m[3] || '';
+                const summary = document.createElement('span'); summary.className = 'summary'; summary.innerHTML = inspectorValueHTML(m[3] || '', m[1]); summary.title = m[3] || '';
                 const copyPath = document.createElement('button'); copyPath.className = 'copy path'; copyPath.textContent = 'path'; copyPath.title = 'Copy graphPath (p)';
                 row.append(tw, name, type, summary, copyPath);
                 row.addEventListener('click', () => selectResult(row));
@@ -375,7 +388,7 @@
     }
     function selectResult(row, {focus=true} = {}){
         resultsEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
-        row.classList.add('selected'); row.scrollIntoView({ block:'nearest' });
+        row.classList.add('selected'); inspectorRevealIn(resultsEl, row);
         if (focus) resultsEl.focus({ preventScroll:true });
     }
     async function revealResult(row){
