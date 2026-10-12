@@ -580,6 +580,6 @@ itself, [OSCQuery](oscquery.md), and [Sonic Pi](sonic_pi.md).
 ??? aside "Which peers were run while writing this page"
     The Field side of every exchange here was run against python-osc 1.10.2, an OSC implementation
     that shares no code with JavaOSC, and against SuperCollider 3.12.2's `sclang` run headless.
-    The commands and their output are in `dev_docs/OSC_TUIO_MEASUREMENTS.md`, together with the
+    The commands and their output are in [dev_docs/OSC_TUIO_MEASUREMENTS.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/OSC_TUIO_MEASUREMENTS.md), together with the
     defects they found. TouchOSC and Max are GUI programs, which the docs build cannot drive; the
     settings described for them are the programs' own, and were not exercised here.
