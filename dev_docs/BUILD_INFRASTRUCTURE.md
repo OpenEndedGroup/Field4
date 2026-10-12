@@ -52,7 +52,7 @@ Three ideas hold it together:
 **Files.** `settings.gradle.kts`, a single `build.gradle.kts` (4161 lines), `gradle.properties`.
 No `buildSrc`, no version catalog. Gradle 9.5.1 through the wrapper, which the
 `me.filippov.gradle.jvm.wrapper` plugin patches to fetch Corretto 17 into `~/.field4/gradle-jvm`
-to run Gradle itself. Field's own toolchain is pinned GraalVM 25.0.2 (`fieldLauncher()` pins the
+to run Gradle itself. Field's own toolchain is pinned GraalVM Community 25.4 (graal 25.4.4.1.1, JDK 25.0.4.1.1; `fieldLauncher()` pins the
 vendor for every launcher, because `-XX:+EnableJVMCI` kills a non-Graal JDK 25 before `main()`);
 `field.sh` downloads and checksums that exact release into `~/.field4/toolchains`.
 

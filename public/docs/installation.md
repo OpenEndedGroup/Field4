@@ -27,7 +27,7 @@ not.
 | **Linux, x86-64** | A glibc desktop distribution, Git LFS, `curl`, a C/C++ toolchain, Make, CMake, and the desktop libraries listed below. Run from your desktop session. |
 | **Windows, x64** | Git for Windows with Git LFS enabled. Use `field.bat`, or PowerShell as shown below. The launcher provisions its runtimes; a separate C++ compiler is not needed for the default Windows launch. |
 | **Linux, ARM64** | The launcher has an ARM64 provisioning path, but this release has not yet been validated end to end on ARM64. Treat it as experimental. |
-| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.0.2 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
+| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.4 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
 
 </div>
 
