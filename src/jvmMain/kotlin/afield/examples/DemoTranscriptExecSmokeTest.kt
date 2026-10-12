@@ -408,6 +408,8 @@ object DemoTranscriptExecSmokeTest {
         // drawn through lines() and controlGroup sliders. CPU only.
         "stipple_sheet",
         "fline_hit_records",
+        // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
+        "fline_measure",
         // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
         // into inline players, so no audio device; with no Dirt-Samples on the build machine every
         // token falls back to patVoice, which is box 3's subject anyway.

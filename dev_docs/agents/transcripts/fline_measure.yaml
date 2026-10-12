@@ -1,0 +1,170 @@
+name: fline_measure
+description: >
+  Measuring, trimming and crossing an FLine, the companion to the "Measuring along a line",
+  "Trimming and splitting by distance" and "Crossings, bounds and orientation" sections of
+  `public/docs/fline_examples.md`. Four boxes: evenly spaced locations with normals and
+  osculating circles; trim and splitAt; crossings, selfCrossings and tight bounds; and
+  contains under the non-zero and even-odd fill rules. Run each box; each draws into `lines`.
+operations:
+  - create:
+      box: fline-measure-locate
+      name: 1 - Locations along a line
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val curve = fline {
+              moveTo(40, 210)
+              cubicTo(90, 30, 230, 30, 260, 140)
+              cubicTo(280, 220, 360, 230, 390, 90)
+              thickness = 2.0
+              color = vec(1.0, 1.0, 1.0, 1.0)
+          }
+
+          // thirteen locations, evenly spaced by distance
+          val stops = (0..12).mapNotNull { curve.locationAtFraction(it / 12f) }
+
+          val normals = stops.map { loc ->
+              fline {
+                  moveTo(loc.point.x, loc.point.y)
+                  lineTo(loc.point.x + loc.normal.x * 22, loc.point.y + loc.normal.y * 22)
+                  thickness = 1.5
+                  color = vec(0.4, 0.9, 1.0, 1.0)
+              }
+          }
+
+          // the circle that matches the bend, at three of them
+          val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
+              val r = 1.0 / loc.curvature
+              fline {
+                  circle(loc.point.x + loc.normal.x * r, loc.point.y + loc.normal.y * r, kotlin.math.abs(r))
+                  thickness = 1.0
+                  color = vec(1.0, 0.6, 0.2, 0.8)
+              }
+          }
+
+          lines(listOf(curve) + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
+  - create:
+      box: fline-measure-trim
+      name: 2 - Trim and split by distance
+      frame:
+        x: 520.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val curve = fline {
+              moveTo(40, 200)
+              cubicTo(100, 20, 220, 20, 250, 130)
+              lineTo(380, 60)
+              thickness = 1.0
+              color = vec(1.0, 1.0, 1.0, 0.35)
+          }
+
+          val total = curve.length()
+
+          // from a quarter to 60% of the way, by distance, drawn over the original
+          val middle = curve.trim(0.25f * total, 0.6f * total).apply {
+              thickness = 5.0
+              color = vec(0.4, 0.9, 1.0, 1.0)
+          }
+
+          // cut at 100 units: two pieces whose lengths add up to the whole
+          val (head, tail) = curve.splitAt(100f)
+          head.apply { thickness = 2.0; color = vec(1.0, 0.6, 0.2, 1.0) }
+
+          print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
+
+          lines(listOf(curve, head, middle), w = 420.0, h = 260.0, fitToSize = true)
+  - create:
+      box: fline-measure-cross
+      name: 3 - Crossings, bounds, orientation
+      frame:
+        x: 60.0
+        y: 520.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val loop = fline {
+              moveTo(60, 200)
+              cubicTo(420, 40, 0, 40, 340, 210)
+              thickness = 2.0
+              color = vec(1.0, 1.0, 1.0, 1.0)
+          }
+
+          val ring = fline {
+              circle(200, 130, 70)
+              thickness = 2.0
+              color = vec(0.6, 0.8, 1.0, 1.0)
+          }
+
+          // where the loop crosses the ring, and where it crosses itself
+          val hits = listOf(loop.crossings(ring), loop.selfCrossings()).flatten().map { it.point }
+          val dots = polylineFrom(hits.map { it.v2 }).apply {
+              pointed = true
+              pointSize = 3.0
+              stroked = false
+              color = vec(1.0, 0.5, 0.2, 1.0)
+          }
+
+          // bounds that hug the curve, against the control-point bounds
+          val tight = fline { rect(loop.tightBounds2D()); thickness = 1.0; color = vec(0.4, 1.0, 0.6, 1.0) }
+          val loose = fline { rect(loop.fast2DBounds()); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.25) }
+
+          print("${hits.size} crossings; clockwise on screen: ${ring.isClockwise()}")
+
+          lines(listOf(loose, tight, ring, loop, dots), w = 420.0, h = 260.0, fitToSize = true)
+  - create:
+      box: fline-measure-fill
+      name: 4 - Fill rules that follow the curve
+      frame:
+        x: 520.0
+        y: 520.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          // two circles drawn the same way round: a ring
+          fun ring(dx: Double) = fline {
+              circle(110 + dx, 120, 95)
+              circle(110 + dx, 120, 40)
+              thickness = 2.0
+              color = vec(1.0, 1.0, 1.0, 1.0)
+          }
+
+          // dots that are inside under each fill rule: non-zero on the left, even-odd on the right
+          fun insideDots(dx: Double, rule: FLineFillRule) = fline {
+              val shape = ring(dx)
+              for (i in 0..24) for (j in 0..24) {
+                  val p = Vec2((15 + dx + i * 8).toFloat(), (25 + j * 8).toFloat())
+                  if (shape.contains(p, rule)) { moveTo(p.x, p.y); lineTo(p.x + 0.01, p.y) }
+              }
+              pointed = true
+              pointSize = 0.7
+              stroked = false
+              color = vec(1.0, 0.6, 0.2, 1.0)
+          }
+
+          lines(listOf(ring(0.0), ring(240.0), insideDots(0.0, FLineFillRule.NonZero), insideDots(240.0, FLineFillRule.EvenOdd)),
+              w = 460.0, h = 240.0, fitToSize = true)
+  - execute:
+      box: fline-measure-locate
+      property: code
+      type: fragment
+  - execute:
+      box: fline-measure-trim
+      property: code
+      type: fragment
+  - execute:
+      box: fline-measure-cross
+      property: code
+      type: fragment
+  - execute:
+      box: fline-measure-fill
+      property: code
+      type: fragment
