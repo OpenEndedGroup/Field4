@@ -39,6 +39,7 @@ src/jsMain/resources/mermaid/* whitespace=-blank-at-eol linguist-generated=true
 # fail that check.
 native/steamaudio/include/** -text linguist-vendored=true
 native/steamaudio/THIRDPARTY.md -text linguist-vendored=true
+src/commonMain/resources/vendor/klecks/** whitespace=-blank-at-eol,-blank-at-eof linguist-vendored=true
 
 # Unified-diff context lines carry a literal leading space, including empty context lines.
 optional/opendlssnr/*.patch whitespace=-blank-at-eol,-blank-at-eof

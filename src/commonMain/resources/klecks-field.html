@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Klecks in Field</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #151515; color: #ddd; }
+    body { -webkit-app-region: no-drag !important; }
+    #field-klecks-status { position: fixed; left: 8px; bottom: 8px; z-index: 10000; padding: 4px 8px;
+      background: #111; color: #ddd; font: 12px "Iosevka Web", Iosevka, monospace; pointer-events: none; }
+  </style>
+  <script>
+    try { if (localStorage.getItem('klecks-theme') === null) localStorage.setItem('klecks-theme', 'dark'); }
+    catch (_) { /* Klecks falls back to the system theme when storage is unavailable. */ }
+  </script>
+  <script src="/vendor/klecks/7b1d4744/embed.js"></script>
+  <script type="module" src="/klecks_field.js"></script>
+</head>
+<body><div id="field-klecks-status">Connecting to Field…</div></body>
+</html>

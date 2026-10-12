@@ -106,6 +106,7 @@ nav:
   # measurement contract rather than beside three_output.md as a knob.
   - Seeing Values:
     - Visualizers & Controls: visualizers.md
+    - Klecks Painting in a Box: klecks.md
     - Field's 3D Output: three_output.md
     - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
