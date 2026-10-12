@@ -52,7 +52,11 @@
         descendants.forEach((node) => {
             if (!isVisible(node)) return;
             const rect = node.getBoundingClientRect();
-            height = Math.max(height, Math.ceil(rect.bottom - rootRect.top), Math.ceil(node.scrollHeight || 0));
+            // A box that scrolls its own content (overflow auto/scroll/hidden) is as tall as its
+            // rect; its scrollHeight is content it already hides, not height the frame needs.
+            const oy = getComputedStyle(node).overflowY;
+            const clips = oy === "auto" || oy === "scroll" || oy === "hidden";
+            height = Math.max(height, Math.ceil(rect.bottom - rootRect.top), clips ? 0 : Math.ceil(node.scrollHeight || 0));
         });
 
         width = Math.max(width, 40);

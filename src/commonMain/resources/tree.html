@@ -6,8 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--
       The `tree(...)` embed (afield/outputs.kt -> /tree, protocol in afield/server/browsing.kt).
-      Entries arrive as [name, id, kind, type, summary, flag]; kind lets a row draw its twisty
-      without opening the child, and a directory longer than one page ends in a "more" row.
+      Entries arrive as [name, id, kind, type, summary, flag, path]; kind lets a row draw its twisty
+      without opening the child, and a directory longer than one page ends in a "more" row. path is
+      the row's afield.graphquery address from the root ("" when none reaches it): `p` copies it, and
+      a filter containing / * or | is run server-side as graphPaths(...) (op "query").
       Colours come from field.css tokens so the embed matches the panel it sits in.
     -->
     <link rel="stylesheet" href="/iosevka.css">
@@ -33,20 +35,31 @@
         *{ box-sizing:border-box; font-family:"Iosevka Web",ui-monospace,Menlo,monospace; outline:none; }
         body{ margin:0; background:var(--bg); color:var(--fg); font-weight:300; font-size:12px; line-height:1.2; }
 
-        #bar{ display:flex; align-items:center; gap:8px; padding:4px 6px; border-bottom:1px solid var(--sep); }
-        #rootType{ color:var(--accent); white-space:nowrap; }
-        #rootSummary{ color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; }
+        /* The header stays at the top of whatever scrolls: the page itself when /tree is opened on
+           its own, and the rows below it (#tree, capped at --maxh) inside an output panel. */
+        #bar{
+            display:flex; align-items:center; gap:8px; padding:4px 6px; border-bottom:1px solid var(--sep);
+            position:sticky; top:0; z-index:3; background:var(--bg);
+        }
+        #rootType{ color:var(--accent); white-space:nowrap; flex:0 0 auto; }
+        /* Never squeezed to "6 e…": the filter gives way first. */
+        #rootSummary{ color:var(--muted); white-space:nowrap; flex:0 0 auto; }
         #filter{
-            flex:0 1 160px; min-width:70px; background:rgba(255,255,255,0.06); color:var(--fg);
+            flex:0 1 200px; min-width:70px; margin-left:auto; background:rgba(255,255,255,0.06); color:var(--fg);
             border:1px solid transparent; border-radius:3px; padding:2px 6px; font-size:11px;
         }
         #filter:focus{ border-color: rgba(var(--field-accent-rgb, 72,201,255), .5); }
         #status{ color:var(--muted); font-size:10px; white-space:nowrap; }
         #status.bad{ color:var(--danger); }
 
-        #tree{ list-style:none; margin:0; padding:2px 0; max-height:calc(100vh - 30px); overflow:auto; }
-        html[data-afield-output-iframe="true"] #tree{ max-height: var(--maxh); }
-        #tree, #tree *{ scrollbar-width:thin; scrollbar-color:var(--sb-thumb) transparent; }
+        #tree, #results{ list-style:none; margin:0; padding:2px 0; max-height:calc(100vh - 30px); overflow:auto; }
+        html[data-afield-output-iframe="true"] #tree,
+        html[data-afield-output-iframe="true"] #results{ max-height: var(--maxh); }
+        #tree[hidden], #results[hidden]{ display:none; }
+        .qrow .name{ color:var(--fg-strong); }
+        .qhead{ color:var(--muted); font-size:10px; padding:3px 8px; }
+        #filter.query{ color:var(--accent); }
+        #tree, #tree *, #results, #results *{ scrollbar-width:thin; scrollbar-color:var(--sb-thumb) transparent; }
         ul.children{ list-style:none; margin:0; padding:0; position:relative; }
         li.node{ list-style:none; margin:0; padding:0; }
         li.node.filtered-out{ display:none; }
@@ -86,6 +99,7 @@
             cursor:pointer; font-size:10px; padding:0 2px;
         }
         .row:hover .copy, .row.selected .copy{ visibility:visible; }
+        .row:not([data-path]) .copy.path, .row[data-path=""] .copy.path{ display:none; }
         .copy:hover{ color:var(--fg-strong); }
         .copy.done{ color:var(--accent); visibility:visible; }
 
@@ -110,10 +124,11 @@
 <body>
 <div id="bar">
     <span id="rootType"></span><span id="rootSummary"></span>
-    <input id="filter" type="search" placeholder="filter  /" aria-label="Filter rows" spellcheck="false">
+    <input id="filter" type="search" placeholder="filter, or **/name  /" aria-label="Filter rows, or a graphPaths query" title="Text filters this level; a pattern with / * or | runs graphPaths from the root" spellcheck="false">
     <span id="status">connecting…</span>
 </div>
 <ul id="tree" role="tree" tabindex="0" aria-label="Inspector tree"></ul>
+<ul id="results" role="listbox" tabindex="0" aria-label="Query matches" hidden></ul>
 
 <script src="/iframe_autosize.js"></script>
 <script>
@@ -129,6 +144,7 @@
     const filterEl = document.getElementById('filter');
     const rootTypeEl = document.getElementById('rootType');
     const rootSummaryEl = document.getElementById('rootSummary');
+    const resultsEl = document.getElementById('results');
 
     let ws, reqSeq = 1, rootId = null;
     const pending = new Map();
@@ -166,13 +182,14 @@
     }
     function unwatch(id){ if (watched.delete(id)) fireAndForget('unsubscribe', { id }); }
 
-    const entry = (p) => ({ name: p[0], id: p[1], kind: p[2] || null, type: p[3] || '', summary: p[4] ?? '', flag: p[5] || '' });
+    const entry = (p) => ({ name: p[0], id: p[1], kind: p[2] || null, type: p[3] || '', summary: p[4] ?? '', flag: p[5] || '', path: p[6] ?? null });
 
     // ---------------------------------------------------------------- rows
     function makeRow(e, depth){
         const li = document.createElement('li'); li.className = 'node';
         const row = document.createElement('div'); row.className = 'row';
         row.dataset.id = e.id; row.dataset.name = e.name; row.dataset.depth = String(depth);
+        if (e.path != null) row.dataset.path = e.path;
         row.style.setProperty('--depth', depth);
         if (e.kind) row.dataset.kind = e.kind;
         if (e.flag) row.dataset.flag = e.flag;
@@ -184,14 +201,17 @@
         const type = document.createElement('span'); type.className = 'type'; type.textContent = e.type;
         const summary = document.createElement('span'); summary.className = 'summary'; summary.textContent = e.summary;
         summary.title = e.summary;
+        if (e.path) name.title = e.path;
         const copy = document.createElement('button'); copy.className = 'copy'; copy.textContent = 'copy'; copy.title = 'Copy value (c)';
-        row.append(tw, name, type, summary, copy);
+        const copyPath = document.createElement('button'); copyPath.className = 'copy path'; copyPath.textContent = 'path'; copyPath.title = 'Copy graphPath (p)';
+        row.append(tw, name, type, summary, copyPath, copy);
         li.appendChild(row);
 
         tw.addEventListener('click', (ev) => { ev.stopPropagation(); selectRow(row); toggleRow(row); });
         row.addEventListener('click', () => selectRow(row));
         row.addEventListener('dblclick', () => toggleRow(row));
         copy.addEventListener('click', (ev) => { ev.stopPropagation(); copyRow(row); });
+        copyPath.addEventListener('click', (ev) => { ev.stopPropagation(); copyPathOf(row); });
         if (!e.kind) probeKind(row);
         return li;
     }
@@ -296,9 +316,106 @@
         window.__lastCopied = text;
     }
 
+    async function writeClipboard(text){
+        try { await navigator.clipboard.writeText(text); }
+        catch {
+            const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch {} ta.remove();
+        }
+        window.__lastCopied = text;
+    }
+    async function copyPathOf(row){
+        const path = row.dataset.path;
+        if (!path){ setStatus('no path reaches this row'); setTimeout(() => setStatus(''), 1500); return; }
+        await writeClipboard(path);
+        const b = row.querySelector('.copy.path'); if (b){ b.textContent = 'copied'; b.classList.add('done'); setTimeout(() => { b.textContent = 'path'; b.classList.remove('done'); }, 900); }
+    }
+
+    // ---------------------------------------------------------------- query (graphPaths)
+    // Text with / * or | is a graphPaths() pattern, run from the root; anything else filters rows.
+    const isQuery = (q) => /[\/*|]/.test(q);
+    let queryTimer = null, querySeq = 0;
+    function showResults(on){
+        resultsEl.hidden = !on; treeEl.hidden = on;
+        filterEl.classList.toggle('query', on);
+    }
+    function runQuery(q){
+        clearTimeout(queryTimer);
+        queryTimer = setTimeout(async () => {
+            const mine = ++querySeq;
+            const resp = await sendReq('query', { id: rootId, query: q });
+            if (mine !== querySeq || !isQuery(filterEl.value.trim())) return;
+            resultsEl.innerHTML = '';
+            const head = document.createElement('li'); head.className = 'qhead';
+            if (!resp || !resp.ok){
+                head.className = 'err'; head.textContent = resp?.error || 'query failed';
+                resultsEl.appendChild(head); return;
+            }
+            const n = resp.matches.length;
+            head.textContent = resp.total === 0 ? `no paths match ${q}`
+                : `${resp.total} ${resp.total === 1 ? 'match' : 'matches'}${n < resp.total ? `, first ${n}` : ''}${resp.truncated ? ' (walk stopped early)' : ''} — Enter reveals`;
+            resultsEl.appendChild(head);
+            resp.matches.forEach(m => {
+                const li = document.createElement('li'); li.className = 'node';
+                const row = document.createElement('div'); row.className = 'row qrow'; row.dataset.path = m[0]; row.dataset.kind = m[1] || 'leaf';
+                row.style.setProperty('--depth', 0); row.setAttribute('role', 'option');
+                const tw = document.createElement('span'); tw.className = 'tw';
+                const name = document.createElement('span'); name.className = 'name'; name.textContent = m[0];
+                const type = document.createElement('span'); type.className = 'type'; type.textContent = m[2] || '';
+                const summary = document.createElement('span'); summary.className = 'summary'; summary.textContent = m[3] || ''; summary.title = m[3] || '';
+                const copyPath = document.createElement('button'); copyPath.className = 'copy path'; copyPath.textContent = 'path'; copyPath.title = 'Copy graphPath (p)';
+                row.append(tw, name, type, summary, copyPath);
+                row.addEventListener('click', () => selectResult(row));
+                row.addEventListener('dblclick', () => revealResult(row));
+                copyPath.addEventListener('click', (ev) => { ev.stopPropagation(); copyPathOf(row); });
+                li.appendChild(row); resultsEl.appendChild(li);
+            });
+            const first = resultsEl.querySelector('.qrow'); if (first) selectResult(first, {focus:false});
+        }, 180);
+    }
+    function selectResult(row, {focus=true} = {}){
+        resultsEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
+        row.classList.add('selected'); row.scrollIntoView({ block:'nearest' });
+        if (focus) resultsEl.focus({ preventScroll:true });
+    }
+    async function revealResult(row){
+        const path = row.dataset.path;
+        filterEl.value = ''; showResults(false); applyFilter();
+        await revealPath(path);
+    }
+    /** Open the tree along a graphPath, paging a long directory until the next segment appears. */
+    async function revealPath(path){
+        const segs = path.split('/');
+        let scope = treeEl, row = null;
+        for (let i = 0; i < segs.length; i++){
+            const want = segs.slice(0, i + 1).join('/').toLowerCase();
+            const find = () => Array.from(scope.querySelectorAll(':scope > li > .row')).find(r => (r.dataset.path || '').toLowerCase() === want);
+            row = find();
+            for (let pages = 0; !row && pages < 100; pages++){
+                const more = scope.querySelector(':scope > li.more-li > .row');
+                if (!more) break;
+                await loadMore(more, scope);
+                row = find();
+            }
+            if (!row){ setStatus(`not found: ${segs.slice(0, i + 1).join('/')}`, true); return false; }
+            if (i < segs.length - 1){
+                if (!isOpen(row)) await expandRow(row);
+                const next = liOf(row).querySelector(':scope > ul.children');
+                if (!next) return false;
+                scope = next;
+            }
+        }
+        if (row) selectRow(row);
+        return true;
+    }
+    window.inspectorRevealPath = revealPath;
+
     // ---------------------------------------------------------------- filter
     function applyFilter(){
-        const q = filterEl.value.trim().toLowerCase();
+        const raw = filterEl.value.trim();
+        if (isQuery(raw)){ showResults(true); return; }
+        showResults(false);
+        const q = raw.toLowerCase();
         treeEl.querySelectorAll('li.node').forEach(li => li.classList.remove('filtered-out'));
         if (!q) return;
         // A row stays when it, or anything opened beneath it, matches. Deepest first.
@@ -312,9 +429,15 @@
             if (hay.includes(q) || childKept) keep.add(li); else li.classList.add('filtered-out');
         }
     }
-    filterEl.addEventListener('input', applyFilter);
+    filterEl.addEventListener('input', () => { applyFilter(); const q = filterEl.value.trim(); if (isQuery(q)) runQuery(q); });
     filterEl.addEventListener('keydown', (e) => {
         if (e.key === 'Escape'){ filterEl.value = ''; applyFilter(); treeEl.focus(); e.preventDefault(); }
+        if (!resultsEl.hidden){
+            const sel = resultsEl.querySelector('.row.selected') || resultsEl.querySelector('.qrow');
+            if (e.key === 'Enter' && sel){ e.preventDefault(); revealResult(sel); }
+            if (e.key === 'ArrowDown' && sel){ e.preventDefault(); selectResult(sel); }
+            return;
+        }
         if (e.key === 'Enter' || e.key === 'ArrowDown'){ const r = visibleRows()[0]; if (r) selectRow(r); e.preventDefault(); }
     });
 
@@ -423,6 +546,19 @@
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const sel = treeEl.querySelector('.row.selected') || visibleRows()[0];
         if (e.key === '/'){ e.preventDefault(); filterEl.focus(); filterEl.select(); return; }
+        if (!resultsEl.hidden){
+            const rs = Array.from(resultsEl.querySelectorAll('.qrow'));
+            const cur = resultsEl.querySelector('.row.selected');
+            const i = Math.max(0, rs.indexOf(cur));
+            switch (e.key){
+                case 'ArrowDown': e.preventDefault(); if (rs.length) selectResult(rs[Math.min(rs.length - 1, i + 1)]); break;
+                case 'ArrowUp':   e.preventDefault(); if (rs.length) selectResult(rs[Math.max(0, i - 1)]); break;
+                case 'Enter': case 'ArrowRight': e.preventDefault(); if (cur) revealResult(cur); break;
+                case 'p': e.preventDefault(); if (cur) copyPathOf(cur); break;
+                case 'Escape': e.preventDefault(); filterEl.value = ''; applyFilter(); treeEl.focus(); break;
+            }
+            return;
+        }
         if (!sel) return;
         switch (e.key){
             case 'ArrowDown': e.preventDefault(); { const n = step(sel, +1); if (n) selectRow(n); } break;
@@ -439,6 +575,7 @@
                 if (isOpen(sel)) collapseRow(sel); else { const p = parentRow(sel); if (p) selectRow(p); }
                 break;
             case 'c': e.preventDefault(); if (!sel.dataset.more) copyRow(sel); break;
+            case 'p': e.preventDefault(); if (!sel.dataset.more) copyPathOf(sel); break;
             case 'r': e.preventDefault(); refreshAll(); break;
             case 'Escape': if (filterEl.value){ filterEl.value = ''; applyFilter(); } break;
         }
@@ -455,7 +592,9 @@
         status: statusEl.textContent,
         root: rootTypeEl.textContent + ' ' + rootSummaryEl.textContent,
         rowsByName: Object.fromEntries(Array.from(treeEl.querySelectorAll('.row:not(.more-row)')).slice(0, 60).map(r =>
-            [r.dataset.name, { kind: r.dataset.kind, type: r.querySelector('.type')?.textContent, summary: r.querySelector('.summary')?.textContent, flag: r.dataset.flag || '' }])),
+            [r.dataset.name, { kind: r.dataset.kind, type: r.querySelector('.type')?.textContent, summary: r.querySelector('.summary')?.textContent, flag: r.dataset.flag || '', path: r.dataset.path ?? null }])),
+        selected: treeEl.querySelector('.row.selected')?.dataset.path ?? null,
+        query: resultsEl.hidden ? null : Array.from(resultsEl.children).map(li => li.querySelector('.name')?.textContent || li.textContent).slice(0, 40),
     });
     connect();
 })();
