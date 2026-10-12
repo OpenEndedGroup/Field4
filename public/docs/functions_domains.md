@@ -46,54 +46,50 @@ An oscillator is defined on all of ℝ. `sin()` has a value at `x = -100` and at
 Give one a finite domain instead and it clamps every expression it enters:
 
 ```diffstatic {data-lang=kotlin}
-// Old behavior — the trap.
 val rising = identity(0.0..3.0) * 0.6         // a slow rise across 0..3
-val tone   = sin(2.0)                          // used to carry domain 0..1
+val tone   = sin(2.0, domain = 0.0..1.0)       // pinned to 0..1
 val stack  = tone + rising                     // 0..1  ∩  0..3  ==  0..1  (!)
 // Plot `stack` over 0..3 and it just stops a third of the way across.
 ```
 
 The `rising` term is defined across `0.0..3.0` and the oscillator cuts two-thirds of it off.
 
-An unbounded operand contributes nothing to the intersection, so the expression takes its extent from the finite terms:
+With the default `Domain.ALL`, the oscillator contributes nothing to the intersection, so the expression takes its extent from the finite terms:
 
 ```diffstatic {data-lang=kotlin}
-// New behavior.
 val rising = identity(0.0..3.0) * 0.6
 val tone   = sin(2.0)                          // Domain.ALL
 val stack  = tone + rising                     // ALL ∩ 0..3  ==  0..3  ✔
 // Plot `stack` over 0..3 and the oscillation rides the ramp the whole way.
 ```
 
-The picture below runs both versions on one box, plotted over the same `0.0..3.0` window. The only difference between them is the oscillator's domain:
+The picture below runs both on one box, plotted over the same `0.0..3.0` window. The only difference between them is the oscillator's domain:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions/oscillator-domain-clamp-before-after.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-oscillator-domain-clamp-before-after"}
 :::static
-import afield.stdlib.Functions
-
 with(Functions) {
     // A gentle rise defined across the whole 0..3 window.
     val rising = identity(0.0..3.0) * 0.6
 
-    // BEFORE: an oscillator pinned to the old 0..1 default. The sum's domain
-    // is 0..1 ∩ 0..3 == 0..1, so plotting over 0..3 stops at x = 1.
-    val before = sin(frequency = 2.0, domain = 0.0..1.0) + rising
+    // An oscillator pinned to 0..1. The sum's domain is
+    // 0..1 ∩ 0..3 == 0..1, so plotting over 0..3 stops at x = 1.
+    val pinned = sin(frequency = 2.0, domain = 0.0..1.0) + rising
 
-    // AFTER: today's default — sin() is Domain.ALL. The sum's domain is
+    // The default: sin() is Domain.ALL. The sum's domain is
     // ALL ∩ 0..3 == 0..3, so the oscillation rides the ramp the whole way.
-    val after = sin(frequency = 2.0) + rising
+    val unbounded = sin(frequency = 2.0) + rising
 
-    before.plot(
-        "before",
+    pinned.plot(
+        "pinned",
         domain(0.0..3.0),
-        title = "BEFORE — sin(domain = 0..1) + rising  → clamped to 0..1",
+        title = "sin(domain = 0..1) + rising  → clamped to 0..1",
         yDomain = domain((-1.2)..2.6),
         heightPx = 170
     )
-    after.plot(
-        "after",
+    unbounded.plot(
+        "unbounded",
         domain(0.0..3.0),
-        title = "AFTER — sin() is Domain.ALL + rising  → full 0..3",
+        title = "sin() is Domain.ALL + rising  → full 0..3",
         yDomain = domain((-1.2)..2.6),
         heightPx = 170
     )
