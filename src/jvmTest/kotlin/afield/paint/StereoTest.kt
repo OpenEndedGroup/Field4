@@ -84,7 +84,8 @@ class StereoTest {
      * arc, the brush (and a brush of moving hairs) runs out at the same place along the line in both;
      * without it, where the canvas length says.
      */
-    @Test fun aStrokeRecedingInDepthRunsOutAtTheSameWorldLengthInBothEyes() {
+    @Test
+    fun aStrokeRecedingInDepthRunsOutAtTheSameWorldLengthInBothEyes() {
         if (!available()) return
         val world = FLine().moveTo(0.0, 0.0).lineTo(300.0, 0.0).also { l -> l.nodes.forEach { n -> n.storage[0] = Vec3(n.storage[0].x, 0f, n.storage[0].x) } }
         // where along the line, 0..1, each eye puts a world point
