@@ -1474,7 +1474,7 @@
             }
 
             img.doc-thumb:hover {
-                transform: translateY(var(--thumb-shift, 0px)) scale(6);
+                transform: translate(var(--thumb-shift-x, 0px), var(--thumb-shift, 0px)) scale(var(--thumb-scale, 6));
                 position: relative;
                 z-index: 1;
                 box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
@@ -6664,11 +6664,16 @@
         // A hovered thumbnail scales 6x about its right-centre (CSS above); near the top or bottom
         // of the list that would push it past the list's scroll clip, so slide it vertically to
         // stay inside the list's visible rect.
-        const thumbScale = 6;
         document.getElementById("recent-list")?.addEventListener("mouseover", (event) => {
             const img = event.target.closest?.("img.doc-thumb");
             if (!img) return;
             const list = event.currentTarget.getBoundingClientRect();
+            // In a narrow window, first shrink towards 3x to fit the room left of the thumbnail,
+            // then (below) shift whatever still doesn't fit.
+            const minLeft = Math.max(list.left, 0) + 8;
+            const room = (img.getBoundingClientRect().right - minLeft) / img.offsetWidth;
+            const thumbScale = Math.max(3, Math.min(6, room));
+            img.style.setProperty("--thumb-scale", `${thumbScale}`);
             const box = img.getBoundingClientRect(); // the centre is unmoved by the scale
             const half = img.offsetHeight * thumbScale / 2;
             const centre = box.top + box.height / 2;
@@ -6676,10 +6681,18 @@
             if (centre - half < list.top) shift = list.top - (centre - half);
             else if (centre + half > list.bottom) shift = list.bottom - (centre + half);
             img.style.setProperty("--thumb-shift", `${shift}px`);
+            // Likewise horizontally: in a narrow window the gutter is shorter than the expanded
+            // image, which grows leftward from its right edge, so push it right to start inside.
+            const left = box.right - img.offsetWidth * thumbScale;
+            img.style.setProperty("--thumb-shift-x", `${left < minLeft ? minLeft - left : 0}px`);
         });
         document.getElementById("recent-list")?.addEventListener("mouseout", (event) => {
             const img = event.target.closest?.("img.doc-thumb");
-            if (img && !img.contains(event.relatedTarget)) img.style.removeProperty("--thumb-shift");
+            if (img && !img.contains(event.relatedTarget)) {
+                img.style.removeProperty("--thumb-shift");
+                img.style.removeProperty("--thumb-shift-x");
+                img.style.removeProperty("--thumb-scale");
+            }
         });
 
         requestAnimationFrame(() => {
