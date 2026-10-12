@@ -326,15 +326,30 @@ class PaintCanvas internal constructor(
      * pulled), and a flat's wide axis is held across the path unless [roll] (degrees) fixes it. Where
      * the path doubles back on itself by more than 120°, as in scrubbing, the handle keeps its lean
      * and the brush is pushed back.
+     *
+     * With [facets] the hand moves in straight chords [facets] canvas units long instead of
+     * following the curve: at each corner the handle turns at once, the hairs whip round, and a curve
+     * comes out beaded, a bead a corner. A polyline [line] does this by itself at its own corners.
      */
     fun gesture(
         line: FLine, speed: Double = 80.0, pressure: List<Double> = listOf(0.6), gap: Double = 0.3, spacing: Double = 4.0,
-        tilt: Double = 0.0, lean: Boolean = true, roll: Double? = null,
+        tilt: Double = 0.0, lean: Boolean = true, roll: Double? = null, facets: Double? = null,
     ): TimedGesture {
+        require(facets == null || facets > 0.0) { "facets are chords of some length: above 0 canvas units" }
         require(speed > 0.0) { "a gesture moves: speed must be above 0 mm/s" }
         val out = mutableListOf<TimedGesture.Sample>()
         var t = 0.0
-        for (piece in line.pieces()) {
+        for (whole in line.pieces()) {
+            val piece = facets?.let { f ->
+                val corners = whole.sampleByDistance(toLineUnits(f).toFloat())
+                if (corners.size < 2) whole else FLine().apply {
+                    moveTo(corners[0].x.toDouble(), corners[0].y.toDouble())
+                    for (c in corners.drop(1)) lineTo(c.x.toDouble(), c.y.toDouble())
+                    // (the samples stop short of the end unless the length divides evenly)
+                    val end = whole.cursor().also { it.setD(it.lengthD()) }.position()
+                    if (Math.hypot((end.x - corners.last().x).toDouble(), (end.y - corners.last().y).toDouble()) > 1e-3 * f) lineTo(end.x.toDouble(), end.y.toDouble())
+                }
+            } ?: whole
             val pts = piece.sampleByDistance(toLineUnits(spacing).toFloat())
             if (pts.isEmpty()) continue
             var arc = 0.0

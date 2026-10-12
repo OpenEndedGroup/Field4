@@ -54,6 +54,10 @@ with an ordinary brush.
   toward where it is going, so the hairs trail behind the way a pulled brush's do.
 - `roll` turns the handle about its own axis, which for a flat is the direction of its wide edge.
   By default a flat is held across its path.
+- `facets` moves the hand in straight chords of that many canvas units instead of along the curve:
+  at each corner the handle turns at once and the hairs whip round, beading a curve with a mark at
+  every corner. A path drawn as a polyline does this at its own corners
+  ([the sweep](paint_sweeps.md#the-hand) shows how it looks).
 
 A gesture is a list of `TimedGesture.Sample(x, y, t, pressure, tilt, azimuth, roll)`, so you can
 also build one yourself, from a pen's samples or a calculation. `faster(k)`, `pause(seconds)`,
@@ -196,6 +200,100 @@ sheet.dry()
 display("main", sheet.png(relief = 0.5))
 ```
 
+## A finished piece
+
+Broad black gestures in the manner of Robert Motherwell's *Elegies* and the Tachistes need a big
+brush and a big canvas, real ones: here two metres of canvas and a house painter's brush about
+15 cm wide, with soft, uneven hairs (`stiffness = 0.5`, `ragged = 0.5`) that splay under pressure.
+Fat black paint, stiff enough to hold its edge (`stiff = 0.5`, `oil = 1.5`), laid as a thin film
+(`lay = 0.8`) from a half-loaded brush (`amount = 0.5`), so the brush tracks show through it. Each
+movement is fast, 260 to 320 mm/s, and ends lifted off the canvas (pressure `-0.2`), which is where
+the edges come from: the hairs drag dry and part as they leave. The ovals spiral out from their
+middles, so their outer edge is painted last, as the brush runs out.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/elegy.png" alt="a wide abstract painting in black on an off-white canvas: three tall vertical slabs of black alternating with two large black ovals squeezed between them, like an elegy. The black is dense but shows its brush tracks, curving round inside the ovals. Each slab ends at the bottom in a fringe of dry, streaked bristle marks where the brush lifted off, and each oval's last turn trails away to the right in loose grey streaks of hair" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="elegy" embed=true}
+:::static
+import afield.paint.*
+
+// two metres of canvas, primed off-white
+val canvas = PaintCanvas(1200, aspect = 2.1, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 2000.0, seed = 11)
+val h = canvas.heightUnits
+
+// a house painter's brush: soft, uneven hairs that splay, laying a thin film of fat black
+val housePainter = BrushConfig(stiffness = 0.5, ragged = 0.5, splay = 0.6, lay = 0.8, run = 1100.0)
+fun brush(width: Double) = canvas.dynamicBrush(BrushKind.HogFlat, width, hairs = 48, segments = 6, config = housePainter)
+    .load(rgb(0.05, 0.045, 0.04), hiding = 0.65, stiff = 0.5, oil = 1.5, amount = 0.5)
+
+// an oval spiralling out from its middle, so its edge comes last, as the brush runs dry
+fun oval(cx: Double, cy: Double, rx: Double, ry: Double): FLine {
+    val line = FLine()
+    for (i in 0..120) {
+        val u = i / 120.0
+        val a = PI / 2 + 2 * PI * 1.8 * u
+        val r = 0.2 + 0.8 * u
+        if (i == 0) line.moveTo(cx + rx * r * cos(a), cy + ry * r * sin(a)) else line.lineTo(cx + rx * r * cos(a), cy + ry * r * sin(a))
+    }
+    return line
+}
+
+// three slabs, each one movement, pressed down and lifted off the canvas at its end
+for ((x, width) in listOf(120.0 to 70.0, 470.0 to 80.0, 905.0 to 65.0))
+    canvas.stroke(canvas.gesture(FLine().moveTo(x, 25).lineTo(x + 8, h - 25), speed = 260.0,
+        pressure = listOf(0.7, 1.0, 0.9, 0.4, -0.2), tilt = 25.0), brush(width))
+// and two ovals between them
+for ((cx, cy, rx) in listOf(Triple(300.0, 250.0, 120.0), Triple(690.0, 230.0, 140.0)))
+    canvas.stroke(canvas.gesture(oval(cx, cy, rx, 170.0), speed = 320.0,
+        pressure = listOf(1.1, 1.0, 0.8, 0.4, -0.2), tilt = 35.0), brush(80.0))
+
+display("main", canvas.png(relief = 0.3))
+```
+
+The same painting, with the black let down by a little painting medium (`thinner = 0.15`): the film
+no longer covers, and breaks into a cellular veil over the ground while the edges stay dark.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/elegy_thinned.png" alt="the same composition of three black slabs and two ovals on off-white, but the black has broken into a pale, cellular film: the slabs are mottled grey and cream with darker bands, and the ovals are rings of dark curving streaks with cream showing between them. Edges stay dark and crisp, and the slab ends still finish in dark streaked fringes" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="elegy_thinned" embed=true}
+:::static
+import afield.paint.*
+
+// two metres of canvas, primed off-white
+val canvas = PaintCanvas(1200, aspect = 2.1, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 2000.0, seed = 11)
+val h = canvas.heightUnits
+
+// the same brush, its black let down with a little painting medium
+val housePainter = BrushConfig(stiffness = 0.5, ragged = 0.5, splay = 0.6, lay = 0.8, run = 1100.0)
+fun brush(width: Double) = canvas.dynamicBrush(BrushKind.HogFlat, width, hairs = 48, segments = 6, config = housePainter)
+    .load(rgb(0.05, 0.045, 0.04), hiding = 0.55, stiff = 0.5, thinner = 0.15, oil = 1.5, amount = 0.5)
+
+// an oval spiralling out from its middle, so its edge comes last, as the brush runs dry
+fun oval(cx: Double, cy: Double, rx: Double, ry: Double): FLine {
+    val line = FLine()
+    for (i in 0..120) {
+        val u = i / 120.0
+        val a = PI / 2 + 2 * PI * 1.8 * u
+        val r = 0.2 + 0.8 * u
+        if (i == 0) line.moveTo(cx + rx * r * cos(a), cy + ry * r * sin(a)) else line.lineTo(cx + rx * r * cos(a), cy + ry * r * sin(a))
+    }
+    return line
+}
+
+// three slabs, each one movement, pressed down and lifted off the canvas at its end
+for ((x, width) in listOf(120.0 to 70.0, 470.0 to 80.0, 905.0 to 65.0))
+    canvas.stroke(canvas.gesture(FLine().moveTo(x, 25).lineTo(x + 8, h - 25), speed = 260.0,
+        pressure = listOf(0.7, 1.0, 0.9, 0.4, -0.2), tilt = 25.0), brush(width))
+// and two ovals between them
+for ((cx, cy, rx) in listOf(Triple(300.0, 250.0, 120.0), Triple(690.0, 230.0, 140.0)))
+    canvas.stroke(canvas.gesture(oval(cx, cy, rx, 170.0), speed = 320.0,
+        pressure = listOf(1.1, 1.0, 0.8, 0.4, -0.2), tilt = 35.0), brush(80.0))
+
+display("main", canvas.png(relief = 0.3))
+```
+
+!!! note
+    Medium changes the black all at once, not by degrees: none gives a covering film, and even
+    `thinner = 0.03` gives nearly the veil above. `hiding` does little to black at any value, since
+    black absorbs almost everything in any film. For a black that is only a little less dense, lay
+    less of it (`lay`, `amount`) instead.
+
 ## Keeping a brush
 
 A moving brush keeps its paint or water, and the set of its hairs, from one stroke to the next. A
@@ -225,5 +323,6 @@ it was then.
     Field opened up in alice's code. `DynamicBrushTest` checks contact, tilt, the set,
     keeping and restoring, watercolour's books, and gesture headings.
 
-See also: [Paint and pencil from FLines](paint_canvas.md), [Watercolour and ink](watercolor.md),
+See also: [Paint settings, swept](paint_sweeps.md), where one gesture is painted with each setting in
+turn, [Paint and pencil from FLines](paint_canvas.md), [Watercolour and ink](watercolor.md),
 [AI4 paints](ai4_painting.md).

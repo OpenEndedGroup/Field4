@@ -413,6 +413,8 @@ private fun escapeCaptionHtml(text: String): String = text
  * @param cellSide the longest edge a tile is allowed to occupy
  * @param displayRange an optional sample domain shared by every panel and mapped to display values
  *   `0..1`; `null` chooses `0..1` for ordinary imagery or one common range for out-of-range panels
+ * @param textScale how many pixels each pixel of the caption font takes: 2 by default, more for a
+ *   montage of large tiles that will be shown scaled down
  */
 fun montage(
     panels: List<Pair<String, Img>>,
@@ -420,11 +422,12 @@ fun montage(
     cellSide: Int = 320,
     gap: Int = 10,
     background: Float = 0.08f,
-    displayRange: ClosedFloatingPointRange<Float>? = null
+    displayRange: ClosedFloatingPointRange<Float>? = null,
+    textScale: Int = 2,
 ): Img {
     require(panels.isNotEmpty()) { "montage needs at least one panel" }
     require(columns >= 1) { "columns must be >= 1, got $columns" }
-    val textScale = 2
+    require(textScale >= 1) { "textScale must be >= 1, got $textScale" }
     val captionH = GLYPH_HEIGHT * textScale + 8
     val sized = panels.map { (label, img) ->
         val s = min(1.0, cellSide.toDouble() / max(img.width, img.height))

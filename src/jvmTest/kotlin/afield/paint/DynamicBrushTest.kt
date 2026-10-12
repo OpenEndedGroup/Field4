@@ -157,6 +157,25 @@ class DynamicBrushTest {
         }
     }
 
+    @Test fun facetsTurnACurveIntoChordsWithCornersAtTheirEnds() {
+        if (!available()) return
+        canvas().use { c ->
+            val circle = FLine().moveTo(700, 500).cubicTo(700, 610, 610, 700, 500, 700).cubicTo(390, 700, 300, 610, 300, 500)
+            val smooth = c.gesture(circle, spacing = 2.0)
+            val faceted = c.gesture(circle, spacing = 2.0, facets = 60.0)
+            fun turns(g: TimedGesture) = g.samples.zipWithNext().map { (a, b) -> abs(b.azimuth - a.azimuth) }
+            // the smooth curve turns a little at every sample; the faceted one not at all, then all at once at a corner
+            assertTrue(turns(smooth).max() < 5.0, "smooth: ${turns(smooth).max()}")
+            assertTrue(turns(faceted).max() > 10.0, "faceted: ${turns(faceted).max()}")
+            // (to float rounding of the sampled points)
+            assertTrue(turns(faceted).count { it < 0.2 } > turns(faceted).size * 3 / 4, "straight between corners: ${turns(faceted).sorted()}")
+            // (both stop within one sample spacing of the end)
+            assertEquals(300.0, faceted.samples.last().x, 2.0, "the chords still end where the curve does")
+            assertEquals(500.0, faceted.samples.last().y, 2.0)
+            assertFailsWith<IllegalArgumentException> { c.gesture(circle, facets = 0.0) }
+        }
+    }
+
     @Test fun nonsenseIsRefused() {
         if (!available()) return
         canvas().use { c ->
