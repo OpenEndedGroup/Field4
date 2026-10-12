@@ -952,7 +952,7 @@ gives you a kernel width that drifts across the piece.
 
 ## Where Field differs from Tidal
 
-Three names to know if you are coming from Tidal:
+Four names to know if you are coming from Tidal:
 
 | Field | Tidal | note |
 | --- | --- | --- |
