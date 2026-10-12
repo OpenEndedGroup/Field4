@@ -112,14 +112,15 @@ object PathTraceTemporalGpuSmoke {
         val backends=listOf(PathTracingRenderer.Backend.COMPUTE_BVH) +
             if (renderer.device.supportsRayQuery) listOf(PathTracingRenderer.Backend.RAY_QUERY) else emptyList()
         for (backend in backends) {
-            // Keyboard checks require exclusive input; disable them when a user is driving Field alongside this test.
+            // The GPU audit runs on a shared desktop. Keep the controller active, but isolate its
+            // idle/decay check from real keystrokes sent to the test window by another user.
             if (verifyKeyboard) {
             // Captured from a live keyboard camera that alternated by two ULPs forever when idle.
             val vertical=Camera(renderer).also {
                 it.at.set(0.9632708f,8.943225f,-1.362556f);it.target.set(0f,0.65f,0f)
                 it.up.set(0.4941822f,-0.19653562f,-0.84685177f)
             }
-            val keys=KeyCamera(renderer,vertical,"temporal-idle-camera-check")
+            val keys=KeyCamera(renderer,vertical,"temporal-idle-camera-check",acceptPhysicalKeys=false)
             try {
                 PathTracingRenderer(renderer,PathTraceScene().apply {
                     val m=material(PathTraceMaterial.diffuse(1f,1f,1f))
