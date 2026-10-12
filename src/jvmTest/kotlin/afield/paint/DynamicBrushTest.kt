@@ -183,9 +183,9 @@ class DynamicBrushTest {
             assertFailsWith<IllegalStateException> { c.dynamicBrush(segments = 1) }
             val b = c.dynamicBrush()
             assertFailsWith<IllegalStateException> { b.set(friction = -1.0 to 0.2) }
-            assertFailsWith<IllegalStateException> { b.set(cohesion = 1.5) }
-            // past the usual is allowed: friction of 3, a joint that never yields
-            b.set(friction = 3.0 to 2.5, yieldDegrees = 360.0)
+            // past the usual is allowed: friction of 3, a joint that never yields, cohesion of 32 (the
+            // liquid's pull is capped where it would overshoot, not the dial)
+            b.set(friction = 3.0 to 2.5, yieldDegrees = 360.0, cohesion = 32.0, clumping = 2.0)
             assertEquals(3.0, b.friction.first, 1e-6)
             val back = TimedGesture.Sample(0.0, 0.0, 1.0, 0.5)
             assertFailsWith<IllegalArgumentException> { c.stroke(TimedGesture(listOf(back, back.copy(t = 0.5))), b) }
