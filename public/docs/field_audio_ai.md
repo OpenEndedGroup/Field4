@@ -142,7 +142,7 @@ drawing to eight candidates.
 | [Short-time spectral spaces](audio_ai_spectral_embeddings.md) | do the same with no model and no GPU |
 | [MuScriptor transcription](audio_ai_muscriptor.md) | turn a mixed recording into labelled notes and MIDI |
 | [Corpus microscope](audio_ai_corpus_microscope.md) | find the other stretches that sound like this one |
-| [EnCodec microscope](audio_ai_codec.md) | work on the codec tokens themselves |
+| [EnCodec round trip](audio_ai_codec.md) | work on the codec tokens themselves |
 | [Recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation) | put any of it on a shared playhead |
 
 The analysis pages share one contract. The job that measures a
