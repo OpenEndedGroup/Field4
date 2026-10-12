@@ -66,6 +66,22 @@ pub extern "C" fn field_paint_canvas_new_v2(
     })
 }
 
+/// Give the next stroke its world arc, mm, at each of its `n` input points (`Canvas::set_stroke_arc`).
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_stroke_arc(c: *mut Studio, arc: *const f32, n: i32) -> i32 {
+    guard(-1, || {
+        if n < 1 {
+            return Err("a stroke's arc needs a value for each point".into());
+        }
+        let a = unsafe { std::slice::from_raw_parts(arc, n as usize) }.to_vec();
+        if a.iter().any(|v| !v.is_finite()) || a.windows(2).any(|w| w[1] < w[0]) {
+            return Err("a stroke's arc is finite and never goes back".into());
+        }
+        unsafe { &mut *c }.canvas.set_stroke_arc(a);
+        Ok(0)
+    })
+}
+
 /// Key the next stroke's noise on `noise` rather than on its order (`Canvas::set_stroke_noise`).
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_stroke_noise(c: *mut Studio, noise: u32) -> i32 {

@@ -229,6 +229,10 @@ struct Seg {
     l: f32,
     s: f32,
     side: (f32, f32),
+    /// (Field) The wipe's world arc where the segment starts, and world length per canvas length
+    /// along it (units): the cloth's creases and frayed sides follow it (`Canvas::stroke_arc`).
+    ws: f32,
+    wk: f32,
 }
 
 /// A rag in the hand: its pad width (units), how loaded the face in use is
@@ -429,7 +433,8 @@ fn pad3(pieces: &[Seg], x: f32, y: f32, r: f32, len: f32, p: f32, mmu: f32, cs: 
         // frayed sides, and ends where the cloth comes down and lifts off
         // unevenly across the pad
         let sg = q.s + sp;
-        let fray = 0.6 * vn(sg * mmu / FRAY_MM, if d > 0.0 { 3.1 } else { 7.3 }, cs ^ 0xD4) + 0.4 * vn(sg * mmu * 3.0 / FRAY_MM, if d > 0.0 { 5.2 } else { 9.4 }, cs ^ 0xD5);
+        let sw = q.ws + sp * q.wk;
+        let fray = 0.6 * vn(sw * mmu / FRAY_MM, if d > 0.0 { 3.1 } else { 7.3 }, cs ^ 0xD4) + 0.4 * vn(sw * mmu * 3.0 / FRAY_MM, if d > 0.0 { 5.2 } else { 9.4 }, cs ^ 0xD5);
         let re = r * (1.0 - FRAY * fray);
         let start = ((sg + r * (1.2 * vn(d * mmu / END_MM, 13.7, cs ^ 0xE6) - 0.4)) / (0.25 * r)).clamp(0.0, 1.0);
         let end = ((len + r * (1.2 * vn(d * mmu / END_MM, 11.3, cs ^ 0xE5) - 0.4) - sg) / (0.25 * r)).clamp(0.0, 1.0);
@@ -444,7 +449,7 @@ fn pad3(pieces: &[Seg], x: f32, y: f32, r: f32, len: f32, p: f32, mmu: f32, cs: 
             continue;
         }
         pad += e;
-        cl += e * cloth3(d * mmu, sg * mmu, cs, p);
+        cl += e * cloth3(d * mmu, sw * mmu, cs, p);
         rim += e * rm;
         press += e * pr;
     }
@@ -757,6 +762,7 @@ impl Canvas {
         };
         let len: f32 = pts.windows(2).map(|w| ((w[1].0 - w[0].0).powi(2) + (w[1].1 - w[0].1).powi(2)).sqrt()).sum();
         if pts.len() == 1 || len < 1e-3 {
+            self.stroke_arc = None;
             return self.rag_blot(rag, pts[0].0, pts[0].1, pr(0.0), seed);
         }
         let mmu = self.mm_per_unit;
@@ -765,6 +771,8 @@ impl Canvas {
         if self.engine >= 3 {
             return self.rag_wipe3(rag, pts, &pr, cs);
         }
+        // (Field: before engine 3 a wipe has no world arc)
+        self.stroke_arc = None;
         // before engine 3: steps of each segment in turn
         let w = rag.width;
         let r0 = 0.5 * w;
@@ -865,9 +873,10 @@ impl Canvas {
         let w = rag.width;
         let r0 = 0.5 * w;
         let step = 0.5 * r0;
+        let warc = self.take_arc_units(pts.len());
         let mut segs: Vec<Seg> = Vec::with_capacity(pts.len());
         let mut s = 0.0f32;
-        for p in pts.windows(2) {
+        for (pi, p) in pts.windows(2).enumerate() {
             let (dx, dy) = (p[1].0 - p[0].0, p[1].1 - p[0].1);
             let l = (dx * dx + dy * dy).sqrt();
             if l < 1e-6 {
@@ -880,7 +889,11 @@ impl Canvas {
             {
                 side = (-side.0, -side.1);
             }
-            segs.push(Seg { a: p[0], t, l, s, side });
+            let (ws, wk) = match &warc {
+                Some(wa) => (wa[pi] - wa[0], (wa[pi + 1] - wa[pi]).max(0.0) / l),
+                None => (s, 1.0),
+            };
+            segs.push(Seg { a: p[0], t, l, s, side, ws, wk });
             s += l;
         }
         let len = s;
@@ -889,6 +902,12 @@ impl Canvas {
         }
         let n = (len / step).ceil().max(1.0) as usize;
         let sl = len / n as f32;
+        // (Field) the world arc at canvas arc `c`, and the world length of the whole wipe
+        let world_at = |c: f32| -> f32 {
+            let g = segs.iter().rev().find(|g| g.s <= c).unwrap_or(&segs[0]);
+            g.ws + (c - g.s).clamp(0.0, g.l) * g.wk
+        };
+        let len_w = world_at(len).max(1e-6);
         let touch = Touch { secs: sl * mmu / pace::RAG_MM_S as f32, slip_mm: sl * mmu };
         // the face's mobile paint from before, soaked in the meantime
         let mut pool = self.rag_pool(rag, (len * mmu) as f64 / pace::RAG_MM_S);
@@ -899,14 +918,15 @@ impl Canvas {
             let s0 = len * k as f32 / n as f32;
             let s1 = if k + 1 == n { len } else { len * (k + 1) as f32 / n as f32 };
             let sm = 0.5 * (s0 + s1);
+            let smw = world_at(sm);
             // the pad's width and line wander as the cloth shifts in the hand
-            let wob = 2.0 * vn(sm / (2.5 * w), 0.5, cs ^ 0xA1) - 1.0;
-            let side = 2.0 * vn(sm / (3.0 * w), 1.5, cs ^ 0xB2) - 1.0;
-            let wob2 = 2.0 * vn(sm / (0.7 * w), 2.5, cs ^ 0xA7) - 1.0;
-            let side2 = 2.0 * vn(sm / (0.7 * w), 3.5, cs ^ 0xB8) - 1.0;
+            let wob = 2.0 * vn(smw / (2.5 * w), 0.5, cs ^ 0xA1) - 1.0;
+            let side = 2.0 * vn(smw / (3.0 * w), 1.5, cs ^ 0xB2) - 1.0;
+            let wob2 = 2.0 * vn(smw / (0.7 * w), 2.5, cs ^ 0xA7) - 1.0;
+            let side2 = 2.0 * vn(smw / (0.7 * w), 3.5, cs ^ 0xB8) - 1.0;
             let r = r0 * (1.0 + WANDER_W * (0.65 * wob + 0.35 * wob2));
             let off = WANDER_OFF * w * (0.65 * side + 0.35 * side2);
-            let p = pr(sm / len);
+            let p = pr(smw / len_w);
             while first + 1 < segs.len() && segs[first].s + segs[first].l <= s0 {
                 first += 1;
             }
@@ -917,7 +937,7 @@ impl Canvas {
                 }
                 let (u0, u1) = ((s0 - g.s).max(0.0), (s1 - g.s).min(g.l));
                 if u1 > u0 {
-                    pieces.push(Seg { a: (g.a.0 + g.t.0 * u0, g.a.1 + g.t.1 * u0), l: u1 - u0, s: g.s + u0, ..*g });
+                    pieces.push(Seg { a: (g.a.0 + g.t.0 * u0, g.a.1 + g.t.1 * u0), l: u1 - u0, s: g.s + u0, ws: g.ws + u0 * g.wk, ..*g });
                 }
             }
             if pieces.is_empty() {

@@ -3,6 +3,8 @@ package afield.paint
 
 import afield.Rect
 import afield.graphics.FLine
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
 import afield.stdlib.Vec4
 import afield.util.PngEncoder
 import java.lang.foreign.MemorySegment
@@ -364,7 +366,7 @@ class PaintCanvas internal constructor(
         require(speed > 0.0) { "a gesture moves: speed must be above 0 mm/s" }
         val out = mutableListOf<TimedGesture.Sample>()
         var t = 0.0
-        for (whole in line.pieces()) {
+        for ((pi, whole) in line.pieces().withIndex()) {
             val piece = facets?.let { f ->
                 val corners = whole.sampleByDistance(toLineUnits(f).toFloat())
                 if (corners.size < 2) whole else FLine().apply {
@@ -396,11 +398,153 @@ class PaintCanvas internal constructor(
                 val heading = hand?.let { prev -> val turn = (raw - prev + 540.0) % 360.0 - 180.0; if (abs(turn) > REVERSAL_DEGREES) prev else prev + turn } ?: raw
                 hand = heading
                 out += TimedGesture.Sample(p.x.toDouble(), p.y.toDouble(), t + arcs[i] * mmPerUnit / speed, profile(pressure, u),
-                    tilt = tilt, azimuth = if (lean) heading else 0.0, roll = roll ?: (heading + 90.0))
+                    tilt = tilt, azimuth = if (lean) heading else 0.0, roll = roll ?: (heading + 90.0), s = arcs[i] * mmPerUnit, piece = pi)
             }
             t += arc * mmPerUnit / speed
         }
         return TimedGesture(out)
+    }
+
+    /**
+     * A [TimedGesture] along a line in three dimensions, as one eye of a stereo pair sees it:
+     * [project] takes a point of [line] (world units, z included) to this canvas's FLine coordinates.
+     * Lengths, speed and the pressure profile are the world's, measured along the line in 3D at
+     * [mmPerWorld] mm to a world unit: each sample carries its world arc ([TimedGesture.Sample.s]),
+     * so the two eyes' gestures press, pause and run out at the same places along the line however
+     * foreshortened each sees it. Each subpath is one movement of the hand ([gap] seconds apart);
+     * straight segments are sampled every [spacing] world units, curves finely enough to follow.
+     * The handle's [tilt], [lean] and [roll] are as in [gesture], its heading taken on this canvas.
+     */
+    fun gesture3d(
+        line: FLine, project: (Vec3) -> Vec2, mmPerWorld: Double = 1.0, speed: Double = 80.0,
+        pressure: List<Double> = listOf(0.6), gap: Double = 0.3, spacing: Double = 2.0,
+        tilt: Double = 0.0, lean: Boolean = true, roll: Double? = null,
+    ): TimedGesture {
+        require(speed > 0.0) { "a gesture moves: speed must be above 0 mm/s" }
+        require(mmPerWorld > 0.0 && spacing > 0.0) { "a world unit and the sampling are some length" }
+        val out = mutableListOf<TimedGesture.Sample>()
+        var t = 0.0
+        for ((pi, pts) in polylines3d(line, spacing).withIndex()) {
+            if (pts.size < 2) continue
+            val arcs = DoubleArray(pts.size)
+            for (i in 1 until pts.size) arcs[i] = arcs[i - 1] + dist3(pts[i], pts[i - 1])
+            val total = arcs.last()
+            val xy = pts.map(project)
+            if (out.isNotEmpty()) t += gap
+            var hand: Double? = null
+            for (i in pts.indices) {
+                val (a, b) = if (i + 1 < xy.size) xy[i] to xy[i + 1] else xy[(i - 1).coerceAtLeast(0)] to xy[i]
+                val raw = Math.toDegrees(Math.atan2(toCanvasDy((b.y - a.y).toDouble()), toCanvasDx((b.x - a.x).toDouble())))
+                val heading = hand?.let { prev -> val turn = (raw - prev + 540.0) % 360.0 - 180.0; if (abs(turn) > REVERSAL_DEGREES) prev else prev + turn } ?: raw
+                hand = heading
+                val sMm = arcs[i] * mmPerWorld
+                out += TimedGesture.Sample(xy[i].x.toDouble(), xy[i].y.toDouble(), t + sMm / speed, profile(pressure, if (total > 0) arcs[i] / total else 0.0),
+                    tilt = tilt, azimuth = if (lean) heading else 0.0, roll = roll ?: (heading + 90.0), s = sMm, piece = pi)
+            }
+            t += total * mmPerWorld / speed
+        }
+        require(out.isNotEmpty()) { "a gesture needs a line of some length" }
+        return TimedGesture(out)
+    }
+
+    private fun dist3(a: Vec3, b: Vec3): Double = Math.sqrt(((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z)).toDouble())
+    private fun lerp3(a: Vec3, b: Vec3, u: Double): Vec3 =
+        Vec3((a.x + (b.x - a.x) * u).toFloat(), (a.y + (b.y - a.y) * u).toFloat(), (a.z + (b.z - a.z) * u).toFloat())
+
+    /** Each subpath of [line] as points in 3D: straight segments every [spacing], curves finely. */
+    private fun polylines3d(line: FLine, spacing: Double): List<List<Vec3>> {
+        val out = mutableListOf<MutableList<Vec3>>()
+        var start: Vec3? = null
+        fun begin(p: Vec3) { out += mutableListOf(p); start = p }
+        fun to(p: Vec3) {
+            val from = out.last().last()
+            val n = kotlin.math.ceil(dist3(p, from) / spacing).toInt().coerceAtLeast(1)
+            for (k in 1..n) out.last() += lerp3(from, p, k.toDouble() / n)
+        }
+        for (node in line.nodes) {
+            val p = node.storage[0]
+            when (node) {
+                is FLine.MoveTo -> begin(p)
+                is FLine.LineTo -> if (out.isEmpty()) begin(p) else to(p)
+                is FLine.CubicTo -> {
+                    if (out.isEmpty()) { begin(p); continue }
+                    val p0 = out.last().last(); val c1 = node.storage[1]; val c2 = node.storage[2]
+                    val n = (kotlin.math.ceil((dist3(c1, p0) + dist3(c2, c1) + dist3(p, c2)) / spacing).toInt() * 2).coerceAtLeast(4)
+                    for (k in 1..n) {
+                        val u = k.toDouble() / n; val v = 1 - u
+                        val (w0, w1, w2, w3) = listOf(v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u)
+                        out.last() += Vec3((p0.x * w0 + c1.x * w1 + c2.x * w2 + p.x * w3).toFloat(), (p0.y * w0 + c1.y * w1 + c2.y * w2 + p.y * w3).toFloat(),
+                            (p0.z * w0 + c1.z * w1 + c2.z * w2 + p.z * w3).toFloat())
+                    }
+                }
+                else -> start?.let { if (out.isNotEmpty()) to(it) }
+            }
+        }
+        return out
+    }
+
+    /** Hand a movement's world arc (from its start, mm, at each sample) to the next native stroke. */
+    private fun keyArc(piece: List<TimedGesture.Sample>) {
+        if (piece.any { !it.s.isFinite() }) return
+        val s0 = piece.first().s
+        PaintNative.strokeArc(handle, FloatArray(piece.size) { (piece[it].s - s0).toFloat() })
+    }
+
+    private fun canvasXy(piece: List<TimedGesture.Sample>): FloatArray = toCanvas(piece.flatMap { listOf(it.x, it.y) })
+
+    /** A movement's pressure at 16 knots evenly spaced along its world arc. */
+    private fun swellOf(piece: List<TimedGesture.Sample>): List<Double> {
+        val s0 = piece.first().s
+        val len = (piece.last().s - s0).takeIf { it.isFinite() && it > 0 }
+        return List(16) { k ->
+            val u = k / 15.0
+            if (len == null) piece[(u * (piece.size - 1)).toInt()].pressure
+            else {
+                val i = piece.indexOfFirst { (it.s - s0) / len >= u }.let { if (it < 1) maxOf(it, 0) else it }
+                val a = piece[(i - 1).coerceAtLeast(0)]; val b = piece[i]
+                val f = if (b.s > a.s) (((u * len) - (a.s - s0)) / (b.s - a.s)).coerceIn(0.0, 1.0) else 0.0
+                a.pressure + (b.pressure - a.pressure) * f
+            }
+        }
+    }
+
+    /**
+     * Drag [brush] through [gesture] (e.g. from [gesture3d]): each movement of the hand one stroke,
+     * pressed as the gesture presses, and what is laid out along it following its world arc.
+     */
+    fun stroke(gesture: TimedGesture, brush: PaintBrush, shake: Double = 1.0, attack: Double = 0.08, release: Double = 0.15,
+               along: Boolean = false, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyNoise(seed, i); keyArc(piece)
+            PaintNative.drag(handle, brush.handle, canvasXy(piece), 1f, 1f, shake.toFloat(), attack.toFloat(), release.toFloat(), along, swellOf(piece))
+        }
+    }
+
+    /** Pull [knife] through [gesture], as along a line, its tears and pressure following its world arc. */
+    fun knife(gesture: TimedGesture, knife: PaintKnife, angle: Double? = null, lay: Boolean = true, lift: Double = 0.3, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyNoise(seed, i); keyArc(piece)
+            PaintNative.knifeDrag(handle, knife.handle, canvasXy(piece), piece.first().pressure.toFloat(), piece.last().pressure.toFloat(),
+                angle?.toFloat() ?: Float.NaN, lay, lift.toFloat())
+        }
+    }
+
+    /** Wipe [rag] through [gesture], its creases, wander and pressure following its world arc. Returns the mm³ lifted. */
+    fun wipe(gesture: TimedGesture, rag: PaintRag, seed: Long? = null): Double =
+        gesture.pieces.withIndex().filter { it.value.size >= 2 }.sumOf { (i, piece) ->
+            keyArc(piece)
+            PaintNative.ragWipe(handle, rag.handle, canvasXy(piece), swellOf(piece), seedFor(seed, i))
+        }
+
+    /** Draw [gesture] with [pencil], its tremor and pressure following its world arc. */
+    fun draw(gesture: TimedGesture, pencil: Pencil, tremor: Double = 0.4, ruler: Boolean = false, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyArc(piece)
+            pencil.worn += PaintNative.drawLine(handle, pencil, canvasXy(piece), swellOf(piece), toCanvasLength(tremor).toFloat(), !ruler, ruler, seedFor(seed, i))
+        }
     }
 
     private fun profile(p: List<Double>, u: Double): Double = when (p.size) {

@@ -238,6 +238,12 @@ pub struct Canvas {
     /// two canvases (a stereo pair) painted with the same identities share that noise whatever
     /// else each has painted. Taken by the next drag, touch, knife pull or segmented stroke.
     pub(crate) stroke_noise: Option<u32>,
+    /// (Field) The next stroke's length along itself in the world, mm, at each of its input points
+    /// (a stereo pair's eyes see one stroke at different lengths on their canvases): what is keyed
+    /// on distance along the stroke (the hand's drift and breathing, the bristles' wander, the
+    /// pressure profile, how fast the load runs down) follows it instead of the canvas length.
+    /// Taken by the next drag, knife pull, wipe or line.
+    pub(crate) stroke_arc: Option<Vec<f32>>,
 }
 
 impl Canvas {
@@ -286,6 +292,7 @@ impl Canvas {
             engine: crate::ENGINE,
             soak: None,
             stroke_noise: None,
+            stroke_arc: None,
         }
     }
 

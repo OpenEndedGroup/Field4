@@ -333,7 +333,8 @@ pub extern "C" fn field_paint_draw_line(
         let l = lead(medium, soft)?;
         let pts = points(xy, n)?;
         let prof = if profile_n > 0 { unsafe { std::slice::from_raw_parts(profile, profile_n as usize) }.to_vec() } else { vec![0.6] };
-        let mark = paint::graphite::hand_line(&pts, &prof, smooth != 0, ruler != 0, tremor.max(0.0), seed);
+        let world = unsafe { &mut *c }.canvas.take_arc_units(pts.len());
+        let mark = paint::graphite::hand_line_world(&pts, world.as_deref(), &prof, smooth != 0, ruler != 0, tremor.max(0.0), seed);
         Ok(unsafe { &mut *c }.oil(|c| c.draw(&l, &mark, worn_mm.max(0.0), seed)))
     })
 }
@@ -348,7 +349,8 @@ pub extern "C" fn field_paint_sketch_line(
     guard(-1.0, || {
         let l = lead(medium, soft)?;
         let pts = points(xy, n)?;
-        let marks = paint::graphite::sketch_marks(&pts, pressure.clamp(0.0, 1.0), passes.max(1) as usize, wander.max(0.0), true, tremor.max(0.0), seed);
+        let world = unsafe { &mut *c }.canvas.take_arc_units(pts.len());
+        let marks = paint::graphite::sketch_marks_world(&pts, world.as_deref(), pressure.clamp(0.0, 1.0), passes.max(1) as usize, wander.max(0.0), true, tremor.max(0.0), seed);
         let mut worn = worn_mm.max(0.0);
         unsafe { &mut *c }.oil(|c| {
             for (k, m) in marks.iter().enumerate() {

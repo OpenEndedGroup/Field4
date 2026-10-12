@@ -1,7 +1,10 @@
 package afield.paint
 
 import afield.graphics.FLine
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
 import afield.stdlib.Vec4
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertFalse
@@ -72,6 +75,41 @@ class StereoTest {
             stroke(line(150.0, 900.0, 850.0, 900.0), dynamicBrush(BrushKind.Round, 40.0, hairs = 16, seed = 35).load(umber), seed = 36)
         }
         assertContentEquals(a, b)
+    }
+
+    /**
+     * A stroke receding in depth, one world line 300 mm long seen by two eyes: one sees it evenly,
+     * the other foreshortened toward its far end, as perspective does. With its world arc, the brush
+     * runs out at the same place along the line in both; without it, where the canvas length says.
+     */
+    @Test fun aStrokeRecedingInDepthRunsOutAtTheSameWorldLengthInBothEyes() {
+        if (!available()) return
+        val world = FLine().moveTo(0.0, 0.0).lineTo(300.0, 0.0).also { l -> l.nodes.forEach { n -> n.storage[0] = Vec3(n.storage[0].x, 0f, n.storage[0].x) } }
+        // where along the line, 0..1, each eye puts a world point
+        val even: (Double) -> Double = { u -> u }
+        val receding: (Double) -> Double = { u -> u / (u + 2.5 * (1 - u)) }
+        fun proj(f: (Double) -> Double): (Vec3) -> Vec2 = { p -> Vec2((100 + 800 * f(p.x / 300.0)).toFloat(), 500f) }
+        // the world length (mm) at which the paint along the stroke gives out
+        fun runsOut(f: (Double) -> Double, worldArc: Boolean): Double = PaintCanvas(400, aspect = 1.0, groundColor = Vec4(0.95f, 0.94f, 0.9f, 1f), sizeMm = 300.0, seed = 3).use { c ->
+            val brush = c.brush(BrushKind.HogFlat, 40.0, config = BrushConfig(run = 60.0), seed = 7).load(umber, amount = 0.6)
+            val g = c.gesture3d(world, proj(f), mmPerWorld = 1.0, speed = 150.0, pressure = listOf(0.8))
+            c.stroke(if (worldArc) g else TimedGesture(g.samples.map { it.copy(s = Double.NaN) }), brush, shake = 0.0, seed = 9)
+            val px = c.render(wet = true)
+            val (w, _) = c.pixelSize
+            fun ink(x: Double): Double {
+                val ix = (x / 1000 * w).toInt().coerceIn(0, w - 1); val iy = (500.0 / 1000 * w).toInt()
+                return (-2..2).sumOf { dy -> 255 - ((px[(iy + dy) * w + ix] shr 8) and 0xff) } / 5.0
+            }
+            // the first world length past which the stroke stays pale
+            val steps = (0..300).map { mm -> mm to ink(100 + 800 * f(mm / 300.0)) }
+            val dark = steps.first().second
+            steps.firstOrNull { (mm, v) -> mm > 20 && v < 0.3 * dark }?.first?.toDouble() ?: 300.0
+        }
+        val (a, b) = runsOut(even, true) to runsOut(receding, true)
+        assertTrue(a in 30.0..270.0, "the brush runs out partway: at $a mm")
+        assertTrue(abs(a - b) < 15.0, "with its world length the brush runs out at the same place in both eyes: $a vs $b mm")
+        val (c, d) = runsOut(even, false) to runsOut(receding, false)
+        assertTrue(abs(c - d) > 30.0, "without it, where each canvas's length says: $c vs $d mm")
     }
 
     @Test fun aSeededWatercolourStrokeCorresponds() {
