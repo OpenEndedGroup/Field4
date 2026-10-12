@@ -29,7 +29,7 @@ val ring = fline {
 }
 
 // where the loop crosses the ring, and where it crosses itself
-val hits = listOf(loop.crossings(ring), loop.selfCrossings()).flatten().map { it.point }
+val hits = listOf(loop.crossings2D(ring), loop.selfCrossings2D()).flatten().map { it.point }
 val dots = polylineFrom(hits.map { it.v2 }).apply {
     pointed = true
     pointSize = 3.0
@@ -41,7 +41,7 @@ val dots = polylineFrom(hits.map { it.v2 }).apply {
 val tight = fline { rect(loop.tightBounds2D()); thickness = 1.0; color = vec(0.4, 1.0, 0.6, 1.0) }
 val loose = fline { rect(loop.fast2DBounds()); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.25) }
 
-print("${hits.size} crossings; clockwise on screen: ${ring.isClockwise()}")
+print("${hits.size} crossings; clockwise on screen: ${ring.isClockwise2D()}")
 
 lines(listOf(loose, tight, ring, loop, dots), w = 420.0, h = 260.0, fitToSize = true)
 ```
@@ -108,7 +108,7 @@ fun insideDots(dx: Double, rule: FLineFillRule) = fline {
     val shape = ring(dx)
     for (i in 0..24) for (j in 0..24) {
         val p = Vec2((15 + dx + i * 8).toFloat(), (25 + j * 8).toFloat())
-        if (shape.contains(p, rule)) { moveTo(p.x, p.y); lineTo(p.x + 0.01, p.y) }
+        if (shape.contains2D(p, rule)) { moveTo(p.x, p.y); lineTo(p.x + 0.01, p.y) }
     }
     pointed = true
     pointSize = 0.7
@@ -143,7 +143,7 @@ val stops = (0..12).mapNotNull { curve.locationAtFraction(it / 12f) }
 val normals = stops.map { loc ->
     fline {
         moveTo(loc.point.x, loc.point.y)
-        lineTo(loc.point.x + loc.normal.x * 22, loc.point.y + loc.normal.y * 22)
+        lineTo(loc.point.x + loc.normal2D.x * 22, loc.point.y + loc.normal2D.y * 22)
         thickness = 1.5
         color = vec(0.4, 0.9, 1.0, 1.0)
     }
@@ -151,9 +151,9 @@ val normals = stops.map { loc ->
 
 // the circle that matches the bend, at three of them
 val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
-    val r = 1.0 / loc.curvature
+    val r = 1.0 / loc.signedCurvature2D
     fline {
-        circle(loc.point.x + loc.normal.x * r, loc.point.y + loc.normal.y * r, kotlin.math.abs(r))
+        circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
         thickness = 1.0
         color = vec(1.0, 0.6, 0.2, 0.8)
     }

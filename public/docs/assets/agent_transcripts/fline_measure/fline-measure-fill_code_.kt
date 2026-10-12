@@ -11,7 +11,7 @@ fun insideDots(dx: Double, rule: FLineFillRule) = fline {
     val shape = ring(dx)
     for (i in 0..24) for (j in 0..24) {
         val p = Vec2((15 + dx + i * 8).toFloat(), (25 + j * 8).toFloat())
-        if (shape.contains(p, rule)) { moveTo(p.x, p.y); lineTo(p.x + 0.01, p.y) }
+        if (shape.contains2D(p, rule)) { moveTo(p.x, p.y); lineTo(p.x + 0.01, p.y) }
     }
     pointed = true
     pointSize = 0.7
