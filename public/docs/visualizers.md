@@ -772,7 +772,7 @@ println("inspector panes ready")
 
 These are especially good for nested maps, scene graphs, structured JSON-like data, or anything you want to poke around in rather than summarize.
 
-Both take any value, not only maps and lists. A data class or one of your own classes opens to its fields, an `IntArray` or `DoubleArray` opens to its elements, and a map whose keys are objects opens each entry to its key and its value. Every row shows its name, its type and a one-line summary (`5000 items`, `"label"`, `Point(x=1.0, y=2.5, label=p)`), so you can read most of a structure without opening anything:
+Both take any value, not only maps and lists. A data class or one of your own classes opens to its public properties, an `IntArray` or `DoubleArray` opens to its elements, and a map whose keys are objects opens each entry to its key and its value. Every row shows its name, its type and a one-line summary (`5000 items`, `"label"`, `Point(x=1.0, y=2.5, label=p)`), so you can read most of a structure without opening anything:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -784,7 +784,18 @@ tree("particles", particles)
 
 A long collection arrives 200 rows at a time; the last row says how many there are and loads the next 200. Open rows follow the value: if code that keeps running (a `frames { }` loop, say) adds to `particles`, the tree shows the new size within about a second, without re-running the box. An object that contains itself is marked with `↺` instead of being opened forever.
 
-Keys, once you have clicked into the embed: the arrow keys move and open (in `column`, `←` and `→` move between columns), `/` filters the rows, `c` copies the selected value as text, and `r` reloads. The embed grows with its content up to a height and then scrolls; pass `maxHeight = 800` to `tree` or `column` to change that height.
+Keys, once you have clicked into the embed: the arrow keys move and open (in `column`, `←` and `→` move between columns), `/` filters the rows, `c` copies the selected value as text, `p` copies the row's path, and `r` reloads. The header stays put while the rows scroll. The embed grows with its content up to a height and then scrolls; pass `maxHeight = 800` to `tree` or `column` to change that height.
+
+The rows are the same edges [`graphPaths`](graph_query.md) walks, so every row has a path from the value you passed in, such as `particle/position` or `many/250`. Press `p` (or the **path** button on a row) and paste it into box code:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val age = scene.graphPath("particle/age")?.get()
+```
+
+Type a pattern containing `/`, `*` or `|` into the filter and it runs `graphPaths` on the whole value instead of filtering one level: `**/tag` lists every `tag` at any depth, labelled by path. Choose one (Enter, or double-click) and the tree or columns open to it. Plain text still just filters the rows in view.
+
+Private properties are left out, as `graphPaths` leaves them out by default. Pass `includePrivate = true` to `tree` or `column` to list them; their paths then need `graphPaths(pattern, GraphWalkOptions(includePrivate = true))`. A row has no path when nothing reaches it by name: an element of a primitive array, a map key that is an object, the second of two map keys that print alike.
 
 And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family:
 

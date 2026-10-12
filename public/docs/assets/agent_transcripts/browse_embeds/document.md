@@ -103,14 +103,18 @@ From `code`
 
 Any value can go into tree(...): maps, lists, arrays, data classes, your own classes.
 Each row shows name, type and a one-line summary; click a triangle (or use the arrow keys) to open.
+Type **/tag into the filter: it runs scene.graphPaths("**/tag") and lists the matching paths.
+Press p on a row to copy its path, e.g. particle/age, then scene.graphPath("particle/age") reads it.
 
 ```edn [field-box id="tree_box" role="properties"]
-{"id" "tree_box" "index" 3 "name" "1 - tree(): any value, lazily" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - tree(): any value, lazily" "_tombstone" false "frame" #afield/rect [60.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tree_box_code_.kt" "lines" 16 "characters" 855 "sha256" "d22ea5020505ecce4aad99fbe5745d10e25f81d5e358e2d2a2cb98212d36df9a"}]}
+{"id" "tree_box" "index" 3 "name" "1 - tree(): any value, lazily" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - tree(): any value, lazily" "_tombstone" false "frame" #afield/rect [60.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tree_box_code_.kt" "lines" 18 "characters" 1056 "sha256" "5daa11a09bcd999c0789c5efb9dc2f69e761a0dd2b0c7fde249ad30ed9c5c5e5"}]}
 ```
 
 ```kotlin [field-property box="tree_box" name="code" path="tree_box_code_.kt"]
 // Any value can go into tree(...): maps, lists, arrays, data classes, your own classes.
 // Each row shows name, type and a one-line summary; click a triangle (or use the arrow keys) to open.
+// Type **/tag into the filter: it runs scene.graphPaths("**/tag") and lists the matching paths.
+// Press p on a row to copy its path, e.g. particle/age, then scene.graphPath("particle/age") reads it.
 data class Particle(val position: Vec3, val age: Double, val tag: String)
 class Node(val name: String) { var next: Node? = null }
 
