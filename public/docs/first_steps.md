@@ -140,4 +140,5 @@ The Kotlin code and GLSL shader properties come from the worked
 ```
 
 Continue with the [Survival Guide](survivalGuide.md), [Drawing with FLines](fline_examples.md),
-or [Your code, AI and local history](privacy.md).
+[Box Output](box_output.md) (where `println` and `display` put things, and how to open and close
+output panels), or [Your code, AI and local history](privacy.md).

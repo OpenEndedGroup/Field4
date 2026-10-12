@@ -43,13 +43,10 @@ operations:
         import afield.controlGroup
         import afield.displayOpen
         import afield.four.neuralrendering.*
-        import afield.four.modules.fromContext
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.stdlib.linalg.Vector4f
 
-        val owner = fromContext<Renderer>()
+        val owner = renderer
         prop<OpenDlssNrStudy>(lab)
-        fromContextWithNameOrNull<OpenDlssNrStudy>("lab")?.close()
+        (thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
         lab = OpenDlssNrStudy(owner, size=768, name="nr-cubes", geometry=true,
             vertex=thisBox.getPropertyRaw("vertex") as String,
             fragment=thisBox.getPropertyRaw("fragment") as String)
@@ -188,12 +185,11 @@ operations:
     properties:
       code: |
         import afield.four.neuralrendering.OpenDlssNrStudy
-        import afield.four.modules.fromContext
         import java.nio.file.Path
         import kotlin.io.path.createDirectories
 
         // Run beneath the live study box. The scene remains editable after recording.
-        val study=fromContext<OpenDlssNrStudy>()
+        val study=lab
         check(study.availability.ready) {study.availability.reason}
         check(!study.recording) {"A recording is already running"}
         val folder=Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also {it.createDirectories()}

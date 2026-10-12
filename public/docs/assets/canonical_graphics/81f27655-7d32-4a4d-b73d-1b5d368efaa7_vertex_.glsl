@@ -26,7 +26,7 @@ void main()
 
     localColor = vec4(wrap(gl_VertexIndex,3),wrap(gl_VertexIndex,5),wrap(gl_VertexIndex,11),1.0);
 
-    if (gl_VertexIndex == 10) {
+    if (gl_VertexIndex == 0) {
         debugPrintfEXT("VS: index=%d, pos=(%f,%f)",gl_VertexIndex, pos.x, pos.y);
     }
 }

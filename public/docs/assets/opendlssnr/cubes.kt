@@ -1,13 +1,10 @@
 import afield.controlGroup
 import afield.displayOpen
 import afield.four.neuralrendering.*
-import afield.four.modules.fromContext
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector4f
 
-val owner = fromContext<Renderer>()
+val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-fromContextWithNameOrNull<OpenDlssNrStudy>("lab")?.close()
+(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 lab = OpenDlssNrStudy(owner, size=768, name="nr-cubes", geometry=true,
     vertex=thisBox.getPropertyRaw("vertex") as String,
     fragment=thisBox.getPropertyRaw("fragment") as String)

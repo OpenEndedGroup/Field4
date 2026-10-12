@@ -35,20 +35,17 @@ start(renderer::run)
 <!-- field-box id="open_dlss_nr" index="1" -->
 
 ```edn [field-box id="open_dlss_nr" role="properties"]
-{"id" "open_dlss_nr" "index" 1 "name" "neural ink" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural ink" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 58 "characters" 2455 "sha256" "6009cc4c4c1074ecee526d9f7d3554bcd69ba8b4cf0bf6bcd09ac04a8ec858ac"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 7 "characters" 195 "sha256" "0ca9a483205f4c8f54843729e3a6d077be2ab8791b1327f8abdf8932429363af"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 52 "characters" 2047 "sha256" "60222eb317cdb66daadd30f266a1900c4df9d21fc3ff3694a70af26a073589ce"}]}
+{"id" "open_dlss_nr" "index" 1 "name" "neural ink" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural ink" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 55 "characters" 2313 "sha256" "12ecac0eca302562f88c71b317946e6718325cc1cc709792a9610edb451caa5c"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 7 "characters" 195 "sha256" "0ca9a483205f4c8f54843729e3a6d077be2ab8791b1327f8abdf8932429363af"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 52 "characters" 2047 "sha256" "60222eb317cdb66daadd30f266a1900c4df9d21fc3ff3694a70af26a073589ce"}]}
 ```
 
 ```kotlin [field-property box="open_dlss_nr" name="code" path="open_dlss_nr_code_.kt"]
 import afield.controlGroup
 import afield.displayOpen
 import afield.four.neuralrendering.*
-import afield.four.modules.fromContext
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector4f
 
-val owner = fromContext<Renderer>()
+val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-fromContextWithNameOrNull<OpenDlssNrStudy>("lab")?.close()
+(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 // Leave null for the editable fragment shader; try the bundled drawing or your own image.
 val imagePath: String? = null
 // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
@@ -169,17 +166,16 @@ void main() {
 <!-- field-box id="nr_record" index="2" -->
 
 ```edn [field-box id="nr_record" role="properties"]
-{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 31 "characters" 1215 "sha256" "4002d9825565420d891ae041c2f498ce90dfd856d4dba8522d6d983ae68e3de3"}]}
+{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 30 "characters" 1149 "sha256" "f4193449d311e29f09adea0e4ef5eb801a737e2dc914194a795b07dc0011214b"}]}
 ```
 
 ```kotlin [field-property box="nr_record" name="code" path="nr_record_code_.kt"]
 import afield.four.neuralrendering.OpenDlssNrStudy
-import afield.four.modules.fromContext
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
 // Run beneath the live study box. The scene remains editable after recording.
-val study=fromContext<OpenDlssNrStudy>()
+val study=lab
 check(study.availability.ready) {study.availability.reason}
 check(!study.recording) {"A recording is already running"}
 val folder=Path.of("build/opendlssnr-study/clip").toAbsolutePath().also {it.createDirectories()}

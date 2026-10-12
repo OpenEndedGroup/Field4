@@ -298,7 +298,7 @@ def _phase(item: dict) -> tuple[str, str]:
     """(what the landing is doing, the last thing it printed), read from its log."""
     lines = _log_lines(item)
     if _is_doc(item):
-        return "building local docs", (lines[-1][:160] if lines else "")
+        return "building local docs", (lines[-1][:400] if lines else "")
     if not lines:
         return "starting", ""
     steps = [line for line in lines if line.startswith("merge_regen:")]
@@ -314,7 +314,7 @@ def _phase(item: dict) -> tuple[str, str]:
             current = running[-1][len("citationGates: running "):] if running else ""
             finished_current = done and current and f"] {current} " in done[-1]
             step += f" {count}" + (f", running {current}" if current and not finished_current else "")
-    return step, lines[-1][:160]
+    return step, lines[-1][:400]
 
 
 def _typical(queue: Path, gradle: bool) -> float | None:
@@ -706,8 +706,14 @@ def _bar(fraction: float, width: int = 24) -> str:
 def _pretty_status(queue: Path, recent: int) -> None:
     st = _Style()
     g = st.g
-    width = min(shutil.get_terminal_size((100, 20)).columns, 110)
+    cols = shutil.get_terminal_size((100, 20)).columns
+    width = min(cols, 110)  # rules only; text lines use the whole terminal
     rule = lambda title: print(st.dim("\u2500\u2500 ") + st.bold(title) + " " + st.dim("\u2500" * max(width - len(title) - 4, 0)))
+
+    def clip(text: str, indent: int) -> str:
+        """Fit `text` after `indent` columns of the terminal, marking a cut with an ellipsis."""
+        room = max(cols - indent - 1, 20)
+        return text if len(text) <= room else text[: room - 1] + "\u2026"
 
     def who(item: dict) -> str:
         if _is_doc(item):
@@ -715,7 +721,7 @@ def _pretty_status(queue: Path, recent: int) -> None:
         line = f"{st.magenta(g['branch'] + ' ' + item['branch'])}  {st.dim(item['sha'][:9])}  {st.dim(g['user'] + ' ' + item['by'])}"
         subject = _subject(item)
         # The tip's commit subject, on its own line: the branch name rarely says what is landing.
-        return line + (f"\n      {subject[: width - 8]}" if subject else "")
+        return line + (f"\n      {clip(subject, 6)}" if subject else "")
 
     # Lander
     if _lander_running(queue):
@@ -753,16 +759,16 @@ def _pretty_status(queue: Path, recent: int) -> None:
         for member in members:
             print(f"  {st.yellow(g['land'])} {who(member)}")
             if member.get("note"):
-                print(f"    {st.dim(g['note'] + ' ' + member['note'][: width - 8])}")
+                print(f"    {st.dim(g['note'] + ' ' + clip(member['note'], 6))}")
         if typical:
             frac = running / typical
             tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
             print(f"    {st.cyan(_bar(min(frac, 1.0)))}  {st.bold(_span(running))} {st.dim('/ ~' + _span(typical))}  {tail}")
         else:
             print(f"    {st.bold(_span(running))} {st.dim('elapsed, no typical duration yet')}")
-        print(f"    {st.dim('step')}  {step[: width - 12]}")
+        print(f"    {st.dim('step')}  {clip(step, 10)}")
         if last:
-            print(f"    {st.dim('last')}  {st.dim(last[: width - 12])}")
+            print(f"    {st.dim('last')}  {st.dim(clip(last, 10))}")
         print(f"    {st.dim(g['log'] + ' ' + item.get('log', ''))}")
     print()
 
@@ -798,7 +804,7 @@ def _pretty_status(queue: Path, recent: int) -> None:
             what = f"main {item.get('sha', '')[:9]} \u2192 origin  ({commits} commit{'s' if commits != '1' else ''})"
             if item.get("error"):
                 print(f"  {st.red(g['push'] + ' push failed')}  {what}  {st.dim(ago + ' ago')}")
-                print(f"    {st.red(item['error'][: width - 6])}")
+                print(f"    {st.red(clip(item['error'], 4))}")
             else:
                 print(f"  {st.cyan(g['push'] + ' pushed')}  {what}  {st.dim(ago + ' ago')}")
             continue
@@ -807,7 +813,7 @@ def _pretty_status(queue: Path, recent: int) -> None:
             label = st.green(g['ok'] + ' built') if state == LANDED else st.red(g['bounce'] + ' docs failed')
             print(f"  {label}  {who(item)}  {st.dim(ago + ' ago')}")
             if state == BOUNCED:
-                print(f"    {st.red(str(item.get('reason', '?'))[: width - 6])}")
+                print(f"    {st.red(clip(str(item.get('reason', '?')), 4))}")
             continue
         if state == LANDED and _is_pull(item):
             origin_note = "from origin \u00b7 " + g["main"] + " " + item.get("landed_as", "")[:9]
@@ -823,7 +829,7 @@ def _pretty_status(queue: Path, recent: int) -> None:
         else:
             reason = " ".join(str(item.get("reason", "?")).split())
             print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")
-            print(f"    {st.red(reason[: width - 6])}")
+            print(f"    {st.red(clip(reason, 4))}")
 
 
 def cmd_status(args: argparse.Namespace) -> int:

@@ -2100,7 +2100,7 @@ val settings = RectSLRenderSettings(
 
 frames {
     val result = RectSLRenderRunner.renderJpgSequence(rectsl, settings)
-    _print(result)
+    print(result)
 }
 ```
 
