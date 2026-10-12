@@ -288,7 +288,7 @@ is stack-based as written, `linear` included.
 
 </div>
 
-Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape is genuinely shader-only.
+Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape exists only in the shader.
 
 ## Tracks
 
