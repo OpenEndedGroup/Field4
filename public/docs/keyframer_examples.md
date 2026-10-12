@@ -30,7 +30,7 @@ Almost everything below runs on the CPU, without a renderer.
     (`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`), so a keyframe scope can be exercised, and tested,
     without a GPU. The exception is
     [the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
-    targets that need a renderer, which `dev_docs/KEYFRAMER_COVERAGE.md` lists.
+    targets that need a renderer, which [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md) lists.
 
 ## What a scope watches
 
@@ -624,7 +624,7 @@ for free, with no look-at constraint anywhere in the loop.
     `KeyframeScope.camera(camera)` takes a live `Camera`, and `Camera`'s constructor is
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`), which resolves a renderer from
     the box context. So the *registration* is one of the eleven declarations no unit test reaches
-    (the full list is in `dev_docs/KEYFRAMER_COVERAGE.md`); the pose arithmetic
+    (the full list is in [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md)); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
     `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
     (`keyframer.kt:790#fun camera(camera: Camera, keyName: String = "camera") {` dispatches on a `when` with no `else`). A `Vector3f` "camera
@@ -1002,9 +1002,9 @@ sites with each one's midpoint. `scope.codeBlendPlans(a, b)` returns a plan per 
 of keys, and the [keyframe collection browser](#browsing-saved-keys)'s **Code blend** button does that for the
 two keys you have selected there.
 
-The whole feature is a runnable scene: `keyframe_code_blend` in the
-[agent transcript corpus](agent_transcripts.md) blends two looks, renders the runtime program at five
-values of the push constant, and compares both ends against the keyframe they are supposed to be.
+The whole feature is a runnable starting point:
+[`keyframe_code_blend`](agent_transcripts.md#keyframe_code_blend) blends two looks, renders the
+runtime program at five values of the push constant, and compares both ends against the keyframe they are supposed to be.
 
 ## Where to go next
 
@@ -1015,5 +1015,5 @@ values of the push constant, and compares both ends against the keyframe they ar
   that produced it.
 
 ??? aside "Test coverage"
-    `dev_docs/KEYFRAMER_COVERAGE.md` has the public surface of `keyframer.kt` against its ledger, and
+    [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md) has the public surface of `keyframer.kt` against its ledger, and
     the calls a headless test cannot reach.
