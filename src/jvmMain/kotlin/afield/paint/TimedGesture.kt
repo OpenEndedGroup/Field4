@@ -24,10 +24,17 @@ data class TimedGesture(val samples: List<Sample>) {
      * @param tilt the handle's lean from upright, degrees (0 straight down onto the paper).
      * @param azimuth which way the handle leans, degrees in the canvas (0 toward +x, 90 toward +y).
      * @param roll the handle's turn about its own axis, degrees.
+     * @param s how far along its movement the tool is here, mm, measured in the world the gesture
+     *   was made in ([PaintCanvas.gesture3d]): what is laid out along a stroke (the hand's drift,
+     *   the bristles' wander, the pressure profile, how fast the load runs down, a knife's tears, a
+     *   rag's creases, a pencil's tremor) follows it, so two eyes of a stereo pair that see one
+     *   movement at different lengths still paint it alike. NaN: the length on the canvas.
+     * @param piece which movement of the hand this sample belongs to: a new value lifts the tool.
      */
     data class Sample(
         val x: Double, val y: Double, val t: Double, val pressure: Double,
         val tilt: Double = 0.0, val azimuth: Double = 0.0, val roll: Double = 0.0,
+        val s: Double = Double.NaN, val piece: Int = 0,
     )
 
     /** How long it lasts, seconds. */
@@ -39,16 +46,30 @@ data class TimedGesture(val samples: List<Sample>) {
     /** The same gesture held still for [seconds] at its end, the tool still down. */
     fun pause(seconds: Double): TimedGesture = TimedGesture(samples + samples.last().copy(t = samples.last().t + seconds))
 
-    /** This gesture followed by [next], [gap] seconds later. */
+    /**
+     * This gesture followed by [next], [gap] seconds later: as further movements of the hand (an
+     * ordinary brush lifts between them; a brush of moving hairs is carried on through).
+     */
     fun then(next: TimedGesture, gap: Double = 0.0): TimedGesture {
         val t0 = samples.last().t + gap - next.samples.first().t
-        return TimedGesture(samples + next.samples.map { it.copy(t = it.t + t0) })
+        val p0 = samples.last().piece + 1 - next.samples.first().piece
+        val s0 = samples.last().s.takeIf { it.isFinite() }?.let { it - (next.samples.first().s.takeIf { v -> v.isFinite() } ?: 0.0) } ?: 0.0
+        return TimedGesture(samples + next.samples.map { it.copy(t = it.t + t0, piece = it.piece + p0, s = it.s + s0) })
     }
 
     /** The same path backwards, at the same pace. */
     fun reversed(): TimedGesture {
         val end = samples.last().t
-        return TimedGesture(samples.reversed().map { it.copy(t = end - it.t) })
+        val sEnd = samples.last().s
+        val pEnd = samples.last().piece + samples.first().piece
+        return TimedGesture(samples.reversed().map { it.copy(t = end - it.t, s = sEnd - it.s, piece = pEnd - it.piece) })
+    }
+
+    /** The movements of the hand, each its run of samples ([Sample.piece]). */
+    val pieces: List<List<Sample>> get() {
+        val out = mutableListOf<MutableList<Sample>>()
+        for (s in samples) if (out.isEmpty() || out.last().last().piece != s.piece) out += mutableListOf(s) else out.last() += s
+        return out
     }
 
     internal fun xytp(): FloatArray = FloatArray(samples.size * 4).also { a ->

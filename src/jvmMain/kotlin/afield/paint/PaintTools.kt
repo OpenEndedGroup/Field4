@@ -103,6 +103,11 @@ data class LoadPart(
     val share: Double = 1.0,
     /** 0 every bristle in reach takes it up alike; 1 in streaks, as from an unevenly knifed pile. */
     val streak: Double = 0.0,
+    /**
+     * Where the streaks fall. By default they follow from the brush as it is (how full it is), so a
+     * restored brush dips alike; give a seed to fix them, as two eyes of a stereo pair must.
+     */
+    val seed: Long? = null,
 )
 
 /**
@@ -285,7 +290,7 @@ class PaintBrush internal constructor(internal val handle: MemorySegment, val ki
         PaintNative.brushLoadV2(handle, r, g, b, hiding, scatter, stiff, drying, amount.toFloat(), wipe.toFloat(),
             thinner.toFloat(), turps.toFloat(), oil.toFloat(), p.side.toFloat(), p.share.toFloat(), p.streak.toFloat(),
             // a streaked dip's streaks follow from the brush as it is, so a restored brush dips alike
-            PaintNative.brushFullness(handle).toBits().toLong() * 31 + p.hashCode())
+            p.seed ?: (PaintNative.brushFullness(handle).toBits().toLong() * 31 + p.hashCode()))
     }
 
     /** Wipe [fraction] of the paint out of the brush on a rag, without loading any. */

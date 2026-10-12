@@ -126,6 +126,9 @@ internal object PaintNative {
     private val D = JAVA_DOUBLE
     private val canvasNewV2H by fn("field_paint_canvas_new_v2", A, I, F, I, L, F, F, F, F, I)
     private val canvasEngineH by fn("field_paint_canvas_engine", I, A)
+    private val strokeNoiseH by fn("field_paint_stroke_noise", I, A, I)
+    private val strokeArcH by fn("field_paint_stroke_arc", I, A, A, I)
+    private val warpH by fn("field_paint_warp", I, A, I, I, F, A, I)
     private val groundFinishH by fn("field_paint_ground_finish", I, A, F)
     private val brushNewV2H by fn("field_paint_brush_new_v2", A, I, F, L, I, A)
     private val brushConfigH by fn("field_paint_brush_config", I, A, A)
@@ -402,6 +405,13 @@ internal object PaintNative {
     fun canvasNewV2(w: Int, aspect: Float, style: Int, seed: Long, r: Float, g: Float, b: Float, sizeMm: Float, engine: Int): MemorySegment =
         nonNull(canvasNewV2H.invokeExact(w, aspect, style, seed, r, g, b, sizeMm, engine) as MemorySegment, "creating a canvas")
 
+    fun strokeNoise(c: MemorySegment, noise: Int) = check(strokeNoiseH.invokeExact(c, noise) as Int, "keying a stroke's noise")
+    fun warp(c: MemorySegment, columns: Int, rows: Int, cell: Float, at: FloatArray?, ground: Boolean) = Arena.ofConfined().use { a ->
+        check(warpH.invokeExact(c, columns, rows, cell, at?.let { a.allocateFrom(F, *it) } ?: MemorySegment.NULL, if (ground) 1 else 0) as Int, "warping the canvas")
+    }
+    fun strokeArc(c: MemorySegment, arcMm: FloatArray) = Arena.ofConfined().use { a ->
+        check(strokeArcH.invokeExact(c, a.allocateFrom(F, *arcMm), arcMm.size) as Int, "giving a stroke its length")
+    }
     fun canvasEngine(c: MemorySegment): Int = (canvasEngineH.invokeExact(c) as Int).also { if (it < 0) error("reading the engine") }
 
     fun groundFinish(c: MemorySegment, absorbent: Float) = check(groundFinishH.invokeExact(c, absorbent) as Int, "finishing the ground")

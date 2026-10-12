@@ -44,6 +44,28 @@ these hooks:
   Within the old ranges every engine paints exactly as before (the engine 2 hashes in
   `PaintToolsTest` pin it).
 
+- Stereo pairs (two canvases, one per eye, whose noise corresponds):
+  - `src/canvas.rs`, `Canvas`: `stroke_noise` and `stroke_arc` fields (set through
+    `Canvas::set_stroke_noise` / `set_stroke_arc` in `src/field/mod.rs`), taken by the next stroke.
+  - `src/bristle.rs`: `Surf` gains `noise`, `arc`/`arc_n` and `travel`. `drag` and `touch` set
+    `noise` from `stroke_noise`; `drag` hands the stroke's world arc to `drag_on`, which keys the
+    hand's drift and breathing, the bristles' wander and the pressure profile on it and sets
+    `travel` (world per canvas length) for `exchange`. `exchange` scales a step's travel by it, and
+    with a world arc lays `dep / travel` while the hair loses `dep` (same thickness at matching
+    places in either eye). Stiff paint's clumping hashes `noise` instead of the stroke id.
+  - `src/bristle.rs`, `Canvas::knife`: the tears' seed from `stroke_noise`; the pressure profile,
+    tears and leading edge along the world arc.
+  - `src/rag.rs`, `rag_wipe3` and `pad3`: `Seg` gains `ws`/`wk`; the pad's wander, pressure, frayed
+    sides and creases along the world arc.
+  - `src/field/bristles.rs`, `stroke` (the brush of moving hairs): takes the world arc per sample
+    and sets `Surf::travel` for each substep's `exchange` from the sample window it is in.
+  - The warp (`src/field/warp.rs`, new): `src/canvas.rs`, `Canvas` gains `warp`; `src/bristle.rs`,
+    `Surf` gains `warp` (set in `surf()`), and `exchange` keys tacky paint's grab
+    (`drying::stick`) on the warped place; `src/graphite.rs`, `Canvas::draw` keys the lead's grain
+    on it. `Canvas::warp_ground` and `Water::warp_sheet` resample a fresh ground and sheet.
+  - `src/graphite.rs`: `hand_line_world` and `sketch_marks_world` (the old functions call them with
+    no world arc).
+
 ## Taking a newer upstream
 
 Copy `crates/paint/{Cargo.toml,build.rs,src}` of the new commit over this directory (keeping
