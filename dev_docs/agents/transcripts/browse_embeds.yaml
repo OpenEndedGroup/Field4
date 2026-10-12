@@ -1,0 +1,92 @@
+name: browse_embeds
+description: >
+  The three inspector embeds, one box each. Box 1 puts a map of mixed values into tree(...): a data
+  class, a DoubleArray, a 5000-element list (paged 200 at a time), a map with object keys and a
+  two-node loop (marked with a ring arrow, not opened forever). Box 2 shows column(...). Box 3 keeps
+  running and adds a reading every half second; open "readings" and watch it grow without a re-run.
+  Box 4 is logs(...) filtered to one channel, with a block whose id contains parentheses.
+  Run each box; box 3 needs Launch (it loops). See dev_docs/INSPECTOR_EMBEDS.md.
+operations:
+  - create:
+      box: tree_box
+      name: "1 - tree(): any value, lazily"
+      frame: { x: 60.0, y: 60.0, w: 440.0, h: 60.0 }
+      properties:
+        code: |
+          // Any value can go into tree(...): maps, lists, arrays, data classes, your own classes.
+          // Each row shows name, type and a one-line summary; click a triangle (or use the arrow keys) to open.
+          // Type **/tag into the filter: it runs scene.graphPaths("**/tag") and lists the matching paths.
+          // Press p on a row to copy its path, e.g. particle/age, then scene.graphPath("particle/age") reads it.
+          data class Particle(val position: Vec3, val age: Double, val tag: String)
+          class Node(val name: String) { var next: Node? = null }
+
+          val a = Node("a"); val b = Node("b"); a.next = b; b.next = a      // a loop: shown with ↺, not opened forever
+
+          val scene = linkedMapOf(
+              "particle" to Particle(Vec3(1f, 2f, 0.5f), 0.25, "spark"),
+              "weights" to doubleArrayOf(0.1, 0.4, 0.5),
+              "many" to List(5000) { it * it },                               // arrives 200 rows at a time
+              "byKey" to mapOf(Particle(Vec3(0f, 0f, 0f), 0.0, "origin") to "an object as a key", 1 to "one", "1" to "the string one"),
+              "ring" to a,
+              "missing" to null,
+          )
+          tree("tree", scene)
+  - create:
+      box: column_box
+      name: "2 - column(): Finder columns"
+      frame: { x: 620.0, y: 60.0, w: 440.0, h: 60.0 }
+      properties:
+        code: |
+          // The same kind of value as Finder-style columns: choosing a row opens it in the next column.
+          data class Layer(val name: String, val visible: Boolean, val points: IntArray)
+
+          val document = linkedMapOf(
+              "layers" to listOf(Layer("dots", true, intArrayOf(2, 4, 8, 16)), Layer("lines", false, intArrayOf())),
+              "camera" to mapOf("x" to 10, "y" to 20, "zoom" to 1.5),
+              "title" to "a document\nwith two lines",
+          )
+          column("columns", document)
+  - create:
+      box: live_box
+      name: "3 - a tree that follows the value"
+      frame: { x: 60.0, y: 760.0, w: 440.0, h: 60.0 }
+      properties:
+        code: |
+          // Open rows follow the value. This box keeps running and adds a reading every half second;
+          // open "readings" in the tree and watch its size and last rows change without re-running.
+          val readings = mutableListOf<Double>()
+          val state = linkedMapOf<String, Any?>("readings" to readings, "last" to null)
+          tree("live", state)
+
+          frames {
+              var next = System.currentTimeMillis()
+              while (frame()) {
+                  if (System.currentTimeMillis() >= next && readings.size < 120) {
+                      next += 500
+                      readings += Math.round(Math.sin(readings.size * 0.3) * 1000) / 1000.0
+                      state["last"] = readings.last()
+                  }
+              }
+          }
+  - create:
+      box: logs_box
+      name: "4 - logs(): one channel, with find"
+      frame: { x: 620.0, y: 760.0, w: 440.0, h: 60.0 }
+      properties:
+        code: |
+          // logs(...) streams Field's log into a panel; this one only shows the "demo" channel.
+          // Type in its find box (or press /) to narrow it; scroll up and new rows wait behind "↓ N new".
+          logs("logs") { channel("demo") }
+
+          val log = afield.ai.core.LogDispatcher
+          log.log(afield.ai.core.LogEvent("demo", "starting a job", blockId = "job (1)", boundary = afield.ai.core.BlockBoundary.BEGIN))
+          for (i in 1..3) log.log(afield.ai.core.LogEvent("demo", "step $i of 3", blockId = "job (1)"))
+          log.log(afield.ai.core.LogEvent("demo", "done", blockId = "job (1)", boundary = afield.ai.core.BlockBoundary.END))
+          log.log(afield.ai.core.LogEvent("demo warning", "a warning row is coloured"))
+  - execute: { box: tree_box, property: code }
+  - execute: { box: column_box, property: code }
+  - launch: { box: live_box, property: code }
+  - execute: { box: logs_box, property: code }
+  - await: { wait: pending }
+  - wait: { frames: 90 }
+  - stop: { box: live_box }

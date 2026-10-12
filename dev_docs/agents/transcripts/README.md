@@ -240,6 +240,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
   sizes are the word's own partial sums, and a `.wav` player pinned to the canvas through
   `customization`. Sample-backed through `showDirtAudio`; falls back to `patVoice` with no library.
+- `browse_embeds.yaml`: **the three inspector embeds**, one box each — `tree(...)` over a data class,
+  a `DoubleArray`, a 5000-item list paged 200 rows at a time, object keys and a two-node loop;
+  `column(...)`; a **launched** box whose list grows without a re-run; and `logs(...)` filtered to one
+  channel. Pure CPU. See `dev_docs/INSPECTOR_EMBEDS.md`.
 - `pattern_condense.yaml`: **the shortest way to write a rhythm down** — `patCondense` accepts a
   candidate only by re-parsing and playing it, which is why box 1 draws pairs rather than printing
   strings. Includes the loop closed from audio: samples in, `60(3,8)` out.

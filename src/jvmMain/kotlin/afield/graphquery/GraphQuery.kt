@@ -363,8 +363,14 @@ internal object GraphReflectionCache {
         return cache.computeIfAbsent(type) { properties(it, includePrivate).associateBy { p -> p.name } }
     }
 
+    private fun buildProperties(type: KClass<*>, includePrivate: Boolean): List<KProperty1<Any, *>> =
+        // Kotlin reflection refuses some classes outright (synthetic lambdas, some Java and script
+        // classes throw KotlinReflectionInternalError or UnsupportedOperationException). Such a
+        // node has no reflected edges; it must not abort the whole walk.
+        try { buildPropertiesOrThrow(type, includePrivate) } catch (_: Throwable) { emptyList() }
+
     @Suppress("UNCHECKED_CAST")
-    private fun buildProperties(type: KClass<*>, includePrivate: Boolean): List<KProperty1<Any, *>> {
+    private fun buildPropertiesOrThrow(type: KClass<*>, includePrivate: Boolean): List<KProperty1<Any, *>> {
         val constructorOrder = runCatching { type.primaryConstructor?.parameters?.mapNotNull { it.name } }
             .getOrNull() ?: emptyList()
         val discovered = linkedMapOf<String, KProperty1<Any, *>>()
@@ -549,6 +555,11 @@ internal object GraphWalker {
                     setter = { value: Any? -> mutable[index] = value }
                 )
             }
+            is Collection<*> -> {
+                val index = name.toIntOrNull() ?: return null
+                if (index !in 0 until node.size) return null
+                LiveGraphEdge(name = name, getter = { node.elementAtOrNull(index) })
+            }
             else -> {
                 val prop = GraphReflectionCache.propertyMap(node::class, options.includePrivate)[name]
                     ?: return null
@@ -582,7 +593,7 @@ internal object GraphWalker {
         (node as? LiveGraphInspectable)?.liveGraphChildren()?.forEach { consider(it.name) }
         when (node) {
             is Map<*, *> -> node.keys.forEach { key -> consider(key?.toString() ?: return@forEach) }
-            is List<*>, is Array<*> -> Unit
+            is List<*>, is Array<*>, is Collection<*> -> Unit
             else -> GraphReflectionCache.propertyMap(node::class, options.includePrivate)
                 .keys.forEach { consider(it) }
         }
@@ -597,6 +608,15 @@ internal object GraphWalker {
      */
     private fun edgeNamedIgnoringCase(node: Any, name: String, options: GraphWalkOptions): LiveGraphEdge? =
         edgesFor(node, options).firstOrNull { it.name.equals(name, ignoreCase = true) }
+
+    /**
+     * The edges out of [node] in walk order — custom [LiveGraphInspectable] edges first, then
+     * reflected ones — or an empty list when the walk would not descend into it. The inspector
+     * (`tree(...)` / `column(...)`) lists exactly these, so a row's address is a path this walker
+     * resolves.
+     */
+    internal fun edges(node: Any, options: GraphWalkOptions): List<LiveGraphEdge> =
+        if (shouldDescend(node, options)) edgesFor(node, options) else emptyList()
 
     private fun edgesFor(node: Any, options: GraphWalkOptions): List<LiveGraphEdge> {
         val custom = (node as? LiveGraphInspectable)?.liveGraphChildren()?.toList().orEmpty()
@@ -646,6 +666,12 @@ internal object GraphWalker {
                     setter = { value: Any? -> mutable[index] = value }
                 )
             }
+        }
+        // A Set (or any other non-List collection) is addressed by position in iteration order,
+        // read-only: there is no slot to write back to. Before this, a Set was reflected as an
+        // object and showed only its `size`.
+        is Collection<*> -> node.indices.map { index ->
+            LiveGraphEdge(name = index.toString(), getter = { node.elementAtOrNull(index) })
         }
         else -> GraphReflectionCache.properties(node::class, options.includePrivate)
             .map { propertyEdge(node, it, options) }
@@ -700,7 +726,7 @@ internal object GraphWalker {
         is ShortArray, is ByteArray, is BooleanArray, is CharArray -> false
         is Function<*> -> false
         is Class<*>, is KClass<*> -> false
-        is Map<*, *>, is List<*>, is Array<*> -> true
+        is Map<*, *>, is Collection<*>, is Array<*> -> true
         is LiveGraphInspectable -> true
         else -> {
             val pkg = value::class.java.packageName ?: ""
