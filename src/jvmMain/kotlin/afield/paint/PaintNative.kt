@@ -190,6 +190,8 @@ internal object PaintNative {
     private val dbrushNewH by fn("field_paint_dbrush_new", A, A, I, F, A, I, I, L)
     private val dbrushFreeH by fn("field_paint_dbrush_free", null, A)
     private val dbrushSetH by fn("field_paint_dbrush_set", I, A, F, F, F, F, F, F)
+    private val dbrushParamH by fn("field_paint_dbrush_param", I, A, A, F)
+    private val dbrushVaryH by fn("field_paint_dbrush_vary", I, A, A, A, I)
     private val dbrushInfoH by fn("field_paint_dbrush_info", I, A, A)
     private val dbrushLoadH by fn("field_paint_dbrush_load", I, A, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, L)
     private val dbrushLoadWaterH by fn("field_paint_dbrush_load_water", I, A, A, A, A, A, I, F, F)
@@ -631,6 +633,14 @@ internal object PaintNative {
         nonNull(dbrushNewH.invokeExact(c, kind, width, a.allocateFrom(F, *cfg), hairs, segs, seed) as MemorySegment, "making a segmented brush")
     }
     fun dbrushFree(b: MemorySegment) { dbrushFreeH.invokeExact(b) }
+    fun dbrushVary(b: MemorySegment, name: String, values: FloatArray) = Arena.ofConfined().use { a ->
+        check(dbrushVaryH.invokeExact(b, a.allocateFrom(name), a.allocateFrom(F, *values), values.size) as Int, "varying the brush's $name")
+    }
+
+    fun dbrushParam(b: MemorySegment, name: String, value: Float) = Arena.ofConfined().use { a ->
+        check(dbrushParamH.invokeExact(b, a.allocateFrom(name), value) as Int, "setting the brush's $name")
+    }
+
     fun dbrushSet(b: MemorySegment, muS: Float, muK: Float, yieldRad: Float, plastic: Float, recover: Float, cohesion: Float) =
         check(dbrushSetH.invokeExact(b, muS, muK, yieldRad, plastic, recover, cohesion) as Int, "setting the brush")
     fun dbrushInfo(b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->

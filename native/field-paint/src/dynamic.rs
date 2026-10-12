@@ -4,7 +4,7 @@
 //! A gesture crosses as 7 floats a sample: x, y (canvas units), t (seconds), pressure, tilt,
 //! azimuth, roll (radians).
 
-use crate::tools::{hand_bytes, number, within};
+use crate::tools::{hand_bytes, number};
 use crate::{guard, Studio};
 use paint::field::bristles::{self as bri, Bristles, Medium, Pose};
 use paint::field::watercolor::WaterBrush;
@@ -36,7 +36,8 @@ pub extern "C" fn field_paint_dbrush_free(b: *mut Bristles) {
 
 /// Set how the hairs behave; NaN keeps a value: static and kinetic friction against the surface,
 /// the bend (radians) past which a joint yields, how fast a yielded joint keeps its bend and how fast
-/// rest bends recover (per second), and wet cohesion (0..1).
+/// rest bends recover (per second), and wet cohesion (1 a full brush's tips drawn to a point; more,
+/// harder; negative, pushed apart).
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_dbrush_set(b: *mut Bristles, mu_s: f32, mu_k: f32, yield_rad: f32, plastic: f32, recover: f32, cohesion: f32) -> i32 {
     guard(-1, || {
@@ -56,7 +57,46 @@ pub extern "C" fn field_paint_dbrush_set(b: *mut Bristles, mu_s: f32, mu_k: f32,
         set(plastic, &mut b.plastic, "plasticity")?;
         set(recover, &mut b.recover, "recovery")?;
         if cohesion.is_finite() {
-            b.cohesion = within(cohesion, 0.0..=1.0, "cohesion")?;
+            // any value: the bridges' pull is capped where it would overshoot (`field::bristles`)
+            b.cohesion = cohesion;
+        }
+        Ok(0)
+    })
+}
+
+/// Vary one of the hairs' behaviours along the next stroke, by name (`bristles::VARY_NAMES`): its
+/// value at each of the stroke's `n` samples. The brush's own value is put back after the stroke.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_dbrush_vary(b: *mut Bristles, name: *const std::ffi::c_char, values: *const f32, n: i32) -> i32 {
+    guard(-1, || {
+        let b = unsafe { &mut *b };
+        let name = crate::water::cstr(name)?;
+        let which = bri::VARY_NAMES.iter().position(|v| *v == name).ok_or_else(|| format!("a stroke can't vary {name:?}: {}", bri::VARY_NAMES.join(", ")))?;
+        let v = unsafe { std::slice::from_raw_parts(values, n.max(0) as usize) }.to_vec();
+        for x in &v {
+            number(*x, name)?;
+        }
+        b.vary.retain(|(w, _)| *w != which);
+        b.vary.push((which, v));
+        Ok(0)
+    })
+}
+
+/// Set one of the hairs' behaviours by name, any value: "clumping" (`Bristles::clumping`), "splay",
+/// "splay scatter", "splay fan" or "cohesion".
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_dbrush_param(b: *mut Bristles, name: *const std::ffi::c_char, value: f32) -> i32 {
+    guard(-1, || {
+        let b = unsafe { &mut *b };
+        let name = crate::water::cstr(name)?;
+        let v = number(value, name)?;
+        match name {
+            "clumping" => b.clumping = v,
+            "splay" => b.splay = v,
+            "splay scatter" => b.splay_scatter = v,
+            "splay fan" => b.splay_fan = v,
+            "cohesion" => b.cohesion = v,
+            other => return Err(format!("a brush of moving hairs has no {other:?}: clumping, splay, splay scatter, splay fan or cohesion")),
         }
         Ok(0)
     })

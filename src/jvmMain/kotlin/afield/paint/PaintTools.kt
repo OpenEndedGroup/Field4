@@ -450,13 +450,34 @@ class DynamicBrush internal constructor(internal val handle: MemorySegment, val 
     /**
      * How the hairs behave; `null` keeps a value. [friction] is static to kinetic against the surface;
      * a joint bent more than [yieldDegrees] from its rest angle keeps some of the bend, at [plasticity]
-     * per second; rest bends straighten again at [recovery] per second; [cohesion] (0..1) is how
-     * strongly the liquid in a full brush draws neighbouring tips together.
+     * per second; rest bends straighten again at [recovery] per second; [cohesion] is how strongly
+     * the liquid in a wet brush draws its hairs together: 1 draws a full brush's tips to a point, more
+     * pulls harder and closer, 0 none, and below 0 pushes nearby hairs apart.
+     *
+     * [clumping] is which way the liquid does it. 0 (as a brush is made) draws the tips of hairs that
+     * are neighbours at the root together. 1 joins any two wet hairs that come within about their
+     * spacing at the root by a liquid bridge, which pulls them together and snaps when they are pulled
+     * a few spacings apart (further the more liquid it holds), so that the hairs gather into clumps
+     * that splay can tear apart, and the bristles they carry gather with them. Between 0 and 1 the two
+     * pull together, each by its share; past 1 the bridges pull harder and reach further; below 0 the
+     * tip pull is stronger and the bridges push.
+     *
+     * [splay] is how far a pressed hair is pushed out from the brush's middle, per mm pressed in (the
+     * brush's `BrushConfig.splay` until set). [splayFan] is how that grows across the brush: 0 every
+     * hair pushed alike (each half of a flat moves as one), 1 in proportion to how far out its root
+     * is, so that the brush fans open and neighbours part everywhere. [splayScatter] turns each hair's
+     * push off the outward by its own slowly drifting angle and amount (0 none, 1 up to half a turn and
+     * twice as far), the way pressed hairs buckle each their own way.
      */
-    fun set(friction: Pair<Double, Double>? = null, yieldDegrees: Double? = null, plasticity: Double? = null, recovery: Double? = null, cohesion: Double? = null): DynamicBrush = apply {
+    fun set(friction: Pair<Double, Double>? = null, yieldDegrees: Double? = null, plasticity: Double? = null, recovery: Double? = null, cohesion: Double? = null,
+            clumping: Double? = null, splay: Double? = null, splayFan: Double? = null, splayScatter: Double? = null): DynamicBrush = apply {
         val nan = Float.NaN
         PaintNative.dbrushSet(handle, friction?.first?.toFloat() ?: nan, friction?.second?.toFloat() ?: nan,
             yieldDegrees?.let { Math.toRadians(it).toFloat() } ?: nan, plasticity?.toFloat() ?: nan, recovery?.toFloat() ?: nan, cohesion?.toFloat() ?: nan)
+        clumping?.let { PaintNative.dbrushParam(handle, "clumping", it.toFloat()) }
+        splay?.let { PaintNative.dbrushParam(handle, "splay", it.toFloat()) }
+        splayFan?.let { PaintNative.dbrushParam(handle, "splay fan", it.toFloat()) }
+        splayScatter?.let { PaintNative.dbrushParam(handle, "splay scatter", it.toFloat()) }
     }
 
     /** Load it with oil paint, as [PaintBrush.load]. */

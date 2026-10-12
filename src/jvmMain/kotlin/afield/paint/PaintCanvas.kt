@@ -581,8 +581,22 @@ class PaintCanvas internal constructor(
     fun dynamicBrush(kind: BrushKind = BrushKind.Round, width: Double = 30.0, hairs: Int = 32, segments: Int = 5, config: BrushConfig? = null, seed: Long? = null): DynamicBrush =
         DynamicBrush(PaintNative.dbrushNew(handle, kind.code, width.toFloat(), (config ?: BrushConfig()).values(), hairs, segments, seedFor(seed)), kind)
 
-    /** Drag a [DynamicBrush] through a timed [gesture], in oil or watercolour as it was last loaded. */
-    fun stroke(gesture: TimedGesture, brush: DynamicBrush, seed: Long? = null): DynamicReport {
+    /**
+     * Drag a [DynamicBrush] through a timed [gesture], in oil or watercolour as it was last loaded.
+     *
+     * [splay], [splayFan], [splayScatter], [cohesion] and [clumping] (as in [DynamicBrush.set]), when
+     * given, vary along the stroke: each is asked its value at every sample of the gesture and eased
+     * between them, and the brush has its own values back after. A value keyed on the sample's world
+     * length ([TimedGesture.Sample.s], as [PaintNoise.along] is) lies at the same places along a
+     * movement in both eyes of a stereo pair.
+     */
+    fun stroke(gesture: TimedGesture, brush: DynamicBrush, seed: Long? = null,
+               splay: ((TimedGesture.Sample) -> Double)? = null, splayFan: ((TimedGesture.Sample) -> Double)? = null,
+               splayScatter: ((TimedGesture.Sample) -> Double)? = null, cohesion: ((TimedGesture.Sample) -> Double)? = null,
+               clumping: ((TimedGesture.Sample) -> Double)? = null): DynamicReport {
+        for ((name, f) in listOf("splay" to splay, "splay fan" to splayFan, "splay scatter" to splayScatter, "cohesion" to cohesion, "clumping" to clumping)) {
+            if (f != null) PaintNative.dbrushVary(brush.handle, name, FloatArray(gesture.samples.size) { f(gesture.samples[it]).toFloat() })
+        }
         val v = FloatArray(gesture.samples.size * 7)
         gesture.samples.forEachIndexed { i, s ->
             v[7 * i] = toCanvasX(s.x).toFloat(); v[7 * i + 1] = toCanvasY(s.y).toFloat(); v[7 * i + 2] = s.t.toFloat(); v[7 * i + 3] = s.pressure.toFloat()
