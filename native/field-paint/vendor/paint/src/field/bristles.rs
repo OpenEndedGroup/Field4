@@ -304,7 +304,12 @@ impl Bristles {
         let fer = self.ferrule(pose, &f, mm_per_unit, z0);
         let segs = self.segs;
         let wet = self.fill();
-        let kb = (0.04 + 0.5 * self.stiffness) * (1.0 - 0.35 * wet);
+        // the bend constraint's correction per iteration. Coupled to the stretch and contact
+        // constraints it diverges (the hairs fly apart into NaN) past about 1.4, and below about
+        // -0.7 (measured: 1.33 holds and 1.42 fails painting; dry, -0.6 holds and -0.75 fails), so it
+        // stops just short of those: a dry brush past stiffness 2.5 is as rigid as a hair gets, and
+        // below -1.3 (joints driven away from their rest bend) as wild. Everything between is free.
+        let kb = ((0.04 + 0.5 * self.stiffness) * (1.0 - 0.35 * wet)).clamp(-0.6, 1.3);
         let (mu_s, mu_k) = self.friction;
         // move: the held nodes with the ferrule, the free ones by their own momentum
         for hr in &mut self.hairs {
@@ -706,6 +711,22 @@ mod tests {
         let t = std::time::Instant::now();
         let rep = stroke(&mut c, Some(&mut w), &mut b, &samples, None);
         eprintln!("1.2 s watercolour gesture on 900 px: {:.2} s wall, laid {:.1} mm³", t.elapsed().as_secs_f64(), rep.water.water_laid);
+    }
+
+    #[test]
+    fn hairs_stay_finite_at_any_stiffness() {
+        let c = Canvas::new(200, 1.0, [1.0; 3]);
+        let surf = |_: f32, _: f32| 0.0f32;
+        for st in [-1000.0f32, -10.0, -1.0, 0.0, 1.0, 2.6, 10.0, 1000.0] {
+            let mut tool = Tool::hog_flat(40.0);
+            tool.stiffness = st;
+            let mut b = Bristles::new(&tool, c.mm_per_unit(), 24, 5, 3);
+            let samples = line(200.0, 800.0, 500.0, 1.0, 1.0, 0.5, 0.0);
+            for k in 0..=1000 {
+                b.step(&pose_at(&samples, k as f32 * 0.001), 0.001, c.mm_per_unit(), &surf);
+            }
+            assert!(b.hairs.iter().all(|h| h.p.iter().flatten().all(|v| v.is_finite())), "stiffness {st}: the hairs flew apart");
+        }
     }
 
     #[test]

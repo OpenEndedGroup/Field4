@@ -116,7 +116,8 @@ impl Paint {
     /// This paint thinned: `t` (0..0.95) of what the brush takes up is
     /// solvent, the rest this paint, unchanged (`crate::thinner`; engine 3).
     pub fn with_thinner(self, t: f32) -> Self {
-        Paint { thinner: if t.is_nan() { 0.0 } else { t.clamp(0.0, 0.95) }, ..self }
+        // (Field: any finite share, past 0..0.95 too; guarded where it is used. `VENDORED.md`.)
+        Paint { thinner: if t.is_finite() { t } else { 0.0 }, ..self }
     }
     /// The share of solvent by volume (`with_thinner`).
     pub fn thinner(&self) -> f32 {

@@ -255,19 +255,12 @@ impl Tool {
         if let Some((k, v)) = finite.iter().find(|(_, v)| !v.is_finite()) {
             return Err(format!("tool {k} = {v} is not finite"));
         }
+        // (Field: the ranges a tool's values are meant for are not refused, only what would break the
+        // simulation: a brush needs some width and at least one bristle. Every other value is free,
+        // and guarded where it is used. `VENDORED.md`, "dials past their range".)
         let checks = [
             ("width > 0", self.width > 0.0),
             ("bristles >= 1", self.bristles >= 1),
-            ("length >= 0", self.length >= 0.0),
-            ("stiffness in 0..=1", (0.0..=1.0).contains(&self.stiffness)),
-            ("hair > 0", self.hair > 0.0),
-            ("run > 0", self.run > 0.0),
-            ("lay >= 0", self.lay >= 0.0),
-            ("pickup in 0..=1", (0.0..=1.0).contains(&self.pickup)),
-            ("push in 0..=1", (0.0..=1.0).contains(&self.push)),
-            ("splay >= 0", self.splay >= 0.0),
-            ("ragged >= 0", self.ragged >= 0.0),
-            ("point in 0..=1", (0.0..=1.0).contains(&self.point)),
         ];
         match checks.iter().find(|(_, ok)| !ok) {
             Some((rule, _)) => Err(format!("invalid tool: want {rule} ({self:?})")),
@@ -1718,7 +1711,9 @@ pub(crate) unsafe fn exchange(
                 // plough: move paint outward from the bristle's path, and ahead
                 if push_k > 0.0 {
                     let v = *sf.vol.add(i);
-                    let m = v * push_k * wt * fl;
+                    // (Field: never more than is there, so a push past 1 ploughs aside all of it rather
+                    // than leaving negative paint behind; `VENDORED.md`, "dials past their range")
+                    let m = (v * push_k * wt * fl).min(v.max(0.0));
                     if m > 1e-6 {
                         let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
                         let side = if (px - a.0) * nx + (py - a.1) * ny >= 0.0 { 1.0 } else { -1.0 };
