@@ -261,6 +261,7 @@ function filenameFromUrl(rawUrl) {
 
     const pathname = parsed.pathname.replace(/\/+$/, "");
     if (pathname.endsWith("/welcome")) return "Welcome";
+    if (/\/(field-docs|field4)(\/|$)/.test(pathname)) return "Documentation";
     if (pathname.endsWith("/dir")) return "Directory";
     if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
