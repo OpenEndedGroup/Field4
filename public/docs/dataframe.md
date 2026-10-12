@@ -256,13 +256,13 @@ The DataFrame runtime is pinned to `1.0.0-Beta4`, the version the plugin was bui
     The plugin was built from Field's Kotlin fork, whose `libs.versions.toml` names that runtime
     version, and the plugin reads the runtime's API at compile time. Moving to a released
     DataFrame 1.0 means re-syncing the fork and rebuilding the plugin. The wiring and the probes are
-    in `dev_docs/DATAFRAME_PLUGIN.md`.
+    in [`dev_docs/DATAFRAME_PLUGIN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/DATAFRAME_PLUGIN.md).
 
 ---
 
 ## Where to go next
 
-- [Agent Transcript Gallery](agent_transcripts.md): `dataframe_typed_columns`, a four-box example you can replay.
+- [`dataframe_typed_columns`](agent_transcripts.md#dataframe_typed_columns) in the Agent Transcript Gallery: a four-box example you can replay.
 - [Visualizers, Displays, and Little Instruments](visualizers.md): everything else `.h` and `.h2` can draw.
 - [Charts as FLines](chart.md): `DataFrame.chart()` plots a frame.
 - [Kotlin in the Head](kotlin_in_the_head.md) and [Running code in a box](running_code.md): snippets, fragments and preambles.
