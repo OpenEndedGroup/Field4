@@ -541,6 +541,19 @@ section of [Drawing with FLines](fline_examples.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/fline_hit_records/metadata.edn)
 
+### fline_measure
+
+**Measuring, trimming and crossing a line.** Four boxes: evenly spaced locations along a curve with
+their normals and the circles that match its bend; `trim` and `splitAt` by distance; where a looping
+curve crosses a ring and itself, with bounds that hug the curve; and the non-zero and even-odd fill
+rules side by side on a ring. From the measuring sections of [Drawing with FLines](fline_examples.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fline_measure.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-fline-measure" alt="Two rings drawn in white, the left one filled with orange dots across its hole, the right one with dots only between its two circles" macro-file="../../dev_docs/agents/transcripts/fline_measure.yaml" capture-box="fline-measure-fill"}
+// The transcript builds and runs all four boxes; this is the fill-rule box.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
+
 ### sound_render_path
 
 **One beat, three ways of sounding it.** The companion to the real-drums section of

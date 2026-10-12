@@ -143,12 +143,12 @@ class ClosedLineNodeAccessTest {
         assertEquals(vec(0f, 0f, 0f), rotated.nodes[0].to)
     }
 
-    /** FLinesAndJavaShapes.closestT walks `nodes[i - 1].to` with no Close branch. */
+    /** the nearest-point search walked `nodes[i - 1].to` with no Close branch (it was `closestT`). */
     @Test
-    fun closestTWorksOnAClosedLine() {
+    fun nearestLocationWorksOnAClosedLine() {
         val line = closedSquare()
-        val t = FLinesAndJavaShapes.closestT(line, vec(50f, 110f, 0f))
-        assertTrue(t.isFinite(), "closestT returned $t")
+        val t = line.nearestLocation(vec(50f, 110f, 0f))!!.t
+        assertTrue(t.isFinite(), "nearestLocation.t returned $t")
         // nearest point on the square to (50, 110) is on the third edge, node.t in [2, 3]
         assertTrue(t in 2.0f..3.0f, "expected t in the third segment, got $t")
     }

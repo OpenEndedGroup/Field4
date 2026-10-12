@@ -168,10 +168,10 @@ object InteriorCloseCurves {
         "bySimplifying" to { l: FLine -> l.bySimplifying(2f) },
         "byConvexHull2D" to { l: FLine -> l.byConvexHull2D() },
         "byGaussianSmoothing" to { l: FLine -> l.byGaussianSmoothing(2f) },
-        "findSelfIntersections" to { l: FLine -> l.findSelfIntersections() },
-        "windingNumber" to { l: FLine -> l.windingNumber(afield.stdlib.vec(50f, 50f)) },
-        "contains" to { l: FLine -> l.contains(afield.stdlib.vec(50f, 50f)) },
-        "signedArea2D" to { l: FLine -> l.signedArea2D() },
+        "selfCrossings2D" to { l: FLine -> l.selfCrossings2D().map { it.point } },
+        "windingNumber" to { l: FLine -> l.windingNumber2D(afield.stdlib.vec(50f, 50f)) },
+        "contains" to { l: FLine -> l.contains2D(afield.stdlib.vec(50f, 50f)) },
+        "area2D" to { l: FLine -> l.area2D() },
         "centroid2D" to { l: FLine -> l.centroid2D() },
         "byReversing" to { l: FLine -> l.byReversing() },
         "bySubdividing" to { l: FLine -> l.bySubdividing(1) },
@@ -182,7 +182,7 @@ object InteriorCloseCurves {
         "fast2DBounds" to { l: FLine -> l.fast2DBounds() },
         "midPoint" to { l: FLine -> l.midPoint() },
         "cursorLength" to { l: FLine -> l.cursor().lengthD() },
-        "closestT" to { l: FLine -> FLinesAndJavaShapes.closestT(l, vec(50f, 110f, 0f)) },
+        "nearestLocation" to { l: FLine -> l.nearestLocation(vec(50f, 110f, 0f)) },
         "intersectSelf" to { l: FLine -> FLinesAndJavaShapes.intersect(l, l) },
         "intersectX" to { l: FLine -> FLinesAndJavaShapes.intersectX(l, 50f) },
         "intersectY" to { l: FLine -> FLinesAndJavaShapes.intersectY(l, 50f) },
@@ -270,8 +270,8 @@ class InteriorCloseNodeTest {
 
     /** FLineGeometry.kt:674 — `CubicSegment3(this.nodes[i - 1].to, ...)` */
     @Test
-    fun findSelfIntersectionsSurvivesAnInteriorClose() {
-        val found = InteriorCloseCurves.closedThenCubicTail().findSelfIntersections()
+    fun selfCrossings2DSurvivesAnInteriorClose() {
+        val found = InteriorCloseCurves.closedThenCubicTail().selfCrossings2D().map { it.point }
         assertTrue(found.all { it.x.isFinite() }, "non-finite intersection in $found")
     }
 
@@ -421,14 +421,14 @@ class InteriorCloseNodeTest {
     /** FLineGeometry.kt:1110 — `windingNumber` read `node.to` with no Close branch at all. */
     @Test
     fun windingNumberAndContainsSurviveAClose() {
-        // its two siblings signedArea2D (:1161) and centroid2D (:1212) always skipped a Close;
+        // its siblings (the chord area) and centroid2D always skipped a Close;
         // windingNumber did not, and `contains` is nothing but a call to it.
         val glyph = InteriorCloseCurves.twoContourGlyph()
-        assertTrue(glyph.contains(afield.stdlib.vec(140f, 30f)), "point in the outer contour")
+        assertTrue(glyph.contains2D(afield.stdlib.vec(140f, 30f)), "point in the outer contour")
         // and on a plain trailing Close too, which is the ordinary point-in-polygon case
         val square = FLine().moveTo(0f, 0f).lineTo(100f, 0f).lineTo(100f, 100f).lineTo(0f, 100f).close()
-        assertTrue(square.contains(afield.stdlib.vec(50f, 50f)), "point inside a closed square")
-        assertTrue(!square.contains(afield.stdlib.vec(500f, 50f)), "point outside a closed square")
+        assertTrue(square.contains2D(afield.stdlib.vec(50f, 50f)), "point inside a closed square")
+        assertTrue(!square.contains2D(afield.stdlib.vec(500f, 50f)), "point outside a closed square")
     }
 
     /** FLineGeometry.kt:1192 — centroid2D's *degenerate* branch had no Close guard. */

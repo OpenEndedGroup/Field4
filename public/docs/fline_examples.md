@@ -1546,11 +1546,15 @@ class Cursor {
 
     // Geometry at current position
     fun position(): Vec3
-    fun tangent(): Vec3?
-    fun acceleration(): Vec3?
-    fun normal(): Vec3?
-    fun normal2(): Vec2?
-    fun radiusOfCurvature(): Vec3?
+    fun location(): FLineLocation?   // everything below, at once
+    fun tangent(): Vec3?             // unit length
+    fun normal(): Vec3?              // principal normal, towards the centre; null on straight runs
+    fun binormal(): Vec3?            // tangent x normal; null on straight runs
+    fun curvature(): Float           // unsigned, 3D
+    fun normal2D(): Vec2?            // unit, (tangent.y, -tangent.x)
+    fun signedCurvature2D(): Float   // positive bending towards normal2D
+    fun radiusOfCurvature(): Vec3?   // from here to the centre of the osculating circle
+    fun setNearest(point: Vec3): Cursor
 
     // Analysis helpers (mostly for cubics)
     fun extremalInnerPoints(): List<Float>
@@ -2059,12 +2063,12 @@ lines(dashes, w = 420.0, h = 260.0, fitToSize = true)
 
 ### Intersections
 
-To find where two curves cross, use `findIntersectionsWith`. `findSelfIntersections` is handy for detecting loops and crossings inside a single stroke.
+To find where two curves cross in the xy plane, use `crossings2D`; `selfCrossings2D` finds loops and crossings inside a single stroke. Each hit has its `point` and its `t` on both lines; [Crossings, bounds and orientation](#crossings-bounds-and-orientation) has the details.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-fun FLine.findIntersectionsWith(other: FLine, tolerance: Float = 1f): List<Vec3>
-fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3>
+fun FLine.crossings2D(other: FLine, tolerance: Float = 0.01f): List<FLineCrossing>
+fun FLine.selfCrossings2D(tolerance: Float = 0.01f): List<FLineCrossing>
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/intersections.png" embed=true}
@@ -2084,7 +2088,7 @@ val b = fline {
     color = vec(0.7, 0.9, 1.0, 0.9)
 }
 
-val hits = a.findIntersectionsWith(b, tolerance = 1f)
+val hits = a.crossings2D(b, tolerance = 1f).map { it.point }
 val hitDots = polylineFrom(hits.map { it.v2 }).apply {
     pointed = true
     pointSize = 5.0
@@ -2919,19 +2923,233 @@ lines(listOf(a, b, u, i), w = 420.0, h = 260.0, fitToSize = true)
 
 ## Queries and analysis
 
-These don’t change geometry — they help you *measure* it. Use them for picking (closest point), hit-testing (`contains`), and computing basic shape properties like area and centroid.
+These don’t change geometry — they help you *measure* it. Use them for picking (nearest location), hit-testing (`contains2D`), and computing basic shape properties like area and centroid.
 
-### Closest point
+### Measuring along a line
+
+Ask for a point by how far along the line it is, and you get its whole local frame back: position, unit tangent, normal and curvature. This is what you want for placing things evenly along a path, orienting them to it, or reading off how tightly it bends.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
 | Operation | Behavior |
 | --- | --- |
-| `fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float>` | Returns the closest position on the curve and its cursor parameter. The parameter uses segment coordinates, so it is not a normalized arc-length fraction. |
+| `fun FLine.length(): Float` | Total drawn length. Jumps between subpaths do not count; `close()` segments do. |
+| `fun FLine.locationAt(distance: Float): FLineLocation?` | The location `distance` units along the line, clamped to the line. `null` if nothing is drawn. |
+| `fun FLine.locationAtFraction(fraction: Float): FLineLocation?` | The same by fraction of the length: `0.5f` is half way by distance, not by node. |
+| `fun FLine.nearestLocation(point: Vec3): FLineLocation?` | The location on the line nearest to `point`. |
+| `fun Cursor.location(): FLineLocation?` | The same answer from a cursor you are already walking with `setD` / `setT` / `setNearest`. |
 
 </div>
 
-Finds the closest point on the curve to a query position. Returns `(closestPoint, t)` where `t` is in the cursor’s parameterization.
+An `FLineLocation` has `point`, `tangent` (unit length), `distance` along the line and `t`, the same parameter `cursor().setT(...)` takes. It carries two kinds of normal:
+
+- `normal`, `binormal` and `curvature` are the 3D frame: `normal` points towards the centre of the bend in whatever plane the line is turning, and `curvature` is one over the radius. On a straight run there is no bend, so `normal` and `binormal` are `null` and `curvature` is 0.
+- `normal2D` and `signedCurvature2D` are for drawings in the xy plane. `normal2D` is the tangent turned a quarter turn, `(tangent.y, -tangent.x)`, which on Field's canvas is to the left of the direction of travel; it exists on straight runs too. `signedCurvature2D` is positive when the line bends towards `normal2D`, so the centre of the bend is at `point + normal2D / signedCurvature2D`.
+
+The example places thirteen locations evenly along a two-piece curve, draws each `normal2D`, and at three of them draws the circle with the curve's radius of curvature.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/locate_along_line.png" embed=true}
+:::static
+
+val curve = fline {
+    moveTo(40, 210)
+    cubicTo(90, 30, 230, 30, 260, 140)
+    cubicTo(280, 220, 360, 230, 390, 90)
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+// thirteen locations, evenly spaced by distance
+val stops = (0..12).mapNotNull { curve.locationAtFraction(it / 12f) }
+
+val normals = stops.map { loc ->
+    fline {
+        moveTo(loc.point.x, loc.point.y)
+        lineTo(loc.point.x + loc.normal2D.x * 22, loc.point.y + loc.normal2D.y * 22)
+        thickness = 1.5
+        color = vec(0.4, 0.9, 1.0, 1.0)
+    }
+}
+
+// the circle that matches the bend, at three of them
+val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
+    val r = 1.0 / loc.signedCurvature2D
+    fline {
+        circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
+        thickness = 1.0
+        color = vec(1.0, 0.6, 0.2, 0.8)
+    }
+}
+
+lines(listOf(curve) + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+The 3D frame is for lines that leave the xy plane. On a helix the principal normal points straight at the axis, the binormal tilts with the rise, and the curvature is the same everywhere. This one is built from cubics, a quarter turn each, so its curvature comes out within a few percent of a true helix's:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/locate_along_helix.png" embed=true}
+:::static
+
+// a helix of radius 80 rising 30 units per turn, one cubic per quarter turn
+val r = 80.0
+val rise = 30.0
+val k = 0.5522847 * r
+val helix = fline {
+    moveTo(r, 0, 0)
+    for (q in 0 until 12) {
+        val a0 = q * PI / 2
+        val a1 = a0 + PI / 2
+        val z0 = rise * q / 4
+        val z1 = rise * (q + 1) / 4
+        cubicTo(
+            r * cos(a0) - k * sin(a0), r * sin(a0) + k * cos(a0), z0 + (z1 - z0) / 3,
+            r * cos(a1) + k * sin(a1), r * sin(a1) - k * cos(a1), z0 + 2 * (z1 - z0) / 3,
+            r * cos(a1), r * sin(a1), z1,
+        )
+    }
+}
+
+// look at it from the side and a little above: x across, z up, y into the page
+fun view(p: Vec3) = vec(p.x + 0.35 * p.y, -p.z - 0.35 * p.y)
+
+val drawn = fline {
+    helix.sampleByNumber(400).forEachIndexed { i, p -> if (i == 0) moveTo(view(p)) else lineTo(view(p)) }
+    thickness = 1.5
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+// the 3D frame at 16 evenly spaced places: tangent orange, normal blue, binormal green
+fun tick(p: Vec3, d: Vec3?, c: Vec4) = fline {
+    if (d != null) { moveTo(view(p)); lineTo(view(p + d * 18.0)) }
+    thickness = 2.0
+    color = c
+}
+val frames = (0..15).flatMap { i ->
+    val loc = helix.locationAtFraction(i / 15f)!!
+    listOf(
+        tick(loc.point, loc.tangent, vec(1.0, 0.6, 0.2, 1.0)),
+        tick(loc.point, loc.normal, vec(0.4, 0.8, 1.0, 1.0)),
+        tick(loc.point, loc.binormal, vec(0.5, 1.0, 0.5, 1.0)),
+    )
+}
+
+// a helix has constant curvature r / (r^2 + c^2), with c the rise per radian
+val c = rise / (2 * PI)
+val mid = helix.locationAtFraction(0.5f)!!
+println("curvature %.5f, a true helix %.5f".format(mid.curvature, r / (r * r + c * c)))
+println("normal points at the axis: %.3f".format(mid.normal!!.dot(vec(-mid.point.x, -mid.point.y, 0.0).normalize())))
+
+lines(listOf(drawn) + frames, w = 420.0, h = 260.0, fitToSize = true)
+```
+
+### Trimming and splitting by distance
+
+`trim` keeps the part of a line between two distances, and `splitAt` cuts it in two. Curves are cut exactly, so the pieces sit on top of the original.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.trim(from: Float, to: Float): FLine` | The piece from `from` to `to` units along the line. Both are clamped, and swapped if `to < from`. |
+| `fun FLine.splitAt(distance: Float): Pair<FLine, FLine>` | The line before and after `distance`. The two lengths add up to `length()`. |
+
+</div>
+
+Animate the second argument of `trim` to draw a line on over time. Here the thick blue run is the stretch from a quarter of the way to 60%, and the orange start is the first half of `splitAt(100f)`:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/trim_and_split.png" embed=true}
+:::static
+
+val curve = fline {
+    moveTo(40, 200)
+    cubicTo(100, 20, 220, 20, 250, 130)
+    lineTo(380, 60)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+
+val total = curve.length()
+
+// from a quarter to 60% of the way, by distance, drawn over the original
+val middle = curve.trim(0.25f * total, 0.6f * total).apply {
+    thickness = 5.0
+    color = vec(0.4, 0.9, 1.0, 1.0)
+}
+
+// cut at 100 units: two pieces whose lengths add up to the whole
+val (head, tail) = curve.splitAt(100f)
+head.apply { thickness = 2.0; color = vec(1.0, 0.6, 0.2, 1.0) }
+
+print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
+
+lines(listOf(curve, head, middle), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+### Crossings, bounds and orientation
+
+`crossings2D` finds where two lines cross in the xy plane and `selfCrossings2D` where one crosses itself, including the loop inside a single cubic. Each hit carries the point and its `t` on both lines, so you can cut there with `cursor().setT(t).split()`.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.crossings2D(other: FLine, tolerance: Float = 0.01f): List<FLineCrossing>` | Every crossing with `other`, sorted along this line. Each has `point`, `t` (on this line) and `otherT`. |
+| `fun FLine.selfCrossings2D(tolerance: Float = 0.01f): List<FLineCrossing>` | Every place the line crosses itself, with `t < otherT`. Corners where one segment meets the next are not crossings. |
+| `fun FLine.tightBounds2D(): Rect` | Bounds of what is drawn, hugging the curves. `fast2DBounds()` encloses the control points instead. |
+| `fun FLine.area2D(): Float` | Signed area, exact on curves. Each subpath adds its own; a counter wound the other way subtracts. |
+| `fun FLine.isClockwise2D(): Boolean` | Whether the line winds clockwise on screen, with y pointing down. |
+| `fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): Boolean` | Point-in-shape that follows the curves, with `FLineFillRule.NonZero` or `FLineFillRule.EvenOdd`. Every subpath counts as closed. |
+| `fun FLine.windingNumber2D(point: Vec2): Int` | The winding number about `point`, following the curves; non-zero is inside. |
+
+</div>
+
+The example finds where a looping curve crosses a ring and itself, and draws its tight bounds in green over the control-point bounds in grey:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/crossings_and_bounds.png" embed=true}
+:::static
+
+val loop = fline {
+    moveTo(60, 200)
+    cubicTo(420, 40, 0, 40, 340, 210)
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+val ring = fline {
+    circle(200, 130, 70)
+    thickness = 2.0
+    color = vec(0.6, 0.8, 1.0, 1.0)
+}
+
+// where the loop crosses the ring, and where it crosses itself
+val hits = listOf(loop.crossings2D(ring), loop.selfCrossings2D()).flatten().map { it.point }
+val dots = polylineFrom(hits.map { it.v2 }).apply {
+    pointed = true
+    pointSize = 3.0
+    stroked = false
+    color = vec(1.0, 0.5, 0.2, 1.0)
+}
+
+// bounds that hug the curve, against the control-point bounds
+val tight = fline { rect(loop.tightBounds2D()); thickness = 1.0; color = vec(0.4, 1.0, 0.6, 1.0) }
+val loose = fline { rect(loop.fast2DBounds()); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.25) }
+
+print("${hits.size} crossings; clockwise on screen: ${ring.isClockwise2D()}")
+
+lines(listOf(loose, tight, ring, loop, dots), w = 420.0, h = 260.0, fitToSize = true)
+```
+
+### Nearest location
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.nearestLocation(point: Vec3): FLineLocation?` | The location on the curve nearest to `point`, by 3D distance, with its frame, `distance` and `t`. |
+| `fun FLine.cursor(closestTo: Vec3): Cursor` | A cursor parked there, to walk on from. |
+
+</div>
+
+Finds the point on the curve nearest a query position.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/closest_point.png" embed=true}
 :::static
@@ -2944,7 +3162,7 @@ val curve = fline {
 }
 
 val query = vec(260, 60, 0)
-val closest = curve.closestPoint(query).first
+val closest = curve.nearestLocation(query)!!.point
 
 val marker = polylineFrom(listOf(query.v2, closest.v2)).apply {
     thickness = 2.0
@@ -2962,13 +3180,13 @@ lines(listOf(curve, marker), w = 420.0, h = 260.0, fitToSize = true)
 
 | Operation | Behavior |
 | --- | --- |
-| `fun FLine.contains(point: Vec2): Boolean` | Tests for a nonzero winding number around an XY point. Each open subpath is implicitly closed for this test; jumps between subpaths do not form edges. |
-| `fun FLine.signedArea2D(): Float` | Calculates signed area from node endpoints, positive for counter-clockwise XY order and negative for clockwise order. Use a single polygonal contour: this does not integrate Bézier curvature or sum separate subpaths independently. |
-| `fun FLine.centroid2D(): Vec2` | Computes the centroid using the same endpoint polygon as `signedArea2D`. Near zero area it returns the average endpoint position, or the origin for an empty line. |
+| `fun FLine.contains2D(point: Vec2, rule: FLineFillRule = FLineFillRule.NonZero): Boolean` | Whether an xy point is inside, following the curves. Each open subpath is implicitly closed; jumps between subpaths do not form edges. |
+| `fun FLine.area2D(): Float` | Signed area in the xy plane, exact on cubics, subpaths adding. |
+| `fun FLine.centroid2D(): Vec2` | The centroid of the polygon through the node end points. Near zero area it returns the average endpoint position, or the origin for an empty line. |
 
 </div>
 
-Containment respects separate subpaths. Area and centroid use an endpoint polygon, so sample curved geometry and handle separate contours explicitly before relying on those measurements.
+Containment respects separate subpaths. `centroid2D` uses the end-point polygon, so on a curved outline it is approximate.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/containment_and_area.png" embed=true}
 :::static
@@ -3011,7 +3229,6 @@ fun flineToJavaShape(f: FLine): java.awt.Shape
 fun flineToJavaShape(f: Collection<FLine>): java.awt.Shape
 fun javaShapeToFLine(f: java.awt.Shape): FLine
 
-fun closestT(to: FLine, point: Vec3): Float
 fun intersect(a: FLine, b: FLine): List<Vec3>
 ```
 

@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 /**
  * Regression coverage for [byOffsettingParameterized] and [byNoisingParameterized].
  *
- * Both used to sample the source curve's raw (un-normalised) `normal2()` and offset along it,
+ * Both used to sample the source curve's raw (un-normalised) `normal2D()` and offset along it,
  * so a long/steep segment or a degenerate normal at a join/endpoint flung a few samples to
  * huge or non-finite coordinates. `byNoisingParameterized` additionally used an unbounded
  * Box-Muller Gaussian (`r = sqrt(-2 ln u1)`), which explodes to Inf when `u1 ~ 0`. Either
