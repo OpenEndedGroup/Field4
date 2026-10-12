@@ -1,10 +1,10 @@
 # tree(), column() and logs() — a document you can open
 
-Replay `build.yaml` into a fresh Field, then run boxes 1, 2 and 4 and **launch** box 3 (it loops):
+Replay `dev_docs/agents/transcripts/browse_embeds.yaml` into a fresh Field, then run boxes 1, 2 and 4 and **launch** box 3 (it loops):
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch --with-playwright --port 9477 \
-  --command 'macro write browse_embeds --file dev_docs/agents/demos/browse_embeds/build.yaml' \
+  --command 'macro write browse_embeds --file dev_docs/agents/transcripts/browse_embeds.yaml' \
   --command 'macro run browse_embeds' \
   --command 'run tree_box' --command 'run column_box' --command 'launch live_box' --command 'run logs_box'
 ```

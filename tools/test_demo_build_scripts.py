@@ -122,6 +122,8 @@ CORPUS = {
     # 2026-10-10: GP instruments. No build.yaml (the transcript lives in dev_docs/agents/transcripts).
     "gp_instruments",
     "gp_drawing",
+    # 2026-10-12: inspector embeds. No build.yaml (the transcript lives in dev_docs/agents/transcripts).
+    "browse_embeds",
     "gpu_probe_bench",
     "interaction_nets_lambda",
     "keyframe_key_discovery",

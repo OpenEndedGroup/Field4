@@ -1698,6 +1698,16 @@ and draws the model's favourite after every six answers, then the ideal past a d
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gp_instruments/metadata.edn)
 
+### browse_embeds
+
+**Looking inside values with `tree`, `column` and `logs`**, one box each. A map of mixed values in
+`tree(...)` — a data class, an array, a 5000-item list that arrives 200 rows at a time, object keys and a
+loop marked ↺ rather than opened forever — the same value in `column(...)`, a launched box whose list
+grows while you watch, and `logs(...)` filtered to one channel. See
+[Visualizers](visualizers.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/browse_embeds/metadata.edn)
+
 ### gp_drawing
 
 **Drawing with Gaussian processes**, in three boxes to play with. A closed loop through six pins,
