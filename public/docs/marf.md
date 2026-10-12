@@ -252,7 +252,7 @@ scalar nearly everywhere: each component is a `PatPattern<Double>`, so `gain`, `
 `marf(...)` and `marfBank(...)` are the scalar spellings; `marfIn` and `marfBankIn` take a space.
 Instances for `Vector2f`, `Vector3f` and `Vector4f` ship with it.
 
-??? aside "Watch for mutation in your own space"
+!!! warning "Watch for mutation in your own space"
 
     In Field's generated linalg, `add(other)`, `sub(other)`, `mul(scalar)` and `normalize()` are
     in-place members that return the receiver, and `/` resolves to the mutating member operator
@@ -428,7 +428,9 @@ there has no evaluation context to be slowed, reversed or thinned in.
 The [`marf_demo`](agent_transcripts.md#marf_demo) starting point runs all of this, four boxes over
 one bank. Three of its boxes draw the figures above from live readers; the fourth plays one, sending the same
 bank through `patSpatial` so that a reader's output becomes a source's azimuth, its filter cutoff
-and its distance. `dev_docs/MARF_DEMO.md` is the note that goes with it.
+and its distance.
+[`dev_docs/MARF_DEMO.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MARF_DEMO.md)
+is the note that goes with it.
 
 ---
 
