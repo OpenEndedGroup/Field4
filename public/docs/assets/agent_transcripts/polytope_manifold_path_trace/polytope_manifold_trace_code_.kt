@@ -12,9 +12,6 @@ import afield.stdlib.isWatertight
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.signedVolume
 import afield.stdlib.weld
-import afield.stdlib.polytope.NormalPolicy
-import afield.stdlib.polytope.canonicalConway
-import afield.stdlib.polytope.triangulate
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)

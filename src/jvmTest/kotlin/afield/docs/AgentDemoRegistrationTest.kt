@@ -57,6 +57,7 @@ class AgentDemoRegistrationTest {
     private companion object {
         const val DEMOS = "dev_docs/agents/demos"
         const val TRANSCRIPTS = "dev_docs/agents/transcripts"
+        const val DOCS_ASSETS = "public/docs/assets"
 
         /**
          * The twenty-five demo directories this file was measured against, 2026-09-23.
@@ -123,6 +124,10 @@ class AgentDemoRegistrationTest {
             // session that night. That routing was declared at the time and it cost exactly what
             // was predicted: nothing under `artifacts/` is named by any registry, so for one day
             // the only evidence its four boxes ran was that a human had run them once, by hand.
+            // 2026-10-10: Bayesian optimisation and A/B preference learning; registered EXECUTE.
+            "gp_instruments",
+            // 2026-10-10: Gaussian processes to play with (closed loop, 1-D, 2-D); registered EXECUTE.
+            "gp_drawing",
             "gpu_probe_bench",
             "interaction_nets_lambda",
             "keyframe_key_discovery",
@@ -252,6 +257,34 @@ class AgentDemoRegistrationTest {
                 "recorded revision of both slots into the box's own shaders and checks the code holds each HEAD.",
         )
     }
+
+    /**
+     * Saved documents under `public/docs/assets/` that are not yet starting points.
+     *
+     * A demo is a place to start, or it is not a demo (Marc, 2026-10-09). These documents sit
+     * beside the pages that describe them, and until they are starting points a page can only name
+     * them by repository path, which DOCS_WRITING_RULES rule 19 forbids and which a reader cannot
+     * open. Eleven docs handoffs in one week asked for the same repair one page at a time; this
+     * list is that repair's backlog. It may only shrink: [everyDocsAssetDocumentIsAStartingPoint]
+     * fails on a new arrival, and [aStartingPointLeavesTheBacklog] fails on an entry that has been
+     * promoted.
+     *
+     * To promote one: `run-jvm-main afield.examples.DocumentToTranscript --arg <asset dir>
+     * --arg $TRANSCRIPTS/<name>.yaml`, then the steps in `$TRANSCRIPTS/README.md` (a registry
+     * bucket, a gallery entry, `regenerateAgentTranscriptStartingPoints`). The generator writes no
+     * launch ops; an EXECUTE transcript needs them added. Measured 2026-10-09.
+     */
+    private val ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS = setOf(
+        "brief_house_demo",
+        "canonical_graphics",
+        "fline_examples",
+        "nano_examples",
+        "rectsl_gallery",
+        "stacksl_cpu_demo",
+        "stacksl_surrogate_demo",
+        "three_mesh_pick_demo",
+        "three_output_gallery",
+    )
 
     /**
      * Every directory under `dev_docs/agents/demos/` — the population [DEMO_CORPUS] is a list of.
@@ -401,6 +434,65 @@ class AgentDemoRegistrationTest {
             "$classifiedTwice appear in more than one registry; the `when` in " +
                 "DemoTranscriptExecSmokeTest.main takes the first branch, so the second classification " +
                 "is silently dead and the transcript is verified more weakly than the file says",
+        )
+    }
+
+    /** The saved documents under `public/docs/assets/`, other than the materialized starting points. */
+    private fun docsAssetDocuments(): List<String> =
+        (File(DOCS_ASSETS).listFiles() ?: emptyArray())
+            .filter { it.isDirectory && it.name != "agent_transcripts" && File(it, "metadata.edn").isFile }
+            .map { it.name }
+            .sorted()
+
+    private fun isStartingPoint(name: String): Boolean =
+        File("$TRANSCRIPTS/$name.yaml").isFile && name in registry() &&
+            File("$DOCS_ASSETS/agent_transcripts/$name/metadata.edn").isFile
+
+    /**
+     * A document a docs page stands beside is a starting point, so the page can link it.
+     *
+     * Ranges over the documents saved directly under `public/docs/assets/`. Those under
+     * `dev_docs/agents/demos/` are held to the same thing by [everyDemoDocumentIsAStartingPoint].
+     */
+    @Test
+    fun everyDocsAssetDocumentIsAStartingPoint() {
+        val missing = docsAssetDocuments().filter { !isStartingPoint(it) && it !in ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS }
+        assertEquals(
+            emptyList(),
+            missing,
+            "document(s) $missing under $DOCS_ASSETS are not starting points, so no page can link them. " +
+                "Generate `$TRANSCRIPTS/<name>.yaml` with afield.examples.DocumentToTranscript, register " +
+                "it in DemoTranscriptExecSmokeTest, give it a gallery entry, and run " +
+                "`./gradlew regenerateAgentTranscriptStartingPoints` (see $TRANSCRIPTS/README.md).",
+        )
+    }
+
+    /** The backlog only shrinks: a promoted document leaves it, and a vanished one cannot stay in it. */
+    @Test
+    fun aStartingPointLeavesTheBacklog() {
+        val promoted = ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS.filter(::isStartingPoint).sorted()
+        assertEquals(
+            emptyList(),
+            promoted,
+            "$promoted are starting points now; delete them from ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS",
+        )
+        val absent = (ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS - docsAssetDocuments().toSet()).sorted()
+        assertEquals(emptyList(), absent, "$absent are in the backlog but are not documents under $DOCS_ASSETS")
+    }
+
+    /**
+     * Every demo document under `dev_docs/agents/demos/` is a starting point, unless [UNVERIFIED]
+     * says why not. Registration alone is not enough: [AgentTranscriptMaterializer.EXCLUDE] can keep
+     * a registered transcript off the welcome screen.
+     */
+    @Test
+    fun everyDemoDocumentIsAStartingPoint() {
+        val missing = demoDocuments().filter { !isStartingPoint(it) && it !in UNVERIFIED }
+        assertEquals(
+            emptyList(),
+            missing,
+            "demo document(s) $missing are registered but not materialized as starting points; take " +
+                "them out of AgentTranscriptMaterializer.EXCLUDE or run regenerateAgentTranscriptStartingPoints",
         )
     }
 }

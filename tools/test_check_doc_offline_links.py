@@ -16,8 +16,9 @@ What is pinned here, because each was a way this guard could have passed for the
 * an empty or shrunken population fails rather than passing. `RECORDED_OCCURRENCES` is a floor.
 * the regex matches the *wrong* shapes, not just the right one. A lint whose pattern only
   matches correct output selects nothing and always passes.
-* `CARRIER_PAGES` is checked for set equality in both directions, so a removed page fails as
-  loudly as a new one.
+* a NEW carrier page needs no registration (`FixtureTree`): the hand-kept `CARRIER_PAGES` ledger
+  was retired 2026-10-10 after authors forgot it six times (last: `staged_projects.md`), and the
+  per-reference shape lint is what catches a bad link on a new page.
 
 Run with:  uv run --group backdoor python -m unittest tools.test_check_doc_offline_links
 """
@@ -29,8 +30,6 @@ import unittest
 from pathlib import Path
 
 from tools.check_doc_offline_links import (
-    ledger_line,
-    CARRIER_PAGES,
     OFFLINE_REF,
     RECORDED_OCCURRENCES,
     prefix_from_site_url,
@@ -137,7 +136,7 @@ class Predicate(unittest.TestCase):
 
 
 class AgainstTheRealTree(unittest.TestCase):
-    """End to end on this repository, which is the only population the ledger describes."""
+    """End to end on this repository."""
 
     def test_exit_zero_and_the_recorded_population(self) -> None:
         result = subprocess.run(
@@ -156,28 +155,8 @@ class AgainstTheRealTree(unittest.TestCase):
         found = re.search(r"(\d+) `offline\.html\?file=` reference\(s\)", result.stdout)
         self.assertIsNotNone(found, result.stdout)
         self.assertGreaterEqual(int(found.group(1)), RECORDED_OCCURRENCES, result.stdout)
-        self.assertIn(f"on {len(CARRIER_PAGES)} page(s)", result.stdout)
-
-    def test_the_carrier_ledger_is_exactly_the_measured_set(self) -> None:
-        pages = tracked_docs_markdown(REPO_ROOT)
-        measured = {
-            rel for rel in pages
-            if OFFLINE_REF.search((REPO_ROOT / rel).read_text(encoding="utf-8"))
-        }
-        to_add = "\n".join(f"    {ledger_line(r)}" for r in sorted(measured - CARRIER_PAGES))
-        to_drop = ", ".join(sorted(CARRIER_PAGES - measured))
-        self.assertEqual(
-            measured, CARRIER_PAGES,
-            "CARRIER_PAGES in tools/check_doc_offline_links.py is out of date. "
-            + (f"Check each link's shape, then add:\n{to_add}\n" if to_add else "")
-            + (f"Delete: {to_drop}" if to_drop else ""),
-        )
-
-    def test_the_mismatch_message_names_the_line_to_add(self) -> None:
-        self.assertEqual(ledger_line("public/docs/x.md"), '"public/docs/x.md",')
-
     def test_no_authored_page_writes_the_old_shape_any_more(self) -> None:
-        """Set equality is not enough on its own: this is the direct statement of the fix."""
+        """The direct statement of the fix, independent of the checker's own regex."""
         listing = subprocess.run(
             ["git", "-C", str(REPO_ROOT), "ls-files", "public/docs"],
             capture_output=True, text=True, check=True,
@@ -188,6 +167,48 @@ class AgainstTheRealTree(unittest.TestCase):
             if "/offline.html" in text or "offline.html?file=/" in text:
                 offenders.append(rel)
         self.assertEqual(offenders, [])
+
+
+class FixtureTree(unittest.TestCase):
+    """A scratch git tree: a new carrier page passes unregistered; a bad link on it still fails.
+
+    Regression for 2026-10-10 (`e1e61977e`): `staged_projects.md` landed with a correct link and
+    main needed a follow-up commit only to record it in the old CARRIER_PAGES ledger.
+    """
+
+    def build(self, root: Path, link: str) -> None:
+        (root / "public" / "docs" / "assets" / "t").mkdir(parents=True)
+        (root / "public" / "zensical.yml").write_text(
+            "site_dir: field4\nsite_url: http://openendedgroup.com/Field4/\n", encoding="utf-8")
+        (root / "public" / "docs" / "assets" / "t" / "metadata.edn").write_text("{}", encoding="utf-8")
+        (root / "public" / "docs" / "staged_projects.md").write_text(
+            f"# Staged\n\n[Open ↗]({link})\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q", str(root)], check=True)
+        subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+
+    def run_checker(self, link: str) -> subprocess.CompletedProcess:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self.build(Path(tmp), link)
+            return subprocess.run(
+                [sys.executable, str(CHECKER), "--repo-root", tmp, "--min-occurrences", "1"],
+                capture_output=True, text=True,
+            )
+
+    def test_a_new_carrier_page_with_the_right_shape_passes_without_registration(self) -> None:
+        result = self.run_checker("offline.html?file=assets/t/metadata.edn")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("1 `offline.html?file=` reference(s) on 1 page(s)", result.stdout)
+
+    def test_a_new_carrier_page_with_the_old_shape_fails(self) -> None:
+        result = self.run_checker("/offline.html?file=/field4/assets/t/metadata.edn")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("public/docs/staged_projects.md:3", result.stdout)
+
+    def test_a_new_carrier_page_naming_a_missing_target_fails(self) -> None:
+        result = self.run_checker("offline.html?file=assets/nope/metadata.edn")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("names nothing committed", result.stdout)
 
 
 if __name__ == "__main__":

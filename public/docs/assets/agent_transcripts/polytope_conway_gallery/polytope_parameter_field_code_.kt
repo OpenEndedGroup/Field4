@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 
 // A scalar per face, written as an ordinary attribute. Selection and deployment are
 // separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.

@@ -389,6 +389,41 @@ class BoxReferenceTests(unittest.TestCase):
         # `--args=--workspace ...` on the launch path, so on this path it decided nothing.
         self.assertFalse(self.status()["workspaceAppliedToServer"])
 
+    def test_ai_chat_reports_the_servers_running_and_suspended_state(self) -> None:
+        """`ai-chat` passes on what the chat says it is doing, not a guess from refusal text."""
+        from tools.field_backdoor import dispatch_command
+
+        self.client.boxes["b1"] = {"uid": "b1", "name": "Estimate"}
+        calls: list[tuple[str, dict]] = []
+        waiting = {"since": "2026-10-09T11:36:09Z", "resumesBy": "2026-10-09T15:36:09Z",
+                   "jobs": [{"boxId": "b1", "name": "estimate", "jobId": "j1", "stage": "pi", "status": "RUNNING"}]}
+
+        async def reply(name: str, payload: dict, *, timeout: float, **_kwargs) -> dict:
+            calls.append((name, payload))
+            stopped = payload.get("stopWaiting")
+            return {"payload": {
+                "uid": payload["uid"],
+                "history": '<<you>>\nBuild it\n<<ai>>\n<<model:{"provider":"openai"}>>\nStarted it.\n'
+                           '<<progress>>\nWaiting for 1 build · no model calls\n',
+                "running": False,
+                **({} if stopped else {"suspendedOn": waiting}),
+                "message": "_Stopped waiting for 1 build; it keeps running._" if stopped else "",
+            }}
+
+        self.client.call_for_single_reply = reply  # type: ignore[method-assign]
+        result = asyncio.run(dispatch_command(self.client, parse_command("ai-chat Estimate"), "ai-chat Estimate"))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["data"]["suspendedOn"], waiting)
+        self.assertFalse(result["data"]["running"])
+        self.assertEqual(result["data"]["turns"], 1)
+        self.assertEqual(result["data"]["lastReply"], "Started it.")
+
+        line = "ai-chat Estimate --stop-waiting"
+        stopped = asyncio.run(dispatch_command(self.client, parse_command(line), line))
+        self.assertIsNone(stopped["data"]["suspendedOn"])
+        self.assertIn("Stopped waiting", stopped["data"]["message"])
+        self.assertEqual(calls, [("ai-chat-history", {"uid": "b1"}), ("ai-chat-history", {"uid": "b1", "stopWaiting": True})])
+
     def test_set_command_uses_acknowledged_persistent_property_path(self) -> None:
         from tools.field_backdoor import dispatch_command
 
@@ -545,11 +580,33 @@ class BoxReferenceTests(unittest.TestCase):
             attach_existing=True,
         )
         with (
-            mock.patch("tools.field_backdoor.health_check", return_value=False),
+            mock.patch("tools.field_backdoor.health_check", return_value=False) as health,
+            mock.patch("tools.field_backdoor.port_accepts_connections", return_value=False),
             self.assertRaisesRegex(BackdoorError, "no Field server is listening"),
         ):
             asyncio.run(client.ensure_server())
         self.assertIsNone(client.managed_process)
+        # A closed port is reported at once: no slow retries.
+        self.assertEqual(health.call_count, 1)
+
+    def test_a_slow_health_answer_from_a_listening_port_is_a_busy_server(self) -> None:
+        """2026-10-10: a loaded host answered /health in more than 1.5 s, and attachments called it missing."""
+        client = FieldBackdoor(
+            port=9092,
+            workspace="/tmp/AFieldWorkspace",
+            default_timeout=0.01,
+            logger=_Logger(),
+            attach_existing=True,
+        )
+        instance = {"repoRoot": str(REPO_ROOT), "startedAtEpochMs": 1, "pid": 123, "workspace": "/tmp/AFieldWorkspace"}
+        with (
+            mock.patch("tools.field_backdoor.health_check", side_effect=[False, False, True]) as health,
+            mock.patch("tools.field_backdoor.port_accepts_connections", return_value=True),
+            mock.patch("tools.field_backdoor.field_instance_info", return_value=instance),
+        ):
+            asyncio.run(client.ensure_server())
+        self.assertTrue(client.reused_existing_server)
+        self.assertEqual([c.kwargs.get("timeout") for c in health.call_args_list[1:]], [10.0, 10.0])
 
     def test_unknown_scratch_box_explains_invocation_lifetime(self) -> None:
         with self.assertRaises(BackdoorError) as raised:

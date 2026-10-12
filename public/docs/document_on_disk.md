@@ -17,24 +17,22 @@ keyed on the canonical path, so two saves of the same document serialize and a s
 one does not wait. Within the lock the order is fixed: sidecars first, then `metadata.edn`, then
 `document.md`.
 
-| File | Holds | Backups kept | Read by the loader | Present in |
-| --- | --- | --- | --- | --- |
-| `metadata.edn` | every persistent property of every box, plus an inline copy of each sidecar | unlimited | yes — this is the file that is parsed | 401 |
-| `<box>_<property>_.<ext>` | one sidecar-backed property, verbatim | 10 | yes, and it beats the inline copy | — |
-| `document.md` | a Markdown rendering of the same boxes | none | no | 232 |
-| `transcript.edn` | the flight recorder: what ran, and when | 10 | no | 268 |
-| `history_metrics.edn` | per-version line counts for the history panel | 10 | no | 226 |
-| `operations.yaml` | the operation transcript: moves, edits, executes | 10 | no | 147 |
-| `versions.edn` | version names you typed, and full-restore transitions | none | no | 10 |
+| File | Holds | Backups kept | Read by the loader |
+| --- | --- | --- | --- |
+| `metadata.edn` | every persistent property of every box, plus an inline copy of each sidecar | unlimited | yes — this is the file that is parsed |
+| `<box>_<property>_.<ext>` | one sidecar-backed property, verbatim | 10 | yes, and it beats the inline copy |
+| `document.md` | a Markdown rendering of the same boxes | none | no |
+| `transcript.edn` | the flight recorder: what ran, and when | 10 | no |
+| `history_metrics.edn` | per-version line counts for the history panel | 10 | no |
+| `operations.yaml` | the operation transcript: moves, edits, executes | 10 | no |
+| `versions.edn` | version names you typed, and full-restore transitions | none | no |
 
-The last column is a census of the 401 directories holding a `metadata.edn` in
-`~/Documents/AFieldWorkspace` on 2026-09-04. It sets expectations rather than stating a rule: only
-`metadata.edn` is universal. A document saved by an older Field has no `document.md`; one never
-opened interactively has no `operations.yaml`; and `versions.edn` appears only once you name a
-version or restore one, which is why it is in 10 of 401.
+Only `metadata.edn` is always there. A document saved by an older Field has no `document.md`; one
+never opened interactively has no `operations.yaml`; and `versions.edn` appears only once you name
+a version or restore one.
 
-The three backup policies are three different arguments to one function, called three times in a
-single stretch of the save body in `saving.kt`: sidecars go through
+The three backup policies are three calls to one function in the save body of `saving.kt`, with
+different arguments: sidecars go through
 `src/jvmMain/kotlin/afield/saving.kt:462#val cd = checkDifference(target, value.inline, maxBackups = 10)`,
 `metadata.edn` through
 `src/jvmMain/kotlin/afield/saving.kt:488#metadataChanged = checkDifference(metadataPath, ednText)`
@@ -50,7 +48,7 @@ returns `false` on a byte-identical write
 save path treats that `false` as "not altered" and skips history, metrics and the transcript
 checkpoint entirely.
 
-### The figure
+### An example
 
 Thirteen saves of a three-box document, into a temp directory, driven by the real `save`:
 
@@ -88,7 +86,7 @@ Regenerate it with
 uv run --project . --group backdoor python tools/run_field_tests.py --id examples.document-on-disk.smoke
 ```
 
-which is what produced the two blocks above:
+which runs
 `src/jvmMain/kotlin/afield/examples/DocumentOnDiskSmokeTest.kt:35#object DocumentOnDiskSmokeTest`.
 
 Two things in that listing are not about backups. `AGENTS.md` is seeded into any
@@ -102,17 +100,13 @@ document saved by a program that never moved a box has nothing to checkpoint.
 
 Opening a directory parses `metadata.edn`, and through it the sidecars it names
 (`src/jvmMain/kotlin/afield/saving.kt:1014#throw FileNotFoundException("missing $METADATA_EDN or $METADATA_JSON in $root")`
-is the failure when it is absent). The loader never touches `document.md`: `DOCUMENT_MARKDOWN`
-occurs twice in `src/`, once as the constant and once in the save path, and the file describes
-itself accurately in its own first paragraph
-(`src/jvmMain/kotlin/afield/saving.kt:673#This is a machine-readable narrative mirror of`). Editing
-`document.md` therefore cannot change what a document opens as.
-
-It has one reader in the tree, and it is not the loader.
-`src/jvmMain/kotlin/afield/CompletionCorpus.kt:105#.mapNotNull { parseDocument(File(it, "document.md")) }`
-walks a directory of documents and reconstructs each one's box graph out of the fences, for the
-completion ground-truth harness. That is what "written beside it for code and AI tools" in the
-file's own header is about: a box graph you can read without a Field.
+is the failure when it is absent). The loader never reads `document.md`, which says so in its own
+first paragraph
+(`src/jvmMain/kotlin/afield/saving.kt:673#This is a machine-readable narrative mirror of`), so
+editing it cannot change what a document opens as. It is written for code and AI tools: a box graph
+you can read without a Field. Field's own completion harness reads it that way, rebuilding each
+document's box graph from the fences
+(`src/jvmMain/kotlin/afield/CompletionCorpus.kt:105#.mapNotNull { parseDocument(File(it, "document.md")) }`).
 
 A `metadata.json` from a much older Field is still loadable, and is rewritten as EDN immediately —
 `src/jvmMain/kotlin/afield/saving.kt:1020#save(root, boxes, "upgrade to edn")` runs as part of the
@@ -135,16 +129,16 @@ So **if the loose sidecar file exists, its contents win, and the inline copy in 
 read.** Regenerate a `metadata.edn` by hand with new code in the `inline` field, leave
 `<box>_code_.kt` in place, and the document opens with the old code: that one property came from the
 file. Frames, names, topology and everything else on the same box are still read from `metadata.edn`
-exactly as written. The choice is per property, and only for the 29 property names in
+exactly as written. The choice is per property, and only for the property names in
 `src/jvmMain/kotlin/afield/Boxes.kt:498#var ioSeparateProperties = mutableMapOf(`.
 
 `preferInlineFiles` inverts it, and there is one caller who wants that: the history machinery, which
 resolves an old version's properties with
 `src/jvmMain/kotlin/afield/history.kt:809#private fun loadVersionSnapshot(`.
 Reading a backup, the loose file on disk is the *current* code, not the historical one, so the inline
-copy is the only correct source. That is the whole reason the inline copy exists — see
+copy is the only correct source. That is why the inline copy exists;
 `src/jvmMain/kotlin/afield/examples/HistoryFileInlineSmokeTest.kt:47#Live resolution should prefer the current sidecar`
-for both halves asserted side by side.
+checks both cases side by side.
 
 If you have edited sidecars and want `metadata.edn`'s inline copies brought back into agreement
 without opening the document,
@@ -166,12 +160,13 @@ supported way to edit a box's code from outside Field.
 
 **A `metadata.edn` edit is reconciled at box granularity, not merged.** An external modification runs
 `src/jvmMain/kotlin/afield/FileWatchManager.kt:500#private fun reconcileMetadata(workspaceDir: File)`,
-which adds boxes present on disk and absent from the session, and tombstones boxes present in the
-session and absent from the file
+which adds boxes present on disk and absent from the session, and tombstones boxes that were in the
+last `metadata.edn` Field wrote or loaded and are absent from the new one
 (`src/jvmMain/kotlin/afield/FileWatchManager.kt:578#box.setPropertyRaw("_tombstone", true, doResync = true)`).
-Its own contract line is the one to read:
-`src/jvmMain/kotlin/afield/FileWatchManager.kt:496#properties of boxes already present in the`
-session are left alone. So *adding* or *removing* a box by editing `metadata.edn` under a live Field
+A box created in the session since that write is left alone: it was never in the file, so the edit
+cannot have removed it. The properties of boxes already present in the session are left alone
+(`src/jvmMain/kotlin/afield/FileWatchManager.kt:496#properties of boxes already present in the`).
+So *adding* or *removing* a box by editing `metadata.edn` under a live Field
 works, and *changing a property of a box that is already open* does not — that edit is not applied,
 and the next save overwrites it from memory. Hand-edit the sidecar instead.
 
@@ -275,47 +270,34 @@ Box.ioPersistentProperties.addAll(propsList)
 document: open a document whose header lists a property name, and every other document open in that
 Field will persist that name too, until the process exits. Nothing removes a name.
 
-That is why the list in a saved header is longer than the list in the source. In
-`~/Documents/AFieldWorkspace/keyframeme/document.md` on 2026-09-04 the header carries **78** names
-against the **63** declared in
-`src/jvmMain/kotlin/afield/Boxes.kt:428#var ioPersistentProperties = mutableSetOf(`. Twelve of the
-extra 15 are language-root markers registered by the first mechanism above — the `is…Root` flags,
-`mainLanguage`, Nano's two configuration properties, and `spreadsheet`. The other three,
-`house_project`, `ai_chat` and `foo`, entered the set in some earlier session and have been carried
-in that file's header ever since. `foo` shows the mechanism plainly: the list is append-only and
-nothing prunes it, so a saved header records what that process had learned rather than declaring
-anything.
+That is why the list in a saved header is usually longer than the one declared in
+`src/jvmMain/kotlin/afield/Boxes.kt:428#var ioPersistentProperties = mutableSetOf(`. Most of the
+extra names are language-root markers registered by the first mechanism above (the `is…Root` flags,
+`mainLanguage`, Nano's configuration properties); the rest entered the set in some earlier session
+and have been carried in the header ever since. A saved header records what that process had
+learned, not a fixed declaration.
 
 ## What `metadata.edn` is mostly made of
 
-Only properties whose names match one of the 63 patterns in
+Only properties whose names match one of the patterns in
 `src/jvmMain/kotlin/afield/Boxes.kt:428#var ioPersistentProperties = mutableSetOf(` are written at
 all; everything else on a box is dropped at save. One of those patterns is a regex, `.*_editorState`,
-and it is the reason a `metadata.edn` is larger than its boxes suggest: in
-`~/Documents/AFieldWorkspace/keyframeme` on 2026-09-04, a five-box document, the `_editorState`
-values were 5 005 of 23 546 bytes — 21% of the file, in 12 keys. That is one document and not a law,
-but the mechanism is general: every editor keeps cursor and fold state per box per property, and it
-persists.
+and it is why a `metadata.edn` is larger than its boxes suggest: every editor keeps cursor and fold
+state per box per property, and that state is saved.
 
 That filter runs *before* the sidecar branch
 (`src/jvmMain/kotlin/afield/saving.kt:153#fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn>`),
 so a property listed in `ioSeparateProperties` alone is written nowhere: the sidecar branch is never
-reached, and nothing lands inline in `metadata.edn` either. The two lists have to agree, and they do.
-All 29 keys in
-`src/jvmMain/kotlin/afield/Boxes.kt:498#var ioSeparateProperties = mutableMapOf(` are matched by one
-of the 63 patterns, and
+reached, and nothing lands inline in `metadata.edn` either. The two lists have to agree: every key in
+`src/jvmMain/kotlin/afield/Boxes.kt:498#var ioSeparateProperties = mutableMapOf(` is also matched by
+a persistent pattern.
 `src/jvmMain/kotlin/afield/examples/SidecarPropertyRegistrationSmokeTest.kt:50#object SidecarPropertyRegistrationSmokeTest`
-(`examples.saving.sidecar-property-registration`) is what holds that: it checks the whole registry
-rather than any one property, then drives a save through `toTransfer` and asserts that a property in
-neither list leaves no sidecar and no EDN key.
+(`examples.saving.sidecar-property-registration`) checks that across the whole registry, then drives a save
+through `toTransfer` and asserts that a property in neither list leaves no sidecar and no EDN key.
 
-`remote_js` reads like a sidecar-backed property and is not one. It is what the RemoteJS/WebXR
-language root is *called*: box `c04566d0` in `templates/remote/metadata.json` carries
-`"name" "remote_js"` beside `mainLanguage = remotejs` and `isRemoteJSRoot = true`, and the
-Javascript in that template lives in the root's children, under `code` and `customization`. No
-`*_remote_js_.js` exists anywhere in the workspace, and the workspace search's sidecar-suffix list
-does not name it either
-(`src/jvmMain/kotlin/afield/workspace/dir.kt:1129#private val workspaceSearchProperties = linkedSetOf(`).
+`remote_js` looks like a sidecar-backed property but is not one: it is the name of the RemoteJS/WebXR
+language root box in `templates/remote/metadata.json`. The Javascript in that template lives in the
+root's children, under `code` and `customization`, and no `*_remote_js_.js` sidecar is ever written.
 
 The root box is excluded from the sidecar branch by id, so the root's `metadata` property stays
 inline in `metadata.edn` — that is the property
@@ -344,6 +326,7 @@ reused — against `metadata_backup_00000.edn` through `metadata_backup_00011.ed
 The history panel reads exactly these files:
 the `backups/metadata_backup_*.edn` set sorted lexically — so index order is version order — with
 the live `metadata.edn` appended as the newest version
-(`src/jvmMain/kotlin/afield/history.kt:16#A version list is the lexically sorted`). [Document History](document_history.md) is the reader's view of that; the storage
-side is that history costs you one unpruned copy of `metadata.edn` per changed save, and that this is
-the only artifact in the directory with no bound on how much it can accumulate.
+(`src/jvmMain/kotlin/afield/history.kt:16#A version list is the lexically sorted`).
+[Document History](document_history.md) covers using it. On disk, history costs one unpruned copy
+of `metadata.edn` per changed save, and that is the only artifact in the directory with no bound on
+how much it can accumulate.

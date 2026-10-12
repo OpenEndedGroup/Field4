@@ -1,4 +1,3 @@
-import afield.four.Renderer
 import afield.four.buffers.*
 import afield.four.modules.*
 import afield.stdlib.linalg.*
@@ -31,7 +30,6 @@ vertexData.mapAndWrite_bytes {
 }
 
 //%-
-val renderer: Renderer = fromContext()
 
 var module = moduleHere {
     primitiveType = triangles

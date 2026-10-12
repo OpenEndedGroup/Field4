@@ -22,7 +22,7 @@ class SlugPath private constructor(private val packed: IntArray) {
          */
         fun compile(line: FLine, executable: File, tolerance: Float = 1e-4f): SlugPath {
             require(tolerance.isFinite() && tolerance > 0)
-            require(executable.isFile && executable.canExecute()) { "Missing field-slug executable: $executable" }
+            require(executable.isFile && executable.canExecute()) { "Missing field-slug executable: $executable (build it with ./gradlew buildSlugNative)" }
             val commands = commands(line, tolerance)
             // File redirects prevent pipe deadlock for large binary output. A production JNI
             // bridge can replace this boundary without changing the GPU layout.

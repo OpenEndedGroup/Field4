@@ -7499,7 +7499,11 @@ suspend fun main() {
             x,
             y,
             w,
-            h
+            h,
+            resizeLeft = event.edges.left == true,
+            resizeRight = event.edges.right == true,
+            resizeTop = event.edges.top == true,
+            resizeBottom = event.edges.bottom == true
         )
 
         target.data_x = snappedRect.x
@@ -7609,6 +7613,7 @@ suspend fun main() {
         registerBuiltinCommands()
         initializeBookmarkSystem()
         initializeDrawingLayer()
+        initializeDependencyLayer()
         registerCanvasZoomActions()
         registerLayersPanelAction()
         initializeDocumentSearch()

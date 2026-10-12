@@ -1,15 +1,12 @@
-# Field Probes — instrumenting shaders
+# Field Probes: instrumenting shaders
 
-When work moves onto the GPU it also moves out of sight. A compute shader that
-updates a million particles produces no `println`, no stack trace, no obvious
-way to answer the first question you always end up asking: *what do the numbers
-actually look like?* Are the speeds finite? Is anything NaN? What is the spread,
-the median, the tail?
+A compute shader that updates a million particles has no `println` and no stack
+trace, so it is hard to tell what its numbers look like. Are the speeds finite?
+Is anything NaN? What are the spread, the median and the tail?
 
-Field answers that with two **probes**: small, drop-in instruments you attach to
-a shader and a buffer to watch a distribution of values as it is computed. They
-share a philosophy (add one line to a shader, read a live summary back in the
-front end) but sit at opposite ends of a trade-off:
+Field has two **probes** for this. Each is a line in a shader that records a
+value, plus a setup call on the box that reads a summary of those values back.
+They differ in where the statistics are computed:
 
 | Property | **`fieldProbe`** — CPU read-back probe | **`fieldStats`** — GPU stats probe |
 |---|---|---|
@@ -20,35 +17,35 @@ front end) but sit at opposite ends of a trade-off:
 | Cost | a read-back per snapshot (throttled, off-thread) | one extra compute dispatch; read-back optional |
 
 Both are wired the same way. Call one setup function on the box, add
-`{% include "…" %}` to the shader, and call a one-line
-recording function wherever the value you care about is in scope. Field resolves
-the include, allocates the backing buffers, and attaches the read-back lifecycle
-automatically; there is no descriptor-set or SSBO bookkeeping to do by hand.
+`{% include "…" %}` to the shader, and call the recording function wherever the
+value is in scope. Field resolves the include, allocates the buffers and reads
+them back, so there are no descriptor sets or SSBOs to set up by hand.
 
-The running example throughout is a compute-shader particle system: a swirl of
-particles advected by a simple force field, drawn as soft quads. The quantity we
-instrument is each particle's **speed**.
+The example throughout is a compute-shader particle system: a swirl of
+particles moved by a simple force field, drawn as soft quads. The value
+recorded is each particle's speed.
 
 ---
 
 ## `fieldProbe`, the CPU read-back probe
 
-`fieldProbe` is the one you reach for while developing. It samples values on the
-GPU, pulls a representative slice back to the CPU, and renders a live
-**histogram + summary card**: signed, delta-coloured metric chips over an SVG
-histogram, as in the video below. First, the running example it instruments.
+`fieldProbe` is the one to use while developing. It samples values on the GPU,
+pulls a representative sample back to the CPU, and shows a live card: a
+histogram with summary figures above it, coloured by whether each rose or fell
+since the last snapshot, as in the video below. First, the particle system it
+instruments.
 
 ### The particle system we instrument
 
 The compute shader reads each particle from one `buffer_reference` buffer,
 rotates and mixes its position by a slowly-advancing angle (`something`, driven
-from Kotlin), and writes the result (plus its carried size in `.w`) into a
+from Kotlin), and writes the result (keeping its size in `.w`) into a
 second buffer. The vertex shader expands six vertices per particle into a
 camera-facing quad; the fragment shader draws a soft dot. This is the ordinary
 two-module (compute + draw) pattern from
 [afield.four Graphics](afield_four_graphics.md). The only probe-specific lines
 are the include and the single `fieldProbe(length(delta))` call, which records
-how far each particle moved this step (its per-step **speed**).
+how far each particle moved this step (its speed).
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -80,11 +77,11 @@ void main() {
 }
 ```
 
-The Kotlin that drives it lives in two boxes: a **compute** box and a **draw**
+The Kotlin that drives it lives in two boxes, a compute box and a draw
 box, both children of a renderer box that owns the `Window`. The compute box
 allocates the two GPU buffers, seeds one with random particles, publishes the
-output buffer as `outputPositions`, and turns the probe on. `fieldProbeHere(...)`
-plus `.display("probe")` is all it takes:
+output buffer as `outputPositions`, and turns the probe on with
+`fieldProbeHere(...)` and `.display("probe")`:
 
 ```diffstatic {data-lang=kotlin}
 // --- compute box -------------------------------------------------
@@ -131,11 +128,9 @@ quads:
 // (renderer + compute + draw). See the code blocks above.
 ```
 
-Nothing on that screen tells you what the particle *speeds* look like. The probe
-does. `.display("probe")` renders a live **histogram + summary card** on the
-compute box. `ShaderFieldProbe.maxDisplayHz` caps the display dispatch at 5 Hz by
-default, so a 100 000-sample probe refreshes about five times a second rather
-than flooding the output pane at renderer frame rate:
+The picture does not show what the particle speeds are. The probe's card, on
+the compute box's `probe` channel, does. `ShaderFieldProbe.maxDisplayHz` limits
+it to 5 updates a second by default, rather than one per rendered frame:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/field_probes/fieldprobe-card.mp4" capture="box" open-outputs=true wait-output=true wait-output-kind=display wait-output-channel=probe embed=true hidden=true force=true timeout="180" duration="6" fps="10" restart-target=false name="field-probes-card" alt="live fieldProbe histogram and summary card" macro-file="../../dev_docs/agents/transcripts/threebox.yaml" capture-box="tb_compute"}
 // The "probe" display channel on the compute box, recorded live while the
@@ -156,8 +151,8 @@ void fieldProbe(ivec2 value);   void fieldProbe(ivec3 value);  void fieldProbe(i
 void fieldProbe(uvec2 value);   void fieldProbe(uvec3 value);  void fieldProbe(uvec4 value);
 ```
 
-Each call does exact, lock-free bookkeeping into one std430
-buffer: it bumps an invocation counter, tracks accepted / finite / NaN / Inf /
+Each call keeps exact, lock-free counts in one std430
+buffer: it increments an invocation counter, tracks accepted / finite / NaN / Inf /
 non-zero counts, and folds per-component min and max with `atomicMin` / `atomicMax`
 over an order-preserving `uint` encoding of the float. Raw values are captured by
 **reservoir sampling** (a hash of the invocation ordinal decides which slot to
@@ -181,7 +176,7 @@ fun Box.fieldProbeHere(
 ): ShaderFieldProbe
 ```
 
-The returned `ShaderFieldProbe` is a small fluent object:
+The returned `ShaderFieldProbe` has chained setters and a few controls:
 
 ```diffstatic {data-lang=kotlin}
 fieldProbeHere(samples = 4096)
@@ -201,13 +196,12 @@ val snap: FieldProbeSnapshot? = probe.readLatest()
 `display(channel)` pushes the rendered HTML card to that output channel on the
 box; `onSnapshot { }` hands you the raw `FieldProbeSnapshot` on the read-back
 thread if you would rather build your own UI or drive control logic. Read-back
-always happens **off the render thread**, so an idle or slow front end never
-stalls the GPU. There are two throttles and they cover different things:
-`maxDisplayHz` always limits the display dispatch, but it limits the GPU→CPU read
-only for a probe that has a display channel and no callback. Register
-`onSnapshot`, or take snapshots with `readLatest()` and no display channel at
-all, and the read runs every frame, so a callback that does real work is on the
-read path at full frame rate.
+always happens off the render thread, so a slow front end never stalls the GPU.
+`maxDisplayHz` always limits how often the card is sent, but it limits the
+GPU-to-CPU read only for a probe that has a display channel and no callback.
+With `onSnapshot` registered, or with `readLatest()` and no display channel,
+the read runs every frame, so a callback that does real work runs at full frame
+rate.
 
 ### The snapshot
 
@@ -238,19 +232,19 @@ snap.summaryHtml(previous = last) // the card (histogram + chips)
 ```
 
 `summaryHtml(previous)` is what `display(...)` calls internally; passing the
-previous snapshot is what produces the delta colouring (rising values tint one
-way, falling the other), which is why the live card looks alive.
+previous snapshot is what colours each figure by whether it rose or fell.
 
 ---
 
 ## `fieldStats`, the GPU stats probe
 
-`fieldStats` never needs to bring raw samples back to see a distribution. Each
-recording call reduces values across the subgroup, a follow-up compute pass
-reduces those partials to exact per-channel statistics (count, mean, variance,
-min, max, sum) plus a t-digest-style **quantile sketch**, all on the GPU. The
-results live in a buffer that *other shaders can read the same frame*, which is
-the feature the CPU probe cannot offer: closing the loop on the GPU.
+`fieldStats` computes the statistics on the GPU and never brings raw samples
+back. Each recording call combines values across its subgroup, and a follow-up
+compute pass combines those partial results into exact per-channel statistics
+(count, mean, variance, min, max, sum) plus a t-digest-style quantile sketch.
+The results stay in a buffer that other shaders can read, which the CPU probe
+cannot offer: a shader can react to the statistics without a trip through the
+CPU.
 
 ### Kotlin side
 
@@ -294,11 +288,11 @@ data class FieldScalarStatsSnapshot(
 ) { fun quantile(q: Double): Double; fun cdf(value: Double): Double }
 ```
 
-### GLSL side — recording
+### GLSL side: recording
 
-The producer include adds a subgroup-cooperative recorder. One shader invocation
-per particle calls it; the helper reduces across the subgroup and writes a single
-partial record per subgroup, keeping atomic traffic low:
+The include adds the recorder. One shader invocation per particle calls it; the
+helper combines values across the subgroup and writes one partial record per
+subgroup, which keeps atomic operations few:
 
 ```diffstatic {data-lang=glsl}
 {% include "fieldStats" %}
@@ -313,12 +307,12 @@ void fieldStatsRecordVec4(uint firstChannel, vec4 value);   // 4 consecutive cha
 fieldStatsRecord(0u, length(vel));
 ```
 
-### GLSL side — reading back on the GPU
+### GLSL side: reading on the GPU
 
-The same include (in *any* shader, producer or not) exposes query helpers that
-read the reduced results of the **previous** frame. This is how you feed a
-statistic back into rendering: normalising each particle's speed, for example,
-against the live median to drive its colour, entirely without a CPU round-trip:
+The same include, in any shader, also has query helpers that read the results
+of the previous frame. This is how a statistic feeds back into rendering: for
+example, colouring each particle by its speed relative to the live median, with
+no trip through the CPU:
 
 ```diffstatic {data-lang=glsl}
 FieldScalarStats fieldStatsRead(uint channel);            // .mean .min .max .finiteCount ...
@@ -328,13 +322,12 @@ float fieldStatsSmoothedMean(uint slot, uint channel, float halfLife);
 float fieldStatsSmoothedQuantile(uint slot, uint channel, float q, float halfLife);
 ```
 
-`fieldStatsSmoothedMean` / `fieldStatsSmoothedQuantile` use the GPU-side
-**state slots** to keep an exponentially-smoothed value across frames (a
+`fieldStatsSmoothedMean` and `fieldStatsSmoothedQuantile` use the GPU-side
+state slots (`stateSlots`) to keep an exponentially-smoothed value across frames (a
 `halfLife` in frames), so a statistic that feeds back into the sim does not
 flicker frame to frame.
 
-A shader that only *reads* the stats (a different box from the one recording
-them) binds them as a consumer with `useFieldStats`:
+A shader in a different box from the one recording, which only reads the stats, binds them as a consumer with `useFieldStats`:
 
 ```diffstatic {data-lang=kotlin}
 val stats = producerBox.fieldStatsHere(channels = 1)
@@ -344,13 +337,10 @@ consumerBox.useFieldStats(stats)     // include "fieldStats" now resolves as a r
 ### Reading it back on the CPU
 
 If you do want the numbers in Kotlin (for logging, tests, or a custom readout),
-the read-back is a few scalars per channel, not a sample array:
+the read-back is a few numbers per channel, not an array of samples.
+This box runs a compute step under `fieldStats` and shows channel 0 as a table:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.Renderer
-import afield.four.modules.fromContext
-val renderer: Renderer = fromContext()
-
 val N = 16384
 
 val stats = fieldStatsHere(channels = 1)
@@ -401,16 +391,15 @@ frames {
 
 ## Choosing between them
 
-- Reach for **`fieldProbe`** when you want to *see* what a shader is producing —
-  the histogram and the delta-coloured card make an unfamiliar distribution
-  legible in seconds, and the reservoir sample means you get shape (skew, modes,
-  outliers), not just moments.
-- Reach for **`fieldStats`** when the statistic has a job to do: feeding back into
-  the shader the same frame, driving adaptive control, or monitoring many
-  channels where pulling samples back for each would be wasteful. Its read-back is
-  cheap enough to leave on, and can be turned off entirely.
+- Use `fieldProbe` to see what a shader is producing. The histogram shows an
+  unfamiliar distribution at a glance, and because it is drawn from a sample you
+  see its shape (skew, modes, outliers), not only its mean and spread.
+- Use `fieldStats` when the statistic has a job to do: feeding back into a
+  shader, driving adaptive control, or watching many channels where pulling
+  samples back for each would be wasteful. Its read-back is cheap enough to
+  leave on, and can be turned off entirely.
 
-They compose. A common pattern is to keep `fieldStats` on permanently for the
+They work together. A common pattern is to keep `fieldStats` on permanently for the
 control loop and switch on `fieldProbe` only while you are looking.
 
 ## Performance notes
@@ -418,11 +407,10 @@ control loop and switch on `fieldProbe` only while you are looking.
 - **Read-back memory.** Both probes' read-back buffers are allocated as
   **host-cached** (`streamReads()`), which is the memory type CPU reads want on a
   discrete GPU. A host-visible-but-uncached (write-combined) buffer maps fine but
-  its CPU reads are pathologically slow, the classic slow-read-back trap. If you
-  build your own read-back buffer, ask for the same: `storage(); streamReads()`.
-- **Throttling.** `fieldProbe` reads back off the render thread, and as often as
-  `maxDisplayHz` only in the plain `display(...)` case; raising it makes the card
-  livelier at the cost of more read-backs. `fieldStats` reads back once per frame
+  its CPU reads are very slow. If you build your own read-back buffer, ask for the same: `storage(); streamReads()`.
+- **Throttling.** `fieldProbe` reads back off the render thread, at most
+  `maxDisplayHz` times a second when it only has a `display(...)` channel;
+  raising it updates the card more often at the cost of more read-backs. `fieldStats` reads back once per frame
   when `cpuSnapshotsEnabled` is true; set it to `false` when only the GPU consumes
   the results.
 - **Reservoir size.** `fieldProbe`'s `samples` is the number of `vec4`s copied

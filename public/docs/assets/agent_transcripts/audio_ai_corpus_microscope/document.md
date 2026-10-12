@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 · index Nancy and Candlestick, then explore
@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="index_and_explore_corpus" index="0" -->
 
 ```edn [field-box id="index_and_explore_corpus" role="properties"]
-{"id" "index_and_explore_corpus" "index" 0 "name" "2 · index Nancy and Candlestick, then explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · index Nancy and Candlestick, then explore" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "index_and_explore_corpus_code_.kt" "lines" 60 "characters" 2724 "sha256" "bbe11a8844f00b788f338080323456bf4b923c9c84e6a59a8e5d4562ce2d13c7"}]}
+{"id" "index_and_explore_corpus" "index" 0 "name" "2 · index Nancy and Candlestick, then explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · index Nancy and Candlestick, then explore" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "index_and_explore_corpus_code_.kt" "lines" 59 "characters" 2688 "sha256" "e1f1064ed030254a95848338106f409ff628696ffaa4379379545dbaf776649f"}]}
 ```
 
 ```kotlin [field-property box="index_and_explore_corpus" name="code" path="index_and_explore_corpus_code_.kt"]
-import afield.stdlib.noir.audioai.*
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()
@@ -82,11 +81,10 @@ CompletableFuture.allOf(*lookups.toTypedArray()).thenCompose {
 <!-- field-box id="corpus_microscope_guide" index="1" -->
 
 ```edn [field-box id="corpus_microscope_guide" role="properties"]
-{"id" "corpus_microscope_guide" "index" 1 "name" "1 · corpus microscope guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · corpus microscope guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_microscope_guide_code_.kt" "lines" 10 "characters" 990 "sha256" "ca52470eed288ee77f94922e86f9863e686bbaa33527c3c87e64f78335977a3e"}]}
+{"id" "corpus_microscope_guide" "index" 1 "name" "1 · corpus microscope guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · corpus microscope guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_microscope_guide_code_.kt" "lines" 9 "characters" 954 "sha256" "6940e45cb9c03e4c0ad1ca3288edfcbe8feebf9dcf07848abe19cec7836e6f76"}]}
 ```
 
 ```kotlin [field-property box="corpus_microscope_guide" name="code" path="corpus_microscope_guide_code_.kt"]
-import afield.stdlib.noir.audioai.*
 
 display("guide", """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">

@@ -89,7 +89,9 @@ enum class ToolFace { MODEL, MCP, PROGRAM }
 
 @com.fasterxml.jackson.annotation.JsonClassDescription(
     "Load the full schemas of catalogue tools marked * (deferred): give a namespace or names. Returns each tool's " +
-        "description, input schema and effects, and makes them callable as ordinary tools for the rest of this conversation."
+        "description, input schema and effects, and makes them callable as ordinary tools for the rest of this conversation. " +
+        "Use it only when you need a catalogue tool marked * that you cannot call yet; direct tools need no loading. " +
+        "If nothing matches it fails with success=false and lists the loadable names. e.g. namespace = `macros`."
 )
 @AgentToolMeta("core", effects = [ToolEffect.AGENT_STATE])
 data class DescribeToolsRequest(

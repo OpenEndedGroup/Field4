@@ -188,6 +188,9 @@ class ToolMetaPinTest {
                 "WaitStudyBuildRequest",
                 "StartStudyBuildRequest",
                 "CancelStudyBuildRequest",
+                "PruneStudyBuildsRequest",
+                // New on 2026-10-09: ends a box chat's turn to wait for builds without the model.
+                "AwaitStudyBuildsRequest",
                 "StyleGeometryPartsRequest",
                 "ReadGeometryReviewsRequest",
                 "ReadGeometryNoteRequest",
@@ -195,6 +198,8 @@ class ToolMetaPinTest {
                 "ReviewGeometryNoteRequest",
                 "ReportGeometryFindingRequest",
                 "InspectGeometryViewRequest",
+                // New on 2026-10-09: which kit a document runs; asked rarely, when a provider seems out of date.
+                "InspectKitRequest",
             ),
             metas.filterValues { it.exposure == ToolExposure.DEFERRED }.keys
         )

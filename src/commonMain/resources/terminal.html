@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>Field terminal</title>
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/xterm/xterm.css">
+    <style>
+        html, body { margin: 0; height: 100%; background: #000; color: #ddd; font: 12px "Iosevka Web", monospace; }
+        body { display: flex; flex-direction: column; }
+        header { display: flex; gap: 12px; align-items: center; padding: 6px 12px; border-bottom: 1px solid #222; }
+        header .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        header .state { color: #48c9ff; } header .state.exited { color: #e5a00d; } header .state.lost { color: #ff5a5a; }
+        header button { font: inherit; color: #ddd; background: #111; border: 1px solid #333; border-radius: 5px; padding: 3px 10px; cursor: pointer; }
+        #terminal { flex: 1; min-height: 0; padding: 4px 0 0 6px; }
+    </style>
+</head>
+<body>
+<header>
+    <span class="title" id="title">terminal</span>
+    <span class="state" id="state">connecting</span>
+    <button id="kill" type="button" title="end the process; closing this page only detaches">Kill</button>
+</header>
+<div id="terminal"></div>
+<script type="module">
+import { Terminal } from "/xterm/xterm.mjs";
+import { FitAddon } from "/xterm/addon-fit.mjs";
+import { WebLinksAddon } from "/xterm/addon-web-links.mjs";
+
+// The browser half of afield/server/terminal.kt: ?id=<terminal> attaches to a running pty.
+// Closing or reloading this page detaches; the process keeps running, and re-opening replays it.
+const id = new URLSearchParams(location.search).get("id") || "";
+const $ = name => document.getElementById(name);
+const term = new Terminal({
+    fontFamily: '"Iosevka Web", Menlo, monospace', fontSize: 13, cursorBlink: true, scrollback: 20000,
+    allowProposedApi: true, theme: { background: "#000000" },
+});
+const fit = new FitAddon();
+term.loadAddon(fit);
+term.loadAddon(new WebLinksAddon((event, uri) => window.open(uri, "_blank", "noopener")));
+term.open($("terminal"));
+fit.fit();
+term.focus();
+
+const setState = (text, cls = "") => { $("state").textContent = text; $("state").className = "state " + cls; };
+
+fetch("/api/terminal").then(r => r.json()).then(list => {
+    const info = list.find(t => t.id === id);
+    if (info) { $("title").textContent = `${info.title} — ${info.directory}`; document.title = info.title; }
+}).catch(() => {});
+
+const encoder = new TextEncoder();
+let socket = null;
+let exited = false;
+const sendResize = () => {
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+};
+
+function connect() {
+    socket = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/pty/${encodeURIComponent(id)}`);
+    socket.binaryType = "arraybuffer";
+    socket.onopen = () => { setState("running"); term.reset(); sendResize(); };
+    socket.onmessage = event => {
+        if (typeof event.data === "string") {
+            const message = JSON.parse(event.data);
+            if (message.type === "exit") { exited = true; setState(`exited ${message.code}`, "exited"); }
+            return;
+        }
+        term.write(new Uint8Array(event.data));
+    };
+    socket.onclose = event => {
+        if (exited) return;
+        if (event.code === 1008 || event.code === 1003) { setState(event.reason || "refused", "lost"); return; }
+        // Dropped for falling behind, or Field restarted: try again; the scrollback replays.
+        setState("reconnecting", "lost");
+        setTimeout(connect, 1500);
+    };
+}
+
+term.onData(data => { if (socket?.readyState === WebSocket.OPEN) socket.send(encoder.encode(data)); });
+term.onBinary(data => {
+    if (socket?.readyState === WebSocket.OPEN) socket.send(Uint8Array.from(data, c => c.charCodeAt(0) & 0xff));
+});
+term.onResize(sendResize);
+new ResizeObserver(() => fit.fit()).observe($("terminal"));
+// The first fit can measure the fallback font, which is wider than Iosevka, and leave the grid too
+// few columns for the panel; measure again once the web font is in. xterm caches glyph metrics and
+// ignores an unchanged option, so the family is changed and changed back to make it re-measure.
+const refitForFonts = () => {
+    const family = term.options.fontFamily;
+    term.options.fontFamily = "monospace";
+    term.options.fontFamily = family;
+    fit.fit();
+};
+document.fonts.ready.then(refitForFonts);
+document.fonts.addEventListener("loadingdone", refitForFonts);
+
+$("kill").addEventListener("click", async () => {
+    if (!confirm("End this process?")) return;
+    await fetch(`/api/terminal/${encodeURIComponent(id)}/kill`, { method: "POST" });
+});
+
+if (id) connect(); else setState("no terminal id in the URL", "lost");
+</script>
+</body>
+</html>

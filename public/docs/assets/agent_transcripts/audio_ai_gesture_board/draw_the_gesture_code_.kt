@@ -1,4 +1,3 @@
-import afield.stdlib.noir.audioai.*
 
 val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film texture") {
     prompt(0.0, 5.0, "almost motionless low strings")

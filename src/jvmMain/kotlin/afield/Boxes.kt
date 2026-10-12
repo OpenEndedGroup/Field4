@@ -77,7 +77,62 @@ var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.introduction by Delegation<String>(defaultValue = { "" })
 var Box.attic by Delegation<String>(defaultValue = { "" })
 var Box.notes by Delegation<String>(defaultValue = { "" })
-var Box.autorun by Delegation<Boolean>(defaultValue = { false })
+/**
+ * Whether opening the document runs this box (`SessionInformation.autorunBoxes`).
+ *
+ * Read leniently: a stored `"true"` / `"false"` string counts as the Boolean it spells, and is
+ * replaced by that Boolean. The backdoor's `set` and the browser's `set-string` both write text, and
+ * this was a `Delegation<Boolean>`, whose read of a string threw a ClassCastException; autorun reads
+ * every box in one coroutine, so one such box ended autorun for the whole document, silently.
+ * Writes from text are now coerced too ([textPropertyValue]); this read covers documents saved before.
+ */
+var Box.autorun: Boolean
+    get() {
+        val raw = getPropertyRaw("autorun")
+        if (raw is Boolean) return raw
+        val value = booleanPropertyValue(raw)
+        setPropertyRaw("autorun", value)
+        return value
+    }
+    set(value) {
+        setPropertyRaw("autorun", value)
+    }
+
+/**
+ * [raw] as a yes/no: a Boolean as itself, a string by what it spells (`true`, `yes`, `on`, `1`, any
+ * case), a number when it is not zero. Anything else, and null, is false.
+ */
+fun booleanPropertyValue(raw: Any?): Boolean = when (raw) {
+    is Boolean -> raw
+    is String -> raw.trim().lowercase() in TRUE_WORDS
+    is Number -> raw.toDouble() != 0.0
+    else -> false
+}
+
+private val TRUE_WORDS = setOf("true", "yes", "on", "1")
+private val FALSE_WORDS = setOf("false", "no", "off", "0")
+private val TEXT_SETTABLE_BOOLEAN_PROPERTIES = setOf("autorun", "visible", "offline")
+private val LANGUAGE_ROOT_PROPERTY = Regex("""is[A-Z]\w*Root""")
+
+/**
+ * The value to store when [property] of [box] is set from text — the backdoor's `set`, the browser's
+ * `set-string`. Text spelling a Boolean (`true`/`false`, `yes`/`no`, `on`/`off`, `1`/`0`) becomes
+ * that Boolean for a property that is one: a known Boolean property, an `is…Root` language marker,
+ * or one that already holds a Boolean. Everything else is stored as the text it is, so a code or
+ * notes property that happens to read "true" is left alone.
+ */
+fun textPropertyValue(box: Box, property: String, value: String): Any {
+    val isBoolean = property in TEXT_SETTABLE_BOOLEAN_PROPERTIES ||
+        LANGUAGE_ROOT_PROPERTY.matches(property) ||
+        box.getPropertyRaw(property) is Boolean
+    if (!isBoolean) return value
+    val word = value.trim().lowercase()
+    return when (word) {
+        in TRUE_WORDS -> true
+        in FALSE_WORDS -> false
+        else -> value
+    }
+}
 /** Comma-separated membership used by the frontend and server visibility intersection. */
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 
@@ -592,9 +647,13 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "ai4_auto_name_signature",
             "ai4_chat_history",
             "ai4_chat_running",
+            // What a box chat's suspended turn waits for, so a restarted Field resumes it (afield.ai.agent.StudyBuildAwaits).
+            "ai4_chat_suspension",
             // The same conversation as a tree with checkpoints (afield.ai.core.AiSessionTree).
             "ai4_session",
-            "fileManagerAccessHistory"
+            "fileManagerAccessHistory",
+            // The role a box plays in a kit (afield.stdlib.Kits); a kit's other properties are declared by its record.
+            "kitRole"
         )
 
         var ioSeparateProperties = mutableMapOf(
@@ -783,7 +842,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     if (current == null) {
                         unsupported++
                     } else {
-                        val next = formatCodeProperty(property, current)
+                        val next = if (property == "code") formatBoxKotlin(current) else formatCodeProperty(property, current)
                         if (next == null) {
                             unsupported++
                         } else {
@@ -806,7 +865,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 var formatted = 0
                 boxes.forEach {
                     it.code?.let { source ->
-                        it.code = formatKotlinCode(source)
+                        it.code = formatBoxKotlin(source)
                         formatted++
                     }
                 }
@@ -1578,6 +1637,7 @@ import afield.stdlib.*
 import afield.four.synth.*
 import afield.graphquery.*
 import afield.datalog.*
+import afield.math.gp.*
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
@@ -1600,6 +1660,9 @@ import afield.graphics.*
 import afield.stdlib.linalg.*
 import afield.stdlib.linalg.arena.*
 import afield.stdlib.linalg.storage.*
+import afield.stdlib.polytope.*
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.loris.*
 import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking

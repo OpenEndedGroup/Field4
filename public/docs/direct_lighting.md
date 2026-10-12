@@ -29,7 +29,7 @@ ray-query shadows when the device supports them. The **Original renderer** switc
 to the source image immediately; **Ray-query shadows** lets you compare the same scene
 with and without occlusion.
 
-??? aside "Enable the optional RTXDI controls"
+!!! note "Enable the optional RTXDI controls"
 
     In a Linux x86-64 checkout, run `uv run python tools/lighting/build_rtxdi.py --prepare`
     once, then relaunch the scene box. This prepares the pinned SDK and shader compiler in
@@ -102,7 +102,7 @@ frames {
 }
 ```
 
-Close `study` before replacing it; the Starting Point already handles replacement on relaunch.
+Close `study` before replacing it; the starting point already handles replacement on relaunch.
 The camera lives at `study.bundle.scene.camera`. Call `study.moveObject(index, matrix)` to
 move one of its opaque objects and update both raster geometry and shadow visibility.
 The resolution belongs to the study; resizing the native window scales its presentation.

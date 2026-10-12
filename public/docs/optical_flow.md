@@ -17,23 +17,11 @@ Field has two implementations behind one contract. `opticalFlow(...)` picks betw
 
 `PyramidOpticalFlow` is a coarse-to-fine Lucas–Kanade tracker written as ordinary fragment passes. It builds a five-level image pyramid and searches the coarsest level exhaustively for integer offsets. Each finer level then refines the upsampled estimate with Gauss–Newton steps over a 9 × 9 window, and a 3 × 3 vector median rejects isolated wrong matches. It needs no extension. Its constructor exposes `levels`, `radius`, `iterations`, `finestIterations` and `search`.
 
-### A forward–backward confidence map
-
-`PyramidOpticalFlow(renderer, first, second, consistency = true)` also tracks the images in reverse, inside the same submission, and fills `consistencyMap`: a texture the size of `output` whose `.x` is the **forward–backward error** in input pixels. It follows each forward vector, reads the backward vector where it lands, and reports how far the pair fails to return to the start. The residual in `output.z` asks whether the pixels look alike; this map asks whether the two directions agree about where they went. It is high where content is occluded, revealed, or leaves the frame, even when a wrong match happens to look plausible.
-
-```diffstatic {data-lang=kotlin}
-val flow = PyramidOpticalFlow(renderer, previousImage, currentImage, consistency = true)
-prop<RenderToTexture>(motion) = flow.output
-prop<RenderToTexture>(motionConfidence) = flow.consistencyMap!!
-```
-
-On the M1 Max's (+12, −8) pair, interior samples return to within 0.00003 pixels (p95, 21,424 samples). The two rightmost flow columns, whose content moves out of the second image, miss by a median of 43 pixels. On one wiggle phase the p95 is 0.19 pixels. A checked pair costs about twice an ordinary one, 24.6 ms median. The hardware engine has no equivalent output.
-
 ![The same starting point on an Apple M1 Max, running the portable backend](assets/optical_flow/macos_advection.png)
 
-## Open the experiment
+## Open the starting point
 
-Open **Starting points → optical_flow**. The top row shows the two input images. Below them are a color wheel and arrows for motion, a grayscale strip labelled **COST**, and a feedback image carried by that motion. The strip's scale label shows which backend is running: **0 100+** for the hardware cost, **0 25+** for the portable residual.
+Open the [optical_flow](agent_transcripts.md#optical_flow) starting point. The top row shows the two input images. Below them are a color wheel and arrows for motion, a grayscale strip labelled **COST**, and a feedback image carried by that motion. The strip's scale label shows which backend is running: **0 100+** for the hardware cost, **0 25+** for the portable residual.
 
 **Consecutive-frame wiggle** compares two frames of the same deforming image, 1/30 second apart. There is no added global translation: arrows should bend across the image and reverse as the source wiggles. Their lengths are normalized for readability; color intensity represents speed, with full intensity at 3 input pixels per pair.
 
@@ -44,10 +32,6 @@ Turn off the wiggle to run the separate **known translation** check: exactly 12 
 <video controls muted loop playsinline preload="metadata" src="assets/optical_flow/advection.mp4" width="1920" height="1080" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
 On the wiggle, away from the borders, expect a median endpoint error of about **0.15 input pixels** against the known local deformation, and **0.35 pixels** at p95, on the RTX 4090's hardware engine. Feed the same frame twice and the field stays under a quarter of a pixel everywhere.
-
-??? aside "Why the earlier clip mostly pointed up and right"
-
-    The earlier pair added a fixed (+12, −8) displacement to a much smaller temporal wiggle. The measured field followed that dominant offset correctly, but the clip was a poor demonstration of local deformation. The revised default removes that offset and advances by exactly the pair interval; the feedback image now follows consecutive source frames.
 
 The **COST** strip displays the backend's matching cost at those same image coordinates. On hardware its **0 100+** scale runs from black (low cost) to white (100 or above); on the portable backend **0 25+** covers 0 to 25 grey levels of residual. It occupies the rightmost 15% of the flow panel; it is not a compressed cost map of the whole image. The **Reject cost above** control uses this same signal when deciding whether to carry the previous image or take the fresh source at that pixel.
 
@@ -106,9 +90,21 @@ XY is **first-image → second-image displacement in input pixels**: X points ri
 
 The hardware adapter submits to a dedicated optical-flow queue; the portable one records its passes into a graphics-queue command buffer. Both wait for a final fence before returning. Call `evaluate()` **between frames, after the producers have submitted**, rather than inside a `Target.render` callback that is already recording a frame. Its output is ready for the following Field rendering. It does not yet overlap several image pairs; account for the wait in your frame budget.
 
+## A forward–backward confidence map
+
+`PyramidOpticalFlow(renderer, first, second, consistency = true)` also tracks the images in reverse, inside the same submission, and fills `consistencyMap`: a texture the size of `output` whose `.x` is the **forward–backward error** in input pixels. It follows each forward vector, reads the backward vector where it lands, and reports how far the pair fails to return to the start. The residual in `output.z` asks whether the pixels look alike; this map asks whether the two directions agree about where they went. It is high where content is occluded, revealed, or leaves the frame, even when a wrong match happens to look plausible.
+
+```diffstatic {data-lang=kotlin}
+val flow = PyramidOpticalFlow(renderer, previousImage, currentImage, consistency = true)
+prop<RenderToTexture>(motion) = flow.output
+prop<RenderToTexture>(motionConfidence) = flow.consistencyMap!!
+```
+
+The hardware engine has no equivalent output.
+
 ## Keep the previous frame with ping-pong
 
-Open **Starting points → optical_flow_pingpong** for the complete editable example. The parent box renders one `moduleHere()` into a `PingPongRenderToTexture`; its child samples the previous image, current image, and motion texture. The four panels show **previous / current** above **motion / matching cost**.
+Open the [optical_flow_pingpong](agent_transcripts.md#optical_flow_pingpong) starting point for the complete editable example. The parent box renders one `moduleHere()` into a `PingPongRenderToTexture`; its child samples the previous image, current image, and motion texture. The four panels show **previous / current** above **motion / matching cost**.
 
 ![One editable shader, retained previous/current frames, and the motion texture sampled by another module](assets/optical_flow/pingpong.png)
 
@@ -157,6 +153,11 @@ This source also publishes `expectedMotion`, its analytical displacement in inpu
     above five pixels and no Vulkan validation errors. This checks the revised source; arbitrary
     repeating images can still produce ambiguous matches.
 
+    On the M1 Max, the original repeating-circle source's moving pair had a median error against
+    `expectedMotion` of 0.13 and 0.07 pixels in two checks on 29,464 samples each (p95 0.35 and
+    0.13), and exactly 0 while paused. The brightness-textured source has not yet been rerun
+    on the M1 Max.
+
 ## Measured
 
 These two sets of numbers come from different machines running different algorithms. Read each set as what that backend does on that GPU, not as a head-to-head comparison.
@@ -178,7 +179,9 @@ The same 960 × 540 pair was run through `PyramidOpticalFlow` at grid 4 with its
 | Consecutive-frame wiggle, four phases | 85,696 | **0.080** | **0.26** |
 | Identical frames | 32,400 | 0 | 0 (maximum 0) |
 
-A zero field would score a median of 1.98 pixels on the wiggle, so these errors are small compared with the motion they measure. On this synthetic wiggle the portable tracker's error is below the 4090 engine's 0.15 / 0.35. That result does not rank the two backends in general: the source is a clean procedural image with none of the noise, blur or lighting change of real footage, and it matches Lucas–Kanade's assumptions unusually well. On the original repeating-circle ping-pong source, the moving pair's median error against its analytical `expectedMotion` was 0.13 and 0.07 pixels in two checks on 29,464 samples each (p95 0.35 and 0.13), and exactly 0 while paused. The revised brightness-textured source has been checked on the RTX 4090; it has not yet been rerun on the M1 Max.
+A zero field would score a median of 1.98 pixels on the wiggle, so these errors are small compared with the motion they measure. On this synthetic wiggle the portable tracker's error is below the 4090 engine's 0.15 / 0.35. That result does not rank the two backends in general: the source is a clean procedural image with none of the noise, blur or lighting change of real footage, and it matches Lucas–Kanade's assumptions unusually well.
+
+With `consistency = true`, interior samples of the (+12, −8) pair return to within 0.00003 pixels (p95, 21,424 samples). The two rightmost flow columns, whose content moves out of the second image, miss by a median of 43 pixels. On one wiggle phase the p95 is 0.19 pixels. A checked pair costs about twice an ordinary one, 24.6 ms median.
 
 The residual flags the same content leaving the frame. The two rightmost flow columns have a median residual of 17.3 grey levels, while no interior sample exceeds 0.0002; the starting point's default rejection threshold for this backend is 8.
 

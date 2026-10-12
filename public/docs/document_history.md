@@ -1,8 +1,10 @@
 # Document History
 
-Field keeps document backups as you work. The history view lets you inspect those saved versions, compare them, and restore an earlier state — either the whole document or just a few boxes.
+Every time Field saves a document whose contents changed, it keeps the previous save. The history
+view shows those saves as a timeline, lets you compare any of them with what you have now, and
+puts back an earlier one — the whole document, or just the boxes you pick.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip="0,0,1440,900" screenshot="assets/document_history/history-version-selected.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-figure" fresh-document=true padding="0" wait="0" timeout="150" embed=true hidden=true name="document-history-version-selected" alt="Field with the document history view open below a box named sketch and its editor: the timeline holds versions #0, #1 and #2 and the current document, version #1 is selected and differs from the live document in one box, and the editor lays version #1 over the current code as a read-only inline diff, version #1's lines in green (radius 40.0, a println of radius and count) against the current lines in red (radius 64.0, the ring and its println)"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip="0,0,1440,900" screenshot="assets/document_history/history-version-selected.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-figure" fresh-document=true padding="0" wait="0" timeout="150" embed=true hidden=true name="document-history-version-selected" alt="Field with the document history view open below a box named sketch and its editor: the timeline holds three saves, #0, #1 and the current document, version #1 is selected and differs from the live document in one box, and the editor lays version #1 over the current code as a read-only inline diff, version #1's lines in green (radius 40.0, a println of radius and count) against the current lines in red (radius 64.0, the ring and its println)"}
 // The setup box holds version 0 of its code. Two edits through the editor, each left for the
 // 5 s autosave, give the document's backups three real versions; then the history view opens and
 // the middle version is clicked, which lays that version's text over the editor as a diff.
@@ -90,71 +92,72 @@ ui.pause(800)
 
 Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it differs from the current code. To scrub one line back through its versions without leaving the editor, use the [History Lens](history_lens.md) instead.
 
-## Open the history view
+## Get back an earlier version
 
-You can open history in two ways:
+1. Run **Show Document History** from the command palette. (There is no keyboard shortcut; you
+   can also open `/history?file=<document-name>` on the Field server.) The history view opens over
+   the document.
+2. Click a version in the timeline. With a box selected, the editor lays that version's text over
+   the current text as a read-only inline diff, so you can read the change before you commit to it.
+3. Choose **Apply — full restore** and confirm ("Restore the whole document to version #N?").
 
-- run `Show Document History` from the command palette
-- open `/history?file=<document-name>` directly on the Field server
-
-There is no keyboard shortcut. The history view opens over the document.
-
-## What the timeline shows
-
-The page builds a vertical timeline of the current document and its backups. Each entry shows:
-
-- a **version label** — `#0`, `#1`, … (and any name you have given it), with the live document marked as **Current**
-- **box count** for that version
-- the **size** of the saved metadata
-- a **relative save time** ("3m", "2d")
-
-The newest entry is the current `metadata.edn`; older entries are the backups Field has rotated to disk. Box counts and diffs for older versions stream in a moment after the list first appears, so an entry may briefly read `0 boxes` until the stats arrive.
-
-The timeline can be viewed against a **Saves** axis (one slot per version) or a **Time** axis (spaced by real save time), and you can zoom and focus it. A **Whole Document / selected box** toggle narrows everything on the page to the box you have selected, and a diff-basis toggle switches between comparing each version **against the current** state and against its immediate predecessor.
-
-If a box is selected, clicking a version also shows it in the editor: the box's text as it was in that version is laid over the current text as a read-only inline diff, so you can read the change in place before you restore anything. The **Line** button next to the search field filters the timeline to the versions that changed the line your editor cursor is on.
-
-## Restore an earlier version
-
-To restore a whole version:
-
-1. Open the history view.
-2. Click a version in the timeline.
-3. Review the details in the side panel.
-4. Choose **Apply — full restore**.
-5. Confirm when prompted ("Restore the whole document to version #N?").
-
-Saving the restored result rotates the previous on-disk `metadata.edn` into the backup set, so the
-last saved state stays available in history. Unsaved in-memory edits are not in the backup set at
-all, so save before a restore you care about.
+The restore is itself saved, so the state you restored *from* becomes the newest backup and
+stays in the timeline: a restore can always be undone by restoring again. Edits made since the
+last autosave (5 s) are not in any backup, so let the document save before you restore over work
+you care about.
 
 ### Restore just a few boxes
 
-You do not have to take a whole version. Select the boxes you care about and choose **Apply — selected boxes** to cherry-pick only those boxes out of the target version, leaving the rest of your document untouched. Use it when one box has drifted and the rest of your work is good.
+When one box has drifted and the rest of your work is good, take only that box. With a version
+selected, the change list on the right shows the boxes and properties that differ from the
+current document. Click the boxes (or single properties) you want — **Pick Boxes** picks all of
+them — and choose **Apply — selected boxes**. Everything you did not pick is left as it is now.
 
-## What restore does
+## What a full restore changes
 
-Boxes that exist in the chosen version are restored with their saved properties. Boxes that do **not** exist in that older version are marked as removed but kept in the history, so you can undo the restore. Each restore records its own transition, so the jump is itself part of the history.
+- Boxes in the chosen version get back the properties they had then.
+- Boxes the chosen version did not have are not deleted: they are stopped and marked as removed,
+  and they come back if you restore a version that had them.
+- The jump is recorded in the sidebar's **Version Jumps** list. Picking boxes is not recorded
+  there; it is an ordinary edit, and the next save backs up the state before it.
 
-## Search, blame and named versions
+## Reading the timeline
 
-Depending on what you have selected, the panel also offers:
+The newest entry, marked **Current**, is the document as it is now; the others are earlier saves,
+numbered `#0` (oldest), `#1`, … Each shows its box count, the size of the saved file and how long
+ago it was saved. Counts and diffs for older versions arrive a moment after the list, so an entry
+can briefly read `0 boxes`.
 
-- **Search changes** — filter versions to those that touched a given piece of text.
-- **Blame a line** — see which version last changed a particular line.
-- **Name a version** — give a meaningful label to a save point so you can find it again (named versions get their own list in the sidebar).
-- **Review version jumps** — the sidebar lists the restore transitions you have made, so the act of moving through history is itself recoverable.
-- **See per-version metrics** — boxes, properties and lines for the selected version.
+- **Saves** / **Time** spaces the timeline one slot per save, or by when each save happened;
+  **Focus**, **−** and **+** zoom it.
+- **Whole Document** / **Selected Boxes** narrows the page to the box selected on the canvas.
+- **Against Current** compares each version with the current document; toggled to
+  **Since Previous**, it compares each version with the save before it.
+- The sidebar shows the selected version's boxes, properties and lines.
+
+## Find the version you want
+
+- **search changes** keeps only the versions whose changes contain the text you type.
+- **Line** keeps only the versions that changed the line your editor cursor is on — a per-line
+  blame.
+- **name this version** labels the selected version (`#12 before the refactor`); named versions
+  are listed in the sidebar, and the [History Lens](history_lens.md) shows the same labels.
 
 ## Where versions come from
 
-History is built from the document backup files Field writes while saving. Each save, if the content changed, rotates the previous `metadata.edn` into a `backups/metadata_backup_*.edn` file, and older backups are pruned to a limit. So:
+History is read from files in the document's folder:
 
-- the history view becomes useful once the document has been saved a few times
-- the backup list reflects real saved states, not transient editor changes
-- the newest entry corresponds to the current `metadata.edn`
+- `metadata.edn` is the current version.
+- `backups/metadata_backup_00000.edn`, `…00001.edn`, … are the earlier ones. A save writes one
+  only when the document's contents changed, so the timeline holds real saved states, not every
+  keystroke. Document backups are never pruned; the history goes back to the document's first
+  save. (Sidecar files such as a box's `.kt` keep their own last ten backups in the same folder;
+  history does not need them, since each document backup holds the box text too.)
+- `versions.edn` holds version names and the list of full-restore jumps.
 
-If a document has no backups yet, the history page will have little or nothing to show.
+A document that has been saved only once has nothing earlier to show. Deleting backup files
+renumbers every later version, and version names follow the numbers, so leave `backups/` alone if
+you have named versions.
 
 ## Related features
 

@@ -9,12 +9,6 @@ Build the worker once with `./gradlew buildLorisNative` (setup below). In a Kotl
 the committed film-dialogue sample, or replace the path with your own WAV:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
-import afield.stdlib.path
-
 val client = LorisClient()
 val source = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 display("status", "Starting Loris…")
@@ -63,7 +57,6 @@ together, so you can switch between them to compare.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/dialogue-partials.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="1100" embed=true name="loris-dialogue" alt="Real film dialogue source waveform, frequency-balanced Loris partial tracks across 0–24000 Hz on an ERB axis with local blue-to-amber bandwidth colors, full-band/detail controls, and reconstruction playback."}
 :::static
-import afield.stdlib.loris.LorisDocs
 display("source, partials, reconstruction", LorisDocs.comparisonHtml())
 ```
 
@@ -99,11 +92,6 @@ model with a player for its sound. Each breakpoint keeps its stored phase, so ex
 of attacks. The frequency cap in the code keeps every partial below half the sample rate.
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
-import afield.stdlib.path
 import kotlin.math.PI
 import kotlin.math.pow
 import kotlin.math.sin
@@ -150,13 +138,12 @@ amber, noisy middle and the twisting tracks are what you hear.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/spectral-whirlpool.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="900" embed=true name="loris-whirlpool" alt="Actual resynthesis of a localized spectral whirlpool: partial frequencies swirl through 6–9 seconds with amber noise bandwidth, plotted across the full native frequency band above its edited waveform and player."}
 :::static
-import afield.stdlib.loris.LorisDocs
 display("edited tracks and sound", LorisDocs.whirlpoolHtml())
 ```
 
 <audio controls preload="metadata" src="assets/loris/spectral-whirlpool.wav"></audio>
 
-After `import afield.stdlib.loris.spectralWhirlpool`, the same example gesture is available as
+The same example gesture is available in a box as
 `model.spectralWhirlpool(6.0, 3.0)`. Its [manifest](assets/loris/whirlpool-provenance.json) records the
 parent analysis, chunk range, sweep depth, shutter rate, bandwidth target and synthesis request.
 
@@ -167,13 +154,6 @@ noise bandwidth, then renders and displays the changed model. The breakpoints ke
 phases, so attacks change character more than a dedicated pitch shifter would make them.
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisFrequencyAxis
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
-import afield.stdlib.path
-
 val client = LorisClient()
 client.analyzeWavAsync(
     "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
@@ -200,7 +180,6 @@ Here is that edit. Every segment is blue, because the edit set every bandwidth t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/tonal-edit.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="180" w="1080" h="720" embed=true name="loris-tonal-edit" alt="Loris partial map and waveform of the film dialogue lowered to 0.75 of its original partial frequencies, with noise bandwidth removed; frequency spacing is ERB."}
 :::static
-import afield.stdlib.loris.LorisDocs
 display("changed partials and sound", LorisDocs.transformedHtml())
 ```
 
@@ -265,18 +244,6 @@ fundamental, moves the loudest moment of the second onto the loudest moment of t
 morphs from the first to the second between 0.4 and 1.6 seconds:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisEnvelope
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisReference
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.crop
-import afield.stdlib.loris.dropUnlabeled
-import afield.stdlib.loris.labelCounts
-import afield.stdlib.loris.loudestTimeSeconds
-import afield.stdlib.loris.visualizationHtml
-import afield.stdlib.path
-
 val client = LorisClient()
 client.analyzeWavAsync(
     "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
@@ -299,14 +266,29 @@ client.analyzeWavAsync(
 }
 ```
 
-The three plots below are that pipeline on the film: the first phrase distilled, the second
-distilled and dilated, and the morph. The long straight segments are where the distiller joined
+The three plots below are that pipeline on the film. The long straight segments are where the distiller joined
 pieces of one harmonic across a pause. Label 0 partials are left out of the morph here; keep them
 and Loris crossfades them instead.
 
-```diffstatic {data-lang=kotlin}
-import afield.stdlib.loris.LorisDocs
-display("morph", LorisDocs.morphHtml())
+Phrase A, film seconds 1.6–3.6, distilled:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-a.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-a" alt="Loris partial map, 0–5000 Hz over two seconds, of phrase A distilled to one track per harmonic, with its reconstruction waveform and player."}
+:::static
+display("phrase A", LorisDocs.morphPanelHtml(0))
+```
+
+Phrase B, film seconds 11.5–13.5, distilled and dilated so its loudest moment meets A's:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-b.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-b" alt="Loris partial map of phrase B, distilled and time-dilated onto phrase A, with its reconstruction waveform and player."}
+:::static
+display("phrase B", LorisDocs.morphPanelHtml(1))
+```
+
+The morph, from A to B between 0.4 and 1.6 seconds:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/morph-result.png" capture="box" open-outputs="true" requires="loris" wait="5" padding="14" timeout="240" w="1080" h="900" embed=true name="loris-morph-result" alt="Loris partial map of the morph of phrase A into phrase B, with its waveform and player."}
+:::static
+display("morph", LorisDocs.morphPanelHtml(2))
 ```
 
 <audio controls preload="metadata" src="assets/loris/morph-a-to-b.wav"></audio>
@@ -340,8 +322,7 @@ Breakpoints that a transposition or tilt pushes above 0.49 × the sample rate ar
 
 ## A document to explore
 
-[The Loris partial explorer](offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn)
-has a box for each step on this page: playing the source, analysis with its status, picking
+The [`loris_partial_explorer`](agent_transcripts.md#loris_partial_explorer) starting point has a box for each step on this page: playing the source, analysis with its status, picking
 partials, removing noise, the spectral whirlpool, resynthesis, and a fine-time against
 fine-frequency comparison, and the label, align and morph pipeline. Each box runs its own analysis, so you can start from any of them.
 
@@ -356,7 +337,7 @@ Loris is optional, and Field does not build it unless you ask. Build the worker 
 
 The build needs CMake 3.24+ and a C++17 compiler. It downloads a checksummed, pinned Loris source
 archive once and uses the bundled FFT; no FFTW, Python binding, neural model or GPU is needed.
-It has been run on Linux; the macOS and Windows builds are untested. `AFIELD_LORIS_EXECUTABLE`
+It has been built and run on Linux and macOS (Apple silicon); the Windows build is untested. `AFIELD_LORIS_EXECUTABLE`
 or the JVM property `afield.loris.executable` selects another built worker.
 
 Each request runs the worker with a timeout and reports its progress in the box that asked.

@@ -252,7 +252,7 @@ class ThreeGeometryWireTest {
         )
         val split = payload.splitForWire("g")
         val bytes = split.buffers!!.toByteArray()
-        assertEquals(split.buffers!!.bytes, bytes.size.toLong())
+        assertEquals(split.buffers.bytes, bytes.size.toLong())
         val wire = json.encodeToString(ThreeGeometryPayload.serializer(), split.description)
 
         ViewerJavaScript.Session.open(regionName = "wire-payload", exports = EXPORTS).use { js ->

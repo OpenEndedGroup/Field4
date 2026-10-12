@@ -33,9 +33,12 @@ JavaScript and runs in a small JavaScriptCore context **on the headset's render 
 `geometry { … }` assembles vertices there and hands the finished arrays to Metal in a single call. The
 network carries your *program*, once; it never carries vertices at frame rate.
 
-That's what makes rebuilding a mesh every frame reasonable rather than absurd.
+That is why rebuilding a mesh every frame is affordable.
 
 ## The smallest complete example
+
+This box places one cube a little over a metre in front of you, off to the right, and passes the shader one animated
+uniform, `phase`:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -421,7 +424,7 @@ between them they are the examples this page is drawn from.
 
 ## Where the pictures come from
 
-Every preview on this page is a committed capture from the `vision.geometry-preview` FIELD_TEST, by
+This section is for anyone regenerating the page's figures. Every preview on this page is a committed capture from the `vision.geometry-preview` FIELD_TEST, by
 the route a live box takes: the box's Kotlin compiled by the real `KotlinToJsCompiler`, the emitted
 JavaScript run under `node` against a mirror of `LiveMetalJavaScript.swift`, and the resulting packed
 vertex array rasterized. Four of the five documents above supply their Kotlin to it verbatim, out of

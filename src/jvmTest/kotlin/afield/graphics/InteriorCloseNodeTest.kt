@@ -577,6 +577,10 @@ class InteriorCloseNodeTest {
     @Test
     fun everyFileThatBranchesOnNodeTypeHasConsideredClose() {
         val exempt = mapOf(
+            "FLineGaussianProcess.kt" to
+                "branches on node type only to require exactly one MoveTo (one subpath per fit); the " +
+                    "training points come from samplePoints (FLineSampling.kt, exempt above), which walks " +
+                    "the line with a cursor and never reads .to off a Close node itself.",
             "FLineSampling.kt" to
                 "isPointSetLike (:338) is a predicate, not a read — and pointLikeNodes (:341-344) " +
                     "filters `storage.isNotEmpty()` before `.to`, which is `toOrNull` by another name. " +

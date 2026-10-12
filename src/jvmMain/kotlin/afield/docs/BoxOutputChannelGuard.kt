@@ -69,6 +69,7 @@ object BoxOutputChannelGuard {
     private val CHANNEL_DEFAULT = Regex("""channel:\s*String\s*=\s*"([^"]*)"""")
     private val CHANNEL_LITERAL_ARG = Regex("""channel\s*=\s*"([^"]*)"""")
     private val CHANNEL_NAMED_ARG = Regex("""\bchannel\s*=""")
+    private val CHANNEL_FIRST_PARAM = Regex("""^\(\s*channel\s*:""")
     private val DISPLAY_LITERAL_ARG = Regex("""^\(\s*"([^"]*)"""")
 
     /** A channel a call resolves to, or null when the call names one this guard cannot read. */
@@ -109,6 +110,7 @@ object BoxOutputChannelGuard {
     fun audit(repo: File): AuditResult {
         val problems = mutableListOf<String>()
         val helpers = helperChannelDefaults(File(repo, LIBRARY_REL))
+        val channelFirst = helpersTakingChannelFirst(File(repo, LIBRARY_REL))
         if (helpers.isEmpty()) {
             return AuditResult(0, 0, listOf("found no `fun Box.…(channel: String = \"…\")` helpers under $LIBRARY_REL"))
         }
@@ -117,7 +119,7 @@ object BoxOutputChannelGuard {
         var emissions = 0
         fun check(source: String, code: String, forwardedChannelName: String? = null) {
             boxes++
-            val found = topLevelEmissions(code, helpers, forwardedChannelName)
+            val found = topLevelEmissions(code, helpers, channelFirst, forwardedChannelName)
             emissions += found.topLevel.size
             found.topLevel.groupBy { it.channel }
                 .filterValues { it.size > 1 }
@@ -162,6 +164,23 @@ object BoxOutputChannelGuard {
         return seen.mapValues { (_, defaults) -> defaults.singleOrNull() }
     }
 
+    /**
+     * Helpers whose every overload takes `channel` as its first parameter, so a leading string
+     * literal names the channel: `orca("lead", …)` writes "lead", not `Box.orca`'s default "orca".
+     */
+    fun helpersTakingChannelFirst(librarySource: File): Set<String> {
+        val seen = mutableMapOf<String, MutableSet<Boolean>>()
+        for (file in kotlinFiles(librarySource)) {
+            val text = file.readText()
+            for (match in BOX_FUN.findAll(text)) {
+                val params = balanced(text, match.range.last) ?: continue
+                if (!params.contains("channel:")) continue
+                seen.getOrPut(match.groupValues[1]) { mutableSetOf() }.add(CHANNEL_FIRST_PARAM.containsMatchIn(params))
+            }
+        }
+        return seen.filterValues { it == setOf(true) }.keys
+    }
+
     // ---- the scanner ------------------------------------------------------------------------------
 
     /**
@@ -176,6 +195,7 @@ object BoxOutputChannelGuard {
     private fun topLevelEmissions(
         code: String,
         helpers: Map<String, String?>,
+        channelFirst: Set<String>,
         forwardedChannelName: String?,
     ): Scan {
         val masked = maskCommentsAndStrings(code)
@@ -199,7 +219,7 @@ object BoxOutputChannelGuard {
             if (argsEnd == null) { i++; continue }
             if (!qualified && (name == "display" || name in helpers)) {
                 val args = code.substring(openParen, (argsEnd + 1).coerceAtMost(code.length))
-                val channel = resolveChannel(name, args, helpers, forwardedChannelName)
+                val channel = resolveChannel(name, args, helpers, channelFirst, forwardedChannelName)
                 if (channel != null) {
                     if (depth == 0) {
                         result.add(Emission(name, channel, code.take(i).count { it == '\n' } + 1))
@@ -218,6 +238,7 @@ object BoxOutputChannelGuard {
         name: String,
         args: String,
         helpers: Map<String, String?>,
+        channelFirst: Set<String>,
         forwardedChannelName: String?,
     ): String? {
         CHANNEL_LITERAL_ARG.find(args)?.let { return it.groupValues[1] }
@@ -230,6 +251,7 @@ object BoxOutputChannelGuard {
         // Any other spelling of `channel =` is a value this guard cannot read; say nothing about it.
         if (CHANNEL_NAMED_ARG.containsMatchIn(args)) return null
         if (name == "display") return DISPLAY_LITERAL_ARG.find(args)?.groupValues?.get(1)
+        if (name in channelFirst && helpers[name] != null) DISPLAY_LITERAL_ARG.find(args)?.let { return it.groupValues[1] }
         return helpers[name]
     }
 

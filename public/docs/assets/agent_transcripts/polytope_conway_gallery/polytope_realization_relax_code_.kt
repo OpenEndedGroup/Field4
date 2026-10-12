@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 import afield.stdlib.Vec3
 import kotlin.random.Random
 

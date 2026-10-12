@@ -6,7 +6,7 @@ Your compute shader can write the triangles that the ray tracer sees. This exper
 
 ## Open and edit
 
-Open **Starting points → computed_ray_geometry** on a device with enabled `VK_NV_cluster_acceleration_structure` and ray-tracing pipelines. The capability check runs before the scene allocates geometry. This extension needs no additional SDK or native library in Field.
+Open the [computed_ray_geometry](agent_transcripts.md#computed_ray_geometry) Starting Point on a device with enabled `VK_NV_cluster_acceleration_structure` and ray-tracing pipelines. The capability check runs before the scene allocates geometry. This extension needs no additional SDK or native library in Field.
 
 The **compute** property contains the producer. Edit the height function, the coordinates or the triangle indices. Field's `computeModuleHere()` keeps the last working shader after a compilation failure. Keep its push-constant layout while editing; changes to buffer layouts or capacities require stopping and recreating the scene.
 
@@ -104,7 +104,7 @@ Try changing `.55` to `1.1` and use **Update Compute Shader**. The waves become 
 | `indices` | 4-byte unsigned integer | Indices **local to each cluster's vertex slice**; three per triangle |
 | `clusters` | 32-byte record | `firstVertex, firstIndex, vertexCount, triangleCount, clusterId, geometryId, 0, 0` |
 
-Offsets count vertices or indices, not bytes. `TriangleCluster.write()` writes the same record from Kotlin into a native-order buffer. A cluster contains indexed triangles; this first adapter does not partition an arbitrary mesh for you. A procedural generator often knows its own patches already. Each patch here has 81 vertices and 128 triangles.
+Offsets count vertices or indices, not bytes. `TriangleCluster.write()` writes the same record from Kotlin into a native-order buffer. A cluster contains indexed triangles; the adapter does not partition an arbitrary mesh for you. A procedural generator often knows its own patches already. Each patch here has 81 vertices and 128 triangles.
 
 ```diffstatic {data-lang=kotlin}
 val geometry = ClusterGeometry(renderer,
@@ -134,16 +134,20 @@ val lab = ClusterGeometryDemo(renderer,
 
 A build records GPU input validation, conversion to Vulkan's cluster records, cluster builds and one aggregate BLAS build. Buffer bounds come from the actual allocations. Invalid descriptions, out-of-range local indices and nonfinite positions become degenerate geometry and set bits in `geometry.status`: **1**, **2** and **4**, respectively. A valid cluster has zero status. This GPU buffer is available to your diagnostics; the normal build path never reads it back.
 
-The builder owns fixed-capacity storage, scratch, sanitized geometry and record buffers. It borrows your producer buffers. Static geometry needs one explicit build; retain its BLAS and skip later calls. Rebuild after position or topology changes, and rebuild the TLAS when bounds change. Recreate the builder to increase capacity. This first version rebuilds clusters; it does not yet implement template instantiation, compaction, LOD streaming or selective cluster reuse.
+The builder owns fixed-capacity storage, scratch, sanitized geometry and record buffers. It borrows your producer buffers. Static geometry needs one explicit build; retain its BLAS and skip later calls. Rebuild after position or topology changes, and rebuild the TLAS when bounds change. Recreate the builder to increase capacity. Every build rebuilds all clusters; template instantiation, compaction, LOD streaming and selective cluster reuse are not supported.
 
 Everything runs on Field's graphics queue, with dependencies between producer, converter, cluster build, BLAS build and tracing. Stop/close defers destruction through Field's normal retirement mechanism. A GPU-written 64-byte instance buffer can also be passed to `AccelerationStructure.buildTopLevel()`; synchronize its producer before that call. Use a fresh TLAS owner: the first GPU-buffer build fixes its instance count and flags. Transform/address edits within those records are supported; recreate the TLAS and defer retiring the old one if its count or flags must change.
 
-## What was measured
+## Cost on the RTX 4090
 
-The 1920 × 1080 experiment on the RTX 4090 generates **768 clusters / 98,304 triangles**. The [measurement record](assets/computed_ray_geometry/measurements.json) separates the guarded cluster/BLAS build from the complete producer → build → TLAS → trace → output pass and records builder storage. These are measured rebuild costs, not a claim that clusters beat ordinary BLAS builds for this small scene.
+The 1920 × 1080 experiment on the RTX 4090 generates **768 clusters / 98,304 triangles**. The [measurement record](assets/computed_ray_geometry/measurements.json) separates the guarded cluster/BLAS build from the complete producer → build → TLAS → trace → output pass and records builder storage. These are rebuild costs for this scene; they do not compare clusters with ordinary BLAS builds.
 
 In the recorded run, guarded cluster/BLAS construction took **1.30 ms median / 1.31 ms p95**; the complete pass took **2.36 / 2.39 ms**. Builder storage was **6.57 MiB**, excluding caller buffers, TLAS and output images.
 
-The device advertises at most 256 vertices and 256 triangles per cluster, 256-byte scratch alignment, 128-byte cluster alignment and 256-byte BLAS alignment. The adapter queries these values; they are not portable constants. Tests cover native record strides, moving vertices, changed indices, all three invalid-input cases and resource retirement under Vulkan validation.
+The device advertises at most 256 vertices and 256 triangles per cluster, 256-byte scratch alignment, 128-byte cluster alignment and 256-byte BLAS alignment. The adapter queries these values; they are not portable constants.
 
-This preview uses ray-tracing pipelines. It does not silently replace the path tracer's ray-query geometry or Fabricate's mesh ownership. Ordinary geometry and compute workflows remain available without the extension. The implementation and reproduction record, `dev_docs/lighting/ADVANCED_VULKAN.md`, has the exact environment and limitations.
+Cluster geometry works with ray-tracing pipelines only. The path tracer's ray-query geometry and Fabricate meshes do not use it, and ordinary geometry and compute work without the extension.
+
+??? aside "Tests and the reproduction record"
+
+    Tests cover native record strides, moving vertices, changed indices, all three invalid-input cases and resource retirement under Vulkan validation. [`dev_docs/lighting/ADVANCED_VULKAN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/lighting/ADVANCED_VULKAN.md) records the exact environment and limitations.

@@ -49,6 +49,9 @@ internal fun executeAllRequest(
 ) {
     val box = inItsLanguage(target)
     inMain {
+        // Before the engine is replaced, and before this thread's session is set (this can
+        // suspend): a box blocked in a propUp pull is still evaluating in that engine.
+        ReactiveRuns.awaitNotBlocked(box)
         val previousSession = thisSession.get()
         val previousSessionInfo = thisSessionInfo.get()
         try {

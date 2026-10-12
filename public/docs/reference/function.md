@@ -1624,8 +1624,6 @@ opcodes with a value stack).
 
 `src/jvmMain/kotlin/afield/stdlib/autodiff_formula.kt` — [read the source](source/jvmMain/afield/stdlib/autodiff_formula/)
 
-**Used in:** [RectSL Inverse Animation](../rectsl_inverse_animation.md)
-
 ### Top-level functions { #autodiff-formula-kt-functions }
 
 | Declaration | Summary |

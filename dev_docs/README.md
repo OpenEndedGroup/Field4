@@ -16,6 +16,8 @@ notes. The entries below point to the canonical note for each maintained subsyst
 
 ## Good Entry Points
 
+- [`../public/docs/how_field_is_built.md`](../public/docs/how_field_is_built.md) — the public tour of the same machinery
+- [`BUILD_INFRASTRUCTURE.md`](./BUILD_INFRASTRUCTURE.md) — the whole build, test, landing, docs and improvement machinery on one page, with what runs where
 - [`agents/README.md`](./agents/README.md) — the map of the agent automation path (start here)
 - [`agents/OPERATION_TRANSCRIPT.md`](./agents/OPERATION_TRANSCRIPT.md) — canonical build/edit/launch/save automation format
 - [`agents/FIELD_BACKDOOR.md`](./agents/FIELD_BACKDOOR.md) — low-level run/capture/screenshot harness

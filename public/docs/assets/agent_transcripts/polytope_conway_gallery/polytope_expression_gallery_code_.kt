@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 
 // ***** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
 // operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and

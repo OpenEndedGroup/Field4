@@ -11,7 +11,9 @@ import afield.SessionInformation
 import afield.ai.core.BoxTool
 import afield.ai.core.DocumentToolRegistry
 import afield.ai.core.ToolExecutionContext
+import afield.ai.core.ToolFace
 import afield.ai.core.ToolRegistry
+import afield.ai.core.boxToolWireName
 import afield.ai.core.aiTool
 import afield.ai.core.aiToolMapper
 import afield.thisSessionInfo
@@ -131,8 +133,11 @@ ${PROVIDER_CODE.trimEnd().prependIndent("          ")}
             // --- MCP describe face ---
             val ctx = ToolExecutionContext(dynamicTools = tools)
             val registry = ToolRegistry()
-            val described = registry.describe(ctx).map { it.jsonObject["name"]?.jsonPrimitive?.content }
-            check("echo.box" in described, "echo.box appears in ToolRegistry.describe()")
+            // MCP lists a box tool by its dotted name; the model face uses boxToolWireName (95c2c0ff0).
+            val described = registry.describe(ctx, ToolFace.MCP).map { it.jsonObject["name"]?.jsonPrimitive?.content }
+            check("echo.box" in described, "echo.box appears in ToolRegistry.describe(MCP)")
+            val modelFace = registry.describe(ctx).map { it.jsonObject["name"]?.jsonPrimitive?.content }
+            check(boxToolWireName("echo.box") in modelFace, "the model face lists it under its wire name")
 
             // --- agent execution path (JSON in, marshaled out) ---
             val agentResult = registry.executeByName(ctx, "echo.box", """{"text":"hi","times":3}""")

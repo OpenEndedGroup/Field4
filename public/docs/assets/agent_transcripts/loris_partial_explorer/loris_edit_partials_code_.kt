@@ -1,8 +1,3 @@
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisFrequencyAxis
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.path
 
 val client = LorisClient()

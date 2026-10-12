@@ -188,8 +188,8 @@ smooth
 
 ![Nine moments: grey in the first, then orange faces flying out and cooling back to a dark solid](assets/stackauto_conversation/polytope/images/c7855b5f718821bdd000.png)
 
-The first frame is still grey: that picture was taken before the new pipeline was drawing. Edits
-now wait for it (see the note at the end).
+The first frame is still grey because it was read back before the new pipeline was drawing. An edit
+now returns only once the new pipeline draws (see [The tools](#the-tools)).
 
 ### 4 · Burning through at the peak
 
@@ -323,7 +323,7 @@ until the box ran again. The model had no way to run it, and said so:
 > I added a boundary-following correction, but its live mesh update failed, so I can't claim that
 > version is working.
 
-### The person runs the box
+### Running the box
 
 Running the polytope box rebuilt the mesh, and the window drew the frames.
 
@@ -454,7 +454,7 @@ polytope box's AI4 chat. Opening the chat does not call a model.
 - On macOS the shader is translated to Metal, and a function named like one of Metal's types (`decay`,
   `array`) will not build there. A slot with such a name is refused before it is compiled.
 
-??? aside "How this was recorded, and what checks it"
+??? aside "How this page was recorded and checked"
 
     Each turn went through the `ai-assist` RPC that Field's chat panel sends, with
     `tools/conversation_demo.py record`; the prompts are in the document's `prompts/`, and the run

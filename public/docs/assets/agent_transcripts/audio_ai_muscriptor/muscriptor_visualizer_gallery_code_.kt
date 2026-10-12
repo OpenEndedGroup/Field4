@@ -1,4 +1,3 @@
-import afield.stdlib.noir.audioai.*
 import afield.stdlib.AudioVisualizer
 import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader

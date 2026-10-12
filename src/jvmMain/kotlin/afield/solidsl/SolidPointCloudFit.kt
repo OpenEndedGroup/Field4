@@ -277,11 +277,13 @@ data class SolidCloudFit(
  * fit.unconstrainedParameters        // what this cloud could not tell it — read this first
  * ```
  *
- * [OptimizeMethod.ADAM] by default and not [OptimizeMethod.LBFGS], which is the opposite of
- * [fitParameters]' default. The reason is the objective: a squared *field* residual over surface
- * points is much flatter than a signed-distance regression — every point contributes only through
- * how far it is from the zero set, so the landscape has long shallow valleys where a line search
- * decides it has converged. Adam walks them.
+ * [OptimizeMethod.LBFGS] by default, like [fitParameters]. This used to default to Adam, on the theory
+ * that a squared field residual over surface points has long shallow valleys a line search gives up
+ * in. Re-measured after `adBox3`'s interior `NaN` was fixed (`SolidSLOptimizerComparisonTest`: full,
+ * noisy and one-sided clouds of the three-lobe shape, four seeds each), LBFGS reached the same
+ * parameters as Adam to every printed digit, in 6 to 11 iterations against Adam's ~400, and 20 to
+ * 50 times faster. Pass `SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 1200,
+ * learningRate = 0.01)` for the old behaviour.
  *
  * @param start where to begin. There is no `seed` default worth having here: a point cloud arrives
  *   without a prior, and the caller has to say what they think the shape is.
@@ -289,11 +291,7 @@ data class SolidCloudFit(
 fun SolidTemplate.fitToPointCloud(
     cloud: SolidPointCloud,
     start: DoubleArray,
-    options: SolidFitOptions = SolidFitOptions(
-        method = OptimizeMethod.ADAM,
-        iterations = 1200,
-        learningRate = 0.01,
-    ),
+    options: SolidFitOptions = SolidFitOptions(method = OptimizeMethod.LBFGS, iterations = 500),
 ): SolidCloudFit {
     require(start.size == size) {
         "this template has $size parameter(s) (${names.joinToString(", ")}), got ${start.size} start values"

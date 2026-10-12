@@ -191,6 +191,32 @@ def health_check(port: int, ssl_context: ssl.SSLContext, timeout: float = 1.5) -
         return False
 
 
+# A loaded host can answer /health slower than health_check's 1.5 s. On 2026-10-08 and 10-10 a house-machine host at a
+# load of 35-40 usually answered in 0.03-0.6 s and sometimes in 1.7 s, and attachments read that as "no Field server is
+# listening" while it was serving: six corpus variants lost their native fabrication stages on 2026-10-10.
+SLOW_HEALTH_TIMEOUT_S = 10.0
+SLOW_HEALTH_TRIES = 3
+
+
+def port_accepts_connections(port: int, timeout: float = 1.0) -> bool:
+    try:
+        with socket.create_connection(("localhost", port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def patient_health_check(port: int, ssl_context: ssl.SSLContext) -> bool:
+    """A health check for a server that may be busy: while the port accepts connections, give /health several slow
+    tries; a closed port fails at once, so a server that is really gone is still reported quickly."""
+    for _ in range(SLOW_HEALTH_TRIES):
+        if not port_accepts_connections(port):
+            return False
+        if health_check(port, ssl_context, timeout=SLOW_HEALTH_TIMEOUT_S):
+            return True
+    return False
+
+
 def _same_directory(left: str, right: str) -> bool:
     """Do two workspace paths name the same directory?
 
@@ -306,6 +332,15 @@ def parse_agent_check(spec: str) -> dict[str, Any]:
             raise BackdoorError(f"output-colour needs <box>:#rrggbb:<fraction>, got {spec!r}")
         return {"kind": kind, "box": parts[0], "text": parts[1], "fraction": float(parts[2])}
     raise BackdoorError(f"unknown agent-task check kind {kind!r}")
+
+
+def ai_chat_last_reply(history: str) -> str:
+    """The text of an AI4 chat's last `<<ai>>` block: without its model line or the progress rows after it."""
+    if "<<ai>>" not in history:
+        return ""
+    block = history.rsplit("<<ai>>", 1)[1]
+    block = re.sub(r"^\n?<<model:[^\n]*\n", "", block)
+    return block.split("<<progress", 1)[0].strip()
 
 
 def command_result(command: str, ok: bool, data: Any = None, events: list[dict[str, Any]] | None = None, timed_out: bool = False) -> dict[str, Any]:
@@ -782,6 +817,11 @@ class FieldBackdoor:
         self.logger.log("ensure_server_start", port=self.port, workspace=self.workspace)
         initial_health = health_check(self.port, self.ssl_context)
         self.logger.log("health_check", phase="initial", port=self.port, healthy=initial_health)
+        if not initial_health:
+            # A slow answer from a listening port is a busy server, not a missing one: neither attach-existing's
+            # "no server" nor starting a second server on its port is right.
+            initial_health = patient_health_check(self.port, self.ssl_context)
+            self.logger.log("health_check", phase="patient", port=self.port, healthy=initial_health)
         if initial_health:
             info = field_instance_info(self.port, self.ssl_context)
             problem = field_instance_problem(
@@ -2555,6 +2595,17 @@ class FieldBackdoor:
         self._set_local_string(resolved, property_name, value)
         return value
 
+    async def save_document(self, *, timeout: float = 60.0) -> dict[str, Any]:
+        """Write the open document to disk now, as Field's autosave would; raises if Field could not."""
+        event = await self.call_for_single_reply("agent-save-document", {}, timeout=timeout)
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-save-document returned an invalid payload")
+        if not payload.get("ok"):
+            raise BackdoorError(str(payload.get("message") or "Field did not save the document"))
+        self.logger.log("save_document_complete", path=payload.get("path"))
+        return payload
+
     async def execution_code(
         self, resolved: str, box: dict[str, Any], property_name: str, timeout: float
     ) -> str:
@@ -3728,6 +3779,12 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="legacy sends every task's instructions inside the stored message (the context-pipeline A/B arm)")
     agent_eval_parser.add_argument("--timeout", type=float)
 
+    ai_chat_parser = subparsers.add_parser("ai-chat", add_help=False)
+    ai_chat_parser.add_argument("uid", help="The box whose AI4 chat to read: a uid, a unique uid prefix or a name")
+    ai_chat_parser.add_argument("--stop-waiting", action="store_true",
+                                help="End the wait of a turn suspended on builds (the builds keep running)")
+    ai_chat_parser.add_argument("--timeout", type=float)
+
     raw_send = subparsers.add_parser("raw-send", add_help=False)
     raw_send.add_argument("name")
     raw_send.add_argument("payload")
@@ -4772,6 +4829,27 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok)
         return result
 
+    if args.command == "ai-chat":
+        # The chat's state as the server knows it: `running` (a turn is live) and `suspendedOn` (what a turn that
+        # ended with AwaitStudyBuildsRequest waits for), never inferred from refusal text.
+        uid = client.resolve_box_token(args.uid)
+        payload = {"uid": uid, **({"stopWaiting": True} if args.stop_waiting else {})}
+        reply = await client.call_for_single_reply("ai-chat-history", payload, timeout=args.timeout or client.default_timeout)
+        body = reply.get("payload") or {}
+        history = str(body.get("history") or "")
+        data = {
+            "uid": uid,
+            "running": bool(body.get("running")),
+            "suspendedOn": body.get("suspendedOn"),
+            "message": body.get("message") or "",
+            "error": body.get("error") or "",
+            "turns": len(re.findall(r"^<<you>>$", history, re.M)),
+            "lastReply": ai_chat_last_reply(history),
+        }
+        result = command_result(command_line, not data["error"], data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=False)
+        return result
+
     if args.command == "raw-send":
         try:
             payload = json.loads(args.payload)
@@ -4862,7 +4940,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, agent-task, ai-chat, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

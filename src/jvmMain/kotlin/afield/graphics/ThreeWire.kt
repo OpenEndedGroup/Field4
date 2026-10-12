@@ -156,10 +156,12 @@ internal fun threePayloadTooLarge(
  * Public only because [ThreeGeometryPayload] is; it is a wire type, and nothing outside this file makes one.
  */
 @Serializable
+@ConsistentCopyVisibility
 data class ThreeWireBuffers internal constructor(val generation: String, val bytes: Long, val entries: List<ThreeWireBuffer>)
 
 /** One typed array in a buffer response. Offsets are multiples of eight, so a Float64 view needs no copy. */
 @Serializable
+@ConsistentCopyVisibility
 data class ThreeWireBuffer internal constructor(val type: String, val offset: Long, val count: Int)
 
 /** One numeric array, as the buffer response carries it. Holds the payload's own array, never a copy. */

@@ -48,11 +48,10 @@ These are the arguments `three` itself takes:
 
 Running the same box with the same `name` updates the same viewer. To keep two independent
 scenes, give them different **names and channels**. `channel` alone does not give a scene a new
-identity. Viewer IDs are scoped to the saved document, so duplicated boxes cannot replace
-another document's scene or edit controls. Use the returned ID rather than constructing one
-from a box ID and name. Copied notes retain their original recorded identity and independent
-reply history. The value returned by `three` is the live `ThreeGeometryViewState`; `view.uid` is the
-ID used by the standalone viewer and agent inspection tools.
+identity. A viewer's ID belongs to its document, so a box copied into another document gets a
+scene of its own. The value returned by `three` is the live `ThreeGeometryViewState`; `view.uid`
+is the ID the standalone viewer and the agent tools use. Take it from there rather than building
+one from a box ID and name.
 
 ## A scene, not a picture
 
@@ -189,8 +188,7 @@ Pressing, scrolling or typing in the view pauses the turn, and it resumes `resum
 (2 by default) after the last interaction, from wherever you left it. A view turns only while it is
 on screen and the page is visible, and draws no frames while it is still. Each panel is framed for
 every angle of the turn, so nothing swings out of its cell, and a turning sheet sits a little
-further back than a still one. The framing is worked out once rather than on every frame, so a
-large sheet stays cheap to turn.
+further back than a still one.
 
 Views in separate outputs or boxes can turn together too. `linkCamera()` opens a view with
 **Link camera** already on, so this box's two outputs share one camera and one turn:
@@ -295,9 +293,9 @@ The control surface uses up to two columns and collapses to one in a narrow outp
 `controlGroup("controls") { ... }` retains its single column; changing layout preserves control
 identities, cached values and callbacks.
 
-An unchanged camera preset preserves the current orbit, pan and zoom when geometry
-updates. Changing the preset explicitly establishes a new view. Resizing a view
-that the user has positioned also preserves that position.
+When the geometry updates and the camera preset has not changed, the view keeps whatever orbit,
+pan and zoom you had. Changing the preset starts a new view. Resizing a view also keeps your
+position.
 
 ## The camera
 
@@ -700,9 +698,9 @@ constraints you applied. `width` is optional and otherwise fills the output area
 `drawables` list carries no mesh keys, so the editable path, the inspector and the mesh scenes above
 all share one format.
 
-A scene reaches the viewer in two parts: a small description over the websocket, and its numbers —
-FLine and mesh buffers, and a solid's exact boundary — as one binary download the viewer fetches
-when it needs them. A scene's geometry may be up to 512 MB; set `AFIELD_THREE_PAYLOAD_LIMIT_MB` to
+A scene reaches the viewer in two parts: a small description over the websocket, and its
+geometry (FLine and mesh buffers, and a solid's exact boundary) as one binary download that the
+viewer fetches when it needs it. A scene's geometry may be up to 512 MB; set `AFIELD_THREE_PAYLOAD_LIMIT_MB` to
 change that. A scene over the limit is not sent: the call that built it throws
 `ThreePayloadTooLargeException`, which gives the size and the largest drawables, and the view keeps
 what it was showing. Restyling parts with `styleParts` sends only the new styles, however large the

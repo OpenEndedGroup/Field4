@@ -197,6 +197,36 @@ class OscQueryRoundTripTest {
     }
 
     @Test
+    fun `port 0 picks a free port, shared by every later port-0 request`() {
+        // The docs captures ask for port 0 so two docs runners (two JVMs) never contend for 9020.
+        try {
+            val a = OscQueryServices.server("Field port test", httpPort = 0, oscPort = 0, advertise = false)
+            val b = OscQueryServices.server("Field port test", httpPort = 0, oscPort = 0, advertise = false)
+            assertTrue(a === b, "a second port-0 request should reuse the running service")
+            assertTrue(a.httpPort != 0 && a.oscPort != 0, "the bound ports are reported, not 0")
+            val other = OscQueryServer("Field second JVM", httpPort = 0, oscPort = 0, bindAddress = "127.0.0.1", advertise = false)
+            try { assertTrue(other.httpPort != a.httpPort) } finally { other.close() }
+        } finally {
+            OscQueryServices.closeAll()
+        }
+    }
+
+    @Test
+    fun `asking for a cached remote again re-reads the namespace`() {
+        try {
+            server.add("/first", "f", listOf(0.0))
+            val r1 = OscQueryServices.remote("127.0.0.1", server.httpPort)
+            assertEquals(listOf("/first"), r1.params.map { it.path })
+            server.add("/second", "f", listOf(0.0))
+            val r2 = OscQueryServices.remote("127.0.0.1", server.httpPort)
+            assertTrue(r1 === r2)
+            assertEquals(listOf("/first", "/second"), r2.params.map { it.path })
+        } finally {
+            OscQueryServices.closeAll()
+        }
+    }
+
+    @Test
     fun `the OSC codec round-trips every supported type and reads bundles`() {
         val args = listOf(1, 2.5f, "hé", true, false, null, 3.25, 1L shl 40)
         val bytes = OscQueryCodec.encode("/a/b", args)

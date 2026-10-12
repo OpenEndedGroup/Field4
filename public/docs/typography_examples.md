@@ -480,6 +480,5 @@ will look a little different on yours. The ring counts, genus and winding do not
 
 ## Run it yourself
 
-The page's boxes are also a document you can open and edit:
-`public/docs/assets/agent_transcripts/typography_worked_example/` in the repository, replayed from
-[`typography_worked_example.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/typography_worked_example.yaml).
+The page's boxes are also the [`typography_worked_example`](agent_transcripts.md#typography_worked_example)
+starting point, a document you can open and edit.

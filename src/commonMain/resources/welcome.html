@@ -706,6 +706,13 @@
             min-height: 0;
         }
 
+        .changelog-more {
+            display: flex;
+            justify-content: flex-end;
+            margin: 0;
+            padding: 8px 12px 12px;
+        }
+
         .changelog-count {
             color: var(--field-text-soft);
             font-size: 11px;
@@ -1451,6 +1458,29 @@
                 opacity: 1;
             }
 
+            /* Hovering a thumbnail expands it in place: the row's clip is lifted and the image is
+               scaled from its right edge (towards the gutter's open space, away from the list), so
+               layout and the neighbouring rows don't move. The cap keeps the expanded image inside
+               the gutter. */
+            .doc-thumbs:has(img.doc-thumb:hover) {
+                overflow: visible;
+                z-index: 20;
+            }
+
+            img.doc-thumb {
+                pointer-events: auto;
+                transform-origin: right center;
+                transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+            }
+
+            img.doc-thumb:hover {
+                transform: translateY(var(--thumb-shift, 0px)) scale(6);
+                position: relative;
+                z-index: 1;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+                border-color: rgba(72, 201, 255, 0.6);
+            }
+
             /* Thumbnails scale with the row height (so they grow in the tall search-result rows)
                while preserving a landscape aspect ratio — width follows height via aspect-ratio.
                The max-height is derived from the available gutter so two side-by-side always fit
@@ -2033,6 +2063,7 @@
                         <span id="changelog-count" class="changelog-count">loading</span>
                     </summary>
                     <ol id="changelog-list"></ol>
+                    <p class="changelog-more"><a class="button-link" href="/land.html" target="_blank" rel="noopener" title="tools/land.py status --watch, in a terminal">Landing queue</a></p>
                 </details>
                 <details id="project-management-details">
                     <summary>
@@ -6629,6 +6660,27 @@
 
         window.addEventListener("resize", closeContextMenu);
         document.getElementById("recent-list")?.addEventListener("scroll", closeContextMenu);
+
+        // A hovered thumbnail scales 6x about its right-centre (CSS above); near the top or bottom
+        // of the list that would push it past the list's scroll clip, so slide it vertically to
+        // stay inside the list's visible rect.
+        const thumbScale = 6;
+        document.getElementById("recent-list")?.addEventListener("mouseover", (event) => {
+            const img = event.target.closest?.("img.doc-thumb");
+            if (!img) return;
+            const list = event.currentTarget.getBoundingClientRect();
+            const box = img.getBoundingClientRect(); // the centre is unmoved by the scale
+            const half = img.offsetHeight * thumbScale / 2;
+            const centre = box.top + box.height / 2;
+            let shift = 0;
+            if (centre - half < list.top) shift = list.top - (centre - half);
+            else if (centre + half > list.bottom) shift = list.bottom - (centre + half);
+            img.style.setProperty("--thumb-shift", `${shift}px`);
+        });
+        document.getElementById("recent-list")?.addEventListener("mouseout", (event) => {
+            const img = event.target.closest?.("img.doc-thumb");
+            if (img && !img.contains(event.relatedTarget)) img.style.removeProperty("--thumb-shift");
+        });
 
         requestAnimationFrame(() => {
             searchInput.focus({ preventScroll: true });

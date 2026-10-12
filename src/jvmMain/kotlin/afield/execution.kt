@@ -965,7 +965,7 @@ private val inheritedDeclarationRegexCache = java.util.concurrent.ConcurrentHash
 
 internal fun resolveInheritedDeclarationForHover(box: Box, symbol: String, preamble: String): InheritedDeclarationHover? {
     val regex = inheritedDeclarationRegexCache.getOrPut(symbol) {
-        Regex("""\b(val|var)\s+Box\.${Regex.escape(symbol)}\s+by\s+(Inheritance|Delegation|InheritanceFromContext)\s*<\s*(.+?)\s*>\s*\(""")
+        Regex("""\b(val|var)\s+Box\.${Regex.escape(symbol)}\s+by\s+(Inheritance|Delegation|InheritanceFromContext|ReactiveInheritance)\s*<\s*(.+?)\s*>\s*\(""")
     }
     val match = regex.find(preamble) ?: return null
     val (keyword, delegate, type) = match.destructured
@@ -977,7 +977,7 @@ internal fun resolveInheritedDeclarationForHover(box: Box, symbol: String, pream
             ContextResolution.Mechanism.INHERITANCE_FROM_CONTEXT,
             explain = true,
         )
-        "Inheritance" -> ContextResolution.walk(
+        "Inheritance", "ReactiveInheritance" -> ContextResolution.walk(
             box,
             ContextResolution.Query.propertyNamed(symbol),
             ContextResolution.Policy.INHERITANCE,
@@ -985,7 +985,7 @@ internal fun resolveInheritedDeclarationForHover(box: Box, symbol: String, pream
             explain = true,
         )
         // Delegation reads this box's own property and nothing else
-        else -> ContextResolution.walk(
+        else -> ContextResolution.peek(
             box,
             ContextResolution.Query.propertyNamed(symbol),
             ContextResolution.Policy.INHERITANCE,
@@ -2228,6 +2228,8 @@ class KotlinExecution : BoxExecution {
         val launchMode = ACTIVE_LAUNCH_MODE
         val pendingWatermark = inside.runGeneration.incrementAndGet(strand)
         inside.currentRunningStates[strand] = RunningState(pendingWatermark, pendingLaunchMode)
+        val immediate = ReactiveRuns.launchImmediately.get() == true
+        val queuedAt = ReactiveRuns.stamp()
         // This launch's owner. The strand's previous run is closed once this one has executed.
         val runScope = inside.runScopes.begin(strand, "launch")
         val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
@@ -2258,8 +2260,24 @@ class KotlinExecution : BoxExecution {
         // before the slow-compiling box above it has evaluated, which is exactly the ordering a
         // child box cannot survive. The prologue above stays synchronous, so this box's "launching"
         // annotation is already showing while it waits.
-        enqueueLaunch("launch ${inside.id} strand=$strand") {
+        //
+        // The one exception is a `propUp` pull (ReactiveRuns.pull): a box's getter is blocked on the
+        // runloop *inside* the launch the queue is running, so a queued supplier could never start.
+        // The pull asks for the work straight on the runloop, and pumps the runloop until it is done.
+        val launchWork: suspend () -> Unit = {
             withContext(Runloop.runLoop.main) {
+
+            // An autorun or `begin()` queued before a propUp pull ran this box has been answered by
+            // that run; running it again would set everything up twice (a renderer, its window). A
+            // launch someone is waiting on (a request id) still runs.
+            if (!immediate && strand == "default" && execute.requestId.isBlank() && ReactiveRuns.pulledSince(inside, queuedAt)) {
+                if (inside.currentRunningStates[strand]?.watermark == pendingWatermark) {
+                    inside.currentRunningStates.remove(strand)
+                }
+                send(Message("is-running").payload(IsRunning(execute.uid, false, pendingWatermark, strand, pendingLaunchMode)))
+                ReactiveRuns.event("skip queued launch of ${inside.name.ifBlank { inside.id }}: a pull already ran it")
+                return@withContext
+            }
 
             inside.resetStdlibRandom()
             resetLaunchSetupState(inside)
@@ -2348,6 +2366,12 @@ class KotlinExecution : BoxExecution {
                 }
             }
             }
+        }
+        if (immediate) {
+            @OptIn(DelicateCoroutinesApi::class)
+            GlobalScope.launch(Runloop.runLoop.main) { launchWork() }
+        } else {
+            enqueueLaunch("launch ${inside.id} strand=$strand", launchWork)
         }
     }
 
@@ -2445,6 +2469,9 @@ class KotlinExecution : BoxExecution {
         // Running the box is the fix for a recycled engine, so the flag reloadPersonal set comes off
         // here -- on the way in, not on success, since a run that fails has still rebuilt whatever
         // it got to and the flag would otherwise stick around describing a reload two edits ago.
+        // A box blocked in a propUp pull is mid-evaluation further down this thread's stack; a run
+        // of it that the pull's pumping reached must not start inside that evaluation.
+        ReactiveRuns.awaitNotBlocked(box)
         box.needsRerun = null
         val trace = ExecutionTrace(box, property, sourceText, requestId, executionMode, reply)
         var executionSucceeded = false
@@ -2480,6 +2507,8 @@ class KotlinExecution : BoxExecution {
                     exception = exception
                 )
             }
+            // propUp pulls and propDown cascades need to know a run is in progress (ReactiveRuns).
+            ReactiveRuns.runStarted(box, executionMode)
             try {
                 var hasError = false
                 var output = mutableListOf<String>("")
@@ -2827,7 +2856,11 @@ class KotlinExecution : BoxExecution {
                 )
             } finally {
                 finishTelemetry("execute-finished")
-                try { finishedHandler() } finally { trace.finish(executionSucceeded && accepted()) }
+                try { finishedHandler() } finally {
+                    try { trace.finish(executionSucceeded && accepted()) } finally {
+                        ReactiveRuns.runFinished(box, executionSucceeded && accepted(), executionMode)
+                    }
+                }
             }
         }
         }

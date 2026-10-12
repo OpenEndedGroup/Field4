@@ -83,7 +83,7 @@ class StackSLEvolutionTest {
         val refused = e.snapshot().lastRound.single { it.program.contains(":") }
         assertNotNull(refused.problem)
         // The next round is told what the last one did.
-        assertTrue(StackSLWatchmakerPrompt.round(e.request()).contains(refused.problem!!))
+        assertTrue(StackSLWatchmakerPrompt.round(e.request()).contains(refused.problem))
     }
 
     @Test

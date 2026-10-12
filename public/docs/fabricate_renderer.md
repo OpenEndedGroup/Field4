@@ -1,12 +1,12 @@
 # Fabricate Renderer
 
-For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see the [Direct lighting](direct_lighting.md).
+For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
 
-[`StandardRenderer`](reference/renderers.md#standardrenderer-kt-standardrenderer) is the quick path into the fabricated renderer: a scene you have only registered geometry into comes back lit, shadowed and ambient-occluded by the stock setup, so the first picture you get is one you can judge. Metalness changes the material, shadows land where objects touch the ground, and ambient occlusion darkens contacts rather than adding noise. Tone mapping is the one thing you have to ask for — see [Tone mapping and bloom](#tone-mapping-and-bloom).
+[`StandardRenderer`](reference/renderers.md#standardrenderer-kt-standardrenderer) is the quick path into the fabricated renderer: a scene you have only registered geometry into comes back lit, shadowed and ambient-occluded by the stock setup. Metalness changes the material, shadows land where objects touch the ground, and ambient occlusion darkens contacts. Tone mapping is the one thing you have to ask for (see [Tone mapping and bloom](#tone-mapping-and-bloom)).
 
-This page shows the renderer working. The [Renderers](reference/renderers.md) reference page is the other half of it: every public declaration in the fabricated package with the KDoc that sits beside it in the source, including the scene graph and pass machinery the examples below reach through, and the two renderers this page does not cover — the progressive path tracer and the Gaussian splat renderer.
+This page shows the renderer in use. The [Renderers](reference/renderers.md) reference page lists every public declaration in the fabricated package with its KDoc, including the scene graph and pass classes the examples below use, and the two renderers this page does not cover: the progressive path tracer and the Gaussian splat renderer.
 
-The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, paired with the `venice_sunset_1k.exr` environment. ToyCar carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics — considerably more than a hand-built torus asks for. Venice Sunset drives the image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness.
+The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, paired with the `venice_sunset_1k.exr` environment. ToyCar carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics. Venice Sunset drives the image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness.
 
 ??? aside "How the captures on this page are made"
     The docs runner drives `StandardRendererDocsHarness`: it builds `FabricateNode` and `FabricateMaterial`
@@ -152,7 +152,7 @@ println(plan.transparent.map { it.node.name }) // back-to-front
 println(plan.materials.size)
 ```
 
-The planner is pure Kotlin. It is useful in tests, docs harnesses, and future renderer adapters because it does not allocate Vulkan objects. A `FabricateRenderItem` carries the node, renderable, material id, queue, current world matrix, previous world matrix, and camera distance. A `FabricateMaterialRecord` is the CPU-side handoff shape for material buffers: base color, metalness, roughness, alpha mode, cutoff, double-sided state, and a texture mask placeholder.
+The planner is pure Kotlin. Because it allocates no Vulkan objects, you can run it in tests and harnesses. A `FabricateRenderItem` carries the node, renderable, material id, queue, current world matrix, previous world matrix, and camera distance. A `FabricateMaterialRecord` is the CPU-side handoff shape for material buffers: base color, metalness, roughness, alpha mode, cutoff, double-sided state, and a texture mask placeholder.
 
 Style rule: keep user intent on `FabricateMaterial` and `FabricateRenderable`; let the planner classify it. Prefer `FabricateAlphaMode.OPAQUE`, `.MASK`, and `.BLEND` over ad hoc booleans, and use `material.sortOrder` only when a stable override matters.
 
@@ -310,6 +310,7 @@ Use shader-generated tiles when you want lower mesh/buffer overhead; use mesh-sp
 The checker pattern is evaluated in world space, so model scaling directly affects tile density.
 
 Limitations:
+
 - No per-tile transforms or per-tile material edits (all tiles share one mesh/material state)
 - World-space scale dependency for checker density
 - Shader-only pattern can alias at grazing angles compared with textured/filtered approaches
@@ -519,12 +520,12 @@ expect:
         lighter: [0.42, 0.28, 0.18, 0.18]
         marginGt: 6
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" alt="a magenta torus and a teal one in front of it, with a floor of grey tiles. The vignette pass darkens the frame towards its corners and warms what it leaves, so the tiles nearest the middle stay bright and the rest of the image falls away to black. This capture is the one figure on the page that is upside down: the tile floor runs across the top and the rings hang below it, and each ring's specular highlight sits at its bottom rather than its top. See CAPTURE_ROW_ORDER in dev_docs for why, and for the re-capture it is owed" source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" alt="a magenta torus and a teal one in front of it, with a floor of grey tiles. The vignette pass darkens the frame towards its corners and warms what it leaves, so the tiles nearest the middle stay bright and the rest of the image falls away to black." source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
 ```
 
 ## Tone mapping and bloom
 
-Deferred lighting runs in HDR, so raw output clips bright highlights to white. Tone mapping maps HDR into a displayable range, and bloom bleeds the brightest regions into a soft glow — the two effects most responsible for a scene reading as "correct" rather than washed out.
+Deferred lighting runs in HDR, so raw output clips bright highlights to white. Tone mapping compresses HDR into a displayable range, and bloom bleeds the brightest regions into a soft glow.
 
 `bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, so re-attach the frame graph afterwards.
 
@@ -562,24 +563,27 @@ expect:
 
 The GLTF path uses the existing Assimp-backed loader, then imports mesh instances into the Fabricate scene graph. Opaque meshes go to the g-buffer/shadow pair. Alpha materials go to the blended transparency pass.
 
-This page uses the Khronos ToyCar sample as the pressure test. The loader sees three mesh/material buckets, 77k vertices, 326k indices, and texture slots for base/diffuse, normal, emissive, packed occlusion/roughness/metalness, and clearcoat inputs. The current `StandardRenderer` material bridge consumes base-color textures, UVs, glTF tangent frames, alpha/transmission classification, metalness, roughness, tangent-space normal maps, packed metal/roughness maps, occlusion, emissive maps, clearcoat factors/maps, shadows, AO, and equirectangular image-based lighting from float EXR environments with GGX-prefiltered radiance mips. The headlamp lens ridges are a useful canary here: they disappear if the normal map is sampled without the model's tangent basis. Texture transforms, physical transmission/refraction, sheen, BRDF LUT integration, cubemap PMREM, and clearcoat roughness/normal texture variants are the remaining distance to a convincing three.js-style PBR scene.
+The example below loads the Khronos ToyCar sample: three mesh/material buckets, 77k vertices, 326k indices, and texture slots for base/diffuse, normal, emissive, packed occlusion/roughness/metalness, and clearcoat inputs. The `StandardRenderer` material bridge consumes base-color textures, UVs, glTF tangent frames, alpha/transmission classification, metalness, roughness, tangent-space normal maps, packed metal/roughness maps, occlusion, emissive maps, clearcoat factors/maps, shadows, AO, and equirectangular image-based lighting from float EXR environments with GGX-prefiltered radiance mips. The headlamp lens ridges depend on the normal map being sampled in the model's tangent basis. It does not yet handle texture transforms, physical transmission/refraction, sheen, BRDF LUT integration, cubemap PMREM, or clearcoat roughness/normal texture variants.
 
-The visual target is Don McCurdy's glTF Viewer with the same ToyCar model and Venice Sunset environment. Use it as the reference for exposure, contrast, fabric detail, and material readability. Its useful baseline settings are:
+??? aside "Comparing the ToyCar capture with three.js"
+    The reference for this capture is Don McCurdy's glTF Viewer with the same ToyCar model and Venice Sunset environment, used for exposure, contrast, fabric detail, and material readability. Its baseline settings are:
 
-- Environment: Venice Sunset EXR
-- Environment processing: Three.js `PMREMGenerator.fromEquirectangular(...)`
-- Tone mapping: Linear
-- Exposure: `0`
-- Punctual lights: on
-- Ambient intensity: `0.3`
-- Direct intensity: `0.8 * PI`
-- Background: `#191919`
+    - Environment: Venice Sunset EXR
+    - Environment processing: Three.js `PMREMGenerator.fromEquirectangular(...)`
+    - Tone mapping: Linear
+    - Exposure: `0`
+    - Punctual lights: on
+    - Ambient intensity: `0.3`
+    - Direct intensity: `0.8 * PI`
+    - Background: `#191919`
 
-![ToyCar in Don McCurdy's glTF Viewer, close comparison framing](assets/fabricate-toy-car-donmccurdy-reference-close.png)
+    ![ToyCar in Don McCurdy's glTF Viewer, close comparison framing](assets/fabricate-toy-car-donmccurdy-reference-close.png)
 
-The grime and surface variation are in the GLB's own texture maps; neither viewer adds procedural dirt. `StandardRendererDocsHarness` renders the ToyCar capture at the reference's 50-degree field of view, from the same flatter near-roofline vantage. Framing is therefore not one of the differences left to read between the captures.
+    The grime and surface variation are in the GLB's own texture maps; neither viewer adds procedural dirt. `StandardRendererDocsHarness` renders the ToyCar capture at the reference's 50-degree field of view, from the same flatter near-roofline vantage, so the two framings match.
 
-![ToyCar comparison between the throwaway Three.js probe and Field StandardRenderer](assets/fabricate-toy-car-three-throwaway-comparison.png)
+    ![ToyCar comparison between the throwaway Three.js probe and Field StandardRenderer](assets/fabricate-toy-car-three-throwaway-comparison.png)
+
+Loading it into a bundle:
 
 ```diffstatic {data-lang=kotlin}
 // A repository-relative path, because this page's asset ships with the docs and the capture runs
@@ -746,7 +750,7 @@ expect:
 
 ## Ambient occlusion
 
-The left side disables ambient occlusion; the right side turns it on. Both show the same cluster of matte spheres resting together on the floor. AO only modulates the ambient term here (direct light is never occluded), so its effect is clearest in the contact valleys between touching spheres — where the surfaces are starved of direct light and lit mostly by ambient. Turning AO on drops those seams from a soft grey to a firm dark crease.
+The left side disables ambient occlusion; the right side turns it on. Both show the same cluster of matte spheres resting together on the floor. AO only modulates the ambient term here (direct light is never occluded), so its effect is clearest in the contact valleys between touching spheres, where the surfaces are starved of direct light and lit mostly by ambient. Turning AO on darkens those valleys from a soft grey to a firm crease.
 
 AO is also just a scene parameter in this harness:
 

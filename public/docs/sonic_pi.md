@@ -352,7 +352,7 @@ it plays.
 
 ### A document to open
 
-`public/docs/assets/sonicpi_pattern_demo/metadata.edn` is a Field document with three boxes. The
+The [`sonicpi_pattern_demo`](agent_transcripts.md#sonicpi_pattern_demo) starting point has three boxes. The
 first needs no Sonic Pi at all: it prints the generated program and how each atom was resolved. The
 second plays it. The third drives Sonic Pi from Field's clock.
 

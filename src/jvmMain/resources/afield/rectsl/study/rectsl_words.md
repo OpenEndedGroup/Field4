@@ -21,7 +21,7 @@ RectSL is a small stack language with scene side effects. Numbers, strings, colo
 
 ## Scene words
 
-Every scene opens by saying how big the wall is, in what units, and how long the clip runs. Below: a wall 1600×900 *pixels* wide, cropped to fill whatever it is drawn into, on a near-black background, four seconds at thirty frames a second — then one gold 200-pixel square in the middle of it. Change `pixels` to `meters` and nothing about the geometry changes; the unit is a statement about what the numbers mean, which the renderer and the `afield.four` lowering both read.
+Every scene opens by saying how big the wall is, in what units, and how long the clip runs. Below: a wall 1600×900 *pixels* wide, cropped to fill whatever it is drawn into, on a near-black background, four seconds at thirty frames a second, then one gold 200-pixel square in the middle of it. Changing `pixels` to `meters` leaves the geometry as it is; the unit tells the renderer and the `afield.four` lowering what the numbers mean.
 
 ```rectsl
 #rectsl
@@ -48,7 +48,7 @@ Every scene opens by saying how big the wall is, in what units, and how long the
 
 ## Objects and groups
 
-A scene is a tree of named rects and groups, and the names are how you get back to anything after you have moved on. Below: a group `orbit` holding two squares — one authored, one a `clone` of it shifted along +x, both tagged `petal`. Then the whole group is deep-copied into a `twin` three units lower, and finally every `petal` anywhere in the scene (four of them now, two per copy) is gathered out of its existing parent into a new group `petals`.
+A scene is a tree of named rects and groups, and the names are how you get back to anything after you have moved on. Below, a group `orbit` holds two squares tagged `petal`: one authored, and a `clone` of it shifted along +x. The whole group is then deep-copied into a `twin` three units lower, and finally every `petal` in the scene, in both copies, is gathered out of its parent into a new group `petals`.
 
 ```rectsl
 "orbit" group
@@ -78,7 +78,7 @@ all rects  '( "petal" tagged? ) filter  "petals" ->group-selected ;
 
 ## Geometry and ordering
 
-Three rects, three different ways of being animated. `mark` sets each channel by hand: it slides from x=-5 to x=+5 while turning a full revolution, at eight-tenths scale and seven-tenths opacity, on draw layer 2 and at the front of it — and it exists only between t=0.5 and t=3.5. Wherever a channel takes a number it also takes a quote, and the quote becomes a keyed track; that is the whole of how motion is written.
+Three rects, three different ways of being animated. `mark` sets each channel by hand: it slides from x=-5 to x=+5 while turning a full revolution, at eight-tenths scale and seven-tenths opacity, on draw layer 2 and at the front of it, and it exists only between t=0.5 and t=3.5. Wherever a channel takes a number it also takes a quote, and the quote becomes a keyed track. Motion is written this way throughout RectSL.
 
 ```rectsl
 "mark" rect
@@ -126,7 +126,7 @@ Three rects, three different ways of being animated. `mark` sets each channel by
 
 ## Paint and material
 
-A rect is filled in one of three ways, and all three are here. `panel` takes a flat mid-blue built channel-by-channel, and places itself in normalised wall space — dead centre, four-fifths of the wall wide and two-fifths tall — rather than in wall units. `chip` takes a gold-to-magenta ramp baked across its own width on the CPU, *and* a StackSL material `tint` on top of it, fed four numbers of its own through `->shader` that the shader body can read. `ghost` shows the shorthand: a colour with alpha in it, no track needed.
+A rect is filled in one of three ways, and all three are here. `panel` takes a flat mid-blue built channel-by-channel, and places itself in normalised wall space rather than in wall units: dead centre, four-fifths of the wall wide and two-fifths tall. `chip` takes a gold-to-magenta ramp baked across its own width on the CPU, *and* a StackSL material `tint` on top of it, fed four numbers of its own through `->shader` that the shader body can read. `ghost` shows the shorthand: a colour with alpha in it, no track needed.
 
 ```rectsl
 material tint '(
@@ -192,7 +192,7 @@ hold-track "pulse" '( 0=0.2  2=1  3=0.45 )
 
 ## Track transforms
 
-A track is a value, so it can be bent before it is assigned. All five rects below ride the *same* three-key sweep from x=-8 to x=+8; only the time axis differs. `delayed` starts a second and a half late, `slower` spaces its keys 1.4× farther apart, `bounced` plays forward then backward over a two-second period, and `eased` shapes the interpolation with a Penner curve and then loops it. Stacked in rows, one motion falls into a round — which is the cheapest way to see what a retiming word actually did.
+A track is a value, so it can be bent before it is assigned. All five rects below ride the *same* three-key sweep from x=-8 to x=+8; only the time axis differs. `delayed` starts a second and a half late, `slower` spaces its keys 1.4× farther apart, `bounced` plays forward then backward over a two-second period, and `eased` shapes the interpolation with a Penner curve and then loops it. Stacked in rows, the one motion plays as a round, so you can see what each retiming word did.
 
 ```rectsl
 "plain"   rect  0  3 ->xy  1 ->square  '( 0=-8  2=0  4=8 ) ->x ;
@@ -225,7 +225,7 @@ A track is a value, so it can be bent before it is assigned. All five rects belo
 
 ## Selection and transforms
 
-Build first, then sort the scene out by logic. `pip` is one spinning square tagged `spark`, reproduced nine times by `array` — each copy's opacity set from its centred fraction, so the row is brightest at the ends — and then spread 1.4 units apart by `->stagger`. The next four lines never name an individual rect again: a mirrored clone is folded across the axis x=3 and pushed to the front of its layer; every rect in the scene is dimmed a further 10%; every object *tagged* `spark` is scaled up; and the original's whole timeline is made to loop every two seconds.
+Build first, then sort the scene out by logic. `pip` is one spinning square tagged `spark`, reproduced nine times by `array` with each copy's opacity set from its centred fraction (so the row is brightest at the ends), and then spread 1.4 units apart by `->stagger`. The next four lines never name an individual rect again: a mirrored clone is folded across the axis x=3 and pushed to the front of its layer; every rect in the scene is dimmed a further 10%; every object *tagged* `spark` is scaled up; and the original's whole timeline is made to loop every two seconds.
 
 ```rectsl
 "pip" rect  0 0 ->xy  0.8 ->square  "spark" ->tag
@@ -266,7 +266,7 @@ all  '( "spark" tagged? ) filter  '( 1.2 ->scale ) map ;
 
 ## Loops and blocks
 
-Three loops, three shapes of the same idea. `times` runs its body eight times with the index in `i`, so the first row is eight cells spread 2.2 units apart — and their opacity comes out of a *predicate* rather than a curve: cells 2 through 6 are dimmed, the rest bright, written with comparisons and `not`. `range` counts over an explicit interval. `repeat` does the same but reaches for `loop-count` to normalise its index into `[0, 1]` first, which is how a loop places things by fraction rather than by step.
+The scene below uses three loops. `times` runs its body eight times with the index in `i`, so the first row is eight cells spread 2.2 units apart. Their opacity comes from a test rather than a curve: cells 2 through 6 are dimmed and the rest bright, written with comparisons and `not`. `range` counts over an explicit interval. `repeat` does the same but reaches for `loop-count` to normalise its index into `[0, 1]` first, which is how a loop places things by fraction rather than by step.
 
 ```rectsl
 8 '(
@@ -413,9 +413,9 @@ axes
 | `colorbar` | `name -- selection` | A continuous colour ramp for `name` in the right margin, with min/mid/max numerals from the y domain. |
 | `legend` | `count name -- selection` | A key of `count` discrete colour swatches sampling colormap `name`, stacked top-right. |
 
-## Musicality — the pattern language as scene structure
+## Musicality: patterns as scene structure
 
-RectSL's array primitives distribute copies in *space*. The musical layer distributes them in *time*, by borrowing [Field's Tidal-inspired pattern language](pattern_language.md) whole. The two fit together because they are already the same shape. A RectSL track is `sample(t)`; a pattern is `events(arc)`. Both are pure functions of time, with no simulation state. So a pattern **is** a track, and a pattern event, which carries an onset and a real duration, **is** a `->live` window.
+RectSL's array primitives distribute copies in space. The musical layer distributes them in time, using [Field's Tidal-inspired pattern language](pattern_language.md). A pattern can be used anywhere a track can, and each pattern event, with its onset and duration, can become a `->live` window.
 
 #### Clock
 
@@ -443,7 +443,7 @@ A cycle is the pattern language's bar. `->cps` states cycles per second directly
 
 #### `pat`: one copy per event
 
-`pat` is `array` indexed by rhythm instead of by ordinal. `"bd*4"` is four events a bar, so over four bars the `kick` template below becomes sixteen copies — one per strike, each alive for exactly its own quarter-note and no longer. Its body is authored in *local* time, where 0 is that copy's own birth: every strike drops from y=5.5 to 0 over 0.34 s and flashes up and out over half a second. `step` is the index within the bar, so the sixteen strikes also march across the wall and restart at each bar line.
+`pat` is `array` indexed by rhythm instead of by ordinal. `"bd*4"` is four events a bar, so over four bars the `kick` template below becomes sixteen copies, one per strike, each alive for its own quarter-note. Its body is authored in *local* time, where 0 is that copy's own birth: every strike drops from y=5.5 to 0 over 0.34 s and flashes up and out over half a second. `step` is the index within the bar, so the sixteen strikes also march across the wall and restart at each bar line.
 
 ```rectsl
 ->tempo 120
@@ -518,7 +518,7 @@ A cycle is the pattern language's bar. `->cps` states cycles per second directly
 
 #### Pattern transforms
 
-Time transforms that work on rhythms and signals alike. Repetition is cheap; repetition that *differs* is what reads as alive, and these are the operators that make bar `n+1` unlike bar `n`.
+These time transforms work on rhythms and signals alike, and make one bar differ from the next.
 
 ```rectsl
 ->cps 1
@@ -587,7 +587,7 @@ These apply the same ideas to scene objects rather than to rhythms, which makes 
 
 #### Rhythm in space
 
-`strip` is `pat` spending the subdivision on *where* rather than on *when*: one cycle spans the wall, and each copy is centred on its event and as wide as the event is long. So `"bd [sd sd] hh*4"` comes out as a ruler — one wide mark, two half-width, four quarter-width — from the same string that `pat` would read as a rhythm. That is visual music read literally rather than metaphorically, and it is why mini-notation belongs on the geometry side at all.
+`strip` is `pat` spending the subdivision on *where* rather than on *when*: one cycle spans the wall, and each copy is centred on its event and as wide as the event is long. So `"bd [sd sd] hh*4"`, which `pat` would read as a rhythm, comes out as a ruler: one wide mark, two half-width, four quarter-width.
 
 ```rectsl
 ->tempo 120
@@ -663,7 +663,7 @@ For anything the built-in words don't cover, `{{ … }}` drops into Kotlin (in a
 
 ## Stack and scalar operators
 
-One `grid`, and every number in it computed rather than typed. Each cell knows its own centred column and row, so `colc dup * rowc dup * + sqrt` is its distance out from the middle — and from that one quantity the cell derives its opacity (a smoothstepped falloff, floored at 0.05 and clamped), its size (a power curve of the same distance, so cells shrink outward non-linearly), and its rotation (the two axes averaged, then quantised to quarter-turns of π, so the field reads as banded rather than smooth).
+One `grid`, and every number in it computed rather than typed. Each cell knows its own centred column and row, so `colc dup * rowc dup * + sqrt` is its distance out from the middle. From that distance the cell derives its opacity (a smoothstepped falloff, floored at 0.05 and clamped), its size (a power curve, so cells shrink faster towards the edge), and its rotation (the two axes averaged, then rounded to quarter-turns of π, so the field falls into bands).
 
 ```rectsl
 12 7 '(

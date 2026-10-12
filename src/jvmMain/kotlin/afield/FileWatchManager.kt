@@ -20,16 +20,18 @@ import kotlin.uuid.Uuid
  * loads the property, and saves the document. Sidecars that already existed when [start] ran are
  * recorded as the baseline and are not treated as newly dropped orphan files.
  *
- * [SavingContext] calls [markInternalSave] after its own writes. Matching watch events are ignored
- * while their size and modification-time signature remains valid, as are events for properties
- * that the session still considers pending local saves. Deleting a sidecar externally only clears
- * the watcher's bookkeeping: it deliberately does not erase the in-memory property. Deleting
- * `metadata.edn` is ignored.
+ * [SavingContext] calls [markMetadataWrite] the moment it has written `metadata.edn`, and
+ * [markInternalSave] for the sidecars once the whole save has finished. Matching watch events are
+ * ignored while their size and modification-time signature remains valid, as are events for
+ * properties that the session still considers pending local saves. Deleting a sidecar externally
+ * only clears the watcher's bookkeeping: it deliberately does not erase the in-memory property.
+ * Deleting `metadata.edn` is ignored.
  *
  * An external `metadata.edn` modification is reconciled rather than loaded as a replacement
- * session. New active boxes are added, boxes absent from the file are tombstoned, and topology
- * references to tombstoned boxes are removed. Existing boxes are not otherwise overwritten by the
- * reconciliation pass.
+ * session. New active boxes are added, and topology references to tombstoned boxes are removed.
+ * A box is tombstoned only if it was in the last `metadata.edn` Field wrote or loaded and is absent
+ * from the new file; a box created since then has never been on disk, so no edit of the file can
+ * have removed it. Existing boxes are not otherwise overwritten by the reconciliation pass.
  *
  * The manager owns an IO coroutine scope and a Java [WatchService]. [stop] is terminal for an
  * instance because it cancels that scope and closes the watch service; create a new manager to
@@ -55,7 +57,15 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     
     // Track metadata.edn timestamp to detect external changes
     private var metadataTimestamp: Long = 0
-    
+
+    // Box ids in the last metadata.edn Field wrote or loaded: the only boxes an external edit of the
+    // file can have removed. Written by the save thread ([markMetadataWrite]) and by reconciliation
+    // on the main thread, so both go through [onDiskLock]; [onDiskGeneration] counts the
+    // replacements, which lets a reconciliation tell that a save overtook its read.
+    private val onDiskLock = Any()
+    private var onDiskBoxIds: Set<String> = emptySet()
+    private var onDiskGeneration = 0L
+
     // Dedicated coroutine scope for file watching with proper lifecycle management
     private val watchScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -82,10 +92,18 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         // Initialize file timestamps
         scanAndRecordTimestamps(workspaceDir)
         
-        // Initialize metadata.edn timestamp
+        // Initialize metadata.edn timestamp, and the boxes it holds as the on-disk baseline
         val metadataFile = File(workspaceDir, SavingContext.METADATA_EDN)
         if (metadataFile.exists()) {
             metadataTimestamp = metadataFile.lastModified()
+            val generation = synchronized(onDiskLock) { onDiskGeneration }
+            try {
+                val ids = SavingContext().readEdnTransfers(workspaceDir.absolutePath).map { it.id }
+                adoptOnDiskBoxIds(ids, generation)
+            } catch (e: Exception) {
+                // Leaves the baseline empty, which tombstones nothing until Field next writes the file.
+                lprintln("warning,file-watch", "Could not read box ids from ${metadataFile.path}: ${e.message}")
+            }
         }
 
         // Start the watch loop
@@ -157,6 +175,31 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             "doc=${sessionInfo.filename} path=${file.absolutePath} mtime=$lastModified size=${file.length()}"
         )
     }
+
+    /**
+     * Record that Field has just saved `metadata.edn` holding [boxIds]: those become the on-disk
+     * baseline, and, if [written] (the save changed the file), its signature is registered as
+     * [markInternalSave] does. [SavingContext] calls this straight after writing the file, on the
+     * save thread, because the rest of a save (Markdown mirror, history, sidecar bookkeeping) took
+     * ~900 ms on a loaded host, and the file's own watch event arrived before a registration made
+     * at the end, was taken as external, and tombstoned a box created during the save.
+     */
+    fun markMetadataWrite(file: File, boxIds: Collection<String>, written: Boolean) {
+        synchronized(onDiskLock) {
+            onDiskBoxIds = boxIds.filterNot(::isReservedBoxId).toSet()
+            onDiskGeneration++
+        }
+        if (written) markInternalSave(file)
+    }
+
+    /** Replace the on-disk baseline with [boxIds], unless a save has replaced it since [readGeneration]. */
+    private fun adoptOnDiskBoxIds(boxIds: Collection<String>, readGeneration: Long): Boolean =
+        synchronized(onDiskLock) {
+            if (onDiskGeneration != readGeneration) return@synchronized false
+            onDiskBoxIds = boxIds.filterNot(::isReservedBoxId).toSet()
+            onDiskGeneration++
+            true
+        }
 
     private fun isInternalSaveEvent(file: File, currentTime: Long): Boolean {
         val info = internalSaveInfo[file.absolutePath] ?: return false
@@ -439,7 +482,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
      * Debounce and reconcile a newer external `metadata.edn` modification on Field's main thread.
      * Internal-save signatures and non-increasing modification times are ignored.
      */
-    private suspend fun handleMetadataChange(file: File) {
+    internal suspend fun handleMetadataChange(file: File) {
         try {
             if (!file.exists()) return
             
@@ -491,18 +534,28 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
     
     /**
-     * Add active boxes found only on disk and tombstone session boxes absent from disk.
+     * Add active boxes found only on disk, and tombstone session boxes that the previous on-disk
+     * `metadata.edn` held and this one does not.
      *
      * This is intentionally not a general merge: properties of boxes already present in the
      * session are left alone. Topology values loaded for new boxes are restricted to active boxes
      * plus the root, and references to tombstoned boxes are removed.
+     *
+     * A session box missing from the file is not evidence that anything removed it: it may have
+     * been created after the save that wrote the file took its snapshot, and so have never been on
+     * disk. That is also what this pass sees when a save's own watch event is taken for an external
+     * edit. So removal is judged against the box ids of the last `metadata.edn` Field wrote or
+     * loaded. If a save replaces that baseline while the file is being read, the read may predate
+     * the save, so no box is tombstoned.
      */
     private fun reconcileMetadata(workspaceDir: File) {
         try {
             val savingContext = SavingContext()
+            val (previousOnDiskBoxIds, readGeneration) = synchronized(onDiskLock) { onDiskBoxIds to onDiskGeneration }
             val transfers = savingContext.readEdnTransfers(workspaceDir.absolutePath)
-            
+
             val metadataBoxIds = transfers.map { it.id }.filterNot(::isReservedBoxId).toSet()
+            val baselineCurrent = adoptOnDiskBoxIds(metadataBoxIds, readGeneration)
             val tombstonedIds = transfers.mapNotNull { transfer ->
                 val raw = transfer.properties["_tombstone"] ?: return@mapNotNull null
                 val resolved = savingContext.resolveStoredValue(raw, workspaceDir.absolutePath)
@@ -562,8 +615,17 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 notify("Loaded ${newBoxIds.size} new box(es) from external metadata changes", "file-watch")
             }
             
-            // Find boxes in current session but not in metadata (removed externally)
-            val removedBoxIds = currentBoxIds - metadataBoxIds
+            // Find boxes that were on disk and are no longer (removed externally). Session boxes
+            // that were never on disk are not removals.
+            val missingBoxIds = currentBoxIds - metadataBoxIds
+            val removedBoxIds = if (baselineCurrent) missingBoxIds intersect previousOnDiskBoxIds else emptySet()
+            val keptBoxIds = missingBoxIds - removedBoxIds
+            if (keptBoxIds.isNotEmpty()) {
+                SaveReloadLog.log(
+                    "metadata-kept-missing-boxes",
+                    "doc=${sessionInfo.filename} count=${keptBoxIds.size} baselineCurrent=$baselineCurrent ids=[${keptBoxIds.joinToString(",")}]"
+                )
+            }
             if (removedBoxIds.isNotEmpty()) {
                 lprintln("info,file-watch", "Found ${removedBoxIds.size} boxes removed from metadata.edn: $removedBoxIds")
                 SaveReloadLog.log(

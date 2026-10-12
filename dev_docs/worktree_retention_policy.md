@@ -194,6 +194,16 @@ checkout left, the family having already been cleaned up by hand. That is the ho
 night rather than a defect. The harness that produces them runs 45 units 8-wide and reaps none, so
 the family recurs in bursts, and naming it means the next burst is reachable without editing code.
 
+## Worktrees whose directory was deleted by hand
+
+The reverse of an orphan: git still lists the worktree (`git worktree list --porcelain` marks it
+`prunable`), but its directory is gone. On 2026-10-08 four of these had built up in one day, and
+the first `git status` inside one exited 128 and stopped the whole run, including the build clean.
+`classify_worktree` now checks for the directory before running anything in it, and calls the
+tree `prunable`. `--apply` runs `git worktree prune` first, which is lossless: it drops only the
+admin entries of worktrees whose directories no longer exist, and their branches and commits stay.
+A dry run lists them and leaves them alone. `--clean-builds` skips them.
+
 ## Running it
 
 ```

@@ -64,7 +64,7 @@ ORCA's MIDI output still goes to a MIDI device if the browser has one, as it doe
 
 ## Writing to it
 
-The other direction is just as direct. `write(x, y, text)` puts glyphs on the grid with their top
+`write(x, y, text)` puts glyphs on the grid with their top
 left at `(x, y)`; a newline in `text` starts the next row back at `x`. Setting `grid` replaces the
 whole thing. `command(...)` runs anything ORCA's command line takes, and `play()`, `stop()` and
 `bpm` are there by name. Added to the first example, these three lines speed it up, put a third
@@ -220,24 +220,58 @@ later.
     note voiced by the same `PatSynthBank` and placed on the sample its frame falls on.
     `OrcaHeadlessTest` fails if the renderer's grids or exchange drift from the starting point's.
 
-## Letting AI4 play
+## GPT jams ORCA
 
-`exposeTools()` gives the document's AI chat five tools: `orca_read` (the grid with coordinates,
-what ORCA last played, and its operator reference), `orca_write`, `orca_load`, `orca_command` and
-`orca_js`, which runs JavaScript in ORCA's page as `o.eval` does.
-It also adds the live-iframe tools from [Let AI4 Drive a Live Webpage](ai4_live_iframe.md), so the
-chat can take a screenshot of the grid. Add one line to the first example:
+`exposeTools()` hands the ORCA to the document's AI chat, AI4, as an instrument. It gets tools to
+look at the board (`orca_look`: the picture ORCA has drawn in the playing page, and the grid as
+text), read it with what it last played (`orca_read`), write cells while it plays (`orca_write`),
+replace the grid (`orca_load`), command it (`orca_command`) and run JavaScript in its page
+(`orca_js`). The board and the tempo are in its context every turn, with ORCA's operator reference,
+and `/orca` shows the board in the chat. `about` tells it what the grid cannot:
 
 ```diffstatic {data-lang=kotlin}
-o.exposeTools()
+o.exposeTools(about = "Channel 0 is a soft triangle lead, 1 a sine bass, 2 a noise hi-hat, 3 a bright square.")
 ```
 
-Run the box, open its AI Chat with **Cmd-4**, and ask for something:
+The [jam starting point ↗](offline.html?file=assets/agent_transcripts/orca_jam/metadata.edn) is
+that: a four-note arpeggio, four voiced channels, and AI4 on the board. Run it, open its AI Chat
+with **Cmd-4**, and ask it to play. This is the request, and the first 45 seconds after it, with
+`gpt-6.1-sol` as the model:
 
-> Add a hi-hat on channel 2 that plays on every other beat, and make the melody go up an octave.
+> Jam with this. Add a bassline on channel 1, a hi-hat on channel 2 on the off-beats, and an
+> answering melody on channel 3. Keep it in C, and keep it playing.
 
-The tools act on the ORCA you are looking at, so you can watch the edit land and keep typing
-alongside it.
+<video controls preload="metadata" style="width:100%" src="assets/orca/jam.mp4"></video>
+
+AI4 reads the board, writes a bass line, a `#HATS#` section and an `#ANSWER#` section beside the
+arpeggio, takes a look, checks that all three channels are sending notes, and leaves it playing.
+Every write returns the grid as text, so it sees what it did and can correct a cell it overwrote.
+It never touches the box's code, and the music does not stop while it works. The second request, *"Now make
+it more syncopated, push the tempo to 140, and give the answer a few rests"*, it answered with
+ORCA's euclidean operator, `U`, driving the bass and the hats, and rests written into the answer's
+track:
+
+![The ORCA jam box at 140 bpm after the second request. The grid has the arpeggio, a bass whose clock is driven by a U operator, a HATS section driven by another U, and an ANSWER section whose track reads G E . C . D, with rests. Below, the AI Chat ends with the model's summary: syncopated 3-hit bass over 8 frames, interlocking 5-hit hats, an answer of G-E-rest-C-rest-D-rest-rest, still in C major and playing.](assets/orca/jam-turn2.jpg)
+
+The board belongs to the conversation. Every request saves it, with the tempo, so rewinding the chat
+to before the second request put the board back as the first left it, at 120 bpm, while it kept
+playing. The chat's **States** tab shows the saved boards as a tree, one node per request, with the
+current one marked; the second request is kept as a branch you can go back to with `/branch`:
+
+![The same box after rewinding the chat to before the second request. The grid is back to the first request's version: the arpeggio, a plain bass, the HATS and ANSWER sections without their euclidean clocks, at 120 bpm. Below, the AI Chat's States tab lists two saved states: the jam request, marked current, and the syncopation request beneath it.](assets/orca/jam-rewound.jpg)
+
+Ask for something the grid cannot do and AI4 goes to the box instead. Given the first example and
+*"add a hi-hat on channel 2"*, it saw that a hi-hat needs a noise voice, which is Kotlin, so it
+edited the box to give channel 2 one, put the hat in the grid there, and ran the box again.
+
+??? aside "How the jam was recorded"
+
+    One live session on 2026-10-08, OpenAI `gpt-6.1-sol`, on the `orca_jam` starting point opened as
+    a document. The two requests were typed into the box's AI Chat panel, and the rewind sent as the
+    panel sends it (`ai-chat-history` with `rewindTo`), from `tools/field_backdoor.py`. The video is
+    `record-box` running while the first request was answered; the pictures are `screenshot-box`
+    after each request and after the rewind. A model run cannot be repeated, so the docs build keeps
+    these files rather than remaking them.
 
 ## Details
 
@@ -247,7 +281,8 @@ alongside it.
 - Notes arrive a little after ORCA plays them. `OrcaNote.time` puts each one back on ORCA's clock
   plus `o.latency` (50 ms), and `PatSynthBank.play` schedules it for then, so the rhythm stays
   even. Give a larger `latency` on a slow machine.
-- `o.page` is the output's iframe, for the [live-iframe bridge](ai4_live_iframe.md)'s `evaluate`,
+- `exposeTools(iframeTools = true)` adds the [live-iframe tools](ai4_live_iframe.md) as well, in
+  the Field app. `o.page` is the output's iframe, for that bridge's `evaluate`,
   `cdp` and `screenshot` in the Field app. `o.eval` reaches the same page through ORCA's own
   connection instead, so it also works in a plain browser. Inside the iframe, `window.fieldOrca` holds `grid()`, `write`, `load`,
   `command`, `recent()` and ORCA's own `client`.

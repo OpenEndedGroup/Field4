@@ -1887,6 +1887,31 @@ function lawFormat(spec, value) {
     return fmt(value, spec.decimalPlaces);
 }
 
+/**
+ * A client-space point in an SVG's own (viewBox) coordinates. The controls' SVGs use
+ * `preserveAspectRatio="xMidYMid meet"`, so a panel wider than the viewBox's aspect scales the
+ * drawing by its height and centres it: mapping clientX across the element's full width then puts
+ * the value somewhere other than under the pointer. The screen CTM includes that letterboxing, and
+ * canvas zoom, exactly.
+ */
+function svgPointFromClient(svg, clientX, clientY, fallbackWidth, fallbackHeight) {
+    const ctm = svg.getScreenCTM && svg.getScreenCTM();
+    if (ctm && ctm.a !== 0 && ctm.d !== 0) {
+        const inv = ctm.inverse();
+        return {
+            x: inv.a * clientX + inv.c * clientY + inv.e,
+            y: inv.b * clientX + inv.d * clientY + inv.f,
+            scale: ctm.a,
+        };
+    }
+    const rect = svg.getBoundingClientRect();
+    return {
+        x: ((clientX - rect.left) / (rect.width || 1)) * fallbackWidth,
+        y: ((clientY - rect.top) / (rect.height || 1)) * (fallbackHeight || fallbackWidth),
+        scale: (rect.width || fallbackWidth) / fallbackWidth,
+    };
+}
+
 /** Where along a control's track a value sits, in the SVG's own coordinates. */
 function trackX(container, spec, value, fallbackWidth) {
     const viewWidth = parseFloat(container.dataset.viewWidth || fallbackWidth || '320');
@@ -1899,11 +1924,10 @@ function sliderValueFromPointer(container, event) {
     const svg = container.querySelector('.field-slider-visual');
     if (!svg) return null;
 
-    const rect = svg.getBoundingClientRect();
     const viewWidth = parseFloat(container.dataset.viewWidth || '320');
     const padding = parseFloat(container.dataset.padding || '14');
 
-    const viewX = ((event.clientX - rect.left) / rect.width) * viewWidth;
+    const viewX = svgPointFromClient(svg, event.clientX, event.clientY, viewWidth).x;
     const t = clamp((viewX - padding) / (viewWidth - padding * 2), 0, 1);
     // The pointer only ever produces a fraction of the track; turning that fraction into a value is
     // the law's entire job.
@@ -1932,9 +1956,12 @@ function updateSlider(container, value, { send = false, announce = send } = {}) 
     }
 
     const valueDisplay = document.getElementById(`${sliderId}-value`);
+    const formatted = lawFormat(spec, v);
     if (valueDisplay) {
-        valueDisplay.textContent = lawFormat(spec, v);
+        valueDisplay.textContent = formatted;
     }
+    container.setAttribute('aria-valuenow', String(v));
+    container.setAttribute('aria-valuetext', formatted);
 
     // A page that owns its sliders (a study card previewing locally) listens for this rather than a
     // server round trip; `data-send="false"` keeps such a slider off the wire. Only a move is announced —
@@ -1948,33 +1975,254 @@ function updateSlider(container, value, { send = false, announce = send } = {}) 
 }
 window.updateFieldSlider = (container, value, options = {}) => updateSlider(container, value, { announce: true, ...options });
 
+/** The track's length in CSS pixels — what one full sweep of the pointer covers. */
+function sliderTrackPixels(container) {
+    const svg = container.querySelector('.field-slider-visual');
+    if (!svg) return 1;
+    const rect = svg.getBoundingClientRect();
+    const viewWidth = parseFloat(container.dataset.viewWidth || '320');
+    const padding = parseFloat(container.dataset.padding || '14');
+    // An unlaid-out (collapsed) panel measures 0; treat it as the SVG's nominal width rather than
+    // letting one pixel of travel sweep the whole range.
+    if (!(rect.width > 0)) return viewWidth - padding * 2;
+    // One viewBox unit is `scale` CSS pixels on screen (height-limited under `meet`).
+    const scale = svgPointFromClient(svg, rect.left, rect.top, viewWidth).scale;
+    return Math.max(1, scale * (viewWidth - padding * 2));
+}
+
+/** How much finer a shift-drag (or alt-nudge) moves than a plain one. */
+const SLIDER_FINE = 0.1;
+
+function sliderCurrentT(container) {
+    const spec = sliderLaw(container);
+    const v = parseFloat(container.dataset.value);
+    return lawNormalizedFor(spec, isNaN(v) ? spec.min : v);
+}
+
+function setSliderT(container, t) {
+    updateSlider(container, lawValueAt(sliderLaw(container), clamp(t, 0, 1)), { send: true });
+}
+
+/**
+ * A plain press jumps the thumb to the pointer and follows it, as it always has. With shift held the
+ * press does not jump: the drag becomes relative and ten times finer, so a value can be walked into
+ * place from wherever it already is. Pressing or releasing shift mid-drag switches between the two
+ * without the thumb leaping; a drag that has once gone relative stays relative.
+ */
 function startSliderDrag(container, event) {
     event.preventDefault();
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
     }
-    const v = sliderValueFromPointer(container, event);
-    if (v !== null) {
-        updateSlider(container, v, { send: true });
+    try { container.focus({ preventScroll: true }); } catch (_) {}
+    const relative = !!event.shiftKey;
+    if (!relative) {
+        const v = sliderValueFromPointer(container, event);
+        if (v !== null) updateSlider(container, v, { send: true });
     }
     sliderState.active = container;
+    sliderState.relative = relative;
+    sliderState.lastX = event.clientX;
+    sliderState.t = sliderCurrentT(container);
+    container.classList.toggle('fine', relative);
     window.addEventListener('pointermove', dragSliderMove);
     window.addEventListener('pointerup', endSliderDrag);
 }
 
 function dragSliderMove(event) {
-    if (!sliderState.active) return;
-    const v = sliderValueFromPointer(sliderState.active, event);
+    const container = sliderState.active;
+    if (!container) return;
+    const dx = event.clientX - (sliderState.lastX ?? event.clientX);
+    sliderState.lastX = event.clientX;
+    if (event.shiftKey || sliderState.relative) {
+        sliderState.relative = true;
+        const gain = event.shiftKey ? SLIDER_FINE : 1;
+        sliderState.t = clamp(sliderState.t + gain * dx / sliderTrackPixels(container), 0, 1);
+        container.classList.toggle('fine', !!event.shiftKey);
+        setSliderT(container, sliderState.t);
+        return;
+    }
+    const v = sliderValueFromPointer(container, event);
     if (v !== null) {
-        updateSlider(sliderState.active, v, { send: true });
+        updateSlider(container, v, { send: true });
+        sliderState.t = sliderCurrentT(container);
     }
 }
 
 function endSliderDrag() {
+    if (sliderState.active) sliderState.active.classList.remove('fine');
     sliderState.active = null;
+    sliderState.relative = false;
     window.removeEventListener('pointermove', dragSliderMove);
     window.removeEventListener('pointerup', endSliderDrag);
 }
+
+/** Double-click on the track: back to the value the box declared (`data-default`). */
+function resetSlider(container) {
+    const d = parseFloat(container.dataset.default);
+    if (!isNaN(d)) updateSlider(container, d, { send: true });
+}
+
+/**
+ * Arrow keys nudge a focused slider. On a linear law one press is one `step` (shift ×10, alt ÷10);
+ * on a curved law it is 1% of travel, because a fixed step means nothing across 20 Hz–20 kHz.
+ * PageUp/PageDown are 10%, Home/End the ends, Enter types a value, Backspace/Delete resets.
+ * Returns true when the key was the slider's.
+ */
+function sliderKeyDown(container, event) {
+    const spec = sliderLaw(container);
+    const mult = event.shiftKey ? 10 : (event.altKey ? SLIDER_FINE : 1);
+    const dir = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[event.key];
+    const current = parseFloat(container.dataset.value);
+    if (dir) {
+        if (spec.law === 'linear' && spec.step > 0) {
+            updateSlider(container, (isNaN(current) ? spec.min : current) + dir * spec.step * mult, { send: true });
+        } else {
+            setSliderT(container, sliderCurrentT(container) + dir * 0.01 * mult);
+        }
+        return true;
+    }
+    switch (event.key) {
+        case 'PageUp': setSliderT(container, sliderCurrentT(container) + 0.1); return true;
+        case 'PageDown': setSliderT(container, sliderCurrentT(container) - 0.1); return true;
+        case 'Home': setSliderT(container, 0); return true;
+        case 'End': setSliderT(container, 1); return true;
+        case 'Backspace': case 'Delete': resetSlider(container); return true;
+        case 'Enter': beginSliderValueEdit(container); return true;
+        case 'Escape': container.blur(); return true;
+    }
+    return false;
+}
+
+/**
+ * Edit a control's readout in a text field laid over it. Enter or blur commits, Escape abandons;
+ * `commit(text)` decides what the text means and does nothing for text it cannot read.
+ *
+ * The field is laid over the readout rather than swapped in: a different-width element reflowed the
+ * row's label and track. It is the readout's sibling, so it shares its offsetParent and is placed in
+ * that parent's own CSS pixels — it pans and zooms with the panel. `field-transient` tells the
+ * output area's MutationObserver the insertion is not new content, so auto-size does not re-run and
+ * shrink the panel. visibility (not display) keeps the readout's box.
+ */
+function beginValueEdit(readout, { text, commit, anchorRight = false, refocus = null }) {
+    const host = readout?.closest('.field-control');
+    if (!readout || !host || host.querySelector(':scope > .field-value-edit')) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'field-value-edit field-transient';
+    input.value = text ?? readout.textContent.trim();
+    input.setAttribute('aria-label', 'value');
+    // Placed from measured rectangles in the control's own CSS pixels (the control is
+    // position: relative); the ratio of on-screen to layout width is the canvas zoom.
+    const hostRect = host.getBoundingClientRect();
+    const zoom = host.offsetWidth > 0 ? hostRect.width / host.offsetWidth : 1;
+    const want = readout.getBoundingClientRect();
+    const width = Math.max(want.width / zoom + 8, 48);
+    const leftScreen = anchorRight ? want.right - width * zoom : want.left;
+    Object.assign(input.style, {
+        position: 'absolute',
+        left: ((leftScreen - hostRect.left) / zoom - host.clientLeft) + 'px',
+        top: ((want.top - hostRect.top) / zoom - host.clientTop) + 'px',
+        width: width + 'px',
+        height: Math.max(want.height / zoom, 12) + 'px',
+        fontSize: getComputedStyle(readout).fontSize,
+        textAlign: anchorRight ? 'right' : 'left',
+    });
+    readout.style.visibility = 'hidden';
+    host.appendChild(input);
+    let done = false;
+    const finish = (ok) => {
+        if (done) return;
+        done = true;
+        const typed = input.value;
+        input.remove();
+        readout.style.visibility = '';
+        if (ok) commit(typed);
+        try { refocus?.focus({ preventScroll: true }); } catch (_) {}
+    };
+    input.addEventListener('keydown', (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    }, true);
+    input.addEventListener('keyup', (e) => e.stopPropagation(), true);
+    input.addEventListener('blur', () => finish(true));
+    input.focus();
+    input.select();
+}
+
+/** Every number in a piece of typed text, in order ("(0.25, -0.5)" → [0.25, -0.5]). */
+function numbersIn(text) {
+    return (String(text).match(/[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) || []).map(Number);
+}
+
+/**
+ * Type a slider's value. The number is quantized and clamped like any other move, so typing 1e9 on
+ * a 0..1 slider lands on 1; text that is not a number leaves the value where it was.
+ */
+function beginSliderValueEdit(container) {
+    const readout = container.querySelector(':scope > .field-value');
+    beginValueEdit(readout, {
+        anchorRight: true,
+        refocus: container,
+        commit: (text) => {
+            const typed = parseFloat(text);
+            if (!isNaN(typed)) updateSlider(container, typed, { send: true });
+        },
+    });
+}
+
+/**
+ * Type into a vec2 pad's readouts: X or Y alone, both as "(x, y)", the length |v| (keeping the
+ * angle) or the angle θ in degrees (keeping the length). Clamped and snapped like a drag.
+ */
+function beginVec2ValueEdit(container, readout) {
+    const x = parseFloat(container.dataset.x || '0');
+    const y = parseFloat(container.dataset.y || '0');
+    const id = container.dataset.controlId;
+    const set = (nx, ny) => { if (Number.isFinite(nx) && Number.isFinite(ny)) updateVec2(container, nx, ny, { send: true }); };
+    const mag = Math.hypot(x, y);
+    const ang = Math.atan2(y, x);
+    let edit;
+    if (readout.id === `${id}-x-value`) edit = { commit: (t) => set(numbersIn(t)[0], y) };
+    else if (readout.id === `${id}-y-value`) edit = { commit: (t) => set(x, numbersIn(t)[0]) };
+    else if (readout.id === `${id}-value`) edit = { anchorRight: true, commit: (t) => { const n = numbersIn(t); if (n.length >= 2) set(n[0], n[1]); } };
+    else if (readout.id === `${id}-mag`) edit = { text: mag.toFixed(2), anchorRight: true, commit: (t) => { const m = numbersIn(t)[0]; set(m * Math.cos(ang), m * Math.sin(ang)); } };
+    else if (readout.id === `${id}-angle`) edit = { text: (ang * 180 / Math.PI).toFixed(0), commit: (t) => { const a = numbersIn(t)[0] * Math.PI / 180; set(mag * Math.cos(a), mag * Math.sin(a)); } };
+    else return;
+    beginValueEdit(readout, edit);
+}
+
+/** Type a colour as "rgba(r, g, b, a)", "r g b [a]" in 0..1, or "#rrggbb"; or type the alpha alone. */
+function beginColorValueEdit(container, readout) {
+    const picker = container.querySelector('input[type="color"]');
+    const alpha = container.querySelector('.alpha-slider');
+    if (!picker || !alpha) return;
+    const apply = (r, g, b, a) => {
+        const c = (v) => Math.round(clamp(v, 0, 1) * 255).toString(16).padStart(2, '0');
+        if ([r, g, b].every(Number.isFinite)) picker.value = `#${c(r)}${c(g)}${c(b)}`;
+        if (Number.isFinite(a)) alpha.value = String(clamp(a, 0, 1));
+        window.handleColorAlphaInput(alpha);
+    };
+    if (readout.id === `${picker.id}-alpha-value`) {
+        beginValueEdit(readout, { anchorRight: true, commit: (t) => apply(NaN, NaN, NaN, numbersIn(t)[0]) });
+        return;
+    }
+    beginValueEdit(readout, {
+        anchorRight: true,
+        commit: (t) => {
+            const hex = String(t).match(/#([0-9a-f]{6})/i);
+            if (hex) {
+                const h = hex[1];
+                apply(parseInt(h.slice(0, 2), 16) / 255, parseInt(h.slice(2, 4), 16) / 255, parseInt(h.slice(4, 6), 16) / 255, numbersIn(t.replace(hex[0], ''))[0]);
+                return;
+            }
+            const n = numbersIn(t);
+            if (n.length >= 3) apply(n[0], n[1], n[2], n[3]);
+        },
+    });
+}
+window.beginSliderValueEdit = beginSliderValueEdit;
 
 // Vec2 (2D) ---------------------------------------------------------------
 const vec2State = { active: null };
@@ -1982,7 +2230,6 @@ const vec2State = { active: null };
 function vec2ValueFromPointer(container, event) {
     const svg = container.querySelector('.vec2-visual');
     if (!svg) return null;
-    const rect = svg.getBoundingClientRect();
     const viewSize = parseFloat(container.dataset.viewSize || '240');
     const padding = parseFloat(container.dataset.padding || '10');
     const area = Math.max(viewSize - padding * 2, 1);
@@ -1992,8 +2239,9 @@ function vec2ValueFromPointer(container, event) {
     const minY = parseFloat(container.dataset.minY);
     const maxY = parseFloat(container.dataset.maxY);
 
-    const viewX = ((event.clientX - rect.left) / rect.width) * viewSize;
-    const viewY = ((event.clientY - rect.top) / rect.height) * viewSize;
+    const p = svgPointFromClient(svg, event.clientX, event.clientY, viewSize, viewSize);
+    const viewX = p.x;
+    const viewY = p.y;
 
     const tx = clamp((viewX - padding) / area, 0, 1);
     const ty = clamp((viewY - padding) / area, 0, 1);
@@ -2223,7 +2471,55 @@ function updateMeter(container, value) {
     if (readout) readout.textContent = lawFormat(spec, clamped);
 }
 
+/**
+ * Stretch a control's track to its row. The SVGs keep their viewBox height (so the thumb and
+ * strokes keep their size) and take a viewBox width matching the element's on-screen aspect;
+ * the track, guides and thumb are then laid out again in that width. Widening the output area
+ * therefore lengthens every slider instead of leaving it at its drawn 320 units.
+ */
+function fitControlTrack(svg) {
+    const w = svg.clientWidth, h = svg.clientHeight;
+    const vb = svg.viewBox?.baseVal;
+    if (!(w > 0 && h > 0) || !vb || !(vb.height > 0)) return;
+    const width = Math.max(Math.round(vb.height * w / h), 60);
+    if (Math.abs(width - vb.width) < 1) return;
+    svg.setAttribute('viewBox', `0 0 ${width} ${vb.height}`);
+    const container = svg.closest('.field-slider');
+    if (svg.classList.contains('field-slider-visual') && container) {
+        container.dataset.viewWidth = String(width);
+        const padding = parseFloat(container.dataset.padding || '14');
+        const len = Math.max(width - padding * 2, 1);
+        svg.querySelector('.slider-hitbox')?.setAttribute('width', width);
+        svg.querySelector('.slider-track')?.setAttribute('x2', width - padding);
+        svg.querySelectorAll('.slider-tick, .slider-zero').forEach((line) => {
+            const x = padding + len * parseFloat(line.dataset.f || '0');
+            line.setAttribute('x1', x);
+            line.setAttribute('x2', x);
+        });
+        const notch = svg.querySelector('.slider-default');
+        if (notch) notch.setAttribute('transform', `translate(${padding + len * parseFloat(notch.dataset.f || '0')} 0)`);
+        const value = parseFloat(container.dataset.value);
+        if (!Number.isNaN(value)) updateSlider(container, value, { send: false });
+    } else if (svg.classList.contains('alpha-visual')) {
+        svg.dataset.viewWidth = String(width);
+        svg.querySelector('.alpha-hitbox')?.setAttribute('width', width);
+        const alphaSlider = svg.closest('.field-color')?.querySelector('.alpha-slider');
+        if (alphaSlider) updateAlphaVisual(alphaSlider, parseFloat(alphaSlider.value));
+    }
+}
+
+const controlTrackObserver = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver((entries) => entries.forEach((entry) => fitControlTrack(entry.target)))
+    : null;
+
 function refreshControls(root = document) {
+    if (controlTrackObserver && root.querySelectorAll) {
+        root.querySelectorAll('.field-slider-visual, .alpha-visual').forEach((svg) => {
+            if (svg.__fieldTrackObserved) return;
+            svg.__fieldTrackObserved = true;
+            controlTrackObserver.observe(svg);
+        });
+    }
     root.querySelectorAll('.field-meter').forEach((container) => {
         const initial = parseFloat(container.dataset.value);
         if (!Number.isNaN(initial)) updateMeter(container, initial);
@@ -2286,6 +2582,36 @@ function addDelegatedListeners() {
     window.addEventListener('blur', releaseAllButtons);
     document.addEventListener('keydown', buttonKeyDown, true);
     document.addEventListener('keyup', buttonKeyUp, true);
+
+    // Sliders: double-click the track to reset, click the readout to type, keys when focused.
+    document.addEventListener('dblclick', (evt) => {
+        const vis = evt.target.closest?.('.field-slider-visual');
+        const container = vis?.closest('.field-slider');
+        if (!container) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        resetSlider(container);
+    }, true);
+    document.addEventListener('click', (evt) => {
+        const readout = evt.target.closest?.('.field-value');
+        if (!readout || readout.classList.contains('field-value-edit')) return;
+        const slider = readout.parentElement?.classList.contains('field-slider') ? readout.parentElement : null;
+        const vec2 = readout.closest('.field-vec2');
+        const color = readout.closest('.field-color');
+        if (slider) { evt.stopPropagation(); beginSliderValueEdit(slider); return; }
+        // The vec2 X/Y readouts wrap the number in an inner span; edit that span.
+        const target = readout.querySelector('span[id]') || readout;
+        if (vec2) { evt.stopPropagation(); beginVec2ValueEdit(vec2, target); return; }
+        if (color) { evt.stopPropagation(); beginColorValueEdit(color, target); }
+    }, true);
+    document.addEventListener('keydown', (evt) => {
+        const container = evt.target;
+        if (!container?.classList?.contains('field-slider')) return;
+        if (sliderKeyDown(container, evt)) {
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+    }, true);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2394,7 +2720,7 @@ window.handleColorInput = function(colorElement) {
     // Update the value display
     const valueDisplay = document.getElementById(controlId + '-value');
     if (valueDisplay) {
-        valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${a.toFixed(2)})`;
+        setRgbaReadout(valueDisplay, r, g, b, a);
     }
     sendViaAfield('color-update', {
         controlId: controlId,
@@ -2404,6 +2730,12 @@ window.handleColorInput = function(colorElement) {
         a: a
     });
 };
+
+/** The colour readout, with each channel's number in its channel's colour (alpha in grey). */
+function setRgbaReadout(el, r, g, b, a) {
+    const n = (cls, v) => `<span class="rgba-${cls}">${v.toFixed(2)}</span>`;
+    el.innerHTML = `rgba(${n('r', r)}, ${n('g', g)}, ${n('b', b)}, ${n('a', a)})`;
+}
 
 // Color alpha slider support
 window.handleColorAlphaInput = function(alphaSlider) {
@@ -2427,7 +2759,7 @@ window.handleColorAlphaInput = function(alphaSlider) {
         // Update the main value display
         const valueDisplay = document.getElementById(controlId + '-value');
         if (valueDisplay) {
-            valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${alpha.toFixed(2)})`;
+            setRgbaReadout(valueDisplay, r, g, b, alpha);
         }
         updateAlphaVisual(alphaSlider, alpha);
         sendViaAfield('color-update', {
@@ -2497,7 +2829,7 @@ function normalizedRgbToHex(r, g, b) {
 function updateColorDisplays(controlId, r, g, b, a) {
     const valueDisplay = document.getElementById(`${controlId}-value`);
     if (valueDisplay) {
-        valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${a.toFixed(2)})`;
+        setRgbaReadout(valueDisplay, r, g, b, a);
     }
     const alphaDisplay = document.getElementById(`${controlId}-alpha-value`);
     if (alphaDisplay) {
@@ -2581,10 +2913,9 @@ window.applyFieldControlUpdate = function(control) {
 
 // Alpha slider (SVG) -------------------------------------------------------
 function alphaValueFromPointer(svg, event) {
-    const rect = svg.getBoundingClientRect();
     const viewWidth = svg.viewBox?.baseVal?.width || parseFloat(svg.dataset.viewWidth || '320');
     const padding = parseFloat(svg.dataset.padding || '14');
-    const viewX = ((event.clientX - rect.left) / rect.width) * viewWidth;
+    const viewX = svgPointFromClient(svg, event.clientX, event.clientY, viewWidth).x;
     const t = clamp((viewX - padding) / (viewWidth - padding * 2), 0, 1);
     return t;
 }

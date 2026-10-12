@@ -28,10 +28,9 @@ ordinary panning.
 | --- | --- |
 | **Use it when** | you want a rhythm or a line to come from *somewhere* — a direction, a distance, a thing you can walk around — and you want the placement written in the pattern rather than driven from outside it |
 | **Use it when** | you want dough's synth vocabulary: `s`, `note`, `lpf`, `room`, `crush`, `fmi` and the rest of superdough's parameters, which this path forwards untouched |
-| **Don't** | if you need it in a file. This path plays in realtime only; see [why there is no clip of the output](#why-there-is-no-clip-of-the-output) |
 | **Don't** | if you need sample-exact onsets. Notes quantise to a 128-frame dough block, 2.9 ms at 44.1 kHz. [`patSynth`](sound.md) is sample-exact |
 | **Don't** | if you want dozens of independently placed voices. Each `spat` group costs a dough engine — about 200 MB of wasm and a few hundred milliseconds to boot — and the default ceiling is four |
-| **Needs** | the dough wasm build (tracked here) **and** Steam Audio's `libphonon`, which is **not** committed: `./gradlew fetchSteamAudioNatives` |
+| **Needs** | the dough wasm build (in the repository) **and** Steam Audio's `libphonon`, which is **not** committed: `./gradlew fetchSteamAudioNatives` |
 
 The nearest alternatives: [`patSynth`](sound.md) plays a pattern sample-exactly with no
 spatialisation; [`faustPoly`](faust.md) plays a Faust instrument from a pattern, also sample-exact and
@@ -41,7 +40,7 @@ code rather than from a pattern, and which can also render offline.
 
 ---
 
-## The tag is the spatial parameter
+## Placing a source
 
 Placement is written with the same `with(param(...))` you use for any other pattern parameter.
 `patSpatial` reads the keys in this table and forwards every other key to dough unchanged.
@@ -53,7 +52,7 @@ Placement is written with the same `with(param(...))` you use for any other patt
 | `pat("bd") with param("spat", "1")` | Routes the event to spatial group 1. Each group owns a Dough engine, so adding groups also adds memory and startup cost. | `"0"` |
 | `pat("bd") with param("az", "90")` | Places the source 90 degrees to the right. Zero is directly ahead; values are degrees. | `0` |
 | `pat("bd") with param("elev", "90")` | Places the source overhead. Zero elevation lies in the horizontal plane. | `0` |
-| `pat("bd") with param("dist", "2")` | Places the source two metres from the listener. Distance participates in the spatial rendering. | `1.5` |
+| `pat("bd") with param("dist", "2")` | Places the source two metres from the listener. Further sources are quieter and, with `air`, duller. | `1.5` |
 | `pat("bd") with param("occl", "0.5")` | Sets partial occlusion. The range is zero for clear to one for fully blocked. | `0` |
 | `pat("bd") with param("air", "0")` | Disables distance-dependent air absorption for this event. Set one to apply it. | `1` |
 
@@ -86,48 +85,8 @@ Two more things about placement:
 
 * A change of placement glides over about 5 ms rather than jumping, so a note that moves far across
   the field does not click.
-* `dist` is clamped at 0.4 m, so a source cannot land inside the head, and air absorption is a
-  per-band exponential in distance using Steam Audio's own default coefficients.
-
----
-
-## What Steam Audio is handed
-
-The spatialised output only plays live, so these two clips stop one step earlier: they are the mono
-signal one `spat` group sends to Steam Audio before it is placed.
-
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}
-// PatSpatialSoundDocs.renderWav("spatial-source-plain", …)
-// patSpatialEventsForArc(pat("36 ~ 48 ~, 72*4") with gain(0.9), az = -70, dist = 1.5)
-// -> one DoughEngine, 128-frame blocks, left channel only
-```
-
-The mono source for one `spat` group, before Steam Audio places it.
-
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-forwarded.wav" audio-spec="spatial-source-forwarded" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-forwarded"}
-// PatSpatialSoundDocs.renderWav("spatial-source-forwarded", …)
-// the same pattern, plus param("lpf", 700) — not a spatial tag, so forwarded verbatim
-```
-
-The same notes with `lpf` added to the pattern. `lpf` is not a spatial key, so dough receives it and
-its own filter darkens the sound.
-
-The direction is not in this signal at all: Steam Audio adds it afterwards. Changing `az` leaves the
-mono source exactly as it was.
-
-??? aside "What the clip renderer checks"
-    `run_field_tests.py --id synth.pat-spatial.sound` renders both clips and measures the
-    un-normalised buffers. Dough mixes to stereo, so every event is sent `pan/0`, which puts the whole
-    signal in the left channel; that channel is copied as the mono source, and the right channel is
-    checked to be silent. The six spatial keys are checked to be consumed before dough and `lpf` to
-    arrive. The same pattern at `az = 0` and `az = -70` must give a bit-identical source, which is
-    also the determinism the docs audio contract needs. The `lpf` clip's spectral centroid must stay
-    under 0.6× the plain one's, so a filter that stopped reaching dough fails the build.
-
-    | figure | spectral centroid | vs the first | peak | RMS |
-    | --- | --- | --- | --- | --- |
-    | `spatial-source-plain` | 4677 Hz | — | 0.284 | 0.078 |
-    | `spatial-source-forwarded` | 544 Hz | 0.12× | 0.198 | 0.059 |
+* `dist` is clamped at 0.4 m, so a source cannot land inside the head. Air absorption uses Steam
+  Audio's default coefficients.
 
 ## Hearing it
 
@@ -144,16 +103,6 @@ the path without writing any code, this smoke test plays two sources circling at
 ```diffstatic {data-lang=bash}
 tools/run_field_tests.py --id synth.pat-spatial.engine
 ```
-
-## Why there is no clip of the output
-
-Every clip on this site is rendered offline, with no audio device, and `patSpatial` can only render
-in real time: its render thread runs on its own clock. `PatSpatialLaunch.advanceOffline` does not
-change that; it waits for audio that has already been produced, so four seconds of audio take four
-seconds. The clips above are the mono source instead, rendered by the same code that plays live
-(see [what a voice caption promises](sound.md#what-a-voice-caption-promises)).
-
----
 
 ## Hearing it in a box
 
@@ -214,8 +163,59 @@ Two things to know before using a real headset:
   timer, which is the default.
 * If tracking is lost, the sound field stays where it was rather than snapping back to face ahead.
 
-`./gradlew headTrackedDemo` renders four movements (still, turning, stepping sideways, leaning in)
-to `build/demo/head-tracked.wav`. Listen on headphones.
+Here is a kick two metres ahead, a hat hard left and a snare hard right, heard from a head that moves
+through four movements of five seconds each: still, turning once to the right, stepping two metres to
+each side, and leaning in toward the kick and back. Listen on headphones. While the head turns, the
+hat passes behind you to your right; while it steps, the kick sweeps across; while it leans in, the
+kick grows as the hat and snare fall away behind.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/head-tracked.wav" audio-spec="head-tracked" audio-renderer="afield.four.synth.PatSpatialHeadTrackedDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-head-tracked"}
+// PatSpatialHeadTrackedDocs.renderWav("head-tracked", …)
+// HeadTrackedPatternDemo's four movements through Steam Audio's HRTF, 5 s each
+```
+
+`./gradlew headTrackedDemo` renders the same four movements at eight seconds each, to
+`build/demo/head-tracked.wav`. In both, the head is a function of where the render has got to,
+passed as `patSpatial(..., listenerPoseAt = { frame -> pose })`, so a render to a file repeats exactly.
+A headset reports its pose as it happens instead, through `followHead`.
+
+## What Steam Audio is handed
+
+These two clips are the mono signal one `spat` group sends to Steam Audio, before it is placed. The
+placed, binaural result is the clip in [Following a head](#following-a-head) above.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}
+// PatSpatialSoundDocs.renderWav("spatial-source-plain", …)
+// patSpatialEventsForArc(pat("36 ~ 48 ~, 72*4") with gain(0.9), az = -70, dist = 1.5)
+// -> one DoughEngine, 128-frame blocks, left channel only
+```
+
+The mono source for one `spat` group, before Steam Audio places it.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-forwarded.wav" audio-spec="spatial-source-forwarded" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-forwarded"}
+// PatSpatialSoundDocs.renderWav("spatial-source-forwarded", …)
+// the same pattern, plus param("lpf", 700) — not a spatial tag, so forwarded verbatim
+```
+
+The same notes with `lpf` added to the pattern. `lpf` is not a spatial key, so dough receives it and
+its own filter darkens the sound.
+
+The direction is not in this signal at all: Steam Audio adds it afterwards. Changing `az` leaves the
+mono source exactly as it was.
+
+??? aside "What the clip renderer checks"
+    `run_field_tests.py --id synth.pat-spatial.sound` renders both clips and measures the
+    un-normalised buffers. Dough mixes to stereo, so every event is sent `pan/0`, which puts the whole
+    signal in the left channel; that channel is copied as the mono source, and the right channel is
+    checked to be silent. The six spatial keys are checked to be consumed before dough and `lpf` to
+    arrive. The same pattern at `az = 0` and `az = -70` must give a bit-identical source, which is
+    also the determinism the docs audio contract needs. The `lpf` clip's spectral centroid must stay
+    under 0.6× the plain one's, so a filter that stopped reaching dough fails the build.
+
+    | figure | spectral centroid | vs the first | peak | RMS |
+    | --- | --- | --- | --- | --- |
+    | `spatial-source-plain` | 4677 Hz | — | 0.284 | 0.078 |
+    | `spatial-source-forwarded` | 544 Hz | 0.12× | 0.198 | 0.059 |
 
 ---
 

@@ -117,3 +117,22 @@ The page keeps the one fact a reader acts on -- that running any of these needs
   carries any of it.
 - Nothing pins the six spatial tags' consumption other than `synth.pat-spatial.sound`'s event-map
   assertions, which run only with `./gradlew fetchSteamAudioNatives` done first.
+
+## The binaural clip (2026-10-09)
+
+The free-running above is what lets the spatialised output be published after all:
+`PatSpatialHeadTrackedDocs` renders `HeadTrackedPatternDemo`'s four movements (5 s each) behind an
+`audio=` fence on `pat_spatial.md`, `requires="steam-audio"`.
+
+Free-running was necessary but not sufficient. Pumping a `HeadTrackedListener` from the pull loop
+against a `framesRendered` clock gave two runs that agreed to the byte through movement 1 (no head)
+and differed from 8 s on: the pose lands on whichever block the render thread reaches next, and
+the final azimuth of the turn came out 1.14° on one run and 0.75° on the next. `patSpatial` now
+takes `listenerPoseAt: (frame) -> HeadPose`, evaluated on the render thread at the top of each
+block with that block's own frame; the ring is FIFO from frame 0, so file frame n is pose frame n,
+and two renders are byte-identical. The FIELD_TEST `synth.pat-spatial.head-tracked` asserts that,
+plus the demo's level claim: half-second level swing 1.09 with the head still, 1.94 leaning in
+and out.
+
+`DocsAudioProvenance` re-renders the clip as `STEAM_AUDIO_HRTF` where `SteamAudioNatives` loads,
+and reports it skipped, with the reason, where it does not.

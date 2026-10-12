@@ -1,5 +1,6 @@
 package afield.four.synth
 
+import afield.four.audio.steamaudio.SteamAudioNatives
 import java.io.File
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
@@ -78,14 +79,20 @@ object DocsAudioProvenance {
          * nothing else: [DoughDspSoundDocs] renders Field's own Kotlin ports of dough's primitives,
          * and this is the Strudel/superdough engine itself running inside GraalWasm.
          *
-         * It is also the one family whose clips are **half a path on purpose**.
-         * [PatSpatialSoundDocs] publishes the mono source [PatSpatialRoom] hands Steam Audio and
-         * not the binaural output, for a reason spelled out in its KDoc and on its page: the
-         * spatialised half is realtime-only and needs a binary this repository does not carry, so
-         * this audit could not re-render it. Naming that as a family keeps the boundary visible in
-         * the corpus table rather than leaving two clips looking like a spatial audio figure.
+         * Its clips are **half a path**: [PatSpatialSoundDocs] publishes the mono source
+         * [PatSpatialRoom] hands Steam Audio. The binaural output is [STEAM_AUDIO_HRTF].
          */
         DOUGH_WASM("the dough wasm engine driven by a pattern's events — a mono source, pre-HRTF"),
+
+        /**
+         * The dough wasm engine placed by Steam Audio's HRTF: [patSpatial]'s binaural output.
+         *
+         * The one family that needs a binary this repository does not carry (`libphonon`, from
+         * `./gradlew fetchSteamAudioNatives`). [audit] re-renders it when [SteamAudioNatives] can
+         * load and otherwise reports it [Finding.skipped] with the reason, as the Steam Audio tests
+         * do; it never counts as reproduced without a render.
+         */
+        STEAM_AUDIO_HRTF("the dough wasm engine through Steam Audio's HRTF — binaural, head-tracked"),
 
         /** A Faust program compiled at runtime and rendered offline. See [SoundPathMap]. */
         FAUST("a Faust program compiled at runtime and rendered with no audio device"),
@@ -103,7 +110,8 @@ object DocsAudioProvenance {
      */
     val ORIGIN_BY_RENDERER: Map<String, Origin> = mapOf(
         "afield.four.synth.PatSoundDocs" to Origin.STAND_IN_SYNTH,
-        "afield.four.synth.PatMiniNotation" to Origin.STAND_IN_SYNTH,
+        // The mini-notation cards: strict patRenderStereoDirt from the pinned subset since 2026-10-09.
+        "afield.four.synth.PatMiniNotation" to Origin.DIRT_SAMPLES,
         // CaSoundDocs plays its CA rows through patRenderStereoDirt, strictly from the pinned subset.
         "afield.four.synth.CaSoundDocs" to Origin.DIRT_SAMPLES,
         // PatSynthDocs drives patVoice through a PatSynthBank rendered block by block.
@@ -130,9 +138,16 @@ object DocsAudioProvenance {
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.four.synth.FaustPolySoundDocs" to Origin.FAUST,
         "afield.four.synth.PatSpatialSoundDocs" to Origin.DOUGH_WASM,
+        "afield.four.synth.PatSpatialHeadTrackedDocs" to Origin.STEAM_AUDIO_HRTF,
         // Boolean-network note streams played through the pinned Dirt-Samples subset, strictly:
         // no token falls back, so the family is the pure one. See boolean_network_music_examples.md.
         "afield.four.synth.BooleanNetworkSoundDocs" to Origin.DIRT_SAMPLES,
+        // A Petri net's emits() played through the pinned Dirt-Samples subset, strictly. See
+        // chain_petri_sparks.md.
+        "afield.four.synth.PetriSparksDocs" to Origin.DIRT_SAMPLES,
+        // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
+        // voices — no samples anywhere on the path. See orca.md.
+        "afield.four.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */
@@ -264,6 +279,8 @@ object DocsAudioProvenance {
         val rms: Double,
         /** Non-null when the asset could not be re-rendered at all, with the reason. */
         val failure: String? = null,
+        /** Non-null when the producer needs a native this machine lacks, with the reason. */
+        val skipped: String? = null,
     ) {
         val reproduces: Boolean get() = reproducibility >= REPRODUCIBILITY_FLOOR
 
@@ -278,6 +295,7 @@ object DocsAudioProvenance {
                 )
             )
             if (failure != null) append("  !! $failure")
+            if (skipped != null) append("  SKIPPED: $skipped")
         }
     }
 
@@ -302,6 +320,13 @@ object DocsAudioProvenance {
         val peak = PatSoundDocs.peak(committed.mono)
         val rms = PatSoundDocs.rms(committed.mono)
         val channels = channelsOf(committedFile)
+
+        if (origin == Origin.STEAM_AUDIO_HRTF && !SteamAudioNatives.isAvailable) {
+            return Finding(
+                published, origin, Double.NaN, Double.NaN, committed.frames, channels,
+                sampleRateOf(committedFile), peak, rms, skipped = SteamAudioNatives.describe(),
+            )
+        }
 
         val fresh = runCatching { renderThrough(published, scratch) }
         if (fresh.isFailure) {
@@ -408,7 +433,7 @@ object DocsAudioProvenance {
         UNDERIVABLE.forEach { (id, reason) -> println("  UNDERIVABLE $id — $reason") }
         println()
 
-        val broken = findings.filter { it.failure != null || !it.reproduces }
+        val broken = findings.filter { it.skipped == null && (it.failure != null || !it.reproduces) }
         broken.forEach { println("  PROBLEM ${it.line()}") }
         check(broken.isEmpty()) {
             "${broken.size} published audio asset(s) no longer match what their producer renders"

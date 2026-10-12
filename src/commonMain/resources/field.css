@@ -1306,6 +1306,28 @@ pre code {
     color: var(--ai-chat-you-fg, var(--field-fg));
 }
 
+/* A request Field wrote itself (AiChatBlock.isFieldMessage): the outcome of builds a turn waited for. The model
+   reads it as the next request; it sits on the agent's side, unslanted, so it does not read as yours. */
+.ai-chat-turn.you.field {
+    align-self: flex-start;
+    text-align: left;
+    margin-left: 0;
+    margin-right: auto;
+    border-right: none;
+    border-left: 2px solid var(--ai-chat-summary-rule, var(--field-border));
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
+    font-style: normal;
+}
+
+.ai-chat-turn.you.field .ai-chat-markdown {
+    text-align: left;
+    color: var(--ai-chat-summary-fg, var(--field-fg-muted));
+}
+
+.ai-chat-turn.you.field .ai-chat-turn-actions {
+    justify-content: flex-start;
+}
+
 /* A message sent while the turn runs, before the agent has read it. */
 .ai-chat-turn.queued {
     border-right-style: dashed;
@@ -1912,6 +1934,7 @@ body.field-pane-resizing-h * {
 }
 
 .field-control {
+    position: relative; /* hosts the type-in field (sliders.js beginValueEdit) */
     font-family: var(--field-font);
     background: rgba(var(--field-black-rgb), 0.78);
     border: 1px solid var(--field-accent-border-faint);
@@ -1953,8 +1976,39 @@ body.field-pane-resizing-h * {
     gap: 10px;
 }
 
+.field-slider:focus { outline: none; }
+.field-slider:focus-visible,
+.field-slider:focus-within {
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px var(--field-accent-text-soft);
+}
+.field-slider > .field-value,
+.field-vec2 .field-value,
+.field-color .field-value { cursor: text; }
+.field-value:hover:not(.field-value-edit) { text-decoration: underline dotted; text-underline-offset: 3px; }
+.field-slider > .field-value:hover { text-decoration: underline dotted; }
+/* Shift-drag: the relative, ten-times-finer drag. The thumb grows a ring so the mode is visible. */
+.field-slider.fine .slider-thumb { stroke-width: 3; r: 7; }
+.field-slider.fine .field-value::after { content: " fine"; opacity: 0.6; }
+.field-value-edit {
+    font-family: var(--field-font);
+    box-sizing: border-box;
+    text-align: right;
+    color: var(--field-accent-text);
+    background: #000;
+    border: none;
+    border-bottom: 1px solid var(--field-accent-text-soft);
+    outline: none;
+    padding: 0;
+}
+
 .field-slider .field-label {
-    flex: 0 0 auto;
+    /* One label width for every slider, so tracks start (and, at their fixed drawn length, end)
+       at the same x in every panel; long labels ellipsize with the full text as a tooltip. */
+    flex: 0 0 var(--field-slider-label-width, 96px);
+    width: var(--field-slider-label-width, 96px);
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--field-accent-text-soft);
     font-size: 11px;
     letter-spacing: 0.2px;
@@ -1974,6 +2028,8 @@ body.field-pane-resizing-h * {
 }
 
 .field-slider-visual {
+    flex: 1 1 0;
+    min-width: 0;
     width: 100%;
     height: 32px;
     display: block;
@@ -1992,6 +2048,23 @@ body.field-pane-resizing-h * {
     stroke: var(--field-accent-muted);
     stroke-width: 1;
     stroke-dasharray: 3 5;
+}
+
+.slider-tick {
+    stroke: var(--field-accent-muted);
+    stroke-width: 1;
+    opacity: 0.55;
+    pointer-events: none;
+}
+.slider-tick.major { opacity: 0.9; }
+.slider-zero {
+    stroke: var(--field-accent-text-soft);
+    stroke-width: 1;
+    pointer-events: none;
+}
+.slider-default {
+    fill: var(--field-accent-muted);
+    pointer-events: none;
 }
 
 .slider-fill {
@@ -2237,12 +2310,18 @@ body.field-pane-resizing-h * {
 
 .vec2-shell .vec2-tl {
     top: 4px;
-    left: 6px;
+    left: 8px;
 }
 
 .vec2-shell .vec2-tr {
     top: 4px;
-    right: 6px;
+    right: 8px;
+}
+
+/* The readouts on the left read from the left edge (.field-value right-aligns by default). */
+.vec2-shell .vec2-angle,
+.vec2-shell .vec2-x {
+    text-align: left;
 }
 
 .vec2-shell .vec2-angle {
@@ -2279,6 +2358,28 @@ body.field-pane-resizing-h * {
     stroke-width: 1;
     stroke-dasharray: 2 4;
 }
+
+.vec2-grid {
+    stroke: var(--field-accent-muted);
+    stroke-width: 0.5;
+    opacity: 0.45;
+    pointer-events: none;
+}
+.vec2-frame {
+    fill: none;
+    stroke: var(--field-accent-muted);
+    stroke-width: 0.75;
+    opacity: 0.6;
+    pointer-events: none;
+}
+.vec2-ring {
+    fill: none;
+    stroke: var(--field-accent-muted);
+    stroke-width: 0.5;
+    opacity: 0.4;
+    pointer-events: none;
+}
+.vec2-ring.unit { opacity: 0.75; stroke-dasharray: 2 3; }
 
 .vec2-line {
     stroke: var(--field-accent);
@@ -2496,6 +2597,11 @@ body.field-pane-resizing-h * {
     gap: 6px;
 }
 
+.field-color .rgba-r { color: #ff7a7a; }
+.field-color .rgba-g { color: #7ee08a; }
+.field-color .rgba-b { color: #7aa8ff; }
+.field-color .rgba-a { color: #9a9a9a; }
+
 .field-color .field-header .field-value {
     min-width: 0;
     max-width: 280px;
@@ -2508,7 +2614,9 @@ body.field-pane-resizing-h * {
 }
 
 .alpha-row .alpha-label {
-    flex: 0 0 auto;
+    /* Swatch (52px) + the row gap (12px) + this = a slider's label, so the alpha track starts
+       where every slider's track starts. */
+    flex: 0 0 calc(var(--field-slider-label-width, 96px) - 64px);
 }
 
 .alpha-row .field-value {
@@ -2522,6 +2630,8 @@ body.field-pane-resizing-h * {
 }
 
 .alpha-visual {
+    flex: 1 1 0;
+    min-width: 0;
     width: 100%;
     height: 32px;
     display: block;
@@ -4817,6 +4927,17 @@ kbd {
     left: 0;
     right: 0;
     z-index: 19;
+    pointer-events: none;
+}
+
+/* dependencyLayer.kt: box-to-box property reads, drawn over the canvas. */
+.dependency-layer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 18;
     pointer-events: none;
 }
 

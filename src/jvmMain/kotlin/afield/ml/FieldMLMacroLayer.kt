@@ -58,11 +58,10 @@ import afield.ml.core.FieldMLValue
  * Five macros need Kotlin source rather than an ordinary host call — `sourceBlock` (a lambda
  * whose body is Kotlin source), `jsonParser` (a generated class), `graphLens` (a `::` property
  * reference), `ai` (generated Kotlin from a prompt), and `interpolant` (a Kotlin lambda saved with
- * its source). Those are the irreducible core of mechanism A:
+ * its source). Those are the current boundary of mechanism A:
  * reaching them needs a compiler, and [expand] gets no further than handing their generated text back as
- * a string. `prop`/`rootProp` also generate declarations, but their declaration is a *delegate* whose
- * semantics FieldML can implement natively — see `afield.stdlib.inheritedPropertyRaw` and the `prop`
- * family in [FieldMLRuntimePrelude].
+ * a string. `prop`, `rootProp`, and the reactive property macros also generate declarations, but
+ * their effects have native FieldML forms — see [FieldMLRuntimePrelude].
  *
  * @see FieldMLMacroLayer.ledger for the classification, which `FieldMLSourceMacroTest` holds to the
  * live contents of `MacroRegistry` in both directions
@@ -190,6 +189,15 @@ object FieldMLMacroLayer {
             "the same declaration, targeting the document root (props.kt:88)",
             nativeForm = "rootProp / setRootProp",
         ),
+        Route("propUp", Reach.NATIVE_FORM,
+            "missing reads pull a Kotlin or FieldML supplier through ReactiveRuns",
+            nativeForm = "propUp / setPropUp"),
+        Route("propDown", Reach.NATIVE_FORM,
+            "changed writes cascade to recorded readers through ReactiveRuns",
+            nativeForm = "propDown / setPropDown"),
+        Route("propUpDown", Reach.NATIVE_FORM,
+            "combines supplier pull and changed-write cascade through ReactiveRuns",
+            nativeForm = "propUpDown / setPropUpDown"),
         Route(
             "sourceBlock", Reach.NEEDS_KOTLIN,
             "rewrites to SourceBackedBlock(…) { <the original Kotlin body> } (source_block_macro.kt:11) — " +
@@ -213,6 +221,13 @@ object FieldMLMacroLayer {
         Route(
             "ai", Reach.NEEDS_KOTLIN,
             "asks a model for Kotlin and inserts it (ai_macro.kt:490); generated Kotlin, by definition",
+        ),
+        Route(
+            "showMeshGrid", Reach.CALL_SHAPED,
+            "@LabelsArgumentsFromSource: rewrites showMeshGrid(cube, ball) to showMeshGrid(\"cube\" to cube, " +
+                "\"ball\" to ball) — same callee, only the labels are added, so a FieldML call that passes " +
+                "labelled pairs reaches it directly",
+            "showMeshGrid", "afield.stdlib.Mesh_fieldKt",
         ),
     ).associateBy { it.macro }
 

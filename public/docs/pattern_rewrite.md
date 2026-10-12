@@ -1,26 +1,21 @@
 # Rewriting your own syntax
 
 Every `neg(x)` becomes `-x`. Every `f(x)` gets wrapped in a runtime coercion.
-Every `log(tag, …)` routes through your logger. Each of those three is a claim
-about the *shape* of your source rather than about any value in it, which is why
-none of them can be written as a function — a function sees the values, not the
-syntax that produced them.
+Every `log(tag, …)` routes through your logger. Each of these is about the
+*shape* of your source, so none of them can be written as a function: a function
+sees the values, not the syntax that produced them.
 
-The pattern-rewrite layer lets a live box state them anyway. You author a
-`rewrite { … }` block right in a box, in Kotlin syntax, and it rewrites your
-source before the compiler ever sees it. It is a small, structural term-rewriting
-system that runs as a preprocessor in front of the Kotlin engine.
+A `rewrite { … }` block in a box states rules like these in Kotlin syntax, and
+Field rewrites the box's source with them before the compiler sees it.
 
-## The mental model
-
-Rule behaviour follows from three facts:
+## How rules work
 
 - **It is source-to-source.** A rule matches a piece of your syntax tree and
   splices a replacement in its place. The output is ordinary Kotlin source that
   is then compiled and run exactly as if you had typed it.
 - **It works on parse trees, not types.** Matching runs on the PSI (the parsed
-  syntax tree) with *no name resolution*. That is what makes it cheap enough to
-  re-run on every keystroke, and why the pattern body `from { max(x, y) }` is
+  syntax tree) with *no name resolution*. That keeps it fast enough to re-run on
+  every keystroke, and it is why the pattern body `from { max(x, y) }` is
   legal even though `max`, `x` and `y` resolve to nothing. A rule body only has
   to *parse*; it never has to *type-check*.
 - **The rules are erased before compilation.** The `rewrite { … }` blocks are
@@ -28,9 +23,8 @@ Rule behaviour follows from three facts:
   `from`, `to` and the metavariable kinds never actually execute. They exist
   only so your rule parses and reads sensibly.
 
-That last point is also the *quote barrier*: because a rule's own pattern body
-is blanked out with the block, the pattern `max(x, y)` is never itself rewritten
-by another rule. Patterns are quoted data, not live code.
+Because a rule's own pattern body is erased with the block, the pattern
+`max(x, y)` is never itself rewritten by another rule.
 
 To use the DSL, import it:
 
@@ -59,7 +53,7 @@ does not match this rule and is left untouched.
 
 ## Metavariables, kinds, and precedence
 
-A metavariable's declared type names its **kind** — what syntax it is allowed to
+A metavariable's declared type names its **kind**, the syntax it is allowed to
 bind:
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
@@ -80,8 +74,8 @@ matches `(a) + (b)`. A repeated hole must bind structurally equal subtrees:
 are part of the shape too: `f(x, y)` matches only two-argument calls, and
 `x + y` will not match `a - b`.
 
-When a captured subtree is spliced into a new syntactic context, the rewriter
-**paren-guards** it so text splicing can never silently change precedence:
+When a captured subtree is spliced into a new context, the rewriter adds
+parentheses where they are needed, so splicing never changes precedence:
 
 ```diffstatic {data-lang=kotlin}
 rewrite { x: Expr -> from { twice(x) }; to { x * 2 } }
@@ -119,23 +113,22 @@ swap(c, c)       // →  swap(c, c)      (guard fails; left untouched)
 
 The vocabulary:
 
-- `distinct(…)` — all listed captures are pairwise structurally different.
-- `identical(a, b)` — two captures are structurally equal.
-- `isLiteral(x)` — a numeric/boolean/char constant or a string template.
-- `isIdentifier(x)` — a bare name reference.
-- `isCall(x)` — a function or constructor call.
-- `isCallTo(x, "name")` — a call whose callee is exactly `name`.
+- `distinct(…)`: all listed captures are pairwise structurally different.
+- `identical(a, b)`: two captures are structurally equal.
+- `isLiteral(x)`: a numeric/boolean/char constant or a string template.
+- `isIdentifier(x)`: a bare name reference.
+- `isCall(x)`: a function or constructor call.
+- `isCallTo(x, "name")`: a call whose callee is exactly `name`.
 
-Guards are evaluated *structurally* at rewrite time — no code runs, no types are
-consulted — so only this fixed vocabulary is understood. An unknown predicate
-makes the rule fail closed (it never fires) with a warning, rather than doing
-something surprising.
+Guards are evaluated on the syntax at rewrite time. No code runs and no types
+are consulted, so only this vocabulary is understood. A rule with an unknown
+predicate never fires, and Field logs a warning.
 
-### The termination idiom
+### Stopping a rule from re-wrapping itself
 
-`isCallTo` earns its keep in the type-directed coercion pattern: wrap every
-`f(x)` in a runtime adapter, but *guard against re-wrapping the wrapper you just
-introduced*, so the rewrite reaches a fixed point instead of looping forever:
+`isCallTo` is what lets a coercion rule finish. The rule below wraps every
+`f(x)` in a runtime adapter, and its guard skips an argument that is already
+wrapped, so rewriting stops instead of looping:
 
 ```diffstatic {data-lang=kotlin}
 rewrite { x: Expr ->
@@ -149,10 +142,8 @@ f(b + 1)         // →  f(coerce(::f, SomeType::class, (b + 1)))
 ```
 
 On the second pass the argument is now `coerce(…)`, so `!isCallTo(x, "coerce")`
-is false and the rule stops. Without that guard the rewriter would wrap the
-wrapper again and again until it hit the iteration cap. The live `Coerce Rewrite`
-box in the authoring workspace uses this idiom, with a box-scoped `_coerce`
-helper.
+is false and the rule stops. Without the guard the rewriter would wrap the
+wrapper again and again until it hit the iteration cap.
 
 ## Preamble contributions: `provide { }`
 
@@ -172,11 +163,9 @@ counter(hits)    // →  hits
                  //    + preamble:  var Box.hits by Counting()
 ```
 
-The metavariable is substituted in the *declaration name* position (`n` →
-`hits`), and the emitted preamble segment is wrapped as a keyed
-`/*start*/ … /*end*/` block, the "stack mark" idempotency mechanism the preamble
-machinery understands. Firing the same rule twice with the same capture
-contributes the segment once; distinct captures get distinct keys. (Unlike the
+The metavariable is substituted in the declaration name (`n` → `hits`). Firing
+the same rule twice with the same capture adds the declaration once; distinct
+captures add one each. (Unlike the
 `to {}` side, `provide {}` names are *not* gensym-renamed; they are meant to
 define stable, shared box-level names.)
 
@@ -203,10 +192,9 @@ block builds a quoted string literal, so `rev(hello)` becomes the literal
 `olleh`, an unresolved reference.) The block runs in the box's own REPL context,
 so it can call box-scoped helpers.
 
-Evaluation is fail-soft: on the execute path a failing block becomes a compiling
-`error(...)` stand-in with a logged diagnostic, and in editor-preview
-expansions — where your code is not run — the call becomes a well-typed `TODO()`
-placeholder.
+If the block throws, the call becomes `error(...)` when the box runs, with the
+failure logged. In the editor's preview of the expansion, where your code does
+not run, it shows as `TODO()`.
 
 ## Variadic holes
 
@@ -248,10 +236,9 @@ out: a `Coerce Rewrite` parent box holds the coercion rule, and a
 ## Convergence and the termination cap
 
 Rewriting runs to a fixed point: it keeps finding and replacing outermost
-matches until a pass changes nothing. Most rule sets converge quickly (the
-coercion idiom above is the canonical "converges because a guard stops the
-recursion" case). A non-confluent set does not. The classic example is two rules
-that undo each other:
+matches until a pass changes nothing. Most rule sets get there quickly; the
+coercion rule above gets there because its guard stops the recursion. Two rules
+that undo each other never do:
 
 ```diffstatic {data-lang=kotlin}
 rewrite { -> from { a }; to { b } }
@@ -267,19 +254,17 @@ Two smaller rules govern the rest:
 
 - Declaration order decides ties: when two rules match the same spot, the one
   declared first wins, and no other rule fires there that round.
-- A malformed rule is never silently dropped or silently degenerated into a
-  too-permissive pattern (which would run away). A rule whose pattern is a lone
-  metavariable, or whose body fails to parse, is rejected with a diagnostic and
-  its block is still erased from the compiled source.
+- A rule whose pattern is a lone metavariable, or whose body fails to parse, is
+  rejected with a diagnostic, and its block is still erased from the compiled
+  source.
 
 ## Controlling where and when rules fire: strategies
 
 Everything above uses the **default engine**: every rule fires at every match,
-everywhere, to a fixed point. That is confluent and convenient, and for most
-rule sets it is exactly what you want. Other rule sets want control — rewrite
-*one* site, not all of them; rewrite the *innermost* form rather than the
-outermost; run rule A only where rule B did not apply; apply a step a bounded
-number of times. That is what **strategies** add: a small
+everywhere, to a fixed point, which suits most rule sets. **Strategies** let you
+rewrite one site instead of all of them, rewrite the innermost form first, run
+rule A only where rule B did not apply, or apply a step a bounded number of
+times. They are a small
 [Stratego](https://strategoxt.org/)/ELAN-style term-rewriting language layered
 on top of the same matcher.
 
@@ -290,9 +275,9 @@ order and at the sites it dictates.
 ### Name the rules a strategy drives
 
 A strategy refers to rules by name, so use `rule("name") { … }` instead of the
-anonymous `rewrite { … }`. Everything else about the rule — `from`/`to`/`where`/
-`provide`/`ai`, the erase-before-compile treatment — is identical. A named rule
-with *no* strategy still behaves exactly like the anonymous global fixpoint:
+anonymous `rewrite { … }`. Everything else about the rule (`from`, `to`,
+`where`, `provide`, `ai`, and its erasure before compilation) is the same. With
+no strategy, a named rule fires everywhere, like an anonymous one:
 
 ```diffstatic {data-lang=kotlin}
 rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
@@ -308,9 +293,8 @@ them; under a strategy they are simply inert.
 
 One `strategy { }` block per box holds a single strategy expression, built from
 the combinators below. Like a rule, it is erased before compilation, so it only
-has to parse. Each combinator either *succeeds* (yielding possibly-changed
-source) or *fails* (does not apply), and that success/failure is what makes
-`choice` and fail-fast sequencing meaningful.
+has to parse. Each combinator either *succeeds*, possibly changing the source,
+or *fails* because it does not apply; `choice` and `then` act on that outcome.
 
 **Fire once, or at a chosen depth.** By default the fixpoint hits both `neg`
 sites; `once` stops after the first:
@@ -333,11 +317,10 @@ strategy { topdown("fg") }    //  f(f(a))  →  g(f(a))   (outer call only)
 strategy { bottomup("fg") }   //  f(f(a))  →  f(g(a))   (inner call only)
 ```
 
-Each is a *single* application, not a fixpoint: `topdown` does not go on to
-rewrite the inner `f`. To drive it to a fixed point, wrap it in `repeat`.
+Each fires once: `topdown` does not go on to rewrite the inner `f`. To drive it to a fixed point, wrap it in `repeat`.
 
-**Select a subset of rules.** The default fires every rule that matches. Naming
-one rule fires only that rule, even where another would have matched too:
+**Select a subset of rules.** Naming one rule fires only that rule, even where
+another would have matched too:
 
 ```diffstatic {data-lang=kotlin}
 rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
@@ -363,8 +346,8 @@ strategy { "q2r" then "p2q" }   //  p(1)  →  p(1)  (q2r fails first ⇒ whole 
 ```
 
 **Choose with `choice`.** `choice(a, b, …)` runs the first alternative that
-applies. Because it is ordered independently of declaration order, it can pick a
-rule the default first-match-wins would not:
+applies, in the order you list them rather than the order the rules are
+declared:
 
 ```diffstatic {data-lang=kotlin}
 rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
@@ -391,9 +374,9 @@ rule("zzz") { x: Expr -> from { zzz(x) }; to { Z(x) } }
 strategy { attempt("zzz") then "fg" }   //  f(a)  →  g(a)   (the missing zzz is rescued, fg still runs)
 ```
 
-**Nested patterns.** Nothing says a pattern has to be one level deep. `from { f(f(x)) }`
-matches a *pair* of nested calls and binds `x` to whatever they wrap, and a strategy
-drives it like any other rule, so each `topdown` step eats two levels at a time:
+**Nested patterns.** A pattern can be more than one level deep. `from { f(f(x)) }`
+matches a pair of nested calls and binds `x` to whatever they wrap, so each
+`topdown` step below removes two levels:
 
 ```diffstatic {data-lang=kotlin}
 rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
@@ -403,9 +386,8 @@ f(f(f(f(a))))    // →  g(g(a))    (step 1 collapses the outer pair, step 2 the
 ```
 
 With real definitions behind those names — `fun f(v: Int) = v * 2` and
-`fun g(v: Int) = v + 100` — `f(f(f(f(1))))` evaluates to **201**, not the 16 the
-unrewritten source would give. The `nested pattern` box of the
-`rewrite_strategies_demo` transcript below runs exactly that and `check`s the 201.
+`fun g(v: Int) = v + 100` — `f(f(f(f(1))))` evaluates to 201, where the
+unrewritten source would give 16.
 
 ### The combinators
 
@@ -424,15 +406,13 @@ unrewritten source would give. The `nested pattern` box of the
 
 </div>
 
-`once("r")` and `topdown("r")` coincide on the single-outermost case and are
-offered as two spellings of the same intent. (`try` would be the usual name for
-`attempt`, but it is a Kotlin hard keyword and cannot be a call name.)
+`once("r")` and `topdown("r")` do the same thing. Other rewriting languages call
+`attempt` `try`, which is a keyword in Kotlin.
 
-### Fail-closed
+### Mistakes in a strategy
 
-A strategy that names an unknown rule, or that is malformed, is treated the same
-way a malformed rule is: it rewrites **nothing** and reports a diagnostic, rather
-than silently doing something surprising.
+A strategy that names an unknown rule, or that is malformed, rewrites nothing
+and reports a diagnostic.
 
 ```diffstatic {data-lang=kotlin}
 rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
@@ -440,32 +420,17 @@ strategy { once("nope") }   //  f(a)  →  f(a)   + "unknown rule name" diagnost
 strategy { 1 + 2 }          //  f(a)  →  f(a)   + malformed-strategy diagnostic
 ```
 
-A strategy is **box-local control**: ambient *rules* declared in an ancestor box
-are still inherited and can be named by a strategy, but a strategy itself is not
-inherited, and each box drives its own. `provide { }` and `ai()` side-contributions
-still accrue whenever a rule actually fires under a strategy.
-
-`dev_docs/pattern_rewrite_strategies.md` documents the `Strat` AST and the
-`StrategyRunner` that executes it.
+A strategy belongs to one box. Rules declared in an ancestor box are inherited
+and a strategy can name them, but the strategy itself is not inherited.
+`provide { }` and `ai()` still contribute whenever a rule fires under a strategy.
 
 ## Try it
 
-Every "→" on this page is a string the pattern-rewrite smoke test
-(`src/jvmMain/kotlin/afield/PatternRewriteSmokeTest.kt`) asserts on. Two runnable
-demos ship with the engine as well, both driven through the identical
-compile-and-run pipeline a live box uses:
+Two starting points exercise everything on this page. Open either from the welcome screen:
 
-- `dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml` — a box graph
-  exercising negation, the precedence guard, the `isCallTo` termination idiom, a
-  variadic hole, `unquote`, and an inherited (ambient) rule.
-- `dev_docs/agents/transcripts/rewrite_strategies_demo.yaml` — named rules driven
-  by `once` / `topdown` / `bottomup` / `then` / `choice` / `repeat`, plus a nested
-  two-level pattern, each box self-checking that the strategy produced a
-  *different* result than the default fixpoint would.
-
-Replay every shipped demo transcript — including both of these — through the real
-engine with:
-
-```diffstatic {data-lang=bash}
-python3 tools/run_field_tests.py --id examples.demo-transcript.exec
-```
+- [pattern_rewrite_worked_example](agent_transcripts.md#pattern_rewrite_worked_example):
+  negation, the precedence guard, the `isCallTo` termination guard, a variadic
+  hole, `unquote`, and an inherited rule.
+- [rewrite_strategies_demo](agent_transcripts.md#rewrite_strategies_demo):
+  named rules driven by `once`, `topdown`, `bottomup`, `then`, `choice` and
+  `repeat`, plus the nested pattern, each box checking its result.

@@ -1,25 +1,25 @@
-# Experiment in Terror with an Underfit LoRA
+# Generating with a LoRA
 
-This example carries a complete album experiment through Field Audio's durable API. A pinned
-Underfit rank-16 DoRA-rows checkpoint, trained for 1,000 steps on 165 lossless 12-second chunks
+*To run the examples on this page, open the [audio_ai_underfit_mancini](agent_transcripts.md#audio_ai_underfit_mancini) starting point.*
+
+This example generates new music from a LoRA trained on one album, using Field Audio. The
+checkpoint, a rank-16 Underfit LoRA, trained for 1,000 steps on 165 lossless 12-second chunks
 from all 12 tracks on Henry Mancini's *Experiment in Terror*, is applied to Stable Audio 3's
 small-music base model.
 
 The source is a 12-second excerpt of the Modern Jazz Quartet’s **“Skating”**, separate from the
-Mancini album used for training. The live request imports that excerpt and asks for a
-30-second candidate with a modest guidance value (`cfg = 1.5`). The source distance is controlled by
-`initNoiseLevel = 0.65`; the LoRA contributes at strength `0.85` through denoising interval `0..0.92`.
-Field hashes the checkpoint before submission, and the worker verifies the same digest. The resulting
-candidate board retains the source, seed, model revisions, checkpoint digest, and every sampling
-control.
+Mancini album used for training. The request imports that excerpt and asks for a 30-second
+candidate with a modest guidance value (`cfg = 1.5`). `initNoiseLevel = 0.65` sets how far the
+result may move from the source; the LoRA applies at strength `0.85` over the denoising interval
+`0..0.92`. The candidate board records the source, seed, model revisions, checkpoint and every
+sampling control, so a take can be reproduced.
 
 ## Listen to the experiment
 
 Listen to the source first, then compare the base model with the LoRA take. Both outputs use
 seed 1962, 50 steps, `cfg = 1.5`, `cfgRescale = 0`, `initNoiseLevel = 0.65`, two seconds of
 padding and chunked decoding. The only request parameter that changes is checkpoint strength:
-zero for the baseline and 0.85 for the LoRA. A shared seed does not establish musical similarity;
-the audio is the evidence for what the checkpoint changes.
+zero for the baseline and 0.85 for the LoRA, so the difference you hear is the checkpoint's.
 
 **Source · MJQ, “Skating” · 12 seconds**
 
@@ -37,9 +37,8 @@ the audio is the evidence for what the checkpoint changes.
 // The real candidate sets and waveform envelopes are rendered by the archive capture transcript.
 ```
 
-The figure uses Field’s real candidate-board renderer with exported service results. Audition
-and rating in a live Field document still use the service; the players above use committed Opus
-files and work independently of it.
+The board above shows the source waveform and both takes. In a live document you audition and
+rate candidates on the board itself.
 
 ??? aside "Where these examples came from"
     The LoRA take is the successful 13 September 2026 render retained on the Linux RTX 4090
@@ -66,12 +65,12 @@ export FIELD_AUDIO_UNDERFIT_LORA_ROOT=/path/to/audio-project/underfit-loras
 ./scripts/run-api.sh
 ```
 
-Then open the [Underfit Mancini transcript](agent_transcripts.md) or load
-`dev_docs/agents/transcripts/audio_ai_underfit_mancini.yaml` into Field. Run the first box for the
-explanation and the second for source import → checksummed LoRA request → durable candidate set →
-waveform audition. The worker needs the staged Stable Audio 3 base bundle configured by
-`FIELD_AUDIO_UNDERFIT_MODELS_ROOT`.
+The worker also needs the Stable Audio 3 base model, found through
+`FIELD_AUDIO_UNDERFIT_MODELS_ROOT`. Then open the [Underfit Mancini example](agent_transcripts.md):
+its first box explains the setup, and its second imports the source, sends the LoRA request and
+shows the candidates on a board you can listen through.
 
-The checked-in code path is model-neutral: Field only knows `underfitCandidates`,
-`UnderfitLoraCheckpoint`, and the candidate-board contract. Stable Audio 3 and Underfit remain in the
-optional Python worker, so a later checkpoint or backend can use the same Field operation boundary.
+## See also
+
+- [Field Audio AI](field_audio_ai.md)
+- [Candidate boards](audio_ai_gesture_board.md)

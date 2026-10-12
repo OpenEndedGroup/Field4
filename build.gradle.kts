@@ -1064,6 +1064,8 @@ kotlin {
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
+                // The pseudo-terminal behind /terminal.html (afield/server/terminal.kt).
+                implementation("org.jetbrains.pty4j:pty4j:0.14.0")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
                 val customKotlinVersion = "2.5.255-SNAPSHOT"
@@ -2140,9 +2142,20 @@ tasks.register<JavaExec>("formatBoxCode") {
     jvmArgs(requiredRunJvmArgs())
 }
 
+tasks.register<JavaExec>("boxImportCensus") {
+    group = "reporting"
+    description = "Reports what every published box's imports are for, and which packages could join the box intro; changes no box."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxImportCensus")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<Exec>("checkBoxIdioms") {
     group = "verification"
-    description = "Flags redundant renderer lookups, bindPushConstant calls and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
+    description = "Flags redundant renderer lookups, bindPushConstant calls, Box.context lookups and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
     workingDir = rootDir
     commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_box_idioms.py")
 }
@@ -3469,7 +3482,7 @@ tasks.register<JavaExec>("headTrackedDemo") {
     configureSteamAudioDemoTask(
         "afield.examples.steamaudio.HeadTrackedPatternDemoKt",
         "Renders a pattern placed in a room, heard from a head that turns and walks, to " +
-            "build/demo/head-tracked.wav. Realtime, so it takes as long as it lasts. Headphones.",
+            "build/demo/head-tracked.wav, offline and faster than realtime. Headphones.",
     )
 }
 
@@ -3575,6 +3588,24 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
         }
         logger.lifecycle(result.standardOutput.asText.get().trim())
     }
+}
+
+// Build native/field-slug, the helper afield.graphics.slug.SlugPath shells out to. Explicit opt-in
+// like Loris: build.sh fetches the pinned Slughorn revision from GitHub on first run.
+val buildSlugNative = tasks.register<Exec>("buildSlugNative") {
+    group = "build"
+    description = "Builds native/field-slug (pinned Slughorn + C++20), which SlugPath and four.slug.readback need."
+    inputs.files("native/field-slug/build.sh", "native/field-slug/main.cpp")
+    outputs.file("native/field-slug/build/field-slug")
+    commandLine("bash", "native/field-slug/build.sh")
+}
+
+// The natives the FIELD_TEST smoke catalog needs that `clean` or a fresh worktree leaves absent.
+// The docs set is buildDocsNativePrerequisites; this one is what run_field_tests.py launches against.
+tasks.register("buildSmokeNativePrerequisites") {
+    group = "build"
+    description = "Builds or fetches the native helpers the smoke catalog needs (Steam Audio, field-slug)."
+    dependsOn(fetchSteamAudioNatives, buildSlugNative)
 }
 
 // Explicit opt-in: no ordinary build, check or Field startup downloads/builds Loris.
@@ -3874,7 +3905,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative")
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

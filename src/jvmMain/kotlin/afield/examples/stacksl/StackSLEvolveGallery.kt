@@ -663,13 +663,13 @@ object StackSLEvolveGallery {
         val a = once(7L)
         val b = once(7L)
         val c = once(8L)
-        check(a.best!!.genome.text == b.best!!.genome.text, "determinism: seed 7 reproduces the program '${a.best!!.genome.text}'")
+        check(a.best!!.genome.text == b.best!!.genome.text, "determinism: seed 7 reproduces the program '${a.best.genome.text}'")
         check(a.trace.contentEquals(b.trace), "determinism: and its whole ${a.trace.size}-point trace")
         check(
             a.improvements.map { "${it.generation}:${it.origin}" } == b.improvements.map { "${it.generation}:${it.origin}" },
             "determinism: and its ${a.improvements.size}-step record, operator by operator"
         )
-        check(c.best!!.genome.text != a.best!!.genome.text, "determinism: seed 8 finds a different program")
+        check(c.best!!.genome.text != a.best.genome.text, "determinism: seed 8 finds a different program")
         require(outDir.isDirectory)
     }
 

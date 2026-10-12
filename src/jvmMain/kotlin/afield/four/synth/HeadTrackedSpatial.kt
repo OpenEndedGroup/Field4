@@ -95,22 +95,20 @@ fun StereoPoseSource.asHeadPoseSource(): HeadPoseSource =
  *
  * A head on the wall clock therefore moves *slower, relative to the music*, in a file than it does
  * live -- by a factor that depends on warmup, source count and load, so it is not one a caller can
- * correct for after the fact. So a render whose head motion has to line
- * up with the audio should drive the clock from [PatSpatialRoom.framesRendered] -- the timeline of
- * the blocks actually being spatialised, rather than of the ones the caller has pulled, which trail
- * it by the ring's depth:
+ * correct for after the fact. A render whose head motion has to line up with the audio should not
+ * go through this class at all: give [patSpatial] a `listenerPoseAt`, a pose per render frame, and
+ * the render thread evaluates it at the top of each block, so the head is on the timeline of the
+ * blocks actually being spatialised and the render repeats exactly:
  *
  * ```kotlin
- * val origin = launch.room.framesRendered
- * val head = VirtualHead.turning(45.0, clock = {
- *     (launch.room.framesRendered - origin) / sampleRate.toDouble()
- * })
- * val tracker = launch.followHead(head, hz = 0.0)   // no timer thread
- * // ... in the pull loop, once per block:
- * tracker.pump()
+ * val head = VirtualHead.turning(45.0)
+ * val launch = patSpatial(pattern, sampleRate = sampleRate,
+ *     listenerPoseAt = { frame -> head.pose(frame / sampleRate.toDouble()) })
  * ```
  *
- * `HeadTrackedPatternDemo` does exactly this, and its own docs record what went wrong before it did.
+ * `HeadTrackedPatternDemo` does this. (Pumping a [HeadTrackedListener] from the pull loop against a
+ * [PatSpatialRoom.framesRendered] clock comes close, but the pose lands on whichever block the
+ * render thread reaches next, so two renders differ.)
  *
  * @param clock the seconds this head is at, or null for the wall clock since [start].
  * @param pose the head's pose at a time in seconds.

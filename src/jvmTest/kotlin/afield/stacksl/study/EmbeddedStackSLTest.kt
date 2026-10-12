@@ -55,4 +55,11 @@ class EmbeddedStackSLTest {
         assertNotNull(note.png)
         assertNull(EmbeddedStackSL.lineNote(box(), code, 1), "a Kotlin line has no StackSL note")
     }
+
+    @Test
+    fun aOneLineSlotWithACommentAfterItStillShowsItsStage() {
+        val oneLine = "val module = moduleHere { }\nmodule.program = \"uv 4.0 * fbm palette saturate\"   // binds and hot-reloads\n"
+        val note = assertNotNull(EmbeddedStackSL.lineNote(box(), oneLine, 2), "the string sits mid-line, between the assignment and a comment")
+        assertTrue("stack.auto.program" in note.caption, note.caption)
+    }
 }

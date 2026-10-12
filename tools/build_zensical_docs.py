@@ -10,8 +10,10 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +35,28 @@ from verification_runtime import verification_lock  # noqa: E402
 # that turns a citation into a link. Named here and read there; an absent variable is the signal that
 # no source pages exist this run, which is what makes the citation chips degrade rather than break.
 SOURCE_PAGE_ANCHORS_ENV = "FIELD_DOCS_SOURCE_PAGE_ANCHORS"
+
+# The served site, `public/field4/`, is only ever replaced whole. Zensical renders into a staging dir
+# under `public/.zensical-generated/`, and `install_site` renames it into place once the build is
+# known to be complete, so a failed or interrupted build leaves yesterday's site, not half of today's.
+SITE_DIR_NAME = "field4"
+STAGING_SITE_DIR_NAME = "site"
+PREVIOUS_SITE_DIR_NAME = "previous-site"
+BUILD_CONFIG_NAME = "zensical.generated.build.yml"
+LOCAL_SITE_CAPTURE = re.compile(r"<!--\s*docs-capture-needs-local-site:\s*([a-zA-Z0-9_/-]+)\s*-->")
+
+# Seconds `run_zensical` lets zensical go with no output and under STALL_CPU_SECONDS of CPU before it
+# calls the build wedged. A healthy build burns about one CPU-second per second throughout.
+ZENSICAL_STALL_ENV = "FIELD_DOCS_ZENSICAL_STALL_SEC"
+ZENSICAL_STALL_SECONDS = 120.0
+STALL_CPU_SECONDS = 1.0
+
+# A site missing more than this share of its pages is refused rather than installed.
+MAX_MISSING_PAGE_FRACTION = 0.01
+
+# Every failure this script reports on its own starts with this, so `tools/land.py` can quote the
+# cause instead of the first line in a docs log that happens to contain "error".
+FAILURE_PREFIX = "docs build failed: "
 
 
 def ceres_library_path(repo_root: Path) -> Path:
@@ -360,6 +384,22 @@ def default_python_venv_to_this_tree(repo_root: Path) -> None:
     os.environ["FIELD_PYTHON_EXECUTABLE"] = str(interpreter)
 
 
+def steam_audio_library_path(repo_root: Path) -> Path:
+    """Where `./gradlew fetchSteamAudioNatives` unpacks this host's ``libphonon``.
+
+    The layout of ``steamAudioNativeTree`` in ``build.gradle.kts``, which puts that directory on the
+    runtime classpath for ``SteamAudioNatives`` to find. ``-PsteamaudioLibrary`` is a Gradle
+    property this process cannot see, so a library supplied that way is not detected here.
+    """
+    if sys.platform.startswith("win"):
+        platform, name = "windows-x64", "phonon.dll"
+    elif sys.platform == "darwin":
+        platform, name = "macos", "libphonon.dylib"
+    else:
+        platform, name = "linux-x64", "libphonon.so"
+    return repo_root / "build" / "steamaudio" / platform / name
+
+
 def dirt_samples_root_path(repo_root: Path) -> Path:
     """The pinned Dirt-Samples subset, when it is complete and every file has its pinned digest.
 
@@ -401,6 +441,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
     "dirt-samples": (dirt_samples_root_path, "./gradlew fetchDocsDirtSamples"),
+    "steam-audio": (steam_audio_library_path, "./gradlew fetchSteamAudioNatives"),
     "jep": (
         jep_library_path,
         "pip install 'jep==4.3.1' jedi into the interpreter Field resolves, then point "
@@ -748,7 +789,7 @@ def build_generated_config(
         config = yaml.load(handle, Loader=yaml.Loader)  # noqa: S506 - existing config uses Python tags.
 
     config["docs_dir"] = os.path.relpath(generated_root / "docs", public_dir)
-    config["site_dir"] = "field4"
+    config["site_dir"] = SITE_DIR_NAME
 
     if source_nav:
         # Hang the generated tree off the existing "Reference" section rather than making a new
@@ -765,10 +806,18 @@ def build_generated_config(
     if isinstance(theme, dict) and "custom_dir" in theme:
         theme["custom_dir"] = str(theme["custom_dir"])
 
+    # Two configs that differ only in `site_dir`: `zensical.generated.yml` writes `field4/` and is the
+    # one to `zensical serve`; the build config writes the staging dir that `install_site` swaps in.
+    # Both sit in `public/` because zensical keys its cache (`.cache/`) and every relative path on the
+    # config file's own directory.
     target_config = public_dir / "zensical.generated.yml"
     with target_config.open("w", encoding="utf-8") as handle:
         yaml.dump(config, handle, sort_keys=False, allow_unicode=True)
-    return target_config
+    config["site_dir"] = os.path.relpath(generated_root / STAGING_SITE_DIR_NAME, public_dir)
+    build_config = public_dir / BUILD_CONFIG_NAME
+    with build_config.open("w", encoding="utf-8") as handle:
+        yaml.dump(config, handle, sort_keys=False, allow_unicode=True)
+    return build_config
 
 
 def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tuple[str, ...] = ()) -> None:
@@ -941,13 +990,230 @@ def emit_offline_viewer(*, site_dir: Path) -> None:
     sync_offline_assets.sync_target(site_dir, metadata=False, docs=False)
 
 
+def remove_tree(path: Path, *, attempts: int = 5) -> bool:
+    """`shutil.rmtree` that outlasts Finder. Finder (and Spotlight) can write a `.DS_Store` into a
+    directory between rmtree emptying it and the final rmdir, which fails "Directory not empty";
+    each retry clears whatever reappeared. True once [path] is gone."""
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(path)
+            return True
+        except FileNotFoundError:
+            return True
+        except OSError:
+            if not path.exists():
+                return True
+            if attempt == attempts - 1:
+                return False
+            time.sleep(0.1 * (attempt + 1))
+    return not path.exists()
+
+
+# --- Running zensical ----------------------------------------------------------------------------
+#
+# `zensical build` (0.0.47) watches its inputs with FSEvents even when it only builds. Its file
+# monitor (`zensical-watch`, `agent/handler.rs`) drains the files it has found only after 20 ms with
+# no new file event, and lets the build finish only after 100 ms with none at all. A process that
+# keeps writing under a watched directory -- the docs dir, the theme dirs, or the site dir -- keeps
+# zensical waiting at "Build started" with idle executors and no error. On 2026-10-09 Finder, which
+# had `public/field4/` open, kept writing `.DS_Store` files into it, and four lander docs builds sat
+# at 0% CPU until someone interrupted them. Rendering into a staging dir nobody has open removes that
+# writer; `run_zensical` stops a build that wedges anyway, instead of leaving it to the lander's
+# 30-minute watchdog. And zensical exits 0 after "Received interrupt, exiting" (`lib.rs`), so its exit
+# code alone cannot tell a finished build from an interrupted one.
+
+ZENSICAL_FINISHED = re.compile(r"^Build finished in ")
+ZENSICAL_INTERRUPTED = "Received interrupt, exiting"
+# Printed once the pages have rendered (`python/issues.rs`). "Build finished" follows at once.
+ZENSICAL_REPORTED = re.compile(r"^(No issues found|\d+ issues? found)$")
+
+
+@dataclass
+class ZensicalRun:
+    returncode: int | None  # None when run_zensical stopped it.
+    finished: bool = False  # Printed "Build finished in ...".
+    interrupted: bool = False  # Printed "Received interrupt, exiting".
+    stalled: str | None = None  # Why run_zensical stopped it.
+
+    def failure(self) -> str | None:
+        """Why this run is not a complete build, or None if it is."""
+        if self.stalled:
+            return f"zensical stalled ({self.stalled}) and was stopped"
+        if self.interrupted:
+            return f"zensical was interrupted ({ZENSICAL_INTERRUPTED!r}), which it reports as exit code 0"
+        if self.returncode != 0:
+            return f"zensical exited with code {self.returncode}"
+        if not self.finished:
+            return "zensical exited 0 without printing 'Build finished'"
+        return None
+
+
+def process_cpu_seconds(pid: int) -> float | None:
+    """User + system CPU time of a running process, or None if it cannot be read."""
+    stat = Path(f"/proc/{pid}/stat")
+    if stat.exists():
+        try:
+            fields = stat.read_text().rsplit(")", 1)[1].split()
+            return (int(fields[11]) + int(fields[12])) / os.sysconf("SC_CLK_TCK")
+        except (OSError, ValueError, IndexError):
+            return None
+    try:
+        out = subprocess.run(["ps", "-o", "time=", "-p", str(pid)], capture_output=True, text=True,
+                             check=False, timeout=10).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if not out:
+        return None
+    # macOS prints `M:SS.ss` (or `H:MM:SS.ss`), Linux `[DD-]HH:MM:SS`.
+    days, _, clock = out.rpartition("-")
+    try:
+        seconds = 0.0
+        for part in clock.split(":"):
+            seconds = seconds * 60 + float(part)
+        return seconds + (int(days) * 86400 if days else 0)
+    except ValueError:
+        return None
+
+
+def files_changed_since(roots: list[Path], since: float, *, limit: int = 8) -> tuple[int, list[Path]]:
+    """Files under [roots] modified after the wall-clock time [since]: how many, and the first few."""
+    found: list[Path] = []
+    count = 0
+    for root in roots:
+        for dirpath, _, filenames in os.walk(root):
+            for name in filenames:
+                path = Path(dirpath) / name
+                try:
+                    if path.stat().st_mtime > since:
+                        count += 1
+                        if len(found) < limit:
+                            found.append(path)
+                except OSError:
+                    continue
+    return count, found
+
+
+def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_seconds: float) -> ZensicalRun:
+    """Run zensical, echoing its output, and stop it if it wedges.
+
+    Wedged is either of the two ways the file monitor holds a build open (see above): nothing printed
+    and under STALL_CPU_SECONDS of CPU for [stall_seconds], or the issue report printed and no
+    "Build finished" [stall_seconds] later, however busy the monitor is.
+    """
+    started_wall = time.time()
+    proc = subprocess.Popen(command, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1)
+    run = ZensicalRun(returncode=None)
+    last_line = [time.monotonic()]
+    reported_at: list[float | None] = [None]
+
+    def pump() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            last_line[0] = time.monotonic()
+            text = line.strip()
+            if ZENSICAL_FINISHED.match(text):
+                run.finished = True
+            elif text == ZENSICAL_INTERRUPTED:
+                run.interrupted = True
+            elif ZENSICAL_REPORTED.match(text):
+                reported_at[0] = last_line[0]
+
+    reader = threading.Thread(target=pump, name="zensical-output", daemon=True)
+    reader.start()
+    progress = time.monotonic()
+    cpu_mark = process_cpu_seconds(proc.pid) or 0.0
+    while True:
+        try:
+            run.returncode = proc.wait(timeout=min(5.0, max(stall_seconds / 4, 0.1)))
+            break
+        except subprocess.TimeoutExpired:
+            pass
+        now = time.monotonic()
+        cpu = process_cpu_seconds(proc.pid)
+        # CPU that cannot be read counts as progress: better the lander's watchdog than a false stall.
+        if cpu is None or cpu - cpu_mark >= STALL_CPU_SECONDS:
+            cpu_mark = cpu if cpu is not None else cpu_mark
+            progress = now
+        progress = max(progress, last_line[0])
+        if reported_at[0] is not None and not run.finished and now - reported_at[0] > stall_seconds:
+            run.stalled = f"pages rendered {now - reported_at[0]:.0f} s ago, but it never finished"
+        elif now - progress > stall_seconds:
+            run.stalled = f"no output and under {STALL_CPU_SECONDS:g} CPU-second(s) for {now - progress:.0f} s"
+        if run.stalled:
+            break
+    if run.stalled:
+        count, changed = files_changed_since(watched, started_wall)
+        print(f"\nzensical has stalled: {run.stalled}.")
+        if count:
+            print(f"{count} file(s) changed under directories zensical watches since it started. A process "
+                  "that keeps writing there holds zensical's build open; the first of them:")
+            for path in changed:
+                print(f"  {path}")
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+    reader.join(timeout=10)
+    if proc.stdout is not None and not reader.is_alive():
+        proc.stdout.close()
+    return run
+
+
+def page_output(relative: Path) -> Path:
+    """Where zensical (with `use_directory_urls`) writes the page built from [relative]."""
+    if relative.stem in ("index", "README"):
+        return relative.parent / "index.html"
+    return relative.parent / relative.stem / "index.html"
+
+
+def missing_pages(*, generated_docs: Path, site_dir: Path) -> tuple[int, list[Path]]:
+    """How many pages the generated docs hold, and those of them with no built page in [site_dir]."""
+    pages = [path.relative_to(generated_docs) for path in sorted(generated_docs.rglob("*.md"))]
+    pages = [page for page in pages if not is_workspace_markdown(page)]
+    return len(pages), [page for page in pages if not (site_dir / page_output(page)).is_file()]
+
+
+def install_site(*, staging: Path, site_dir: Path, previous: Path) -> None:
+    """Replace [site_dir] with [staging] by two renames, so the site is never half built."""
+    if previous.exists() and not remove_tree(previous):
+        raise OSError(f"could not remove {previous}, left by an earlier build")
+    if site_dir.exists():
+        site_dir.rename(previous)
+    try:
+        staging.rename(site_dir)
+    except OSError:
+        if previous.exists() and not site_dir.exists():
+            previous.rename(site_dir)
+        raise
+    # A Finder window that had the old site open follows it here and may keep it busy; leaving it
+    # costs one hidden directory, which the next build removes.
+    if previous.exists() and not remove_tree(previous):
+        print(f"warning: could not remove the previous site at {previous}; the next build will retry.")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preprocess Field docs runner fences, then build with Zensical.",
     )
     parser.add_argument("--public-dir", default="public", help="Path to the public docs project.")
-    parser.add_argument("--clean", action="store_true", help="Pass --clean to zensical build.")
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Accepted for old command lines. Every build renders into a fresh staging dir and replaces "
+             "the whole site, so no page from an earlier build survives either way.",
+    )
     parser.add_argument("--strict", action="store_true", help="Pass --strict to zensical build.")
+    parser.add_argument(
+        "--gate-site-links",
+        action="store_true",
+        help="Fail when check_doc_site_links.py fails, without the rest of --strict. The lander's "
+             "docs job passes it.",
+    )
     parser.add_argument("--skip-build", action="store_true", help="Only generate preprocessed sources and config.")
     parser.add_argument(
         "--page",
@@ -968,6 +1234,38 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def prepare_local_site_for_captures(*, public_dir: Path, repo_root: Path,
+                                    page_filters: tuple[str, ...], no_source_pages: bool,
+                                    skip_build: bool) -> int:
+    """Build a local site before UI drives that open one of its pages, if that page is absent."""
+    if skip_build or os.environ.get("FIELD_DOCS_RUNNER_MODE", "incremental") == "never":
+        return 0
+    needed = set()
+    for source in (public_dir / "docs").rglob("*.md"):
+        relative = source.relative_to(public_dir / "docs")
+        if page_filters and not matches_page_filter(relative, page_filters):
+            continue
+        needed.update(LOCAL_SITE_CAPTURE.findall(source.read_text(encoding="utf-8")))
+    missing = sorted(page for page in needed if not (public_dir / SITE_DIR_NAME / page / "index.html").is_file())
+    if not missing:
+        return 0
+    print(f"Preparing local docs pages for UI captures: {', '.join(missing)}", flush=True)
+    env = os.environ.copy()
+    env["FIELD_DOCS_RUNNER_MODE"] = "never"
+    command = [sys.executable, str(Path(__file__).resolve()), "--public-dir", str(public_dir), "--clean"]
+    if no_source_pages:
+        command.append("--no-source-pages")
+    result = subprocess.run(command, cwd=repo_root, env=env, check=False)
+    if result.returncode:
+        print(f"{FAILURE_PREFIX}could not prepare the local docs site for UI captures.", file=sys.stderr)
+        return result.returncode
+    still_missing = [page for page in missing if not (public_dir / SITE_DIR_NAME / page / "index.html").is_file()]
+    if still_missing:
+        print(f"{FAILURE_PREFIX}local docs build omitted {', '.join(still_missing)}.", file=sys.stderr)
+        return 1
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -975,20 +1273,18 @@ def run(args: argparse.Namespace) -> int:
     generated_root = public_dir / ".zensical-generated"
     generated_docs = generated_root / "docs"
 
-    if generated_docs.exists():
-        # macOS (Finder/Spotlight) can re-create a .DS_Store inside a directory between
-        # rmtree clearing its contents and the final rmdir, so rmdir fails with
-        # "Directory not empty". Retry a few times; each pass clears whatever reappeared.
-        for attempt in range(5):
-            try:
-                shutil.rmtree(generated_docs)
-                break
-            except OSError:
-                if not generated_docs.exists():
-                    break
-                if attempt == 4:
-                    raise
-                time.sleep(0.1)
+    # A UI drive can need a page from this checkout's /field-docs/ mirror before captures finish.
+    # The capture-free child build inherits this process's verification lock owner.
+    bootstrap = prepare_local_site_for_captures(
+        public_dir=public_dir, repo_root=repo_root, page_filters=tuple(args.page),
+        no_source_pages=args.no_source_pages, skip_build=args.skip_build,
+    )
+    if bootstrap:
+        return bootstrap
+
+    if generated_docs.exists() and not remove_tree(generated_docs):
+        print(f"{FAILURE_PREFIX}could not clear {generated_docs}", file=sys.stderr)
+        return 1
     generated_root.mkdir(parents=True, exist_ok=True)
     generated_docs.mkdir(parents=True, exist_ok=True)
 
@@ -1039,60 +1335,81 @@ def run(args: argparse.Namespace) -> int:
         print(f"Generated {generated_config}")
         return 0
 
-    if args.clean:
-        site_dir = public_dir / "field4"
-        if site_dir.exists():
-            shutil.rmtree(site_dir)
+    site_dir = public_dir / SITE_DIR_NAME
+    staging = generated_root / STAGING_SITE_DIR_NAME
+    if staging.exists() and not remove_tree(staging):
+        print(f"{FAILURE_PREFIX}could not clear the staging site dir {staging}", file=sys.stderr)
+        return 1
 
     command = [sys.executable, "-m", "zensical", "build", "-f", str(generated_config)]
     if args.strict:
         command.append("--strict")
-    returncode = subprocess.run(command, cwd=public_dir, check=False).returncode
-    if returncode == 0:
-        site_dir = public_dir / "field4"
-        # Repo source paths become GitHub links, and prose inline code is marked for Kotlin
-        # highlighting (docs_hooks.postprocess_built_site). Both run on the rendered HTML because
-        # only there is a span's context (a `pre`, a link, a reference table) known. `docs_hooks`
-        # is importable: preprocess_docs put `public/` on sys.path.
-        import docs_hooks  # type: ignore[import-not-found]
+    stall_seconds = float(os.environ.get(ZENSICAL_STALL_ENV) or ZENSICAL_STALL_SECONDS)
+    zensical = run_zensical(command, cwd=public_dir, watched=[generated_docs, public_dir / "overrides"],
+                            stall_seconds=stall_seconds)
+    sys.stdout.flush()
+    failure = zensical.failure()
+    if failure:
+        print(f"{FAILURE_PREFIX}{failure}; {site_dir} was left as it was.", file=sys.stderr)
+        return zensical.returncode or 1
+    expected, missing = missing_pages(generated_docs=generated_docs, site_dir=staging)
+    if missing:
+        print(f"{len(missing)} of {expected} page(s) were not built, among them:")
+        for page in missing[:10]:
+            print(f"  {page}")
+    if len(missing) > expected * MAX_MISSING_PAGE_FRACTION:
+        print(f"{FAILURE_PREFIX}zensical built {expected - len(missing)} of {expected} page(s); "
+              f"{site_dir} was left as it was.", file=sys.stderr)
+        return 1
+    # From here on the site is finished in the staging dir; install_site swaps it in whole.
+    # Repo source paths become GitHub links, and prose inline code is marked for Kotlin
+    # highlighting (docs_hooks.postprocess_built_site). Both run on the rendered HTML because
+    # only there is a span's context (a `pre`, a link, a reference table) known. `docs_hooks`
+    # is importable: preprocess_docs put `public/` on sys.path.
+    import docs_hooks  # type: ignore[import-not-found]
 
-        report = docs_hooks.postprocess_built_site(site_dir, repo_root)
+    report = docs_hooks.postprocess_built_site(staging, repo_root)
+    print(
+        f"{report.source_links} repo source path(s) linked to GitHub; {report.spans_marked} prose "
+        f"inline code span(s) marked for Kotlin highlighting ({report.pages_rewritten} page(s) rewritten)."
+    )
+    if report.stale_paths:
+        count = sum(len(paths) for paths in report.stale_paths.values())
         print(
-            f"{report.source_links} repo source path(s) linked to GitHub; {report.spans_marked} prose "
-            f"inline code span(s) marked for Kotlin highlighting ({report.pages_rewritten} page(s) rewritten)."
+            f"WARNING: {count} repo path(s) in backticks name no tracked file, so they stay unlinked. "
+            "Fix the path, or drop the backticks if it is not meant to be one:"
         )
-        if report.stale_paths:
-            count = sum(len(paths) for paths in report.stale_paths.values())
-            print(
-                f"WARNING: {count} repo path(s) in backticks name no tracked file, so they stay unlinked. "
-                "Fix the path, or drop the backticks if it is not meant to be one:"
-            )
-            for page_rel, paths in report.stale_paths.items():
-                for stale_path in paths:
-                    print(f"  {page_rel}: {stale_path}")
-        emit_offline_viewer(site_dir=site_dir)
-        emit_build_info(site_dir=site_dir, repo_root=repo_root)
-        copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=site_dir)
-        print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
+        for page_rel, paths in report.stale_paths.items():
+            for stale_path in paths:
+                print(f"  {page_rel}: {stale_path}")
+    emit_offline_viewer(site_dir=staging)
+    emit_build_info(site_dir=staging, repo_root=repo_root)
+    copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=staging)
+    print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
+    install_site(staging=staging, site_dir=site_dir, previous=generated_root / PREVIOUS_SITE_DIR_NAME)
+    print(f"Installed the built site at {site_dir} ({expected - len(missing)} page(s)).")
 
-        # Only now, after the offline viewer and the verbatim copies are in place, is the site dir
-        # what a browser will actually see -- so this has to run last rather than beside
-        # check_doc_assets.py above. That one asks whether an asset is committed and reads the
-        # markdown; this one asks whether every reference on every built page resolves under
-        # `site_url`'s path prefix, and reads the rendered HTML. Warn on every build; gate under
-        # --strict, the same trade check_doc_assets.py makes.
-        # Our own stdout is block-buffered when the build log is redirected, while the child writes
-        # straight through; without this the guard's report lands *above* the lines that caused it.
-        sys.stdout.flush()
-        link_check = subprocess.run(
-            [sys.executable, str(Path(__file__).resolve().parent / "check_doc_site_links.py")],
-            cwd=repo_root,
-            check=False,
-        ).returncode
-        if link_check != 0 and args.strict:
-            print("Doc site link check failed (see above). Failing because --strict.", file=sys.stderr)
-            return link_check
-    return returncode
+    # Only now, after the offline viewer and the verbatim copies are in place and the site is
+    # installed, is the site dir what a browser will actually see -- so this has to run last
+    # (and on `field4/` itself, the site its ledger describes) rather than beside
+    # check_doc_assets.py above. That one asks whether an asset is committed and reads the
+    # markdown; this one asks whether every reference on every built page resolves under
+    # `site_url`'s path prefix, and reads the rendered HTML. Warn on every build; gate under
+    # --strict, the same trade check_doc_assets.py makes, or under --gate-site-links alone.
+    # Our own stdout is block-buffered when the build log is redirected, while the child writes
+    # straight through; without this the guard's report lands *above* the lines that caused it.
+    sys.stdout.flush()
+    link_check = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve().parent / "check_doc_site_links.py")],
+        cwd=repo_root,
+        check=False,
+    ).returncode
+    if link_check != 0 and (args.strict or args.gate_site_links):
+        flag = "--strict" if args.strict else "--gate-site-links"
+        print(f"{FAILURE_PREFIX}the site link check failed (see above); failing because {flag}. "
+              "The site itself was installed.", file=sys.stderr)
+        return link_check
+    return 0
 
 
 def main() -> int:

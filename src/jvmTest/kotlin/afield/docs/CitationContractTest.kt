@@ -196,7 +196,9 @@ class CitationContractTest {
             "public/docs/statistics_examples.md" to 8,
             "public/docs/dataframe.md" to 8,
             "public/docs/keyframer_examples.md" to 5,
-            "public/docs/morpho_examples.md" to 2,
+            // The morpho page split on 2026-10-11: its two remaining anchored citations
+            // (compiler.js, primitives.js) went with the search study to morpho_search.md.
+            "public/docs/morpho_search.md" to 1,
             // Added 2026-08-28 with the page it guards, rather than later, and for a reason beyond
             // symmetry: this list decides what `ProseNumeralContractTest` scans, and
             // `public/docs/projection_examples.md` is unusually numeral-dense — about 46 measured

@@ -462,7 +462,7 @@ Note the path: the hooks module is `public/docs_hooks.py`, **not** `tools/docs_h
 | where every fence attribute is parsed | `public/docs_hooks.py:2356` | `def parse_runner_options` |
 | where `data-lang=` is read | `public/docs_hooks.py:2546` | `def fence_language_key` |
 | **per-language wrapping of the fence body** | `public/docs_hooks.py:2551` | `def wrap_runnable_code_for_language` |
-| **per-language box construction** | `public/docs_hooks.py:4075` | `elif language in MAIN_LANGUAGE_ROOT_LANGUAGES:` |
+| **per-language box construction** | `public/docs_hooks.py:5347` | `elif runs_in_language_root(options):` |
 | which languages get a language root | `public/docs_hooks.py:4130` | `MAIN_LANGUAGE_ROOT_LANGUAGES` |
 | the accepted `capture=` modes | `public/docs_hooks.py:2379` | `if capture not in` |
 | `capture="ui"` drives the live editor | `public/docs_hooks.py:1792` | `drive the live editor` |

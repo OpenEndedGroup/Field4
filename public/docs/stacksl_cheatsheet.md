@@ -8,7 +8,7 @@ StackSL lowers to `vec4 stack(vec4 stack_in)`. The usual input convention is `ve
 
 Stack signatures use `a b -- c`, where the top of stack is on the right. If a word needs a missing value, the compiler fills by wrap/default convention and reports it in diagnostics.
 
-## Mental model
+## How a program runs
 
 The smallest complete program is one word and a clamp:
 
@@ -16,9 +16,9 @@ The smallest complete program is one word and a clamp:
 uv saturate
 ```
 
-`uv` pushes `vec4(uv.xy, 0, 1)`, `saturate` clamps it, and whatever is on top of the stack at the
-end becomes the colour — so that frame is a red-green gradient. Every program below is the same
-shape: push something, transform it, let the top value fall out as the colour.
+`uv` pushes `vec4(uv.xy, 0, 1)` and `saturate` clamps it. Whatever is on top of the stack at the end
+becomes the colour, so this frame is a red-green gradient. Every program below has the same shape:
+push something, transform it, and the top value is the colour.
 
 <div class="field-data-table" markdown>
 
@@ -84,7 +84,7 @@ All values are `vec4`. Swizzles turn selected channels back into a `vec4`: one c
 
 These are how a program reaches a value it has already computed. Below, `dup` copies the polar
 coordinate, `y` takes the angle lane off the copy, `0.2t` drifts it with time, and `>y` writes the
-result back into the lane it came from — so the angle turns while the radius is left alone:
+result back into the lane it came from, so the angle turns while the radius is left alone:
 
 ```diffstatic {data-lang=stacksl}
 p polar
@@ -155,7 +155,7 @@ Worked: [Modifiers, ranges, and memories](stacksl_examples.md#modifiers-ranges-a
 `|` keeps the default driver, usually time or input coordinates. `]` changes the driver to the consumed top value.
 
 `]wr14` is a sine wave across radius at fourteen cycles, driven by the centred coordinate it
-consumes — concentric rings, in one token:
+consumes. That draws concentric rings with one token:
 
 ```diffstatic {data-lang=stacksl}
 p ]wr14 palette saturate
@@ -376,24 +376,16 @@ Worked: [Domain transforms and shapers](stacksl_examples.md#domain-transforms-an
 
 ## Volumetric noise
 
-`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so a `vec4`
-carrying a position and a time is flattened into a plane, with z entering at a fourteenth of the
-weight of x. That is a shear, not a third dimension: on a volume seen down z it reads as one fixed
-pattern imprinted at every depth. These words read `input.xyz` (and `.xyzw`) properly.
+`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so z barely
+changes the result: a volume seen along z shows the same pattern at every depth. Use these words
+when you need noise in three or four dimensions; they read `input.xyz` (or all of `.xyzw`).
 
-Three differences from the 2D words:
+They differ from the 2D words in two ways you will notice:
 
-- **The range really is `0..1`.** The 2D `fbm` sums five octaves at amplitudes totalling `0.96875`,
-  so `fbm 0.5 -` sits about `0.016` low and a force built from it drifts instead of averaging out.
-  These words divide by the amplitude sum they actually accumulated, so the range holds for any
-  octave count, lacunarity and gain.
-- **They cost more.** `curl3` is eighteen `fbm3` evaluations: a central difference along each of
-  three axes, each arm a three-offset vector potential. Its short form already runs three octaves
-  where the rest of the family runs five, because a curl is a derivative and at gain `0.5` and
-  lacunarity `2` every octave contributes equally to one — more octaves add confetti, not richness.
-- **They use their own hashes,** with no `sin()` in them, so the CPU reference in
-  `VolumetricNoise.kt` computes the same field the shader does and the family can be unit-tested
-  without a GPU.
+- Their range is exactly `0..1`, for any octave count, lacunarity and gain. The 2D `fbm` peaks a
+  little below `1`, so `fbm 0.5 -` averages slightly below zero and a force built from it drifts.
+- They cost more. `curl3` evaluates `fbm3` eighteen times, which is why its short form runs three
+  octaves instead of five. Extra octaves in a curl add fine noise rather than larger structure.
 
 Every word takes its coordinate first. The second slot is the word's own knob and the third is the
 octave count, so `input 0.03 3 curl3.3` is "epsilon 0.03, three octaves".
@@ -413,12 +405,74 @@ octave count, so `input 0.03 3 curl3.3` is "epsilon 0.03, three octaves".
 
 </div>
 
+Four lines, one per word, each a common use:
+
 ```diffstatic {data-lang=stacksl}
 input 2.2 * curl3 xyz 0.4 *        # a divergence-free three-channel force
 input 6 * worley3 z 1- 8 pow       # glowing cell walls
 input 1.7 * warp3                  # filaments
 input fbmd3 yzw normalize          # a surface normal from the noise field
 ```
+
+## Phase noise
+
+These words make noise whose phase you can turn, separately for each frequency. Use them when you
+need several fields that belong together: two eyes of a stereo pair, three colour channels, species
+of particles, or one field at two moments. Turn the phase of every frequency and the second field
+correlates with the first by `cos(2π·turns)`: `0` gives the same field, `0.25` an uncorrelated
+partner with the same character, and `0.5` its negative. Turn only the fine frequencies and the two
+fields share their large forms exactly while their detail differs.
+
+`noise` and `fbm` cannot do this, because value noise has no phase. These words sum small
+oriented waves (sparse Gabor noise) twice, once through `cos` and once through `sin`, so each
+returns a pair, `vec4(c, s, envelope, 1)`. `x` is the field. `y` is the same field a quarter turn
+on. `z` is their length, which no phase change alters. `c` and `s` are signed with mean zero, and
+nearly all values fall inside `-1..1`. The words read `coord.xy`, and phase is measured in
+**turns**, as in `phacelle` (where `rotate` uses radians).
+
+<div data-code-lang="stacksl" markdown>
+
+| Word | Stack | What it does |
+| --- | --- | --- |
+| `qnoise` | `coord octaves lacunarity gain -- quad` | quadrature noise. Short form is five octaves, lacunarity `2`, gain `0.5`. Put a quoted definition before or after the arguments to give every wave a phase offset of your own (see below). |
+| `phnoise` | `coord phases octaves lacunarity gain -- quad` | `qnoise` with a phase per octave: `phases.x` turns octave 0, `.y` octave 1, `.z` octave 2, and `.w` octave 3 and everything finer. The short form reads up to two values, so `coord phases phnoise` is the usual spelling. |
+| `phrot` | `quad turns -- quad` | rotate a pair's phase by `turns.x`: `x` becomes `c·cos θ − s·sin θ`, and `z` and `w` pass through. Works on any `(cos, sin)` pair, including `phacelle`'s. |
+
+</div>
+
+One field; three related colour channels from a single evaluation; and fine octaves that churn
+over time while the large forms hold still:
+
+```diffstatic {data-lang=stacksl}
+input 8 * qnoise x 0.5 * 0.5 +
+input 8 * qnoise >n <n x <n 0.33 phrot x <n 0.67 phrot x vec3 0.5 * 0.5 +
+input 8 * [0,0,0.1,0.3] t * phnoise x 0.5 * 0.5 +
+```
+
+The second line computes the noise once and rotates the mark three times, which is cheap. Two
+`qnoise` words with the same arguments are evaluated twice.
+
+### A phase response
+
+For a curve of your own, write a definition that takes one value and leaves one, then pass it
+quoted to `qnoise`. The definition runs once per wave and its `.x` is added to that wave's phase,
+in turns. Its input describes the wave:
+
+- `.x` is the wave's frequency, in cycles per unit of the coordinate `qnoise` was given;
+- `.y` is its octave, `0` for the coarsest;
+- `.z` is a random number in `0..1`, fixed for that wave;
+- `.w` is the coordinate's `w`, which is time by the usual input convention.
+
+```diffstatic {data-lang=stacksl}
+: fine >k 0.5 4 <k x smoothstep 0.5 * ;     # no turn at frequency 0.5, half a turn from 4 up
+'fine input 8 * qnoise x
+
+: churn >k <k z 0.5 - <k w * ;              # each wave drifts at its own speed
+'churn input 8 * qnoise x 0.5 * 0.5 +       # noise that changes without sliding
+```
+
+Frequencies are measured in the coordinate the word receives, so `input 8 *` puts the coarsest
+octave near 8 cycles across the unit square, but a response sees it as about `1`.
 
 ## Color spaces
 
@@ -435,7 +489,7 @@ input fbmd3 yzw normalize          # a surface normal from the noise field
 
 </div>
 
-Good trick: do math in `rgb2oklab`, especially channel offsets and contrast, then return through `oklab`.
+Colour offsets and contrast changes look more even in OKLab: convert with `rgb2oklab`, do the math, then convert back with `oklab`.
 
 ## Definitions
 
@@ -450,7 +504,7 @@ Define reusable words with `: name ... ;`. A call consumes one input value, runs
 
 `stack.auto` reports this. A slot whose program has an unbalanced definition, or any warning at all, writes a card into the box's `stack.auto` output channel and closes it again once the program is clean. Ask directly with `stackAutoShaderReport("…", "slotName")`, which returns a `StackAutoReport` carrying `problems`, `warnings` and `notes` and renders itself as HTML for `display()`.
 
-Only definitions something actually *calls* are checked. A **root** program legitimately ends deeper than one — its stack starts with the program's input already on it, so `input x 12 *` ends at two — and so does a definition used only as an entrypoint (`{{ stack.auto.foo:tap }}`), because there it gets root semantics.
+Only definitions that something calls are checked. A root program may end with more than one value on the stack, because its stack starts with the program's input already on it (`input x 12 *` ends with two). The same goes for a definition used only as an entrypoint (`{{ stack.auto.foo:tap }}`), which runs as a root program.
 
 ```diffstatic {data-lang=stacksl}
 : ring
@@ -539,7 +593,7 @@ coord 0.2t + fbm
 palette
 ```
 
-Use the explicit move/read form when you want to keep the working stack clean — and **always** inside a definition, where `=name` would leave the input on the stack and unbalance the call (see [Definitions](#definitions)):
+Use the explicit move/read form when you want to keep the working stack clean, and always inside a definition, where `=name` would leave the input on the stack and unbalance the call (see [Definitions](#definitions)):
 
 ```diffstatic {data-lang=stacksl}
 uv 8 * >coord

@@ -7,8 +7,8 @@ running a native Metal shader, or a Tone.js computer-music engine. We call this 
 
 You keep writing real Kotlin throughout: `data class`es, `operator fun`, the standard library,
 compile-time type errors on the right source line. That Kotlin then runs, unchanged in meaning,
-somewhere the JVM cannot reach. Operator overloading is native, so vector and matrix math reads the
-way it should rather than being faked by a source rewrite.
+somewhere the JVM cannot reach. Operator overloading works as it does on the JVM, so vector and matrix
+math reads the way it should.
 
 If Kotlin itself is new to you, read the [Kotlin Syntax Overview](kotlin_overview.md) first. This
 page assumes you can read a `data class` and a lambda.
@@ -26,9 +26,8 @@ A normal box's main language is JVM-Kotlin. To make a box (and everything nested
 then on:
 
 - The box's editor uses Kotlin syntax highlighting.
-- On **Execute** / **Launch**, the box's Kotlin is compiled K2 → JavaScript in-process (not shelled
-  out to a separate toolchain) as a single self-contained, tree-shaken `plain` module. A trivial
-  program is a few KB, not the ~600 KB an untree-shaken Kotlin/JS stdlib would be.
+- On **Execute** / **Launch**, the box's Kotlin is compiled K2 → JavaScript in-process as a single
+  self-contained, tree-shaken `plain` module, so a small program compiles to a few KB.
 - That module is shipped over the *same* WebSocket transport Field already uses to drive remote
   JavaScript, and the head runs it with a plain `eval`.
 
@@ -72,7 +71,7 @@ keepAlive()                   // ask the head to keep ticking frames
 `onStart`/`onFrame`/`onStop`/`keepAlive` are inert during a plain Execute; they come alive on
 **Launch**, and the head runs registered `onStop` callbacks exactly once on relaunch or Stop.
 
-## Worked example 1 — a vector type with operators
+## A vector type with operators
 
 The smallest box that shows the whole idea. This one is `remoteAR`, and it declares a Kotlin
 `data class` with two `operator fun`s and uses them:
@@ -92,8 +91,8 @@ log("scaled = ${a * 3.0}") // scaled = V(x=3.0, y=6.0)
 ```
 
 `log(...)` is the head's console, and its output comes back over the transport to the box. `V(x=11.0,
-y=22.0)` is the `toString()` that `data class` generated for you, running in the head. None of this is
-special-cased: it is ordinary Kotlin, compiled to JavaScript.
+y=22.0)` is the `toString()` that `data class` generated for you, running in the head. It is ordinary
+Kotlin, compiled to JavaScript.
 
 Field's compiler (`afield.remotejs.KotlinToJsCompiler`) turns the Kotlin above into this JavaScript,
 with only the ~4 KB Kotlin/JS stdlib runtime prelude elided, as marked. Your `data class V` became
@@ -141,7 +140,7 @@ A `data class` also generates `equals`, `hashCode`, `copy`, and `component1`/`co
 box never calls them, so whole-program dead-code elimination dropped them: what is above is the
 whole module, not an excerpt of a larger one.
 
-## Worked example 2 — ring (real THREE geometry, animated)
+## An animated ring of THREE boxes
 
 The `remoteAR` head installs the THREE.js scene graph. The vector types carry Kotlin operator
 overloads (`+`, `-`, `*`), and Field adds scene helpers (`vec`, `addBox`, `scene`, `clearAll`). This
@@ -182,7 +181,7 @@ val doubled = shifted * 2.0                            // operator fun times
 log("$shifted then $doubled")
 ```
 
-## Worked example 3 — bells (Tone.js computer music)
+## Bells with Tone.js
 
 `// {{ tone }}` routes to a head that has [Tone.js](https://tonejs.github.io/) loaded. The bound
 surface covers the synth family, core effects, the `Param` value type, and `Transport` scheduling.
@@ -228,7 +227,7 @@ event and disposes the audio nodes, so a relaunch doesn't stack a second arpeggi
     Web audio will not start without a user gesture. Run this example in a browser head and click
     to hear it.
 
-## Worked example 4 — visionmetal (native Metal on Vision Pro)
+## Native Metal on Vision Pro
 
 The `visionmetal` head is Field4Vision's tiny JavaScriptCore runtime driving a live Metal shader on
 the Vision Pro's own compositor thread. A program has three explicit parts, and your Kotlin owns two
@@ -284,8 +283,8 @@ fresh toolchain. Whole-program dead-code elimination (`-Xir-dce`) shrinks the ou
 stdlib to just what your box uses. The profile's `external` declarations (the typed view of `THREE`,
 `Tone`, or the Metal bridge) are appended to your source *after* the implicit-`main` wrapping, so your
 diagnostic line numbers stay stable. Each profile's declarations, and the parallel model that powers
-completion, are generated from a single binding description, so what completion offers and what the
-compiler accepts cannot drift apart.
+completion, are generated from a single binding description, so what completion offers matches what the
+compiler accepts.
 
 ## Further reading
 

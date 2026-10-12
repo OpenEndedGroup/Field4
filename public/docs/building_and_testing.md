@@ -2,13 +2,12 @@
 
 Most pages in this site contain *live* examples. The code you see ran inside
 Field, the screenshots and videos are captures of its output, and rebuilding the
-docs means asking Field to re-execute all of it. The test suites exercise Field
-end-to-end through the same machinery, so this page is the short version of how
-to drive both locally.
+docs means asking Field to re-execute all of it. The test suites drive Field
+end-to-end through the same machinery. This page covers running both locally.
 
-For the full reference (every flag, the intent matrix, and the internals) see
-[`AGENTS.md`](https://github.com/OpenEndedGroup/Field) and
-`dev_docs/testing/TESTING_STRATEGY.md` in the repository.
+For every flag and the internals, see `AGENTS.md` and
+`dev_docs/testing/TESTING_STRATEGY.md` in the
+[repository](https://github.com/OpenEndedGroup/Field).
 
 ## Prerequisites
 
@@ -18,8 +17,8 @@ For the full reference (every flag, the intent matrix, and the internals) see
   find Zensical, install `uv` rather than installing Zensical by hand; the
   `docs` group in `pyproject.toml` already pins it.
 - **A JDK + the Gradle wrapper** (`./gradlew`, already in the repo) — builds and
-  runs the Field JVM. `./field.sh` wraps `./gradlew runJvm` if you just want the
-  app.
+  runs the Field JVM. `./field.sh` builds the app through Gradle and launches it if
+  you just want the app.
 - Everything runs against a **Field server**. The docs and test runners start
   one for you on a port you choose. Pick a dedicated high port like `9477`,
   not the one your interactive Field is on.
@@ -52,7 +51,7 @@ Field you are working in and you lose that session.
 Handy flags for `tools/build_zensical_docs.py`:
 
 - `--page <name>` — only run captures for matching page(s) (stem, filename, or
-  glob); other pages still build but with mode `never`. Great for iterating on
+  glob); other pages still build but with mode `never`. Use it to iterate on
   one page: `--page fline_examples`.
 - `--skip-build` — regenerate the preprocessed sources without running the final
   Zensical site build.
@@ -87,8 +86,8 @@ and no network.
 
 ## Checking whether a published figure is still true
 
-A green docs build does not answer that question, because a cache hit and a
-correct figure look the same from outside. Two mechanisms narrow the gap.
+A green docs build does not tell you, because a cache hit and a correct figure
+look the same from outside. Two tools help.
 
 The capture cache keys each figure on the fence's own code, its options, a digest
 of the runner machinery, and a digest of the source files the fence's code text
@@ -145,9 +144,9 @@ The same `INFO` channel carries one summary line at the end of a build. It
 counts `regenerated=` against `skipped=` and breaks both down (`screenshots=`
 and `videos=`; `cache_hits=`, `reused_existing=` and `missing=`), then reports
 `failures=`, `warm_session_captures=`, `server_starts=`, `server_restarts=` and
-`elapsed=`. Read that line first when a build felt suspiciously fast or quiet,
-because a run that regenerated nothing and skipped everything looks like a
-successful one until you count the captures.
+`elapsed=`. Read that line first when a build was suspiciously fast or quiet:
+a run that regenerated nothing and skipped everything otherwise looks like a
+successful one.
 
 To *watch* the capture browser — a capture that stalls, or one that renders
 wrong — run the build with `AFIELD_PLAYWRIGHT_VISIBLE=true`:
@@ -163,9 +162,8 @@ browser) that you can attach DevTools to for profiling. It's an isolated
 Playwright profile, separate from your own Chrome. Server logs for a stuck
 capture are under `.field-backdoor/logs/`.
 
-That is DevTools profiling a capture browser, which is a different subject from
-profiling a piece you are writing. For the second one — the renderer's span
-timer, the exact per-resume counters, and the JFR sampler — see
+To profile a piece you are writing rather than the capture browser (the
+renderer's span timer, the per-resume counters, and the JFR sampler), see
 [Holding a frame budget](profiling_timeline.md#holding-a-frame-budget).
 
 ## Running the tests

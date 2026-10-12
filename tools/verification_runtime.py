@@ -146,6 +146,10 @@ def automation_server_environment(
         # Test clients register throwaway commands (the chord regression's `cmd+k`), and the server
         # appends every command it sees to the keybindings file; keep that off ~/.afield.
         "AFIELD_KEYBINDINGS_FILE": str(repo_root / "build" / "field-automation-keybindings.yaml"),
+        # The documentation notes store is the revision agents' queue and defaults to the user's
+        # ~/.afield/docs-annotations.json. A capture that writes a note through the panel, or reads
+        # /docs-pass.html, must see this checkout's own notebook instead.
+        "AFIELD_DOCS_ANNOTATIONS_STORE": str(repo_root / "build" / "field-automation-docs-annotations.json"),
         # Set over the inherited environment, not under it: an exported path in the agent's shell
         # is usually the one the user's own Field writes to.
         **automation_log_environment(repo_root),
@@ -553,6 +557,18 @@ def verification_lock(
     """
     lock_path = repo_root / ".field-backdoor" / "verification.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    # A verification command can launch a child that runs another supported command
+    # in the same checkout (the docs local-site bootstrap does this). The parent
+    # keeps the lock until that child exits, so acquiring it again would deadlock.
+    inherited_owner = os.environ.get(VERIFICATION_LOCK_OWNER_ENV)
+    if inherited_owner == str(os.getppid()):
+        try:
+            recorded_owner = json.loads(lock_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            recorded_owner = {}
+        if recorded_owner.get("pid") == os.getppid():
+            yield
+            return
     handle = lock_path.open("a+", encoding="utf-8")
     handle.seek(0)
     started = time.monotonic()

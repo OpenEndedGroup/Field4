@@ -236,9 +236,9 @@ object AgentTranscriptMaterializer {
             .filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
             .toSet()
         // This standalone harness does not run the normal @RunsAt startup registry. Add the
-        // KotlinJS-root properties only while saving documents that actually use them; leaving the
+        // language-root properties (main language, KotlinJS, FieldML) only while saving documents that actually use them; leaving the
         // global persistence set enlarged would rewrite every unrelated generated starting point.
-        val languageProperties = listOf("mainLanguage", "isKotlinJsRoot")
+        val languageProperties = listOf("mainLanguage", "isKotlinJsRoot", "isFieldMLRoot")
         val addedLanguageProperties = languageProperties.filter { property ->
             boxes.any { it.getPropertyRaw(property) != null } && Box.ioPersistentProperties.add(property)
         }

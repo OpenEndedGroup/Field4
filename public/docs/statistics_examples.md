@@ -673,4 +673,6 @@ size, a target distribution or an `n` and re-run one.
 For the signals themselves rather than these derived quantities, see
 [the time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves); for recovering a hidden state from noisy
 measurements, [State estimation](state_estimation_examples.md); and for the rolling-dependence
-fences in their original setting, [Values Over Time](interpolants_examples.md).
+fences in their original setting, [Values Over Time](interpolants_examples.md). For a distribution over whole functions, curves and
+fields — means, uncertainty and coherent draws from a few observations — see
+[Drawing with Gaussian processes](gaussian_processes.md).

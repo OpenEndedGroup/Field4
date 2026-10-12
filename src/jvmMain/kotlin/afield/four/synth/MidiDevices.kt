@@ -167,6 +167,11 @@ class MidiOutput internal constructor(
         receiver.send(ShortMessage(ShortMessage.PROGRAM_CHANGE, channel.coerceIn(0, 15), program.coerceIn(0, 127), 0), -1)
     }
 
+    /** Send any Java Sound message as-is (SysEx, MIDI Time Code, ...). */
+    fun send(message: javax.sound.midi.MidiMessage) {
+        receiver.send(message, -1)
+    }
+
     /** Send an all-notes-off on every channel. Call this before closing, or a note hangs. */
     fun allNotesOff() {
         for (channel in 0..15) {

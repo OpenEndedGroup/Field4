@@ -1,36 +1,25 @@
 # Clojure in a box
 
-*The implementation is one file, `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt`, plus one
-namespace of Clojure, `src/jvmMain/resources/field/core.clj`. Clojure is a
-[promoted main language](language_extensions.md), so a Clojure box has outputs, can be launched, can
-be stopped, and sits in the same document as the Kotlin boxes around it.*
+*A Clojure box runs Clojure in the same document, and the same process, as the Kotlin boxes around
+it. It has outputs, can be launched and stopped, and can reach everything in Field.*
 
-Field runs **Clojure 1.11.3** in its own JVM, and nothing in Field implements a Lisp: `clojure.jar`
-is on the classpath, and the file above is the adapter between Field's box-execution contract and
-`clojure.java.api.Clojure`. So a Clojure box and a Kotlin box are two objects in one process. A box
-can hold a reference to the `Box` it is running in, hand an `FLine` to Field's renderer, and call
-anything in Field's standard library, with no bridge, no serialisation and no second runtime to
-start.
-
-Everything below is real output from a running box.
+Field runs **Clojure 1.11.3** inside its own JVM. A Clojure box can hold a reference to the `Box` it
+is running in, hand an `FLine` to Field's renderer, and call anything in Field's standard library
+directly, with nothing to convert and no second runtime to start.
 
 ## A Clojure box is a child of a Clojure root
 
-**The language is conferred by a parent, not by the box itself.** Select a box and run
-*Set Main Language: Clojure* from the command palette (`set-main-language-clojure`); that writes
-`mainLanguage = "clojure"` on it, and every box childed to it from then on runs as Clojure.
+A box becomes Clojure by being childed to a Clojure root. Select a box and run
+*Set Main Language: Clojure* from the command palette (`set-main-language-clojure`). Every box
+childed to it from then on runs as Clojure. This works the same way it does for
+[Python](python.md#a-python-box-is-a-child-of-a-python-root):
 
-Two consequences, the same two [Python](python.md#a-python-box-is-a-child-of-a-python-root) has:
+- **The root itself is not Clojure.** Only its children are. Clojure typed into the root box is
+  compiled as Kotlin, and fails.
+- **A box stays Clojure while it has any Clojure-root parent**, so a box childed to both the
+  document root and a Clojure root runs as Clojure.
 
-- **The root itself is not Clojure.** `applyRuntimeToggle` (`LanguageRuntimeSupport.kt`) walks
-  `root.children` and swaps the execution on each child; it never touches the root. Put Clojure in
-  the root box and it is still a Kotlin box, and will fail to compile.
-- **A box stays Clojure while it has *any* Clojure-root parent**, so a box childed to both the
-  document root and a Clojure root is Clojure, and the toggle is order-independent.
-
-`mainLanguage` is persisted with the document, so the arrangement survives a reload. An older
-per-language flag, `Box.isClojureRoot`, is still honoured (`clojureTopologyNeedsUpdating` counts a
-box as a root if either is set), but `mainLanguage` is the one to reach for.
+The setting is saved with the document, so the arrangement survives a reload.
 
 ## Output lands beside the form that made it
 
@@ -58,17 +47,16 @@ expect:
 (println (count (mapcat val modules)) "edges")
 ```
 
-That placement is why a box is **not** evaluated by handing the whole buffer to `load-string`. `ClojureHost.evalPage` runs `load-string`'s own loop
-written out. Read one top-level form, evaluate it, read the next: while a form is running, the line
-it started on is known. `*out*` is bound to a writer that flushes on newline and tags each
-flush with that line. The line comes from the form's own reader metadata (an
-`indexing-push-back-reader`, the same reader the syntax check uses), not from counting text.
+A box is evaluated one top-level form at a time, so each line of output is placed beside the form
+that was running when it was printed.
 
 `print` without a newline is buffered until the next newline or the end of the run, so a bare
 `(print …)` is attributed to whichever form was running when it finally flushed, which is usually
 but not always its own.
 
 ## A box that prints nothing shows its last value
+
+When a box prints nothing, the value of its last form appears beside it instead:
 
 <!--
 FIELD_TEST
@@ -89,26 +77,22 @@ expect:
      (reduce +))
 ```
 
-The echo is `pr-str` of the value, not Java's `toString`, so a vector arrives as `[1 2 3]` rather
-than `[1, 2, 3]`. It is withheld in two cases, both of them the ones a
-[Python cell](python.md#one-interpreter-one-namespace) makes: when the box has already printed
-something, and when the value is `nil`. `println` and `(lines …)` both evaluate to `nil`, so
-without that second rule almost every box that draws something would carry the word "nil" beside
-its last line. A `def` is not one of those: it evaluates to the var it defined, so a box that only
-defines things still echoes something (`#'live.user/spiral`), exactly as a REPL would.
+The value is printed the way Clojure prints it, so a vector appears as `[1 2 3]` rather than
+`[1, 2, 3]`. As in a [Python cell](python.md#one-interpreter-one-namespace), it is not shown when
+the box has already printed something, or when the value is `nil` (which is what `println` and
+`(lines …)` return). A `def` returns the var it defined, so a box that only defines things shows
+that var (`#'live.user/spiral`), as a REPL would.
 
 ## One namespace, every box
 
 There is one Clojure runtime for the whole Field process, and every Clojure box in every open
-document evaluates in **one namespace**, `live.user`. Clojure namespaces are per-JVM, and
-`ClojureExecution` asks for that one name, so two Clojure boxes are two cells of one notebook, not
-two notebooks: a `def` in one box is visible in the next, and state persists between runs. It also
-means a name you thought you had deleted is still there, and that two boxes can fight over one
-name.
+document evaluates in one namespace, `live.user`. Two Clojure boxes are like two cells of one
+notebook: a `def` in one box is visible in the next, and state persists between runs. It also
+means a name you thought you had deleted is still there, and that two boxes can overwrite each
+other's names.
 
-The namespace is initialised once, the first time it is used, with `clojure.core` and Field's own
-`field.core` referred into it. That is the only preparation: there is no per-box prelude, no
-implicit `(ns …)`, and no rewriting of the text you wrote.
+`clojure.core` and Field's own `field.core` are referred into the namespace. Nothing else is added:
+there is no per-box prelude and no implicit `(ns …)`.
 
 ## What a box can reach
 
@@ -122,10 +106,9 @@ Clojure's Java interop already reaches all of Field, and most of the time that i
   (.lineTo 100 100 0))
 ```
 
-What interop is *bad* at is Kotlin's two favourite shapes: an extension function, which compiles to
-a static method on a class named after a *file*, and a default argument, which is not a default at
-all from outside Kotlin, so every parameter has to be passed. `field.core` wraps exactly those, and is
-referred into every box, so there is nothing to require:
+Interop is awkward for two common Kotlin shapes: extension functions, which Clojure sees as static
+methods on a class named after a file, and default arguments, which Clojure has to pass in full.
+`field.core` wraps the ones you need most, and is already referred into every box:
 
 <div class="field-reference" data-code-lang="clojure" markdown>
 
@@ -172,9 +155,8 @@ expect:
 Run it twice and the count goes up: the second run is the same namespace talking to the same box.
 
 Clojure's own libraries are on the classpath too (`clojure.string`, `clojure.set`, `clojure.walk`,
-`clojure.pprint`, `clojure.edn`, `clojure.data.json`, `clojure.tools.reader`), so `require` is just
-`require`. What you cannot do is add a *new* dependency from inside a box: the classpath is
-Field's, fixed when the process started.
+`clojure.pprint`, `clojure.edn`, `clojure.data.json`, `clojure.tools.reader`), so `require` works as
+usual. You cannot add a new dependency from inside a box: the classpath is fixed when Field starts.
 
 <!--
 FIELD_TEST
@@ -230,19 +212,17 @@ expect:
 (lines [(-> spiral (color 0.98 0.86 0.3 0.9) (thickness 2))] :w 700 :h 350)
 ```
 
-`(.getNodes spiral)` in the middle there works because `polyline` handed back a real `FLine`, and
-from that moment it is an ordinary JVM object with its own API. Everything on
+`(.getNodes spiral)` works because `polyline` returns a real `FLine`, with all of its own methods.
+Everything on
 [Drawing with FLines](fline_examples.md) is reachable from a Clojure box by interop; `field.core`
 only covers the awkward corners.
 
 ## Launching an animation
 
-A Clojure box launches by the same rule a Kotlin box does: **returning** a `Frames` is what starts
-it. `(animate f)` builds one that calls `f` once per frame, and nothing in `ClojureExecution` says
-the word "animate": the value goes to `ReturnValueRegistry`, which is the same code that drives a
-Kotlin box's `animate { }`. See [Frames and the Animation Loop](animation_time_model.md).
-
-So `(animate …)` has to be the **last** form, and you have to *launch* the box rather than run it.
+A Clojure box animates the way a Kotlin box does: returning an animation from the box starts it.
+`(animate f)` builds one that calls `f` once per frame. So `(animate …)` has to be the last form,
+and you launch the box rather than run it. See
+[Frames and the Animation Loop](animation_time_model.md).
 
 <!--
 FIELD_TEST
@@ -272,13 +252,11 @@ expect:
              :w 720 :h 200))))
 ```
 
-The frame number in that figure is the proof: the box ran its function that many times before the
-picture was taken. `(def n 160)` ran once, when the box was launched.
+The function runs every frame; `(def n 160)` ran once, when the box was launched.
 
-**Stop** cancels the launch by the standard barrier, bumping the box's launch epoch and every
-strand's generation, which is what each `Frames` is watching. It does not interrupt an
-*evaluation*: a Clojure form runs to completion on the runloop, so a box in an infinite `loop` is no
-more stoppable than a Kotlin box in a `while (true)` that never suspends.
+**Stop** ends an animation. It does not interrupt a form that is still evaluating, so a box stuck
+in an infinite `loop` cannot be stopped, just as a Kotlin box in a `while (true)` that never
+suspends cannot.
 
 ## When something throws
 
@@ -308,46 +286,27 @@ expect:
 (println "this line does not")
 ```
 
-Three things that figure shows, in the order they matter:
+The error sits on the line of the form that threw. The forms above it have already run and printed,
+and the forms below it do not run.
 
-1. **The line is the failing form's.** An `ArithmeticException` carries no position at all, so the
-   line comes from the read-eval loop: whichever form was running. Clojure *does* report a line and
-   column for anything the reader or the compiler rejected, and that one is used where it exists.
-2. **The forms above it already ran**, and printed. Evaluation is form by form, not a batch.
-3. **The forms below it did not.** A throw stops the run.
+Anything a box writes to `*err*` appears the same way, as an error against the line that wrote it.
+That is how Clojure's own warnings reach you, such as the one for shadowing a `clojure.core` name
+with a `def`.
 
-Anything a box writes to `*err*` arrives the same way, as an error against the line that wrote it.
-That is how Clojure's own warnings reach you, like the one for shadowing a `clojure.core` name with
-a `def`.
-
-A syntax error is caught before anything is evaluated, by a read-only pass over the text
-(`ClojureHost.compileOnly`), and it carries the reader's line and column. That pass is a *reader*,
-though, not a compiler. An unresolvable symbol, a macro that throws, a call with the wrong arity:
-none of that is known until the form is evaluated, so a Clojure box has no equivalent of the red
-squiggle a Kotlin box gets before it runs.
+A syntax error is reported, with its line and column, before anything is evaluated. Other mistakes
+(an unresolvable symbol, a macro that throws, a call with the wrong number of arguments) show up only
+when the form runs, so a Clojure box has no equivalent of the red underline a Kotlin box gets before
+it runs.
 
 ## The editor knows the language
 
-Clojure's Monaco grammar is stock, so the editor needs no module of its own for it, and the
-parentheses in the figures above are coloured by nesting depth. That is Monaco's
-`bracketPairColorization` and is on for every Field editor.
+Clojure code is highlighted, and the parentheses in the figures above are coloured by nesting depth,
+as they are in every Field editor.
 
-Completion comes from [Compliment](https://github.com/alexander-yakushev/compliment), asked for the
-symbol under the caret, and it is told three things that make the difference between a popup that is
-useful and one that is merely present:
-
-- **the namespace, initialised**: the one the box actually evaluates in, with `clojure.core` and
-  `field.core` already referred, so completion works in a box that has never been run;
-- **`:extra-metadata`**, so each candidate carries its `arglists` and its docstring, which is what
-  the panel beside the popup shows;
-- **the code up to the caret, as `:context`**, with the prefix replaced by Compliment's
-  `__prefix__` marker and the brackets still open at the caret closed for it. That is what lets it
-  offer a `let` binding, a `fn` parameter or a `doseq` variable, none of which any amount of
-  namespace introspection can know. Two details, both learned the hard way: the context has to
-  *read*, and a context that does not read is answered with globals only and no complaint — so
-  "locals sometimes work" is the shape this failure takes. And the text *after* the caret is
-  dropped, because in a real editor that text is not yours: auto-closing has already put a `)`
-  where your `[` wants its `]`.
+Completion comes from [Compliment](https://github.com/alexander-yakushev/compliment). It knows the
+names in the box's namespace (even in a box that has never been run), shows each function's argument
+vector and docstring, and offers local names in scope at the caret: a `let` binding, a `fn`
+parameter or a `doseq` variable. The popup below was opened at the prefix `sp`:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/clojure/completion.png" transcript="assets/transcripts/clojure_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="clojure-completion" alt="Field's completion popup in a Clojure box at the prefix sp, grouped by kind. Under FUNCTIONS: spit, split-at, split-with and special-symbol?, each with its argument vector in grey underneath. Then LOCAL, holding spline — the let binding two lines up. Then VALUES, holding a var named spiral, and TYPES, holding a class. The panel to the right reads clojure.core/spit, its argument vector, and its docstring."}
 // An ordinary prefix, in code with a `let` binding in scope, so one figure carries both halves of
@@ -375,20 +334,16 @@ ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```
 
-Three of those groups are the three inputs above, in one popup. Each row carries its own argument
-vector and the panel carries the docstring, which is `:extra-metadata` arriving —
-`clojure.core/spit [f content & options]` is Compliment's answer verbatim, not a signature Field
-reconstructed. **`spline` under LOCAL is the `let` binding two lines up**, which is `:context` being
-read. And `spiral` under VALUES is a var an earlier box on this page defined, which is the shared
-namespace showing through.
+Each row carries its argument vector, and the panel on the right shows the docstring. `spline` under
+LOCAL is the `let` binding two lines up, and `spiral` under VALUES is a var an earlier box on this
+page defined in the shared namespace.
 
-Completion is the one part of this language that is allowed to be absent: if Compliment is not on
-the classpath, a Clojure box still runs, and the popup is empty rather than broken.
+If Compliment is not on the classpath, a Clojure box still runs and the popup is simply empty.
 
 The editor also shows what each form evaluated to the last time the box ran: rest the cursor on a
-form and the note beside the cursor says so, the value in bold with its type, how long ago that was, and
-whether the form has changed since. It is recorded as the box runs, never by evaluating the form
-again, which is why an unrealised lazy sequence is named rather than printed — see
+form and the note beside it shows the value in bold with its type, how long ago that was, and
+whether the form has changed since. The value is recorded as the box runs, not by evaluating the
+form again, so an unrealised lazy sequence is named rather than printed. See
 [Line notes](language_extensions.md#line-notes).
 
 ## What is not here
@@ -397,7 +352,6 @@ again, which is why an unrealised lazy sequence is named rather than printed —
 - **No nREPL, and no connecting an editor to Field's runtime.** The box *is* the REPL.
 - **No `add-libs`.** The classpath is fixed at process start.
 - **No compile-time diagnostics.** See the note under "When something throws".
-- **`stop` does not interrupt an evaluation**, only a launch.
+- **Stop does not interrupt an evaluation**, only an animation.
 
-`dev_docs/small_language_anatomy.md` is the map of the integration points a language in Field has to
-touch, and Clojure is one of its rows.
+See also [Python in a Box](python.md) and [language extensions](language_extensions.md).

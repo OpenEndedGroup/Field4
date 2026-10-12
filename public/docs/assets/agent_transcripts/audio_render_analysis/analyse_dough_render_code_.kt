@@ -1,5 +1,4 @@
 import afield.four.synth.*
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()

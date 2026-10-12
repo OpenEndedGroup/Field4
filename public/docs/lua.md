@@ -155,8 +155,8 @@ local heard = field.render(notes, {cps = 0.5, wave = "triangle", decay = 0.3})
 print(string.format("%s: %.0f s, peak %.2f, rms %.3f", field.mini(notes), heard.seconds, heard.peak, heard.rms))
 ```
 
-`LuaBoxTest` holds the pitches to what Lua asked for: `{60, 64, 67, 72}` rendered at half a cycle a
-second is heard, by zero crossings, at 260, 330, 395 and 525 Hz against 261.6, 329.6, 392.0 and 523.3.
+`crossings` is a quick check that the voice played the pitches you asked for: MIDI 60 rendered with
+`wave = "sine"` crosses zero about 260 times a second.
 
 ## Errors
 
@@ -210,9 +210,8 @@ it off.
 Completion offers Lua's keywords and the globals the box's Lua has defined, the members of a table
 after `name.` (so `string.` lists the string library and `field.` Field's own), a line's methods, and
 after `box.` the box's properties. A library function comes with its signature under its name and a
-line on what it does in the panel beside — from a catalogue of the 146 functions of Lua 5.1 and
-LuaJIT and the 34 Field adds, which a test holds to a live LuaJIT in both directions. Here the popup
-is open on `p` inside a loop, where Field's `play` sits beside Lua's own `pairs`, `pcall` and `print`:
+line on what it does in the panel beside, for Lua 5.1, LuaJIT and the functions Field adds. Here the
+popup is open on `p` inside a loop, where Field's `play` sits beside Lua's own `pairs`, `pcall` and `print`:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/lua/completion.png" transcript="assets/transcripts/lua_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="lua-completion" alt="Field's completion popup in a Lua box at the prefix p. Under FUNCTIONS: play, pairs, pcall and print, each with its signature in grey underneath — play(sequence, [options]), pairs(t), pcall(f, ...), print(...) — and under OTHER the package table. The panel to the right reads: play(sequence, [options]) — loops a sequence through Field's pattern voice until the box stops: {cps=, wave=, decay=, sustain=, gain=}."}
 // The setup transcript runs the Lua box once, because completion reads the box's live lua_State.
@@ -236,11 +235,9 @@ ui.pause(1400)
 
 ## The demo scene
 
-Everything on this page is also in one Field document: a Kotlin root, eleven Lua boxes and a Kotlin box
-that reads their line notes. Browse it here, read-only, box by box. To run it, open **lua_demo** from
-the welcome screen's starting points, or replay `dev_docs/agents/transcripts/lua_demo.yaml` with the
-backdoor (`macro write lua_demo --file dev_docs/agents/transcripts/lua_demo.yaml`, then
-`macro run lua_demo`).
+Everything on this page is also in one Field document: a Kotlin root, the Lua boxes from this page and
+a Kotlin box that reads their line notes. Browse it here, read-only, box by box. To run it, open
+lua_demo from the welcome screen's starting points.
 
 <iframe
   src="offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn"
@@ -250,10 +247,10 @@ backdoor (`macro write lua_demo --file dev_docs/agents/transcripts/lua_demo.yaml
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn)
 
-??? aside "How this is built, and what it leaves out"
-    The binding is Java's foreign-function API against the Lua 5.1 C API LuaJIT exports, with no
-    wrapper library of Field's own; the mechanics, the measurements and the traps are in
-    `dev_docs/lua/LUA.md`. Two limits: LuaJIT's own `ffi` library is present but nothing here is
-    built on it, and a Lua box reaches only what the prelude in
-    `src/jvmMain/resources/afield/lua/prelude.lua` defines, so its sound goes through the pattern voice
-    rather than a DSP graph of its own.
+## Limits
+
+LuaJIT's own `ffi` library is present, but nothing on this page is built on it. A Lua box reaches only
+what Field's
+[Lua prelude](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/resources/afield/lua/prelude.lua)
+defines, so its sound goes through the pattern voice
+rather than a DSP graph of its own.

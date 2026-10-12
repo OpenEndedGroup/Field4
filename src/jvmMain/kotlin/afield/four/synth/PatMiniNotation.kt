@@ -48,8 +48,9 @@ expect:
  *  * where an entry declares a longhand equivalent, as `bd ! ! sd` does for `bd!3 sd`, the two are
  *    compared **arc for arc and value for value across every cycle**, which is the one claim in
  *    this file a reader cannot check by eye;
- *  * the clip renders to a RIFF/WAVE file, non-silent and all-finite, and its onsets are counted
- *    out of the rendered audio and compared against the times the pattern strikes;
+ *  * the clip renders, through the pinned Dirt-Samples one-shots, to a RIFF/WAVE file, non-silent
+ *    and all-finite; nothing is heard that the pattern did not schedule, and the level rises at
+ *    every time it strikes;
  *  * `checkAtomColorClaim` holds the instrument colours to the voice in both directions: two
  *    tokens drawn in different colours must get different sounds out of the drum map, and two
  *    tokens sharing a colour must share a voice, so the roll never draws a difference the ear
@@ -71,19 +72,13 @@ object PatMiniNotation {
     const val CPS = 2.0
 
     /**
-     * How many analysis windows two strikes must be apart before an **exact** onset count is a fair
-     * thing to ask of the audio.
+     * How much louder, at minimum, the window after a strike must be than the window before it.
      *
-     * Measured on this catalogue rather than chosen: the detector compares each window against the
-     * one a full window earlier and re-arms only on release, so two events need roughly three
-     * windows between them to read as two rising edges. Every entry whose gap is an eighth note at
-     * `CPS = 2` — 62 ms, five windows — counts exactly, including `{bd hh cp}%8` at 32 strikes and
-     * `bd(3,8), cp(5,8)` at 10. The two entries that sit at a sixteenth, 31 ms, do not: `hh(k16)`
-     * loses one strike of sixteen and `hh*16?0.3` lost five of twenty-four, both to the same cause,
-     * a run of adjacent noise bursts whose per-note peak is stochastic. Three windows is where that
-     * boundary actually falls, so it is where the strict claim stops.
+     * Measured on this catalogue: the quietest strike in it rises 1.47x (a kick inside a
+     * Kolakoski run), and a strike that did not sound reads below 1, because what is there is a
+     * decaying tail.
      */
-    const val RESOLVABLE_GAP_WINDOWS = 3.0
+    const val MIN_STRIKE_RISE = 1.3
 
     // ── the model ──────────────────────────────────────────────────────────────────────────
 
@@ -498,35 +493,7 @@ object PatMiniNotation {
 
     private val byId: Map<String, Example> = EXAMPLES.associateBy { it.id }
 
-    // ── the voice ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * A percussive [patVoice] whose envelope **fits inside this pattern's own shortest gap**.
-     *
-     * One fixed envelope cannot serve a catalogue that runs from `bd sd` to `hh*16?0.3`: the decay
-     * that gives a 62 Hz kick enough periods to read as a kick is seven times the gap between
-     * sixteenth-note hats, and `PAT_GALLERY.md` records what that sounds like — "a continuous drone
-     * that no onset detector could read".
-     *
-     * The number that matters is the **gap between consecutive onsets**, not the length of an
-     * event's arc, and the first draft of this function used the arc. They differ, and the
-     * difference was audible: `patRenderStereo` rings each note for `decay * 4` past its hold, so
-     * scaling the decay to the arc gave `bd [sd sd]` a tail nearly twice its own note spacing and
-     * three of its six notes disappeared into their neighbours. Taking a fifth of the shortest gap
-     * puts the tail at four fifths of it instead, so consecutive notes separate **by construction**
-     * rather than by luck — which is what lets [main] assert an exact onset count for almost every
-     * entry instead of shrugging at a range.
-     *
-     * Coincident onsets are one gap, not a zero: a stack sounds its layers together and the ear
-     * hears one hit, so the distinct start times are what get measured.
-     */
-    fun voiceFor(events: List<PatEvent<String>>, cps: Double = CPS): PatVoiceSpec {
-        val gapCycles = onsetTimes(events).zipWithNext { a, b -> b - a }.minOrNull()
-            ?: events.minOfOrNull { (it.arc.end - it.arc.start).toDouble() }
-            ?: 0.25
-        val gapSeconds = gapCycles / cps
-        return patVoice(decay = (gapSeconds * 0.2).coerceIn(0.004, 0.05), sustain = 0.02)
-    }
+    // ── strikes ────────────────────────────────────────────────────────────────────────────
 
     /**
      * The distinct times this pattern strikes, in order — what a listener would count.
@@ -556,16 +523,20 @@ object PatMiniNotation {
         WavFloatArrayWriter.writeStereo16(outPath, audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f)
     }
 
-    /** The audio for one example, through the stand-in synth at [CPS]. */
-    fun render(example: Example): PatSoundDocs.Stereo {
-        val events = example.pattern.events(PatArc(PatQ.ZERO, PatQ.of(example.cycles)))
-        return patRenderStereo(
+    /**
+     * The audio for one example at [CPS], through the pinned Dirt-Samples one-shots.
+     *
+     * Strict, so a missing subset or a token it has no sample for throws instead of falling back
+     * to the synth voice ([DirtRender.requirePinnedLibrary] names the remedy).
+     */
+    fun render(example: Example): PatSoundDocs.Stereo =
+        patRenderStereoDirt(
             example.pattern,
             cycles = example.cycles,
             cps = CPS,
-            voice = voiceFor(events)
-        )
-    }
+            library = DirtRender.requirePinnedLibrary(),
+            strict = true
+        ).audio
 
     // ── the colour claim ───────────────────────────────────────────────────────────────────
 
@@ -647,7 +618,7 @@ object PatMiniNotation {
         sb.append("![").append(lanes).append("](").append(roll).append(")\n\n")
         sb.append("```diffstatic_runner {data-lang=kotlin audio=\"").append(wav)
         sb.append("\" audio-spec=\"").append(example.id)
-        sb.append("\" audio-renderer=\"afield.four.synth.PatMiniNotation\" embed=true hidden=true name=\"pat-mini-")
+        sb.append("\" audio-renderer=\"afield.four.synth.PatMiniNotation\" requires=\"dirt-samples\" embed=true hidden=true name=\"pat-mini-")
         sb.append(example.id).append("-audio\"}\n")
         sb.append("// showPatAudio(pat(\"").append(example.source).append("\"), cycles = ").append(example.cycles)
         sb.append(", cps = ").append(CPS.toInt()).append(")\n")
@@ -656,6 +627,18 @@ object PatMiniNotation {
         example.note?.let { sb.append('\n').append(it).append('\n') }
         sb.append("\n</div>\n")
         return sb.toString()
+    }
+
+    /** RMS over the analysis window after [atCycles] divided by RMS over the window before it. */
+    fun strikeRise(mono: FloatArray, atCycles: Double): Double {
+        val window = (PatSoundDocs.ONSET_WINDOW_MS / 1000.0 * PatSoundDocs.SR).toInt()
+        val at = (atCycles / CPS * PatSoundDocs.SR).toInt()
+        fun rms(from: Int): Double {
+            var sum = 0.0
+            for (i in from.coerceAtLeast(0) until (from + window).coerceAtMost(mono.size)) sum += mono[i].toDouble() * mono[i]
+            return kotlin.math.sqrt(sum / window)
+        }
+        return rms(at) / kotlin.math.max(1e-9, rms(at - window))
     }
 
     // ── FIELD_TEST entry point ─────────────────────────────────────────────────────────────
@@ -742,60 +725,40 @@ object PatMiniNotation {
             check(monoRms > 0.002) { "${example.id}: RMS too low to be music (rms=$monoRms)" }
             check(monoRms < monoPeak) { "${example.id}: RMS >= peak, which is impossible" }
 
-            // Onsets counted out of the rendered audio against the schedule. The comparison is
-            // against the number of times the pattern *strikes* — see [onsetTimes] — because a
-            // stack's coincident layers are one audible hit however many events they are.
-            //
-            // [voiceFor] sizes the envelope so the tail fits inside the shortest gap, so the
-            // counts are expected to agree exactly and the check says so. The escape hatch is kept
-            // for the one case the envelope cannot fix: a gap below the detector's own 12 ms
-            // analysis window is not resolvable by any threshold, and claiming otherwise would be
-            // a claim about the harness rather than about the music.
+            // The audio is held to the schedule in both directions. Against the times the pattern
+            // *strikes* — see [onsetTimes] — because a stack's coincident layers are one audible
+            // hit however many events they are.
             val strikes = onsetTimes(events)
             val scheduled = strikes.size
-            val voice = voiceFor(events)
-            val shortestGapSec = strikes.zipWithNext { a, b -> (b - a) / CPS }.minOrNull() ?: Double.MAX_VALUE
-            val resolvable = shortestGapSec > RESOLVABLE_GAP_WINDOWS * PatSoundDocs.ONSET_WINDOW_MS / 1000.0
-            val detected = PatSoundDocs.onsetPeaks(mono, threshold = 0.05)
-            val onsets = detected.size
 
-            // Precision, asserted for every entry: nothing is *heard* that the pattern did not
-            // schedule. This is the claim a docs figure actually rests on — a clip with a note the
-            // roll does not draw is the one failure a reader cannot detect by looking — and it
-            // holds regardless of how well the counter resolves dense runs. The tolerance is the
-            // detector's own bias: a window whose level crossed is reported by its start, so an
-            // onset lands up to one full window early and never late.
+            // Precision: nothing is *heard* that the pattern did not schedule. This is the claim a
+            // docs figure rests on — a clip with a note the roll does not draw is the one failure
+            // a reader cannot detect by looking. The detector reports a window by its start, so an
+            // onset can land a window early; a real one-shot's few milliseconds of lead-in can put
+            // it a window late. The floor is a tenth of the clip's peak because overlapping tails
+            // beat against each other at about a twentieth of it, and those are not notes.
+            val detected = PatSoundDocs.onsetPeaks(mono, threshold = 0.1)
             val biasCycles = PatSoundDocs.ONSET_WINDOW_MS / 1000.0 * CPS
             val spurious = detected.map { it.start.toDouble() / PatSoundDocs.SR * CPS }
-                .filter { heard -> strikes.none { heard >= it - biasCycles - 1e-3 && heard <= it + 1e-3 } }
+                .filter { heard -> strikes.none { heard >= it - biasCycles - 1e-3 && heard <= it + biasCycles + 1e-3 } }
             check(spurious.isEmpty()) {
                 "${example.id}: heard ${spurious.size} onset(s) the pattern never scheduled, at " +
                     "${spurious.joinToString(" ") { "%.4f".format(it) }} cycles — scheduled " +
                     "${strikes.joinToString(" ") { "%.4f".format(it) }}"
             }
 
-            if (resolvable) {
-                check(onsets == scheduled) {
-                    // The positions, not just the counts: a merged pair and a dropped note are
-                    // different defects with the same arithmetic, and only the gaps tell them apart.
-                    val heardAt = detected.map { it.start.toDouble() / PatSoundDocs.SR * CPS }
-                    "${example.id}: strikes $scheduled times, heard $onsets. Shortest gap " +
-                        "${"%.4f".format(shortestGapSec)}s against a tail of " +
-                        "${"%.4f".format(voice.decay * 4.0)}s — if the tail is the larger, voiceFor " +
-                        "is mis-scaled for this pattern; if not, the clip really is missing notes.\n" +
-                        "  scheduled (cycles): ${strikes.joinToString(" ") { "%.4f".format(it) }}\n" +
-                        "  heard     (cycles): ${heardAt.joinToString(" ") { "%.4f".format(it) }}"
-                }
-            } else {
-                // Below three windows the counter may merge one adjacent pair, and that is the
-                // whole allowance: at most one strike of the set may go unresolved. Two would mean
-                // something other than the documented resolution limit is wrong.
-                check(onsets >= scheduled - 1 && onsets <= scheduled) {
-                    "${example.id}: strikes $scheduled times, heard $onsets. At a " +
-                        "${"%.4f".format(shortestGapSec)}s gap — under " +
-                        "${RESOLVABLE_GAP_WINDOWS.toInt()} × ${PatSoundDocs.ONSET_WINDOW_MS}ms — one merged " +
-                        "pair is expected and allowed for; this is losing more than one."
-                }
+            // Recall, strike by strike: the level must rise at every time the pattern strikes.
+            // Not an onset count — real one-shots ring into the next hit, so a counter merges a
+            // hat under a snare tail that the ear hears plainly. Measured broadband and on the
+            // first difference, which is what a hat shows up in under a kick's tail; a kick under
+            // a clap's bright tail rises only broadband, so a strike passes on either.
+            val bright = FloatArray(mono.size) { i -> if (i == 0) 0f else mono[i] - mono[i - 1] }
+            val rises = strikes.map { kotlin.math.max(strikeRise(mono, it), strikeRise(bright, it)) }
+            val silent = strikes.zip(rises).filter { (_, rise) -> rise < MIN_STRIKE_RISE }
+            check(silent.isEmpty()) {
+                "${example.id}: ${silent.size} of $scheduled strikes do not rise ${MIN_STRIKE_RISE}x over " +
+                    "the window before them: " +
+                    silent.joinToString(" ") { (at, rise) -> "%.4f (%.2fx)".format(at, rise) }
             }
 
             val wav = File(outDir, "pat-mini-${example.id}.wav")
@@ -809,9 +772,7 @@ object PatMiniNotation {
 
             println(
                 "example ${example.id.padEnd(16)} `${example.source}` — ${example.cycles} cycles, " +
-                    "$totalEvents events, $scheduled strikes / $onsets heard" +
-                    (if (resolvable) "" else " (gap under the analysis window)") +
-                    ", gap ${"%.4f".format(shortestGapSec)}s vs tail ${"%.4f".format(voice.decay * 4.0)}s" +
+                    "$totalEvents events, $scheduled strikes, quietest rise ${"%.2f".format(rises.min())}x" +
                     ", ${svg.length}B svg, ${bytes.size}B wav"
             )
         }

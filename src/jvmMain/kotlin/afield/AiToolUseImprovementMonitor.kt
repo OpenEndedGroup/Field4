@@ -30,6 +30,8 @@ object AiToolUseImprovementMonitor {
     ).toAbsolutePath().normalize()
     private val reportPath: Path = Paths.get("build", "ai-tool-use-improvement-report.md").toAbsolutePath().normalize()
     private val dryRunPatchPath: Path = Paths.get("build", "ai-tool-use-improvement-dry-run.patch").toAbsolutePath().normalize()
+    // Absolute and always in this checkout's build/, so a proposal running in a generated worktree shows here too.
+    private val transcriptPath: Path = Paths.get("build", "ai-tool-use-improvement-transcript.md").toAbsolutePath().normalize()
 
     private var runState = MutableRunState(dryRun = true)
     private var process: Process? = null
@@ -39,6 +41,22 @@ object AiToolUseImprovementMonitor {
 
     fun status(): AiToolUseImprovementStatus =
         synchronized(lock) { runState.toStatus(logSummary(), worktreeSummary()) }
+
+    fun view(): AiToolUseImprovementView {
+        val patch = artifactText(dryRunPatchPath)
+        return AiToolUseImprovementView(
+            viewStamp = viewStamp(),
+            transcriptHtml = artifactText(transcriptPath).takeIf { it.isNotBlank() }
+                ?.let { aiChatHistoryHtml(it, afield.chatlog.ChatToolFamilies.default) }.orEmpty(),
+            reportHtml = artifactText(reportPath).takeIf { it.isNotBlank() }?.let { aiChatMarkdownHtml(it) }.orEmpty(),
+            patchHtml = patch.takeIf { it.isNotBlank() }
+                ?.let { "<div class=\"ai-chat-markdown\">${aiChatCodeBlockHtml(it, "diff")}</div>" }.orEmpty()
+        )
+    }
+
+    private fun viewStamp(): String = listOf(transcriptPath, reportPath, dryRunPatchPath).joinToString("|") { path ->
+        runCatching { "${path.getLastModifiedTime().toMillis()}:${path.fileSize()}" }.getOrDefault("-")
+    }
 
     fun start(dryRun: Boolean = true, proposalCount: Int = 1): AiToolUseImprovementStatus {
         synchronized(lock) {
@@ -58,11 +76,14 @@ object AiToolUseImprovementMonitor {
             }
 
             val taskName = if (dryRun) "improveAiToolUseDryRun" else "improveAiToolUse"
+            val transcriptArg = "--transcript-file ${transcriptPath.absolutePathString()}"
             val appArgs = if (dryRun) {
-                "--dry-run --verbose --max-log-files $RECENT_LOG_COUNT"
+                "--dry-run --verbose --max-log-files $RECENT_LOG_COUNT $transcriptArg"
             } else {
-                "--verbose --max-log-files $RECENT_LOG_COUNT"
+                "--verbose --max-log-files $RECENT_LOG_COUNT $transcriptArg"
             }
+            // The last run's transcript stays on the page until this one starts writing its own.
+            runCatching { Files.deleteIfExists(transcriptPath) }
             runState = MutableRunState(
                 running = true,
                 status = "running",
@@ -334,6 +355,7 @@ object AiToolUseImprovementMonitor {
                 stream
                     .filter { Files.isRegularFile(it) }
                     .filter { it.fileName.toString().endsWith(".jsonl", ignoreCase = true) }
+                    .filter { !afield.ai.core.tooluse.isToolUseImprovementLog(it) }
                     .toList()
             }
         }.getOrDefault(emptyList())
@@ -399,7 +421,9 @@ object AiToolUseImprovementMonitor {
                 message = message,
                 logTail = log.toString(),
                 reportMarkdown = artifactText(reportPath),
-                dryRunPatch = artifactText(dryRunPatchPath)
+                dryRunPatch = artifactText(dryRunPatchPath),
+                transcriptPath = transcriptPath.absolutePathString(),
+                viewStamp = viewStamp()
             )
     }
 }

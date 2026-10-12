@@ -1,0 +1,5 @@
+uv 5 * fbm
+0.2 0.8 ramp
+6 posterize
+0.62 bias
+palette

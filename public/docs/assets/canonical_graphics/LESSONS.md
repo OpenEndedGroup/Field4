@@ -65,7 +65,6 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `FieldRTTStreamer` — 6. RTT - sending
 - `FLine` — 5e. Slug filled paths
 - `FrameBufferGroup` — 3b. compute particles
-- `fromContext` — 5d. GPU schema, 5e. Slug filled paths
 - `GpuRadixSort` — 6. radix sort
 - `HasImageView` — 5. PingPongTT, 5. draw blur, 5. draw pingpoing
 - `KeyCamera` — 4. gltf loading, 4. multi-textureing from a gltf, 5. included

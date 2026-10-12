@@ -35,6 +35,28 @@ data class AiChatBlock(
 
     /** A progress block with nothing under its title: the panel shows these as one inline status row. */
     val isStatusOnly: Boolean get() = isProgress && (body.isBlank() || body == title)
+
+    /**
+     * The row a box chat's turn ends with when it waits for builds without the model (`StudyBuildAwaits`,
+     * jvmMain). The panel shows it on its own, never folded into the round of tool calls before it.
+     */
+    val isBuildWait: Boolean get() = isProgress && title.startsWith(BUILD_WAIT_PREFIX) && title.endsWith(BUILD_WAIT_SUFFIX)
+
+    /**
+     * A request Field wrote itself (the outcome of builds a turn waited for): the model reads it as the next
+     * request, but the person did not write it, and the panel says so.
+     */
+    val isFieldMessage: Boolean get() = role == "you" && content.startsWith(FIELD_MESSAGE_PREFIX)
+
+    companion object {
+        /** How a request Field writes itself begins; see [isFieldMessage]. */
+        const val FIELD_MESSAGE_PREFIX = "**Field:** "
+        private const val BUILD_WAIT_PREFIX = "Waiting for "
+        private const val BUILD_WAIT_SUFFIX = " · no model calls"
+
+        /** The title of a build-wait row for [jobs] jobs; [isBuildWait] recognises it. */
+        fun buildWaitTitle(jobs: Int): String = BUILD_WAIT_PREFIX + (if (jobs == 1) "1 build" else "$jobs builds") + BUILD_WAIT_SUFFIX
+    }
 }
 
 /** The marker lines at the top of a block: an `<<at:…>>` address and `<<source:…>>` citations, in any order. */

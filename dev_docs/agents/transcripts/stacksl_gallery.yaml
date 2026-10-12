@@ -1,0 +1,1938 @@
+# Generated from stacksl_gallery/metadata.edn by afield.examples.DocumentToTranscript.
+name: "stacksl_gallery"
+operations:
+  - create:
+      box: "renderer"
+      name: "window + renderer"
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |
+          import afield.four.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = true
+
+          once.renderer {
+              window = Window("Field \u2014 StackSL gallery")
+              Renderer(window)
+          }
+
+          start(renderer::run)
+  - create:
+      box: "uv-coordinates"
+      name: "uv-coordinates"
+      frame: { x: 400.0, y: 170.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "fbm-palette"
+      name: "fbm-palette"
+      frame: { x: 760.0, y: 170.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 5.0 *
+          time 0.12 *
+          +
+          fbm
+          palette
+          saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "soft-ring"
+      name: "soft-ring"
+      frame: { x: 1120.0, y: 170.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p length 0.5 0.08 pulse white *
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "kaleido-twist"
+      name: "kaleido-twist"
+      frame: { x: 1480.0, y: 170.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p 6 kaleido
+          1.7 twist
+          3.0 *
+          fbm
+          palette
+          saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "polar-sigmoid"
+      name: "polar-sigmoid"
+      frame: { x: 400.0, y: 300.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p polar
+          dup y 0.2t + >y
+          cart
+          fbm
+          sigmoid
+          palette
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "posterize-shaper"
+      name: "posterize-shaper"
+      frame: { x: 760.0, y: 300.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 5 * fbm
+          0.2 0.8 ramp
+          6 posterize
+          0.62 bias
+          palette
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "fm-palette"
+      name: "fm-palette"
+      frame: { x: 1120.0, y: 300.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 14.0 * time +
+          fm
+          palette
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "definitions"
+      name: "definitions"
+      frame: { x: 1480.0, y: 300.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          : warp
+            uv 6.0 * time + sin
+            0.35 *
+            uv +
+          ;
+
+          : field
+            warp fbm
+          ;
+
+          field palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "subroutine-ridges"
+      name: "subroutine-ridges"
+      frame: { x: 400.0, y: 430.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          : ridge
+            fbm 0.45 0.08 pulse
+          ;
+
+          p 5.0 * 0.2t + ridge
+          p 7.0 * 0.13t - ridge
+          0.5 * +
+          palette
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "oklab-shift"
+      name: "oklab-shift"
+      frame: { x: 760.0, y: 430.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 5.0 * fbm palette
+          rgb2oklab
+          time sin 0.05 * 0 0 0 vec4
+          add
+          oklab2rgb
+          saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "ryb-paint"
+      name: "ryb-paint"
+      frame: { x: 1120.0, y: 430.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 0.5 + ryb saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "grade-fields"
+      name: "grade-fields"
+      frame: { x: 1480.0, y: 430.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 6.0 * fbm palette
+          0.02 0.00 -0.01 0.0 vec4
+          1.15 1.05 0.95 1.0 vec4
+          0.85 0.95 1.10 1.0 vec4
+          grade
+          saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "auto-before"
+      name: "auto-before"
+      frame: { x: 400.0, y: 560.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 4.0 * fbm palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "auto-after"
+      name: "auto-after"
+      frame: { x: 760.0, y: 560.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p 6 kaleido fbm palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "feedback-trails"
+      name: "feedback-trails"
+      frame: { x: 1120.0, y: 560.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot, and the program in this box's `stackSL` property samples `source`: the
+          // frame this box drew last time, so the picture feeds back into itself.
+          //
+          // A window cannot be read back like that, so this box draws into a ping-pong
+          // target instead. It holds two images, draws into one while `source` reads the
+          // other, and swaps them every frame; `blitToScreen` puts the newest in the window.
+          //
+          // [[property stackSL]]
+
+          import afield.four.targets.PingPongRenderToTexture
+
+          prop<afield.four.targets.PingPongRenderToTexture>(target)
+          prop<afield.four.texture.HasImageView>(source)
+
+          // `once`, so re-running the box keeps the images and the trails already in them.
+          once.target {
+              PingPongRenderToTexture(renderer) { useDepth = false }
+          }
+          source = target.otherImageView
+
+          val module = moduleHere { target.apply() }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+          target += "fullscreen" to module
+
+          // The fragment reads the program's time from `pc.params.x`. It advances per frame
+          // drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
+          // two frames), so the trails are as long as in the clip at any window frame rate.
+          val first = renderer.frameCounter
+          m.params = { vec((renderer.frameCounter - first) * 1.667 / 48, 0.0, 0.0, 0.0) }
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          target.blitToScreen(name = "stacksl-gallery")
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          // Feedback: `source` is the previous frame (bound by a ping-pong host).
+          layout(set = 0, binding = 0) uniform sampler2D source;
+          layout(push_constant) uniform Push { vec4 params; } pc;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), pc.params.x);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          0.0025 0.004 vec2 sample.w
+          0.94 *
+          uv y 0.15t fract 0.02 pulse 0.15t palette * 0.8 *
+          +
+          saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "phasor-noise"
+      name: "phasor-noise"
+      frame: { x: 1480.0, y: 560.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p 4 * phacelle palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "radial-waves"
+      name: "radial-waves"
+      frame: { x: 400.0, y: 690.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p ]wr14 palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "mirror-tiles"
+      name: "mirror-tiles"
+      frame: { x: 760.0, y: 690.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 4 * mirror fbm palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "tiled-grid"
+      name: "tiled-grid"
+      frame: { x: 1120.0, y: 690.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 3 tile fbm palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "hard-threshold"
+      name: "hard-threshold"
+      frame: { x: 1480.0, y: 690.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 5 * fbm 0.45 threshold orange * saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "custom-palette"
+      name: "custom-palette"
+      frame: { x: 400.0, y: 820.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 3 * fbm
+          0.5 0.5 0.5 1 vec4
+          0.5 0.5 0.5 1 vec4
+          1.0 1.0 1.0 1 vec4
+          0.0 0.33 0.67 1 vec4
+          palette
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "sigmoid-punch"
+      name: "sigmoid-punch"
+      frame: { x: 760.0, y: 820.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 4 * fbm 8 sigmoid palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "twist-swirl"
+      name: "twist-swirl"
+      frame: { x: 1120.0, y: 820.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p 5.0 twist fbm palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "spiral-flow"
+      name: "spiral-flow"
+      frame: { x: 1480.0, y: 820.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          p 3 spiral fbm palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "value-noise"
+      name: "value-noise"
+      frame: { x: 400.0, y: 950.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 6 * noise palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "sample-hold"
+      name: "sample-hold"
+      frame: { x: 760.0, y: 950.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 6 * ]sh10 palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "word-reference"
+      name: "word-reference"
+      frame: { x: 1120.0, y: 950.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          : ridge fbm 0.42 0.08 pulse ;
+          'ridge p 5 * apply palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "stripe-bands"
+      name: "stripe-bands"
+      frame: { x: 1480.0, y: 950.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv x 18 * sin 0.5 + 0.5 * palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "tonemap-grade"
+      name: "tonemap-grade"
+      frame: { x: 400.0, y: 1080.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 5 * fbm palette 1.7 contrast tonemap saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "local-marks"
+      name: "local-marks"
+      frame: { x: 760.0, y: 1080.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+          // shader re-binds in place.
+          //
+          // [[property stackSL]]
+
+          val module = moduleHere { }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          renderer += "stacksl-gallery" to module
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), 1.7500);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          uv 8 * =c
+          c fbm
+          c 0.35 + fbm
+          0.5 mix
+          palette saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - create:
+      box: "diffusion-feedback"
+      name: "diffusion-feedback"
+      frame: { x: 1120.0, y: 1080.0, w: 300.0, h: 100.0 }
+      properties:
+        "autorun": false
+        "code": |
+          // A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+          // slot, and the program in this box's `stackSL` property samples `source`: the
+          // frame this box drew last time, so the picture feeds back into itself.
+          //
+          // A window cannot be read back like that, so this box draws into a ping-pong
+          // target instead. It holds two images, draws into one while `source` reads the
+          // other, and swaps them every frame; `blitToScreen` puts the newest in the window.
+          //
+          // [[property stackSL]]
+
+          import afield.four.targets.PingPongRenderToTexture
+
+          prop<afield.four.targets.PingPongRenderToTexture>(target)
+          prop<afield.four.texture.HasImageView>(source)
+
+          // `once`, so re-running the box keeps the images and the trails already in them.
+          once.target {
+              PingPongRenderToTexture(renderer) { useDepth = false }
+          }
+          source = target.otherImageView
+
+          val module = moduleHere { target.apply() }
+          val m = Mesh()
+          module += m named "fullscreen"
+          m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
+          target += "fullscreen" to module
+
+          // The fragment reads the program's time from `pc.params.x`. It advances per frame
+          // drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
+          // two frames), so the trails are as long as in the clip at any window frame rate.
+          val first = renderer.frameCounter
+          m.params = { vec((renderer.frameCounter - first) * 1.0 / 48, 0.0, 0.0, 0.0) }
+
+          // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
+          // `stackSL` is null when no box up the graph has one; bind the empty program then.
+          module.program = stackSL ?: ""
+
+          // Every box in this gallery draws the whole window, so they all register under one
+          // name: launching a box replaces whichever one the window was showing.
+          target.blitToScreen(name = "stacksl-gallery")
+        "fragment": |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          // Feedback: `source` is the previous frame (bound by a ping-pong host).
+          layout(set = 0, binding = 0) uniform sampler2D source;
+          layout(push_constant) uniform Push { vec4 params; } pc;
+
+          float gallery_hash12(vec2 p) {
+              vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+              p3 += dot(p3, p3.yzx + 33.33);
+              return fract((p3.x + p3.y) * p3.z);
+          }
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec2 uv = fragUV;
+              vec4 stackInput = vec4(uv, gallery_hash12(uv), pc.params.x);
+              vec3 c = program(stackInput).rgb;
+              if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+              outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        "stackSL": |
+          0.004 blur
+          0.975 *
+          uv 5 * 0.25t + fbm 0.62 threshold 0.05 *
+          +
+          saturate
+        "vertex": |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              // Fullscreen triangle from gl_VertexIndex, no vertex inputs.
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+  - connect: { parent: "renderer", child: "uv-coordinates" }
+  - connect: { parent: "renderer", child: "fbm-palette" }
+  - connect: { parent: "renderer", child: "soft-ring" }
+  - connect: { parent: "renderer", child: "kaleido-twist" }
+  - connect: { parent: "renderer", child: "polar-sigmoid" }
+  - connect: { parent: "renderer", child: "posterize-shaper" }
+  - connect: { parent: "renderer", child: "fm-palette" }
+  - connect: { parent: "renderer", child: "definitions" }
+  - connect: { parent: "renderer", child: "subroutine-ridges" }
+  - connect: { parent: "renderer", child: "oklab-shift" }
+  - connect: { parent: "renderer", child: "ryb-paint" }
+  - connect: { parent: "renderer", child: "grade-fields" }
+  - connect: { parent: "renderer", child: "auto-before" }
+  - connect: { parent: "renderer", child: "auto-after" }
+  - connect: { parent: "renderer", child: "feedback-trails" }
+  - connect: { parent: "renderer", child: "phasor-noise" }
+  - connect: { parent: "renderer", child: "radial-waves" }
+  - connect: { parent: "renderer", child: "mirror-tiles" }
+  - connect: { parent: "renderer", child: "tiled-grid" }
+  - connect: { parent: "renderer", child: "hard-threshold" }
+  - connect: { parent: "renderer", child: "custom-palette" }
+  - connect: { parent: "renderer", child: "sigmoid-punch" }
+  - connect: { parent: "renderer", child: "twist-swirl" }
+  - connect: { parent: "renderer", child: "spiral-flow" }
+  - connect: { parent: "renderer", child: "value-noise" }
+  - connect: { parent: "renderer", child: "sample-hold" }
+  - connect: { parent: "renderer", child: "word-reference" }
+  - connect: { parent: "renderer", child: "stripe-bands" }
+  - connect: { parent: "renderer", child: "tonemap-grade" }
+  - connect: { parent: "renderer", child: "local-marks" }
+  - connect: { parent: "renderer", child: "diffusion-feedback" }

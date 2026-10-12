@@ -3140,7 +3140,8 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 line_number=start_line,
                 options=options,
             )
-            code = wrap_runnable_code_for_language(code=code, language_key=language_key)
+            if not runs_in_language_root(options):
+                code = wrap_runnable_code_for_language(code=code, language_key=language_key)
             options = maybe_enable_output_wait(options=options, code=code)
             runner_code = code_with_macro_digest(
                 code=code,
@@ -4955,6 +4956,16 @@ def docs_runner_fieldml_root_alias(*, target_uid: str) -> str:
 # language needs a root. `fieldml` predates the set and produces byte-identical commands through it.
 
 
+def runs_in_language_root(options: RunnerOptions) -> bool:
+    """Whether the fence runs as a box of its own language, under a `mainLanguage` root.
+
+    A launched Forth fence does too: `frame` needs a real ForthField strand, which the one-shot
+    `renderForthDocsSnippet` wrapper cannot give it.
+    """
+    language = options.language_key.strip().lower()
+    return language in MAIN_LANGUAGE_ROOT_LANGUAGES or (language == "forth" and options.execution == "launch")
+
+
 def docs_runner_language_root_alias(*, target_uid: str, language: str) -> str:
     return safe_transcript_id(f"{target_uid}_{language}_root")
 
@@ -4991,6 +5002,25 @@ def graphics_launch_timeout(options: RunnerOptions) -> float:
     survive at least as long.
     """
     return max(float(options.timeout), GRAPHICS_LAUNCH_TIMEOUT_FLOOR_SECONDS)
+
+
+def graphics_renderer_launch_commands(*, options: RunnerOptions, repo_root: Path) -> list[str]:
+    """Bring up the docs renderer, `agent_graphics_context`, and wait until it draws."""
+    renderer_macro_path = graphics_renderer_transcript_path(repo_root)
+    launch_timeout = graphics_launch_timeout(options)
+    return [
+        shlex.join([
+            "macro", "write", "graphics_renderer_launch",
+            "--file", str(renderer_macro_path),
+            "--timeout", str(launch_timeout),
+        ]),
+        shlex.join(["macro", "run", "graphics_renderer_launch", "--timeout", str(launch_timeout)]),
+        shlex.join([
+            "wait-native-renderer", "agent_graphics_context",
+            "--frames", "3",
+            "--timeout", str(launch_timeout),
+        ]),
+    ]
 
 
 def generated_graphics_child_transcript(*, target_uid: str, options: RunnerOptions) -> str:
@@ -5171,6 +5201,10 @@ def build_backdoor_command(
         backdoor_commands.append("playwright-open --electron")
 
     if options.capture == "ui":
+        # graphics-context=true: the renderer first, so the setup transcript can connect its boxes
+        # beneath `agent_graphics_context`.
+        if options.graphics_context:
+            backdoor_commands.extend(graphics_renderer_launch_commands(options=options, repo_root=repo_root))
         # Optional setup: run a transcript= file of create/launch ops FIRST, in the same
         # backdoor session, so its boxes exist when the drive runs. Needed for captures
         # that require scene setup a drive fragment can't do itself (a drive fragment runs
@@ -5241,27 +5275,7 @@ def build_backdoor_command(
     default_target_uid = options.capture_box or options.run_box or (generated_target_uid if options.graphics_context else "@last")
     language = options.language_key.strip().lower()
     if options.graphics_context:
-        renderer_macro_path = graphics_renderer_transcript_path(repo_root)
-        launch_timeout = graphics_launch_timeout(options)
-        backdoor_commands.append(shlex.join([
-            "macro",
-            "write",
-            "graphics_renderer_launch",
-            "--file", str(renderer_macro_path),
-            "--timeout", str(launch_timeout),
-        ]))
-        backdoor_commands.append(shlex.join([
-            "macro",
-            "run",
-            "graphics_renderer_launch",
-            "--timeout", str(launch_timeout),
-        ]))
-        backdoor_commands.append(shlex.join([
-            "wait-native-renderer",
-            "agent_graphics_context",
-            "--frames", "3",
-            "--timeout", str(launch_timeout),
-        ]))
+        backdoor_commands.extend(graphics_renderer_launch_commands(options=options, repo_root=repo_root))
     if options.macro_file:
         macro_path = resolve_macro_file_path(repo_root=repo_root, page_path=page_path, macro_file=options.macro_file)
         macro_name = macro_name_for_options(options=options, page_path=page_path, block_index=block_index)
@@ -5330,7 +5344,7 @@ def build_backdoor_command(
             setup_macro_name,
             "--timeout", str(options.timeout),
         ]))
-    elif language in MAIN_LANGUAGE_ROOT_LANGUAGES:
+    elif runs_in_language_root(options):
         root_alias = docs_runner_language_root_alias(target_uid=generated_target_uid, language=language)
         backdoor_commands.append(shlex.join([
             "new-box",

@@ -15,6 +15,7 @@ from discover_field_tests import (  # noqa: E402
     Token,
     discover,
     find_annotation_blocks,
+    split_markdown_sections,
 )
 
 
@@ -230,6 +231,14 @@ class DuplicateIdShadowingTests(unittest.TestCase):
         with self.assertRaises(ParseError) as raised:
             self.scan(strict=True)
         self.assertIn("duplicate test id", str(raised.exception))
+
+
+class MarkdownSectionTests(unittest.TestCase):
+    def test_fold_markers_are_dropped_and_their_lines_kept(self) -> None:
+        """A smoke runs what the docs runner runs: folded setup, without the marker lines."""
+        body = ":::static\n:::fold the setup\nval a = 1\n:::endfold\nprintln(a)\n"
+        sections = split_markdown_sections(body, body_start_line=10)
+        self.assertEqual("val a = 1\nprintln(a)", sections["static"]["text"])
 
 
 if __name__ == "__main__":

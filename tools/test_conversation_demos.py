@@ -23,13 +23,25 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+
+from tools.conversation_demo import settle_assets
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConversationDemoTest(unittest.TestCase):
+    def test_finder_metadata_is_not_a_published_asset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+            (output / "figure.png").write_bytes(b"image")
+            (output / ".DS_Store").write_bytes(b"finder")
+            settle_assets(output, {"figure.png": b"image"}, check=True, label="demo")
+            settle_assets(output, {"figure.png": b"image"}, check=False, label="demo")
+            self.assertTrue((output / ".DS_Store").is_file())
+
     def run_check(self, command: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run(command, cwd=REPO_ROOT, capture_output=True, text=True, timeout=600)
 

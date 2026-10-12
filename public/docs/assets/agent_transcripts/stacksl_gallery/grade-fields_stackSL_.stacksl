@@ -1,0 +1,6 @@
+uv 6.0 * fbm palette
+0.02 0.00 -0.01 0.0 vec4
+1.15 1.05 0.95 1.0 vec4
+0.85 0.95 1.10 1.0 vec4
+grade
+saturate

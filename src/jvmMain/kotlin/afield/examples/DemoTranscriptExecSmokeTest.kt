@@ -96,7 +96,15 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
+        "stacksl_fit_demo",
+        // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
+        "ai4_chat_archive",
         "particle_video_reader",
+        // The staged-project starting place: a level edited through guarded tools, three study-build
+        // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
+        // when installed and the blockout says so when it is not.
+        "staged_project",
         // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
@@ -191,6 +199,10 @@ object DemoTranscriptExecSmokeTest {
         "dataframe_typed_columns",
         "spectral_examples",
         "imaging_cv_examples",
+        // Two CPU boxes: one executed stipple(), one launched `loop { }` taking a Lloyd step a frame
+        // for 90 real runloop frames. Both draw through stipplesToImg -> showImg (a PNG into display),
+        // so no Window and no Renderer.
+        "stippling",
         // A photograph to a printable solid, across four families that do not import one another:
         // DepthAnything (ONNX) for monocular depth, the imaging family to normalise it, reliefMesh to
         // close it into something with a volume, and Manifold for the Boolean. EXECUTE rather than
@@ -322,6 +334,15 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_key_discovery",
         "logging_layer",
         "midi_clip",
+        // SMPTE timecode (2026-10-08): drop-frame arithmetic, LTC round trip under gain/noise/speed
+        // ramp, MTC into a TimecodeClock, a clock following LTC. Pure CPU, no audio or MIDI device.
+        "smpte_timecode",
+        // GP instruments (2026-10-10): GpOptimizer tunes a curve to a target, a GpPreference A/B loop
+        // waits on two buttons, and the same loop runs against a simulated judge. Pure CPU, FLines only.
+        "gp_instruments",
+        // GP drawing (2026-10-10): a closed periodic loop through six pins, 1-D conditioning and a
+        // 2-D field, with controls. Pure CPU, FLines and heatmaps only.
+        "gp_drawing",
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",
@@ -429,6 +450,14 @@ object DemoTranscriptExecSmokeTest {
         // emitter's own starting point still compiles against it.
         "rectsl_glsl_sdf",
         "solidsl_notation",
+        // The solid_notation.md gallery and the geometry_from_disk.md repair demo, as starting points.
+        // CPU only; the Manifold halves print an install message and fall back when it is absent.
+        "solidsl_gallery",
+        "mesh_repair_demo",
+        // sorting_networks_examples.md's four fences as boxes, pure CPU. Only the two drawing boxes are
+        // launched: the two annealing boxes search for 70 and 90 seconds, and the docs runner executes
+        // them for the page's captures.
+        "sorting_networks",
         // Two pure-CPU boxes on the third track backend: one prints a track's symbolic IR with its
         // free parameters still unsolved, the other fits those parameters against waypoints and
         // rasterises target/seed/fitted with TriMesh.renderPng into display(). `toFn` and the Adam
@@ -460,6 +489,8 @@ object DemoTranscriptExecSmokeTest {
         // Two of them and a frames loop between: the same reasons. OrcaHeadlessTest runs its exchange
         // on ORCA's own operators in the JVM, and pins it to this transcript.
         "orca_duet",
+        // ORCA with AI4 on the board: the same reasons as orca_hello. Its tools run in the orca-io regression.
+        "orca_jam",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
@@ -534,9 +565,13 @@ object DemoTranscriptExecSmokeTest {
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
         // synth.pat.seam, which needs no device at all.
         "pattern_particles",
+        // A window and a per-frame burst buffer; the net and the three run queries the sparks box
+        // makes each frame (firingsOver, markingAt, countAt) are covered by PetriSparksDocsTest.
+        "petri_sparks",
         "life3d_manifold_path_trace",
         "rectsl_spacetime_path_trace",
         "skinned_volume_path_trace",
+        "petri_state_space_sculpture",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
@@ -671,6 +706,35 @@ object DemoTranscriptExecSmokeTest {
         // EXECUTE transcript, because the one point the document makes is that the bank does not
         // know whether it is being drawn or heard, and that argument does not survive the split.
         "marf_demo",
+        // The mqtt.md and oscquery.md demos: `loop { }` boxes over Field's own broker and a published
+        // OSCQuery service on fixed ports, meant to be launched and stopped by hand. MqttDemoBundleTest
+        // checks the bundle opens.
+        "mqtt_demo",
+        "oscquery_demo",
+        // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
+        // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's
+        // loopback on its own, and its hero capture replays this transcript with the launches.
+        "dmx_lighting_demo",
+        // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
+        // holds the page's fences to the document.
+        "sonicpi_pattern_demo",
+        // rtp_midi.md's demo opens real RTP-MIDI sessions on UDP 5004-5007 and announces over Bonjour.
+        "rtp_midi_demo",
+        // aiFeatures.md's tool demo: its geometry tool renders a mesh for the model to look at.
+        "ai_tool_demo",
+        // fieldml_host_bridge.md's demos. Their boxes are FieldML under a FieldML root, a guest
+        // language this harness cannot run (it does not install the @RunsAt language registry), so
+        // only the Kotlin window-and-renderer boxes of the GPU ones are compiled here;
+        // FieldMLSmokeExamplesTest and FieldMLSourceMacroTest run the FieldML documents themselves.
+        "fieldml_macro_demo",
+        "fieldml_host_bridge_demo",
+        "fieldml_lambda_demo",
+        "fieldml_afield_four_demo",
+        "fieldml_frames_demo",
+        "fieldml_macro_module_demo",
+        "fieldml_mesh_demo",
+        // stacksl_examples.md's gallery draws into a native window.
+        "stacksl_gallery",
     )
 
     /**

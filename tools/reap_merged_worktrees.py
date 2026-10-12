@@ -122,6 +122,7 @@ REGENERABLE = (
     ".pytest_cache", ".nightly-tmp", "electron/node_modules",
     "public/field4", "public/.cache", "public/.zensical-generated", "public/docs-runner-failures",
     "public/docs-runner-failures/*", "public/.field-docs-runner-*", "public/zensical.generated.yml",
+    "public/zensical.generated.build.yml",
     "native/*/build", "native/*/.build", "tools/*/build", "tools/*/.gradle", "tools/*/.kotlin",
     "*__pycache__", "*.pyc", "*.DS_Store", "config/field4-local.p12",
     "hs_err_pid*.log", "java_pid*.hprof",
@@ -521,6 +522,12 @@ def classify_worktree(
     """
     path = tree.path.resolve()
     family = family_for(path, tree.branch, families)
+    # Before anything runs git inside it: a registered worktree whose directory was deleted by hand
+    # made `git status` exit 128, and the uncaught error stopped the whole run (2026-10-08, four
+    # such entries). There is nothing on disk to reclaim; `git worktree prune` drops the entry.
+    if not path.exists():
+        return Verdict("registered, but its directory is gone (git worktree prune drops it)",
+                       "prunable", False, family)
     if family is None:
         return Verdict("out of retention policy", "no-family", False, None)
     active = pids_inside(path, cwds)
@@ -709,6 +716,7 @@ REFUSAL_LABELS = {
     "unregistered": "unregistered",
     "ignored-work": "holds ignored work",
     "submodule": "a submodule commit could be lost",
+    "prunable": "registered, but its directory is gone",
 }
 
 
@@ -873,7 +881,7 @@ def run_clean_builds(
     changed: list[Path] = []
     for tree in trees:
         path = tree.path.resolve()
-        if path == repo.resolve():
+        if path == repo.resolve() or not path.exists():
             continue
         family = family_for(path, tree.branch, families)
         if family is None or family.name not in enabled:
@@ -1006,6 +1014,18 @@ def main() -> int:
 
     main_head = run_git(repo, "rev-parse", "main").stdout.strip()
     trees = parse_worktrees(run_git(repo, "worktree", "list", "--porcelain").stdout)
+    gone = [tree.path for tree in trees if not tree.path.exists()]
+    if gone:
+        # Lossless: prune only drops the admin entry of a worktree whose directory no longer exists;
+        # its branch and commits stay. A dry run reports and leaves them for --apply.
+        if args.apply:
+            run_git(repo, "worktree", "prune")
+            trees = parse_worktrees(run_git(repo, "worktree", "list", "--porcelain").stdout)
+            print(f"pruned {len(gone)} registered worktree(s) whose directory was gone: "
+                  + ", ".join(path.name for path in gone))
+        else:
+            print(f"{len(gone)} registered worktree(s) whose directory is gone; --apply prunes them: "
+                  + ", ".join(path.name for path in gone))
     cwd_owners = live_cwds()
     now_epoch = time.time()
     completed = {path.resolve() for path in args.completed}

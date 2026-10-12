@@ -145,8 +145,8 @@ class SonicPiPatternDemoDriftTest {
             "the onset measurement is committed but never shown on the page",
         )
         assertTrue(
-            "assets/sonicpi_pattern_demo/metadata.edn" in page.readText(),
-            "the page never says where the loadable demo is",
+            "agent_transcripts.md#sonicpi_pattern_demo" in page.readText(),
+            "the page never links the demo's starting point",
         )
     }
 

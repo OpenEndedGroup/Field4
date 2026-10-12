@@ -107,7 +107,7 @@ data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
 data class DefinitionInfo(val name: String, val type: String, val fileRef: String, val language: String)
 
 /** Tool: get full contents of text properties for the current box/file context. */
-@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers.")
+@JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers. Use it when you need the code of several related boxes at once, or the file refs EditFileRequest takes; for one property of a named box, GetBoxPropertyRequest is smaller. Unavailable (an error) outside a box's chat. e.g. a result entry's fileRef = `afield://doc/box-uid/code`.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListContentsRequest(val unused: Int = 0)
 
@@ -195,7 +195,7 @@ data class EvaluateKotlinExpressionResult(
 )
 
 /** Tool: edit another file by name (your integration decides how to apply this). */
-@JsonClassDescription("Edit another file by specifying its name and new content.")
+@JsonClassDescription("Replace the whole text of another box property, named by its file ref (from ListContentsRequest), with newContent. Returns success and a message. Use it when the change belongs in a box other than the one this chat is on; for the box itself use SetBoxPropertyRequest or RunBoxRequest instead. It does not run anything. An unsupported file ref, or an unknown document or box, fails with success=false. e.g. file = `afield://doc/box-uid/code`.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.MUTATE_DOCUMENT])
 data class EditFileRequest(val file: String, val newContent: String)
 
@@ -203,7 +203,7 @@ data class EditFileResponse(val success: Boolean, val message: String? = null)
 
 /** Agentic verification tools --------------------------------------------- */
 
-@JsonClassDescription("Compile Kotlin for the current Field box or an afield://.../code file ref. Call this after editing Kotlin and before finishing the turn; fix errors and rerun until success. (RunBoxRequest/LaunchBoxRequest compile by themselves; you do not need this before them.)")
+@JsonClassDescription("Compile Kotlin for a Field box without running it. Returns success and diagnostics (severity, message, line, column). Use it only when the code must not run yet; RunBoxRequest/LaunchBoxRequest compile by themselves and report the same errors, so do not call this before them. Fails when `file` names no box; e.g. file = `Primes`, or empty for the box this chat belongs to.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class CompileKotlinRequest(
     @JsonPropertyDescription("Which box: its name or uid, or its file ref afield://<document>/<box uid>/code exactly as ListContents reports it. Empty = the box this chat belongs to, where there is one.")
@@ -297,11 +297,14 @@ data class ReloadShadersResult(
 /** Looking at the render window ---------------------------------------------- */
 
 @JsonClassDescription(
-    "Capture the live afield.four render window and attach it as an image, so you can see what the " +
-        "running code is actually drawing. Use it for any visual request: once before editing to see " +
-        "the starting point, and again afterwards to check the result. Unlike ReloadShaders' " +
-        "visualCheck this needs no shader edit and no successful reload, so it also works when a " +
-        "reload just failed — which is when looking is most useful."
+    "Capture a live afield.four (Vulkan) render window and attach it as an image, so you can see " +
+        "what a renderer box is actually drawing. Returns success, the window title and size, and the " +
+        "picture. Use it ONLY for boxes under a Renderer that opened a native window (meshes, shaders, " +
+        "frames {}); for anything a box shows with display(...), lines(...), HTML, SVG or a chart, use " +
+        "ViewBoxOutputRequest instead. A box with no render window fails with success=false: do not " +
+        "retry it, switch to ViewBoxOutputRequest. Look " +
+        "once before editing and again after; unlike ReloadShaders' visualCheck it needs no successful " +
+        "reload. e.g. uid empty (this chat's box), settleMs = 500, note = `is the cube lit from the left?`"
 )
 @AgentToolMeta("render", effects = [ToolEffect.CAPTURE_IMAGE, ToolEffect.GPU])
 data class CaptureRenderWindowRequest(
@@ -943,6 +946,12 @@ data class ToolExecutionContext(
      * send what it held as a user message alongside the tool results; null where nobody can write in.
      */
     val inbox: AiTurnInbox? = null,
+    /**
+     * Whether a tool may end this turn to wait ([SuspendsTurn]). Only a conversation that something will
+     * resume says so: the box chat's general turn, which saves the suspension with the chat. Elsewhere
+     * (the editor kinds, the document chat, a headless task, MCP) the waiting tools are not offered.
+     */
+    val suspendable: Boolean = false,
 ) {
     /** Whether the document this conversation acts on refuses edits: the session's flag, or Field's global one. */
     fun documentReadOnly(): Boolean = afield.ReadOnlyDocuments.global || fieldGraph?.info?.readOnly == true
@@ -980,6 +989,9 @@ internal class ToolRegistry {
 
     /** The names of the registered (non-dynamic) tools. */
     fun handlerNames(): Set<String> = handlers.keys.toSet()
+
+    /** The request class of every registered (non-dynamic) tool, by name, whatever its gate: what AgentToolSchemaTest checks. */
+    internal fun handlerClasses(): Map<String, Class<*>> = handlers.mapValues { it.value.cls }.toSortedMap()
 
     /**
      * The subset of [handlers] that arrived through [AgentToolExtensions] rather than from core.
@@ -1045,6 +1057,18 @@ internal class ToolRegistry {
         extensionOwned.add(name)
         true
     }
+
+    /**
+     * Every core (non-extension) request class, regardless of its availability gate. Read by the
+     * description audit (`ToolDescriptionRubricTest`), which must see tools whose providers a test
+     * context does not wire.
+     */
+    internal fun coreToolClasses(): List<Class<*>> =
+        handlers.entries.filter { it.key !in extensionOwned }.map { it.value.cls }.sortedBy { it.simpleName }
+
+    /** Every extension-owned request class (what [AgentToolExtensions] applied), for the same audit. */
+    internal fun extensionToolClasses(): List<Class<*>> =
+        handlers.entries.filter { it.key in extensionOwned }.map { it.value.cls }.sortedBy { it.simpleName }
 
     /** True if [registerExtension] would accept [name] — i.e. core does not already hold it. */
     internal fun acceptsExtensionNamed(name: String): Boolean =
@@ -1313,6 +1337,23 @@ internal fun openAiTool(cls: Class<Any>): FunctionTool {
     val params = FunctionTool.Parameters.builder()
     schema.properties().forEach { (key, value) -> params.putAdditionalProperty(key, JsonValue.fromJsonNode(value)) }
     return sdk.toBuilder().parameters(params.build()).build()
+}
+
+/**
+ * Refuse a request class whose schema openai-java would refuse. That check runs when a turn adds its tools,
+ * and one refused class fails the whole turn, so an extension finds out here, where its author can see it.
+ */
+internal fun requireOpenAiSchema(cls: Class<*>) {
+    try {
+        @Suppress("UNCHECKED_CAST")
+        openAiTool(cls as Class<Any>)
+    } catch (e: Exception) {
+        throw IllegalArgumentException(
+            "Cannot register an AI tool named '${cls.simpleName}': OpenAI refuses its argument schema, so every " +
+                "OpenAI or OpenRouter turn that offered it would fail before sending. A Map field is the usual cause; " +
+                "take a JSON object in a String, or a List of a small data class, instead. ${e.message}", e
+        )
+    }
 }
 
 /** Shared Jackson mapper for the provider-neutral tool face (Kotlin data classes). */

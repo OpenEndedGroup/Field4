@@ -1,5 +1,6 @@
 package afield.graphics
 
+import afield.math.gp.*
 import afield.stdlib.*
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.CubicSegment3
@@ -4403,59 +4404,13 @@ fun FLine.byCurvatureFlow(
 
 // ---------- Gaussian Process interpolation ----------
 
-private fun cholesky(matrix: Array<DoubleArray>): Array<DoubleArray>? {
-    val n = matrix.size
-    val L = Array(n) { DoubleArray(n) }
-    for (i in 0 until n) {
-        for (j in 0..i) {
-            var sum = matrix[i][j]
-            for (k in 0 until j) sum -= L[i][k] * L[j][k]
-            if (i == j) {
-                if (sum <= 0.0 || sum.isNaN()) return null
-                L[i][j] = sqrt(sum)
-            } else {
-                L[i][j] = sum / L[j][j]
-            }
-        }
-    }
-    return L
-}
-
-private fun solveWithCholesky(L: Array<DoubleArray>, b: DoubleArray): DoubleArray {
-    val n = L.size
-    val y = DoubleArray(n)
-    for (i in 0 until n) {
-        var sum = b[i]
-        for (k in 0 until i) sum -= L[i][k] * y[k]
-        y[i] = sum / L[i][i]
-    }
-    val x = DoubleArray(n)
-    for (i in n - 1 downTo 0) {
-        var sum = y[i]
-        for (k in i + 1 until n) sum -= L[k][i] * x[k]
-        x[i] = sum / L[i][i]
-    }
-    return x
-}
-
-private fun solveLower(L: Array<DoubleArray>, b: DoubleArray): DoubleArray {
-    val n = L.size
-    val y = DoubleArray(n)
-    for (i in 0 until n) {
-        var sum = b[i]
-        for (k in 0 until i) sum -= L[i][k] * y[k]
-        y[i] = sum / L[i][i]
-    }
-    return y
-}
-
 /**
  * RBF-kernel Gaussian Process interpolation along arc length, applied independently to XYZ.
  * @param trainingSamples how many points to use from the source curve as observations
  * @param samples how many points to output
  * @param lengthScale kernel length scale (in normalized arc-length units)
  * @param variance kernel variance
- * @param noise observation noise added to the diagonal
+ * @param noise observation standard deviation; its square is added to the training diagonal
  * @param drawSamples if true, draw a single sample from the posterior instead of using the mean
  */
 fun FLine.byGaussianProcessInterpolating(
@@ -4471,60 +4426,19 @@ fun FLine.byGaussianProcessInterpolating(
     trainingSampler: FLineSampler? = null,
     outputSampler: FLineSampler? = null
 ): FLine {
+    require(trainingSamples >= 2 && samples >= 1)
+    require(lengthScale.isFinite() && lengthScale > 0 && variance.isFinite() && variance > 0)
+    require(noise.isFinite() && noise >= 0)
     val obs = this.samplePoints(trainingSamples, sampler = trainingSampler)
-    if (obs.isEmpty()) return this.copy()
-
-    val tObs = normalizedArcLengthParams(obs)
-    val n = obs.size
-    val ls2 = (lengthScale.toDouble()).pow(2.0).coerceAtLeast(1e-8)
-    val varScale = variance.toDouble()
-    val noiseVar = noise.toDouble().pow(2.0)
-
-    fun k(a: Double, b: Double): Double {
-        val d2 = (a - b) * (a - b)
-        return varScale * kotlin.math.exp(-0.5 * d2 / ls2)
-    }
-
-    val K = Array(n) { DoubleArray(n) }
-    for (i in 0 until n) {
-        for (j in 0 until n) {
-            K[i][j] = k(tObs[i], tObs[j])
-        }
-        K[i][i] += noiseVar
-    }
-
-    val jittered = K.map { it.copyOf() }.toTypedArray()
-    for (i in 0 until n) jittered[i][i] += 1e-8
-    val L = cholesky(jittered) ?: return this.copy()
-
-    val alphaX = solveWithCholesky(L, DoubleArray(n) { obs[it].x.toDouble() })
-    val alphaY = solveWithCholesky(L, DoubleArray(n) { obs[it].y.toDouble() })
-    val alphaZ = solveWithCholesky(L, DoubleArray(n) { obs[it].z.toDouble() })
-
-    val rng = if (drawSamples) java.util.Random(seed ?: System.nanoTime()) else null
-
+    if (obs.size < 2) return this.copy()
+    val model = gpCurve(normalizedArcLengthParams(obs), obs,
+        kernel = GpKernels.rbf(lengthScale.toDouble(), variance.toDouble()),
+        noiseStd = DoubleArray(obs.size) { noise.toDouble() }, mean = vec(0, 0, 0))
     val base = this.samplePoints(samples, sampler = outputSampler)
     if (base.isEmpty()) return this.copy()
-    val tQuery = normalizedArcLengthParams(base)
-    val query = ArrayList<Vec3>(base.size)
-    for (i in tQuery.indices) {
-        val t = tQuery[i]
-        val kStar = DoubleArray(n) { idx -> k(t, tObs[idx]) }
-        val meanX = kStar.indices.sumOf { idx -> kStar[idx] * alphaX[idx] }
-        val meanY = kStar.indices.sumOf { idx -> kStar[idx] * alphaY[idx] }
-        val meanZ = kStar.indices.sumOf { idx -> kStar[idx] * alphaZ[idx] }
-
-        var varStar = varScale
-        val v = solveLower(L, kStar)
-        for (vComp in v) varStar -= vComp * vComp
-        val std = sqrt(varStar.coerceAtLeast(0.0))
-        val jitter = if (drawSamples && rng != null) std * rng.nextGaussian() else 0.0
-
-        query.add(vec(meanX.toFloat() + jitter.toFloat(), meanY.toFloat() + jitter.toFloat(), meanZ.toFloat() + jitter.toFloat()))
-    }
-
-    val blended = mixSamples(base, query, dryWet, wetModulator)
-    return blended.toFLine()
+    val joint = model.posterior(normalizedArcLengthParams(base))
+    val query = if (drawSamples) joint.samplePoints(seed ?: System.nanoTime()) else joint.meanPoints
+    return mixSamples(base, query, dryWet, wetModulator).toFLine()
 }
 
 // ---------- Filtered geometry (EMA, One Euro, alpha-beta / 1$) ----------
@@ -4882,3 +4796,4 @@ fun FLine.byOneDollarFiltering(
     val blended = mixSamples(points, normed, dryWet, wetModulator)
     return blended.toFLine()
 }
+

@@ -10,7 +10,7 @@ AI4 tools. This page is the layer underneath them: the ten verbs every study sha
 document's own box becomes a study with the same tools.
 
 Everything here is `afield.stdlib`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
-`SourceFramesStudy` in `SourceFramesStudy.kt`. Every picture on the page is a box's real output.
+`SourceFramesStudy` in `SourceFramesStudy.kt`.
 
 ## The ten verbs
 
@@ -275,14 +275,17 @@ showStudyBuilds("reports")
 ```
 
 The card lives in this box's output. It shows progress, elapsed time, cancellation and selectable
-error text. Progress reflects the worker's completed work; it is not a time estimate.
+error text. Progress reflects the worker's completed work; it is not a time estimate. While a build
+is queued or running the card updates twice a second. Otherwise it updates as soon as any build of
+this runner, or of a runner it depends on, starts or ends, and within about five seconds of an edit
+to the design.
 An agent's [geometry findings](geometry_review.md#let-the-agent-point-something-out)
 join this card when their `runId` matches the build's job ID. Each link opens the
 existing review thread in its Field output, with evidence and replies. Open errors
 are red, open warnings amber and decisions cyan; closed discussions are grey and say
 **resolved**. Closing a discussion never changes the build verdict.
-Unlaunched review sources retain their historical findings and explain that the
-source must run before its viewer can open.
+Findings whose review source has not been launched are still listed, with a note that the source
+must run before its viewer can open.
 
 When an edit changes a stage's inputs, its latest attempt describes an earlier design. Its
 findings collapse to one grey line, such as "2 findings from an attempt with earlier inputs;
@@ -293,18 +296,26 @@ the inputs again, so its findings and failure come back.
 
 AI4 can discover the same runner with `ListStudyBuildsRequest`, inspect it with
 `InspectStudyBuildsRequest`, and start it with `StartStudyBuildRequest`, quoting the stage's current
-`fingerprint`. Starting returns a job ID immediately. `WaitStudyBuildRequest` observes that same
-job for up to 900 seconds and streams progress into chat during the wait. Agents can use
-`waitSeconds=600` for long work, leaving `afterUpdated` empty, so progress does not require
-repeated model turns. Completion returns early; `afterUpdated` can instead request an early
-return on a progress change. A wait timeout leaves the build running;
-wait again using the same job ID. Optionally supply `afterUpdated` from a previous response to
-return when progress changes. After completion, inspect the stage to check that its result is
-still current. **Queued** does not mean **built**, and an earlier successful build may no longer
-be current. Stopping an observation does not cancel the build. AI4 sees what the card shows:
+`fingerprint`. Starting returns a job ID immediately. `WaitStudyBuildRequest` follows that job for
+up to 900 seconds and streams its progress into the chat. For long work an agent can pass
+`waitSeconds=600` and leave `afterUpdated` empty: the wait returns when the build completes, so
+progress costs no extra model turns. To return at the next progress change instead, pass the
+`afterUpdated` value from a previous response. A wait that times out leaves the build running;
+wait again with the same job ID. Stopping a wait does not cancel the build. After completion,
+inspect the stage to check that its result is still current: **Queued** does not mean **built**,
+and an earlier successful build may no longer be current. AI4 sees what the card shows:
 an attempt against earlier inputs is marked `fromEarlierInputs`, and its findings are left out of
 `openFindings`, so the agent does not report them as current errors. The geometry notes behind
 those findings carry the same mark when the agent reads them with `ReadGeometryReviewsRequest`.
+
+A build that takes longer than a few minutes is better left to Field. In a box's AI4 chat the agent
+can end its turn with `AwaitStudyBuildsRequest`; Field watches the job without the model and resumes
+the conversation with its outcome when it finishes. See
+[Let AI4 Wait for Long Builds](ai4_long_builds.md).
+
+When a stage follows a rule that an agent may improve, such as a placement recipe or a fallback,
+keep the rule as a qualified source: a change is replayed on the real cases the rule has already
+handled before it applies. See [Change a Rule Without Breaking What Already Works](qualified_sources.md).
 
 Name upstream stages in `dependencies`. The worker reads their captured files through
 `context.dependencyFile(stage, path)`. Until those stages have current results, the dependent stage
@@ -334,15 +345,18 @@ Warnings show **Current · Needs review**; `StudyBuildNoticeKind.ERROR` shows
 implying a problem. The same notes appear in native agent inspection and the completion stream.
 The adapter must be fast and pure: read the supplied record's retained facts, never the live
 design, and perform no build work. It also works over existing attempt history. A formatter
-failure exposes a review notice while preserving the result. These are explanations, not gates:
-they do not change fingerprints, acceptance, or dependency availability. Keep actual qualification
-requirements in build/input contracts. Stale results lose their current-result notices; their
-individual attempt inspections retain them.
+failure shows a review notice and keeps the result. Notes only explain: they do not change
+fingerprints, acceptance, or whether downstream stages can use the result. A requirement a result
+must meet belongs in the recipe or in a [gate](#wait-until-a-measurement-passes). A stale result
+drops its notes from the current-result view; inspecting that attempt still shows them.
 
 An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
 It cannot become the current result. Changing a dependency result or `recipeVersion` also
 invalidates downstream results. Use `builds.currentFile(stage, path)` when a viewer or export
-needs a current result; it refuses stale, missing or changed artifacts.
+needs a current result; it refuses stale, missing or changed artifacts. A result file is checked
+against the SHA-256 recorded when it was built. Field reads the whole file again only when its size,
+timestamps or inode have changed since the last check, so a card over gigabytes of
+results costs almost nothing while it sits idle.
 
 Throw `StudyBuildFailure(StudyBuildProblem(...))` for an actionable failure with a code, message,
 suggestions and structured details.
@@ -373,6 +387,309 @@ revokes unfinished publication; reopening records interrupted work and waits for
 Change `recipeVersion` whenever the recipe or its relevant runtime changes. The runner checks
 provenance and lifecycle; the recipe remains responsible for checking its own result.
 
+### Wait until a measurement passes
+
+Often a stage should wait until an earlier result is good enough, not just until it exists: loot
+placement should wait until every loot point can be reached. A `StudyBuildGate` turns that check
+into an input. The check reads the current results of the stages the gate names, and returns `null`
+when the waiting stage may run, or a sentence saying what is still wrong. A stage waits on the gate
+by listing its name in `inputKeys`.
+
+Here `paths` measures how far each loot point is from the spawn, and the gate `reachable loot`
+holds `place` until no point is more than 30 steps away:
+
+<!--
+FIELD_TEST
+id: docs.studies.gate
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Waiting for reachable loot"
+    - "Out of reach (more than 30 steps): L3."
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/gate.png" alt="the builds output channel: a card with two stages, 'Measure paths' marked Current with a Rebuild button, and 'Place loot' marked 'Waiting for reachable loot', with the sentence 'Out of reach (more than 30 steps): L3.' and no Build button" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Waiting for reachable loot" capture="box" embed=true timeout="90" name="studies-gate" w="760" h="120"}
+:::static
+// Each loot point, and how many steps it is from the spawn.
+thisBox.setPropertyRaw("loot", "L1 12, L3 41, L7 30")
+
+val reachable = StudyBuildGate("reachable loot", dependencies = listOf("paths")) { evidence ->
+    val far = evidence.facts("paths")["outOfReach"] as List<*>
+    if (far.isEmpty()) null else "Out of reach (more than 30 steps): ${far.joinToString()}."
+}
+val builds = studyBuilds("loot", listOf(
+    StudyBuildStage("paths", "Measure paths", "paths-v1", setOf("loot")) { c ->
+        val steps = c.inputs.getValue("loot").split(", ").associate { it.substringBefore(' ') to it.substringAfter(' ').toInt() }
+        c.file("steps.txt").writeText(steps.toString())
+        StudyBuildProduct(listOf("steps.txt"), mapOf("outOfReach" to steps.filterValues { it > 30 }.keys.toList()))
+    },
+    StudyBuildStage("place", "Place loot", "place-v1", setOf("reachable loot"), listOf("paths")) { c ->
+        c.file("placed.txt").writeText("loot placed along " + c.dependencyFile("paths", "steps.txt").readText())
+        StudyBuildProduct(listOf("placed.txt"))
+    }), gates = listOf(reachable)) { mapOf("loot" to thisBox.getPropertyRaw("loot", "").toString()) }
+
+builds.await(builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!).id)
+showStudyBuilds("loot")
+```
+
+The card shows the gate's sentence under **Place loot**, and agent inspection returns the same text
+as the stage's `inputHelp`. Set `loot` so that L3 is 30 steps or fewer, rebuild **Measure paths**,
+and **Place loot** becomes ready to build. While the gate is open its value is a hash of the results
+it judged, so rebuilding `paths` makes an earlier placement stale even when the check still passes.
+A queued build checks its gates again when it starts; if one has closed meanwhile, the attempt fails
+with the gate's sentence and its recipe does not run.
+
+The check runs every time the card or an agent reads the stages, so keep it quick and read only
+what it is given: `evidence.facts(stage)`, `evidence.file(stage, path)`, which is checked against the
+result's recorded hash, and `evidence.inputs` for the gate's own `inputKeys`. A check that throws
+keeps the gate closed and shows the error as the reason.
+
+### Ask one attempt for more
+
+Some choices belong to one attempt rather than to the design: how long a search may run, or which
+earlier attempt to continue from. Pass them to `start` as a request, and the worker reads them as
+`context.request`. This stage searches for ten seconds unless the request asks for longer:
+
+<!--
+FIELD_TEST
+id: docs.studies.request
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Request: budgetSeconds = 60"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/request.png" alt="the builds output channel: a card with one stage, 'Search for routes', marked Current with a Rebuild button, and the grey line 'Request: budgetSeconds = 60'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Current" capture="box" embed=true timeout="90" name="studies-request" w="760" h="120"}
+:::static
+val builds = studyBuilds("search", listOf(
+    StudyBuildStage("route", "Search for routes", "route-v1", setOf("rooms")) { c ->
+        val budget = (c.request["budgetSeconds"] as? Number)?.toInt() ?: 10
+        c.progress(0.5, "Searching for $budget s")
+        c.file("route.txt").writeText("${c.inputs.getValue("rooms")} rooms searched for $budget s")
+        StudyBuildProduct(listOf("route.txt"), mapOf("budgetSeconds" to budget))
+    })) { mapOf("rooms" to "6") }
+
+builds.start("route", builds.stages().single().fingerprint!!, mapOf("budgetSeconds" to 60))
+showStudyBuilds("search")
+```
+
+The request is kept with the attempt and shown on its card. It is also part of the attempt's
+fingerprint, so a stage that uses this result records which request produced it. The result is
+current like any other, because the stage's own fingerprint covers only the design. A later start,
+including the card's **Rebuild**, has no request unless it is given one again, so a request is never
+left behind for the next build to pick up. Values must survive a JSON round trip. An agent passes a
+request as `request` in `StartStudyBuildRequest`, a string holding a JSON object such as
+`{"budgetSeconds": 60}`. The worker reads its values as JSON types, so this stage sees a number.
+
+### Depend on another runner's stage
+
+A stage can depend on a stage of another runner in the same document, written
+`dependsOn(runner, stage)`. The runner is found by name, so it can belong to any box in the
+document. To keep the example short, one box holds both runners here: `level` blocks out the walls,
+and `loot` reads them.
+
+<!--
+FIELD_TEST
+id: docs.studies.dependson
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Ready to build"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/depends-on.png" alt="the builds output channel: a card with one stage, 'Place loot', marked 'Ready to build' with a Build button, above the line 'Not built yet'" wait="2.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Ready to build" capture="box" embed=true timeout="90" name="studies-depends-on" w="760" h="120"}
+:::static
+thisBox.setPropertyRaw("plan", "four rooms, two doors")
+
+val level = studyBuilds("level", listOf(
+    StudyBuildStage("blockout", "Block out walls", "blockout-v1", setOf("plan")) { c ->
+        c.file("walls.txt").writeText("walls for " + c.inputs.getValue("plan"))
+        StudyBuildProduct(listOf("walls.txt"))
+    })) { mapOf("plan" to thisBox.getPropertyRaw("plan", "").toString()) }
+
+val loot = studyBuilds("loot", listOf(
+    StudyBuildStage("place", "Place loot", "place-v1", dependencies = listOf(dependsOn("level", "blockout"))) { c ->
+        val walls = c.dependencyFile(dependsOn("level", "blockout"), "walls.txt").readText()
+        c.file("loot.txt").writeText("loot placed inside $walls")
+        StudyBuildProduct(listOf("loot.txt"))
+    })) { emptyMap() }
+
+level.await(level.start("blockout", level.stages().single().fingerprint!!).id)
+showStudyBuilds("loot")
+```
+
+Until **Block out walls** has a current result, **Place loot** waits with "Complete level/blockout
+first"; here the walls are already built, so it is ready. The worker reads the upstream file with
+`context.dependencyFile(dependsOn("level", "blockout"), "walls.txt")`, checked against its hash. The
+upstream attempt is part of the downstream fingerprint, so editing `plan` makes the placement stale
+until both stages are rebuilt. `showStudyBuilds("level")` would show the walls' own card. A gate can
+judge another runner's result the same way, by naming `dependsOn(runner, stage)` in its
+`dependencies`. A cycle of dependencies across runners is refused with an error on the card.
+
+### Continue from an earlier attempt
+
+A long search can stop at its time budget and leave a checkpoint behind. The next attempt should
+continue from it rather than start again. Name the earlier attempt in the request, and copy its
+files in with `context.resumeFrom(jobId, paths)`. This stage adds 100 passes to whatever checkpoint
+it continues from; the box runs it once, then again from the first attempt:
+
+<!--
+FIELD_TEST
+id: docs.studies.resume
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "Continued from attempt"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/resume.png" alt="the builds output channel: a card with one stage, 'Relax the route', marked Current with a Rebuild button, and two grey lines: 'Request: resume = ' followed by the first attempt's ID, and 'Continued from attempt' followed by the first eight characters of that ID and 'checkpoint.txt'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Continued from attempt" capture="box" embed=true timeout="90" name="studies-resume" w="760" h="120"}
+:::static
+val builds = studyBuilds("relax", listOf(
+    StudyBuildStage("relax", "Relax the route", "relax-v1", setOf("route")) { c ->
+        (c.request["resume"] as? String)?.let { c.resumeFrom(it, listOf("checkpoint.txt")) }
+        val checkpoint = c.file("checkpoint.txt")
+        val passes = (if (checkpoint.isFile) checkpoint.readText().toInt() else 0) + 100
+        checkpoint.writeText("$passes")
+        StudyBuildProduct(listOf("checkpoint.txt"), mapOf("passes" to passes))
+    })) { mapOf("route" to "spawn to L7") }
+
+val fingerprint = builds.stages().single().fingerprint!!
+val first = builds.await(builds.start("relax", fingerprint).id)
+builds.await(builds.start("relax", fingerprint, mapOf("resume" to first.id)).id)
+showStudyBuilds("relax")
+```
+
+The earlier attempt can be any finished one: a success, a failure or a cancellation keeps its files.
+Each copy is checked against its source, a file that was one of that attempt's results must still
+match its recorded hash, and the attempt records what it copied with the hashes
+(`StudyBuildRecord.resumedFrom`); the card names it. A path can be a directory, which copies
+everything under it. By default the earlier attempt must have built the same inputs and dependency
+results with the same recipe, so an agent cannot continue from a checkpoint of a design it has since
+replaced. Pass `sameDesign = false` when an earlier design is a deliberate starting point. An agent
+names the attempt the same way, with `request` set to `{"resume": "<jobId>"}` in
+`StartStudyBuildRequest`.
+
+`builds.await(jobId)` blocks until an attempt finishes, which suits a box that runs stages in order
+like this one. For a long build, let the card or AI4 follow it instead.
+
+### Run an external program
+
+Many builds hand the real work to another program: a solver, a Python script, a mesher. Start it
+with `context.runProcess(command)`. It runs in the attempt's directory with its output kept in
+`process.log`, and a progress file the program rewrites, such as
+`{"fraction": 0.5, "message": "pass 2 of 4"}`, becomes the card's progress. The program is stopped,
+with every process it started, when the build is cancelled, when `deadline` passes, or when `stall`
+passes with no change to its progress. Here a short Python script stands in for the solver:
+
+<!--
+FIELD_TEST
+id: docs.studies.process
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitOutput:
+  contains: "pass 2 of 4"
+  channel: builds
+  kind: display
+expect:
+  outputContains:
+    - "pass 2 of 4"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/process.png" alt="the builds output channel: a card with one stage, 'Relax in Python', marked Building with a Cancel button, a progress bar half filled, the elapsed time, and the message 'pass 2 of 4' from the script's progress file" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="pass 2 of 4" capture="box" embed=true timeout="90" name="studies-process" w="760" h="120"}
+:::static
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+
+val script = "%document/relax.py".file
+script.writeText("""
+import json, time
+for n in range(1, 5):
+    json.dump({"fraction": n / 4, "message": f"pass {n} of 4"}, open("progress.json", "w"))
+    time.sleep(3)
+open("relaxed.txt", "w").write("relaxed in 4 passes")
+""".trimStart())
+
+val builds = studyBuilds("external", listOf(
+    StudyBuildStage("relax", "Relax in Python", "relax-" + fileIdentity(script), setOf("route")) { c ->
+        c.runProcess(listOf("python3", script.path), progressFile = "progress.json", stall = 30.seconds, deadline = 10.minutes)
+        StudyBuildProduct(listOf("relaxed.txt", "process.log"))
+    })) { mapOf("route" to "spawn to L7") }
+
+builds.start("relax", builds.stages().single().fingerprint!!)
+showStudyBuilds("external")
+```
+
+A stop, or a non-zero exit, fails the attempt with a message that names the log, such as
+"python3 made no progress for 30s (last: pass 2 of 4), so it was stopped." Pass `check = false` to
+read the exit code yourself, and `progressSpan = 0.0..0.8` to leave room for checking the program's
+output afterwards. Without a progress file, `stall` watches for new output in the log.
+
+The recipe version includes `fileIdentity(script)`, a hash of the script's contents, so editing the
+script makes earlier results stale and editing anything else in the document does not.
+`classIdentity(SomeRecipe::class)` does the same for compiled code. Name the files and classes that
+do the build's work rather than a whole provider: a hash of a whole provider changes whenever any
+part of it is edited, and every result goes stale with it.
+
+When stages share something only one of them can use at a time, such as a GPU, a licence or a
+scratch directory, pass `exclusive = true` to `studyBuilds`. The runner then builds one stage at a
+time and refuses a start while another build runs, and the card says which build the others are
+waiting for.
+
+### Delete attempts you no longer need
+
+Every attempt keeps its files, so a stage that is rebuilt often fills the disk. `builds.prune()`
+deletes the attempts nothing needs any more. It keeps each stage's current result, its latest
+attempt and its latest success, every build still running, the attempts you pin, and every attempt
+those name: what they were built from, what their gates judged, and what they continued from. This
+box builds five versions of a level, pins the first, and prunes the rest:
+
+<!--
+FIELD_TEST
+id: docs.studies.prune
+runner: backdoor-box
+tags: [docs, study, builds]
+timeoutSec: 90
+waitSec: 2.0
+expect:
+  outputContains:
+    - "A dry run would delete 3 attempts"
+    - "Pruning deleted 3"
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/prune.png" alt="the main output channel: 'A dry run would delete 3 attempts. Pruning deleted 3 and freed' followed by about 1900 kB, 'keeping 2: the current walls and the pinned first version.'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" wait-output-contains="Pruning deleted" capture="box" embed=true timeout="90" name="studies-prune" w="760" h="120"}
+:::static
+val builds = studyBuilds("walls", listOf(
+    StudyBuildStage("mesh", "Mesh the walls", "mesh-v1", setOf("rooms")) { c ->
+        c.file("walls.obj").writeText("v 0 0 0\n".repeat(20_000 * c.inputs.getValue("rooms").toInt()))
+        StudyBuildProduct(listOf("walls.obj"))
+    })) { mapOf("rooms" to thisBox.getPropertyRaw("rooms", "2").toString()) }
+
+// Five versions of the level, each built once.
+val built = (2..6).map { rooms ->
+    thisBox.setPropertyRaw("rooms", "$rooms")
+    builds.await(builds.start("mesh", builds.stages().single().fingerprint!!).id)
+}
+val preview = builds.prune(pins = setOf(built.first().id), dryRun = true)
+val pruned = builds.prune(pins = setOf(built.first().id))
+markdown("main", "A dry run would delete ${preview.deleted.size} attempts. Pruning deleted ${pruned.deleted.size} " +
+    "and freed ${pruned.freedBytes / 1000} kB, keeping ${pruned.kept.size}: the current walls and the pinned first version.")
+```
+
+A dry run (`dryRun = true`) reports what would go and deletes nothing. A deleted attempt is gone
+from the history with its files, so it can no longer be inspected or continued from; pin anything
+you want to compare against later. Runners that depend on each other's results are pruned together
+with `StudyBuilds.prune(listOf(level, loot))`, so the walls a current placement was built from are
+kept even after the level has been rebuilt. AI4 prunes every runner in the document with
+`PruneStudyBuildsRequest`: with `apply=false`, the default, it reports what would be deleted, and
+with `apply=true` it deletes it.
+
 ## The library's studies
 
 StackSL, RectSL and stack.auto are built from the same pieces a `SourceFramesStudy` is, and the
@@ -381,7 +698,7 @@ function study keeps its revisions through the first of them:
 | Piece | What it does |
 | --- | --- |
 | `SourceStudy` | Revisions on disk, the revision-and-hash guard, compare-and-swap publication into the box |
-| `StudyBuilds` | Asynchronous derived stages, frozen inputs, dependency invalidation, progress and retained diagnostics |
+| `StudyBuilds` | Asynchronous derived stages, frozen inputs, gates, per-attempt requests, dependency invalidation across runners, resuming, external programs, progress, retained diagnostics and pruning |
 | `StudyFrames` | Where frames come from: a CPU reference, or the GPU of a running window |
 | `StudyEvidence` | Measurements and the sheets the pictures are laid out on |
 | `StudyCompare` | Before/after/difference and sweeps |
@@ -401,7 +718,8 @@ on the welcome screen's starting points) is this page as a document: `rings` def
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
 in order.
 
-`study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
-drives all ten verbs on a document's study through the same tool registry an agent calls, with no
-model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one registrar
-for the standard verbs".
+??? aside "Tests and design notes"
+    `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
+    drives all ten verbs on a document's study through the same tool registry an agent calls, with
+    no model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one
+    registrar for the standard verbs".

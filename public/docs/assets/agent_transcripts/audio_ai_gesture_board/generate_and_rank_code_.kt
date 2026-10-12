@@ -1,4 +1,3 @@
-import afield.stdlib.noir.audioai.*
 
 val client = FieldAudioClient()
 val source = client.assetByFilename("*Nancy*").get()
