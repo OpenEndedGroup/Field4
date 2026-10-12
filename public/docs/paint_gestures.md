@@ -204,7 +204,8 @@ display("main", sheet.png(relief = 0.5))
 
 Broad black gestures in the manner of Robert Motherwell's *Elegies* and the Tachistes need a big
 brush and a big canvas, real ones: here two metres of canvas and a house painter's brush about
-15 cm wide, with soft, uneven hairs (`stiffness = 0.5`, `ragged = 0.5`) that splay under pressure.
+15 cm wide, with soft, uneven hairs (`stiffness = 0.5`, `ragged = 0.5`), held together
+(`splay = 0.0`) so each slab stays one band.
 Fat black paint, stiff enough to hold its edge (`stiff = 0.5`, `oil = 1.5`), laid as a thin film
 (`lay = 0.8`) from a half-loaded brush (`amount = 0.5`), so the brush tracks show through it. Each
 movement is fast, 260 to 320 mm/s, and ends lifted off the canvas (pressure `-0.2`), which is where
@@ -219,8 +220,8 @@ import afield.paint.*
 val canvas = PaintCanvas(1200, aspect = 2.1, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 2000.0, seed = 11)
 val h = canvas.heightUnits
 
-// a house painter's brush: soft, uneven hairs that splay, laying a thin film of fat black
-val housePainter = BrushConfig(stiffness = 0.5, ragged = 0.5, splay = 0.6, lay = 0.8, run = 1100.0)
+// a house painter's brush: soft, uneven hairs held together, laying a thin film of fat black
+val housePainter = BrushConfig(stiffness = 0.5, ragged = 0.5, splay = 0.0, lay = 0.8, run = 1100.0)
 fun brush(width: Double) = canvas.dynamicBrush(BrushKind.HogFlat, width, hairs = 48, segments = 6, config = housePainter)
     .load(rgb(0.05, 0.045, 0.04), hiding = 0.65, stiff = 0.5, oil = 1.5, amount = 0.5)
 
@@ -260,7 +261,7 @@ val canvas = PaintCanvas(1200, aspect = 2.1, groundColor = rgb(0.93, 0.9, 0.83),
 val h = canvas.heightUnits
 
 // the same brush, its black let down with a little painting medium
-val housePainter = BrushConfig(stiffness = 0.5, ragged = 0.5, splay = 0.6, lay = 0.8, run = 1100.0)
+val housePainter = BrushConfig(stiffness = 0.5, ragged = 0.5, splay = 0.0, lay = 0.8, run = 1100.0)
 fun brush(width: Double) = canvas.dynamicBrush(BrushKind.HogFlat, width, hairs = 48, segments = 6, config = housePainter)
     .load(rgb(0.05, 0.045, 0.04), hiding = 0.55, stiff = 0.5, thinner = 0.15, oil = 1.5, amount = 0.5)
 
@@ -310,6 +311,7 @@ it was then.
 | The hairs | chains of segments under position-based dynamics (Verlet integration, constraint projection, 1 ms steps): each segment keeps its length, each joint is pulled toward its rest angle, more strongly the stiffer the hair | simulated |
 | Contact | a node below the surface (paper, dry paint, wet paint) is put back on it | simulated |
 | Friction | Coulomb's: a node sticks until its slip exceeds static friction times how hard it presses, then slides against kinetic friction | simulated |
+| Splay | a hair pressed into the surface is pushed out from the brush's middle by `splay` (in `BrushConfig`) times how far it is pressed in, against the same grip: hard enough, a flat parts in two | an approximation of buckling by one number |
 | A set | a joint bent past its yield (2% strain at the surface of a fibre whose thickness is estimated from the brush's stiffness) moves its rest angle toward the bend, and recovers slowly | simulated, with estimated rates |
 | Clumping | the liquid in a full brush draws neighbouring tips together | an approximation by one strength |
 | Oil paint | each of the brush's dense bristles follows the hair nearest it and trades paint where it touches, through claude-paint's own paint model | the paint is claude-paint's; the contact is Field's |

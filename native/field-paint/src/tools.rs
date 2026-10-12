@@ -412,10 +412,12 @@ pub extern "C" fn field_paint_rag_refold(c: *mut Studio, g: *mut Rag) -> i32 {
 }
 
 /// Wipe the rag along `n` points at the pressures in `pressure` (spread along the path; none is
-/// 0.5). One point is a blot. Returns the mm³ of paint lifted.
+/// 0.5). One point is a blot. Returns the mm³ of paint lifted: negative where a loaded rag left
+/// more than it took up, smearing paint it carried onto paint that is setting; NaN on failure.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_rag_wipe(c: *mut Studio, g: *mut Rag, xy: *const f32, n: i32, pressure: *const f32, pn: i32, seed: u64) -> f64 {
-    guard(-1.0, || {
+    // (NaN on failure: a loaded rag on setting paint can leave more than it lifts, a negative lift)
+    guard(f64::NAN, || {
         if n < 1 {
             return Err("a wipe needs at least one point".into());
         }

@@ -31,6 +31,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -55,20 +56,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.05, 0.15, 0.5, 1.0, 4.0, 16.0, 128.0).map { column("amount $it", Settings(amount = it)) }
@@ -92,6 +102,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -116,20 +127,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.5, 1.0, 2.0, 8.0, 32.0, 256.0).map { column("lay $it", Settings(lay = it)) }
@@ -153,6 +173,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -177,20 +198,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(50.0, 300.0, 1100.0, 4000.0, 30000.0, 1000000.0).map { column("run ${it.toInt()}", Settings(run = it)) }
@@ -216,6 +246,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -240,20 +271,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0, 0.01, 0.02, 0.05, 0.2, 0.5, 0.9).map { column("thinner $it", Settings(thinner = it)) }
@@ -279,6 +319,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -303,20 +344,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0001, 0.001, 0.01, 0.1, 0.65, 1.0).map { column("hiding $it", Settings(hiding = it)) }
@@ -338,6 +388,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -362,20 +413,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0, 0.5, 2.0, 5.0, 30.0, 300.0).map { column("stiff $it", Settings(stiff = it)) }
@@ -403,6 +463,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -427,20 +488,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(-1.0, -0.25, 0.0, 0.4, 1.0, 2.0, 1000.0).map { column("stiffness $it", Settings(stiffness = it)) }
@@ -464,6 +534,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -488,20 +559,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(2, 4, 8, 48, 256, 1024).map { column("hairs $it", Settings(hairs = it)) }
@@ -524,6 +604,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -548,20 +629,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(1.0, 0.5, 0.2, 0.05, 0.01, 0.002).map { column("hair $it", Settings(hair = it)) }
@@ -584,6 +674,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -608,20 +699,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(200.0, 100.0, 50.0, 20.0, 8.0, 2.0).map { column("width ${it.toInt()}", Settings(width = it)) }
@@ -648,6 +748,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -672,20 +773,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0, 0.5, 1.0, 2.0, 4.0, 10.0).map { column("pickup $it", Settings(pickup = it)) }
@@ -706,6 +816,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -730,20 +841,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0, 0.5, 1.0, 2.0, 10.0, 100.0).map { column("push $it", Settings(push = it)) }
@@ -767,6 +887,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -791,20 +912,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0, 1.0, 8.0, 64.0, 512.0, 4096.0).map { column("ragged $it", Settings(ragged = it)) }
@@ -813,6 +943,359 @@ showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-ragged.png")
 ```
 
+SPLAY_PROSE
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/splay.png" source-image="/tmp/field-docs-paint-sweep-splay.png" alt="SPLAY_ALT" wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-splay" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.6, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+:::endfold
+val strokes = listOf(0.0, 0.3, 0.6, 1.0, 2.0, 4.0, 10.0).map { column("splay $it", Settings(splay = it)) }
+val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 4)
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-splay.png")
+```
+
+
+## Drying
+
+DRYING_PROSE_1
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/gloss.png" source-image="/tmp/field-docs-paint-sweep-gloss.png" alt="GLOSS_ALT" wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-gloss" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.6, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+:::endfold
+val strokes = listOf(0.0, 0.15, 0.4, 0.8, 1.3, 4.0).map { column("oil $it", Settings(oil = it, lamp = true, dry = true)) }
+val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 4)
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-gloss.png")
+```
+
+DRYING_PROSE_2
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/absorbent.png" source-image="/tmp/field-docs-paint-sweep-absorbent.png" alt="ABSORBENT_ALT" wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-absorbent" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.6, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+:::endfold
+val strokes = listOf(0.0, 0.15, 0.4, 0.8, 1.3, 4.0).map { column("oil $it", Settings(oil = it, absorbent = 1.0, lamp = true, dry = true)) }
+val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 4)
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-absorbent.png")
+```
+
+DRYING_PROSE_3
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/wipe.png" source-image="/tmp/field-docs-paint-sweep-wipe.png" alt="WIPE_ALT" wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-wipe" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.6, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+:::endfold
+fun hours(m: Double) = if (m < 60) "${m.toInt()} min" else if (m < 2880) "${(m / 60).toInt()} h" else "${(m / 1440).toInt()} d"
+val strokes = listOf(0.0, 480.0, 1440.0, 2880.0, 5760.0, 10080.0, 20160.0).map { column("wipe " + hours(it), Settings(wipeAfter = it)) }
+val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 4)
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-wipe.png")
+```
+
+DRYING_PROSE_4
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/drying.png" source-image="/tmp/field-docs-paint-sweep-drying.png" alt="DRYING_ALT" wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-drying" embed=true}
+:::static
+import afield.paint.*
+
+:::fold the gesture, and a column of it painted with settings `s`
+// what every column starts from: the black of the Elegy above
+data class Settings(
+    val stiffness: Double = 0.5, val ragged: Double = 0.5, val splay: Double = 0.6, val lay: Double = 0.8, val run: Double = 1100.0,
+    val pickup: Double? = null, val push: Double? = null, val hairs: Int = 48,
+    val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
+    val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
+    val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
+)
+
+// a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
+fun canvas() = PaintCanvas(300, aspect = 0.4, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 500.0, seed = 7)
+val straight = FLine().moveTo(500, 120).lineTo(510, 900)
+val loop = FLine().moveTo(510, 900).apply {
+    for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
+}
+val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
+val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+
+// a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
+// pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
+fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
+    fun part(line: FLine, speed: Double, vararg pressure: Double) =
+        c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
+    var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
+    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
+    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    return g.faster(s.faster)
+}
+
+fun column(label: String, s: Settings): Pair<String, Img> {
+    val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
+    val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
+    val black = rgb(0.05, 0.045, 0.04)
+    if (s.moving) {
+        val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(gesture(c, s), brush)
+    } else {
+        // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
+        val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
+        c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
+        c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
+    }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
+}
+:::endfold
+val strokes = listOf(0.25, 1.0, 4.0, 16.0, 64.0, 256.0).map { column("drying $it", Settings(drying = it, wipeAfter = 480.0)) }
+val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 4)
+showImg(sheet)
+sheet.savePng("/tmp/field-docs-paint-sweep-drying.png")
+```
 
 ## The hand
 
@@ -831,6 +1314,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -855,20 +1339,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0, 30.0, 60.0, 85.0, 120.0, 179.0).map { column("tilt $it", Settings(tilt = it)) }
@@ -892,6 +1385,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -916,20 +1410,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(0.0625, 0.25, 1.0, 4.0, 16.0, 64.0).map { column("speed × $it", Settings(faster = it)) }
@@ -954,6 +1457,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -978,20 +1482,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(null, 200.0, 60.0, 20.0, 6.0, 2.0).map { column(if (it == null) "smooth" else "facets ${it.toInt()}", Settings(facets = it)) }
@@ -1016,6 +1529,7 @@ data class Settings(
     val stiff: Double = 0.5, val thinner: Double = 0.0, val oil: Double = 1.5, val amount: Double = 0.5, val hiding: Double = 0.65,
     val tilt: Double = 30.0, val faster: Double = 1.0, val facets: Double? = null, val moving: Boolean = true,
     val width: Double = 200.0, val hair: Double? = null,
+    val drying: Double = 1.0, val absorbent: Double = 0.0, val lamp: Boolean = false, val wipeAfter: Double? = null, val dry: Boolean = false,
 )
 
 // a canvas 50 cm wide and 1.25 m tall, and a brush 10 cm wide
@@ -1040,20 +1554,29 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
 
 fun column(label: String, s: Settings): Pair<String, Img> {
     val c = canvas()
+    if (s.absorbent > 0.0) c.prime(rgb(0.93, 0.9, 0.83), texture = 0.0, absorbent = s.absorbent)
     val config = BrushConfig(hair = s.hair, stiffness = s.stiffness, ragged = s.ragged, splay = s.splay, lay = s.lay, run = s.run, pickup = s.pickup, push = s.push)
     val black = rgb(0.05, 0.045, 0.04)
     if (s.moving) {
         val brush = c.dynamicBrush(BrushKind.HogFlat, s.width, hairs = s.hairs, segments = 6, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(gesture(c, s), brush)
     } else {
         // an ordinary brush along the same path, with the same pressures; it has no timing or tilt
         val brush = c.brush(BrushKind.HogFlat, s.width, config = config)
-            .load(black, hiding = s.hiding, stiff = s.stiff, thinner = s.thinner, oil = s.oil, amount = s.amount)
+            .load(black, hiding = s.hiding, stiff = s.stiff, drying = s.drying, thinner = s.thinner, oil = s.oil, amount = s.amount)
         c.stroke(straight, brush, pressure = 0.8..1.0); c.stroke(loop, brush, pressure = 1.0..0.9); c.stroke(scrub, brush, pressure = 1.1..1.1)
         c.stroke(FLine().moveTo(500, 1600).lineTo(516, 2400), brush, pressure = 1.0..0.0)
     }
-    return label to imgFromBytes(c.png(relief = 0.3)).also { c.close() }
+    // a rag wiped across the bar, the loop and the last stroke after some minutes (infinite: dry first)
+    s.wipeAfter?.let { minutes ->
+        if (minutes.isInfinite()) c.dry() else c.wait(minutes)
+        val rag = c.rag(150.0)
+        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+    }
+    if (s.dry) c.dry()
+    val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
+    return label to imgFromBytes(png).also { c.close() }
 }
 :::endfold
 val strokes = listOf(column("moving hairs", Settings()), column("ordinary brush", Settings(moving = false)))

@@ -275,7 +275,9 @@ class PaintCanvas internal constructor(
     /**
      * Wipe [rag] along every subpath of [line] at [pressure] (one value, or values spread along the
      * path). The pad rests on the tops of the weave and reaches into the hollows as it is pressed,
-     * and the cloth touches in creases, so a wipe lifts in streaks. Returns the mm³ of paint lifted.
+     * and the cloth touches in creases, so a wipe lifts in streaks. Returns the mm³ of paint lifted:
+     * negative where a loaded rag left more than it took up, smearing its paint onto paint that is
+     * setting.
      */
     fun wipe(line: FLine, rag: PaintRag, pressure: List<Double> = listOf(0.6)): Double =
         polylines(line, 2.0).sumOf { PaintNative.ragWipe(handle, rag.handle, it, pressure, seed()) }

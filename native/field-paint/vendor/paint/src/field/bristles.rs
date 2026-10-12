@@ -21,6 +21,9 @@
 //!   rest angle itself moves toward the bend (`plastic`, per second) — a hair pressed hard and dragged
 //!   sideways stays splayed or hooked after the stroke — and recovers toward straight only slowly
 //!   (`recover`, per second). The rest angles are part of the brush's state.
+//! - **Splay**: a hair pressed into the surface is pushed outward from the brush's middle, by the
+//!   tool's `splay` times how far it is pressed in, against the same grip as any slip: where the
+//!   pressure and the splay overcome the friction the hairs fan out, the outer ones furthest.
 //! - **Clumping**: in a wet brush the tips of neighbouring hairs are drawn together by the liquid
 //!   between them (`cohesion` times how full the brush is).
 //! - The handle: its position, how far it is pressed down (pressure 1 lowers the ferrule by
@@ -165,6 +168,10 @@ pub struct Bristles {
     pub recover: f32,
     /// How strongly the liquid in a full brush draws neighbouring tips together, 0..1.
     pub cohesion: f32,
+    /// How far a hair pressed into the surface is pushed out from the brush's middle, per mm it
+    /// is pressed in (the tool's `splay`): against the surface's grip, so a brush fans out where
+    /// it is pressed harder than its hairs hold. 0 none.
+    pub splay: f32,
     /// Velocity kept per substep (1: none lost).
     pub damping: f32,
     /// The brush's handle as it was last (None: not yet held over the canvas).
@@ -232,6 +239,7 @@ impl Bristles {
             plastic: 0.3,
             recover: if fan { 0.01 } else { 0.02 },
             cohesion: if matches!(tool.kind, Kind::Round | Kind::Rigger) { 0.6 } else { 0.35 },
+            splay: tool.splay,
             damping: 0.985,
             pose: None,
             held: None,
@@ -311,6 +319,7 @@ impl Bristles {
         // below -1.3 (joints driven away from their rest bend) as wild. Everything between is free.
         let kb = ((0.04 + 0.5 * self.stiffness) * (1.0 - 0.35 * wet)).clamp(-0.6, 1.3);
         let (mu_s, mu_k) = self.friction;
+        let splay = self.splay;
         // move: the held nodes with the ferrule, the free ones by their own momentum
         for hr in &mut self.hairs {
             let seg = hr.len / segs as f32;
@@ -348,13 +357,23 @@ impl Bristles {
                         hr.p[k - 1] = add(hr.p[k - 1], mul(corr, 0.5));
                     }
                 }
-                // contact and friction
+                // contact and friction; a hair pressed in is pushed out from the brush's middle
+                // (splay), and the grip below resists that as it resists any slip
+                let out = {
+                    let o = f.to_world([hr.root[0], hr.root[1], 0.0]);
+                    let l = (o[0] * o[0] + o[1] * o[1]).sqrt();
+                    if l > 1e-6 { [o[0] / l, o[1] / l] } else { [0.0, 0.0] }
+                };
                 for k in 2..=segs {
                     let zs = surface(hr.p[k][0], hr.p[k][1]);
                     let pen = zs - hr.p[k][2];
                     if pen > 0.0 {
                         hr.p[k][2] = zs;
                         hr.depth[k] = hr.depth[k].max(pen);
+                        if splay != 0.0 {
+                            hr.p[k][0] += out[0] * splay * pen;
+                            hr.p[k][1] += out[1] * splay * pen;
+                        }
                         let slip = [hr.p[k][0] - hr.q[k][0], hr.p[k][1] - hr.q[k][1]];
                         let s = (slip[0] * slip[0] + slip[1] * slip[1]).sqrt();
                         if s < mu_s * pen {
@@ -714,6 +733,34 @@ mod tests {
     }
 
     #[test]
+    fn splay_fans_a_pressed_brush_out_and_none_leaves_it_as_it_was() {
+        let c = Canvas::new(200, 1.0, [1.0; 3]);
+        let surf = |_: f32, _: f32| 0.0f32;
+        let spread = |splay: f32| -> f32 {
+            let mut tool = Tool::hog_flat(40.0);
+            tool.splay = splay;
+            let mut b = Bristles::new(&tool, c.mm_per_unit(), 24, 5, 3);
+            let samples = line(200.0, 800.0, 500.0, 1.0, 1.2, 0.3, 0.0);
+            for k in 0..=1000 {
+                b.step(&pose_at(&samples, k as f32 * 0.001), 0.001, c.mm_per_unit(), &surf);
+            }
+            // the tips' spread across the stroke (y), mm
+            let ys: Vec<f32> = b.hairs.iter().map(|h| h.p[5][1]).collect();
+            ys.iter().cloned().fold(f32::MIN, f32::max) - ys.iter().cloned().fold(f32::MAX, f32::min)
+        };
+        let (none, some, lots) = (spread(0.0), spread(1.0), spread(4.0));
+        assert!(some > none * 1.05 && lots > some, "splay fans the tips out: {none} {some} {lots} mm");
+        // a brush saved before splay was kept reads back with none
+        let mut tool = Tool::hog_flat(40.0);
+        tool.splay = 2.0;
+        let b = Bristles::new(&tool, c.mm_per_unit(), 8, 4, 3);
+        let mut st = b.write_state();
+        assert_eq!(Bristles::read_state(&st).unwrap().splay, 2.0);
+        st.truncate(st.len() - 4);
+        assert_eq!(Bristles::read_state(&st).unwrap().splay, 0.0);
+    }
+
+    #[test]
     fn hairs_stay_finite_at_any_stiffness() {
         let c = Canvas::new(200, 1.0, [1.0; 3]);
         let surf = |_: f32, _: f32| 0.0f32;
@@ -790,6 +837,8 @@ impl Bristles {
         let belly = self.belly.as_ref().map(super::watercolor::write_wbrush).unwrap_or_default();
         u(&mut w, belly.len() as u64);
         w.extend_from_slice(&belly);
+        // (added later, last: a state without it is a brush with no splay, as it was made)
+        f(&mut w, self.splay);
         w
     }
 
@@ -839,9 +888,10 @@ impl Bristles {
         let held = if hl > 0 { Some(Held::read_state(take(hl)?)?) } else { None };
         let bl = u!() as usize;
         let belly = if bl > 0 { Some(super::watercolor::read_wbrush(take(bl)?)?) } else { None };
+        let splay = take(4).map(|x| f32::from_le_bytes(x.try_into().unwrap())).unwrap_or(0.0);
         if assign.iter().any(|a| a.0 >= nh) || pairs.iter().any(|p| p.0 >= nh || p.1 >= nh) {
             return Err("a brush state whose bristles name hairs it doesn't have".into());
         }
-        Ok(Bristles { kind, width_mm, length_mm, stiffness, segs, hairs, friction, yield_rad, plastic, recover, cohesion, damping, pose, held, belly, assign, pairs })
+        Ok(Bristles { kind, width_mm, length_mm, stiffness, segs, hairs, friction, yield_rad, plastic, recover, cohesion, splay, damping, pose, held, belly, assign, pairs })
     }
 }
