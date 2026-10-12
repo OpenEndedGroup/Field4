@@ -4765,6 +4765,17 @@ class Server {
                             }
                         }
 
+                        // Text search over the documentation Markdown (titles, headings, code
+                        // examples, prose) for Open Anything; see afield.docs.DocsSearch.
+                        get("/api/docs-search") {
+                            val query = call.request.queryParameters["q"].orEmpty()
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 40
+                            val response = withContext(workspaceSearchDispatcher) {
+                                afield.docs.DocsSearch.search(query, limit = limit)
+                            }
+                            call.respond(response)
+                        }
+
                         get("/api/workspace-search") {
                             val query = call.request.queryParameters["q"].orEmpty()
                             val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50
