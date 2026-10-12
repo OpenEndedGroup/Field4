@@ -772,6 +772,20 @@ println("inspector panes ready")
 
 These are especially good for nested maps, scene graphs, structured JSON-like data, or anything you want to poke around in rather than summarize.
 
+Both take any value, not only maps and lists. A data class or one of your own classes opens to its fields, an `IntArray` or `DoubleArray` opens to its elements, and a map whose keys are objects opens each entry to its key and its value. Every row shows its name, its type and a one-line summary (`5000 items`, `"label"`, `Point(x=1.0, y=2.5, label=p)`), so you can read most of a structure without opening anything:
+
+```diffstatic {data-lang=kotlin}
+:::static
+data class Particle(val position: Vec3, val age: Double)
+
+val particles = MutableList(5000) { Particle(Vec3(it * 0.1f, 0f, 0f), 0.0) }
+tree("particles", particles)
+```
+
+A long collection arrives 200 rows at a time; the last row says how many there are and loads the next 200. Open rows follow the value: if code that keeps running (a `frames { }` loop, say) adds to `particles`, the tree shows the new size within about a second, without re-running the box. An object that contains itself is marked with `↺` instead of being opened forever.
+
+Keys, once you have clicked into the embed: the arrow keys move and open (in `column`, `←` and `→` move between columns), `/` filters the rows, `c` copies the selected value as text, and `r` reloads. The embed grows with its content up to a height and then scrolls; pass `maxHeight = 800` to `tree` or `column` to change that height.
+
 And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family:
 
 ```diffstatic {data-lang=kotlin}
@@ -782,6 +796,8 @@ logs("warnings", latestOnly = true) {
 ```
 
 It gives you a live log iframe inside an output channel, which is often exactly what you want while instrumenting a system.
+
+The embed has a find box (`/`) that hides rows not containing its text, a **clear** button (or `k`), and, when you have scrolled up to read something, a `↓ N new` button instead of jumping away from what you were reading. If Field restarts, the embed reconnects by itself.
 
 ### Keeping output areas tidy
 

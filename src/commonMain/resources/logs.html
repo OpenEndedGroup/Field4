@@ -25,8 +25,14 @@
         *{ box-sizing:border-box; font-family:"Iosevka Web", system-ui, sans-serif; }
         body{ margin:0; background:rgba(0,0,0,1); color:var(--fg); font-weight:300; font-size:12px; line-height:1.25; }
         #chrome{ padding:6px; display:flex; flex-direction:column; gap:6px; background:transparent; }
-        #bar{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-        #filters{ display:flex; flex-wrap:wrap; gap:6px; flex:1 1 auto; }
+        #bar{ display:flex; align-items:center; gap:6px; }
+        #filters{ display:flex; flex-wrap:wrap; gap:6px; flex:0 1 auto; min-width:0; }
+        #bar #find{ flex:1 1 120px; }
+        /* A narrow panel puts the message under its time and channel instead of squeezing it out. */
+        @media (max-width: 520px){
+            .row{ grid-template-columns: max-content minmax(0, 1fr); }
+            .row .msg{ grid-column: 1 / -1; }
+        }
         #find{
             flex:0 1 180px; min-width:80px; background:rgba(255,255,255,0.06); color:var(--fg);
             border:1px solid transparent; border-radius:3px; padding:2px 6px; font-size:11px; outline:none;
@@ -42,7 +48,7 @@
         .pill{
             padding: 2px 6px;
             color: var(--muted);
-            border:1px solid var(--sep); border-radius:999px;
+            border:1px solid var(--sep); border-radius:999px; white-space:nowrap;
             font-size: 10px;
         }
         #log{
@@ -52,7 +58,7 @@
             /*padding:6px;*/
         }
         .row{
-            display:grid; grid-template-columns: 72px 84px 1fr; gap:6px;
+            display:grid; grid-template-columns: max-content minmax(0, max-content) minmax(0, 1fr); gap:2px 8px;
             padding:6px 6px; border-bottom:1px solid var(--sep);
             align-items:flex-start;
         }
