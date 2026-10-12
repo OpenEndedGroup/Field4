@@ -95,6 +95,22 @@ class VoiceTranscriberTest {
     }
 
     @Test
+    fun aClosedStdoutIsAStoppedWorkerEvenWhileTheProcessIsAlive() {
+        assumePython()
+        val result = VoiceTranscriber.transcribeWith(fakeWorker("""
+            print(json.dumps({"ready": True, "backend": "fake", "model": "m"}))
+            sys.stdin.readline()
+            sys.stderr.write("worker lost its output pipe\n")
+            os.close(sys.stdout.fileno())
+            import time
+            time.sleep(2)
+        """.trimIndent()))
+        val error = result.exceptionOrNull()?.message.orEmpty()
+        assertTrue("The voice worker stopped" in error, error)
+        assertTrue("worker lost its output pipe" in error, error)
+    }
+
+    @Test
     fun aReplyForAnotherRequestIsNotThisTranscript() {
         assumePython()
         val result = VoiceTranscriber.transcribeWith(fakeWorker("""
