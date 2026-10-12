@@ -277,7 +277,7 @@ class RtpMidiSession(
                         startSync(p)
                     }
                 }
-                "NO" -> pending.firstOrNull { it.token == s.token }?.let { pending -= it; lastError = "${it.address.hostAddress}:${it.controlPort} refused the invitation"; changed(it) }
+                "NO" -> pending.firstOrNull { it.token == s.token }?.let { lastError = "${it.address.hostAddress}:${it.controlPort} refused the invitation"; pending -= it; changed(it) }
             }
             is Session.Bye -> peersBySsrc[s.ssrc]?.let { drop(it) }
             is Session.Sync -> {
@@ -312,7 +312,7 @@ class RtpMidiSession(
         ticks++
         try {
             for (p in pending) {
-                if (p.attempts >= 12) { pending -= p; lastError = "no answer from ${p.address.hostAddress}:${p.controlPort}"; changed(p) }
+                if (p.attempts >= 12) { lastError = "no answer from ${p.address.hostAddress}:${p.controlPort}"; pending -= p; changed(p) }
                 else if (ticks % 2 == 0L) sendInvitation(p)
             }
             for (p in peersBySsrc.values) {
