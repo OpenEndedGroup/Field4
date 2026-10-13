@@ -958,8 +958,13 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
 
 /**
  * Union of two curves (using Java2D Area).
+ *
+ * With `exact = true` the four boolean ops go through [booleanExact] instead: the result keeps the
+ * operands' cubic pieces, cut exactly at the crossings, and falls back to this Area path only when
+ * the exact engine cannot verify its answer.
  */
-fun FLine.byUnionWith(other: FLine): FLine {
+fun FLine.byUnionWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Union).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)
@@ -971,7 +976,8 @@ fun FLine.byUnionWith(other: FLine): FLine {
 /**
  * Difference of two curves (line1 - line2).
  */
-fun FLine.byDifferenceWith(other: FLine): FLine {
+fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Subtract).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)
@@ -983,7 +989,8 @@ fun FLine.byDifferenceWith(other: FLine): FLine {
 /**
  * Intersection of two curves.
  */
-fun FLine.byIntersectionWith(other: FLine): FLine {
+fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Intersect).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)
@@ -995,7 +1002,8 @@ fun FLine.byIntersectionWith(other: FLine): FLine {
 /**
  * XOR (exclusive or) of two curves.
  */
-fun FLine.byExclusiveOrWith(other: FLine): FLine {
+fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Xor).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)

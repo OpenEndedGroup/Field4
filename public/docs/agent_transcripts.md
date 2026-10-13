@@ -566,6 +566,12 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 
 [Open ↗](offline.html?file=assets/agent_transcripts/fline_measure/metadata.edn)
 
+### fline_exact_booleans
+
+**Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fline_exact_booleans/metadata.edn)
+
 ### sound_render_path
 
 **One beat, three ways of sounding it.** The companion to the real-drums section of
