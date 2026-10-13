@@ -11,7 +11,7 @@ from unittest.mock import patch as mock_patch
 
 from tools.refactoring.containers import ContainerError, EdnSpans, edn, extract, markdown, patch, qualified_name_properties, yaml_units
 from tools.refactoring.core import (KotlinEngine, RefactorError, apply_plan, canonical, digest,
-    load_plan, load_recipe, make_plan, save_json, undo, verify)
+    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern)
 
 RECIPE = {'schema': 1, 'id': 'test-move', 'packages': {'old.pkg': 'new.pkg'},
           'symbols': {}, 'splitPackages': [], 'generated': []}
@@ -120,6 +120,19 @@ class ContainerTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
+    def test_affected_references_respect_namespace_and_path_boundaries(self):
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'],
+                      knownPackages=['old', 'old.stays'], retainedSymbols=['old.Keep'])
+        pattern = affected_pattern(recipe)
+        for text in ('old.pkg.Type/path', 'old/pkg', 'some.old.pkg.Type', 'oldExtra.pkg.Type',
+                     'old.Keep.Nested', 'old.stays.Type', 'new.pkg.Type'):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+        for text, expected in (('old.pkg.Type.', 'old.pkg.Type'), ('old.Unknown', 'old.Unknown'),
+                               ('old.pkg.Type/path then old.Other', 'old.Other')):
+            with self.subTest(text=text):
+                self.assertEqual(expected, pattern.search(text).group())
+
     def test_workspace_markdown_scope_is_recursive_and_does_not_expand_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
