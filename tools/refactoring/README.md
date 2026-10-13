@@ -159,6 +159,66 @@ and `fc` types, plus the linalg, arena and storage wildcards. A future intro pro
 post-migration names. The existing live-box `analyzeBoxImports`/`formatBoxImports` helper can do
 broader cleanup with classpath/K2 evidence; this standalone tool does not infer that evidence.
 
+## Generate a split-package symbol map
+
+The map needs a declaration inventory and reviewed destination choices. Generate the inventory
+from the unmodified session worktree before changing source:
+
+```sh
+uv run python tools/refactor.py declarations --repo /path/to/session/repository \
+  --out /path/to/session/declaration-index
+```
+
+This indexes Git-tracked `.kt` files in Kotlin source directories, including common/JVM/JS and
+standalone tools. It uses PSI rather than regex to identify top-level classes, objects, aliases,
+properties and functions. It records source hashes, signatures, visibility and individual overloads.
+Class members and local declarations are not separate package-level symbols; nested references
+follow the owning type's mapping. Parser errors are explicit inventory gaps. This is syntax
+inventory, not a resolved symbol/ABI index.
+
+Assign coherent files to destination packages, with exact symbol choices for mixed files:
+
+```json
+{
+  "schema": 1,
+  "files": {
+    "src/jvmMain/kotlin/afield/visualization/Colormaps.kt": "afield.graphics.color"
+  },
+  "symbols": {
+    "afield.four.modules.fromContext": "afield.document.context.fromContext"
+  },
+  "keep": []
+}
+```
+
+```sh
+uv run python tools/refactor.py symbol-map --repo /path/to/session/repository \
+  --index /path/to/session/declaration-index/declarations.json \
+  --assignments /path/to/assignments.json --recipe /path/to/session/recipe.json \
+  --out /path/to/session/symbol-map
+```
+
+The output `recipe.json` expands file choices into exact symbol families; `symbol-map.json` keeps
+per-declaration evidence and unassigned families, and `report.md` groups remaining choices by file.
+`assignments.template.json` lists the remaining files with null destinations: fill in coherent
+file destinations, leaving null entries unresolved, then generate into a new output directory.
+A file assignment covers all overloads/platform counterparts of each named family, even when some
+are declared elsewhere. Conflicting family choices are rejected rather than picking the last one.
+Private top-level declarations stay in the inventory but are not exported into reference rules.
+Explicit `keep` families become `retainedSymbols`; they cannot overlap move rules. Stale source
+hashes, added/removed tracked sources, unknown choices, parser errors in assigned files and direct
+destination collisions fail closed.
+
+The generated `knownPackages` records old and proposed package ownership. A split applies to its
+own declarations, not automatically to every descendant package. This avoids treating an unmoved
+child such as `afield.math.gp` as part of a split of the root `afield` package. Unknown qualified
+names remain findings.
+
+Review the generated recipe, copy it to the session's `recipe.json`, then replan. This step does
+not move declarations out of mixed files, add same-package imports, or resolve split star imports.
+Those remain held until extraction and binding-aware repair are done. Do not treat an empty
+unassigned list as proof of equivalent JVM names, overload resolution or script defaults.
+
 ## Containers and document boundaries
 
 - Kotlin source and scripts: PSI edits preserve import aliases, comments, LF/CRLF and Unicode offsets.

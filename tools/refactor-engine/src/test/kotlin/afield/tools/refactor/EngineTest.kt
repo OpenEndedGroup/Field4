@@ -1,10 +1,34 @@
 package afield.tools.refactor
 
 import kotlin.test.*
+import kotlinx.serialization.json.*
 
 class EngineTest {
     private val recipe = Recipe(mapOf("afield.old" to "afield.newplace"),
         mapOf("afield.mixed.Thing" to "afield.model.Thing"), setOf("afield.mixed"))
+
+    @Test fun declarationInventoryKeepsOverloadsButNotMembersOrLocals() = Engine().use { engine ->
+        val result = engine.declarations("package sample\r\nclass Thing { fun member() {} }\r\n" +
+            "fun String.convert(x: Int) { fun local() {} }\r\nfun convert(x: Double) = x\r\nprivate val hidden = 2")
+        val rows = result.getValue("declarations").jsonArray
+        assertEquals(listOf("sample.Thing", "sample.convert", "sample.convert", "sample.hidden"),
+            rows.map { it.jsonObject.getValue("fqn").jsonPrimitive.content })
+        assertEquals("private", rows.last().jsonObject.getValue("visibility").jsonPrimitive.content)
+        assertTrue(rows[1].jsonObject.getValue("signature").jsonPrimitive.content.contains("String.convert"))
+        assertTrue(engine.declarations("package sample\nfun broken(").getValue("declarations").jsonArray.isEmpty())
+    }
+
+    @Test fun splitPackageOwnershipExcludesKnownChildrenAndRetainedFamilies() = Engine().use { engine ->
+        val r = Recipe(emptyMap(), mapOf("afield.Color4" to "afield.graphics.color.Color4"), setOf("afield"),
+            knownPackages = setOf("afield", "afield.math.gp", "afield.graphics.color"), retainedSymbols = setOf("afield.Stays"))
+        val source = "package afield.math.gp\nimport afield.Color4\nimport afield.Stays\n" +
+            "// afield.math.gp.GaussianProcess\nval x: afield.math.gp.GaussianProcess? = null\n"
+        val after = engine.rewrite(source, false, r)
+        assertEquals(source.replace("import afield.Color4", "import afield.graphics.color.Color4"), after.code)
+        assertTrue(after.findings.isEmpty())
+        assertTrue(engine.rewrite("import afield.Unknown", true, r).findings.any { it.kind == "unmapped-import" })
+        assertTrue(engine.rewrite("import afield.*", true, r).findings.any { it.kind == "split-star" })
+    }
 
     @Test fun explicitCommentPassRewritesNamesWithoutTouchingStrings() = Engine().use { engine ->
         val source = "/** See [afield.old.Thing], afield.old. and afield.mixed.Thing.Nested. */\r\n" +
