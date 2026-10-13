@@ -305,6 +305,11 @@ def _phase(item: dict) -> tuple[str, str]:
         return "building local docs", (lines[-1][:400] if lines else "")
     if not lines:
         return "starting", ""
+    # The fixer prints nothing while it works (its reply goes to the log at the end), so the line
+    # announcing it is the newest one until it answers.
+    asked = [n for n, line in enumerate(lines) if line.startswith("land: ") and "asking the fixer" in line]
+    if asked and not any(line.startswith("land: fixer: ") for line in lines[asked[-1]:]):
+        return "red; " + lines[asked[-1]].split("red; ", 1)[-1], lines[asked[-1]][:400]
     steps = [line for line in lines if line.startswith("merge_regen:")]
     tasks = [line[len("> Task "):].split()[0] for line in lines if line.startswith("> Task :")]
     step = steps[-1][len("merge_regen: "):] if steps else "merging onto main"
@@ -682,6 +687,7 @@ class _Style:
             "gradle": "\ue660" if nerd else "", "note": "\uf249" if nerd else "#",
             "log": "\uf15c" if nerd else "", "main": "\uf126" if nerd else "",
             "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
+            "fix": "\uf0ad" if nerd else "%",
         }
 
     def c(self, code: str, text: str) -> str:
@@ -735,6 +741,11 @@ def _pretty_status(queue: Path, recent: int) -> None:
               + st.cyan("uv run python tools/land.py run"))
     print()
 
+    def fixed_line(item: dict) -> str:
+        f = item["fixup"]
+        head = f"{g['fix']} fixer {f['sha'][:9]} on {f['branch']}: "
+        return st.yellow(head) + clip(f.get("reason", ""), 6 + len(head))
+
     pending = _items(queue, PENDING)
     active = [i for i in pending if i.get("started")]
     waiting = [i for i in pending if not i.get("started")]
@@ -758,6 +769,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
             print(f"  {st.yellow(g['land'])} {who(member)}")
             if member.get("note"):
                 print(f"    {st.dim(g['note'] + ' ' + clip(member['note'], 6))}")
+            if member.get("fixup"):
+                print(f"    {fixed_line(member)}")
         if typical:
             frac = running / typical
             tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
@@ -780,6 +793,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
     for n, item in enumerate(waiting, 1):
         eta = f"  starts ~{_span(ahead)}" if typical else ""
         print(f"  {st.dim(str(n) + '.')} {st.cyan(g['wait'])} {who(item)}  {st.dim('waiting ' + _span(_since(item.get('enqueued'))) + eta)}")
+        if item.get("fixup"):
+            print(f"     {fixed_line(item)}")
         if item.get("blocked"):
             b = item["blocked"]
             print(f"     {st.yellow(g['bounce'] + ' blocked ' + _span(_since(b.get('since'))))} "
@@ -822,6 +837,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
             how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
             print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
+            if item.get("fixup"):
+                print(f"      {fixed_line(item)}")
         elif _superseded_by(queue, item):
             continue  # bounced, then landed: history, not news
         else:
