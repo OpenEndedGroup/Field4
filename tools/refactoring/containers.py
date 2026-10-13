@@ -417,7 +417,7 @@ def extract(path: str, text: str, properties: set[str], *, workspace=False, qual
         # Compiled source sets live under src/ (including standalone tools' src/main/kotlin).
         script = workspace or p.suffix == '.kts' or p.name.endswith('_.kt') or 'src' not in p.parts
         return Extraction([Unit('source', text, 0, len(text), script=script)])
-    if p.name == 'metadata.edn':
+    if p.suffix == '.edn':
         return edn(text, properties)
     if p.suffix in ('.yaml', '.yml'):
         return yaml_units(text, properties)
