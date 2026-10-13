@@ -4,6 +4,16 @@ import kotlin.test.*
 import kotlinx.serialization.json.*
 
 class EngineTest {
+    @Test fun classMemberStarsFollowSymbolsButDestinationPackageStarsStayPackages() = Engine().use { engine ->
+        val r = Recipe(emptyMap(), mapOf("afield.mixed.Module" to "afield.render.Module",
+            "afield.graphics.three" to "afield.graphics.three.three"), setOf("afield.mixed", "afield.graphics"))
+        val source = "import afield.mixed.Module.*\nimport afield.mixed.Module.Nested.*\nimport afield.graphics.three.*\n"
+        val result = engine.rewrite(source, false, r)
+        assertEquals(source.replace("afield.mixed.Module", "afield.render.Module"), result.code)
+        assertTrue(result.findings.isEmpty())
+        assertEquals(result.code, engine.rewrite(result.code, false, r).code)
+    }
+
     private val recipe = Recipe(mapOf("afield.old" to "afield.newplace"),
         mapOf("afield.mixed.Thing" to "afield.model.Thing"), setOf("afield.mixed"))
 
