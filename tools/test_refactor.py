@@ -282,6 +282,37 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_qualified_references_and_destination_intro_across_document_pair(self):
+        source = 'import old.pkg.*\nimport old.pkg.Thing\nval x: old.pkg.Thing = old.pkg.Thing()\n'
+        expected = '\n\nval x: new.pkg.Thing = new.pkg.Thing()\n'
+        recipe = dict(copy.deepcopy(RECIPE), scriptImports=['new.pkg.*', 'new.pkg.Thing'])
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            sidecar = root / 'box_code_.kt'
+            sidecar.write_text(source)
+            (root / 'metadata.edn').write_text(metadata(source, 'box_code_.kt'))
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            self.assertEqual(2, len(plan['roots'][0]['changes']))
+            self.assertFalse(any(c['held'] for c in plan['roots'][0]['changes']))
+            apply_plan(base / 'plan', offline=True)
+            self.assertEqual(expected, sidecar.read_text())
+            self.assertEqual(expected, edn((root / 'metadata.edn').read_text(), PROPS).units[0].code)
+            self.assertEqual(2, verify(base / 'plan')['changedFiles'])
+            undo(base / 'plan')
+            self.assertEqual(source, sidecar.read_text())
+
+    def test_intro_recipe_rejects_old_names_and_accepts_destination(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'recipe.json'
+            for imports in ('new.pkg.*', ['import new.pkg.*'], ['old.pkg.*']):
+                path.write_text(json.dumps(dict(RECIPE, scriptImports=imports)))
+                with self.subTest(imports=imports), self.assertRaises(RefactorError):
+                    load_recipe(path)
+            path.write_text(json.dumps(dict(RECIPE, scriptImports=['new.pkg.*', 'new.pkg.Thing'])))
+            self.assertEqual(['new.pkg.*', 'new.pkg.Thing'], load_recipe(path)['scriptImports'])
+
     def test_whole_package_source_move_round_trip(self):
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
             base = Path(tmp)

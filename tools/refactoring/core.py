@@ -89,7 +89,7 @@ def load_recipe(path: Path) -> dict:
         import yaml
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
-               'kotlinProperties', 'generated', 'description'}
+               'kotlinProperties', 'generated', 'description', 'scriptImports'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -112,6 +112,11 @@ def load_recipe(path: Path) -> dict:
         raise RefactorError('splitPackages must be qualified package names')
     if set(splits) & set(recipe['packages']):
         raise RefactorError('a package cannot be both moved whole and split')
+    script_imports = recipe.get('scriptImports', [])
+    if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
+        raise RefactorError('scriptImports must list destination import paths, optionally ending in .*')
+    if any(s == old or s.startswith(old + '.') for s in script_imports for old in all_rules):
+        raise RefactorError('scriptImports must describe the destination intro, not old packages')
     for entry in recipe.setdefault('generated', []):
         if not isinstance(entry, dict) or set(entry) != {'glob', 'regenerate'} or not all(isinstance(v, str) and v for v in entry.values()):
             raise RefactorError('generated entries need glob and regenerate strings')

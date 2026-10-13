@@ -85,12 +85,34 @@ inferred or resolved against a target classpath in this version.
 Explicit imports, aliases, nested-type imports and whole-package star imports can be rewritten.
 Source package declarations and matching directories move for whole-package rules. A mismatched
 source directory, occupied destination, split package or individually moved declaration needs
-review. Source moves do not stage Git changes. Qualified body/type references, reflection-like
-strings, split star imports, KDoc/comment references and names outside recognized code units produce findings.
+review. Source moves do not stage Git changes. Qualified types, constructor calls and other dotted
+code references are rewritten at the mapped package/symbol prefix. Type arguments, nested calls
+and unrelated text stay intact. Locally declared/imported names shadowing either package root,
+comments or type arguments inside the moved prefix, and unmapped split-package references remain
+findings. This is syntactic evidence; inherited or external value receivers still require compiler
+validation. Reflection-like strings, split star imports, KDoc/comment references and names outside
+recognized code units also produce findings.
 
 `refactors/examples/linalg-package.json` is deliberately a **rehearsal** recipe: its destination
 package does not yet exist. Use it on copies to exercise the tool, then undo. It is not an upgrade
 for a current Field installation.
+
+### Removing imports already supplied by the script intro
+
+An optional `scriptImports` list records the **destination** host imports, without the `import`
+keyword, for example `"scriptImports": ["afield.math.linalg.*", "afield.math.linalg.Vector3f"]`.
+Only use this profile for roots whose script units actually receive that intro. It applies to all
+recognized script units in those roots, including Markdown/YAML snippets and `.kts` files;
+compiled `.kt` source imports are retained. The list is pinned inside the hashed plan.
+
+The engine first maps each import to its destination, then removes exact unaliased duplicates of
+the supplied intro. Aliases and comments are preserved. An intro wildcard alone does **not** justify
+removing an explicit named import: it might disambiguate a name provided by another wildcard.
+Likewise, fully qualified references are relocated, not shortened on an assumption about scope.
+Field's current intro in `Boxes.kt` explicitly imports the six `Vector2f`/`Vector3f`/`Vector4f`
+and `fc` types, plus the linalg, arena and storage wildcards. A future intro profile must use their
+post-migration names. The existing live-box `analyzeBoxImports`/`formatBoxImports` helper can do
+broader cleanup with classpath/K2 evidence; this standalone tool does not infer that evidence.
 
 ## Containers and document boundaries
 
@@ -158,7 +180,7 @@ tampered plans/blobs, escaped paths, interrupted writes, source moves, copy mode
 
 The next layer is K2 per-reference binding evidence with old/new classpaths and actual inherited
 preambles/default imports. It will resolve the current manual findings for package splits,
-qualified references, operators and individual declaration moves. Other outstanding pieces are
+ambiguous qualified references, operators and individual declaration moves. Other outstanding pieces are
 automatic generator scheduling, typed Java/build/embedded-command adapters, version-chain selection,
 live workspace leases and an upgrade UI. The current report distinguishes these gaps from completed
 mechanical changes; it is not yet an unattended whole-repository cutover engine.
