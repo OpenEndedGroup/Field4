@@ -186,8 +186,20 @@ private class TerminalSession(val info: TerminalInfo, val process: PtyProcess) {
 
     fun detach(channel: Channel<ByteArray>) = synchronized(lock) { subscribers -= channel }
 
+    /** Bytes ever published; the scrollback holds the last of them. */
+    var totalBytes = 0L
+        private set
+
+    /** The output after byte [offset] of everything published (as much of it as the scrollback kept), and the new offset. */
+    fun outputSince(offset: Long): Pair<ByteArray, Long> = synchronized(lock) {
+        val kept = scrollback.toByteArray()
+        val start = (kept.size - (totalBytes - offset)).coerceIn(0, kept.size.toLong()).toInt()
+        kept.copyOfRange(start, kept.size) to totalBytes
+    }
+
     fun publish(bytes: ByteArray) = synchronized(lock) {
         lastOutputAtMs = System.currentTimeMillis()
+        totalBytes += bytes.size
         scrollback.write(bytes)
         if (scrollback.size() > SCROLLBACK_LIMIT) {
             val kept = scrollback.toByteArray().let { it.copyOfRange(it.size - SCROLLBACK_LIMIT / 2, it.size) }
@@ -393,3 +405,16 @@ internal fun killTerminal(id: String) { TerminalSessions.get(id)?.let(TerminalSe
 
 /** Terminal [id]'s state, or null once it has been forgotten. */
 internal fun terminalInfo(id: String): TerminalInfo? = TerminalSessions.get(id)?.snapshot()
+
+/** Bytes terminal [id] has printed so far, or 0 if it is gone: a mark for [terminalOutputSince]. */
+internal fun terminalOutputMark(id: String): Long = TerminalSessions.get(id)?.totalBytes ?: 0L
+
+/** What terminal [id] printed after [mark], and the next mark; null once it is forgotten. */
+internal fun terminalOutputSince(id: String, mark: Long): Pair<ByteArray, Long>? = TerminalSessions.get(id)?.outputSince(mark)
+
+/** True once terminal [id] has printed something and then been quiet for [quietMs], or has exited. */
+internal fun terminalSettled(id: String, quietMs: Long = 300): Boolean {
+    val session = TerminalSessions.get(id) ?: return true
+    if (session.exitCode != null) return true
+    return session.lastOutputAtMs != 0L && System.currentTimeMillis() - session.lastOutputAtMs >= quietMs
+}
