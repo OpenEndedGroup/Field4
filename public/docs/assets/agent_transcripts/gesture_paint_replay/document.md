@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gpr_dimensions" index="0" -->
 
 ```edn [field-box id="gpr_dimensions" role="properties"]
-{"id" "gpr_dimensions" "index" 0 "name" "what the pad drops" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what the pad drops" "_tombstone" false "frame" #afield/rect [340.0 30.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpr_dimensions_code_.kt" "lines" 36 "characters" 1703 "sha256" "e633efe28427dde4678e42aee1f12a3273e92bc0126ab3775d022798c9001028"}]}
+{"id" "gpr_dimensions" "index" 0 "name" "what the pad drops" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what the pad drops" "_tombstone" false "frame" #afield/rect [1160.0 30.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpr_dimensions_code_.kt" "lines" 36 "characters" 1703 "sha256" "e633efe28427dde4678e42aee1f12a3273e92bc0126ab3775d022798c9001028"}]}
 ```
 
 ```kotlin [field-property box="gpr_dimensions" name="code" path="gpr_dimensions_code_.kt"]
