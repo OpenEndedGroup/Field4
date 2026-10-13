@@ -109,6 +109,9 @@ object DemoTranscriptExecSmokeTest {
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
         "drawing_notation",
+        // interactive_guides.md's starting point: a four-step slideshow over two CPU boxes. Headless the
+        // notes and selections go to no browser, but every box (the guide included) runs to completion.
+        "slideshow_guide",
         // Five CPU boxes: draw a score on the drawing, read it with notation.space, turn it into notes
         // twice (as drawn, and snapped to a scale), render with patRenderStereo into audio players,
         // and measure onsets and pitches in the renders. No

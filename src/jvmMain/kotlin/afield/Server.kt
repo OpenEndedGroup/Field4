@@ -3170,10 +3170,11 @@ class Server {
                 val cmd = Json.decodeFromJsonElement<SlideShowCommand>(message.payload!!)
                 val info = thisSessionInfo.get()
 
-                // Find the box with an active slideshow
-                val slideShowBox = info.boxes.values.firstOrNull { it.getPropertyRaw("slideShow") != null }
-                if (slideShowBox != null) {
-                    val slideShow = slideShowBox.getPropertyRaw("slideShow") as? SlideShowInstance
+                // The slideshow whose step is on screen in this document; before any step has been
+                // shown, fall back to the first box holding one (a document may hold several guides).
+                val slideShow = SlideShowInstance.activeIn(info.root)
+                    ?: info.boxes.values.firstNotNullOfOrNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
+                run {
                     if (slideShow != null) {
                         GlobalScope.launch {
                             when {
