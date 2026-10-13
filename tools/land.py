@@ -7,8 +7,8 @@
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
     uv run python tools/land.py doc                               # build the local docs when its turn arrives
-    uv run python tools/land.py huh [--context]                   # ask claude -p what the queue is doing
-    uv run python tools/land.py bouncy [--hours 12] [--context]   # ask claude -p about stranded bounces
+    uv run python tools/land.py huh [--context]                   # ask the agent what the queue is doing
+    uv run python tools/land.py bouncy [--hours 12] [--context]   # ask the agent about stranded bounces
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
 Why: every agent used to land itself. Each merged `main`, ran ~45 minutes of guards, found `main` had
@@ -34,7 +34,8 @@ What the lander does with each round:
    the item: the reason and the log path go in `status`, and `main` is untouched. Fix the branch,
    commit, and enqueue again.
 
-The fixer: at a red round, `claude -p` runs in the lander's worktree on the exact tree that failed,
+The fixer: at a red round, the agent (`claude -p`, or `codex exec` with FIELD_AGENT=codex; see
+tools/field_agent.py) runs in the lander's worktree on the exact tree that failed,
 once per item, for up to FIELD_LAND_FIXER_MIN (15) minutes. It decides whether the failure is a
 small mechanical slip one branch made (a missed count, a citation to something that moved, a
 misplaced KDoc). If so it edits; the lander checks the edit (at most 6 files and 60 lines, no
@@ -69,6 +70,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import field_agent  # noqa: E402  (which agent to ask: claude or codex)
 
 PENDING, LANDED, BOUNCED = "pending", "landed", "bounced"
 DOC = "doc"
@@ -515,28 +519,22 @@ Be brief and specific. Plain text, no markdown headers.
 
 
 def _ask_huh(queue: Path) -> str:
-    claude = shutil.which("claude")
-    if not claude:
-        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + _huh_context(queue)
-    context = _huh_context(queue)
-    try:
-        result = subprocess.run([claude, "-p", "--output-format", "text"], input=HUH_PROMPT + context,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=240)
-        return result.stdout.strip() or "(claude returned nothing)"
-    except subprocess.TimeoutExpired:
-        return "claude -p took more than 4 minutes; giving up."
+    return _ask_agent(HUH_PROMPT, _huh_context(queue), timeout=240)
 
 
-def _ask_claude(prompt: str, context: str) -> str:
-    claude = shutil.which("claude")
-    if not claude:
-        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + context
+def _ask_agent(prompt: str, context: str, timeout: int = 300) -> str:
+    """Ask the configured agent (field_agent: claude -p or codex exec) about [context], read-only."""
+    agent = field_agent.configured_agent()
+    argv = field_agent.headless_argv(agent)
+    if argv is None:
+        return f"`{agent}` is not installed, so there is nothing to ask. The context it would have read:\n\n" + context
     try:
-        result = subprocess.run([claude, "-p", "--output-format", "text"], input=prompt + context,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=300)
-        return result.stdout.strip() or "(claude returned nothing)"
+        # stdout is the answer; codex narrates its progress on stderr, kept only for when there is no answer.
+        result = subprocess.run(argv, input=prompt + context, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, timeout=timeout)
+        return result.stdout.strip() or result.stderr.strip()[-2000:] or f"({agent} returned nothing)"
     except subprocess.TimeoutExpired:
-        return "claude -p took more than 5 minutes; giving up."
+        return f"{field_agent.describe(agent)} took more than {timeout // 60} minutes; giving up."
 
 
 # ---------------------------------------------------------------------------- bouncy?
@@ -621,7 +619,7 @@ def _ask_bouncy(queue: Path, hours: float) -> str:
     if not items:
         return f"Nothing bounced in the last {hours:g} h is left stranded: every bounce since then has landed or is queued again."
     head = f"{len(items)} stranded bounce(s) in the last {hours:g} h: " + ", ".join(i["branch"] for i in items) + "\n\n"
-    return head + _ask_claude(BOUNCY_PROMPT, _bouncy_context(queue, items))
+    return head + _ask_agent(BOUNCY_PROMPT, _bouncy_context(queue, items))
 
 
 def cmd_bouncy(args: argparse.Namespace) -> int:
@@ -877,12 +875,12 @@ def cmd_status(args: argparse.Namespace) -> int:
                     if key in (b"q", b"Q", b"\x1b", b"\x03"):
                         break
                     if key in (b"b", b"B"):
-                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("bouncy? looking for bounces nobody followed up (then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("bouncy? looking for bounces nobody followed up (then the agent; ~30-60 s)") + "\n")
                         sys.stdout.flush()
                         _pager(_ask_bouncy(queue, 12), stdin)
                         sys.stdout.write("\033[2J")
                     if key in (b"h", b"H"):
-                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking claude about the queue (gathering context, then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking the agent about the queue (gathering context, then the agent; ~30-60 s)") + "\n")
                         sys.stdout.flush()
                         _pager(_ask_huh(queue), stdin)
                         sys.stdout.write("\033[2J")
@@ -1339,7 +1337,7 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
 
 # Most bounces are a missed number, a citation pointing at a symbol that moved, a KDoc in the wrong
 # place: a minute's fix, followed by a re-enqueue and (in a batch) an hour of bisecting. At a red
-# round the lander gives `claude -p` one chance, in its own worktree on the exact tree that failed,
+# round the lander gives the agent (field_agent.py) one chance, in its own worktree on the exact tree that failed,
 # to make the fix and say whose branch it belongs to. A fix that passes the checks below is committed
 # onto that branch's tip as `fixup/<branch>` (the branch itself is never moved: it is usually checked
 # out in somebody's worktree) and the whole batch goes round again with the full guard. The guard,
@@ -1392,11 +1390,7 @@ def _fixer_command() -> list[str] | None:
     if custom:
         import shlex
         return shlex.split(custom)
-    claude = shutil.which("claude")
-    if not claude:
-        return None
-    return [claude, "-p", "--output-format", "text", "--permission-mode", "acceptEdits",
-            "--allowedTools", "Bash Read Edit Write Grep Glob"]
+    return field_agent.headless_argv(edits=True)
 
 
 def _fixer_context(members: list[dict], main_sha: str, wt: Path, log: Path, failures: str | None, queue: Path) -> str:
@@ -1547,7 +1541,7 @@ def _try_fixer(members: list[dict], main_sha: str, wt: Path, queue: Path, log: P
         _record_fixer(queue, out, outcome="rejected", branch=culprit["branch"],
                       reason=f"the fix does not apply to {culprit['branch']} on its own, so it is not that branch's alone ({reason})")
         return None
-    message = (f"Lander fixup: {reason}\n\nMade by the landing queue's fixer (claude -p) when {log.stem} went red;\n"
+    message = (f"Lander fixup: {reason}\n\nMade by the landing queue's fixer ({field_agent.describe()}) when {log.stem} went red;\n"
                f"the full guard ran again on it before landing.\n\n"
                f"Lander-Fixup: {culprit['id']} {culprit['sha'][:12]}\n")
     fixer_env = {**env, "GIT_AUTHOR_NAME": "Field lander fixer", "GIT_AUTHOR_EMAIL": "lander-fixer@field.invalid"}
@@ -1851,11 +1845,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
     p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
-    p = sub.add_parser("bouncy", help="ask claude -p about recent bounces nobody followed up (what --watch's b key does)")
+    p = sub.add_parser("bouncy", help="ask the agent about recent bounces nobody followed up (what --watch's b key does)")
     p.add_argument("--hours", type=float, default=12.0, help="how far back to look (default 12)")
     p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
     p.set_defaults(func=cmd_bouncy)
-    p = sub.add_parser("huh", help="ask claude -p what is going on with the queue (what --watch's h key does)")
+    p = sub.add_parser("huh", help="ask the agent what is going on with the queue (what --watch's h key does)")
     p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
     p.set_defaults(func=cmd_huh)
     p = sub.add_parser("sync", help="fetch origin/main and land it through the queue (--push: push main after)")
