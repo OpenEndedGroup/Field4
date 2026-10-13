@@ -43,6 +43,8 @@ The plan directory contains:
 - `report.md`: counts, evidence limits and finding categories, with numbered roots.
 - `changes.diff`: proposed changes, including candidates marked `HELD`.
 - `findings.json`: exact file/unit locations and reasons, including excluded/retained content.
+- `review.md` and `review-groups.json`: migration-relevant findings grouped by document/file,
+  including reference-only cases. Unrelated inventory parse findings remain in `findings.json`.
 - `plan.json`: immutable recipe, root identities, input hashes, changes and syntax evidence.
 - `blobs/`: original and proposed bytes, addressed by hash, used for apply and undo.
 
@@ -91,8 +93,8 @@ code references are rewritten at the mapped package/symbol prefix. Type argument
 and unrelated text stay intact. Locally declared/imported names shadowing either package root,
 comments or type arguments inside the moved prefix, and unmapped split-package references remain
 findings. This is syntactic evidence; inherited or external value receivers still require compiler
-validation. Reflection-like strings, split star imports, KDoc/comment references and names outside
-recognized code units also produce findings.
+validation. Reflection-like strings, split star imports, and names outside recognized units produce
+findings. KDoc/comments are findings unless the explicit text pass below is enabled.
 
 Generator package names belong in a configuration file, rather than repeated code-emission strings.
 `qualifiedNameProperties` registers `.properties` path patterns and the exact keys whose values are
@@ -112,6 +114,30 @@ uses this pattern; generators that must build independently of their output use 
 `refactors/examples/linalg-package.json` is deliberately a **rehearsal** recipe: its destination
 package does not yet exist. Use it on copies to exercise the tool, then undo. It is not an upgrade
 for a current Field installation.
+
+`refactors/examples/preview-domains.json` broadens the rehearsal to 18 whole-package families:
+linalg, synthesis, physics, polytope geometry, vision, six language packages, graph/datalog,
+OSCQuery/RTP-MIDI, Loris and audio AI. Mixed roots such as `afield`, `afield.stdlib` and `afield.four`
+need individual declaration decisions and are not moved wholesale. This recipe does not assume
+that every script receives Field's default imports.
+
+### Comments, Markdown and contextual review
+
+`"rewriteComments": true` enables exact qualified-name replacement in Kotlin comments and KDoc.
+`"markdownProse": ["public/docs/*.md"]` enables the same operation in selected Markdown prose;
+patterns match paths relative to each root (`*` can span directories). Kotlin fences still use
+the parser, and other fenced languages are excluded from prose rewriting. Both options default
+off. Matches use whole name components; slash paths and similar-but-unrelated package names are
+preserved. Strings in Kotlin remain findings even when the comment pass is enabled.
+
+Use narrow paths for current documentation. Historical discussions, mixed-language examples and
+embedded commands need context: an old name may be intentionally explaining the migration. The
+broad recipe selects current public docs and demo documents, leaving other Markdown for review.
+`review.md` and `review-groups.json` collect affected groups rather than treating every pre-existing
+parse error as a migration blocker. They are inputs for contextual review, including `codex exec`;
+the tool does not itself launch a reviewer. Keep private workspace reports outside the public repo.
+Review source as data, propose source/recipe changes, and replan before applying; never edit a
+hashed plan to approve a finding. Compilation and runtime checks remain separate requirements.
 
 ### Removing imports already supplied by the script intro
 
@@ -133,7 +159,11 @@ broader cleanup with classpath/K2 evidence; this standalone tool does not infer 
 ## Containers and document boundaries
 
 - Kotlin source and scripts: PSI edits preserve import aliases, comments, LF/CRLF and Unicode offsets.
-- Markdown: fenced Kotlin, including attributed, nested and tilde fences. Prose references are findings.
+- Markdown: fenced Kotlin, including attributed, nested and tilde fences. Selected prose can use
+  explicit qualified-name replacement; other prose references are findings. Field's `diffstatic`,
+  `diffstatic_runner`, `diff` and `diff_runner` Kotlin fences preserve section/fold markers while
+  parsing their code. Before and after sections are independent programs. Unknown markers stay
+  syntax findings; ordinary Kotlin fences do not accept Field's documentation wrapper syntax.
 - YAML: registered Kotlin properties, plus `edit`/`set` property `from`/`to`/`value` strings. Literal,
   folded and quoted scalars are decoded and checked after re-encoding. Aliases, duplicate keys and
   malformed YAML are held. Arbitrary run-command strings require an additional typed adapter.

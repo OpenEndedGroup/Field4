@@ -25,6 +25,7 @@ data class Recipe(
     val splitPackages: Set<String>,
     // Exact imports supplied by the destination script host, without the `import` keyword.
     val scriptImports: Set<String> = emptySet(),
+    val rewriteComments: Boolean = false,
 ) {
     private fun prefix(path: String, old: String) = path == old || path.startsWith("$old.")
     fun affected(path: String): Boolean =
@@ -42,6 +43,9 @@ data class Recipe(
         val old = packages.keys.filter { prefix(path, it) }.maxByOrNull(String::length) ?: return null
         return packages.getValue(old) + path.removePrefix(old)
     }
+
+    fun rewriteText(text: String): String = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+")
+        .replace(text) { match -> if (text.getOrNull(match.range.last + 1) == '/') match.value else moved(match.value) ?: match.value }
 }
 
 data class Edit(val start: Int, val end: Int, val replacement: String)
@@ -169,10 +173,13 @@ class Engine : AutoCloseable {
             rewriteNames(names, "qualified-type")
         }
         // Embedded programs, reflection names, and annotations containing strings need a container
-        // adapter or explicit consumer rule. Comments are intentionally not rewritten.
+        // adapter or explicit consumer rule. Comment rewriting is an explicit recipe option.
         val oldNames = recipe.packages.keys + recipe.symbols.keys + recipe.splitPackages
         for (comment in PsiTreeUtil.findChildrenOfType(file, PsiComment::class.java)) {
-            if (oldNames.any { old -> Regex("(?<![\\w.])${Regex.escape(old)}(?![\\w/])").containsMatchIn(comment.text) })
+            val afterComment = if (recipe.rewriteComments) recipe.rewriteText(comment.text) else comment.text
+            if (afterComment != comment.text)
+                edits += Edit(offsets[comment.textRange.startOffset], offsets[comment.textRange.endOffset], afterComment)
+            if (oldNames.any { old -> Regex("(?<![\\w.])${Regex.escape(old)}(?![\\w/])").containsMatchIn(afterComment) })
                 findings += Finding("comment-reference", line(comment.textOffset), "KDoc, example or historical reference; review without changing prose blindly")
         }
         for (literal in PsiTreeUtil.findChildrenOfType(file, KtStringTemplateExpression::class.java)) {
@@ -182,6 +189,8 @@ class Engine : AutoCloseable {
         var after = code
         // A longer symbol rule supersedes a package-prefix edit discovered on a child expression.
         val effectiveEdits = edits.distinct().groupBy { it.start }.values.map { group -> group.maxBy { it.end } }
+        if (effectiveEdits.sortedBy { it.start }.zipWithNext().any { (a, b) -> a.end > b.start })
+            return Result(code, findings + Finding("overlapping-edits", 1, "Overlapping code/comment edits require review"), imports, pkg)
         for (edit in effectiveEdits.sortedByDescending { it.start }) after = after.replaceRange(edit.start, edit.end, edit.replacement)
         val check = factory.createFile(if (script) "after.kts" else "after.kt", after.replace("\r\n", "\n").replace('\r', '\n'))
         if (PsiTreeUtil.findChildrenOfType(check, PsiErrorElement::class.java).isNotEmpty())
@@ -203,7 +212,8 @@ fun main() {
                 val config = request.getValue("recipe").jsonObject
                 val recipe = Recipe(config.mapping("packages"), config.mapping("symbols"),
                     config["splitPackages"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
-                    config["scriptImports"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty())
+                    config["scriptImports"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
+                    config["rewriteComments"]?.jsonPrimitive?.boolean ?: false)
                 val result = engine.rewrite(request.getValue("code").jsonPrimitive.content,
                     request["script"]?.jsonPrimitive?.boolean ?: true, recipe)
                 buildJsonObject {

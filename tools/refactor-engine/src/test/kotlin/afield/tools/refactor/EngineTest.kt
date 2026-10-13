@@ -6,6 +6,23 @@ class EngineTest {
     private val recipe = Recipe(mapOf("afield.old" to "afield.newplace"),
         mapOf("afield.mixed.Thing" to "afield.model.Thing"), setOf("afield.mixed"))
 
+    @Test fun explicitCommentPassRewritesNamesWithoutTouchingStrings() = Engine().use { engine ->
+        val source = "/** See [afield.old.Thing], afield.old. and afield.mixed.Thing.Nested. */\r\n" +
+            "// afield.older.Thing and host.afield.old.Thing stay.\r\nval name = \"afield.old.Thing\"\r\n"
+        val result = engine.rewrite(source, true, recipe.copy(rewriteComments = true))
+        assertEquals("/** See [afield.newplace.Thing], afield.newplace. and afield.model.Thing.Nested. */\r\n" +
+            "// afield.older.Thing and host.afield.old.Thing stay.\r\nval name = \"afield.old.Thing\"\r\n", result.code)
+        assertEquals(listOf("string-reference"), result.findings.map { it.kind })
+        assertEquals(result.code, engine.rewrite(result.code, true, recipe.copy(rewriteComments = true)).code)
+    }
+
+    @Test fun unmappedAndPathLikeCommentsStayReviewFindings() = Engine().use { engine ->
+        val source = "// afield.mixed.Other and afield.old.Thing/file\nval x = 1"
+        val result = engine.rewrite(source, true, recipe.copy(rewriteComments = true))
+        assertEquals(source, result.code)
+        assertTrue(result.findings.any { it.kind == "comment-reference" })
+    }
+
     @Test fun importsPreserveAliasesCommentsAndCrlf() = Engine().use { engine ->
         val source = "// import afield.old.Fake\r\nimport afield.old.Thing as T // keep\r\nimport afield.old.*\r\nval x = T()\r\n"
         val result = engine.rewrite(source, true, recipe)
