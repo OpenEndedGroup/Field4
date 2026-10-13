@@ -171,6 +171,12 @@ private class TerminalSession(val info: TerminalInfo, val process: PtyProcess) {
     private val scrollback = ByteArrayOutputStream()
     private val subscribers = mutableSetOf<Channel<ByteArray>>()
     @Volatile var exitCode: Int? = null
+    /** When output last arrived, 0 before any; [writeToTerminal] waits for a shell to settle on it. */
+    @Volatile var lastOutputAtMs = 0L
+    /** Code's writes, in order, off the caller's thread. */
+    val writer: java.util.concurrent.ExecutorService by lazy {
+        java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "terminal-write-${info.id}").apply { isDaemon = true } }
+    }
 
     /** Subscribes, returning the scrollback so far; the channel then gets everything after it. */
     fun attach(channel: Channel<ByteArray>): ByteArray = synchronized(lock) {
@@ -181,6 +187,7 @@ private class TerminalSession(val info: TerminalInfo, val process: PtyProcess) {
     fun detach(channel: Channel<ByteArray>) = synchronized(lock) { subscribers -= channel }
 
     fun publish(bytes: ByteArray) = synchronized(lock) {
+        lastOutputAtMs = System.currentTimeMillis()
         scrollback.write(bytes)
         if (scrollback.size() > SCROLLBACK_LIMIT) {
             val kept = scrollback.toByteArray().let { it.copyOfRange(it.size - SCROLLBACK_LIMIT / 2, it.size) }
@@ -350,3 +357,39 @@ internal fun Route.installTerminalRoutes(policy: DocsAccessPolicy) {
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Terminals that box code starts (`Box.terminal(...)` in afield/terminalOutput.kt). Box code
+// already runs anything it likes on this machine, so here, unlike the HTTP launch route above, the
+// caller names the argv and the directory. The browser half is the same /terminal.html and /pty/<id>.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Starts [argv] in [directory] on a pty, under the same running-terminal cap as the pages' terminals. */
+internal fun startCodeTerminal(argv: List<String>, directory: Path, title: String, cols: Int, rows: Int): Result<TerminalInfo> {
+    require(argv.isNotEmpty()) { "a terminal needs a command" }
+    return TerminalSessions.start(TerminalLaunch("box", cols = cols, rows = rows), TerminalPlan(argv, directory, title))
+}
+
+/**
+ * Types [bytes] into terminal [id], as if from the keyboard; false if it is gone or has exited.
+ * The write is queued until the program has printed something and been quiet for a moment: a
+ * shell discards what is typed before its line editor starts, which is exactly when a box that
+ * has just started one writes to it.
+ */
+internal fun writeToTerminal(id: String, bytes: ByteArray): Boolean {
+    val session = TerminalSessions.get(id) ?: return false
+    if (session.exitCode != null) return false
+    session.writer.execute {
+        val deadline = System.currentTimeMillis() + 5000
+        while (session.exitCode == null && System.currentTimeMillis() < deadline &&
+            (session.lastOutputAtMs == 0L || System.currentTimeMillis() - session.lastOutputAtMs < 300)) Thread.sleep(50)
+        if (session.exitCode == null) runCatching { session.process.outputStream.apply { write(bytes); flush() } }
+    }
+    return true
+}
+
+/** Ends terminal [id] and its children; a no-op for one that has already exited. */
+internal fun killTerminal(id: String) { TerminalSessions.get(id)?.let(TerminalSessions::kill) }
+
+/** Terminal [id]'s state, or null once it has been forgotten. */
+internal fun terminalInfo(id: String): TerminalInfo? = TerminalSessions.get(id)?.snapshot()
