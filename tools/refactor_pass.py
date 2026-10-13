@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from contextlib import contextmanager
-import difflib
 import fnmatch
 import json
 import os
@@ -22,6 +21,7 @@ sys.path.insert(0, str(REPO))
 from tools.refactoring.core import (EXCLUDED, PROPERTIES, KotlinEngine, RefactorError, apply_plan,
     atomic, canonical, confined, digest, group_for, identity, load_plan, load_recipe, lock, make_plan, save_json, undo, verify)
 from tools.refactoring.containers import ContainerError, extract
+from tools.refactoring.diffs import unified_text, compact_changes
 from tools.field_agent import configured_agent, find_executable
 
 BATCHES = {
@@ -258,8 +258,8 @@ def detail(repo, item_id):
         before = (plan_dir / 'blobs' / change['before']).read_text()
         after = (plan_dir / 'blobs' / change['after']).read_text()
         diffs.append({'path': change['path'], 'destination': change.get('destination', change['path']),
-                      'diff': ''.join(difflib.unified_diff(before.splitlines(True), after.splitlines(True),
-                                                       fromfile=change['path'], tofile=change.get('destination', change['path']))), 'held': change['held']})
+                      'diff': unified_text(before, after, change['path'], change.get('destination', change['path'])),
+                      'compactChanges': compact_changes(before, after), 'held': change['held']})
     return item | {'snippets': snippets, 'changes': diffs, 'stale': stale, 'state': item_state(state, item, stale),
                    'decision': state['decisions'].get(item_id), 'workingRoot': working['path']}
 
@@ -277,8 +277,8 @@ def changes(repo, change_id=None):
             if change_id == key:
                 before = (directory / 'blobs' / change['before']).read_text()
                 after = (directory / 'blobs' / change['after']).read_text()
-                row['diff'] = ''.join(difflib.unified_diff(before.splitlines(True), after.splitlines(True),
-                                                        fromfile=change['path'], tofile=change['destination']))
+                row['diff'] = unified_text(before, after, change['path'], change['destination'])
+                row['compactChanges'] = compact_changes(before, after)
                 return row
             rows.append(row)
     if change_id:

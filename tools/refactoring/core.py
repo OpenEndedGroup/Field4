@@ -1,10 +1,11 @@
 """Inventory, immutable plans and recoverable applications of explicit import migrations."""
 from __future__ import annotations
 
+from .diffs import unified_text
+
 from collections import Counter
 from contextlib import contextmanager, ExitStack
 from datetime import datetime, timezone
-import difflib
 import hashlib
 import json
 import os
@@ -511,10 +512,10 @@ def write_report(plan: dict, directory: Path):
                               'findings': values} for group, values in sorted(grouped.items())]
         blockers = [f for values in grouped.values() for f in values]
         for change in changes:
-            a = blob(directory, change['before']).decode().splitlines(keepends=True)
-            b = blob(directory, change['after']).decode().splitlines(keepends=True)
+            a = blob(directory, change['before']).decode()
+            b = blob(directory, change['after']).decode()
             prefix = 'HELD' if change['held'] else 'READY'
-            diff.extend(difflib.unified_diff(a, b, f'{prefix}/{root["id"]}/{change["path"]}', f'{prefix}/{root["id"]}/{change["destination"]}'))
+            diff.append(unified_text(a, b, f'{prefix}/{root["id"]}/{change["path"]}', f'{prefix}/{root["id"]}/{change["destination"]}'))
         lines.extend(['', f'## Root {root["id"]}: findings', ''])
         for kind, count in Counter(f['kind'] for f in pending).most_common():
             lines.append(f'- {kind}: {count}')
