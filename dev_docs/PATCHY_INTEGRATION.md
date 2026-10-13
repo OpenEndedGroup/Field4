@@ -1,6 +1,6 @@
 # Patchy integration
 
-Field offers two ways to control [Patchy](https://github.com/SethRobinson/Patchy) from Kotlin.
+Field controls [Patchy](https://github.com/SethRobinson/Patchy) through its embedded WebAssembly editor.
 The user-facing instructions and examples are in [Patchy from Kotlin](../public/docs/patchy.md).
 
 ## Embedded editor
@@ -21,7 +21,6 @@ concurrent manual edit is reported as a conflict.
 
 The output binding is scoped to the live box output and removed when the box stops. The iframe
 polls it for Kotlin commands. It restores a saved painting before releasing those commands.
-The embedded session is distinct from a native Patchy process and its `patchy-mcp` connector.
 
 ## PSD persistence
 
@@ -74,12 +73,3 @@ uv run --project . --group docs python tools/build_zensical_docs.py --page patch
 ```
 
 Inspect the generated `public/docs/assets/patchy/embedded-painting.png` before committing it.
-
-## Desktop connector
-
-`Patchy.connect()` in the Kotlin backend starts `patchy-mcp` and attaches to a native Patchy
-window; `attach = false` makes an independent offscreen session. It offers state, scripting,
-preview snapshots, stroke batches, history, and file export. A preview displayed with
-`displayPatchy(p.preview(doc))` is a snapshot and must be requested again after edits. The
-desktop connector has no shared state with the embedded editor. Native Patchy is installed
-separately and is not provided by the WebAssembly first-run extra.

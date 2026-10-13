@@ -1,7 +1,8 @@
-# Patchy from Kotlin
+# Patchy in a Field document
 
-[Patchy](https://github.com/SethRobinson/Patchy) can also run as a live editor inside a Field
-output. Choose **Patchy layered painting editor** in `./field.sh --setup` (Windows:
+[Patchy](https://github.com/SethRobinson/Patchy) runs as a live, layered painting editor inside a
+Field output. Kotlin and AI4 can edit the same canvas you paint in by hand. Choose
+**Patchy layered painting editor** in `./field.sh --setup` (Windows:
 `field.bat --setup`) and approve its optional **BUILD** step. Or build it later:
 
 ```diffstatic {data-lang=bash}
@@ -22,70 +23,106 @@ the embedded editor; a standalone Patchy window keeps its own theme.
 To use a separately built site while developing, set `AFIELD_PATCHY_WEB_ROOT` to its directory
 before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`, and `patchy.data`.
 
-In a Kotlin box, keep the layered painting in the Field document's `files/` directory:
+This box opens a painting kept in the Field document, gives AI4 tools to inspect, create, paint,
+and undo, then makes the first mark. Open the box's AI Chat panel and ask it to use the tools.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/patchy/embedded-painting.png" capture="box" open-outputs=true wait-output=true wait-output-kind="inline" wait-output-contains="Patchy painting ready" wait="2" timeout="240" w="1040" h="800" padding="12" embed=true capture-profile="patchy-web" name="patchy-embedded-painting" alt="Patchy's dark embedded editor in a Field output, showing a new layered painting with a dark rectangular mark made by the Kotlin box"}
 val p = patchyWeb(width = 900, height = 650, documentFile = "patchy.psd".file, autosave = true)
+
+aiTool("patchy_state") {
+    describe("Inspect the open painting and its document and layer IDs.")
+    effects(ToolEffect.READ_DOCUMENT)
+    action { p.state().toString() }
+}
+
+aiTool("patchy_new") {
+    describe("Create a new layered painting. Return its document and first layer IDs.")
+    effects(ToolEffect.CONTROL_RUNTIME, ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE)
+    val width by param<Int>("canvas width in pixels", default = 640)
+    val height by param<Int>("canvas height in pixels", default = 480)
+    action {
+        val doc = p.newDocument(width(), height())
+        val layer = p.addLayer(doc, "AI marks")
+        mapOf("documentId" to doc, "layerId" to layer)
+    }
+}
+
+val rectangle = aiTool("patchy_rectangle") {
+    describe("Paint a solid rectangle on an existing layer.")
+    effects(ToolEffect.CONTROL_RUNTIME, ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE)
+    val documentId by param<String>("document ID from patchy_state or patchy_new")
+    val layerId by param<String>("layer ID from patchy_state or patchy_new")
+    val x by param<Int>("left edge in pixels")
+    val y by param<Int>("top edge in pixels")
+    val width by param<Int>("rectangle width in pixels")
+    val height by param<Int>("rectangle height in pixels")
+    val color by param<String>("colour such as #202020")
+    action {
+        p.fillRect(documentId(), layerId(), x(), y(), width(), height(), color())
+        "painted on ${layerId()}"
+    }
+}
+
+aiTool("patchy_undo") {
+    describe("Undo one edit in an open painting.")
+    effects(ToolEffect.CONTROL_RUNTIME, ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE)
+    val documentId by param<String>("document ID from patchy_state")
+    action { p.undo(documentId()) }
+}
+
 go {
-    // A saved PSD is restored first. On a new document, make the first painting:
     if (p.state()["documents"].toString() == "[]") {
         val doc = p.newDocument(640, 480)
         val layer = p.addLayer(doc, "Kotlin ink")
-        p.fillRect(doc, layer, 30, 30, 150, 80, "#202020")
+        rectangle.call(
+            "documentId" to doc, "layerId" to layer,
+            "x" to 30, "y" to 30, "width" to 150, "height" to 80,
+            "color" to "#202020"
+        )
     }
-    println("Patchy painting ready: ${p.state()}")
+    val title = p.script("patchy.setResult(app.activeDocument ? app.activeDocument.name : null);")
+    println("Patchy painting ready: $title")
 }
 ```
 
-The output is Patchy's editable canvas. Kotlin scripts change that same canvas, and manual edits
-are reflected in `p.state()`. `p.script(...)` obtains Patchy's current edit token immediately
-before each edit; a manual change during the request is rejected. Call `p.undo(documentId)` or
-`p.redo(documentId)` in `go { ... }` to change its history. The panel is an active browser
-session. With `documentFile` and `autosave = true`, Field restores the PSD before releasing
-queued Kotlin edits and writes changed paintings after a short idle period. The file stays
-separate from `metadata.edn`; `"patchy.psd".file` resolves to `<document>/files/patchy.psd`.
-The status line shows transfer errors or a conflict if the PSD changed on disk. Patchy's
-ordinary Save/Save As remains a browser download; a `patchyWeb()` without `documentFile`
-still has no document persistence.
+The tools run in the same live Patchy instance as the person painting. Re-running this box
+replaces its AI4 tools; the saved PSD is restored before a queued tool call starts. `p.state()`
+reports the current documents, layers, and IDs, including edits made by hand. The four tools
+above are box code: change their descriptions or add another operation as your painting evolves.
 
-## Desktop connector
+## Kotlin API
 
-[Patchy](https://github.com/SethRobinson/Patchy) is a desktop image editor with layers, painting,
-vector shapes, masks, and PSD files. Its native `patchy-mcp` connector lets Field's Kotlin backend
-edit the same open Patchy document, inspect its layers, and fetch a rendered preview. Install
-Patchy first, then give Field the path to the connector if `patchy-mcp` is not on `PATH`. On macOS
-the packaged executable is inside `Patchy.app/Contents/MacOS/patchy-mcp`.
+Every operation below is on the `PatchyWebSession` returned by `patchyWeb(...)`. Its methods
+are suspend functions, so call them inside `go { ... }` or an `aiTool { action { ... } }`.
 
-In a Kotlin box, with the interactive Patchy app already running:
+| Call | Result |
+| --- | --- |
+| `state()` | Live documents, layers, IDs, active document, and edit token as JSON. |
+| `newDocument(width, height)` | Create a painting and return its document ID. |
+| `addLayer(documentId, name)` | Add a paint layer and return its layer ID. |
+| `fillRect(documentId, layerId, x, y, width, height, color)` | Paint a solid rectangle. |
+| `undo(documentId)`, `redo(documentId)` | Change one history step; return whether anything changed. |
+| `script(code)` | Run Patchy's JavaScript API and return the value passed to `patchy.setResult(value)`. |
 
-```diffstatic {data-lang=kotlin}
-val p = Patchy.connect(executable = "/Applications/Patchy.app/Contents/MacOS/patchy-mcp")
-val before = p.state() // open documents, layers, IDs, and the current edit state
-val doc = p.newDocument(640, 480)
-val layer = p.addLayer(doc, "Kotlin marks")
-p.fillRect(doc, layer, 40, 40, 180, 100, "#e5e5e5")
-displayPatchy(p.preview(doc))
-p.saveAs(doc, "/absolute/path/to/painting.psd")
-```
+`script(...)` is the route to Patchy operations beyond these Kotlin helpers: brush strokes,
+selections, vector shapes, text, masks, filters, and other layer edits. The box above uses it to
+read the active document's name. The visible iframe is the live view; this Kotlin session has no
+separate preview snapshot method.
 
-`Patchy.connect()` reuses its session across box runs. `p.state()` gives the current document and
-layer IDs, so Kotlin can work on a painting opened by hand in Patchy. The desktop connection
-requires a state read or preview before its first edit. If the user changes the painting between
-the read and Kotlin's edit, Patchy rejects that edit; read `state()` or `preview()` and decide what
-to do next. Field never silently retries a rejected edit.
+Patchy's [scripting guide](https://github.com/SethRobinson/Patchy/blob/main/scripts/bundled/scripting-guide.md)
+describes the JavaScript objects and methods. Each `script` call reads the current edit token
+before it runs; if a manual edit intervenes, Patchy rejects the call rather than overwriting it.
+`p.connected` reports whether the iframe is ready, and `p.close()` ends this Kotlin session;
+stopping the box closes it automatically.
 
-For the full Patchy JavaScript API, call `p.script("...")`. Its globals are fresh for each call,
-while the documents stay open. `patchy.setResult(value)` returns a JSON value to Kotlin. Native
-brush batches are available through `p.drawStrokes(documentId, layerId, strokes)`; consult
-Patchy's installed scripting guide for stroke options. `p.undo(doc)` and `p.redo(doc)` operate on
-Patchy's document history. `p.exportAs(doc, path)` writes a copy without changing the document's
-save path.
+## Saving in the Field document
 
-For an independent offscreen workspace, use `Patchy.connect(attach = false)`. This is useful for
-batch scripts and tests. Close that session when finished; closing an attached session never
-closes the user's Patchy window. `displayPatchy(p.preview(doc))` shows a snapshot in Field's box
-output; call it again to refresh after edits.
+`"patchy.psd".file` resolves to `<document>/files/patchy.psd`. With `documentFile` and
+`autosave = true`, Field restores that PSD before Kotlin edits and writes changes after a short
+idle period. The painting stays outside `metadata.edn`. A changed PSD on disk is reported as a
+conflict in the output status line rather than silently overwritten. Patchy's own Save/Save As
+still downloads through the browser.
 
-The hosted [browser edition](https://rtsoft.com/patchy/) remains independent of the desktop
-connector. The Field bridge controls the iframe's own Patchy session. The WebAssembly files are
-prepared only when the optional Patchy build is selected.
+`patchyWeb()` also accepts `channel` (the output panel name), `width` and `height` in pixels.
+Without `documentFile`, the painting is only in the live browser session. Setting
+`autosave = false` with a `documentFile` loads the PSD but does not write later edits to it.
