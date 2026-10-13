@@ -3,15 +3,16 @@ package afield.stdlib.linalg.codegen
 class KotlinEmitter(
     private val model: AlgebraModel,
     private val transformModel: TransformAlgebraModel = FieldTransformAlgebraModel.build(),
+    private val packages: GenerationPackages = GenerationPackages.default(),
 ) {
     fun emitHeapVectors(): String = buildString {
-        appendHeader("afield.stdlib.linalg")
+        appendHeader(packages.linalg)
         // Half vectors store raw binary16 bits and convert on every read/write; reuse Field's
         // existing, tested IEEE-754 binary16 codec rather than re-deriving it here.
         val usesHalf = model.heapVectors.any { it.scalar == ScalarKind.HALF }
         if (usesHalf) {
-            appendLine("import afield.four.util.floatToHalfBits")
-            appendLine("import afield.four.util.halfBitsToFloat")
+            appendLine("import ${packages.halfCodec}.floatToHalfBits")
+            appendLine("import ${packages.halfCodec}.halfBitsToFloat")
         }
         appendLine("import java.nio.ByteBuffer")
         appendLine("import java.nio.DoubleBuffer")
@@ -48,10 +49,9 @@ class KotlinEmitter(
      * `(y, z)`.
      */
     fun emitSwizzles(): String = buildString {
-        // Emitted into afield.stdlib (not afield.stdlib.linalg) because that is the package the
-        // hand-written swizzles lived in; box preambles and standalone scripts import it directly.
-        appendHeader("afield.stdlib", "@file:afield.CompletionCategory(\"Math\")")
-        appendLine("import afield.stdlib.linalg.*")
+        // Extensions have their own configured package, shared with the ergonomic operators.
+        appendHeader(packages.extensions, "@file:${packages.completionAnnotation}(\"Math\")")
+        appendLine("import ${packages.linalg}.*")
         swizzleTypes.forEach { type ->
             appendLine()
             appendLine("// ${type.heapName} swizzles")
@@ -97,9 +97,8 @@ class KotlinEmitter(
      * they stay in lockstep with the vector set instead of being hand-maintained per dimension.
      */
     fun emitVectorOperators(): String = buildString {
-        // Same package as the swizzles and the former hand-written operators: afield.stdlib.
-        appendHeader("afield.stdlib", "@file:afield.CompletionCategory(\"Math\")")
-        appendLine("import afield.stdlib.linalg.*")
+        appendHeader(packages.extensions, "@file:${packages.completionAnnotation}(\"Math\")")
+        appendLine("import ${packages.linalg}.*")
         swizzleTypes.forEach { type ->
             val heap = type.heapName
             val components = type.components
@@ -136,8 +135,8 @@ class KotlinEmitter(
     }
 
     fun emitArenaVectors(): String = buildString {
-        appendHeader("afield.stdlib.linalg.arena")
-        appendLine("import afield.stdlib.linalg.*")
+        appendHeader(packages.arena)
+        appendLine("import ${packages.linalg}.*")
         appendLine("import kotlin.math.*")
         appendLine()
         model.vectors.forEach { type ->
@@ -160,7 +159,7 @@ class KotlinEmitter(
 
     /** Emits core quaternion/matrix equations from the typed transform model. */
     fun emitTransformSemantics(): String = buildString {
-        appendHeader("afield.stdlib.linalg")
+        appendHeader(packages.linalg)
         appendLine("import kotlin.math.*")
         transformModel.operations.forEach { operation ->
             appendLine()
@@ -170,8 +169,8 @@ class KotlinEmitter(
 
     /** Emits non-owning vector views over foreign, direct, or mapped memory. */
     fun emitSegmentVectors(): String = buildString {
-        appendHeader("afield.stdlib.linalg.storage")
-        appendLine("import afield.stdlib.linalg.*")
+        appendHeader(packages.storage)
+        appendLine("import ${packages.linalg}.*")
         appendLine("import java.lang.foreign.MemorySegment")
         appendLine("import java.lang.foreign.ValueLayout")
         appendLine("import java.nio.ByteBuffer")
@@ -202,7 +201,7 @@ class KotlinEmitter(
      * out of scope; see `SimdVerlet.kt` for that harder, hand-written case.
      */
     fun emitBulkVectors(): String = buildString {
-        appendHeader("afield.stdlib.linalg.bulk")
+        appendHeader(packages.bulk)
         appendLine("import jdk.incubator.vector.FloatVector")
         appendLine("import jdk.incubator.vector.VectorOperators")
         appendLine("import jdk.incubator.vector.VectorSpecies")
@@ -240,7 +239,7 @@ class KotlinEmitter(
         appendLine()
         appendLine("All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.")
         appendLine()
-        appendLine("Further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only) and half precision (`Vector8h`, heap-only — eight IEEE-754 binary16 lanes that pack into a single `vec4` of GPU memory), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.")
+        appendLine("Further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only) and half precision (`Vector8h`, heap-only — eight IEEE-754 binary16 lanes that pack into a single `vec4` of GPU memory), and the `${packages.bulk}` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.")
         model.heapVectors.forEach { type ->
             appendLine()
             appendLine("## ${type.heapName}")

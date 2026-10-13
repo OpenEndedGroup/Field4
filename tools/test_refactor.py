@@ -9,7 +9,7 @@ import unittest
 import subprocess
 from unittest.mock import patch as mock_patch
 
-from tools.refactoring.containers import ContainerError, EdnSpans, edn, extract, markdown, patch, yaml_units
+from tools.refactoring.containers import ContainerError, EdnSpans, edn, extract, markdown, patch, qualified_name_properties, yaml_units
 from tools.refactoring.core import (KotlinEngine, RefactorError, apply_plan, canonical, digest,
     load_plan, load_recipe, make_plan, save_json, undo, verify)
 
@@ -37,6 +37,20 @@ def metadata(code=SOURCE, sidecar=None):
 
 
 class ContainerTests(unittest.TestCase):
+    def test_qualified_name_configuration_preserves_layout_and_unrelated_values(self):
+        source = '# Names\r\n linalg.package = old.pkg  \r\nurl=https://example.test\r\n'
+        result = qualified_name_properties(source, {'linalg.package'})
+        self.assertEqual('import old.pkg\n', result.units[0].code)
+        self.assertFalse(result.units[0].script)
+        after = patch(source, [(u.start, u.end, u.encode(u.code.replace('old.pkg', 'new.pkg'))) for u in result.units])
+        self.assertEqual(source.replace('old.pkg', 'new.pkg'), after)
+
+    def test_qualified_name_configuration_rejects_ambiguous_property_syntax(self):
+        for source in ('linalg.package=old.pkg\nlinalg.package=other.pkg', 'linalg.package=old.\\\npkg',
+                       'linalg\\.package=old.pkg', 'linalg.package=../escape', 'unknown=old.pkg'):
+            with self.subTest(source=source), self.assertRaises(ContainerError):
+                qualified_name_properties(source, {'linalg.package'})
+
     def transform(self, text, extraction):
         return patch(text, [(u.start, u.end, u.encode(u.code.replace('old.pkg', 'new.pkg'))) for u in extraction.units])
 
@@ -282,6 +296,31 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_registered_generator_config_is_mapped_and_outputs_remain_generator_owned(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            config = root / 'packages.properties'
+            config.write_text('# Generator names\nlinalg.package=old.pkg\n')
+            output = root / 'Generated.kt'
+            output.write_text('package old.pkg\nclass Thing\n')
+            recipe = dict(copy.deepcopy(RECIPE), qualifiedNameProperties={'packages.properties': ['linalg.package']},
+                          generated=[{'glob': 'Generated.kt', 'regenerate': 'run the generator'}])
+            path = base / 'recipe.json'
+            path.write_text(json.dumps(recipe))
+            recipe = load_recipe(path)
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            self.assertEqual(['packages.properties'], [c['path'] for c in plan['roots'][0]['changes']])
+            self.assertFalse(plan['roots'][0]['changes'][0]['held'])
+            self.assertTrue(any(f['kind'] == 'regenerate' for f in plan['roots'][0]['findings']))
+            apply_plan(base / 'plan', offline=True, allow_partial=True)
+            self.assertEqual('# Generator names\nlinalg.package=new.pkg\n', config.read_text())
+            self.assertEqual('package old.pkg\nclass Thing\n', output.read_text())
+            self.assertEqual(2, verify(base / 'plan')['filesVerified'])
+            undo(base / 'plan')
+            self.assertEqual('# Generator names\nlinalg.package=old.pkg\n', config.read_text())
+
     def test_qualified_references_and_destination_intro_across_document_pair(self):
         source = 'import old.pkg.*\nimport old.pkg.Thing\nval x: old.pkg.Thing = old.pkg.Thing()\n'
         expected = '\n\nval x: new.pkg.Thing = new.pkg.Thing()\n'

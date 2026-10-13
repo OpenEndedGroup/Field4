@@ -73,6 +73,7 @@ JSON and YAML are accepted. A small example:
   "symbols": {"afield.mixed.Thing": "afield.model.Thing"},
   "splitPackages": ["afield.mixed"],
   "kotlinProperties": ["myKotlinProperty"],
+  "qualifiedNameProperties": {"tools/example/packages.properties": ["api.package"]},
   "generated": [{"glob": "generated/*", "regenerate": "run the owner generator"}]
 }
 ```
@@ -92,6 +93,21 @@ comments or type arguments inside the moved prefix, and unmapped split-package r
 findings. This is syntactic evidence; inherited or external value receivers still require compiler
 validation. Reflection-like strings, split star imports, KDoc/comment references and names outside
 recognized code units also produce findings.
+
+Generator package names belong in a configuration file, rather than repeated code-emission strings.
+`qualifiedNameProperties` registers `.properties` path patterns and the exact keys whose values are
+qualified Kotlin names. Those values use the same package/symbol rules as imports; unrelated keys,
+comments and whitespace remain intact. The adapter accepts literal `key=value` lines and rejects
+escapes, continuations, duplicate keys, missing registered keys and invalid names. Arbitrary strings
+are still findings. The linalg example registers its generator's `linalg-packages.properties`; that
+one file drives emitted packages, imports, annotations, documentation and output directories.
+Generated outputs are reported with `generateLinalg` as their owner, not edited as ordinary source.
+
+When emitted code refers to a class already available to the emitter, prefer
+`Quaternionf::class.qualifiedName` over a copied qualified-name string. The import then follows an
+ordinary class move. Use the known constructor class, rather than `value::class`, when the emitter
+supports a base type but might receive anonymous subclasses. `kotlinValueLiteral` in the keyframer
+uses this pattern; generators that must build independently of their output use configuration.
 
 `refactors/examples/linalg-package.json` is deliberately a **rehearsal** recipe: its destination
 package does not yet exist. Use it on copies to exercise the tool, then undo. It is not an upgrade

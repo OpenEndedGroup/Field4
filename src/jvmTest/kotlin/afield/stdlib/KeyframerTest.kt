@@ -1361,7 +1361,7 @@ class KeyframerTest {
                 "v2" to Vector2f(1f, 2f),
                 "v3" to Vector3f(1f, 2f, 3f),
                 "v4" to Vector4f(1f, 2f, 3f, 4f),
-                "q" to Quaternionf(0f, 0f, 0f, 1f),
+                "q" to object : Quaternionf(0f, 0f, 0f, 1f) {},
                 "pose" to CameraPose(DualQuaternionf(), 5f)
             )
         ).updateCode()
@@ -1369,8 +1369,11 @@ class KeyframerTest {
         assertTrue(code.contains("vec(1.0f, 2.0f)"), code)
         assertTrue(code.contains("vec(1.0f, 2.0f, 3.0f)"), code)
         assertTrue(code.contains("vec(1.0f, 2.0f, 3.0f, 4.0f)"), code)
-        assertTrue(code.contains("afield.stdlib.linalg.Quaternionf("), code)
-        assertTrue(code.contains("afield.four.util.CameraPose("), code)
+        val quaternion = requireNotNull(Quaternionf::class.qualifiedName)
+        val dualQuaternion = requireNotNull(DualQuaternionf::class.qualifiedName)
+        val cameraPose = requireNotNull(CameraPose::class.qualifiedName)
+        assertTrue(code.contains("this[\"q\"] = $quaternion(0.0f, 0.0f, 0.0f, 1.0f)"), code)
+        assertTrue(code.contains("$cameraPose($dualQuaternion($quaternion(0.0f, 0.0f, 0.0f, 1.0f), $quaternion(0.0f, 0.0f, 0.0f, 0.0f)), 5.0f)"), code)
     }
 
     @Test
