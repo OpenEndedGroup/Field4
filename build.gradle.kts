@@ -1091,7 +1091,7 @@ kotlin {
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
-                // The pseudo-terminal behind /terminal.html (afield/server/terminal.kt).
+                // The pseudo-terminal behind /terminal.html (afield/app/server/terminal.kt).
                 implementation("org.jetbrains.pty4j:pty4j:0.14.0")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
@@ -1856,7 +1856,7 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
 //   1. Relative-path proof writes — `File("sparkline-proof")`, `File("chebyshev-proof.svg")` —
 //      which resolved against whatever tree the suite happened to run in, so junk accumulated in
 //      the checkout and in every nightly agent worktree on every run. Fixed by `proofDir()`; its
-//      KDoc in src/jvmTest/kotlin/afield/TestProofDir.kt is the record.
+//      KDoc in src/jvmTest/kotlin/afield/tools/docs/TestProofDir.kt is the record.
 //   2. `ArraySparklineVisualizerTest`, the same thing again in a class the first fix did not touch.
 //   3. `ValueVisualizerDocCaptureTest` and `VectorAlgebraDocCaptureTest`, which wrote their
 //      docs-capture PNGs straight into `public/docs/assets/…` on every single `./gradlew jvmTest`.

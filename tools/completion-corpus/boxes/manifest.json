@@ -278,7 +278,7 @@
   {"doc": "inertial_movement", "box": "inertial_vs_restarting", "codeSha256": "224954f9fad008d5", "codeLines": 28, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "inertial_movement", "box": "movement_playground", "codeSha256": "8846940f65177c21", "codeLines": 91, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "interaction_nets_lambda", "box": "lambda_normalise", "codeSha256": "307d2480a0d0eff1", "codeLines": 52, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "interaction_nets_lambda", "box": "lambda_oracle", "codeSha256": "7887eabde12bfc42", "codeLines": 62, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "interaction_nets_lambda", "box": "lambda_oracle", "codeSha256": "afdc0b4de626792b", "codeLines": 62, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "interaction_nets_lambda", "box": "lambda_reduction", "codeSha256": "0c8b9ff3521d83e3", "codeLines": 58, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "keyframe_autosweep", "box": "ks_archive", "codeSha256": "b0ff18133bef6dfc", "codeLines": 45, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "keyframe_autosweep", "box": "ks_renderer", "codeSha256": "e123a9cf32ea0e2d", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": "keyframe_autosweep__ks_renderer.preamble.kt"},
