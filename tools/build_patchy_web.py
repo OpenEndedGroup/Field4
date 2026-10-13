@@ -16,6 +16,7 @@ FIELD_ROOT = Path(__file__).resolve().parents[1]
 RECIPE = FIELD_ROOT / "optional" / "patchy-web"
 PIN = json.loads((RECIPE / "pin.json").read_text())
 PATCH = RECIPE / "field-bridge.patch"
+UI_FONT = RECIPE / "iosevka-field-ui.ttf"
 ASSETS = ("patchy.html", "patchy.js", "patchy.wasm", "patchy.data", "qtloader.js", "qtlogo.svg")
 
 
@@ -54,8 +55,9 @@ def pinned_checkout(path, url, revision):
 def prepare_source(cache, source_url):
     source = cache / "source"
     patch_hash = sha256(PATCH)
+    source_hash = hashlib.sha256((patch_hash + sha256(UI_FONT)).encode()).hexdigest()
     marker = source / ".field-patch-sha256"
-    if (marker.is_file() and marker.read_text().strip() == patch_hash and
+    if (marker.is_file() and marker.read_text().strip() == source_hash and
             output("git", "rev-parse", "HEAD", cwd=source) == PIN["revision"]):
         return source, patch_hash
     if source.exists():
@@ -63,7 +65,10 @@ def prepare_source(cache, source_url):
     pinned_checkout(source, source_url, PIN["revision"])
     run("git", "apply", "--check", PATCH, cwd=source)
     run("git", "apply", PATCH, cwd=source)
-    marker.write_text(patch_hash + "\n")
+    font_destination = source / "third_party/fonts-web/field/iosevka-field-ui.ttf"
+    font_destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(UI_FONT, font_destination)
+    marker.write_text(source_hash + "\n")
     return source, patch_hash
 
 
@@ -149,7 +154,9 @@ def stage_site(cache, build, patch_hash):
     shutil.copy2(source / "LICENSE", next_site / "Patchy-LICENSE.txt")
     shutil.copy2(source / "NOTICE-THIRD-PARTY.md", next_site / "NOTICE-THIRD-PARTY.md")
     shutil.copy2(source / "src" / "formats" / "libheif" / "COPYING", next_site / "libheif-COPYING.txt")
+    shutil.copy2(FIELD_ROOT / "public/docs/assets/fonts/iosevka/LICENSE.txt", next_site / "Iosevka-LICENSE.txt")
     manifest = {"source": PIN["source"], "revision": PIN["revision"], "patchSha256": patch_hash,
+                "iosevkaSha256": sha256(UI_FONT),
                 "emscriptenVersion": PIN["emscriptenVersion"], "qtVersion": PIN["qtVersion"],
                 "assets": {name: sha256(next_site / name) for name in ASSETS}}
     (next_site / "field-patchy.json").write_text(json.dumps(manifest, indent=2) + "\n")

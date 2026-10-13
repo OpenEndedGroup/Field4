@@ -86,6 +86,8 @@ jobs:
           for name, expected in manifest['assets'].items():
               assert hashlib.sha256((site / name).read_bytes()).hexdigest() == expected, name
           assert manifest['revision'] == json.loads(Path('optional/patchy-web/pin.json').read_text())['revision']
+          assert manifest['iosevkaSha256'] == hashlib.sha256(Path('optional/patchy-web/iosevka-field-ui.ttf').read_bytes()).hexdigest()
+          assert b'iosevka-field-ui.ttf' in (site / 'patchy.js').read_bytes()
           evidence = Path('build/first-run-evidence/patchy')
           evidence.mkdir(parents=True, exist_ok=True)
           shutil.copy2(site / 'field-patchy.json', evidence / 'field-patchy.json')

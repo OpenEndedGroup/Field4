@@ -3545,6 +3545,8 @@ val buildPatchyWeb = tasks.register<Exec>("buildPatchyWeb") {
     val script = layout.projectDirectory.file("tools/build_patchy_web.py")
     inputs.file(recipe.file("pin.json"))
     inputs.file(recipe.file("field-bridge.patch"))
+    inputs.file(recipe.file("iosevka-field-ui.ttf"))
+    inputs.file(layout.projectDirectory.file("public/docs/assets/fonts/iosevka/LICENSE.txt"))
     inputs.file(script)
     outputs.dir(File(System.getProperty("user.home"), ".field4/patchy-web/site"))
     commandLine(nativeBuildPython, script.asFile.absolutePath)

@@ -15,6 +15,10 @@ downloads and a long first build. Rebuilds reuse the cache. Field finds the fini
 next launch and serves it from `/patchy/` with the isolation headers Patchy requires. This
 optional task is outside Field's normal build and `check`.
 
+Inside Field, Patchy uses a compact black Qt theme with flat controls and Iosevka Field
+for Latin UI text. The bundled Noto fonts cover other scripts. This styling belongs to
+the embedded editor; a standalone Patchy window keeps its own theme.
+
 To use a separately built site while developing, set `AFIELD_PATCHY_WEB_ROOT` to its directory
 before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`, and `patchy.data`.
 

@@ -216,7 +216,7 @@ index 0000000..74e612a
 +
 +}  // namespace patchy
 diff --git a/src/app/main.cpp b/src/app/main.cpp
-index e3951f9..987a1d6 100644
+index e3951f9..8a8f09c 100644
 --- a/src/app/main.cpp
 +++ b/src/app/main.cpp
 @@ -14,6 +14,9 @@
@@ -229,7 +229,46 @@ index e3951f9..987a1d6 100644
  #ifdef PATCHY_MCP_EXECUTABLE
  #include "app/mcp_server.hpp"
  #include <QTemporaryDir>
-@@ -828,6 +831,13 @@ int main(int argc, char* argv[]) {
+@@ -51,6 +54,9 @@
+ #include <optional>
+ 
+ #include "patchy_version.hpp"
++#ifdef Q_OS_WASM
++#include "app/field_web_bridge.hpp"
++#endif
+ 
+ namespace {
+ 
+@@ -302,6 +308,15 @@ QFont application_font() {
+   // language is resolved. Point size stays Qt's default; the browser's
+   // devicePixelRatio drives scaling on wasm.
+   auto font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
++  if (patchy::field_web_bridge_available() &&
++      QFontDatabase::families().contains(QStringLiteral("Iosevka Field"))) {
++    QStringList families{QStringLiteral("Iosevka Field"), QStringLiteral("Noto Sans")};
++    families += patchy::ui::wasm_cjk_fallback_families(
++        patchy::ui::LocalizationManager::instance().current_language());
++    font.setFamilies(families);
++    font.setPointSize(9);
++    return font;
++  }
+   if (QFontDatabase::families().contains(QStringLiteral("Noto Sans"))) {
+     QStringList families{QStringLiteral("Noto Sans")};
+     families += patchy::ui::wasm_cjk_fallback_families(
+@@ -428,6 +443,12 @@ int main(int argc, char* argv[]) {
+   // After the language: on wasm the app font's CJK fallback order depends on it.
+   app.setFont(application_font());
+   patchy::ui::ThemeManager::instance().load_saved_preference();
++#ifdef Q_OS_WASM
++  if (patchy::field_web_bridge_available()) {
++    patchy::ui::ThemeManager::instance().set_preference(
++        patchy::ui::ColorSchemePreference::Dark, /*persist=*/false);
++  }
++#endif
+ 
+ #ifdef PATCHY_MCP_EXECUTABLE
+   if (connector_settings.isValid()) { return patchy::run_mcp_server(app); }
+@@ -828,6 +849,13 @@ int main(int argc, char* argv[]) {
        qWarning("Patchy MCP attachment: %s", qPrintable(mcp_attachment->error()));
      }
    }
@@ -265,6 +304,36 @@ index ef54b24..5cbf706 100644
    wasm_files::download_file_in_browser(path);
  #else
    // Desktop builds write real files; there is nothing to offer.
+diff --git a/src/ui/main_window_actions.cpp b/src/ui/main_window_actions.cpp
+index ca02980..405f2c0 100644
+--- a/src/ui/main_window_actions.cpp
++++ b/src/ui/main_window_actions.cpp
+@@ -14,6 +14,9 @@
+ #include "ui/main_window.hpp"
+ #include "ui/main_window_shared.hpp"
+ #include "ui/main_window_actions_internal.hpp"
++#ifdef Q_OS_WASM
++#include "app/field_web_bridge.hpp"
++#endif
+ 
+ #include "core/blend_math.hpp"
+ #include "core/layer_metadata.hpp"
+@@ -627,7 +630,14 @@ void MainWindow::retranslate_ui() {
+   // Chinese does not need a page reload. Every other platform has system fonts and
+   // leaves the choice to Qt.
+   if (QFontDatabase::families().contains(QStringLiteral("Noto Sans"))) {
+-    QStringList families{QStringLiteral("Noto Sans")};
++    QStringList families;
++    if (patchy::field_web_bridge_available() &&
++        QFontDatabase::families().contains(QStringLiteral("Iosevka Field"))) {
++      families += QStringLiteral("Iosevka Field");
++      families += QStringLiteral("Noto Sans");
++    } else {
++      families += QStringLiteral("Noto Sans");
++    }
+     families += wasm_cjk_fallback_families(LocalizationManager::instance().current_language());
+     if (QApplication::font().families() != families) {
+       auto font = QApplication::font();
 diff --git a/src/ui/main_window_ai_selection.cpp b/src/ui/main_window_ai_selection.cpp
 index c591222..c877be8 100644
 --- a/src/ui/main_window_ai_selection.cpp
@@ -279,3 +348,147 @@ index c591222..c877be8 100644
  
  // Decimal megabytes, as download sizes are usually given.
  int megabytes(qint64 bytes) {
+diff --git a/src/ui/main_window_theme.cpp b/src/ui/main_window_theme.cpp
+index 1ee74fb..ed10b7c 100644
+--- a/src/ui/main_window_theme.cpp
++++ b/src/ui/main_window_theme.cpp
+@@ -6,6 +6,9 @@
+ 
+ #include "ui/main_window.hpp"
+ #include "ui/main_window_shared.hpp"
++#ifdef Q_OS_WASM
++#include "app/field_web_bridge.hpp"
++#endif
+ 
+ #include "core/blend_math.hpp"
+ #include "core/layer_metadata.hpp"
+@@ -1179,6 +1182,29 @@ QString photoshop_style() {
+   const auto generation = theme_generation();
+   if (generation != cached_generation) {
+     cached = apply_theme_tokens(photoshop_style_template());
++#ifdef Q_OS_WASM
++    if (patchy::field_web_bridge_available() && active_color_scheme() == ColorScheme::Dark) {
++      cached += apply_theme_tokens(QStringLiteral(R"(
++        QWidget, QMainWindow, QMenuBar, QMenu, QDockWidget { font-size: 11px; }
++        QMenuBar { min-height: 26px; max-height: 26px; padding-left: 8px; border: 0; }
++        QMenuBar::item { min-height: 26px; padding: 0 7px; margin: 0; }
++        QMenu { border: 0; }
++        QMenu::item { padding: 5px 24px 5px 14px; }
++        QToolBar { border: 0; padding: 2px; }
++        QToolButton, QPushButton, QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox,
++        QTextEdit, QPlainTextEdit, QTabBar::tab, QGroupBox { border: 0; border-radius: 0; }
++        QToolButton:hover, QPushButton:hover { background: @button_hover_bg; border: 0; }
++        QToolButton:checked, QPushButton:checked { border: 0; }
++        QPushButton:default, QTabBar::tab:selected { border: 0; }
++        QPushButton { padding: 3px 6px; }
++        QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: @field_bg; }
++        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
++          background: @button_hover_bg;
++        }
++        QScrollBar::handle:vertical, QScrollBar::handle:horizontal { border: 0; }
++      )"));
++    }
++#endif
+     cached_generation = generation;
+   }
+   return cached;
+diff --git a/src/ui/theme_palette.cpp b/src/ui/theme_palette.cpp
+index 7835586..0b81a97 100644
+--- a/src/ui/theme_palette.cpp
++++ b/src/ui/theme_palette.cpp
+@@ -13,6 +13,9 @@
+ // not (see theme_palette.hpp).
+ 
+ #include "ui/theme_palette.hpp"
++#ifdef Q_OS_WASM
++#include "app/field_web_bridge.hpp"
++#endif
+ 
+ #include <algorithm>
+ #include <array>
+@@ -679,7 +682,84 @@ const ThemePalette& theme(ColorScheme scheme) {
+   return scheme == ColorScheme::Light ? light_palette() : dark_palette();
+ }
+ 
+-const ThemePalette& theme() { return g_custom_palette ? *g_custom_palette : theme(g_active_scheme); }
++const ThemePalette& theme() {
++  if (g_custom_palette) return *g_custom_palette;
++#ifdef Q_OS_WASM
++  static const bool in_field = patchy::field_web_bridge_available();
++  if (g_active_scheme == ColorScheme::Dark && in_field) {
++    static const ThemePalette field_palette = [] {
++      auto palette = dark_palette();
++      palette.window_bg = rgb(0x0d0f10);
++      palette.window_border = palette.window_bg;
++      palette.dock_separator_bg = rgb(0x1c2022);
++      palette.title_bar_bg = rgb(0x111416);
++      palette.title_bar_border = palette.title_bar_bg;
++      palette.menu_bg = rgb(0x171a1c);
++      palette.menu_border = palette.menu_bg;
++      palette.menu_bar_item_hover_bg = rgb(0x252a2d);
++      palette.menu_item_selected_bg = rgb(0x34393c);
++      palette.toolbar_bg = palette.title_bar_bg;
++      palette.toolbar_border = palette.title_bar_bg;
++      palette.tool_palette_bg = palette.title_bar_bg;
++      palette.tool_palette_border = palette.title_bar_bg;
++      palette.options_bar_bg = palette.title_bar_bg;
++      palette.options_bar_top_edge = palette.title_bar_bg;
++      palette.field_bg = rgb(0x202426);
++      palette.field_bg_large = palette.field_bg;
++      palette.field_border = palette.field_bg;
++      palette.field_inset_border = palette.field_bg;
++      palette.button_bg = palette.field_bg;
++      palette.button_border = palette.button_bg;
++      palette.button_hover_bg = rgb(0x303537);
++      palette.button_hover_border = palette.button_hover_bg;
++      palette.button_hover_border_strong = palette.button_hover_bg;
++      palette.accent = rgb(0x899397);
++      palette.accent_bright = rgb(0xd1d7d9);
++      palette.accent_bright_hover = rgb(0xe2e6e7);
++      palette.accent_bright_border = palette.accent_bright;
++      palette.accent_border_bright = palette.accent;
++      palette.accent_checked_bg = rgb(0x3b4346);
++      palette.accent_checked_border = palette.accent_checked_bg;
++      palette.accent_pressed_bg = palette.accent_checked_bg;
++      palette.checkbox_accent_border = palette.accent;
++      palette.accent_control = palette.accent;
++      palette.list_selection_bg = rgb(0x343a3d);
++      palette.layer_row_selected_bg = palette.list_selection_bg;
++      palette.nd_card_selected_bg = palette.list_selection_bg;
++      palette.primary_bg = palette.list_selection_bg;
++      palette.primary_border = palette.primary_bg;
++      palette.primary_hover_bg = palette.button_hover_bg;
++      palette.neutral_button_hover_bg = palette.button_hover_bg;
++      palette.neutral_button_hover_border = palette.neutral_button_hover_bg;
++      palette.selection_soft_bg = palette.list_selection_bg;
++      palette.list_surface_bg = palette.title_bar_bg;
++      palette.list_surface_border = palette.list_surface_bg;
++      palette.panel_card_bg = palette.field_bg;
++      palette.panel_card_border = palette.panel_card_bg;
++      palette.nd_chip_border = palette.panel_card_bg;
++      palette.nd_field_border = palette.panel_card_bg;
++      palette.nd_card_hover_border = palette.button_hover_bg;
++      palette.icon_accent = palette.accent_bright;
++      palette.icon_accent_soft = palette.accent;
++      palette.icon_accent_tint = palette.accent;
++      palette.dock_title_bg = palette.title_bar_bg;
++      palette.panel_title_bg = palette.title_bar_bg;
++      palette.panel_bg = palette.title_bar_bg;
++      palette.panel_inset_bg = rgb(0x191d1f);
++      palette.panel_inset_border = palette.panel_inset_bg;
++      palette.panel_border_strong = palette.panel_bg;
++      palette.layer_row_bg = palette.panel_bg;
++      palette.layer_row_group_bg = palette.panel_inset_bg;
++      palette.layer_row_border = palette.panel_bg;
++      palette.status_bar_bg = palette.title_bar_bg;
++      palette.status_error_mark = palette.status_bar_bg;
++      return palette;
++    }();
++    return field_palette;
++  }
++#endif
++  return theme(g_active_scheme);
++}
+ 
+ ColorScheme active_color_scheme() { return g_active_scheme; }
+ 
