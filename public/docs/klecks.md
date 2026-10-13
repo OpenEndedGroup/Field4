@@ -2,7 +2,7 @@
 
 [Klecks](https://github.com/bitbof/klecks) is a layered browser painting app. Run this in a Kotlin box:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val painting = klecks(width = 800, height = 600)
 ```
 
@@ -14,7 +14,7 @@ another independent painting: `klecks(channel = "study", width = 400, height = 4
 
 Kotlin can read the last submitted image:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val painting = klecks()
 val png: ByteArray? = painting.pngBytes()
 val layeredPsd: ByteArray? = painting.psdBytes()
