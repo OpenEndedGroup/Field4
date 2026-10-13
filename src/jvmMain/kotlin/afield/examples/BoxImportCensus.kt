@@ -31,7 +31,7 @@ object BoxImportCensus {
     private data class CorpusBox(val source: String, val line: Int, val code: String)
 
     private val ROOTS = listOf(
-        "dev_docs/agents/transcripts", "dev_docs/agents/demos", "public/docs", "metadata_store", "templates",
+        "dev_docs/agents/transcripts", "dev_docs/agents/demos", "public/docs", "templates",
     )
     private const val GENERATED = "public/docs/assets/agent_transcripts"
 

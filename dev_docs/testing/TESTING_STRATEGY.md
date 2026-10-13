@@ -508,7 +508,7 @@ uv run python tools/check_offline_assets.py
 Build and verify a disposable standalone distribution when changing ownership:
 
 ```bash
-./build-offline-docs.sh
+./tools/build-offline-docs.sh
 uv run python tools/check_offline_assets.py --target dist/offline-viewer
 ```
 

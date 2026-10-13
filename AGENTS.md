@@ -24,9 +24,8 @@ Top-level layout:
   deps, webpack bundling.
 - `src/`: the JVM + JS application (`commonMain` / `jvmMain` / `jsMain`).
 - `public/`: built/static assets and docs (`public/docs/`, offline viewer assets).
-- `metadata_store/`, `templates/`: example and template documents (`metadata.edn`).
-- `server/`: optional Python services — `metadata_server.py` serves templates from
-  `metadata_store/`, `guide_chat_server.py` backs slideshow chat (see `server/README.md`).
+- `dev_docs/agents/transcripts/`, `dev_docs/agents/demos/`, `templates/`: authored examples and templates;
+  generated transcript documents live under `public/docs/assets/agent_transcripts/`.
 - `python/`: Python that ships with Field, appended to `sys.path` in Python boxes — `fieldcv`
   (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.python.NumpyShared`;
   optional `cv` dependency group, see `python/fieldcv/README.md`).
@@ -370,8 +369,8 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 - Chat: `SlideStepBuilder.withChat(...)` adds a collapsible Discussion under a note;
   `Box.withChat(...)` mounts the same UI into an output channel (`display("chat", ...)`) via
   `mountSharedChat(...)` from `Main.kt`. Field proxies chat RPC through `afield/server/chat.kt` to
-  the optional Flask server (`CHAT_SERVER_URL`, default `http://localhost:5002`;
-  `server/guide_chat_server.py`; data in `chat_data/`).
+  an external service (`CHAT_SERVER_URL`, default `http://localhost:5002`). The old Python
+  service was retired; the chat UI and proxy remain pending redesign.
 
 ### Drawing layer (Excalidraw)
 
@@ -463,7 +462,7 @@ code, and a landing runs it on what it changed.
   optional `:persistentProperties`, merged into `Box.ioPersistentProperties` on load.
 - Tagged values inside `:properties`: `#afield/rect [x y w h]`, `#afield/box "uid"`,
   `#afield/file-inline {"path" "...", "inline" "..."}`, `#afield/file "relative/path.ext"` (a
-  sidecar read from disk). Template/example files (e.g. `metadata_store/`) use a simpler subset
+  sidecar read from disk). Some legacy template/example files use a simpler subset
   (plain vectors for frames, inline code strings); the loader is deliberately permissive.
 - Sidecar naming is `<boxId>_<propertyName>_.<extension>`, mapped by `Box.ioSeparateProperties`
   (`Boxes.kt`): `code` → `kt`; `fragment|vertex|compute|task|mesh` → `glsl`;
@@ -516,7 +515,7 @@ code, and a landing runs it on what it changed.
   Markdown plus captured assets.
 - Read-only offline viewer: `offline.html`, `offline-viewer.js`, `edn-parser.js` in
   `src/commonMain/resources`; canonical vendored assets in `src/jsMain/resources/monaco/min`,
-  `woff2`, `iosevka.css`. `build-offline-docs.sh` writes `dist/offline-viewer/`. Copies under
+  `woff2`, `iosevka.css`. `tools/build-offline-docs.sh` writes `dist/offline-viewer/`. Copies under
   `public/` and `dev_docs/` are generated and ignored — refresh with
   `uv run python tools/sync_offline_assets.py --target public --target dev_docs --no-docs`;
   `embed-example.html` shows iframing `offline.html?file=...`.

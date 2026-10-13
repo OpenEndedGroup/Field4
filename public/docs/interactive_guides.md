@@ -290,34 +290,18 @@ runBlocking {
 
 Use per-slide chat when comments should stay attached to a specific step instead of floating beside the whole guide.
 
-Chat needs the optional chat server described next; the capture above was made without it, so it shows only the collapsed Discussion. If the guide chat server is not running, the slideshow still renders and
-`withChat()` still produces the UI shell; only message load and post requests
-fail.
+The capture above shows the collapsed Discussion UI. The Python chat-service prototype has
+been retired; `withChat()` and its UI remain available for a later redesign. Without a compatible
+external backend, message loads and posts fail, while the rest of the slideshow still renders.
 
 ### Setting up the chat server
 
-Chat needs a small companion service, a Flask process that stores the messages. Field talks to it
-on the browser's behalf, so the browser only needs to reach Field.
+Field no longer bundles a chat server. Its retained JVM proxy uses `CHAT_SERVER_URL`, defaulting
+to `http://localhost:5002`, if a compatible service is provided separately. A browser identity can
+still be selected with `?file=myguide&username=student1`; the default is `anonymous`.
 
-Install the dependencies and start the service alongside Field:
-
-```diffstatic {data-lang=bash}
-cd server
-pip install -r requirements.txt
-python3 guide_chat_server.py   # then ./gradlew runJvm in another shell
-```
-
-It reads three optional environment variables: `CHAT_SERVER_PORT` (default
-`5002`), `CHAT_SERVER_DEBUG` (default `true`), and `CHAT_SERVER_URL` (the URL
-Field's JVM server uses, default `http://localhost:5002`).
-
-Each person following the guide names themselves in the URL, as
-`?file=myguide&username=student1`; without a name they post as `anonymous`. Messages are
-saved under `chat_data/`, one JSON file per slide, so a thread survives a restart.
-
-??? aside "Where the chat bridge is documented"
-    The bridge's parts, the file layout under `chat_data/`, and what to do when Field and the
-    chat server disagree about a port are in [`dev_docs/GUIDE_CHAT_QUICKSTART.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GUIDE_CHAT_QUICKSTART.md).
+The retained bridge is described in
+[`dev_docs/GUIDE_CHAT_QUICKSTART.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GUIDE_CHAT_QUICKSTART.md).
 
 ## Notes outside a guide
 

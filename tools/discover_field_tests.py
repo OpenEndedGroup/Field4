@@ -37,7 +37,6 @@ DEFAULT_ROOTS = [
     "src/personal/kotlin",
     "dev_docs",
     "public/docs",
-    "metadata_store",
 ]
 
 BLOCK_COMMENT_PATTERN = re.compile(r"/\*(.*?)\*/", re.DOTALL)

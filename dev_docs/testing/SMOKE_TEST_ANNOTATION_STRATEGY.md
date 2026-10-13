@@ -14,9 +14,9 @@ Default roots are exactly:
 
 ```text
 src/jvmMain/kotlin/afield
+src/personal/kotlin
 dev_docs
 public/docs
-metadata_store
 ```
 
 Every block requires a unique `id` and a `runner`. Supported runners are only

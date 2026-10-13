@@ -1,22 +1,8 @@
 """A bidirectional ledger of the files tracked at the repository root.
 
-SCRATCHPAD backlog item 21 asks for "a narrow guard against accidental new tracked files at
-repository root". This is it, and it is worth being precise about what it does and does not catch,
-because the litter that prompted it is a *different* failure mode.
-
-On 2026-08-25 the root held 68 untracked PNGs — `angled-section-*`, `bridge-*`, `collar-*`,
-`three-mitre-*`, `monkeypaw-*`, `bounded-*`, `planar-*`, `house-*` — ad-hoc render output from the
-rect/house and tessellation work, written there because a box called
-`renderer.captureWindowToFile(outputPath = "bridge-top-assembled.png")` with a bare relative path,
-which resolves against the JVM's working directory. None of them was ever `git add`ed. So:
-
-  * the `/*.png` rule in `.gitignore` is what addresses those. Measured against the real 68: all 68
-    are ignored, and a PNG under `public/docs/assets/` is not, because the rule is root-anchored.
-  * **this module would not have caught a single one of them**, and saying otherwise would be the
-    kind of claim this repository keeps having to walk back. What it catches is the next class up:
-    one of them, or anything else, actually being committed to the root — where a stray file is
-    least likely to be noticed and most likely to be copied by the next person looking for a
-    template.
+This guards against accidentally committing new files at the repository root. It does not
+police untracked output on disk. Root captures and ad-hoc scratch files remain visible to Git
+so that they can be archived or moved to a deliberate output directory.
 
 The ledger is bidirectional on purpose. A new tracked root file fails until it is named here with a
 reason; a ledger entry whose file has been deleted or moved fails too. A one-directional check
@@ -38,14 +24,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # deliberate act; that is the whole point of the guard.
 TRACKED_ROOT_FILES = {
     ".gitattributes": "Git LFS filters and merge drivers",
-    ".gitignore": "the ignore set, including the root-anchored render-output rule",
+    ".gitignore": "generated output and local-state exclusions",
     ".gitmodules": "submodule declarations (services/field-audio-ai)",
     ".mcp.json": "MCP server declarations for coding agents",
     ".nsight-run.sh": "NVIDIA Nsight profiling launcher",
     "AGENTS.md": "the contract coding agents read first",
     "LICENSE": "the licence",
     "README.md": "the front door",
-    "build-offline-docs.sh": "offline docs bundle builder",
     "build.gradle.kts": "the build",
     "field.bat": "Windows launcher",
     "field.command": "macOS Finder-double-click launcher",
@@ -79,7 +64,7 @@ class RepositoryRootInventoryTests(unittest.TestCase):
     def test_premise_git_answers_and_the_root_is_not_empty(self) -> None:
         """Without this, a broken `git ls-files` would make every check below vacuous."""
         tracked = tracked_root_files()
-        # A floor, not a decoration: the ledger names 20 files, and a subprocess that silently
+        # A floor, not a decoration: the ledger names 19 files, and a subprocess that silently
         # returned nothing would otherwise compare two sets and blame the ledger for the difference.
         self.assertGreaterEqual(
             len(tracked),
@@ -103,7 +88,7 @@ class RepositoryRootInventoryTests(unittest.TestCase):
         )
 
     def test_no_render_output_is_tracked_at_the_root(self) -> None:
-        """The class the `.gitignore` rule covers, held down against `git add -f`."""
+        """Render output belongs in a deliberate artifact directory."""
         offenders = sorted(
             name
             for name in tracked_root_files()
@@ -116,30 +101,29 @@ class RepositoryRootInventoryTests(unittest.TestCase):
             "Captures belong under public/docs/assets/ or dev_docs/agents/artifacts/.",
         )
 
-    def test_the_ignore_rule_covers_root_render_output_and_nothing_deeper(self) -> None:
-        """`/*.png` is root-anchored. Both halves of that matter, so both are checked."""
-
-        def ignored(path: str) -> bool:
-            return (
-                subprocess.run(
-                    ["git", "check-ignore", "-q", path], cwd=REPO_ROOT
-                ).returncode
-                == 0
-            )
-
-        # A name from the real 2026-08-25 litter, and a plausible neighbour.
-        self.assertTrue(ignored("bridge-top-assembled.png"), "a root PNG is not ignored")
-        self.assertTrue(ignored("some-new-capture.png"), "a root PNG is not ignored")
-        # Committed captures live in subdirectories and must stay visible to git.
-        for kept in (
+    def test_render_output_and_root_scratch_remain_visible_to_git(self) -> None:
+        """A clean status must not conceal loose captures and ad-hoc scripts."""
+        for path in (
+            "bridge-top-assembled.png",
+            "some-new-capture.png",
+            "field-css-bug.png",
+            "ide.png",
+            "tmp_verify_unified.py",
+            "history.csv",
+            "history2.py",
+            "two_timescale_bandit_toy_policy.txt",
             "public/docs/assets/afield_four_graphics/00-traditional-triangle.png",
             "dev_docs/agents/artifacts/anything.png",
         ):
-            self.assertFalse(
-                ignored(kept),
-                f"{kept} is ignored — the rule is no longer root-anchored, and committed captures "
-                "would silently stop being tracked",
-            )
+            with self.subTest(path=path):
+                result = subprocess.run(
+                    ["git", "check-ignore", "-q", path], cwd=REPO_ROOT
+                )
+                self.assertEqual(
+                    result.returncode,
+                    1,
+                    f"{path} is hidden by an ignore rule or git check-ignore failed",
+                )
 
 
 if __name__ == "__main__":
