@@ -222,19 +222,62 @@ def edn(text: str, properties: set[str]) -> Extraction:
     return result
 
 
-def markdown(text: str) -> Extraction:
+def _doc_marker(line: str) -> bool:
+    # Same wrapper grammar as public/docs_hooks.py:is_marker_line. These are not Kotlin.
+    value = line.strip()
+    return value in {':::static', ':::before', ':::after', ':::', ':::fold', ':::endfold'} or value.startswith(':::fold ')
+
+
+def _markdown_code_unit(raw: list[str], indent: str, identity: str, start: int, end: int, wrapped: bool) -> Unit:
+    code = ''.join(line[len(indent):] if line.startswith(indent) else line for line in raw)
+    sentinel = '//__FIELD_REFACTOR_DOC_MARKER__'
+    if wrapped and sentinel in code:
+        raise ContainerError('documentation marker sentinel collides with source')
+    marker_count = 0
+    if wrapped:
+        prepared = []
+        for line in code.splitlines(keepends=True):
+            if _doc_marker(line):
+                marker_count += 1
+                line = sentinel + line
+            prepared.append(line)
+        code = ''.join(prepared)
+
+    def encode(value):
+        if wrapped:
+            restored = []
+            seen = 0
+            for line in value.splitlines(keepends=True):
+                if line.startswith(sentinel):
+                    line = line[len(sentinel):]
+                    if not _doc_marker(line):
+                        raise ContainerError('documentation marker changed shape')
+                    seen += 1
+                restored.append(line)
+            if seen != marker_count:
+                raise ContainerError('documentation markers lost during rewrite')
+            value = ''.join(restored)
+        return ''.join(indent + line if line.strip() else line for line in value.splitlines(keepends=True))
+
+    return Unit(identity, code, start, end, encode)
+
+
+def markdown(text: str, include_prose=False) -> Extraction:
     result = Extraction()
     lines = text.splitlines(keepends=True)
     offsets = [0]
     for line in lines:
         offsets.append(offsets[-1] + len(line))
     index = 0
+    prose_start = 0
     while index < len(lines):
         match = re.match(r'^(\s*)(`{3,}|~{3,})(.*)', lines[index])
         if not match:
             index += 1
             continue
         indent, fence, info = match.groups()
+        if include_prose and prose_start < offsets[index]:
+            result.units.append(Unit(f'prose:{prose_start}', text[prose_start:offsets[index]], prose_start, offsets[index]))
         end = index + 1
         while end < len(lines) and not re.match(r'^\s*' + re.escape(fence[0]) + '{' + str(len(fence)) + r',}\s*$', lines[end]):
             end += 1
@@ -248,11 +291,18 @@ def markdown(text: str) -> Extraction:
                 if any(line.strip() and not line.startswith(indent) for line in raw):
                     result.findings.append(issue('fence-indentation', f'line {index + 1}'))
                 else:
-                    code = ''.join(line[len(indent):] if line.startswith(indent) else line for line in raw)
-                    def encode(value, indent=indent):
-                        return ''.join(indent + line if line.strip() else line for line in value.splitlines(keepends=True))
-                    result.units.append(Unit(f'fence:{index + 1}', code, offsets[index + 1], offsets[end], encode))
+                    wrapped = info.strip().split(maxsplit=1)[0] in {'diffstatic', 'diffstatic_runner', 'diff', 'diff_runner'}
+                    # Before and after are separate programs; fold markers can occur inside braces.
+                    starts = [index + 1]
+                    if wrapped:
+                        starts += [n for n in range(index + 2, end) if lines[n].strip() in {':::before', ':::after'}]
+                    for first, last in zip(starts, starts[1:] + [end]):
+                        result.units.append(_markdown_code_unit(lines[first:last], indent, f'fence:{index + 1}:{first + 1}',
+                                                               offsets[first], offsets[last], wrapped))
         index = end + 1
+        prose_start = offsets[min(index, len(lines))]
+    if include_prose and prose_start < len(text):
+        result.units.append(Unit(f'prose:{prose_start}', text[prose_start:], prose_start, len(text)))
     return result
 
 
@@ -358,7 +408,7 @@ def qualified_name_properties(text: str, keys: set[str]) -> Extraction:
     return result
 
 
-def extract(path: str, text: str, properties: set[str], *, workspace=False, qualified_names=None) -> Extraction:
+def extract(path: str, text: str, properties: set[str], *, workspace=False, qualified_names=None, markdown_prose=False) -> Extraction:
     if qualified_names:
         return qualified_name_properties(text, qualified_names)
     p = Path(path)
@@ -372,5 +422,5 @@ def extract(path: str, text: str, properties: set[str], *, workspace=False, qual
     if p.suffix in ('.yaml', '.yml'):
         return yaml_units(text, properties)
     if p.suffix == '.md':
-        return markdown(text)
+        return markdown(text, include_prose=markdown_prose)
     return Extraction()

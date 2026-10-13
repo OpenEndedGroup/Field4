@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "id": "rehearsal-preview-domains-v1",
+  "fromApi": "current",
+  "toApi": "hypothetical-preview",
+  "description": "Broad rehearsal only. Proposed destination packages are not installed. Exercises whole-package moves across 18 domains, comments, selected current Markdown and typed generator configuration. Review mixed root packages and remaining findings before a real cutover.",
+  "packages": {
+    "afield.stdlib.linalg": "afield.math.linalg",
+    "afield.four.synth": "afield.audio.synth",
+    "afield.four.physics": "afield.simulation.physics",
+    "afield.stdlib.polytope": "afield.geometry.polytope",
+    "afield.four.vision": "afield.media.vision",
+    "afield.ml": "afield.lang.fieldml",
+    "afield.stacksl": "afield.lang.stacksl",
+    "afield.rectsl": "afield.lang.rectsl",
+    "afield.solidsl": "afield.lang.solidsl",
+    "afield.python": "afield.lang.python",
+    "afield.clojure": "afield.lang.clojure",
+    "afield.remotejs": "afield.lang.remotejs",
+    "afield.graphquery": "afield.data.graph",
+    "afield.datalog": "afield.data.datalog",
+    "afield.oscquery": "afield.io.oscquery",
+    "afield.rtpmidi": "afield.io.rtpmidi",
+    "afield.stdlib.loris": "afield.audio.analysis.loris",
+    "afield.stdlib.noir.audioai": "afield.audio.ai"
+  },
+  "symbols": {},
+  "splitPackages": [],
+  "qualifiedNameProperties": {
+    "tools/linalg-generator/src/main/resources/linalg-packages.properties": [
+      "linalg.package",
+      "extensions.package",
+      "halfCodec.package",
+      "completionAnnotation.type"
+    ]
+  },
+  "generated": [
+    {
+      "glob": "src/generatedLinalg/kotlin/*",
+      "regenerate": "./gradlew generateLinalg"
+    },
+    {
+      "glob": "public/docs/linear_algebra_api.md",
+      "regenerate": "./gradlew generateLinalg"
+    },
+    {
+      "glob": "public/docs/assets/agent_transcripts/*",
+      "regenerate": "./gradlew regenerateAgentTranscriptStartingPoints"
+    },
+    {
+      "glob": "public/docs/reference/*",
+      "regenerate": "./gradlew generateCodebaseReference"
+    },
+    {
+      "glob": "tools/completion-corpus/*",
+      "regenerate": "AFIELD_HARVEST_WRITE=1 ./gradlew checkCompletionCorpusFixtures"
+    }
+  ],
+  "rewriteComments": true,
+  "markdownProse": [
+    "public/docs/*.md",
+    "dev_docs/agents/demos/*/document.md"
+  ]
+}

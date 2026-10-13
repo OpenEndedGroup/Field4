@@ -296,6 +296,71 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_docs_wrappers_preserve_markers_and_parse_before_after_separately(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            source = ('  ```diff_runner {data-lang=kotlin}\r\n'
+                      '  :::before\r\n  import old.pkg.Thing\r\n  val x = Thing()\r\n'
+                      '  :::after\r\n  import old.pkg.Thing\r\n  fun draw() {\r\n'
+                      '  :::fold use old.pkg.Thing\r\n  val x = Thing()\r\n  :::endfold\r\n  }\r\n  ```\r\n'
+                      '```diffstatic_runner {data-lang=kotlin}\n:::static\nval x = old.pkg.Thing()\n:::\n```\n')
+            document = root / 'docs.md'
+            document.write_bytes(source.encode())
+            recipe = dict(copy.deepcopy(RECIPE), rewriteComments=True)
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            self.assertFalse(plan['roots'][0]['findings'])
+            self.assertEqual(3, plan['roots'][0]['units'])
+            apply_plan(base / 'plan', offline=True)
+            self.assertEqual(source.replace('old.pkg', 'new.pkg'), document.read_bytes().decode())
+            verify(base / 'plan')
+            undo(base / 'plan')
+            self.assertEqual(source, document.read_bytes().decode())
+
+    def test_docs_wrappers_retain_unknown_markers_and_plain_kotlin_errors(self):
+        with KotlinEngine(ENGINE) as engine:
+            for source in ('```kotlin\n:::static\nval x = old.pkg.Thing()\n```\n',
+                           '```diffstatic {data-lang=kotlin}\n:::unknown\nval x = old.pkg.Thing()\n```\n'):
+                unit = markdown(source).units[0]
+                self.assertTrue(engine.rewrite(unit.code, True, RECIPE)['findings'])
+
+    def test_comment_and_selected_markdown_pass_preserves_other_languages_and_history(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            document = root / 'current.md'
+            document.write_text('See old.pkg.Thing.\n```kotlin\n// old.pkg.Thing\nval x = old.pkg.Thing()\n```\n')
+            other = root / 'other.md'
+            other.write_text('See old.pkg.Thing.\n```python\nname = "old.pkg.Thing"\n```\n')
+            history = root / 'history.md'
+            history.write_text('Previously old.pkg.Thing.\n')
+            recipe = dict(copy.deepcopy(RECIPE), rewriteComments=True, markdownProse=['current.md', 'other.md'])
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            states = {c['path']: c['held'] for c in plan['roots'][0]['changes']}
+            self.assertEqual({'current.md': False, 'other.md': True}, states)
+            apply_plan(base / 'plan', offline=True, allow_partial=True)
+            self.assertNotIn('old.pkg', document.read_text())
+            self.assertIn('name = "old.pkg.Thing"', other.read_text())
+            self.assertEqual('Previously old.pkg.Thing.\n', history.read_text())
+            self.assertEqual(3, verify(base / 'plan')['filesVerified'])
+            undo(base / 'plan')
+            self.assertIn('See old.pkg.Thing.', document.read_text())
+
+    def test_review_groups_exclude_unrelated_inventory_errors_but_include_dynamic_names(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            (root / 'unrelated.kt').write_text('val x = (')
+            (root / 'dynamic.kt').write_text('val name = "old.pkg.Thing"')
+            plan = make_plan([(root, False)], copy.deepcopy(RECIPE), base / 'plan', engine)
+            self.assertTrue(any(f['path'] == 'unrelated.kt' for f in plan['roots'][0]['findings']))
+            review = json.loads((base / 'plan/review-groups.json').read_text())['0']
+            self.assertEqual(['file:dynamic.kt'], [r['group'] for r in review])
+            self.assertEqual([], review[0]['candidateFiles'])
+
     def test_registered_generator_config_is_mapped_and_outputs_remain_generator_owned(self):
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
             base = Path(tmp)
