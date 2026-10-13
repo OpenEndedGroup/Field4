@@ -441,12 +441,21 @@ fun ClosedFloatingPointRange<Double>.arcContains(value: Double): Boolean =
 class GestureHandle internal constructor(
     private val control: ArrayControlHandle<List<Double>>,
     take: List<Double>,
-    private val sanitize: (List<Double>) -> List<Double> = { it }
+    private val sanitize: (List<Double>) -> List<Double> = { it },
+    /** True for `gesture(pen = true)`: the take keeps pressure, tilt and twist with each position. */
+    val pen: Boolean = false,
+    /** The pad's value at its left and right edges. */
+    val xRange: Pair<Double, Double> = -1.0 to 1.0,
+    /** The pad's value at its bottom and top edges. */
+    val yRange: Pair<Double, Double> = -1.0 to 1.0,
 ) {
     /** Stable id of the control, shared with the phone. */
     val controlId: String get() = control.controlId
 
-    // Flattened (t, x, y) triples, t in seconds from the start of the stroke.
+    // Numbers per sample: (t, x, y), or for a pen (t, x, y, pressure, tiltX, tiltY, twist).
+    private val stride = if (pen) PEN_STRIDE else 3
+
+    // Flattened samples, t in seconds from the start of the stroke.
     @Volatile private var take: DoubleArray = take.toDoubleArray()
 
     internal fun replace(values: List<Double>) {
@@ -454,10 +463,10 @@ class GestureHandle internal constructor(
     }
 
     /** True once a take has been recorded (or given as `initialTake`). */
-    val hasTake: Boolean get() = take.size >= 6
+    val hasTake: Boolean get() = take.size >= 2 * stride
 
     /** Length of the take in seconds; `0.0` with no take. */
-    val duration: Double get() = take.let { if (it.size >= 3) it[it.size - 3] else 0.0 }
+    val duration: Double get() = take.let { if (it.size >= stride) it[it.size - stride] else 0.0 }
 
     /**
      * Where the take is [seconds] into its loop, interpolated between the recorded samples, or
@@ -465,22 +474,27 @@ class GestureHandle internal constructor(
      */
     fun at(seconds: Double): Vector2f? {
         val p = take
-        if (p.size < 6) return null
-        val length = p[p.size - 3]
+        if (p.size < 2 * stride) return null
+        val length = p[p.size - stride]
         val t = if (length > 0.0) ((seconds % length) + length) % length else 0.0
+        return Vector2f(interpolate(p, t, 1).toFloat(), interpolate(p, t, 2).toFloat())
+    }
+
+    // Field [field] of the take [p] at [t] (no wrapping), joined by straight lines as [at] is:
+    // 1 x, 2 y, and for a pen 3 pressure, 4 tiltX, 5 tiltY, 6 twist.
+    private fun interpolate(p: DoubleArray, t: Double, field: Int): Double {
+        val k = stride
         var lo = 0
-        var hi = p.size / 3 - 1
+        var hi = p.size / k - 1
+        if (hi <= 0) return p.getOrElse(field) { 0.0 }
         while (hi - lo > 1) {
             val mid = (lo + hi) / 2
-            if (p[mid * 3] <= t) lo = mid else hi = mid
+            if (p[mid * k] <= t) lo = mid else hi = mid
         }
-        val t0 = p[lo * 3]
-        val t1 = p[hi * 3]
+        val t0 = p[lo * k]
+        val t1 = p[hi * k]
         val f = if (t1 > t0) ((t - t0) / (t1 - t0)).coerceIn(0.0, 1.0) else 0.0
-        return Vector2f(
-            (p[lo * 3 + 1] + (p[hi * 3 + 1] - p[lo * 3 + 1]) * f).toFloat(),
-            (p[lo * 3 + 2] + (p[hi * 3 + 2] - p[lo * 3 + 2]) * f).toFloat()
-        )
+        return p[lo * k + field] + (p[hi * k + field] - p[lo * k + field]) * f
     }
 
     /** Shows a dot on the pad where the take is [seconds] into its loop. Negative hides it. */
@@ -488,27 +502,77 @@ class GestureHandle internal constructor(
 
     /** The take as (seconds, position) pairs in time order — the form `initialTake` accepts. */
     val samples: List<Pair<Double, Vector2f>>
-        get() = take.let { p -> List(p.size / 3) { i -> p[i * 3] to Vector2f(p[i * 3 + 1].toFloat(), p[i * 3 + 2].toFloat()) } }
+        get() = take.let { p -> List(p.size / stride) { i -> p[i * stride] to Vector2f(p[i * stride + 1].toFloat(), p[i * stride + 2].toFloat()) } }
 
-    /** The take as flattened (t, x, y) triples. */
-    internal fun rawTake(): DoubleArray = take
+    /**
+     * The take with everything the pointer reported at each sample. A take recorded without `pen`
+     * has none of it: pressure is `NaN` and tilt and twist 0.
+     */
+    val penSamples: List<PenSample>
+        get() = take.let { p ->
+            List(p.size / stride) { i ->
+                val o = i * stride
+                if (pen) PenSample(p[o], p[o + 1], p[o + 2], p[o + 3], p[o + 4], p[o + 5], p[o + 6])
+                else PenSample(p[o], p[o + 1], p[o + 2])
+            }
+        }
+
+    /** The take as flattened (t, x, y) triples, whatever else it records. */
+    internal fun rawTake(): DoubleArray = take.let { p ->
+        if (stride == 3) p else DoubleArray(p.size / stride * 3) { j -> p[(j / 3) * stride + j % 3] }
+    }
+
+    /**
+     * One of the pen's dimensions — `"pressure"`, `"tiltX"`, `"tiltY"` or `"twist"` — reduced to a
+     * `linear` lane the way [toKeyframes] reduces x and y: the fewest samples that stay within
+     * [tolerance] (in that dimension's units: pressure 0..1, degrees for the rest) of the take.
+     * Empty for a take recorded without `pen`.
+     */
+    fun penLane(dimension: String, tolerance: Double = 0.02): List<Keyframe> {
+        val field = PEN_FIELDS.indexOf(dimension).takeIf { it >= 0 }?.plus(3)
+            ?: throw IllegalArgumentException("a pen lane is one of ${PEN_FIELDS.joinToString()}: not '$dimension'")
+        if (!pen || !hasTake) return emptyList()
+        val p = take
+        val n = p.size / stride
+        val flat = DoubleArray(n * 3) { j -> val i = j / 3; if (j % 3 == 0) p[i * stride] else p[i * stride + field] }
+        return reduceTakeIndices(flat, tolerance).map { Keyframe(flat[it * 3], flat[it * 3 + 1], "linear") }
+    }
 
     /**
      * The take reduced to two `linear` lanes, x and y, sharing their key times: the fewest recorded
      * samples that keep both axes within [tolerance] (pad units) of the take at every moment. The
      * lanes start at 0 and end at [duration], so they loop as the take does. See [Box.bakeGesture].
      */
-    fun toKeyframes(tolerance: Double = 0.02): GestureLanes = takeToLanes(take, tolerance)
+    fun toKeyframes(tolerance: Double = 0.02): GestureLanes = takeToLanes(rawTake(), tolerance)
 
     /** How closely [x] and [y] follow this take; see [GestureFit]. */
-    fun fit(x: KeyframeEvaluator, y: KeyframeEvaluator): GestureFit = measureGestureFit(take, x, y)
+    fun fit(x: KeyframeEvaluator, y: KeyframeEvaluator): GestureFit = measureGestureFit(rawTake(), x, y)
 
     /**
      * Replaces the take with [samples], as if it had been recorded: the pad shows the new trail and
      * the take is saved with the box. Positions are clamped to the pad and time starts at 0.
      */
     fun setTake(samples: List<Pair<Double, Vector2f>>) {
-        val flat = sanitize(samples.flatMap { (t, v) -> listOf(t, v.x.toDouble(), v.y.toDouble()) })
+        val old = take
+        val t0 = samples.firstOrNull()?.first ?: 0.0
+        val flat = sanitize(samples.flatMap { (t, v) ->
+            val xy = listOf(t, v.x.toDouble(), v.y.toDouble())
+            // A pen take whose path is edited keeps what the pen did at each moment of it.
+            if (!pen) xy
+            else if (old.size >= stride) xy + (3 until stride).map { interpolate(old, t - t0, it) }
+            else xy + listOf(0.5, 0.0, 0.0, 0.0)
+        })
+        take = flat.toDoubleArray()
+        control.set(flat)
+    }
+
+    /** Replaces the take with [samples], pressure, tilt and twist included (a pen take keeps them). */
+    @JvmName("setPenTake")
+    fun setTake(samples: List<PenSample>) {
+        val flat = sanitize(samples.flatMap { s ->
+            val xy = listOf(s.t, s.x, s.y)
+            if (pen) xy + listOf(s.pressure.takeIf { it.isFinite() } ?: 0.5, s.tiltX, s.tiltY, s.twist) else xy
+        })
         take = flat.toDoubleArray()
         control.set(flat)
     }
@@ -519,7 +583,24 @@ class GestureHandle internal constructor(
      */
     fun setTake(x: KeyframeEvaluator, y: KeyframeEvaluator, samplesPerSecond: Double = 60.0) =
         setTake(lanesToTake(x, y, samplesPerSecond))
+
+    internal companion object {
+        const val PEN_STRIDE = 7
+        val PEN_FIELDS = listOf("pressure", "tiltX", "tiltY", "twist")
+    }
 }
+
+/**
+ * One sample of a [gesture] take with what the pointer reported besides its position, as the
+ * browser's `PointerEvent` gives it: [pressure] 0 to 1 (a mouse with a button down reports 0.5),
+ * [tiltX] and [tiltY] the pen's lean in degrees toward +x (right) and toward the user (down the
+ * screen), -90 to 90, and [twist] its turn about its own axis, 0 to 359 degrees. A take recorded
+ * without `pen` has `NaN` pressure and no tilt or twist.
+ */
+data class PenSample(
+    val t: Double, val x: Double, val y: Double,
+    val pressure: Double = Double.NaN, val tiltX: Double = 0.0, val tiltY: Double = 0.0, val twist: Double = 0.0,
+)
 
 /**
  * Adds an XY pad that records what you do with it — a gesture you can loop.
@@ -549,6 +630,8 @@ class GestureHandle internal constructor(
  * @param initialTake a take to start from, as (seconds, position) pairs in time order; a recorded
  *   take replaces it and is what a rerun restores
  * @param size width and height of the pad in pixels
+ * @param pen record what the pointer reports besides its position — pressure, tilt and twist, as a
+ *   pen or stylus gives them ([GestureHandle.penSamples]) — with each sample of a take
  * @param onUpdate called with the position as you drag
  */
 fun ControlGroupBuilder.gesture(
@@ -558,25 +641,34 @@ fun ControlGroupBuilder.gesture(
     initialValue: Vector2f = Vector2f(0f, 0f),
     initialTake: List<Pair<Double, Vector2f>> = emptyList(),
     size: Int = 240,
+    pen: Boolean = false,
     onUpdate: (Vector2f) -> Unit
 ): GestureHandle {
     val (x0, x1) = xRange
     val (y0, y1) = yRange
-    // A take is (t, x, y) triples: t from 0 and never decreasing, x and y on the pad, at most 4096 samples.
+    // A take is (t, x, y) triples — with `pen`, (t, x, y, pressure, tiltX, tiltY, twist) sevens: t
+    // from 0 and never decreasing, x and y on the pad, the pen's values in PointerEvent's ranges, at
+    // most 4096 samples.
+    val k = if (pen) GestureHandle.PEN_STRIDE else 3
     val sanitize = { values: List<Double> ->
-        val n = minOf(values.size / 3, 4096)
+        val n = minOf(values.size / k, 4096)
         val t0 = values.getOrElse(0) { 0.0 }
         var last = 0.0
-        List(n * 3) { i ->
+        List(n * k) { i ->
             val v = values[i]
-            when (i % 3) {
+            when (i % k) {
                 0 -> maxOf(last, v - t0).also { last = it }
                 1 -> v.coerceIn(minOf(x0, x1), maxOf(x0, x1))
-                else -> v.coerceIn(minOf(y0, y1), maxOf(y0, y1))
+                2 -> v.coerceIn(minOf(y0, y1), maxOf(y0, y1))
+                3 -> if (v.isFinite()) v.coerceIn(0.0, 1.0) else 0.5
+                4, 5 -> if (v.isFinite()) v.coerceIn(-90.0, 90.0) else 0.0
+                else -> if (v.isFinite()) ((v % 360.0) + 360.0) % 360.0 else 0.0
             }
         }
     }
-    val flatInitial = initialTake.flatMap { (t, v) -> listOf(t, v.x.toDouble(), v.y.toDouble()) }
+    val flatInitial = initialTake.flatMap { (t, v) ->
+        listOf(t, v.x.toDouble(), v.y.toDouble()) + if (pen) listOf(0.5, 0.0, 0.0, 0.0) else emptyList()
+    }
     var restoredTake: List<Double> = sanitize(flatInitial)
     lateinit var handle: GestureHandle
     val value = addControl(
@@ -584,7 +676,7 @@ fun ControlGroupBuilder.gesture(
         label,
         build = { id, previous ->
             previous?.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() }
-                ?.takeIf { it.size >= 6 && it.size % 3 == 0 }
+                ?.takeIf { it.size >= 2 * k && it.size % k == 0 }
                 ?.let { restoredTake = sanitize(it) }
             val x = previous?.x ?: initialValue.x.toDouble()
             val y = previous?.y ?: initialValue.y.toDouble()
@@ -593,17 +685,18 @@ fun ControlGroupBuilder.gesture(
             if (previous?.x != null) onUpdate(Vector2f(x.toFloat(), y.toFloat()))
             val html = controlShell(
                 "gesture", id, label,
-                """data-x-min="$x0" data-x-max="$x1" data-y-min="$y0" data-y-max="$y1" data-x="$x" data-y="$y" data-values="${encodeValues(restoredTake)}"""",
+                """data-x-min="$x0" data-x-max="$x1" data-y-min="$y0" data-y-max="$y1" data-x="$x" data-y="$y"${if (pen) " data-stride=\"7\"" else ""} data-values="${encodeValues(restoredTake)}"""",
                 polarSurface("gesture-visual", size)
             )
             html to ControllerControl(
                 id = id, type = "gesture", label = label, text = encodeValues(restoredTake),
-                xMin = x0, xMax = x1, yMin = y0, yMax = y1, x = x, y = y
+                xMin = x0, xMax = x1, yMin = y0, yMax = y1, x = x, y = y,
+                columns = if (pen) GestureHandle.PEN_STRIDE else 0
             )
         },
         read = { c -> c.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() } },
         write = { old, next -> old.copy(text = encodeValues(sanitize(next))) }
     )
-    handle = GestureHandle(withPlayhead(value), restoredTake, sanitize)
+    handle = GestureHandle(withPlayhead(value), restoredTake, sanitize, pen, xRange, yRange)
     return handle
 }

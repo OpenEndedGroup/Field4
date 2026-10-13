@@ -138,6 +138,12 @@
     const GP_LO = 10;
     const GP_HI = 190;
 
+    // A take is (t, x, y) triples, or with `gesture(pen = true)` (t, x, y, pressure, tiltX, tiltY,
+    // twist) sevens, read off the PointerEvent: data-stride says which.
+    function stride(container) {
+        return container.dataset.stride === '7' ? 7 : 3;
+    }
+
     function gestureRange(container) {
         return {
             x0: num(container, 'xMin', -1), x1: num(container, 'xMax', 1),
@@ -163,28 +169,29 @@
     }
 
     // The take's position `seconds` into its loop: the same interpolation as GestureHandle.at.
-    function gestureAt(take, seconds) {
-        if (take.length < 6) return null;
-        const length = take[take.length - 3];
+    function gestureAt(take, seconds, k = 3) {
+        if (take.length < 2 * k) return null;
+        const length = take[take.length - k];
         const t = length > 0 ? ((seconds % length) + length) % length : 0;
         let lo = 0;
-        let hi = take.length / 3 - 1;
+        let hi = take.length / k - 1;
         while (hi - lo > 1) {
             const mid = (lo + hi) >> 1;
-            if (take[mid * 3] <= t) lo = mid; else hi = mid;
+            if (take[mid * k] <= t) lo = mid; else hi = mid;
         }
-        const t0 = take[lo * 3];
-        const t1 = take[hi * 3];
+        const t0 = take[lo * k];
+        const t1 = take[hi * k];
         const f = t1 > t0 ? Math.min(Math.max((t - t0) / (t1 - t0), 0), 1) : 0;
         return [
-            take[lo * 3 + 1] + (take[hi * 3 + 1] - take[lo * 3 + 1]) * f,
-            take[lo * 3 + 2] + (take[hi * 3 + 2] - take[lo * 3 + 2]) * f,
+            take[lo * k + 1] + (take[hi * k + 1] - take[lo * k + 1]) * f,
+            take[lo * k + 2] + (take[hi * k + 2] - take[lo * k + 2]) * f,
         ];
     }
 
     function polylinePoints(container, flat) {
         const pts = [];
-        for (let i = 0; i + 2 < flat.length; i += 3) pts.push(gestureToSvg(container, flat[i + 1], flat[i + 2]).join(','));
+        const k = stride(container);
+        for (let i = 0; i + k - 1 < flat.length; i += k) pts.push(gestureToSvg(container, flat[i + 1], flat[i + 2]).join(','));
         return pts.join(' ');
     }
 
@@ -453,7 +460,7 @@
             const svg = container.querySelector('.gesture-visual');
             if (!svg) return;
             const dot = svgChild(svg, 'circle', 'gesture-play');
-            const at = Number.isFinite(p) && p >= 0 ? gestureAt(valuesOf(container), p) : null;
+            const at = Number.isFinite(p) && p >= 0 ? gestureAt(valuesOf(container), p, stride(container)) : null;
             dot.style.display = at ? '' : 'none';
             if (at) {
                 const [x, y] = gestureToSvg(container, at[0], at[1]);
@@ -541,7 +548,7 @@
             const p = gesturePoint(container, event);
             const recording = event.shiftKey || container.dataset.armed === 'true';
             active = { container, kind, values, recording, samples: [], t0: performance.now() };
-            gestureMove(p);
+            gestureMove(p, event);
             return true;
         }
         if (kind === 'multislider') {
@@ -592,9 +599,17 @@
         send(active.container, values.slice());
     }
 
-    function gestureMove(p) {
+    function gestureMove(p, event) {
         const { container } = active;
-        if (active.recording) active.samples.push((performance.now() - active.t0) / 1000, p.x, p.y);
+        if (active.recording) {
+            active.samples.push((performance.now() - active.t0) / 1000, p.x, p.y);
+            // What the pointer knows besides where it is. A mouse reports pressure 0.5 while a button
+            // is down and no tilt or twist; a pen reports all three.
+            if (stride(container) === 7) {
+                const pressure = Number.isFinite(event?.pressure) ? event.pressure : 0.5;
+                active.samples.push(pressure, event?.tiltX || 0, event?.tiltY || 0, event?.twist || 0);
+            }
+        }
         sendVec2(container, p.x, p.y);
         renderGesture(container, active.values, active.recording ? active.samples : null);
         renderPlayhead(container);
@@ -605,7 +620,7 @@
         event.preventDefault();
         const { container, kind, values } = active;
         if (kind === 'gesture') {
-            gestureMove(gesturePoint(container, event));
+            gestureMove(gesturePoint(container, event), event);
             return;
         }
         if (kind === 'multislider') {
@@ -675,7 +690,7 @@
         if (kind === 'gesture' && active.recording) {
             container.dataset.armed = 'false';
             // A take needs at least two samples, or there is nothing to loop.
-            if (active.samples.length >= 6) send(container, active.samples.slice());
+            if (active.samples.length >= 2 * stride(container)) send(container, active.samples.slice());
             active = null;
             window.removeEventListener('pointermove', move);
             renderGesture(container);

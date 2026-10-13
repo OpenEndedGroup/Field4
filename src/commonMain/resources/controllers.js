@@ -851,6 +851,8 @@
       y: String(control.y ?? 0),
     });
     if (control.polar) box.dataset.polar = "true";
+    // A pen gesture's take is (t, x, y, pressure, tiltX, tiltY, twist) sevens: `columns` carries its stride.
+    if (kind === "gesture" && control.columns === 7) box.dataset.stride = "7";
 
     const svg = (classes, viewBox, style) => {
       const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
