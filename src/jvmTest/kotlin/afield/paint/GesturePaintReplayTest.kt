@@ -92,7 +92,8 @@ class GesturePaintReplayTest {
     }
 
     /** The whole chain: record, bake, edit a lane, replay, and the paint is where the edit put it. */
-    @Test fun anEditedTakePaintsWhereTheEditMovedIt() {
+    @Test
+    fun anEditedTakePaintsWhereTheEditMovedIt() {
         if (!available()) return
         val take = recordedWave()
         val flat = take.flatMap { listOf(it.t, it.x, it.y) }.toDoubleArray()
@@ -131,7 +132,8 @@ class GesturePaintReplayTest {
      * pressed hardest, than a take at one light pressure gives, and less at the start, where it
      * barely touched.
      */
-    @Test fun aPensPressurePressesTheHairsWhereThePenPressed() {
+    @Test
+    fun aPensPressurePressesTheHairsWhereThePenPressed() {
         if (!available()) return
         val take = recordedWave()
         fun contact(samples: List<PenSample>, name: String): List<Double> = canvas().use { c ->
