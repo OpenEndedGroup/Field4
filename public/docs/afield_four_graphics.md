@@ -1449,7 +1449,7 @@ void main() {
 
 `push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. The reflected-interface contract this page opened with still holds at a million particles: the shader is the thing you edit.
 
-Run this one live, and expect to tune it: the result depends on how densely the walkers cover the canvas, and the useful range is narrow. A million walkers over a 4112×2524 window grow a cluster only a few pixels across in 600 frames (about eight seconds), too small to see. Over a 900×560 canvas every walker touches something solid on its first step, so the whole field sticks at once and turns uniform magenta. A legible cluster needs a density between those two, and more than 600 frames.
+Run this one live, and expect to tune it: whether the result branches depends on how densely the walkers cover the texture, and the useful range is narrow. A million walkers over a 4112×2524 window are too sparse to see anything: after 3000 frames the cluster is about a dozen pixels across. A million over a 900×560 texture, about two walkers per pixel, are too dense to branch: every point of the cluster's edge has a walker beside it, so it grows as a solid diamond rather than a dendrite. Between the two, 300 000 walkers on a 1024×1024 texture (about 0.3 per pixel) grows visible branches within 1500 frames and a cluster about 200 pixels across by 6000. At that density `solidDecayPerFrame` makes little visible difference.
 
 ## Traffic: the Biham–Middleton–Levine model { #bml-traffic }
 
