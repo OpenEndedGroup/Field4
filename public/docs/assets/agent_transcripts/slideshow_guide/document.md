@@ -17,7 +17,7 @@ From `code`
 A four-step guide to this document. Run it, then follow the links in the note.
 
 ```edn [field-box id="sg_tour" role="properties"]
-{"id" "sg_tour" "index" 0 "name" "tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tour" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_tour_code_.kt" "lines" 68 "characters" 1987 "sha256" "0ec35f0c1e6c28dd4a2bf5cc1cdc335b70b299da9533f7830ca40749a63fea56"}]}
+{"id" "sg_tour" "index" 0 "name" "tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tour" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_tour_code_.kt" "lines" 71 "characters" 2074 "sha256" "1b194b181f6e563d1e0698e97cb6d8ddb966ec63c268aa96313e9a0b5f434943"}]}
 ```
 
 ```kotlin [field-property box="sg_tour" name="code" path="sg_tour_code_.kt"]
@@ -53,7 +53,8 @@ val show = slideShow {
             The green line points at it. Visits to this step: **{{visits}}**.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """.trimIndent(),
+            animated = true
         )
         selectBox(numbersBox)
         annotate(id = "numbers", targetBox = numbersBox, color = "rgba(128, 255, 164, 0.8)", dashed = false)
@@ -65,7 +66,8 @@ val show = slideShow {
             `squares` maps each number to its square.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """.trimIndent(),
+            animated = true
         )
         selectBox(squaresBox, property = "code", line = 3, highlight = 3)
         annotateToLine(id = "line3", targetBox = squaresBox, line = 3, color = "rgba(255, 180, 100, 0.8)", dashed = true)
@@ -77,7 +79,8 @@ val show = slideShow {
             [Give this guide a star](#custom:star). Stars so far: **{{stars}}**.
 
             [[home:Start again]] [[finish]]
-            """.trimIndent()
+            """.trimIndent(),
+            animated = true
         )
         linkCallback("star") {
             stars += 1

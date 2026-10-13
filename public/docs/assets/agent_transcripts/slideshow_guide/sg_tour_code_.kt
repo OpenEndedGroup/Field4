@@ -30,7 +30,8 @@ val show = slideShow {
             The green line points at it. Visits to this step: **{{visits}}**.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """.trimIndent(),
+            animated = true
         )
         selectBox(numbersBox)
         annotate(id = "numbers", targetBox = numbersBox, color = "rgba(128, 255, 164, 0.8)", dashed = false)
@@ -42,7 +43,8 @@ val show = slideShow {
             `squares` maps each number to its square.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """.trimIndent(),
+            animated = true
         )
         selectBox(squaresBox, property = "code", line = 3, highlight = 3)
         annotateToLine(id = "line3", targetBox = squaresBox, line = 3, color = "rgba(255, 180, 100, 0.8)", dashed = true)
@@ -54,7 +56,8 @@ val show = slideShow {
             [Give this guide a star](#custom:star). Stars so far: **{{stars}}**.
 
             [[home:Start again]] [[finish]]
-            """.trimIndent()
+            """.trimIndent(),
+            animated = true
         )
         linkCallback("star") {
             stars += 1
