@@ -266,6 +266,7 @@ function filenameFromUrl(rawUrl) {
     if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
     if (pathname.endsWith("/docs-pass.html")) return "Docs Pass";
+    if (pathname.endsWith("/refactor-pass.html")) return "Refactoring";
     // Any other Field page (/history.html, /logs.html, ...) is named by its file, not the host.
     const page = pathname.match(/\/([^/]+)\.html$/);
     if (page) return page[1].charAt(0).toUpperCase() + page[1].slice(1);

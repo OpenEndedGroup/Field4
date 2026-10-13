@@ -27,6 +27,12 @@ internal data class RefactorPassAction(
     val item: String = "",
     val state: String = "",
     val reason: String = "",
+    val recipe: String = "",
+    val workspaces: List<String> = emptyList(),
+    val checks: String = "",
+    val session: String = "",
+    val root: String = "",
+    val destination: String = "",
 )
 
 @Serializable
@@ -39,16 +45,25 @@ private val refactorJson = Json { encodeDefaults = true }
 internal fun refactorPassArguments(request: RefactorPassAction): List<String>? = when (request.action) {
     "create" -> if (request.plan.length in 1..4096 && request.plan.none { it.code < 32 } &&
         runCatching { Path.of(request.plan).isAbsolute }.getOrDefault(false)) listOf("create", "--plan", request.plan) else null
-    "replan", "rehearse" -> listOf(request.action)
+    "replan", "rehearse", "prepare", "restore", "validate", "land", "close", "continue-review" -> listOf(request.action)
+    "start" -> if (request.recipe.length in 2..100_000 && request.workspaces.size <= 10 && request.workspaces.all(::refactorAbsolutePath))
+        listOf("start", "--recipe-json", request.recipe) + request.workspaces.flatMap { listOf("--workspace", it) } else null
+    "configure" -> if (request.checks.length in 2..100_000) listOf("configure", "--checks-json", request.checks) else null
+    "resume" -> if (refactorAbsolutePath(request.session)) listOf("resume", "--session", request.session) else null
+    "publish" -> if (request.root.matches(Regex("[0-9]+")) && refactorAbsolutePath(request.destination))
+        listOf("publish", "--root", request.root, "--destination", request.destination) else null
     "decide" -> if (refactorItemId.matches(request.item) && request.state in setOf("patch", "preserve", "adapter", "question", "open") &&
         request.reason.isNotBlank() && request.reason.length <= 8000 && request.reason.none { it.code < 32 && it != '\n' && it != '\t' })
         listOf("decide", "--item", request.item, "--state", request.state, "--reason", request.reason) else null
     else -> null
 }
 
+private fun refactorAbsolutePath(value: String): Boolean = value.length in 1..4096 && value.none { it.code < 32 } &&
+    runCatching { Path.of(value).isAbsolute }.getOrDefault(false)
+
 /** An explicit terminal kind uses the pass CLI's writer lease and its own non-landing brief. */
 internal fun refactorTerminalPlan(launch: TerminalLaunch, checkout: Path, uv: String): Result<TerminalPlan> {
-    if (launch.batch !in refactorPassBatches || launch.text.length > 4000 || launch.text.any { it.code < 32 && it != '\n' && it != '\t' })
+    if ((launch.batch !in refactorPassBatches && launch.batch != "session") || launch.text.length > 4000 || launch.text.any { it.code < 32 && it != '\n' && it != '\t' })
         return Result.failure(IllegalArgumentException("invalid refactor batch or direction"))
     if (!Files.isRegularFile(checkout.resolve(".field-backdoor/refactor-pass/current.json")))
         return Result.failure(IllegalStateException("Import a refactor plan first"))
@@ -62,6 +77,7 @@ private fun refactorCommand(checkout: Path, uv: String = terminalExecutable("uv"
 private object RefactorPassJobs {
     private val monitor = Any()
     private var job = DocsPassJob()
+    private var activeProcess: Process? = null
     fun snapshot(): DocsPassJob = synchronized(monitor) { job }
 
     fun start(directory: Path, arguments: List<String>): DocsPassJob = synchronized(monitor) {
@@ -70,6 +86,7 @@ private object RefactorPassJobs {
         Files.createDirectories(logDirectory)
         val logFile = logDirectory.resolve("${System.currentTimeMillis()}-${arguments.first()}.log")
         val child = ProcessBuilder(refactorCommand(directory) + arguments).directory(directory.toFile()).redirectErrorStream(true).start()
+        activeProcess = child
         job = DocsPassJob(name = arguments.first(), running = true, startedAtEpochMs = System.currentTimeMillis(), logFile = logFile.toString())
         thread(name = "refactor-pass-${arguments.first()}", isDaemon = true) {
             try {
@@ -85,6 +102,14 @@ private object RefactorPassJobs {
                 child.destroy()
                 synchronized(monitor) { job = job.copy(running = false, exitCode = 1, logTail = error.toString()) }
             }
+        }
+        job
+    }
+
+    fun cancel(): DocsPassJob = synchronized(monitor) {
+        activeProcess?.takeIf { it.isAlive }?.let { process ->
+            process.descendants().forEach { it.destroy() }
+            process.destroy()
         }
         job
     }
@@ -113,6 +138,7 @@ internal fun Route.installRefactorPassRoutes(policy: DocsAccessPolicy) {
         val change = call.request.queryParameters["change"]
         if (change != null && !refactorItemId.matches(change)) return@get call.respond(HttpStatusCode.BadRequest, "Invalid change")
         val args = when {
+            call.request.queryParameters["delivery"] != null -> listOf("delivery-diff")
             item != null -> listOf("item", "--item", item)
             change != null -> listOf("changes", "--change", change)
             call.request.queryParameters["changes"] != null -> listOf("changes")
@@ -126,9 +152,13 @@ internal fun Route.installRefactorPassRoutes(policy: DocsAccessPolicy) {
     post("/api/refactor-pass") {
         if (call.refuseUnlessSameSiteDocsClient(docsPassPolicy(policy))) return@post
         val checkout = docsImprovementCheckout() ?: return@post call.respond(HttpStatusCode.ServiceUnavailable, "No checkout")
-        val arguments = refactorPassArguments(call.receive<RefactorPassAction>())
+        val request = call.receive<RefactorPassAction>()
+        if (request.action == "cancel") {
+            return@post call.respondText(refactorJson.encodeToString(DocsPassJob.serializer(), RefactorPassJobs.cancel()), ContentType.Application.Json)
+        }
+        val arguments = refactorPassArguments(request)
             ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid refactor request")
-        if (arguments.first() == "decide") {
+        if (arguments.first() in setOf("decide", "configure")) {
             val (code, output) = withContext(Dispatchers.IO) { RefactorPassJobs.query(checkout, arguments) }
             return@post call.respondText(output, ContentType.Application.Json,
                 if (code == 0) HttpStatusCode.OK else HttpStatusCode.Conflict)

@@ -73,15 +73,22 @@ function options(node, values) {
 }
 function renderStatus(data, job) {
     busy = !!job.running;
+    $('cancel-job').hidden=!busy;
     $('job-state').textContent = job.running ? `${job.name} is running…` : job.name ? `${job.name}: ${job.exitCode===0?'finished':'failed — see operation log'}` : '';
     $('job-state').classList.toggle('busy', busy);
     $('log').textContent = job.logTail || 'No operation yet.';
     $('import-progress').textContent=job.running ? `${job.name} is running. ${job.logTail.slice(-600)}` : job.exitCode ? job.logTail.slice(-1000) : '';
-    for(const id of ['import-button','replan','rehearse','run-agent']) $(id).disabled = busy;
+    for(const id of ['import-button','start-button','resume-button','replan','rehearse','run-agent','session-agent','close-session','prepare','restore','continue-review','validate','land','publish','save-checks']) $(id).disabled = busy;
     const exists=!!data?.pass;
     $('import-panel').hidden=exists;
     for(const id of ['scope-panel','actions-panel','review-panel','review-body','delivery']) $(id).hidden=!exists;
-    if(!exists) return;
+    if(!exists) {
+        current=null;
+        $('saved-sessions').replaceChildren(...(data?.sessions||[]).map(s=>{
+            const b=text('button',`${s.id} · ${s.phase}`);b.onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action:'resume',session:s.directory});await refresh();});return b;
+        }));
+        return;
+    }
     if(current && current.pass.plan!==data.pass.plan) {
         selected=null; ++requestVersion;
         $('detail').replaceChildren(text('p','The plan has changed. Choose a remaining review group, or inspect proposed changes above for files that are now ready.','empty'));
@@ -89,13 +96,15 @@ function renderStatus(data, job) {
         $('change-list').replaceChildren();
         $('change-diff').replaceChildren(text('p','Open this section to load the proposed files.','muted'));
     }
+    const changedSession=current?.pass.id!==data.pass.id;
     current=data;
     $('revision').textContent=`Plan ${data.pass.revision} · ${data.pass.id}`;
     $('scope').replaceChildren(...data.roots.map(r=>{
         const box=document.createElement('div');box.append(text('h3',r.kind==='repo'?'Repository worktree':`Workspace copy ${r.id}`),text('div',`${r.ready} ready · ${r.held} held candidates`,'metrics'),text('p',`${r.files.toLocaleString()} files scanned`,'muted'),text('p',r.path,'path'));return box;
     }));
     $('recipe').textContent=JSON.stringify(data.recipe,null,2);
-    $('branch').textContent=`Integration branch: ${data.pass.branch}`;
+    $('branch').textContent=`Session worktree: ${data.pass.worktree} · delivery branch: ${data.pass.branch}`;
+    renderDelivery(data, changedSession);
     options($('batch'),Object.entries(data.batches));
     options($('root'),[['','All roots'],...data.roots.map(r=>[r.id,r.kind==='repo'?'Repository':`Workspace copy ${r.id}`])]);
     $('counts').textContent=`${data.items.length} review groups · ${data.counts.question||0} questions`;
@@ -141,24 +150,78 @@ async function showItem(id) {
     options(select,Object.entries(labels).filter(([key])=>key!=='stale'));select.value=item.decision?.state||'open';
     const reason=document.createElement('textarea');reason.id='item-reason';reason.required=true;reason.placeholder='What changed, what should stay, or what decision is needed?';reason.setAttribute('aria-label','Reason for decision');reason.value=item.decision?.reason||'';
     const save=text('button','Record decision');save.type='submit';
-    form.append(text('h3','Decision for this group'),text('p','A recorded decision does not release held files. Patches must be replanned and verified.','muted'),select,reason,save);
+    form.append(text('h3','Decision for this group'),text('p','Replan after editing. Preserve records an intentional exception; a group with held edits must still be resolved before delivery.','muted'),select,reason,save);
     form.onsubmit=e=>{e.preventDefault();guarded(async()=>{save.disabled=true;try{await api('/api/refactor-pass',{action:'decide',item:id,state:select.value,reason:reason.value});await refresh();await showItem(id);}finally{save.disabled=false;}});};
-    $('detail').append(form);
+    if((current.delivery?.phase||'review')==='review') $('detail').append(form);
+    else $('detail').append(text('p','Review decisions are frozen during delivery. Use the session terminal for fixes, then rerun verification.','muted'));
 }
 async function refresh() {
     const result=await api('/api/refactor-pass');if(result.error) throw new Error(result.error);renderStatus(result.data,result.job);
     const terminals=await api('/api/terminal');$('sessions').replaceChildren();
     for(const session of terminals.filter(t=>t.kind==='refactor-batch'&&t.running)) {const b=text('button',`Attach: ${session.batch}`);b.onclick=()=>openTerminal(session.id);$('sessions').append(b);}
 }
-function openTerminal(id) {const url=`/terminal.html?id=${encodeURIComponent(id)}`;$('terminal').src=url;$('terminal-link').href=url;$('terminal-pane').hidden=false;}
-$('hide-terminal').onclick=()=>{$('terminal-pane').hidden=true;};
+function openTerminal(id) {const url=`/terminal.html?id=${encodeURIComponent(id)}`;$('terminal-link').href=url;$('terminal-pane').hidden=false;window.open(url,`field-terminal-${id}`,'noopener');}
 $('import-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/api/refactor-pass',{action:'create',plan:$('plan-path').value.trim()});await refresh();});};
 for(const action of ['replan','rehearse']) $(action).onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action});await refresh();});
+$('cancel-job').onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action:'cancel'});await refresh();});
 $('refresh').onclick=()=>guarded(refresh);
 $('mechanical').addEventListener('toggle',()=>{if($('mechanical').open) guarded(async()=>{const result=await api('/api/refactor-pass?changes=1');if(result.error) throw new Error(result.error);options($('change-list'),[['','Choose a file'],...result.data.map(c=>[c.id,`${c.held?'HELD':'READY'} · root ${c.root} · ${c.path}`])]);});});
 $('change-list').onchange=()=>guarded(async()=>{if(!$('change-list').value)return;const result=await api(`/api/refactor-pass?change=${$('change-list').value}`);if(result.error)throw new Error(result.error);renderChange($('change-diff'),result.data);});
 for(const id of ['batch','root','decision-filter','search']) $(id).addEventListener(id==='search'?'input':'change',renderItems);
 $('run-agent').onclick=()=>guarded(async()=>{const session=await api('/api/terminal',{kind:'refactor-batch',batch:$('batch').value,text:$('direction').value});openTerminal(session.id);await refresh();});
+
+const defaultChecks=[
+    {name:'Compile JVM and browser',kind:'build',argv:['./gradlew','compileKotlinJvm','compileKotlinJs']},
+    {name:'JVM tests',kind:'test',argv:['./gradlew','jvmTest']},
+    {name:'Runtime smoke catalog',kind:'runtime',argv:['uv','run','--group','backdoor','python','tools/run_field_tests.py']}
+];
+function renderDelivery(data, changedSession) {
+    const d=data.delivery||{phase:'review',blockers:[]};const reviewing=d.phase==='review';
+    $('delivery-state').textContent=`Session: ${d.phase}${d.error?' · '+d.error:''}`;
+    $('blocker-disclosure').hidden=!d.blockers?.length;
+    $('blocker-count').textContent=`${d.blockers?.length||0} remaining delivery blockers · review details`;
+    $('delivery-blockers').replaceChildren(...(d.blockers||[]).map(b=>text('p',b)));
+    for(const id of ['replan','rehearse','run-agent']) $(id).disabled=busy||!reviewing;
+    $('prepare').disabled=busy||!reviewing||!!d.blockers?.length;
+    $('restore').disabled=busy||!['applying','prepared','failed','checking','verified'].includes(d.phase);
+    $('continue-review').disabled=busy||!['prepared','failed','checking','verified'].includes(d.phase);
+    $('validate').disabled=busy||!['prepared','failed','checking','verified'].includes(d.phase);
+    $('land').disabled=busy||d.phase!=='verified';
+    $('publish').disabled=busy||!['verified','queued'].includes(d.phase)||!data.roots.some(r=>r.kind==='workspace');
+    $('session-agent').disabled=busy||['queued','published','applying'].includes(d.phase);
+    if(changedSession) $('checks').value=JSON.stringify(data.checks?.length?data.checks:defaultChecks,null,2);
+    $('check-results').replaceChildren(...(d.checks||[]).map(c=>text('p',`${c.exitCode===0?'Passed':'Failed'} · ${c.name} · ${c.log}`,'path')));
+    $('delivery-receipt').hidden=!d.queueReceipt;$('delivery-receipt').textContent=d.queueReceipt||'';
+    $('publications').replaceChildren(...(d.publications||[]).map(p=>text('p',`Published workspace ${p.root}: ${p.path}`,'path')));
+    options($('publish-root'),data.roots.filter(r=>r.kind==='workspace').map(r=>[r.id,`Workspace ${r.id}`]));
+}
+$('start-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{
+    let recipe;
+    if($('new-recipe').value.trim()) recipe=JSON.parse($('new-recipe').value);
+    else {
+        const packages={};
+        for(const line of $('mappings').value.split('\n').map(s=>s.trim()).filter(Boolean)) {
+            const pair=line.split(/\s*(?:→|->)\s*/);
+            if(pair.length!==2||!pair[0]||!pair[1]||packages[pair[0]]) throw new Error('Use one distinct old → new package pair per line.');
+            packages[pair[0]]=pair[1];
+        }
+
+        recipe={schema:1,id:'refactor-'+Date.now(),description:$('purpose').value,packages,symbols:{},splitPackages:[],rewriteComments:true,
+            markdownProse:$('markdown-paths').value.split(',').map(s=>s.trim()).filter(Boolean),workspaceMarkdownProse:$('workspace-markdown').checked?['*.md']:[]};
+    }
+    await api('/api/refactor-pass',{action:'start',recipe:JSON.stringify(recipe),workspaces:$('workspace-paths').value.split('\n').map(s=>s.trim()).filter(Boolean)});await refresh();
+});};
+$('resume-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/api/refactor-pass',{action:'resume',session:$('resume-path').value.trim()});await refresh();});};
+for(const action of ['prepare','restore','continue-review','land']) $(action).onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action});await refresh();});
+$('validate').onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action:'configure',checks:JSON.stringify(JSON.parse($('checks').value))});await api('/api/refactor-pass',{action:'validate'});await refresh();});
+$('close-session').onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action:'close'});await refresh();});
+$('save-checks').onclick=()=>guarded(async()=>{const checks=JSON.parse($('checks').value);await api('/api/refactor-pass',{action:'configure',checks:JSON.stringify(checks)});await refresh();});
+$('session-agent').onclick=()=>guarded(async()=>{const s=await api('/api/terminal',{kind:'refactor-batch',batch:'session',text:$('direction').value});openTerminal(s.id);await refresh();});
+$('delivery-review').onclick=()=>guarded(async()=>{const r=await api('/api/refactor-pass?delivery=1');if(r.error)throw new Error(r.error);const d=r.data;
+    $('delivery-diff').replaceChildren(text('h3','Repository changes since session creation'),renderDiff(document.createElement('pre'),d.diff||'No tracked changes.'),text('p',d.untracked.length?'New files: '+d.untracked.join(', '):'No untracked files.','path'),text('p',`Full repository diff: ${d.fullDiff}${d.truncated?' · display truncated':''}`,'path'),...d.workspaces.map(w=>{const node=document.createElement('details');node.append(text('summary',`${w.count} changed files · ${w.path}`),text('p',`Compared with the original at review time: ${w.source}`,'path'));for(const c of w.changes)node.append(text('h3',c.path),renderDiff(document.createElement('pre'),c.diff));if(w.count>w.changes.length)node.append(text('p','First 200 files shown; inspect the workspace directory for the rest.'));return node;}));
+});
+$('publish-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/api/refactor-pass',{action:'publish',root:$('publish-root').value,destination:$('publish-path').value.trim()});await refresh();});};
+
 $('plan-path').value=new URLSearchParams(location.search).get('plan')||'';
 await guarded(refresh);
 setInterval(()=>guarded(refresh),8000);
