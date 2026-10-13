@@ -52,6 +52,7 @@ class RefactorPassTest(unittest.TestCase):
         subprocess.run(['git', 'init', '-q', str(self.repo)], check=True)
         self.source = 'import old.pkg.Thing\nval title = "old.pkg.Thing label"\n'
         (self.repo / 'source.kt').write_text(self.source)
+        (self.repo / 'zznotes.md').write_text('Historical note about `old.pkg.Thing`.\n')
         subprocess.run(['git', '-C', str(self.repo), 'add', '.'], check=True)
         subprocess.run(['git', '-C', str(self.repo), '-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '-qm', 'base'], check=True)
         self.workspace = self.base / 'workspace'; self.workspace.mkdir()
@@ -82,10 +83,19 @@ class RefactorPassTest(unittest.TestCase):
         self.assertIn('val title = "old.pkg.Thing label"', item['snippets'][0]['excerpt'])
         self.assertIn('+import new.pkg.Thing', item['changes'][0]['diff'])
         self.assertTrue(item['changes'][0]['held'])
+        self.assertEqual('new.pkg', item['referenceMap']['old.pkg'])
+        self.assertIsNone(item['noProposalReason'])
         listed = passes.changes(self.repo)
         self.assertIn('diff', passes.changes(self.repo, listed[0]['id']))
         with self.assertRaises(RefactorError):
             passes.detail(self.repo, '../private')
+
+    def test_reference_only_markdown_explains_why_there_is_no_edit(self):
+        note = next(item for item in self.view['items'] if 'zznotes.md' in item['paths'])
+        detail = passes.detail(self.repo, note['id'])
+        self.assertEqual([], detail['changes'])
+        self.assertIn('outside the recipe’s automatic prose-edit paths', detail['noProposalReason'])
+        self.assertEqual('new.pkg', detail['referenceMap']['old.pkg'])
 
     def test_decision_never_changes_the_immutable_plan_or_unholds_files(self):
         before = (Path(self.state['plan']) / 'plan.json').read_bytes()
