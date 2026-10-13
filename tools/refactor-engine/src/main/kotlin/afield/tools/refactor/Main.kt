@@ -92,6 +92,37 @@ class Engine : AutoCloseable {
     )
     private val factory = KtPsiFactory(environment.project, false)
 
+    /** Lossless top-level pieces for reviewed source relocation; no binding inference. */
+    fun partition(code: String): JsonObject {
+        val source = code.replace("\r\n", "\n").replace('\r', '\n')
+        val file = factory.createFile("partition.kt", source)
+        val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+        return buildJsonObject {
+            put("package", file.packageFqName.asString())
+            putJsonArray("errors") { errors.forEach { add(it.errorDescription) } }
+            if (errors.isEmpty()) {
+                val declarations = file.declarations
+                put("header", source.substring(0, declarations.firstOrNull()?.textRange?.startOffset ?: source.length))
+                putJsonArray("pieces") {
+                    declarations.forEachIndexed { index, declaration ->
+                        val start = declaration.textRange.startOffset
+                        val end = declarations.getOrNull(index + 1)?.textRange?.startOffset ?: source.length
+                        add(buildJsonObject {
+                            put("name", (declaration as? KtNamedDeclaration)?.name.orEmpty())
+                            put("line", source.take(declaration.textOffset).count { it == '\n' } + 1)
+                            put("text", source.substring(start, end))
+                            put("private", declaration.hasModifier(org.jetbrains.kotlin.lexer.KtTokens.PRIVATE_KEYWORD))
+                            putJsonArray("references") {
+                                PsiTreeUtil.findChildrenOfType(declaration, KtNameReferenceExpression::class.java)
+                                    .map { it.getReferencedName() }.distinct().sorted().forEach { add(it) }
+                            }
+                        })
+                    }
+                }
+            }
+        }
+    }
+
     fun declarations(code: String): JsonObject {
         val normalized = code.replace("\r\n", "\n").replace('\r', '\n')
         val file = factory.createFile("index.kt", normalized)
@@ -314,6 +345,11 @@ fun main() {
         generateSequence(::readlnOrNull).forEach { line ->
             val result = try {
                 val request = Json.parseToJsonElement(line).jsonObject
+                if (request["operation"]?.jsonPrimitive?.content == "partition") {
+                    println(engine.partition(request.getValue("code").jsonPrimitive.content))
+                    System.out.flush()
+                    return@forEach
+                }
                 if (request["operation"]?.jsonPrimitive?.content == "declarations") {
                     println(engine.declarations(request.getValue("code").jsonPrimitive.content))
                     System.out.flush()

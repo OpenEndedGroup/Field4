@@ -4,6 +4,18 @@ import kotlin.test.*
 import kotlinx.serialization.json.*
 
 class EngineTest {
+    @Test fun partitionTilesSourceAndKeepsAnnotationsDocsAndPrivateDependencies() = Engine().use { engine ->
+        val source = "@file:Suppress(\"unused\")\npackage example\nimport java.util.List\n\n" +
+            "/** A 💡. */\n@Deprecated(\"old\") fun a() = hidden()\n// gap\nprivate fun hidden() = 1\n"
+        val result = engine.partition(source)
+        val pieces = result.getValue("pieces").jsonArray
+        assertEquals(source, result.getValue("header").jsonPrimitive.content + pieces.joinToString("") { it.jsonObject.getValue("text").jsonPrimitive.content })
+        assertEquals(listOf("a", "hidden"), pieces.map { it.jsonObject.getValue("name").jsonPrimitive.content })
+        assertTrue(pieces[1].jsonObject.getValue("private").jsonPrimitive.boolean)
+        assertTrue(pieces[0].jsonObject.getValue("references").jsonArray.any { it.jsonPrimitive.content == "hidden" })
+        assertTrue(engine.partition("fun broken(").getValue("errors").jsonArray.isNotEmpty())
+    }
+
     @Test fun classMemberStarsFollowSymbolsButDestinationPackageStarsStayPackages() = Engine().use { engine ->
         val r = Recipe(emptyMap(), mapOf("afield.mixed.Module" to "afield.render.Module",
             "afield.graphics.three" to "afield.graphics.three.three"), setOf("afield.mixed", "afield.graphics"))
