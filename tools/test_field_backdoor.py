@@ -41,6 +41,36 @@ class _Logger:
         pass
 
 
+class McpPaintGestureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_a_gesture_is_required(self) -> None:
+        from tools.field_mcp import FieldMcpServer, McpToolError
+
+        server = FieldMcpServer.__new__(FieldMcpServer)
+        with self.assertRaisesRegex(McpToolError, "samples"):
+            await server.tool_paint_gesture({})
+
+    async def test_the_report_and_the_png_come_back(self) -> None:
+        import json as _json
+        import tempfile
+        from tools.field_mcp import FieldMcpServer
+
+        png = Path(tempfile.mkdtemp()) / "out.png"
+        png.write_bytes(b"\x89PNG fake")
+        server = FieldMcpServer.__new__(FieldMcpServer)
+        server.timeout = 5.0
+        client = mock.Mock()
+        client.run_jvm_main = mock.AsyncMock(return_value={"exitCode": 0, "stdout": _json.dumps({"ok": True, "out": str(png)})})
+        server._ensure_client = mock.AsyncMock(return_value=client)  # type: ignore[method-assign]
+        result = await server.tool_paint_gesture({"samples": [[0, 0, 0], [1, 0.5, 0.5]], "bake": 0.01})
+        entry, args = client.run_jvm_main.call_args
+        self.assertEqual(entry[0], "afield.paint.GestureReplayMain")
+        request = _json.loads(Path(args["jvm_args"][0]).read_text())
+        self.assertEqual(request["samples"], [[0, 0, 0], [1, 0.5, 0.5]])
+        self.assertTrue(request["lanesOut"].endswith(".json"))
+        self.assertEqual(result[1]["type"], "image")
+        self.assertIn("lanesOut", _json.loads(result[0]["text"]))
+
+
 class McpOpenDocumentTests(unittest.IsolatedAsyncioTestCase):
     async def open(self, existed: bool | None, **args) -> dict:
         from tools.field_mcp import FieldMcpServer
