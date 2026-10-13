@@ -48,17 +48,24 @@ val generateLinalgBuildProfile = tasks.register("generateLinalgBuildProfile") {
 // The linear-algebra sources are dependency-free (Kotlin stdlib + JDK FFM only), so the benchmark
 // compiles them directly instead of dragging in the whole afield runtime. This keeps the build fast
 // and lets the arena-checks profile be set independently of the main build.
-val assembleLinalgSources = tasks.register<Copy>("assembleLinalgSources") {
+val assembleLinalgSources = tasks.register<Sync>("assembleLinalgSources") {
     val root = rootProject.layout.projectDirectory
     into(layout.buildDirectory.dir("linalg-sources"))
-    from(root.dir("src/generatedLinalg/kotlin")) { include("afield/stdlib/linalg/**") }
-    from(root.dir("src/jvmMain/kotlin")) { include("afield/stdlib/linalg/**") }
+    from(root.dir("src/generatedLinalg/kotlin")) {
+        include("afield/math/linalg/**")
+        // These lived outside the original dependency-free benchmark source set.
+        exclude("afield/math/linalg/Swizzles.kt", "afield/math/linalg/VectorOperators.kt")
+    }
+    from(root.dir("src/jvmMain/kotlin")) {
+        include("afield/math/linalg/DualQuaternionf.kt", "afield/math/linalg/Geometry.kt")
+        include("afield/math/linalg/arena/ArenaGeometry.kt", "afield/math/linalg/arena/FrameArena.kt")
+    }
     // Vector8h stores binary16 directly, so the generated Vectors.kt imports
-    // afield.four.util.floatToHalfBits/halfBitsToFloat. That is the ONLY thing the generated sources
+    // afield.graphics.vulkan.util.floatToHalfBits/halfBitsToFloat. That is the ONLY thing the generated sources
     // need from outside afield.math.linalg, and 16bits.kt in turn needs nothing but Vector2f/3f/4f,
     // which are already here — so copying it keeps the "no afield runtime" property intact. Without
     // it :tools:linalg-bench does not compile at all (it had been failing since Vector8h landed).
-    from(root.dir("src/jvmMain/kotlin")) { include("afield/four/util/16bits.kt") }
+    from(root.dir("src/jvmMain/kotlin")) { include("afield/graphics/vulkan/util/16bits.kt") }
 }
 
 kotlin {
