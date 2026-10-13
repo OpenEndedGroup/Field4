@@ -50,6 +50,7 @@ notes. The entries below point to the canonical note for each maintained subsyst
 
 ## Feature Notes (post-consolidation survivors)
 
+- [`PATCHY_INTEGRATION.md`](./PATCHY_INTEGRATION.md) — optional embedded Patchy build, Kotlin iframe bridge, PSD sidecar persistence, and desktop connector
 - [`SLIDESHOW_FEATURE.md`](./SLIDESHOW_FEATURE.md) — the slideshow DSL (absorbed the former architecture/quickstart notes); annotations live in [`SLIDESHOW_ANNOTATIONS.md`](./SLIDESHOW_ANNOTATIONS.md), images in [`SLIDESHOW_IMAGES.md`](./SLIDESHOW_IMAGES.md)
 - [`INTERACTIVE_GUIDES.md`](./INTERACTIVE_GUIDES.md) and [`GUIDE_CHAT_QUICKSTART.md`](./GUIDE_CHAT_QUICKSTART.md) — interactive onboarding + optional guide chat
 - [`SNAPPING_SYSTEM.md`](./SNAPPING_SYSTEM.md) — the snapping system (absorbed the former visual guides/examples)

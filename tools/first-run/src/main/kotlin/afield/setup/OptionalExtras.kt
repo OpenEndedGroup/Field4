@@ -44,6 +44,7 @@ internal val extrasCatalog = listOf(
     Extra("onnx", "ONNX model inference", "Workers and models", "public/docs/onnx.md", advice = "ONNX Runtime ships with Field. Depth Anything and CLIP weights download on first use; follow their model licenses/input requirements and allow space for caches. The documented inference route needs no separate Python or CUDA install."),
     Extra("guide-services", "Guide chat / template services", "Workers and models", "server/README.md", setOf("python3"), advice = "Separate optional Flask services: install server/requirements.txt in a dedicated environment and follow server/README.md. Review their unauthenticated endpoints and bind settings before starting them; setup does not start or expose these services."),
     Extra("samples", "Pinned Dirt audio samples", "Audio", "public/docs/sound_paths.md", setOf("python3"), "fetchDocsDirtSamples", advice = "Downloads and checksum-verifies Field's small pinned Dirt-Samples subset into the shared per-user cache. This is not the entire sample collection or an audio-AI model."),
+    Extra("patchy-web", "Patchy layered painting editor", "Graphics", "public/docs/patchy.md", setOf("git", "python3", "cmake"), "buildPatchyWeb", advice = "Builds pinned Patchy plus Field's bridge patch in ~/.field4/patchy-web. Downloads Qt for WebAssembly and Emscripten (several GB); the Web editor is served automatically on the next Field launch. No Patchy source enters this checkout."),
     Extra("slang", "Slang shader compiler", "Graphics", "public/docs/afield_four_graphics.md", setOf("uv"), "prepareSlangCompiler", advice = "Fetches Field's pinned, checksummed slangc for live Slang boxes (vertex_fragment and friends). Field prefers it to the Vulkan SDK's and any slangc on PATH. Does not build the learned shaders."),
 )
 
@@ -98,6 +99,11 @@ internal fun extraTools(extras: Set<String>, platform: String): Set<String> = ex
     }.toSet()
 
 internal fun artifactCandidates(root: File, id: String, platform: String, environment: Map<String, String> = System.getenv()): List<File> {
+    if (id == "patchy-web") {
+        val override = environment["AFIELD_PATCHY_WEB_ROOT"]?.takeIf { it.isNotBlank() }
+        return if (override != null) listOf(File(override, "patchy.html"))
+            else listOf(File(System.getProperty("user.home"), ".field4/patchy-web/site/field-patchy.json"))
+    }
     fun library(name: String) = when (platform) {
         "windows" -> "$name.dll"
         "mac" -> "lib$name.dylib"

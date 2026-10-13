@@ -3770,6 +3770,22 @@ class Server {
                     // file, where a test can install the real thing instead of a copy.
                     installFieldApiCors()
 
+                    // Patchy's threaded WebAssembly build needs an isolated top-level Field page.
+                    // Enable this only for a Field instance serving a local Patchy build.
+                    val patchyInstalledSite = File(System.getProperty("user.home"), ".field4/patchy-web/site")
+                    val patchyWebRoot = System.getenv("AFIELD_PATCHY_WEB_ROOT")?.takeIf { it.isNotBlank() }
+                        ?.let { File(it).canonicalFile }
+                        ?: patchyInstalledSite.takeIf { File(it, "field-patchy.json").isFile }?.canonicalFile
+                    if (patchyWebRoot != null) {
+                        require(File(patchyWebRoot, "patchy.html").isFile) {
+                            "AFIELD_PATCHY_WEB_ROOT must contain patchy.html"
+                        }
+                        intercept(ApplicationCallPipeline.Setup) {
+                            call.response.header("Cross-Origin-Opener-Policy", "same-origin")
+                            call.response.header("Cross-Origin-Embedder-Policy", "require-corp")
+                        }
+                    }
+
                     intercept(ApplicationCallPipeline.Setup) {
                         if (call.request.path() == "/api/import-offline-doc") {
                             call.response.headers.append("Access-Control-Allow-Private-Network", "true")
@@ -3800,6 +3816,7 @@ class Server {
                     install(AutoHeadResponse)
 
                     routing {
+                        PatchyWebStorage.routes(this)
                         get("/health") {
                             call.respondText("ok", ContentType.Text.Plain)
                         }
@@ -5421,6 +5438,9 @@ class Server {
                         staticFiles(remotePath = "", dir = File("./src/jsMain/resources/"), block = assetCache)
                         staticFiles(remotePath = "", dir = File("./src/jsMain/resources/monaco"), block = assetCache)
                         staticFiles(remotePath = "", dir = File("./src/commonMain/resources/"), block = assetCache)
+                        if (patchyWebRoot != null) {
+                            staticFiles(remotePath = "/patchy", dir = patchyWebRoot, block = assetCache)
+                        }
                         // The shared sample assets — the CC0 Khronos ToyCar GLB and the Venice sunset
                         // environment — committed once under the documentation tree and used by both
                         // JVM boxes (which read them off disk) and *head* boxes, which cannot: a

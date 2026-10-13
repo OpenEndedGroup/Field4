@@ -82,6 +82,14 @@ class FirstRunTest {
         assertTrue("buildCeresRedistributable" in command && "buildTetgenNative" in command && "buildLibpdNative" in command)
         assertEquals(setOf("python", "cmake", "cl"), extraTools(setOf("ceres"), "windows"))
     }
+    @Test fun patchyBuildRunsOnlyWhenSelectedOnEachPlatform() {
+        for (platform in listOf("mac", "linux", "windows")) {
+            assertTrue(preparationCommands(emptySet(), platform).isEmpty())
+            val command = preparationCommands(setOf("patchy-web"), platform).single()
+            assertEquals("buildPatchyWeb", command.last())
+            assertTrue("cmake" in extraTools(setOf("patchy-web"), platform))
+        }
+    }
     @Test fun largeModelAndInterpreterSetupsRemainExplicitSeparateRecipes() {
         assertTrue(preparationCommands(setOf("cv", "voice", "diffusion", "audio-ai", "kratos", "tracker", "transport", "opendlssnr"), "linux").isEmpty())
         assertFalse(extraTools(setOf("syphon"), "windows").contains("xcrun"))

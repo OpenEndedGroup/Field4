@@ -3593,6 +3593,22 @@ tasks.register<Exec>("prepareSlangCompiler") {
 // Native preparation scripts use the platform Python command, like the source launcher.
 val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
 
+// Patchy is an explicit first-run extra. Its pinned source, Qt/emsdk toolchains and built
+// WebAssembly site live in ~/.field4/patchy-web, never in this checkout or its normal build.
+val buildPatchyWeb = tasks.register<Exec>("buildPatchyWeb") {
+    group = "build"
+    description = "Builds the optional pinned Patchy Web editor with Field's small bridge patch."
+    val recipe = layout.projectDirectory.dir("optional/patchy-web")
+    val script = layout.projectDirectory.file("tools/build_patchy_web.py")
+    inputs.file(recipe.file("pin.json"))
+    inputs.file(recipe.file("field-bridge.patch"))
+    inputs.file(recipe.file("iosevka-field-ui.ttf"))
+    inputs.file(layout.projectDirectory.file("public/docs/assets/fonts/iosevka/LICENSE.txt"))
+    inputs.file(script)
+    outputs.dir(File(System.getProperty("user.home"), ".field4/patchy-web/site"))
+    commandLine(nativeBuildPython, script.asFile.absolutePath)
+}
+
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
 //
 // Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —

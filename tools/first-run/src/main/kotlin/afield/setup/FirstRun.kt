@@ -49,8 +49,8 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
     val notes = mutableListOf<String>()
     val commands = mutableListOf<List<String>>()
     if (manager != null && manager != "brew") packages += missing.filter { it in setOf("curl", "tar", "gzip") }
-    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker") }
-    val python = extras.any { it in setOf("python", "cv", "voice", "ceres", "tetgen", "libpd", "csound", "docs", "tracker") }
+    val native = extras.any { it in setOf("ceres", "tetgen", "libpd", "csound", "paint", "syphon", "docs", "tracker", "patchy-web") }
+    val python = extras.any { it in setOf("python", "cv", "voice", "ceres", "tetgen", "libpd", "csound", "docs", "tracker", "patchy-web") }
     val buildMissing = (desktop || native) && missing.any { it in setOf("g++", "cmake", "make", "xcrun") }
     when (manager) {
         "apt-get" -> {

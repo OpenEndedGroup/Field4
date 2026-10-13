@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
  *    and `DELETE` from any origin were in no table anywhere. Demonstrated rather than argued:
  *    an unguarded verbless route planted in `Server.kt` left the whole suite green on
  *    `d7d8dccc2`.
- *  - **`staticFiles` directory mounts.** Six, all in `Server.kt`, and **invisible to every
+ *  - **`staticFiles` directory mounts.** Seven, all in `Server.kt`, and **invisible to every
  *    route regex in the tree**, because a `staticFiles` call is not a verb declaration. One
  *    of them serves the workspace directory at `/`.
  *  - **The `/ws` command names.** 105 of them, in a single dispatch table declared at
@@ -131,9 +131,9 @@ class ServerSurfaceLedgerTest {
     private val stringLiteral = Regex("""^"([^"]*)"$""")
     private val leadingIdentifier = Regex("""^([A-Za-z_][A-Za-z0-9_]*)""")
 
-    /** A `staticFiles(remotePath = …, dir = File(…))` mount. Not a verb, so nothing else sees it. */
+    /** A `staticFiles` mount, with a literal directory or the opt-in Patchy web root. */
     private val staticMount = Regex(
-        """^[ \t]*staticFiles\(\s*remotePath\s*=\s*"([^"]*)"\s*,\s*dir\s*=\s*File\(([^)]*)\)""",
+        """^[ \t]*staticFiles\(\s*remotePath\s*=\s*"([^"]*)"\s*,\s*dir\s*=\s*(?:File\(([^)]*)\)|(patchyWebRoot))""",
         RegexOption.MULTILINE,
     )
 
@@ -175,6 +175,7 @@ class ServerSurfaceLedgerTest {
     private val guardAtoms = mapOf(
         "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
         "refuseUnlessLocalDocsClient" to listOf("loopback"),
+        "patchySameSite" to listOf("same-site"),
     )
     private val guardOrder = listOf("loopback", "same-site")
 
@@ -250,7 +251,9 @@ class ServerSurfaceLedgerTest {
 
             staticMount.findAll(text).forEach { match ->
                 val remote = match.groupValues[1].ifEmpty { "/" }
-                mounts["File(${match.groupValues[2].trim()})"] = remote to file.name
+                val directory = if (match.groupValues[3].isNotEmpty()) match.groupValues[3]
+                    else "File(${match.groupValues[2].trim()})"
+                mounts[directory] = remote to file.name
             }
             commandName.findAll(text).forEach { commands[it.groupValues[1]] = file.name }
             rawChannelName.findAll(text).forEach { match ->
@@ -368,7 +371,7 @@ class ServerSurfaceLedgerTest {
     )
 
     private fun mountRows() = select(
-        { it.size == 3 && it[1].startsWith("File(") },
+        { it.size == 3 && (it[1].startsWith("File(") || it[1] == "patchyWebRoot") },
         { it[1] },
         { "${it[0]} | ${it[2]}" },
     )
@@ -629,7 +632,7 @@ class ServerSurfaceLedgerTest {
     /**
      * Every `staticFiles` mount, matched both ways.
      *
-     * Six rows that no other guard in the tree can see, one of which serves the workspace
+     * Seven rows that no other guard in the tree can see, one of which serves the workspace
      * directory. A seventh appearing without a ledger row is the event this exists for — and
      * on `2026-09-13` that happened for the first time: a `/sample-assets` mount for the
      * shared sample GLB was added to `Server.kt` and this test was the only thing that
