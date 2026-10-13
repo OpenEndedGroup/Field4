@@ -57,7 +57,7 @@ function renderDiff(node, patch) {
 function renderChange(node, change) {
     node.replaceChildren();
     if(change.compactChanges?.length) {
-        node.append(text('p', `${change.compactChanges.length} text edits in a single-line file · unchanged text omitted below.`, 'muted'));
+        node.append(text('p', `${change.compactChanges.length} text edits in long source lines · unchanged text omitted below.`, 'muted'));
         for(const edit of change.compactChanges) {
             const pre = text('pre', '', 'patch');
             pre.append(text('span', '− ' + edit.before + '\n', 'del'), text('span', '+ ' + edit.after, 'add'));

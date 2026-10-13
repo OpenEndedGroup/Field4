@@ -12,10 +12,10 @@ def unified_text(before, after, source, destination):
 
 
 def compact_changes(before, after):
-    """Bounded context around edits in large single-line containers, not a patch."""
+    """Bounded context around edits in containers with long encoded lines, not a patch."""
     if max(len(before), len(after)) < 1000 or max(len(before), len(after)) > 200_000:
         return None
-    if len(before.splitlines()) != 1 or len(after.splitlines()) != 1:
+    if max(map(len, before.splitlines() + after.splitlines()), default=0) < 1000:
         return None
     tokens = [re.findall(r'\w+|[^\w]', value) for value in (before, after)]
     if max(map(len, tokens)) > 30_000:
