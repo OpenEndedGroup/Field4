@@ -67,8 +67,9 @@ go {
 `go { }` starts a coroutine on Field's run loop and returns immediately. Code after the call
 continues without waiting for the block to finish. Inside the block, suspend calls run in order,
 and an uncaught error appears on the box as an execution error. The block keeps this box as its
-context, so Field's usual box-scoped values and output work there. Use `go { }` when a box needs
-to start a suspend operation; an `aiTool { action { ... } }` can call suspend functions directly.
+context, so Field's usual box-scoped values and output work there. Stopping the box cancels a
+running `go` block at its next suspension. Use `go { }` when a box needs to start a suspend
+operation; an `aiTool { action { ... } }` can call suspend functions directly.
 
 ---
 

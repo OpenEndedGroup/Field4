@@ -8,8 +8,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.yield
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.coroutines.coroutineContext
 import kotlin.reflect.KClass
 
 /**
@@ -149,8 +151,8 @@ fun <T : Any> Box.send(payload: T) {
 // -- public API: go (coroutine with error reporting) --------------------------
 
 /**
- * Launch a suspendable block on the RunLoop's Framer dispatcher with proper
- * error reporting back to the editor.
+ * Launch a suspendable block on the RunLoop's Framer dispatcher, owned by this
+ * box. Stopping the box cancels the block; uncaught errors appear in the editor.
  *
  * Use this instead of bare `inMain { }` when you want exceptions to appear as
  * red marks and inline errors in the box, just like normal execution errors.
@@ -165,16 +167,23 @@ fun <T : Any> Box.send(payload: T) {
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.go(block: suspend CoroutineScope.() -> Unit) {
     val box = this
+    val epoch = box.captureLaunchEpoch()
     inMain {
-        Box.withBoxContext(box) {
-            try {
-                block()
-            } catch (_: CancellationException) {
-            } catch (e: Throwable) {
-                lprintln("error,actors", "go {} threw on box '${box.name}': ${e.message}")
-                lprintln("error,actors", e.stackTraceToString())
-                reportBoxError(box, e)
+        val job = coroutineContext[Job]!!
+        if (!box.registerLaunchJob(job, epoch)) return@inMain
+        try {
+            Box.withBoxContext(box) {
+                try {
+                    block()
+                } catch (_: CancellationException) {
+                } catch (e: Throwable) {
+                    lprintln("error,actors", "go {} threw on box '${box.name}': ${e.message}")
+                    lprintln("error,actors", e.stackTraceToString())
+                    reportBoxError(box, e)
+                }
             }
+        } finally {
+            box.jobs.remove(job)
         }
     }
 }
