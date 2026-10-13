@@ -16,12 +16,17 @@ cd "$DIR" || exit 1
 # They are handled here as well because three things can only be done out here: resolving a
 # relative path against INVOKED_FROM rather than $DIR; rejecting a typo *before* the
 # minutes of Gradle that run before the backend ever looks at its arguments; and
-# printing which workspace a bare launch is about to open. That last one matters
-# because the choice is remembered once per machine, in ~/.afield/last-workspace.txt
-# — so any other clone or worktree on this machine may have been the one that wrote
-# it, and the workspace you get is not the workspace of the checkout you launched.
+# printing which workspace a bare launch is about to open.
+#
+# The choice is remembered per checkout, in .afield-local/last-workspace.txt beside this
+# script (gitignored), so a sibling clone or worktree no longer decides what this one
+# opens. A checkout that has never recorded one falls back to the machine-wide
+# ~/.afield/last-workspace.txt, which is where every checkout wrote before. The backend
+# writes the file, not this script; AFIELD_WORKSPACE_PREFERENCE_FILE tells it where.
 
+CHECKOUT_WORKSPACE_PREFERENCE_FILE="$DIR/.afield-local/last-workspace.txt"
 WORKSPACE_PREFERENCE_FILE="$HOME/.afield/last-workspace.txt"
+export AFIELD_WORKSPACE_PREFERENCE_FILE="$CHECKOUT_WORKSPACE_PREFERENCE_FILE"
 DEFAULT_WORKSPACE="$HOME/Documents/AFieldWorkspace"
 
 usage() {
@@ -65,11 +70,12 @@ open and the workspace is the folder above it, which is where a document lives.
 A document named here has to exist already: Field creates a document that does
 not, so a typo would otherwise open an empty new one under that name.
 
-With no workspace given, Field reopens the one it last used, recorded once per
-machine in
+With no workspace given, Field reopens the one this checkout last used, recorded in
+  $CHECKOUT_WORKSPACE_PREFERENCE_FILE
+or, if this checkout has never recorded one, the machine-wide
   $WORKSPACE_PREFERENCE_FILE
-so a different clone or worktree of this repository may have been what last
-wrote it. Naming a workspace here makes it the remembered one for next time.
+that every checkout used to share. Naming a workspace here makes it this checkout's
+remembered one for next time.
 
 Any other argument is passed through to the backend unchanged. See also
 AFIELD_SKIP_BUILD=1 to skip the build check, and PORT to move off 9092.
@@ -117,11 +123,18 @@ resolve_workspace_request() {
     fi
 }
 
-persisted_workspace() {
-    [ -f "$WORKSPACE_PREFERENCE_FILE" ] || return 1
-    VALUE="$(tr -d '\r' < "$WORKSPACE_PREFERENCE_FILE" | sed -n '1s/^[[:space:]]*//;1s/[[:space:]]*$//;1p')"
+# Prints the first line of $1, trimmed; fails if the file is missing or that line is blank.
+preference_file_value() {
+    [ -f "$1" ] || return 1
+    VALUE="$(tr -d '\r' < "$1" | sed -n '1s/^[[:space:]]*//;1s/[[:space:]]*$//;1p')"
     [ -n "$VALUE" ] || return 1
     printf '%s' "$VALUE"
+}
+
+# This checkout's remembered workspace, else the machine-wide one.
+persisted_workspace() {
+    preference_file_value "$CHECKOUT_WORKSPACE_PREFERENCE_FILE" ||
+        preference_file_value "$WORKSPACE_PREFERENCE_FILE"
 }
 
 WORKSPACE_REQUESTED=""
@@ -272,7 +285,11 @@ if [ -n "$WORKSPACE_REQUESTED" ]; then
     fi
     set -- "$@" --workspace "$FIELD_WORKSPACE"
 elif FIELD_WORKSPACE="$(persisted_workspace)"; then
-    WORKSPACE_ORIGIN="last used, per $WORKSPACE_PREFERENCE_FILE"
+    if preference_file_value "$CHECKOUT_WORKSPACE_PREFERENCE_FILE" >/dev/null; then
+        WORKSPACE_ORIGIN="last used by this checkout, per $CHECKOUT_WORKSPACE_PREFERENCE_FILE"
+    else
+        WORKSPACE_ORIGIN="last used on this machine, per $WORKSPACE_PREFERENCE_FILE (this checkout has none yet)"
+    fi
 else
     FIELD_WORKSPACE="$DEFAULT_WORKSPACE"
     WORKSPACE_ORIGIN="the default; nothing recorded yet"

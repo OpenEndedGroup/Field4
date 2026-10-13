@@ -413,6 +413,11 @@ if ($onWindows) {
 } else {
     $workspacePreferenceFile = Join-Path (Join-Path $HOME ".afield") "last-workspace.txt"
 }
+# This checkout's own record comes first (field.sh does the same); the machine-wide file above is
+# only the fallback for a checkout that has never recorded one. The backend writes it, and this
+# variable tells it where.
+$checkoutWorkspacePreferenceFile = Join-Path (Join-Path $scriptDir ".afield-local") "last-workspace.txt"
+$env:AFIELD_WORKSPACE_PREFERENCE_FILE = $checkoutWorkspacePreferenceFile
 $defaultWorkspace = Join-Path (Join-Path $HOME "Documents") "AFieldWorkspace"
 
 # field.sh says all of this on stderr, and these lines are diagnostics rather than output: only
@@ -463,11 +468,12 @@ open, and the workspace is the folder above it, which is where a document lives.
 A document named here has to exist already: Field creates a document that does
 not, so a typo would otherwise open an empty new one under that name.
 
-With no workspace given, Field reopens the one it last used, recorded once per
-machine in
+With no workspace given, Field reopens the one this checkout last used, recorded in
+  $checkoutWorkspacePreferenceFile
+or, if this checkout has never recorded one, the machine-wide
   $workspacePreferenceFile
-so a different clone or worktree of this repository may have been what last
-wrote it. Naming a workspace here makes it the remembered one for next time.
+that every checkout used to share. Naming a workspace here makes it this checkout's
+remembered one for next time.
 
 Any other argument is passed through to the backend unchanged. See also
 AFIELD_SKIP_BUILD=1 to skip the build check, and PORT to move off 9092.
@@ -641,13 +647,20 @@ if ($workspaceRequested -ne "") {
     # wrote it would re-point every other clone's next bare launch, including from a
     # --print-workspace that never started anything.
     $persisted = ""
-    if (Test-Path -LiteralPath $workspacePreferenceFile -PathType Leaf) {
-        $firstLine = Get-Content -LiteralPath $workspacePreferenceFile -TotalCount 1
-        if ($null -ne $firstLine) { $persisted = ([string] $firstLine).Trim() }
+    $persistedOrigin = ""
+    foreach ($candidate in @(
+        @($checkoutWorkspacePreferenceFile, "last used by this checkout"),
+        @($workspacePreferenceFile, "last used on this machine (this checkout has none yet)")
+    )) {
+        if (Test-Path -LiteralPath $candidate[0] -PathType Leaf) {
+            $firstLine = Get-Content -LiteralPath $candidate[0] -TotalCount 1
+            if ($null -ne $firstLine) { $persisted = ([string] $firstLine).Trim() }
+        }
+        if ($persisted -ne "") { $persistedOrigin = "$($candidate[1]), per $($candidate[0])"; break }
     }
     if ($persisted -ne "") {
         $fieldWorkspace = $persisted
-        $workspaceOrigin = "last used, per $workspacePreferenceFile"
+        $workspaceOrigin = $persistedOrigin
     } else {
         $fieldWorkspace = $defaultWorkspace
         $workspaceOrigin = "the default; nothing recorded yet"
