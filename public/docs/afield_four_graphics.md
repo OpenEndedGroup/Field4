@@ -1347,7 +1347,7 @@ This box sorts and prints, and draws nothing.
 
 The same box model accepts [Slang](https://shader-slang.org) instead of GLSL through the `vertex_fragment` property, which holds both stages in one file. The Kotlin side does not change at all: modules, meshes, buffers and reflected accessors work the same way, because reflection reads the compiled shader interface rather than the source language.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/07-slang-triangle.png" alt="three small triangles of the Slang lesson against black, drawn from vertices the Kotlin loop writes into a buffer each frame" wait="0.5" timeout="20" capture="native-window" native-wait-frames="6" trim-native=true graphics-context=true embed=true name="four-slang-triangle" execution="launch" source-box="assets/canonical_graphics/65bd0587-dbfa-451a-8f6a-e003ff3d1abf" source-box-properties="vertex_fragment" source-box-wait="0.1"}
 var module = moduleHere { primitiveType = triangles }
 
 var m = Mesh()
