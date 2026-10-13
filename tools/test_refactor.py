@@ -320,6 +320,41 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_box_intro_removes_redundant_split_stars_only_from_registered_box_code(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            source = 'import old.mixed.* // supplied by intro\nval x = Thing()\n'
+            recipe = dict(copy.deepcopy(RECIPE), packages={}, splitPackages=['old.mixed'],
+                          symbols={'old.mixed.Thing': 'new.model.Thing'},
+                          boxImports=['old.mixed.*', 'new.model.*'])
+            save_json(base / 'recipe.json', recipe)
+            load_recipe(base / 'recipe.json')
+            (root / 'doc').mkdir()
+            (root / 'doc/metadata.edn').write_text(metadata(source, 'code.kt'))
+            (root / 'doc/code.kt').write_text(source)
+            (root / 'inline').mkdir()
+            (root / 'inline/metadata.edn').write_text(metadata(source))
+            (root / 'standalone.kts').write_text(source)
+            (root / 'unregistered.kt').write_text(source)
+            (root / 'docs.md').write_text('```kotlin\n' + source + '```\n')
+            (root / 'src').mkdir()
+            (root / 'src/Example.kt').write_text(source)
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            changes = plan['roots'][0]['changes']
+            self.assertEqual({'doc/code.kt', 'doc/metadata.edn', 'inline/metadata.edn'}, {c['path'] for c in changes})
+            self.assertTrue(all(not c['held'] for c in changes))
+            self.assertEqual({'standalone.kts', 'unregistered.kt', 'docs.md', 'src/Example.kt'},
+                             {f['path'] for f in plan['roots'][0]['findings'] if f['kind'] == 'split-star'})
+            apply_plan(base / 'plan', offline=True, allow_partial=True)
+            self.assertEqual(' // supplied by intro\nval x = Thing()\n', (root / 'doc/code.kt').read_text())
+            self.assertEqual(edn((root / 'doc/metadata.edn').read_text(), PROPS).units[0].code,
+                             (root / 'doc/code.kt').read_text())
+            verify(base / 'plan')
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], again['roots'][0]['changes'])
+
     def test_docs_wrappers_preserve_markers_and_parse_before_after_separately(self):
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
             base = Path(tmp)

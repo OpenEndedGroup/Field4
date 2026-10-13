@@ -152,7 +152,15 @@ class Engine : AutoCloseable {
             // A star can cover individually moved declarations even if its containing package stays.
             val split = directive.isAllUnder && (path in recipe.splitPackages ||
                 recipe.symbols.keys.any { it.substringBeforeLast('.') == path })
-            if (split) {
+            if (script && directive.aliasName == null && destinationImport in recipe.scriptImports &&
+                importComments.none { it.textOffset < expression.textRange.endOffset }) {
+                // Remove only an identical host import. A star does not prove that a named import
+                // is redundant: that explicit import might disambiguate two star packages.
+                // Leave surrounding whitespace, semicolons and trailing comments untouched.
+                var end = importComments.minOfOrNull { it.textOffset } ?: directive.textRange.endOffset
+                while (end > directive.textOffset && normalized[end - 1].isWhitespace()) end--
+                edits += Edit(offsets[directive.textRange.startOffset], offsets[end], "")
+            } else if (split) {
                 val targets = recipe.splitStarImports[path]
                 if (script && !recipe.scriptImportsKnown && recipe.scriptImports.isEmpty()) {
                     findings += Finding("split-star", line(directive.textOffset),
@@ -168,14 +176,6 @@ class Engine : AutoCloseable {
                     while (end > directive.textOffset && normalized[end - 1].isWhitespace()) end--
                     edits += Edit(offsets[directive.textRange.startOffset], offsets[end], replacement)
                 }
-            } else if (script && directive.aliasName == null && destinationImport in recipe.scriptImports &&
-                importComments.none { it.textOffset < expression.textRange.endOffset }) {
-                // Remove only an identical host import. A star does not prove that a named import
-                // is redundant: that explicit import might disambiguate two star packages.
-                // Leave surrounding whitespace, semicolons and trailing comments untouched.
-                var end = importComments.minOfOrNull { it.textOffset } ?: directive.textRange.endOffset
-                while (end > directive.textOffset && normalized[end - 1].isWhitespace()) end--
-                edits += Edit(offsets[directive.textRange.startOffset], offsets[end], "")
             } else {
                 val moved = recipe.moved(path)
                 if (moved != null) edits += Edit(offsets[expression.textRange.startOffset], offsets[expression.textRange.endOffset], moved)
