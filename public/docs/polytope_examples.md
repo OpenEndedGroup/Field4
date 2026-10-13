@@ -1,6 +1,6 @@
 # Polytopes: topology first, coordinates later
 
-`afield.stdlib.polytope` builds polyhedra with Conway operators (`conway("kbD")`, `cube().kis()`)
+`afield.geometry.polytope` builds polyhedra with Conway operators (`conway("kbD")`, `cube().kis()`)
 and keeps track of which element of the input each output element came from. A polyhedron here is
 a ranked incidence topology first: vertices, edges and faces with identities, which of them touch,
 and an ordered boundary for every face. Coordinates are a separate layer on top, which you can
@@ -1436,7 +1436,7 @@ Each of these starting points is a document you can open, edit and re-run:
 ## See also
 
 - [Polytopes reference](reference/polytopes.md) — every public declaration in
-  `afield.stdlib.polytope`, with the KDoc that lives beside it: the operator algebra and its
+  `afield.geometry.polytope`, with the KDoc that lives beside it: the operator algebra and its
   composition rules, the realization verbs and their diagnostics, the attribute and selector algebra,
   and the `FLine`/`TriMesh` adapters.
 - [Solvers reference](reference/solvers.md) — the Ceres constraint vocabulary behind `relax` and

@@ -11,26 +11,26 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.profiling = false
           // OpenXR is the default on its supported desktop platforms. macOS remains the stereo
           // preview/development path because it has no system OpenXR runtime.
           Options.enableVR = !Options.isMac
-
+          
           once.renderer {
               window = Window("YouTube · puppet browser")
               val created = Renderer(window)
               if (Options.enableVR) {
-                  created.openXRHmdTarget = afield.four.targets.OpenXRHmdTarget(created)
+                  created.openXRHmdTarget = afield.graphics.vulkan.targets.OpenXRHmdTarget(created)
               }
               created
           }
-
+          
           println("YouTube VR renderer ready")
           start(renderer::run)
   - create:
@@ -39,15 +39,15 @@ operations:
       frame: { x: 320.0, y: 140.0, w: 400.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.Target
-          import afield.four.browser.FieldUiBrowserTexture
-          import afield.four.browser.PuppetBrowserVrPanel
-          import afield.four.browser.PuppetBrowserWindowInput
-          import afield.four.targets.SideBySideStereoTarget
-
+          import afield.graphics.vulkan.Target
+          import afield.media.browser.FieldUiBrowserTexture
+          import afield.media.browser.PuppetBrowserVrPanel
+          import afield.media.browser.PuppetBrowserWindowInput
+          import afield.graphics.vulkan.targets.SideBySideStereoTarget
+          
           // prop declarations are lifted into Field's preamble before ordinary imports are applied.
-          prop<afield.four.browser.PuppetBrowser>(browserControl)
-
+          prop<afield.media.browser.PuppetBrowser>(browserControl)
+          
           // The producer is a full Chromium page, not an embed: consent, account state, player,
           // navigation and audio all behave as they do in an ordinary browser.
           val browser = FieldUiBrowserTexture(
@@ -59,11 +59,11 @@ operations:
               cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
           )
           browserControl = browser
-
+          
           // Import the newest cross-process frame before either eye samples the resident texture.
           renderer.renderList.preTargets["youtube-browser-upload"] =
               Target { command, _ -> browser.prepareSampledImagesFor(command) }
-
+          
           val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
           val panel = PuppetBrowserVrPanel(
               renderer = renderer,
@@ -75,19 +75,19 @@ operations:
           )
           panel.build()
           panel.enableDesktopInteraction()
-
+          
           // The controller owns pointer input. Once the panel has focus, physical keyboard/IME
           // events from Field's Window remain available for search boxes and other text fields.
           val keyboard = PuppetBrowserWindowInput(browser, renderer.window) { _, _ -> null }
           keyboard.takeFocus()
-
+          
           // Desktop mirror of the same stereo texture that can be handed to OpenXR eye swapchains.
           stereo.packed.blitToScreen(
               renderer = renderer,
               target = renderer.renderList,
               name = "youtube-stereo-screen"
           )
-
+          
           var announced = false
           loop {
               if (!announced && browser.pageReady) {

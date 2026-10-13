@@ -257,11 +257,11 @@ import failure, which is why the boxes are also run by hand.
 
 | file | what |
 | --- | --- |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslScalars.kt` | the scalar seam and the `Float` instance |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslInterpreter.kt` | `GlslMachine<V>`, one copy of the control flow |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAd.kt` | `AdValue`, `GlslAdScalars`, the derivative rules |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLWires.kt` | lift, lower, re-emit |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLFit.kt` | the image loss, the exact gradient, the descent |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslScalars.kt` | the scalar seam and the `Float` instance |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslInterpreter.kt` | `GlslMachine<V>`, one copy of the control flow |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslAd.kt` | `AdValue`, `GlslAdScalars`, the derivative rules |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLWires.kt` | lift, lower, re-emit |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLFit.kt` | the image loss, the exact gradient, the descent |
 | `src/jvmTest/resources/stacksl/float_path_manifest.txt` | the 31 pre-refactor raster hashes |
 
 ## What is not here

@@ -151,11 +151,11 @@ for investors gets a redaction pass (paths, names, provider ids) before it leave
 ## 8. Phase 1: what was built and what it found
 
 Code:
-- `src/commonMain/kotlin/aiChatBlocks.kt`: `parseAiChatBlocks`, moved from the panel renderer, so the
+- `src/commonMain/kotlin/afield/ai/conversation/aiChatBlocks.kt`: `parseAiChatBlocks`, moved from the panel renderer, so the
   panel and the archive share one parser. It also has `toolCall()` (the progress title),
   `programCalls()` (a tool program's `- ✓/✗` lines) and `images()` (with captions).
 - `src/commonMain/resources/ai4-chat-tool-families.json`: the family table.
-- `src/jvmMain/kotlin/afield/chatlog/ChatArchive.kt`: reads a document folder's chats as trees,
+- `src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatArchive.kt`: reads a document folder's chats as trees,
   read-only, with no Field server or box involved. `ChatArchiveCli.kt` reports on them.
 - Tests: `ChatArchiveTest` (JVM). The chat UI regressions (`ai-chat-scroll`, `ai-chat-resize`,
   `ai-chat-fence-renderers`) cover the panel's switch to the shared parser. They caught a pattern
@@ -213,12 +213,12 @@ UI regression: `ai-chat-rounds`.
 ## 10. Phase 3: tools, and the first lens
 
 Code:
-- `afield.chatlog.ChatLogViews`: what an agent reads. `outline` (every turn with its time and full
+- `afield.ai.conversation.chatlog.ChatLogViews`: what an agent reads. `outline` (every turn with its time and full
   request, replies as first lines, rounds as round lines, images as captions, then abandoned
   branches), `read` (a stretch as text, each block headed by its address, paged), `search`,
   `images` (address, reference, what the tool looked for, what the agent concluded), and the lens
   checks `lensProblems` / `lensStats`.
-- `afield.chatlog.registerChatlogTools(roots…)` (`ChatlogTools.kt`): `chatlog.list/outline/read/
+- `afield.ai.conversation.chatlog.registerChatlogTools(roots…)` (`ChatlogTools.kt`): `chatlog.list/outline/read/
   search/images` and `lens.write/read/list`. Lenses are saved in the registering document's
   `lenses/<chat>/<name>.md`, beside `<name>.json` with the brief, the model and the stats.
 - `AiChatRound` (commonMain): the round line, shared by the panel and the views.

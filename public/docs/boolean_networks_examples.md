@@ -10,7 +10,7 @@ A Boolean network is a set of nodes that are each on or off, plus a rule that co
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/toggle_state_space.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val net = toggleNetwork()
 val attrs = net.findAttractors()
@@ -55,7 +55,7 @@ The left image tells you what depends on what; the right image tells you what th
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/segment_basins.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val net = segmentPolarityNetwork()
 val attrs = net.findAttractors().sortedByDescending { it.basin.size }
@@ -107,7 +107,7 @@ The two networks above were hand-made. This one asks a population question inste
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/kauffman_sweep.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 data class SweepRow(val k: Int, val attractors: Double, val period: Double, val fixed: Double)
 
@@ -208,7 +208,7 @@ A limit cycle repeats on a fixed period, so it is already a rhythm. You can trea
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/rhythm_cycles.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 data class RhythmCandidate(val seed: Int, val net: BooleanNetwork, val attr: Attractor, val score: Double)
 

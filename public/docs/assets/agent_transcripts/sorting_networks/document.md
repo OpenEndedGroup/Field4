@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sorting_topology" index="0" -->
 
 ```edn [field-box id="sorting_topology" role="properties"]
-{"id" "sorting_topology" "index" 0 "name" "Bubble against odd-even merge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bubble against odd-even merge" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_topology_code_.kt" "lines" 33 "characters" 929 "sha256" "31a4bc0f187535673519d6a079a2fd7d269e8ac2efd0db6193730068951b5794"}]}
+{"id" "sorting_topology" "index" 0 "name" "Bubble against odd-even merge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bubble against odd-even merge" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_topology_code_.kt" "lines" 33 "characters" 934 "sha256" "661dc9337fcdb28850bee53a90ca789ec059a374e2db3e93baf919918ee9604a"}]}
 ```
 
 ```kotlin [field-property box="sorting_topology" name="code" path="sorting_topology_code_.kt"]
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val bubble = SortingNetwork.bubble(10)
 val merge = SortingNetwork.oddEvenMerge(10)
@@ -55,11 +55,11 @@ lines(
 <!-- field-box id="sorting_disorder" index="1" -->
 
 ```edn [field-box id="sorting_disorder" role="properties"]
-{"id" "sorting_disorder" "index" 1 "name" "Disorder collapse across layers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Disorder collapse across layers" "_tombstone" false "frame" #afield/rect [1460.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_disorder_code_.kt" "lines" 73 "characters" 2431 "sha256" "ce64966b9413aaefa4ecc89eabc67acf85a623fc2ab7b097dec8e97e526eeebb"}]}
+{"id" "sorting_disorder" "index" 1 "name" "Disorder collapse across layers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Disorder collapse across layers" "_tombstone" false "frame" #afield/rect [1460.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_disorder_code_.kt" "lines" 73 "characters" 2448 "sha256" "8018379ac489e39774644d78297575ff85409ab6c6830bf69b6d03f95a4e7f6f"}]}
 ```
 
 ```kotlin [field-property box="sorting_disorder" name="code" path="sorting_disorder_code_.kt"]
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -139,11 +139,11 @@ display("sorting-disorder", Plotly.plot {
 <!-- field-box id="sorting_anneal_regimes" index="2" -->
 
 ```edn [field-box id="sorting_anneal_regimes" role="properties"]
-{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 109 "characters" 3759 "sha256" "4018a9abb53def38c5178e50ea49879897e9f3690328c560a9fcf7f659aa3a7a"}]}
+{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 109 "characters" 3776 "sha256" "9f8d9c41c2d2ec4e812f3c00febd15c5d72dd90b3543d68d3db4a990c738a9f8"}]}
 ```
 
 ```kotlin [field-property box="sorting_anneal_regimes" name="code" path="sorting_anneal_regimes_code_.kt"]
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -259,12 +259,12 @@ display("sorting-anneal-results", Plotly.plot {
 <!-- field-box id="sorting_anneal" index="3" -->
 
 ```edn [field-box id="sorting_anneal" role="properties"]
-{"id" "sorting_anneal" "index" 3 "name" "One annealing run" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One annealing run" "_tombstone" false "frame" #afield/rect [60.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_code_.kt" "lines" 41 "characters" 1511 "sha256" "ce670047a1601224255ba3569f5baf0c55d9bee8ba152799fd6d31496ae90915"}]}
+{"id" "sorting_anneal" "index" 3 "name" "One annealing run" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One annealing run" "_tombstone" false "frame" #afield/rect [60.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_code_.kt" "lines" 41 "characters" 1533 "sha256" "d6ec2ee9fb4a42f167935247607b37fbe71a104cffd441209f0d2a49291b43fc"}]}
 ```
 
 ```kotlin [field-property box="sorting_anneal" name="code" path="sorting_anneal_code_.kt"]
-import afield.darkMode
-import afield.graphics.FLine
+import afield.ui.visualization.darkMode
+import afield.geometry.path.FLine
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 

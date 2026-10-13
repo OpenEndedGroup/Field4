@@ -1,12 +1,12 @@
 package afield.ai.agent
 
-import afield.ai.core.AgentToolMeta
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolEffect
-import afield.ai.core.ToolExposure
-import afield.ai.core.ToolRegistry
-import afield.stdlib.KitItemState
-import afield.stdlib.Kits
+import afield.ai.tools.AgentToolMeta
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolEffect
+import afield.ai.tools.ToolExposure
+import afield.ai.tools.ToolRegistry
+import afield.document.workspace.KitItemState
+import afield.document.workspace.Kits
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import java.io.File

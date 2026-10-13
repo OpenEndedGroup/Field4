@@ -165,7 +165,7 @@ asserts completion and fails early on a compiler/runtime error.
 ## Small Field-facing API
 
 ```kotlin
-import afield.kratos.*
+import afield.simulation.kratos.*
 
 val capability = Kratos.probe() // asynchronous; inspect when complete
 val opening = KratosSession.openAsync(

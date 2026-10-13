@@ -1,8 +1,8 @@
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserWindowPanel
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowserWindowPanel
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(
     renderer = renderer,

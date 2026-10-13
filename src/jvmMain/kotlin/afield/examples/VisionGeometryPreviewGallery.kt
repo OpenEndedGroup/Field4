@@ -1,9 +1,9 @@
 package afield.examples
 
-import afield.graphics.VISION_METAL_VERTEX_FLOATS
-import afield.graphics.VisionGeometryPreview
-import afield.graphics.VisionGeometryPreview.CapturedMesh
-import afield.graphics.VisionMetalProgramCheck
+import afield.graphics.visionos.VISION_METAL_VERTEX_FLOATS
+import afield.graphics.visionos.VisionGeometryPreview
+import afield.graphics.visionos.VisionGeometryPreview.CapturedMesh
+import afield.graphics.visionos.VisionMetalProgramCheck
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import javax.imageio.ImageIO

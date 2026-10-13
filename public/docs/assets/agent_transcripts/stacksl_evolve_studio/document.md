@@ -25,7 +25,7 @@ evolve_crossbreed breeds with any population the conversation has been in, on an
 StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
 
 ```edn [field-box id="stacksl_evolve_studio" role="properties"]
-{"id" "stacksl_evolve_studio" "index" 0 "name" "Evolve" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Evolve" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl_evolve_studio_code_.kt" "lines" 12 "characters" 949 "sha256" "3108652f42acb72b61063ea8fe8409360420a743b1fb87cce82d63354eab147b"}]}
+{"id" "stacksl_evolve_studio" "index" 0 "name" "Evolve" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Evolve" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl_evolve_studio_code_.kt" "lines" 12 "characters" 957 "sha256" "03b9c32b6d94df4973067ae3a52310d58a585c0d45ade6b83cb7413ec4b6cc0b"}]}
 ```
 
 ```kotlin [field-property box="stacksl_evolve_studio" name="code" path="stacksl_evolve_studio_code_.kt"]
@@ -40,6 +40,6 @@ StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
 //   StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
 val evolution = stackSLEvolution(StackSLTargets.rings(32))
 stackSLEvolveStudio(evolution)
-display("ai-chat", afield.ai.core.AiBoxConversation.read(thisBox))
+display("ai-chat", afield.ai.conversation.AiBoxConversation.read(thisBox))
 ```
 

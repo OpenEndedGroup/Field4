@@ -401,10 +401,10 @@ than the original page made and a larger one for the range.
 
 | file | what |
 | --- | --- |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAdSurrogate.kt` | `AdSurrogate`, `AdSurrogateFamily`, `AdAnnealing` |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAd.kt` | the jump sites, the `jumpNode`/`stepAd` seam, and `maskNodes` — the 0/1 provenance that keeps a nested predicate to one kernel |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLFit.kt` | `valueAndGradient(values, surrogate)`, `fit(… annealing =)` |
-| `src/jvmTest/kotlin/afield/stacksl/cpu/StackSLSurrogateTest.kt` | all six measurements above |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslAdSurrogate.kt` | `AdSurrogate`, `AdSurrogateFamily`, `AdAnnealing` |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslAd.kt` | the jump sites, the `jumpNode`/`stepAd` seam, and `maskNodes` — the 0/1 provenance that keeps a nested predicate to one kernel |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLFit.kt` | `valueAndGradient(values, surrogate)`, `fit(… annealing =)` |
+| `src/jvmTest/kotlin/afield/lang/stacksl/cpu/StackSLSurrogateTest.kt` | all six measurements above |
 
 ## What is not here
 

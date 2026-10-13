@@ -1,13 +1,13 @@
 package afield.examples.stacksl
 
-import afield.Box
-import afield.four.modules.ShaderKind
-import afield.stdlib.preprocess
-import afield.stdlib.stackAutoShaderReport
-import afield.stdlib.stackAutoShaderSources
-import afield.stacksl.StackSLCompileOptions
-import afield.stacksl.StackSLCompiler
-import afield.stacksl.StackSLSeverity
+import afield.document.graph.Box
+import afield.graphics.shader.ShaderKind
+import afield.graphics.shader.preprocess
+import afield.graphics.shader.stackAutoShaderReport
+import afield.graphics.shader.stackAutoShaderSources
+import afield.lang.stacksl.StackSLCompileOptions
+import afield.lang.stacksl.StackSLCompiler
+import afield.lang.stacksl.StackSLSeverity
 
 /*
 FIELD_TEST
@@ -913,7 +913,7 @@ object StackSLSmokeTest {
     }
 
     private fun compilesDocsGalleryPrograms() {
-        val gallery = afield.four.fabricated.StackSLGalleryHarness
+        val gallery = afield.graphics.scene.fabricated.StackSLGalleryHarness
         val examples = gallery.loadExamples()
         require(examples.isNotEmpty()) { "StackSL docs gallery has no examples" }
 
@@ -968,15 +968,15 @@ object StackSLSmokeTest {
         // the offline viewer.
         val edn = java.io.File(
             System.getProperty("user.dir"),
-            "${afield.four.fabricated.StackSLGalleryHarness.WORKSPACE_DIR}/metadata.edn"
+            "${afield.graphics.scene.fabricated.StackSLGalleryHarness.WORKSPACE_DIR}/metadata.edn"
         )
         require(edn.exists()) { "gallery workspace metadata.edn missing: ${edn.absolutePath}" }
 
-        val transfers = afield.SavingContext().readEdnTransfersFromString(edn.readText())
+        val transfers = afield.document.persistence.SavingContext().readEdnTransfersFromString(edn.readText())
         // Exclude the window/renderer parent box: it owns the graphics context the
         // example boxes inherit and carries no stackSL of its own.
         val boxes = transfers.filter { it.id != "root" && it.id != "renderer" }
-        val expected = afield.four.fabricated.StackSLGalleryHarness.loadExamples().map { it.name }.toSet()
+        val expected = afield.graphics.scene.fabricated.StackSLGalleryHarness.loadExamples().map { it.name }.toSet()
         val boxIds = boxes.map { it.id }.toSet()
         require(boxIds.containsAll(expected)) {
             "metadata.edn is missing boxes for workspace examples: ${expected - boxIds}"
@@ -989,12 +989,12 @@ object StackSLSmokeTest {
         // Field runs the loose sidecar and the offline viewer shows the inline copy, so the
         // two can disagree without either one failing. Hold them equal, and hold the file to
         // what the codec writes, so a refresh on a clean tree changes nothing.
-        val saving = afield.SavingContext()
+        val saving = afield.document.persistence.SavingContext()
         val dir = edn.parentFile
         val stale = saving.readInlineFileSnapshots(dir.absolutePath)
             .filter { java.io.File(dir, it.path).readText() != it.inline }
             .map { it.path }
-        val refresh = "refresh with afield.SavingContext().refreshInlineFilesFromDisk(\"${dir.path}\")"
+        val refresh = "refresh with afield.document.persistence.SavingContext().refreshInlineFilesFromDisk(\"${dir.path}\")"
         require(stale.isEmpty()) { "metadata.edn inline copies differ from their sidecars: $stale; $refresh" }
         require(edn.readText() == saving.canonicalInlineMetadata(dir.absolutePath).metadataEdn) {
             "metadata.edn is not what Field's EDN codec writes; $refresh"

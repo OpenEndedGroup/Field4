@@ -37,7 +37,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Restore unwarped background using historical r7 source passage; new child of r8 preserving all current events, e3 y lag and e4 deletion; retain warp experiment in history.","expectedRevision":"r8-e4aea058bc8b","expectedSourceHash":"e4aea058bc8b7496a7f4c8856f8a4b23ebf7aa9c283bfa35aaaf48d235938152","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45...
+{"description":"Restore unwarped background using historical r7 source passage; new child of r8 preserving all current events, e3 y lag and e4 deletion; retain warp experiment in history.","expectedRevision":"r8-e4aea058bc8b","expectedSourceHash":"e4aea058bc8b7496a7f4c8856f8a4b23ebf7aa9c283bfa35aaaf48d235938152","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45...
 <<progress>>
 EditFunctionStudy finished
 r9-82456e1e48ac Compiled, checked and activated images=0

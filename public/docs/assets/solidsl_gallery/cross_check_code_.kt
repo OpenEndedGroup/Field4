@@ -1,13 +1,13 @@
-import afield.solidsl.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
+import afield.lang.solidsl.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.geometry.mesh.signedVolume
 
 // ---- the shape, written once -------------------------------------------------------
 // Everything below reads THIS. Change a number and both evaluations follow, because the
-// shape is a value rather than a closure — which is the whole of what afield.solidsl is.
+// shape is a value rather than a closure — which is the whole of what afield.lang.solidsl is.
 val boreRadius = 0.30      // the two side bores. Past ~0.55 they break into the slot;
                            // watch `genus` and the agreement react rather than the
                            // picture silently becoming wrong.
@@ -47,7 +47,7 @@ if (!ManifoldLibrary.isAvailable) {
     println("Only one of the two evaluations is available, so there is nothing to cross-check.")
     showMesh(
         part.marchedMesh(SolidQuality(edgeLengthFraction = 1.0 / 110.0)),
-        title = "afield.solidsl through marching cubes",
+        title = "afield.lang.solidsl through marching cubes",
         caption = "Install Manifold (brew install manifold) and re-run to get the exact CSG " +
             "evaluation of the same expression beside it, and the agreement between them.",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 720, height = 460),

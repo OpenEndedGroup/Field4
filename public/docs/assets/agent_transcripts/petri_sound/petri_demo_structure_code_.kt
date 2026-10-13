@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Two nets in one. The fast ring plays the bar; the slow ring is the arrangement, one
 // token walking verse -> verse -> chorus and back. Same mechanism at both timescales,

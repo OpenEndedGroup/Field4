@@ -409,7 +409,7 @@ execution prints `ages: [15, 30, 45]` off a frame it never reloaded.
 
 ### linalg_thumbnails_demo
 
-Each box evaluates one `afield.stdlib.linalg` value; on execute its
+Each box evaluates one `afield.math.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws: an
 auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid for matrices.
 
@@ -430,7 +430,7 @@ the difference between a gesture and a state.
 ### fn_differentiable_fit_demo
 
 A self-contained demo of the differentiable fitter
-(`afield.stdlib.fitBest` / `fitGradient`), the gradient-descent counterpart to the genetic
+(`afield.math.functions.fitBest` / `fitGradient`), the gradient-descent counterpart to the genetic
 `evolve()`. The target is a product of two oscillators with a seed chosen to be wrong; a single
 `fitGradient` stalls in a frequency local-minimum, so the demo uses `fitBest` (jittered restarts) to
 land in the global basin. On execute it plots the target and the fitted curve and returns an RMSE
@@ -643,7 +643,7 @@ those lines compiling.
 
 ### petri_state_space
 
-The other half of `afield.petri`: the same engine as an exact concurrency
+The other half of `afield.simulation.petri`: the same engine as an exact concurrency
 checker, in five boxes. Where `petri_sound` asks what a net *plays*, this asks what it can *do*,
 [the classical questions](petri_nets.md) over every interleaving rather than the one the conflict
 policy picks. The first box makes the case: on the symmetric five-philosopher table `willDeadlock()`
@@ -1535,7 +1535,7 @@ every docs build and its last column reads differently each time, which is the c
 
 ### solidsl_notation
 
-Two boxes on [`afield.solidsl`](solid_notation.md), the notation in which a
+Two boxes on [`afield.lang.solidsl`](solid_notation.md), the notation in which a
 solid is a *value* rather than a `(Vec3) -> Float`. *A part, and what the notation knows before it
 meshes* interrogates a bored plate with a blended boss before anything is built: **17 nodes**,
 symbolic bounds, and exactly one subtree with no exact CSG form: the `SmoothUnion`, because "a
@@ -1667,7 +1667,7 @@ here; the voice wants an audio device and the last one is meant to fail.
 ### popup_prior_inspect
 
 Asks Field what ranking prior the completion popup currently has for a
-receiver type, by calling the object the completion server itself calls, `afield.CommonMemberPrior`,
+receiver type, by calling the object the completion server itself calls, `afield.runtime.completion.CommonMemberPrior`,
 rather than describing it. Tabulates the type's `@CommonMembers` list in declared order with the score
 each position earns. Change one string to ask about your own class, and replay it when a member you
 expect near the top of `ctrl-space` is not there. It answers one of the two questions that place a row:
@@ -1792,7 +1792,7 @@ window, no sidecar. Three boxes: the corpus itself with its payload distribution
 `KotlinSourceIndex.getCompletionCategoryForSymbol` called with the real recorded `declaredIn`, and
 the whole decision re-scored through the shipped
 weights. The third box shells out to `tools/rank_weight_lab.py` and wants a spec file
-`afield.FieldSuggestPresentationTest` drops; if it says so, run that test once.
+`afield.runtime.completion.FieldSuggestPresentationTest` drops; if it says so, run that test once.
 `dev_docs/completion_rank_at_scale.md` is the written-up version, with the sweep and the falsification
 behind it.
 
@@ -1889,7 +1889,7 @@ grid never looks. `dev_docs/FN_INTERVAL.md` is the write-up.
 
 ### solidsl_inverse
 
-**A Solid you can differentiate — and therefore solve.** `afield.solidsl` writes a 3D solid down as a
+**A Solid you can differentiate — and therefore solve.** `afield.lang.solidsl` writes a 3D solid down as a
 value and had two readings of it, a marchable distance field and Manifold's exact CSG; both are
 *evaluations*, and neither changes what you can ask the notation for. This is the third reading. Three
 boxes, no Manifold, no GPU, no window — marching cubes and the mesh rasteriser are both pure Kotlin.
@@ -2352,7 +2352,7 @@ knows nothing.
 
 ### fieldml_afield_four_demo
 
-A whole afield.four scene described from FieldML, from [FieldML and the JVM](fieldml_host_bridge.md):
+A whole Field 4 scene described from FieldML, from [FieldML and the JVM](fieldml_host_bridge.md):
 a triangle on a real Vulkan device. Run the `window and renderer` box first, then the FieldML box.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/fieldml_afield_four_demo/metadata.edn)
@@ -2582,7 +2582,7 @@ at images of your own — which together are why this one ships no starting poin
 ### gpu_probe_bench
 
 A bench for asserting things about compute shaders. Four boxes: a renderer, because
-`afield.four` has no headless mode and a compute-only dispatch still needs a window for the device
+Field 4 has no headless mode and a compute-only dispatch still needs a window for the device
 to exist; the whole `GpuProbe` idiom on one screen; the pressure-projection chain a GPU fluid
 actually runs — divergence, twelve Jacobi sweeps, project — graded cell by cell against a closed
 form written in Kotlin; and a deliberate half-dispatch, so a reader can watch the sentinel fire and
@@ -3347,7 +3347,7 @@ number of panels with no extra training and no extra shaders.
 ### skinned_characters
 
 **A rigged mesh you can bend, and a crowd of sixty-four of them.** Skeletal animation for
-`afield.four`: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated at
+Field 4: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated at
 a time, and linear blend skinning into a deformed surface.
 
 Eight boxes. A window and renderer the four GPU boxes hang beneath; a box that prints what the
@@ -3442,7 +3442,7 @@ The other half: a single draw box with no renderer of its own,
 which calls `fromContext()` and expects an `agent_graphics_context` parent to have supplied one.
 Replayed alone it has nothing to draw into, which is the rule it exists to demonstrate. The figure is
 this same box *given* that parent, which is how the
-[afield.four graphics walkthrough](afield_four_graphics.md) opens: the docs runner supplies the
+[Field 4 graphics walkthrough](afield_four_graphics.md) opens: the docs runner supplies the
 context, and one triangle arrives.
 
 ![A right triangle filling a native Vulkan window against black, filled with a smooth interpolated gradient from deep blue at its lower-left corner to green at its upper-right](assets/afield_four_graphics/00-traditional-triangle.png)

@@ -1,4 +1,4 @@
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 // A 5x4 confluence grid in 3D. Row = term, column = scheduler, all twenty reducing together.
 //

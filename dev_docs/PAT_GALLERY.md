@@ -8,10 +8,10 @@ correctness while writing no committed assets.
 
 | harness | id | output |
 | --- | --- | --- |
-| `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 11 piano rolls, **SVG** |
-| `afield.four.synth.PatSoundDocs` | `synth.pat.sound` | 8 stereo **`.wav`**s |
-| `afield.four.synth.PatMiniNotation` | `synth.pat.mini` | 26 mini-notation cards — a compact **SVG** roll *and* a **`.wav`** each |
-| `afield.four.synth.PatTranscriptionGallery` | `synth.pat.transcription` | 3 notated-vs-recovered overlays, **SVG** |
+| `afield.audio.synth.PatPianoRollGallery` | `synth.pat.gallery` | 11 piano rolls, **SVG** |
+| `afield.audio.synth.PatSoundDocs` | `synth.pat.sound` | 8 stereo **`.wav`**s |
+| `afield.audio.synth.PatMiniNotation` | `synth.pat.mini` | 26 mini-notation cards — a compact **SVG** roll *and* a **`.wav`** each |
+| `afield.audio.synth.PatTranscriptionGallery` | `synth.pat.transcription` | 3 notated-vs-recovered overlays, **SVG** |
 
 ```
 # official pass/fail (starts a Field server, applies the JVM args):

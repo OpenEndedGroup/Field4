@@ -1,6 +1,6 @@
 # GPU State — keeping a simulation on the card
 
-There are two compute-shader examples in these docs already. [afield.four
+There are two compute-shader examples in these docs already. [Field 4
 Graphics](afield_four_graphics.md) §3 writes an input buffer, dispatches a `ComputeMesh`, and reads
 the answer back; §3b keeps the answer on the card and draws it from a second box. [Field
 Probes](field_probes.md) instruments the same scene and photographs it: a hundred thousand soft
@@ -48,7 +48,7 @@ var inData = defaultBuffer { size = N.vec4s }.buffer
 
 It is a good default: `defaultBuffer` gives you a buffer that is host-visible, usable as a storage
 buffer, and addressable by `buffer_reference`
-(`src/jvmMain/kotlin/afield/four/buffers/magic.kt:25#fun defaultBuffer`). On a machine with resizable
+(`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:25#fun defaultBuffer`). On a machine with resizable
 BAR a buffer can be all three at once, so for most examples one line is enough.
 
 It is enough right up until you have four buffers instead of two, and they are not alike. Inside the
@@ -67,11 +67,11 @@ block you can say what this particular buffer is *for*, and the vocabulary is sm
 </div>
 
 All five are members of the buffer block, in the order above:
-`src/jvmMain/kotlin/afield/four/buffers/magic.kt:93#fun hosted`,
-`src/jvmMain/kotlin/afield/four/buffers/magic.kt:106#fun writeOnce`,
-`src/jvmMain/kotlin/afield/four/buffers/magic.kt:143#fun zeroInitialized`,
-`src/jvmMain/kotlin/afield/four/buffers/magic.kt:136#fun streamReads` and
-`src/jvmMain/kotlin/afield/four/buffers/magic.kt:126#fun readOccasionallyForDebugging`
+`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:93#fun hosted`,
+`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:106#fun writeOnce`,
+`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:143#fun zeroInitialized`,
+`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:136#fun streamReads` and
+`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:126#fun readOccasionallyForDebugging`
 (`zeroInit()` and `debugReads()` are aliases for the last two). None is more than half a dozen lines:
 each sets an access pattern and some memory-property bits.
 
@@ -166,7 +166,7 @@ It is also why these lines belong exactly where they are: at the top level of th
 **not** inside a `loop {}`. A binding set inside the frame loop lands a frame late, and the
 diagnostic for the gap is easy to misread: a dispatch in that window throws
 `MissingRefException("risk of GPU null ref …")` naming the member
-(`src/jvmMain/kotlin/afield/four/modules/ComputeMesh.kt:368#risk of GPU null ref`), which reads like a
+(`src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt:368#risk of GPU null ref`), which reads like a
 missing buffer and is really an assignment that has not happened yet. Set them once, outside; they
 stay live because they were lambdas from the start.
 
@@ -200,7 +200,7 @@ quads.heat  = { gsHeat }
 ```
 
 Two boxes computing the same predicate is cheaper than sharing one. `renderer.frameCounter`
-(`src/jvmMain/kotlin/afield/four/Renderer.kt:784#var frameCounter`) is constant for the whole of one
+(`src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt:784#var frameCounter`) is constant for the whole of one
 frame's recording, so both boxes get the same answer no matter which one's binding is evaluated
 first. A counter that one box owns and increments and the other reads is the same predicate with an
 ordering dependency bolted to it, and it goes wrong exactly when the two boxes are launched in
@@ -305,7 +305,7 @@ the whole thing is dragged bodily off-centre. The drag comes from a bias, which 
 it is a cloud leaving the window — the figure above is what that looks like with the bias left in and
 the restoring force too weak to hold it. Every fractal word in the `3` and `4` family accumulates
 its amplitude sum in the shader and divides it out
-(`src/jvmMain/kotlin/afield/stacksl/VolumetricNoise.kt:330#fun fbm4`), so `fbm4` is exactly `0..1`
+(`src/jvmMain/kotlin/afield/lang/stacksl/VolumetricNoise.kt:330#fun fbm4`), so `fbm4` is exactly `0..1`
 for any octave count, lacunarity and gain, and `0.5 -` is unbiased. A correction of `1.032258`
 (`1 / 0.96875`) belongs only in front of a 2D `fbm`; with the family there is no constant to
 remember.
@@ -316,7 +316,7 @@ so every call pushes two values and everything downstream takes the wrong operan
 no error; it prunes the surplus and carries on.
 
 It does say so, though. Every bind builds a report and publishes it to the box's `stack.auto` output
-channel (`src/jvmMain/kotlin/afield/stdlib/shaders.kt:532#const val STACK_AUTO_REPORT_CHANNEL`),
+channel (`src/jvmMain/kotlin/afield/graphics/shader/shaders.kt:532#const val STACK_AUTO_REPORT_CHANNEL`),
 opening the card when there is something to say and closing it again when a later bind comes back
 clean. Swap `>c` for `=c` in the box above and the channel opens with this, verbatim:
 
@@ -328,13 +328,13 @@ problem: definition `vfield` ends with 2 values on the stack, not 1 — it must 
 
 Reporting only: the slot still binds, because a program is usually mid-edit and refusing would be a
 worse tool than saying so. You can also ask before you bind: `stackAutoShaderReport(program, "force")`
-(`src/jvmMain/kotlin/afield/stdlib/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
+(`src/jvmMain/kotlin/afield/graphics/shader/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
 and returns the same object.
 
 One more, and it is easy to misdiagnose. The program above never reads the push block, because the
 clock reaches it on `input.w`; the moment you want anything else from it — the force gain, a mouse
 position — the syntax is `?pc.knobs y`, and that external read is typed as a `vec4`
-(`src/jvmMain/kotlin/afield/stacksl/StackSL.kt:2735#private fun parseExternalRead`). Pointing it at a
+(`src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt:2735#private fun parseExternalRead`). Pointing it at a
 `float` member is a swizzle error out of glslang rather than a StackSL diagnostic, so a spare `vec4`
 of knobs (clock in `.x`, gain in `.y`) is the shape that works, and it is also the shape that lets
 you add a knob without touching the shader.
@@ -408,7 +408,7 @@ The example's [README](https://github.com/OpenEndedGroup/Field4/blob/main/dev_do
 
 ## Where to go next
 
-- [afield.four Graphics](afield_four_graphics.md) — the contract underneath all of this: modules,
+- [Field 4 Graphics](afield_four_graphics.md) — the contract underneath all of this: modules,
   meshes, reflected names, push constants, and the stateless compute examples this page follows.
 - [Field Probes](field_probes.md) — `fieldProbe` and `fieldStats` in full, on a sibling particle
   scene.

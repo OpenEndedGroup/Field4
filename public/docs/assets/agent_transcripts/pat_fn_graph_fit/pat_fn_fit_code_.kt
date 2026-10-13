@@ -1,6 +1,6 @@
-import afield.stdlib.Functions
-import afield.stdlib.fitGradient
-import afield.stdlib.graphNode
+import afield.math.functions.Functions
+import afield.math.functions.fitGradient
+import afield.math.functions.graphNode
 
 with(Functions) {
     val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)

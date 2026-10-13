@@ -45,8 +45,8 @@ operations:
   - create:
       box: child
       code: |
-        import afield.four.Renderer
-        import afield.four.modules.fromContext
+        import afield.graphics.vulkan.Renderer
+        import afield.document.context.fromContext
         val renderer: Renderer = fromContext()
 
         var module = moduleHere { }
@@ -93,12 +93,12 @@ class RuleTests(unittest.TestCase):
             f.close()
 
     def test_an_import_still_used_stays(self):
-        code = "import afield.four.Renderer\nval renderer: Renderer = fromContext()\nval other: Renderer? = null\n"
+        code = "import afield.graphics.vulkan.Renderer\nval renderer: Renderer = fromContext()\nval other: Renderer? = null\n"
         f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": code})
         try:
             f.run("--fix")
             self.assertEqual(f.read("dev_docs/agents/demos/d/x_code_.kt"),
-                             "import afield.four.Renderer\nval other: Renderer? = null\n")
+                             "import afield.graphics.vulkan.Renderer\nval other: Renderer? = null\n")
         finally:
             f.close()
 
@@ -151,7 +151,7 @@ class BoxContextTests(unittest.TestCase):
             f.close()
 
     def test_a_qualified_lookup_loses_its_qualifier(self):
-        f = Fixture({self.PATH: "afield.Box.context.get()!!.display(\"x\", \"y\")\n"})
+        f = Fixture({self.PATH: "afield.document.graph.Box.context.get()!!.display(\"x\", \"y\")\n"})
         try:
             self.assertEqual(f.run("--fix"), 0)
             self.assertEqual(f.read(self.PATH), "thisBox.display(\"x\", \"y\")\n")
@@ -159,7 +159,7 @@ class BoxContextTests(unittest.TestCase):
             f.close()
 
     def test_a_guarded_lookup_alias_becomes_a_thisBox_alias(self):
-        code = 'val owner = afield.Box.context.get() ?: throw IllegalStateException("Run in a Field box") // tools\n'
+        code = 'val owner = afield.document.graph.Box.context.get() ?: throw IllegalStateException("Run in a Field box") // tools\n'
         f = Fixture({self.PATH: code})
         try:
             self.assertEqual(f.run("--fix"), 0)
@@ -215,7 +215,7 @@ class DemoTests(unittest.TestCase):
 class ScopeTests(unittest.TestCase):
     def test_generated_bundles_and_files_outside_the_corpus_are_ignored(self):
         self.assertFalse(idioms.in_corpus("public/docs/assets/agent_transcripts/x/a_code_.kt"))
-        self.assertFalse(idioms.in_corpus("src/jvmMain/kotlin/afield/Server.kt"))
+        self.assertFalse(idioms.in_corpus("src/jvmMain/kotlin/afield/app/server/Server.kt"))
         self.assertTrue(idioms.in_corpus("public/docs/assets/canonical_graphics/a_code_.kt"))
         self.assertTrue(idioms.in_corpus(TRANSCRIPT))
 

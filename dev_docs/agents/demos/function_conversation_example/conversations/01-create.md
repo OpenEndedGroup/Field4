@@ -58,7 +58,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"One-hour drifting three-channel background with six evenly spaced, smooth chirp crescendos, exact holds and mirrored decrescendos.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.*\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitude = 0.20\n    ...
+{"description":"One-hour drifting three-channel background with six evenly spaced, smooth chirp crescendos, exact holds and mirrored decrescendos.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.*\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitude = 0.20\n    ...
 <<progress>>
 EditFunctionStudy finished
 keys=error,tool,message
@@ -76,7 +76,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitu...
+{"description":"One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitu...
 <<progress>>
 EditFunctionStudy finished
 r3-66fd67f6fe7c Compiled, checked and activated images=0

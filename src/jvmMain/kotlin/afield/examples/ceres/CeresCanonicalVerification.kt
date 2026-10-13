@@ -1,12 +1,12 @@
 package afield.examples.ceres
 
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.canonicalDiagnostics
-import afield.stdlib.polytope.canonicalize
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relaxWithCeres
+import afield.geometry.polytope.CeresRelaxationOptions
+import afield.geometry.polytope.PolyhedralObject
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.canonicalDiagnostics
+import afield.geometry.polytope.canonicalize
+import afield.geometry.polytope.conway
+import afield.geometry.polytope.relaxWithCeres
 import kotlin.math.abs
 
 /**

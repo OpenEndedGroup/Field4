@@ -30,7 +30,7 @@ The gradient flows through the emitted GLSL itself, interpreted node by node on
 `afield.stdlib`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
 ```edn [field-box id="stacksl-fit" role="properties"]
-{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 112 "characters" 4524 "sha256" "628ede11ecea727fd1d65fd0b8d20d0a0588be6bcb8e072233e9bcfb9d14ddfb"}]}
+{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 112 "characters" 4551 "sha256" "b1894f60de8bca5a82be49b2f493e4e3679dd1b47d73631500f679c89975f3fd"}]}
 ```
 
 ```kotlin [field-property box="stacksl-fit" name="code" path="stacksl-fit_code_.kt"]
@@ -49,10 +49,10 @@ The gradient flows through the emitted GLSL itself, interpreted node by node on
 // The gradient flows through the emitted GLSL itself, interpreted node by node on
 // `afield.stdlib`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
-import afield.stacksl.cpu.CpuRaster
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
+import afield.lang.stacksl.cpu.CpuRaster
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 import kotlin.math.abs
 
 run {
@@ -169,7 +169,7 @@ program's render and the fitted wire vector's render. If the literal rewriting w
 column off by one, a token mismatched — it would not be small, it would be a different picture.
 
 ```edn [field-box id="stacksl-roundtrip" role="properties"]
-{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 91 "characters" 4050 "sha256" "c0d6c0ab67fe16c3ba9b261e04a5f69a86813d052c34225f683a1b5016f475b2"}]}
+{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 91 "characters" 4072 "sha256" "f064fd2305a3256d031167f6533d6d0aea60f1246b2b3a7490198bb137dbe3df"}]}
 ```
 
 ```kotlin [field-property box="stacksl-roundtrip" name="code" path="stacksl-roundtrip_code_.kt"]
@@ -185,9 +185,9 @@ column off by one, a token mismatched — it would not be small, it would be a d
 // program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
 // column off by one, a token mismatched — it would not be small, it would be a different picture.
 
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 import kotlin.math.abs
 
 run {
@@ -285,7 +285,7 @@ Read the table below against the program above it. Wire #0 is the `3.0` you can 
 #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
 
 ```edn [field-box id="stacksl-wires" role="properties"]
-{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 65 "characters" 2930 "sha256" "2bde48a1f0997ae0cb57c0d3db8f5de106b07981fe7b376432c0f8b8041e9a10"}]}
+{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 65 "characters" 2940 "sha256" "d92690bd38824ef1a546b095337588e17b881018869646fa70529dfd3f60eb17"}]}
 ```
 
 ```kotlin [field-property box="stacksl-wires" name="code" path="stacksl-wires_code_.kt"]
@@ -299,8 +299,8 @@ Read the table below against the program above it. Wire #0 is the `3.0` you can 
 // Read the table below against the program above it. Wire #0 is the `3.0` you can see; wires
 // #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
 
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLWires
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLWires
 
 run {
 

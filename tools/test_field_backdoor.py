@@ -63,7 +63,7 @@ class McpPaintGestureTests(unittest.IsolatedAsyncioTestCase):
         server._ensure_client = mock.AsyncMock(return_value=client)  # type: ignore[method-assign]
         result = await server.tool_paint_gesture({"samples": [[0, 0, 0], [1, 0.5, 0.5]], "bake": 0.01})
         entry, args = client.run_jvm_main.call_args
-        self.assertEqual(entry[0], "afield.paint.GestureReplayMain")
+        self.assertEqual(entry[0], "afield.graphics.paint.GestureReplayMain")
         request = _json.loads(Path(args["jvm_args"][0]).read_text())
         self.assertEqual(request["samples"], [[0, 0, 0], [1, 0.5, 0.5]])
         self.assertTrue(request["lanesOut"].endswith(".json"))

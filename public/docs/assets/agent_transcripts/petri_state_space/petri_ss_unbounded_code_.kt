@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // `make` puts its token straight back and drops another one in `queue`, so `queue` grows
 // forever and the state space is infinite.

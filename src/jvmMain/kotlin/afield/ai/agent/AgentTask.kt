@@ -1,19 +1,19 @@
 package afield.ai.agent
 
-import afield.Box
-import afield.payload
-import afield.BoxOutputLog
-import afield.ExecutionReports
-import afield.SessionInformation
-import afield.ai.core.Ai4BackdoorTools
-import afield.ai.core.LlmBridge
-import afield.ai.core.LlmSendResult
-import afield.ai.core.ScriptedLlmBridge
-import afield.ai.core.ToolExecutionContext
-import afield.ai.core.createLlmBridge
-import afield.ai.core.createIdeBridge
-import afield.isTrue
-import afield.sourceRevision
+import afield.document.graph.Box
+import afield.app.protocol.payload
+import afield.app.diagnostics.BoxOutputLog
+import afield.runtime.execution.ExecutionReports
+import afield.app.server.SessionInformation
+import afield.ai.tools.Ai4BackdoorTools
+import afield.ai.models.LlmBridge
+import afield.ai.models.LlmSendResult
+import afield.ai.models.ScriptedLlmBridge
+import afield.ai.tools.ToolExecutionContext
+import afield.ai.models.createLlmBridge
+import afield.ai.models.createIdeBridge
+import afield.document.graph.isTrue
+import afield.runtime.execution.sourceRevision
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -61,12 +61,12 @@ data class AgentTaskRequest(
     val blind: Boolean = false,
     /**
      * `off` withholds `RunToolProgramRequest` (the tool-program A/B arm); `on` or blank leaves it to
-     * [afield.ai.core.program.ToolPrograms.enabled].
+     * [afield.ai.tools.program.ToolPrograms.enabled].
      */
     val programs: String = "",
     /**
      * `legacy` sends this task's instructions the pre-2026-10-02 way, inside the stored message, instead of
-     * as ephemeral per-request context ([afield.ai.core.TurnContext]): the context-pipeline A/B arm.
+     * as ephemeral per-request context ([afield.ai.conversation.TurnContext]): the context-pipeline A/B arm.
      */
     val context: String = "",
     /**
@@ -91,7 +91,7 @@ data class AgentTaskRequest(
  * - `output-colour` [box] [text] = `#rrggbb` [fraction] — at least that share of the capture is within 48 of that colour
  * - `output-rising` [box] [text] = `#c1,#c2,…` [fraction] = minimum bar count — the bars drawn in those colours
  *   rise strictly left to right, and (with more than one colour) the last, tallest bar is mostly the last colour
- * - `effects-absent` / `effects-present` [text] = a [afield.ai.core.ToolEffect] — over every call the turn made,
+ * - `effects-absent` / `effects-present` [text] = a [afield.ai.tools.ToolEffect] — over every call the turn made,
  *   a program's nested calls included; a call with undeclared effects fails `effects-absent`
  * - `tool-used` [text] = a tool name — the turn called it (directly or from a program)
  */
@@ -128,7 +128,7 @@ data class AgentCheck(
                 "connected" -> AgentCheck(kind, parent = rest.substringBefore(':'), child = rest.substringAfter(':', ""))
                 "output-picture" -> AgentCheck(kind, box = rest)
                 "effects-absent", "effects-present" -> {
-                    afield.ai.core.ToolEffect.valueOf(rest.trim())
+                    afield.ai.tools.ToolEffect.valueOf(rest.trim())
                     AgentCheck(kind, text = rest.trim())
                 }
                 "tool-used" -> AgentCheck(kind, text = rest.trim())
@@ -183,7 +183,7 @@ data class AgentTaskResult(
     val elapsedMs: Long,
     val inputTokens: Long? = null,
     val outputTokens: Long? = null,
-    /** Input tokens the provider served from its prompt cache (see [afield.ai.core.LlmSendResult.cacheReadTokens]). */
+    /** Input tokens the provider served from its prompt cache (see [afield.ai.models.LlmSendResult.cacheReadTokens]). */
     val cacheReadTokens: Long? = null,
     val cacheWriteTokens: Long? = null,
     val documentName: String,
@@ -211,8 +211,8 @@ data class AgentTaskResult(
 )
 
 /**
- * What a headless task adds to the ordinary AI4 chat instructions ([afield.ai.core.buildDynamicInstructions],
- * which already describes the graph tools via [afield.ai.core.fieldGraphToolGuidance]). Only the
+ * What a headless task adds to the ordinary AI4 chat instructions ([afield.ai.conversation.buildDynamicInstructions],
+ * which already describes the graph tools via [afield.ai.conversation.fieldGraphToolGuidance]). Only the
  * facts that differ from a person typing in the chat: nobody will answer a question, and the turn is
  * judged by checks.
  */
@@ -260,7 +260,7 @@ object AgentTaskRunner {
 
         return try {
             val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
-                if (request.programs == "off") base.copy(withheld = base.withheld + afield.ai.core.program.RUN_TOOL_PROGRAM) else base
+                if (request.programs == "off") base.copy(withheld = base.withheld + afield.ai.tools.program.RUN_TOOL_PROGRAM) else base
             }
 
             if (request.setup.isNotBlank()) {
@@ -284,7 +284,7 @@ object AgentTaskRunner {
             // The same thread instructions and the same chat turn as the AI4 document chat: this is a
             // headless entry into that turn, not a second harness.
             val thread = b.startThread("afield-task://${info.documentName}/$taskId", "",
-                afield.ai.core.OpenAiIdeCodexBridge.defaultChatThreadInstructions)
+                afield.ai.models.OpenAiIdeCodexBridge.defaultChatThreadInstructions)
             val prompt = buildString {
                 appendLine("GOAL: ${request.goal}")
                 appendLine()
@@ -293,14 +293,14 @@ object AgentTaskRunner {
                         .joinToString(", ") { it.name.ifBlank { it.id } }.ifBlank { "(none)" })
                 appendLine("You have at most $budget tool rounds.")
             }
-            val helpers = afield.ai.core.IdeChatHelpers(b,
-                ephemeralInstructions = request.context != "legacy" && afield.ai.core.ContextPipeline.enabledByDefault)
+            val helpers = afield.ai.conversation.IdeChatHelpers(b,
+                ephemeralInstructions = request.context != "legacy" && afield.ai.conversation.ContextPipeline.enabledByDefault)
             var sent = helpers.chatGeneral(
-                thread, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
+                thread, code = "", lang = afield.runtime.languages.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
                 maxToolRounds = budget, extraInstructions = extra)
             for (followUp in request.followUps) {
                 sent = mergeTurns(sent, helpers.chatGeneral(
-                    sent.threadState, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = followUp, ctx = ctx,
+                    sent.threadState, code = "", lang = afield.runtime.languages.KOTLIN_SCRIPT, userPrompt = followUp, ctx = ctx,
                     maxToolRounds = budget, extraInstructions = extra))
             }
 
@@ -328,8 +328,8 @@ object AgentTaskRunner {
                 imagesSeen = sent.toolTranscript.count { it.parentCallId.isEmpty() && it.resultJson.contains("\"imageAttached\":true") },
                 lessons = graph.lessons,
                 documentRef = java.io.File(info.filename).name,
-                programs = request.programs != "off" && afield.ai.core.program.ToolPrograms.enabled,
-                programCalls = calls.count { it.tool == afield.ai.core.program.RUN_TOOL_PROGRAM },
+                programs = request.programs != "off" && afield.ai.tools.program.ToolPrograms.enabled,
+                programCalls = calls.count { it.tool == afield.ai.tools.program.RUN_TOOL_PROGRAM },
                 nestedCalls = calls.count { it.parent.isNotEmpty() },
                 turns = 1 + request.followUps.size,
                 contextPlacement = sent.contextReport?.placement ?: "inline",
@@ -366,21 +366,21 @@ object AgentTaskRunner {
                 maxToolRounds = budget, hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
                 setupCalls = setupLog, error = message, chatBox = box.id)
         }
-        if (box.getPropertyRaw(afield.ai.core.AiBoxConversation.RUNNING_PROPERTY) == true) {
+        if (box.getPropertyRaw(afield.ai.conversation.AiBoxConversation.RUNNING_PROPERTY) == true) {
             // The persisted flag can survive a JVM interruption. The ordinary chat-history
             // handler consults the server's live turns before recovering it; use that same path
             // instead of treating a saved flag as evidence of an active turn.
-            val previous = afield.thisSessionInfo.get()
-            afield.thisSessionInfo.set(info)
+            val previous = afield.app.server.thisSessionInfo.get()
+            afield.app.server.thisSessionInfo.set(info)
             try {
-                afield.handle(afield.Message("ai-chat-history").apply {
+                afield.app.protocol.handle(afield.app.protocol.Message("ai-chat-history").apply {
                     payload = buildJsonObject { put("uid", box.id) }
                 }) { }
             } finally {
-                if (previous == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previous)
+                if (previous == null) afield.app.server.thisSessionInfo.remove() else afield.app.server.thisSessionInfo.set(previous)
             }
         }
-        if (box.getPropertyRaw(afield.ai.core.AiBoxConversation.RUNNING_PROPERTY) == true)
+        if (box.getPropertyRaw(afield.ai.conversation.AiBoxConversation.RUNNING_PROPERTY) == true)
             return refuse("'${box.name}' already has an AI turn running. Wait for it (or stop it) and ask again.")
 
         if (request.mode == "scripted") {
@@ -420,7 +420,7 @@ object AgentTaskRunner {
         return result
     }
 
-    internal data class PanelTurn(val reply: String, val identity: afield.AiChatModelIdentity? = null, val error: String? = null,
+    internal data class PanelTurn(val reply: String, val identity: afield.ai.conversation.AiChatModelIdentity? = null, val error: String? = null,
         val running: Boolean = false, val failure: String? = null, val rounds: Int = -1, val hitToolRoundCap: Boolean = false)
 
     /** How long a turn that *did* start may run before this gives up on it (it keeps running). */
@@ -436,10 +436,10 @@ object AgentTaskRunner {
      * error, never another turn's reply.
      */
     private fun runAsBoxChatTurn(info: SessionInformation, box: Box, request: AgentTaskRequest, budget: Int): PanelTurn {
-        val runningKey = afield.ai.core.AiBoxConversation.RUNNING_PROPERTY
-        val before = afield.ai.core.AiBoxConversation.read(box)
-        val beforeSequence = afield.ai.core.AiBoxConversation.turnSequence(box)
-        val assist = afield.AiAssist(
+        val runningKey = afield.ai.conversation.AiBoxConversation.RUNNING_PROPERTY
+        val before = afield.ai.conversation.AiBoxConversation.read(box)
+        val beforeSequence = afield.ai.conversation.AiBoxConversation.turnSequence(box)
+        val assist = afield.app.protocol.AiAssist(
             uid = box.id,
             prompt = (box.getPropertyRaw("code") as? String).orEmpty(),
             // Just the goal: this is an ordinary panel turn the person can see and continue, so the
@@ -450,14 +450,14 @@ object AgentTaskRunner {
             kind = "general",
             maxToolRounds = budget,
         )
-        val previous = afield.thisSessionInfo.get()
-        afield.thisSessionInfo.set(info)
+        val previous = afield.app.server.thisSessionInfo.get()
+        afield.app.server.thisSessionInfo.set(info)
         try {
-            afield.handle(afield.Message("ai-assist").payload(assist)) { }
+            afield.app.protocol.handle(afield.app.protocol.Message("ai-assist").payload(assist)) { }
         } finally {
-            if (previous == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previous)
+            if (previous == null) afield.app.server.thisSessionInfo.remove() else afield.app.server.thisSessionInfo.set(previous)
         }
-        if (afield.ai.core.AiBoxConversation.turnSequence(box) == beforeSequence) return PanelTurn("", error =
+        if (afield.ai.conversation.AiBoxConversation.turnSequence(box) == beforeSequence) return PanelTurn("", error =
             "AI4 did not start a turn in '${box.name}': AI setup failed or no provider is configured (see Field's notifications and /welcome).")
         val deadline = System.currentTimeMillis() + panelTurnLimitMs
         while (box.getPropertyRaw(runningKey) == true) {
@@ -467,7 +467,7 @@ object AgentTaskRunner {
             if (System.currentTimeMillis() > deadline) return PanelTurn("", running = true)
             Thread.sleep(200)
         }
-        val history = afield.ai.core.AiBoxConversation.read(box)
+        val history = afield.ai.conversation.AiBoxConversation.read(box)
         val added = if (history.startsWith(before)) history.substring(before.length) else {
             val key = request.goal.trim().take(60)
             val at = history.lastIndexOf("<<you>>").takeIf { it >= 0 && history.indexOf(key, it) >= 0 }
@@ -476,11 +476,11 @@ object AgentTaskRunner {
         }
         if (!added.contains(request.goal.trim().take(60))) return PanelTurn("", error = "The chat history gained a turn that is not this task's.")
         val last = added.substringAfterLast("<<ai>>").trimStart('\n')
-        val (identity, text) = afield.AiChatModelIdentity.splitFromContent(last)
+        val (identity, text) = afield.ai.conversation.AiChatModelIdentity.splitFromContent(last)
         return PanelTurn(text.substringBefore("<<progress").trim().take(4000), identity,
-            failure = afield.ai.core.AiBoxConversation.turnFailure(box),
-            rounds = afield.ai.core.AiBoxConversation.turnRounds(box),
-            hitToolRoundCap = afield.ai.core.AiBoxConversation.turnCapped(box))
+            failure = afield.ai.conversation.AiBoxConversation.turnFailure(box),
+            rounds = afield.ai.conversation.AiBoxConversation.turnRounds(box),
+            hitToolRoundCap = afield.ai.conversation.AiBoxConversation.turnCapped(box))
     }
 
     fun defaultBridge(request: AgentTaskRequest): LlmBridge = when (request.mode) {
@@ -510,7 +510,7 @@ object AgentTaskRunner {
 
     private fun records(sent: LlmSendResult): List<AgentToolCallRecord> =
         sent.toolTranscript.mapIndexed { index, entry ->
-            val node = runCatching { afield.ai.core.aiToolMapper.readTree(entry.resultJson) }.getOrNull()
+            val node = runCatching { afield.ai.tools.aiToolMapper.readTree(entry.resultJson) }.getOrNull()
             val ok = node == null || !(node.get("success")?.asBoolean(true) == false || node.get("error")?.asBoolean(false) == true)
             AgentToolCallRecord(index + 1, entry.name, entry.argumentsJson.take(4000), ok, entry.resultJson.take(4000), parent = entry.parentCallId)
         }
@@ -535,18 +535,18 @@ object AgentTaskRunner {
         // One capture per box per verdict: several picture checks on one box look at the same pixels.
         fun shot(b: Box): BoxOutputShot = shots.getOrPut(b.id) { graph.captureOutput(b, settleMs = 500) }
         // The effects a call declared (ToolMeta.kt), looked up in the shared registry plus this task's box tools.
-        fun effectsOf(call: AgentToolCallRecord): Set<afield.ai.core.ToolEffect> =
-            (afield.ai.core.Ai4BackdoorTools.registry.metaOf(ctx ?: ToolExecutionContext(), call.tool) ?: afield.ai.core.ToolMeta.DEFAULT).effects
+        fun effectsOf(call: AgentToolCallRecord): Set<afield.ai.tools.ToolEffect> =
+            (afield.ai.tools.Ai4BackdoorTools.registry.metaOf(ctx ?: ToolExecutionContext(), call.tool) ?: afield.ai.tools.ToolMeta.DEFAULT).effects
         return when (check.kind) {
             "effects-absent", "effects-present" -> {
                 val log = calls ?: return fail("no per-call tool log for this task (a --chat-box task keeps it in the panel)")
-                val effect = afield.ai.core.ToolEffect.valueOf(check.text)
+                val effect = afield.ai.tools.ToolEffect.valueOf(check.text)
                 val having = log.filter { effect in effectsOf(it) }
                 if (check.kind == "effects-present") {
                     if (having.isNotEmpty()) pass("${having.size} call(s) with $effect, first ${having.first().tool}")
                     else fail("no call had $effect (${log.size} calls)")
                 } else {
-                    val undeclared = log.filter { afield.ai.core.ToolEffect.UNDECLARED in effectsOf(it) }
+                    val undeclared = log.filter { afield.ai.tools.ToolEffect.UNDECLARED in effectsOf(it) }
                     when {
                         having.isNotEmpty() -> fail("${having.size} call(s) with $effect: " + having.take(3).joinToString { it.tool })
                         undeclared.isNotEmpty() -> fail("undeclared effects, so $effect cannot be ruled out: " + undeclared.take(3).joinToString { it.tool })

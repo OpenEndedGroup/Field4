@@ -1,9 +1,9 @@
 # A polytope, canonicalised, and sliced into layers
 
 This page builds a polytope from Conway notation, makes it canonical, turns it into a closed solid,
-and slices it into the layers a 3D printer would print. `afield.stdlib.polytope` holds the Conway
+and slices it into the layers a 3D printer would print. `afield.geometry.polytope` holds the Conway
 operator algebra and the two ways of making a form canonical (an iteration, and a solver built on
-Ceres). `afield.manifold` does exact geometry on closed solids. `Solid.slice` cuts a solid with a
+Ceres). `afield.geometry.solid.manifold` does exact geometry on closed solids. `Solid.slice` cuts a solid with a
 plane and returns the 2D contours.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/stack.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="layer_stack_trace study converged" embed=true hidden=true timeout="300" requires="manifold" name="elsewhere-layer_stack_trace" alt="Forty-eight extruded slices of canonical `gC`, scaled to volume one. Colour follows height; the small gaps make the individual layers visible." macro-file="../../dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml" capture-box="layer_stack_trace" capture-profile="linux-nvidia"}
@@ -26,7 +26,7 @@ cutting plane is exactly a face plane, exactly a vertex, or exactly the top of t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/degenerate.png" wait="8" capture="box" open-outputs="true" w="1100" h="560" padding="16" timeout="180" name="chain-contours-degenerate" requires="manifold" alt="A thirteen-row table of cuts: each named cut with its z to nine decimals, the area the slice returned, and how many contours it had" embed=true}
 :::static
-import afield.manifold.Solid
+import afield.geometry.solid.manifold.Solid
 
 // Geometry with closed-form answers only, so nothing below rests on a tolerance.
 val rows = mutableListOf<List<Any?>>()
@@ -120,9 +120,9 @@ cuts both forms comparably.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/gyro.png" wait="14" capture="box" open-outputs="true" w="1240" h="980" padding="16" timeout="360" name="chain-contours-gyro" requires="manifold" alt="Two plan views of a 48-layer stack seen from overhead: on the left one orange square, because all of raw gC's layers are the same square; on the right the canonical form's forty-eight nested rings twisting from cyan at the bed to orange at the top. Below them a table of the four forms and a plot of layer area against height, in which gC raw is a flat line at 1 and the other three are domes peaking near 1.25" embed=true}
 :::static
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.util.PngEncoder
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.media.image.util.PngEncoder
 
 val LAYERS = 48
 val PANEL = 600
@@ -316,9 +316,9 @@ solver, `relaxWithCeres`, does reach a canonical form. This box tries both and s
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
 :::static
-import afield.manifold.FillRule
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.FillRule
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 // relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
 val seed = conway("kkC").polyhedron

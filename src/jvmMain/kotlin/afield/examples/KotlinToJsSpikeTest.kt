@@ -1,9 +1,9 @@
 package afield.examples
 
-import afield.remotejs.KotlinToJsCompiler
+import afield.lang.remotejs.KotlinToJsCompiler
 import java.io.File
 import java.nio.file.Files
-import afield.util.NodeTool
+import afield.media.image.util.NodeTool
 
 /*
 FIELD_TEST

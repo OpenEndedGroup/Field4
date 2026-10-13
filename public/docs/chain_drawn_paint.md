@@ -12,7 +12,7 @@ goes into the field paint before it is dry and drags some of it along.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_paint/meadow.png" wait="40" capture="box" open-outputs="true" padding="18" timeout="300" requires="paint" name="chain-drawn-paint-meadow" embed=true alt="An oil painting of a meadow at evening on a canvas with a visible weave. A sky of horizontal brushstrokes shades from grey-blue at the top to a warm peach at the horizon, with five low clouds of thick cream paint whose bristle ridges catch the light. Below a thin blue-green band of distant hills, a green and ochre field is crowded with hundreds of tapering blades of grass, short and fine near the horizon and taller and broader towards the bottom, darkening to umber at the foot. Scattered through the grass are sixty red poppies, small in the distance and larger in front."}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 // A meadow at evening, from 560 pen strokes on the drawing. The strokes are drawn by code here
@@ -98,7 +98,7 @@ varnish:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/chain_drawn_paint/steps.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="13" fps="10" timeout="600" requires="paint" embed=true name="chain-drawn-paint-steps" alt="A painting being made. A yellow band and a red band are laid on white; a blue stroke comes down across both and turns green and violet where it crosses them; a clean brush drags yellow down into the red beside it. Then a red-ground canvas appears and fills with sky strokes from the top, cobalt warming to peach, then cream clouds, blue-green hills, a green and ochre field, grass blades added a handful at a time from the horizon forward, red poppies, and last a slight warm darkening as the varnish goes on."}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 :::fold the meadow's 560 strokes, drawn into the drawing as in the first figure
@@ -235,7 +235,7 @@ bottom row the brush is held at one even pressure:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_paint/painted.png" wait="10" capture="box" open-outputs="true" padding="18" timeout="150" requires="paint" name="chain-drawn-paint-painted" embed=true alt="Three rows of three oil-paint brushstrokes on white: a blue wave, a red arc and a green spiral. In the top row the wave narrows at both ends, the arc narrows from a broad start to a point, and the spiral widens as it curls in. In the middle row the same changes are much stronger: the wave's ends and the arc's tail thin to a line of bristle marks, and the spiral's outer curve is a thin trail. In the bottom row all three are bands of one even width."}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the same three strokes as above, drawn into this box's drawing
 notation {
@@ -286,7 +286,7 @@ softly:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_paint/crossings.png" wait="15" capture="box" open-outputs="true" padding="18" timeout="150" requires="paint" name="chain-drawn-paint-crossings" embed=true alt="Four pairs of horizontal bands, yellow above red, each crossed by a vertical stroke. First: a blue stroke that turns streaky green where it crosses the yellow and a dark red-violet where it crosses the red. Second: a blue stroke laid over the bands after they dried, a clean blue that darkens the yellow and red beneath it without mixing. Third: no blue, but a smear of yellow pulled down from the top band across the gap and into the red, with bristle streaks, ending in an orange tail below the red band. Fourth: a softer, blurred smear of yellow fading down into the red and a soft red tail below it."}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 // Four pairs of bands, yellow over red, each crossed by one vertical stroke.
 notation {
@@ -327,7 +327,7 @@ again after 2, 10, 33 and 100 hours:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_paint/drying.png" wait="15" capture="box" open-outputs="true" padding="18" timeout="150" requires="paint" name="chain-drawn-paint-drying" embed=true alt="A long horizontal yellow band crossed by five vertical blue strokes. The first two, crossed at once and after two hours, turn green and streaky where they cross. The third, after ten hours, is a darker, patchier green with a ridge of blue at the band's edges. The last two, after 33 and 100 hours, lie over the yellow as smooth dark blue with no green in them. A caption below reads: crossed after 0 h, 2 h, 10 h, 33 h, 100 h (left to right)."}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 // One yellow band, crossed in blue after longer and longer waits.
 val hours = listOf(0.0, 2.0, 10.0, 33.0, 100.0)
@@ -365,7 +365,7 @@ The three strokes from the start of the page, in a 6B pencil on a 20 cm sheet:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_paint/pencil.png" wait="10" capture="box" open-outputs="true" padding="18" timeout="150" requires="paint" name="chain-drawn-paint-pencil" embed=true alt="The same three strokes drawn in grey pencil on white paper. The wave is pale at both ends and darkest in its middle trough; the arc starts dark and fades to a pale grey; the spiral is pale on its outer curve and darkens where it curls in to its end."}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the same three strokes as above, drawn into this box's drawing
 notation {

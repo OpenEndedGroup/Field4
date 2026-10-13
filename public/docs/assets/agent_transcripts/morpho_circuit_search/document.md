@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="morpho_search_recursion" index="0" -->
 
 ```edn [field-box id="morpho_search_recursion" role="properties"]
-{"id" "morpho_search_recursion" "index" 0 "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "_tombstone" false "frame" #afield/rect [60.0 520.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_recursion_code_.kt" "lines" 66 "characters" 3614 "sha256" "77bcb5b4c6dbb3e211b9c531d0073a7e501328ea785628246058ea66cf8e1e4f"}]}
+{"id" "morpho_search_recursion" "index" 0 "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A recursion, found — reducing a bus to one bit, then drawn at three widths" "_tombstone" false "frame" #afield/rect [60.0 520.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_recursion_code_.kt" "lines" 66 "characters" 3619 "sha256" "61bdc93365349c6d294ad55b1f63b6eb4ac7d6e9ce176e3e5a9f1d3500616bcc"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_recursion" name="code" path="morpho_search_recursion_code_.kt"]
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // y = (x != 0). The reason this is the interesting target and bitwise XOR is not: morpho
 // sizes a LUT cell to its widest operand and broadcasts the narrow ones, so there is no
@@ -88,11 +88,11 @@ showPlaneGrid(
 <!-- field-box id="morpho_search_control" index="1" -->
 
 ```edn [field-box id="morpho_search_control" role="properties"]
-{"id" "morpho_search_control" "index" 1 "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_control_code_.kt" "lines" 38 "characters" 1933 "sha256" "096ba2aa11b4addbb8485bcfacdab9d2f1c3ae19059fd9eccdb76a0ec1d0cc61"}]}
+{"id" "morpho_search_control" "index" 1 "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Does selection beat sampling? One-bit full adder, three drivers, one budget" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_control_code_.kt" "lines" 38 "characters" 1938 "sha256" "31f8da1f27de1e14ed61dbefa7313c0ea4bea4e2d330ac3c52e47631864ddce6"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_control" name="code" path="morpho_search_control_code_.kt"]
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // The whole layer in four lines: a problem is an oracle plus a width family plus a
 // grammar, and a driver turns a budget into a program. Nothing about addition is supplied
@@ -137,11 +137,11 @@ showPlaneGrid(
 <!-- field-box id="morpho_search_adder" index="2" -->
 
 ```edn [field-box id="morpho_search_adder" role="properties"]
-{"id" "morpho_search_adder" "index" 2 "name" "The recursive adder is not found — and the target is provably in the space" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The recursive adder is not found — and the target is provably in the space" "_tombstone" false "frame" #afield/rect [60.0 1020.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_adder_code_.kt" "lines" 60 "characters" 3024 "sha256" "b46a05a0e349c79b25d60c330096d3ab2dc464cb4d14aa0c8e13368a2b880381"}]}
+{"id" "morpho_search_adder" "index" 2 "name" "The recursive adder is not found — and the target is provably in the space" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The recursive adder is not found — and the target is provably in the space" "_tombstone" false "frame" #afield/rect [60.0 1020.0 590.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "morpho_search_adder_code_.kt" "lines" 60 "characters" 3029 "sha256" "4b75e3c66c855871627b26e6723d603d59f0d18812839a8744a0a35d12f52b22"}]}
 ```
 
 ```kotlin [field-property box="morpho_search_adder" name="code" path="morpho_search_adder_code_.kt"]
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // The result this branch set out to get, and did not. Reported because the alternative is
 // to quietly not mention it.

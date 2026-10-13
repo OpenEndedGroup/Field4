@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // A groove with a bit of everything: a read arc, a weighted arc, a capacity and
 // priorities. `bd hh` goes round fast; meanwhile `build` watches `mid` without

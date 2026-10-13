@@ -280,7 +280,7 @@ nav:
   # nobody reads as a disclaimer, which is the whole argument for retiring the staging area.
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
-      - afield.four Graphics: afield_four_graphics.md
+      - Field 4 Graphics: afield_four_graphics.md
       # Straight after the graphics contract: a render target from that page, drawn into a box's
       # output area instead of a window. Electron-only, which the page says up front.
       - Graphics in an Output Area: four_in_output_areas.md
@@ -398,6 +398,7 @@ nav:
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
       - Machine learning: reference/machine-learning.md
+      - Networking: reference/networking.md
       - Video: reference/video.md
     # Directly under Reference since its hand-written companion, linear_algebra.md, moved to the
     # head of "Drawing From Data": this page is generated (tools/linalg-generator), so it stays.

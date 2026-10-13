@@ -1,4 +1,4 @@
-import afield.dmx.*
+import afield.io.dmx.*
 
 // 200 RGB pixels of LED tape stuck along a curve. 170 fit in universe 1 (510 slots);
 // the patch rolls the other 30 into universe 2 by itself.

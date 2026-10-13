@@ -3,16 +3,16 @@
 
   Every Clojure box gets this namespace `require`d and `refer`red into it, so the names below are
   just there — no `:require`, no aliasing. See `initNsIfNeeded` in
-  `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt`.
+  `src/jvmMain/kotlin/afield/lang/clojure/ClojureInterface.kt`.
 
   It is small on purpose. Clojure's Java interop already reaches all of Field: `(.getChildren (box))`
-  walks the document, `(afield.graphics.FLine.)` makes a line, `(.moveTo f 0 0 0)` builds it. What
+  walks the document, `(afield.geometry.path.FLine.)` makes a line, `(.moveTo f 0 0 0)` builds it. What
   interop is bad at is Kotlin's two favourite shapes — an extension function, whose class name is a
   file name, and a default argument, which is not a default at all from outside Kotlin. Those are
   what this wraps. If a verb reads well as raw interop, it is deliberately not here."
-  (:import [afield Box]
-           [afield.clojure ClojureInterface]
-           [afield.graphics FLine]))
+  (:import [afield.document.graph Box]
+           [afield.lang.clojure ClojureInterface]
+           [afield.geometry.path FLine]))
 
 (defn ^Box box
   "The Box this code is running in, or nil outside a box.

@@ -1,10 +1,10 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.util.GpuProbe
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.four.util.gpuProbe
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.gpuProbe
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -84,7 +84,7 @@ expect:
  * tools/run_field_tests.py --id four.gpu-probe.pressure-chain
  * ```
  *
- * Needs a GPU and a window: `afield.four` has no headless mode, so a compute-only dispatch still
+ * Needs a GPU and a window: Field 4 has no headless mode, so a compute-only dispatch still
  * needs a `Window` for the device to exist. It also needs an awake display.
  */
 object GpuPressureProjectionProbe {

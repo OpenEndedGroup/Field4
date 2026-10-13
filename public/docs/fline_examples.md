@@ -1521,15 +1521,15 @@ A `Cursor` walks along an `FLine` by node index (`t`) or arc-length distance (`d
 
 ```diffstatic {data-lang=kotlin}
 :::static
-fun FLine.cursor(tol: Float = 0.01f): field.graphics.FLinesAndJavaShapes.Cursor
-fun FLine.cursor(closestTo: Vec3): field.graphics.FLinesAndJavaShapes.Cursor
+fun FLine.cursor(tol: Float = 0.01f): afield.geometry.path.java2d.FLinesAndJavaShapes.Cursor
+fun FLine.cursor(closestTo: Vec3): afield.geometry.path.java2d.FLinesAndJavaShapes.Cursor
 ```
 
 In practice, you’ll reach for `Cursor` when you need **even spacing by distance** (`setD`) or when you want access to **differentials** (tangent / normal / curvature-ish things) while walking along a curve.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-// In field.graphics.FLinesAndJavaShapes.Cursor
+// In afield.geometry.path.java2d.FLinesAndJavaShapes.Cursor
 class Cursor {
     fun reset()
     fun hasNext(): Boolean
@@ -2213,9 +2213,9 @@ This example varies a *scale factor* along the same base curve, about a fixed ce
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/parameterized_operations_vary_along_the_curve.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-parameterized"}
 :::static
-import afield.graphics.SineParameter
-import afield.graphics.DistanceParameter
-import afield.graphics.byScalingParameterized
+import afield.geometry.path.SineParameter
+import afield.geometry.path.DistanceParameter
+import afield.geometry.path.byScalingParameterized
 
 // A multi-segment base curve. byScalingParameterized samples along the whole
 // path and scales each sample about a fixed centre by a per-position factor.
@@ -3352,7 +3352,7 @@ These let you round-trip between `FLine` and Java2D shapes (and pick up a ton of
 
 ```diffstatic {data-lang=kotlin}
 :::static
-// In field.graphics.FLinesAndJavaShapes.Companion
+// In afield.geometry.path.java2d.FLinesAndJavaShapes.Companion
 fun flineToJavaShape(f: FLine): java.awt.Shape
 fun flineToJavaShape(f: Collection<FLine>): java.awt.Shape
 fun javaShapeToFLine(f: java.awt.Shape): FLine
@@ -3362,7 +3362,7 @@ fun intersect(a: FLine, b: FLine): List<Vec3>
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/java2d_bridge_advanced_but_incredibly_useful.png" embed=true}
 :::static
-import field.graphics.FLinesAndJavaShapes
+import afield.geometry.path.java2d.FLinesAndJavaShapes
 import java.awt.geom.Ellipse2D
 
 val circleShape = Ellipse2D.Double(80.0, 60.0, 220.0, 220.0)

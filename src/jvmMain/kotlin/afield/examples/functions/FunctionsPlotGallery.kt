@@ -1,9 +1,9 @@
 package afield.examples.functions
 
-import afield.niceTicks
-import afield.stdlib.Functions
-import afield.stdlib.fitGradient
-import afield.tickLabels
+import afield.ui.visualization.niceTicks
+import afield.math.functions.Functions
+import afield.math.functions.fitGradient
+import afield.ui.visualization.tickLabels
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Font
@@ -32,7 +32,7 @@ expect:
 */
 
 /**
- * Headless **plot-capture harness** for the `afield.stdlib.Functions` library — the honest
+ * Headless **plot-capture harness** for the `afield.math.functions.Functions` library — the honest
  * vehicle RectSL/StackSL already had and Functions lacked. It renders `Functions.Fn` results
  * (differentiable-fit before→after, waveshaper transfer curves, waveshaping on a sine, and a
  * composed pipeline) to REAL raster PNGs.

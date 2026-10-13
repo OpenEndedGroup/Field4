@@ -1,4 +1,4 @@
-import afield.syphon.*
+import afield.io.syphon.*
 
 // without the library this stops here and says how to build it
 check(Syphon.isAvailable) { Syphon.describe() }

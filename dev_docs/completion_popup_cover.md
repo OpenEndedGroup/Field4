@@ -31,7 +31,7 @@ respelled. When the guard described below first ran it immediately found a secon
 
 ## What runs
 
-`FieldSuggestPresentationTest` (`src/jvmTest/kotlin/afield/FieldSuggestPresentationTest.kt`) stages
+`FieldSuggestPresentationTest` (`src/jvmTest/kotlin/afield/runtime/completion/FieldSuggestPresentationTest.kt`) stages
 four files into a temp directory and runs `node` over them:
 
 | file | role |
@@ -67,7 +67,7 @@ UP-TO-DATE pass. (Observed: editing `titleForCategory` re-ran it.)
 the Kotlin side can put on a completion, renders each one through the real popup, and requires the
 header to come back spelled the way it was declared:
 
-- every `@file:afield.CompletionCategory("…")` in `src/` (13 today: `Graphics`, `Math`, `Polytopes`,
+- every `@file:afield.runtime.completion.CompletionCategory("…")` in `src/` (13 today: `Graphics`, `Math`, `Polytopes`,
   `Data`, `Function`, `Audio AI`, `Internal`, `ALife`, `Visualization`, `Imaging`, `Solvers`,
   `Workspace`, `Audio`), and
 - the fixed vocabulary parsed out of `KotlinCompletionSupport`'s own category `when` branches
@@ -223,7 +223,7 @@ least one, and no mutation survived unnoticed:
 ```
 
 All three tests print every case's PASS/FAIL line, so a failure in CI is readable without re-running
-anything. Needs `node` >= 14 (`afield.util.NodeTool` finds one that actually *meets* that floor,
+anything. Needs `node` >= 14 (`afield.media.image.util.NodeTool` finds one that actually *meets* that floor,
 which matters on machines whose `PATH` starts with an ancient nvm entry). `AFIELD_SKIP_JS_TESTS=1`
 opts out — deliberately and visibly, rather than having the gate quietly stop testing anything.
 

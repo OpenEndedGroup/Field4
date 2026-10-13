@@ -3,7 +3,7 @@
 `FileWatchManager` keeps an open Field document synchronized with external edits to
 its `metadata.edn` and sidecar files. The authoritative lifecycle, merge semantics,
 internal-save suppression, deletion behavior, and orphan-file rules are documented
-on [`FileWatchManager`](../src/jvmMain/kotlin/afield/FileWatchManager.kt).
+on [`FileWatchManager`](../src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt).
 
 Sidecars are named by `SavingContext.filenameFor(...)`:
 

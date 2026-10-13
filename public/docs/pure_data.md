@@ -182,7 +182,7 @@ The slider's range, 40 to 80, and the labels "Pitch" and "Gate" are the patch's 
 device, so the recording is the same every time:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/arrays.png" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="1100" h="420" name="pure-data-arrays" alt="A line plot titled '480 samples of [tabosc4~ wave] at 200 Hz, recorded by Pd': two cycles of a wave built from three partials, peaking near ±0.72 with a flat shoulder near ±0.22 on each half-cycle."}
-val pd = afield.pd.PdInstance(sampleRate = 48000)
+val pd = afield.audio.pd.PdInstance(sampleRate = 48000)
 pd.openPatchText("""
 #X obj 20 20 table wave 2051;
 #X obj 200 20 table scope 480;
@@ -218,7 +218,7 @@ samples out of it without opening an audio device. This box renders one second o
 measures it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/offline-measure.png" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="900" h="200" name="pure-data-offline-measure" alt="A measured output reading: 48000 samples, 440 upward zero crossings, peak 0.2500, left == right: true."}
-val pd = afield.pd.PdInstance(sampleRate = 48000)
+val pd = afield.audio.pd.PdInstance(sampleRate = 48000)
 pd.openPatchText("#X obj 20 20 osc~ 440;\n#X obj 20 60 *~ 0.25;\n#X obj 20 100 dac~;\n" +
     "#X connect 0 0 1 0;\n#X connect 1 0 2 0;\n#X connect 1 0 2 1;")
 val (left, right) = pd.renderOffline(1.0)
@@ -308,7 +308,7 @@ val drone = """
 #X connect 4 0 5 0;
 #X connect 4 0 5 1;
 """
-lines(afield.pd.PdPatchGraph.parse(drone).toFLines(), channel = "patch", w = 460.0, h = 230.0, fitToSize = true)
+lines(afield.audio.pd.PdPatchGraph.parse(drone).toFLines(), channel = "patch", w = 460.0, h = 230.0, fitToSize = true)
 ```
 
 The editor's line notes say what the object on a line is wired to, with the objects it meets in bold.

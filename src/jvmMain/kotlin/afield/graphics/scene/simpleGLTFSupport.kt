@@ -1,0 +1,1149 @@
+@file:Suppress("MemberVisibilityCanBePrivate", "unused")
+
+package afield.graphics.scene
+
+import afield.graphics.render.MeshModule
+import afield.graphics.render.Module
+import afield.graphics.render.VertexData
+import afield.graphics.render.main
+
+import afield.document.context.fromContext
+import afield.graphics.render.Mesh
+import afield.graphics.render.ModulePointer
+import afield.graphics.render.Parameters
+import afield.graphics.render.parameters
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.defaultBuffer
+import afield.graphics.scene.GltfSupport.TRS
+import afield.graphics.scene.GltfSupport.TRSSample
+import afield.graphics.scene.GltfSupport.gltVertexShader
+import afield.graphics.scene.GltfSupport.gltfFragmentShader
+import afield.graphics.scene.GltfSupport.gltfFragmentShaderTextured
+import afield.graphics.texture.HasImageView
+import afield.graphics.texture.LoadedTexture
+import afield.graphics.texture.TextureSampler
+import afield.graphics.vulkan.util.Camera
+import afield.app.diagnostics.logging.lprintln
+import afield.runtime.lifecycle.macroRegistration
+import afield.runtime.macros.Insert
+import afield.runtime.macros.MacroRegistry
+import afield.runtime.macros.MacroRegistry.callRewrite
+import afield.math.linalg.HasMatrix4f
+import afield.graphics.shader._moduleHere
+import afield.graphics.shader.fromViews
+import afield.graphics.shader.macro_moduleHereWithDefaultShaders
+import kotlinx.coroutines.DelicateCoroutinesApi
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Quaternionf
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector4f
+import org.lwjgl.assimp.*
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil.*
+import org.lwjgl.vulkan.VK10
+import java.nio.file.Path
+import java.nio.file.Paths
+
+// the idea here is that this module can be customized (at least the first time!) for the (first?) model inside the gltf
+fun Box.gltfModelHere(p: Parameters.() -> Unit): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
+    throw MacroRegistry.MacroNotExpandedException("gltfModelHere should not be callable directly, but should be expanded as a macro")
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+fun Box.macro_modelHere(args: List<String>): Insert? {
+    return macro_moduleHereWithDefaultShaders(
+        args, vertex = gltVertexShader, fragment = gltfFragmentShader, resolvesToCall = "_gltfModelHere"
+    )
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+fun Box.macro_modelWithTextureHere(args: List<String>): Insert? {
+    return macro_moduleHereWithDefaultShaders(
+        args,
+        vertex = gltVertexShader,
+        fragment = gltfFragmentShaderTextured,
+        resolvesToCall = "_gltfModelHereWithTexture"
+    )
+}
+
+fun Box._gltfModelHere(
+    filename: String, p: Parameters.() -> Unit = {}
+): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
+    val renderer: Renderer = fromContext()
+    val module = _moduleHere(parameters(renderer = renderer, p))
+    val loader = GltfSupport.loadGltfBasic(filename)
+    return module to listOf(loader)
+}
+
+fun Box._gltfModelHereWithTexture(
+    filename: String, p: Parameters.() -> Unit = {}
+): Pair<ModulePointer, List<GltfSupport.GltfModel>> {
+    val renderer: Renderer = fromContext()
+    val loader = GltfSupport.loadGltfBasic(filename, GltfSupport.GltfLoadConfig(loadTextures = true))
+    val module = _moduleHere(parameters(renderer = renderer) {
+        p()
+        val was = textureResolver
+        textureResolver = { tex ->
+            if (tex.name == "uTextures") {
+                val textures = loader.meshes[0].material.textures.map { slot -> slot.texture as HasImageView }
+                val maxMip = textures.maxOf { texture -> texture.imageView.mipLevels }
+                fromViews(textures, sampler = TextureSampler(renderer = fromContext(), maxMip, true))
+            } else was(tex)
+        }
+    })
+    return module to listOf(loader)
+}
+
+@RunsAt(macroRegistration)
+fun registerGLTFLoader() {
+    callRewrite["gltfModelHere"] = { box, id, args ->
+        box.macro_modelHere(args)
+    }
+    callRewrite["gltfModelWithTextureHere"] = { box, id, args ->
+        box.macro_modelWithTextureHere(args)
+    }
+}
+
+object GltfSupport {
+
+    // ------------------------------------------------------------------------
+    // Public data model
+    // ------------------------------------------------------------------------
+
+    data class TRS(
+        val t: Vector3f, val r: Quaternionf, val s: Vector3f
+    ) : HasMatrix4f {
+        fun toMatrix(): Matrix4f {
+            return Matrix4f()
+                .translate(t)
+                .rotate(r)
+                .scale(s)
+        }
+
+        override val m: Matrix4f
+            get() = toMatrix()
+    }
+
+    data class TRSSample(
+        val time: Float, val trs: TRS
+    )
+
+    data class MeshBuffers(
+        val vertexData: java.nio.ByteBuffer, // tightly packed floats
+        val indexData: java.nio.IntBuffer,   // 32-bit indices
+        val vertexCount: Int,
+        val indexCount: Int,
+        val tangentData: java.nio.ByteBuffer? = null // optional vec4 tangent frame; w is bitangent sign
+    )
+
+    data class TextureSlot(
+        val type: Int,         // Assimp aiTextureType_*
+        val uvSet: Int,        // which UV channel to use
+        val texture: LoadedTexture, val valid: Boolean
+    )
+
+    data class MaterialTextured(
+        val baseColor: Vector4f,            // RGBA (treat as linear in your pipeline)
+        val textures: List<TextureSlot> = emptyList(),
+        val name: String = "",
+        val metallicFactor: Float = 1f,
+        val roughnessFactor: Float = 1f,
+        val clearcoatFactor: Float = 0f,
+        val clearcoatRoughnessFactor: Float = 0f,
+        val transmissionFactor: Float = 0f,
+        val alphaMode: String = "OPAQUE",
+        val alphaCutoff: Float = 0.5f,
+        val doubleSided: Boolean = false
+    )
+
+    data class MeshInstance(
+        val name: String,
+        val meshIndex: Int,                 // index into scene meshes as loaded
+        val buffers: MeshBuffers,           // CPU-side; you decide how to pack into SSBOs
+        val bindPose: TRS,                  // node transform at import time (world from root)
+        val material: MaterialTextured,
+        val doTextures: Boolean = false,
+        val animationSamples: List<TRSSample>? // sampled TRS for this node, or null
+    ) {
+        /**
+         * The node's **true** world matrix at import time — the thing [bindPose] is a lossy summary of.
+         *
+         * [bindPose] is a translation/rotation/scale triple, and a glTF node transform is a full 4x4: a
+         * **mirror** (negative determinant) or a shear does not fit in a TRS. `Matrix4f.getScale`
+         * returns `sqrt(...)` per basis column and is therefore always positive, so
+         * [decomposeToTRS] silently flattens a mirrored node to a *pure translation* — the recomposed
+         * matrix comes back with determinant `+1` and the geometry is placed un-mirrored. Measured on a
+         * four-node test scene: Assimp hands over row 1 `[-1 0 0 -3]` with 3x3 determinant `-1.0`, and
+         * `bindPose.toMatrix()` returns `[1 0 0 -3]` with determinant `+1.0`.
+         *
+         * Deliberately a body property rather than a constructor parameter, so it is not a `data class`
+         * component: adding it to `equals` / `hashCode` / `copy` would change the identity of every
+         * `MeshInstance`, and [Matrix4f] does not define structural equality.
+         *
+         * Set by the loader's node walk; `null` only for an instance built some other way, in which case
+         * `bindPose.toMatrix()` is all there is. [afield.graphics.scene.assimpToTriMesh] prefers this.
+         *
+         * The GPU paths read this too, as of 2026-09-05. `FabricateScene.importGltf` and
+         * `StandardRendererDocsHarness.gltfWorldBounds` prefer it over [bindPose]; [applyToMesh]
+         * defaults its `model` argument to it, having previously pushed only `modelView` and `proj`
+         * from the camera and so dropped *every* node transform rather than only the mirror.
+         *
+         * Two things deliberately *not* done there, both because they would be wrong or dead:
+         *
+         *  - **No winding reversal.** A reflection reverses triangle winding, which is why
+         *    [afield.graphics.scene.assimpToTriMesh] swaps two corners. On the GPU it does not matter:
+         *    every Field pipeline sets `VK_CULL_MODE_NONE` (`four/modules/MeshModule.kt`,
+         *    `four/modules/Module.kt`), so no face is ever culled for facing. A reflection is
+         *    orthogonal, so it is also its own inverse transpose and the transformed normal still
+         *    points outward. Reversing the winding here would be dead code until something starts
+         *    culling — see `afield.geometry.path.TessellationFacingRenderTest` for the same observation.
+         *  - **Normals are still `mat3(modelView) * n`, not the inverse transpose**, in both the
+         *    bundled glTF shader and `standardRenderer.kt`'s g-buffer. Exact for a rigid or
+         *    uniformly-scaled node (ToyCar's `1e-4`) and for a mirror; skewed for a *non-uniformly*
+         *    scaled one. That was unreachable while the model matrix was dropped and is reachable
+         *    now, but fixing it needs a new field in a push-constant block that is already 176 bytes.
+         */
+        var bindMatrix: Matrix4f? = null
+
+        /**
+         * This mesh's skeleton and per-vertex bone weights, or `null` when the mesh is rigid.
+         *
+         * A body property rather than a constructor parameter for the same reason as [bindMatrix]:
+         * making it a `data class` component would put a scene-wide node tree into every
+         * `MeshInstance`'s `equals` and `hashCode`.
+         *
+         * Note what this does **not** change: [buffers] still holds the *bind-pose* vertices, and
+         * [bindPose] / [bindMatrix] still hold the mesh node's own transform. Deforming is a separate
+         * step, [GltfSkinning.skin], and its output is in **scene** space — glTF 2.0 §3.7.3.2 says a
+         * skinned mesh node's own transform is ignored — so a caller that skins must *not* also apply
+         * [bindMatrix]. [afield.graphics.scene.skinnedGltfToTriMesh] is the path that gets this right.
+         *
+         * Populated by [loadGltfBasic] when [GltfLoadConfig.loadSkins] is on, which it is by default;
+         * the cost when a file has no bones is one `mNumBones() == 0` test per mesh.
+         */
+        var skin: GltfSkinning.MeshSkin? = null
+
+        /**
+         * The GPU buffers [applyToMesh] holds when it is called with `reuseBuffers = true`.
+         *
+         * Body properties rather than constructor parameters for the same reason as [bindMatrix]:
+         * a `FrameBufferGroup` has no business in a `data class`'s `equals`. `null` until the first
+         * reusing call, and never populated by the default path.
+         */
+        private var heldVertexBuffer: afield.graphics.vulkan.buffers.BufferParameters? = null
+        private var heldIndexBuffer: afield.graphics.vulkan.buffers.BufferParameters? = null
+
+        /**
+         * Upload this instance's buffers and set the push constants the bundled shaders expect.
+         *
+         * @param model the model matrix, composed into `modelView` as `view * model`. The default is
+         *   this instance's own node transform — [bindMatrix] when the loader recorded it, falling
+         *   back to `bindPose.toMatrix()` — so a multi-node file assembles where its nodes put it
+         *   instead of heaping every part at the origin. Pass `Matrix4f()` for the model-space draw
+         *   this used to do unconditionally, or your own matrix to place the part yourself.
+         *
+         *   `modelView` is a **push constant**, so a box that writes it again per frame (`loop {
+         *   module.VertexData.modelView = camera.m() }`) overwrites this and gets the origin back.
+         *   Compose the model matrix in there too if you drive the camera that way.
+         *
+         * @param reuseBuffers keep this instance's GPU buffers between calls instead of allocating a
+         *   fresh pair. **Required for a per-frame call**, and off by default so that no existing
+         *   caller changes behaviour.
+         *
+         *   Without it, every call builds a new `BufferParameters` through `defaultBuffer { … }` —
+         *   and `BufferParameters.result`, the cache that makes `toBuffer()` hand back the same
+         *   allocation twice, lives on *that object*. So a call allocates a fresh `FrameBufferGroup`
+         *   and a fresh `VulkanBuffer`. Once at setup, which is what the documentation shows, that
+         *   is invisible. Sixty times a second — which is what a CPU-skinned character needs, since
+         *   [afield.graphics.scene.CpuSkinner] rewrites [buffers] in place and the new contents have
+         *   to be re-uploaded — it is a leak at frame rate.
+         *
+         *   With it on, the two `BufferParameters` are held on this instance, so `toBuffer()`
+         *   returns the same allocation and the `write { }` below simply overwrites it. One
+         *   consequence worth knowing: the buffers are bound to the renderer in scope at the *first*
+         *   such call, so do not share one instance across two renderers with this on.
+         */
+        fun applyToMesh(
+            m: Mesh,
+            camera: Camera = fromContext(),
+            model: Matrix4f = bindMatrix ?: bindPose.toMatrix(),
+            reuseBuffers: Boolean = false,
+        ) {
+
+            m.initializePushConstantsFromModule(m.inside)
+            // view * model, which is what the shader's `mat4 modelView` has always claimed to be.
+            m.push["modelView"] = camera.m().mul(model)
+            m.push["proj"] = camera.p()
+            m.push["vertexOffset"] = 0
+            m.push["indexOffset"] = 0
+            m.push["vertexStride"] = 12
+            m.push["materialBaseColor"] = material.baseColor
+            m.push["useVertexColor"] = 1
+
+            fun freshVertexParameters() = defaultBuffer { size = (buffers.vertexCount * 12).floats }
+            fun freshIndexParameters() = defaultBuffer { size = buffers.indexCount.ints }
+
+            val vertexData = if (!reuseBuffers) freshVertexParameters().buffer else {
+                (heldVertexBuffer ?: freshVertexParameters().also { heldVertexBuffer = it }).buffer
+            }
+            val indexData = if (!reuseBuffers) freshIndexParameters().buffer else {
+                (heldIndexBuffer ?: freshIndexParameters().also { heldIndexBuffer = it }).buffer
+            }
+
+            m.push["vertexBuffer"] = vertexData
+            m.push["indexBuffer"] = indexData
+
+            vertexData.write { this.put(buffers.vertexData.asFloatBuffer()) }
+
+            val f = buffers.vertexData.asFloatBuffer()
+            for (n in 0 until f.capacity()) {
+                val x = f.get(n)
+//                lprint("debug,gltf", "$x ")
+//                if (n % 12 == 11) lprintln("debug,gltf", "")
+            }
+            indexData.write {
+                // TODO!
+                for (n in 0 until buffers.indexCount) {
+                    val x = buffers.indexData.get(n)
+//                    lprint("debug,gltf", "$x ")
+                    this.putInt(x)
+//                    if (n % 3 == 2) lprintln("debug,gltf", "")
+                }
+            }
+
+            m.resize(buffers.indexCount) // not buffers.vertexCound, because we're not using any vertex / index buffers at all
+
+        }
+    }
+
+    data class GltfModel(
+        val meshes: List<MeshInstance>
+    )
+
+    /**
+     * Config:
+     * - sampleRate: Hz for animation sampling (if any)
+     * - includeVertexColors: when true, always writes RGBA per-vertex.
+     * - loadTextures: when true, collect material textures (diffuse/baseColor/normal/etc.)
+     *
+     * NOTE: The default shaders below assume a fixed layout:
+     *   [pos.xyz][normal.xyz][uv.xy][color.rgba] = 12 floats per vertex.
+     * For that path, keep includeVertexColors = true so color is present
+     * (we fill white if source has no COLOR_0).
+     */
+    data class GltfLoadConfig(
+        val sampleRate: Float = 60f,
+        val includeVertexColors: Boolean = true,
+        val loadTextures: Boolean = true,
+        /**
+         * Read `aiMesh.mBones()` into [MeshInstance.skin]. On by default and close to free for a rigid
+         * file — the node tree is walked once per import and every mesh short-circuits on
+         * `mNumBones() == 0`. Turn it off to load a rigged file as its undeformed bind pose.
+         */
+        val loadSkins: Boolean = true,
+    )
+
+    // ------------------------------------------------------------------------
+    // Assimp loading
+    // ------------------------------------------------------------------------
+
+    private const val POST_FLAGS: Int =
+        Assimp.aiProcess_Triangulate or Assimp.aiProcess_GenNormals or Assimp.aiProcess_CalcTangentSpace or Assimp.aiProcess_JoinIdenticalVertices or Assimp.aiProcess_ImproveCacheLocality or Assimp.aiProcess_SortByPType
+
+    fun loadModel(path: String) = Assimp.aiImportFile(path, POST_FLAGS)
+        ?: error("Assimp import failed for '$path': ${Assimp.aiGetErrorString()}")
+
+    fun loadGltfBasic(path: String, config: GltfLoadConfig = GltfLoadConfig()): GltfModel {
+        val scene = loadModel(path)
+        val baseDir: Path? = try {
+            Paths.get(path).parent
+        } catch (_: Exception) {
+            null
+        }
+
+        if (scene.mFlags() and Assimp.AI_SCENE_FLAGS_INCOMPLETE != 0 || scene.mRootNode() == null) {
+            Assimp.aiReleaseImport(scene)
+            error("Invalid or incomplete scene for '$path'")
+        }
+
+        val meshes = mutableListOf<MeshInstance>()
+        val root = scene.mRootNode()
+        val identity = Matrix4f()
+
+        // The node tree and the clips are scene-wide, so they are read once and shared by every
+        // MeshInstance's skin rather than rebuilt per mesh. `null` when skins are switched off, which
+        // is what makes the rigid path cost nothing.
+        val skeletonNodes = if (config.loadSkins) GltfSkinning.readNodes(scene) else null
+        val clips = if (skeletonNodes != null) GltfSkinning.readClips(scene, skeletonNodes, config.sampleRate) else null
+
+        traverseNode(scene, root!!, identity, meshes, config, baseDir, skeletonNodes, clips)
+
+        Assimp.aiReleaseImport(scene)
+        return GltfModel(meshes)
+    }
+
+    private fun traverseNode(
+        scene: AIScene,
+        node: AINode,
+        parentTransform: Matrix4f,
+        outMeshes: MutableList<MeshInstance>,
+        config: GltfLoadConfig,
+        baseDir: Path?,
+        skeletonNodes: List<GltfSkinning.SkeletonNode>? = null,
+        clips: List<GltfSkinning.AnimationClip>? = null,
+    ) {
+        val local = aiToMatrix4f(node.mTransformation())
+        val world = Matrix4f(parentTransform).mul(local)
+
+        val meshIndices = node.mMeshes()
+        if (meshIndices != null) {
+            for (i in 0 until meshIndices.remaining()) {
+                val meshIndex = meshIndices[i]
+                val aiMesh = getMesh(scene, meshIndex) ?: continue
+
+                val buffers = extractMeshBuffers(aiMesh, config.includeVertexColors)
+                val bindTrs = decomposeToTRS(world)
+                val material = extractMaterial(scene, aiMesh, baseDir, config)
+                val animSamples = buildAnimationSamplesForNode(scene, node, config.sampleRate)
+
+                outMeshes += MeshInstance(
+                    name = node.mName().dataString(),
+                    meshIndex = meshIndex,
+                    buffers = buffers,
+                    bindPose = bindTrs,
+                    material = material,
+                    animationSamples = animSamples.ifEmpty { null },
+                    // The un-decomposed world matrix, kept because bindTrs cannot represent a mirror or
+                    // a shear. See MeshInstance.bindMatrix.
+                ).also {
+                    it.bindMatrix = Matrix4f(world)
+                    if (skeletonNodes != null) {
+                        it.skin = GltfSkinning.readMeshSkin(aiMesh, skeletonNodes, clips ?: emptyList())
+                    }
+                }
+            }
+        }
+
+        val children = node.mChildren()
+        if (children != null) {
+            for (i in 0 until children.remaining()) {
+                val child = AINode.create(children[i])
+                traverseNode(scene, child, world, outMeshes, config, baseDir, skeletonNodes, clips)
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Mesh data extraction
+    // ------------------------------------------------------------------------
+
+    private fun extractMeshBuffers(
+        aiMesh: AIMesh, includeVertexColors: Boolean
+    ): MeshBuffers {
+        val vertexCount = aiMesh.mNumVertices()
+        val posBuf = aiMesh.mVertices()
+        val normalBuf = aiMesh.mNormals()
+        val tangentBuf = aiMesh.mTangents()
+        val bitangentBuf = aiMesh.mBitangents()
+        val texBuf = aiMesh.mTextureCoords(0)
+        val colorBuf = if (includeVertexColors) aiMesh.mColors(0) else null
+
+        val hasNormals = normalBuf != null
+        val hasTangents = tangentBuf != null
+        val hasTex = texBuf != null
+        val hasColors = colorBuf != null
+
+        // Fixed layout to match default shaders:
+        // [pos.xyz][normal.xyz][uv.xy][color.rgba] = 12 floats
+        val componentsPerVertex = 12
+        val strideBytes = componentsPerVertex * 4
+        val vertexData = memAlloc(vertexCount * strideBytes)
+        val tangentData = if (hasTangents) memAlloc(vertexCount * 4 * 4) else null
+
+        for (i in 0 until vertexCount) {
+            // pos
+            val v = posBuf[i]
+            vertexData.putFloat(v.x())
+            vertexData.putFloat(v.y())
+            vertexData.putFloat(v.z())
+
+            // normal or default
+            if (hasNormals) {
+                val n = normalBuf[i]
+                vertexData.putFloat(n.x())
+                vertexData.putFloat(n.y())
+                vertexData.putFloat(n.z())
+            } else {
+                vertexData.putFloat(0f)
+                vertexData.putFloat(0f)
+                vertexData.putFloat(1f)
+            }
+
+            // uv or default
+            if (hasTex) {
+                val t = texBuf[i]
+//                lprintln("debug,gltf", "tc at load time is ${t} -> ${t.x()} ${t.y()} from ${i} / ${texBuf}")
+                vertexData.putFloat(t.x())
+                vertexData.putFloat(t.y())
+            } else {
+                vertexData.putFloat(0f)
+                vertexData.putFloat(0f)
+            }
+
+            // color: if includeVertexColors: actual or white; else: white
+            if (includeVertexColors && hasColors) {
+                val c = colorBuf[i]
+                vertexData.putFloat(c.r())
+                vertexData.putFloat(c.g())
+                vertexData.putFloat(c.b())
+                vertexData.putFloat(c.a())
+            } else {
+                vertexData.putFloat(1f)
+                vertexData.putFloat(1f)
+                vertexData.putFloat(1f)
+                vertexData.putFloat(1f)
+            }
+
+            if (hasTangents && tangentData != null) {
+                val t = tangentBuf[i]
+                val sign = if (hasNormals && bitangentBuf != null) {
+                    val n = normalBuf[i]
+                    val b = bitangentBuf[i]
+                    val cx = n.y() * t.z() - n.z() * t.y()
+                    val cy = n.z() * t.x() - n.x() * t.z()
+                    val cz = n.x() * t.y() - n.y() * t.x()
+                    if (cx * b.x() + cy * b.y() + cz * b.z() < 0f) -1f else 1f
+                } else {
+                    1f
+                }
+                tangentData.putFloat(t.x())
+                tangentData.putFloat(t.y())
+                tangentData.putFloat(t.z())
+                tangentData.putFloat(sign)
+            }
+        }
+        vertexData.flip()
+        tangentData?.flip()
+
+        // Indices (uint32). You can compress to 16-bit in your own step if desired.
+        val faceBuf = aiMesh.mFaces()
+        var indexCount = 0
+        for (i in 0 until aiMesh.mNumFaces()) {
+            indexCount += faceBuf[i].mNumIndices()
+        }
+
+        val indexData = memAllocInt(indexCount)
+        for (i in 0 until aiMesh.mNumFaces()) {
+            val face = faceBuf[i]
+            val idx = face.mIndices()
+            for (j in 0 until face.mNumIndices()) {
+                indexData.put(idx[j])
+            }
+        }
+        indexData.flip()
+
+        return MeshBuffers(
+            vertexData = vertexData,
+            indexData = indexData,
+            vertexCount = vertexCount,
+            indexCount = indexCount,
+            tangentData = tangentData
+        )
+    }
+
+    // ------------------------------------------------------------------------
+    // Material extraction (colors + textures)
+    // ------------------------------------------------------------------------
+
+    private fun extractMaterial(
+        scene: AIScene, aiMesh: AIMesh, baseDir: Path?, config: GltfLoadConfig
+    ): MaterialTextured {
+        val defaultColor = Vector4f(1f, 1f, 1f, 1f)
+
+        val matIndex = aiMesh.mMaterialIndex()
+        if (matIndex < 0 || scene.mNumMaterials() == 0) {
+            return MaterialTextured(defaultColor)
+        }
+
+        if (scene.mMaterials() == null || matIndex >= scene.mNumMaterials()) {
+            return MaterialTextured(defaultColor)
+        }
+
+        val aiMat = getMaterial(scene, matIndex) ?: return MaterialTextured(defaultColor)
+
+        fun materialFloat(key: String, default: Float): Float {
+            val values = floatArrayOf(default)
+            val count = intArrayOf(1)
+            return if (Assimp.aiGetMaterialFloatArray(aiMat, key, 0, 0, values, count) == Assimp.aiReturn_SUCCESS && count[0] > 0) {
+                values[0]
+            } else {
+                default
+            }
+        }
+
+        fun materialInt(key: String, default: Int): Int {
+            val values = intArrayOf(default)
+            val count = intArrayOf(1)
+            return if (Assimp.aiGetMaterialIntegerArray(aiMat, key, 0, 0, values, count) == Assimp.aiReturn_SUCCESS && count[0] > 0) {
+                values[0]
+            } else {
+                default
+            }
+        }
+
+        fun materialString(key: String, default: String): String {
+            val value = AIString.calloc()
+            return try {
+                if (Assimp.aiGetMaterialString(aiMat, key, 0, 0, value) == Assimp.aiReturn_SUCCESS) {
+                    value.dataString().ifBlank { default }
+                } else {
+                    default
+                }
+            } finally {
+                value.free()
+            }
+        }
+
+        val color = AIColor4D.calloc()
+        val resultBase = Assimp.aiGetMaterialColor(aiMat, Assimp.AI_MATKEY_BASE_COLOR, 0, 0, color)
+        val resultDiffuse = if (resultBase != 0) {
+            Assimp.aiGetMaterialColor(aiMat, Assimp.AI_MATKEY_COLOR_DIFFUSE, 0, 0, color)
+        } else 0
+
+        val baseColor = when {
+            resultBase == 0 -> Vector4f(color.r(), color.g(), color.b(), color.a())
+            resultDiffuse == 0 -> Vector4f(color.r(), color.g(), color.b(), color.a())
+            else -> defaultColor
+        }
+        color.free()
+        baseColor.w *= materialFloat(Assimp.AI_MATKEY_OPACITY, 1f).coerceIn(0f, 1f)
+
+        val materialName = materialString(Assimp.AI_MATKEY_NAME, "material-$matIndex")
+        val metallicFactor = materialFloat(Assimp.AI_MATKEY_METALLIC_FACTOR, 1f)
+        val roughnessFactor = materialFloat(Assimp.AI_MATKEY_ROUGHNESS_FACTOR, 1f)
+        val clearcoatFactor = materialFloat(Assimp.AI_MATKEY_CLEARCOAT_FACTOR, 0f).coerceIn(0f, 1f)
+        val clearcoatRoughnessFactor = materialFloat(Assimp.AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, 0f).coerceIn(0f, 1f)
+        val transmissionFactor = materialFloat(Assimp.AI_MATKEY_TRANSMISSION_FACTOR, 0f).coerceIn(0f, 1f)
+        val alphaMode = materialString(
+            Assimp.AI_MATKEY_GLTF_ALPHAMODE,
+            if (baseColor.w < 0.999f) "BLEND" else "OPAQUE"
+        )
+        val alphaCutoff = materialFloat(Assimp.AI_MATKEY_GLTF_ALPHACUTOFF, 0.5f)
+        val doubleSided = materialInt(Assimp.AI_MATKEY_TWOSIDED, 0) != 0
+
+        if (!config.loadTextures) return MaterialTextured(
+            baseColor = baseColor,
+            name = materialName,
+            metallicFactor = metallicFactor,
+            roughnessFactor = roughnessFactor,
+            clearcoatFactor = clearcoatFactor,
+            clearcoatRoughnessFactor = clearcoatRoughnessFactor,
+            transmissionFactor = transmissionFactor,
+            alphaMode = alphaMode,
+            alphaCutoff = alphaCutoff,
+            doubleSided = doubleSided
+        )
+
+        val slots = mutableListOf<TextureSlot>()
+        val renderer: Renderer = fromContext()
+
+        val types = listOf(
+            Assimp.aiTextureType_BASE_COLOR,
+            Assimp.aiTextureType_DIFFUSE,
+            Assimp.aiTextureType_NORMALS,
+            Assimp.aiTextureType_EMISSIVE,
+            Assimp.aiTextureType_METALNESS,
+            Assimp.aiTextureType_DIFFUSE_ROUGHNESS,
+            Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS,
+            Assimp.aiTextureType_LIGHTMAP,
+            Assimp.aiTextureType_AMBIENT_OCCLUSION,
+            Assimp.aiTextureType_CLEARCOAT
+        )
+
+        val typeMapping = types.mapIndexed { i, type -> type to i }.toMap()
+
+        types.forEach {
+            slots += TextureSlot(
+                type = it,
+                uvSet = 0,
+                texture = LoadedTexture.stubTexture(renderer),
+                valid = false
+            )
+        }
+
+        fun textureFormatFor(type: Int): Int =
+            when (type) {
+                Assimp.aiTextureType_NORMALS,
+                Assimp.aiTextureType_METALNESS,
+                Assimp.aiTextureType_DIFFUSE_ROUGHNESS,
+                Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS,
+                Assimp.aiTextureType_LIGHTMAP,
+                Assimp.aiTextureType_AMBIENT_OCCLUSION,
+                Assimp.aiTextureType_CLEARCOAT -> VK10.VK_FORMAT_R8G8B8A8_UNORM
+                else -> VK10.VK_FORMAT_R8G8B8A8_SRGB
+            }
+
+        fun loadSlot(type: Int) {
+            val count = Assimp.aiGetMaterialTextureCount(aiMat, type)
+            if (count <= 0) return
+            MemoryStack.stackPush().use { stack ->
+                for (i in 0 until count) {
+                    val path = AIString.calloc(stack)
+                    val uvIndex = stack.mallocInt(1)
+                    val res = Assimp.aiGetMaterialTexture(
+                        aiMat, type, i, path, null, uvIndex, null, null, null, null
+                    )
+                    if (res != Assimp.aiReturn_SUCCESS) {
+                        continue
+                    }
+                    val tex = loadTextureFromPathOrEmbedded(
+                        scene,
+                        path.dataString(),
+                        baseDir,
+                        renderer,
+                        textureFormatFor(type)
+                    )
+                    if (tex != null) {
+                        slots[typeMapping[type]!!] =
+                            TextureSlot(type = type, uvSet = uvIndex[0], texture = tex, valid = true)
+                    } else {
+                    }
+                }
+            }
+        }
+
+        types.forEach { loadSlot(it) }
+
+        return MaterialTextured(
+            baseColor = baseColor,
+            textures = slots,
+            name = materialName,
+            metallicFactor = metallicFactor,
+            roughnessFactor = roughnessFactor,
+            clearcoatFactor = clearcoatFactor,
+            clearcoatRoughnessFactor = clearcoatRoughnessFactor,
+            transmissionFactor = transmissionFactor,
+            alphaMode = alphaMode,
+            alphaCutoff = alphaCutoff,
+            doubleSided = doubleSided
+        )
+    }
+
+    private fun loadTextureFromPathOrEmbedded(
+        scene: AIScene, path: String, baseDir: Path?, renderer: Renderer, imageFormat: Int
+    ): LoadedTexture? {
+        if (path.isEmpty()) return null
+        // Embedded texture reference: "*0", "*1", ...
+        if (path.startsWith("*")) {
+            val embedded = loadEmbeddedTexture(scene, path, renderer, imageFormat)
+            if (embedded == null) {
+                lprintln("warning,gltf", "Skipping embedded texture $path: unable to decode")
+            }
+            return embedded
+        } else {
+            val p = Paths.get(path)
+            val resolved = if (p.isAbsolute) p else baseDir?.resolve(p) ?: p
+            return try {
+                val t = LoadedTexture.fromFile(resolved.toString(), renderer, imageFormat)
+                t.transferNow()
+                t
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun loadEmbeddedTexture(scene: AIScene, path: String, renderer: Renderer, imageFormat: Int): LoadedTexture? {
+        val index = path.drop(1).toIntOrNull()
+        if (index == null) {
+            lprintln("warning,gltf", "Embedded texture reference is not numeric: $path")
+            return null
+        }
+
+        val textures = scene.mTextures()
+        if (textures == null || index < 0 || index >= scene.mNumTextures()) {
+            lprintln("warning,gltf", "Embedded texture index out of range: $path")
+            return null
+        }
+
+        val aiTex = AITexture.create(textures[index])
+        val width = aiTex.mWidth()
+        val height = aiTex.mHeight()
+        if (width <= 0) {
+            lprintln("warning,gltf", "Embedded texture has invalid size: $path (w=$width h=$height)")
+            return null
+        }
+
+        return if (height == 0) {
+            // Compressed data (PNG/JPEG/etc) stored in pcData with byte length = width
+            val texels = aiTex.pcData()
+            val encoded = memByteBuffer(texels.address(), width)
+            try {
+                val t = LoadedTexture.fromEncodedMemory("embedded:$path", encoded, renderer, imageFormat)
+                t.transferNow()
+                t
+            } catch (_: Exception) {
+                null
+            }
+        } else {
+            // Raw texels stored as BGRA in pcData (width*height entries)
+            val texels = aiTex.pcData()
+            val pixelCount = width * height
+            if (texels.capacity() < pixelCount) {
+                lprintln("warning,gltf", "Embedded texture texel data is incomplete: $path")
+                return null
+            }
+
+            val rgba = memAlloc(pixelCount * 4)
+            try {
+                for (i in 0 until pixelCount) {
+                    val t = texels[i]
+                    rgba.put((t.r().toInt() and 0xFF).toByte())
+                    rgba.put((t.g().toInt() and 0xFF).toByte())
+                    rgba.put((t.b().toInt() and 0xFF).toByte())
+                    rgba.put((t.a().toInt() and 0xFF).toByte())
+                }
+                rgba.flip()
+                val t = LoadedTexture.fromRawRGBA("embedded:$path", width, height, rgba, renderer, imageFormat)
+                t.transferNow()
+                t
+            } catch (_: Exception) {
+                null
+            } finally {
+                memFree(rgba)
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Animation sampling (node-level TRS only)
+    // ------------------------------------------------------------------------
+
+    private fun buildAnimationSamplesForNode(
+        scene: AIScene, node: AINode, sampleRate: Float
+    ): List<TRSSample> {
+        val animCount = scene.mNumAnimations()
+        if (animCount == 0) return emptyList()
+
+        // For now: just use the first animation.
+        val anim = AIAnimation.create(scene.mAnimations()!![0])
+
+        val nodeName = node.mName().dataString()
+
+        // Find the channel that targets this node
+        val numChannels = anim.mNumChannels()
+        val channels = anim.mChannels()!!
+
+        var target: AINodeAnim? = null
+        for (i in 0 until numChannels) {
+            val ch = AINodeAnim.create(channels[i])
+            if (ch.mNodeName().dataString() == nodeName) {
+                target = ch
+                break
+            }
+        }
+
+        val channel = target ?: return emptyList()
+
+        val ticksPerSecond = if (anim.mTicksPerSecond() != 0.0) {
+            anim.mTicksPerSecond()
+        } else {
+            25.0 // Assimp default fallback
+        }
+
+        val durationTicks = anim.mDuration()
+        if (durationTicks <= 0.0 || ticksPerSecond <= 0.0) return emptyList()
+
+        val durationSec = (durationTicks / ticksPerSecond).toFloat()
+        if (durationSec <= 0f) return emptyList()
+
+        val dt = 1f / sampleRate
+        val samples = ArrayList<TRSSample>()
+
+        var t = 0f
+        while (t <= durationSec + 1e-4f) {
+            val tickTime = t * ticksPerSecond
+
+            val pos = sampleVec3(channel.mPositionKeys(), channel.mNumPositionKeys(), tickTime)
+            val rot = sampleQuat(channel.mRotationKeys(), channel.mNumRotationKeys(), tickTime)
+            val scl = sampleVec3(channel.mScalingKeys(), channel.mNumScalingKeys(), tickTime)
+
+            samples += TRSSample(
+                time = t, trs = TRS(pos, rot.normalize(), scl)
+            )
+
+            t += dt
+        }
+
+        return samples
+    }
+
+    private fun sampleVec3(
+        keys: AIVectorKey.Buffer?, count: Int, time: Double
+    ): Vector3f {
+        if (keys == null || count == 0) return Vector3f(0f, 0f, 0f)
+        if (count == 1) {
+            val v = keys[0].mValue()
+            return Vector3f(v.x(), v.y(), v.z())
+        }
+
+        var i = 0
+        while (i < count - 1 && time >= keys[i + 1].mTime()) {
+            i++
+        }
+
+        val a = keys[i]
+        if (i == count - 1) {
+            val v = a.mValue()
+            return Vector3f(v.x(), v.y(), v.z())
+        }
+
+        val b = keys[i + 1]
+        val denom = (b.mTime() - a.mTime()).coerceAtLeast(1e-8)
+        val f = ((time - a.mTime()) / denom).coerceIn(0.0, 1.0)
+
+        val av = a.mValue()
+        val bv = b.mValue()
+        return Vector3f(
+            (av.x() + (bv.x() - av.x()) * f).toFloat(),
+            (av.y() + (bv.y() - av.y()) * f).toFloat(),
+            (av.z() + (bv.z() - av.z()) * f).toFloat()
+        )
+    }
+
+
+    private fun sampleQuat(
+        keys: AIQuatKey.Buffer?, count: Int, time: Double
+    ): Quaternionf {
+        if (keys == null || count == 0) return Quaternionf()
+        if (count == 1) {
+            val q = keys[0].mValue()
+            return Quaternionf(q.x(), q.y(), q.z(), q.w())
+        }
+
+        var i = 0
+        while (i < count - 1 && time >= keys[i + 1].mTime()) {
+            i++
+        }
+
+        val a = keys[i]
+        if (i == count - 1) {
+            val q = a.mValue()
+            return Quaternionf(q.x(), q.y(), q.z(), q.w())
+        }
+
+        val b = keys[i + 1]
+        val denom = (b.mTime() - a.mTime()).coerceAtLeast(1e-8)
+        val f = ((time - a.mTime()) / denom).coerceIn(0.0, 1.0).toFloat()
+
+        val qa = a.mValue()
+        val qb = b.mValue()
+
+        val qaJ = Quaternionf(qa.x(), qa.y(), qa.z(), qa.w())
+        val qbJ = Quaternionf(qb.x(), qb.y(), qb.z(), qb.w())
+
+        return qaJ.slerp(qbJ, f)
+    }
+
+
+    // ------------------------------------------------------------------------
+    // Utilities
+    // ------------------------------------------------------------------------
+
+    private fun aiToMatrix4f(m: AIMatrix4x4): Matrix4f = Matrix4f(
+        m.a1(),
+        m.b1(),
+        m.c1(),
+        m.d1(),
+        m.a2(),
+        m.b2(),
+        m.c2(),
+        m.d2(),
+        m.a3(),
+        m.b3(),
+        m.c3(),
+        m.d3(),
+        m.a4(),
+        m.b4(),
+        m.c4(),
+        m.d4()
+    )
+
+    private fun decomposeToTRS(m: Matrix4f): TRS {
+        val t = Vector3f()
+        val r = Quaternionf()
+        val s = Vector3f()
+        m.getTranslation(t)
+        m.getUnnormalizedRotation(r)
+        m.getScale(s)
+        return TRS(t, r.normalize(), s)
+    }
+
+    private fun getMesh(scene: AIScene, index: Int): AIMesh? {
+        if (index < 0 || index >= scene.mNumMeshes()) return null
+        val meshes = scene.mMeshes() ?: return null
+        return AIMesh.create(meshes[index])
+    }
+
+    private fun getMaterial(scene: AIScene, index: Int): AIMaterial? {
+        if (index < 0 || index >= scene.mNumMaterials()) return null
+        val materials = scene.mMaterials() ?: return null
+        return AIMaterial.create(materials[index])
+    }
+
+    // ------------------------------------------------------------------------
+    // Default shaders (GLSL) for SSBO vertex pulling + push constants
+    // ------------------------------------------------------------------------
+
+    // Assumes:
+    // - Vertex SSBO at set=0,binding=0: float vertexData[]
+    // - Index SSBO at set=0,binding=1:  uint indexData[]
+    // - Push constants:
+    //     mat4 modelView;
+    //     mat4 proj;
+    //     vec4 materialBaseColor;
+    //     uint vertexOffset;   // in floats
+    //     uint indexOffset;    // in indices
+    //     uint vertexStride;   // in floats (12 for this layout)
+    //     uint useVertexColor; // 0 or 1
+    //     VertexBuffer vertexBuffer;
+    //     IndexBuffer indexBuffer;
+    //
+    // - Vertex layout exactly: 12 floats
+    //   0..2: pos, 3..5: normal, 6..7: uv, 8..11: color
+
+    val gltVertexShader = """
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+
+layout(std430, buffer_reference) readonly buffer VertexBuffer {
+    float vertexData[];
+};
+
+layout(std430, buffer_reference) readonly buffer IndexBuffer {
+    uint indexData[];
+};
+
+layout(push_constant) uniform PushConstants {
+    mat4 modelView;        // view * model
+    mat4 proj;             // projection
+
+    vec4 materialBaseColor;
+
+    uint vertexOffset;     // in floats
+    uint indexOffset;      // in indices
+    uint vertexStride;     // in floats
+    uint useVertexColor;   // bool as uint
+
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+} pc;
+
+layout(location = 0) out vec3 vViewPos;
+layout(location = 1) out vec3 vNormalVS;
+layout(location = 2) out vec2 vUV;
+layout(location = 3) out vec4 vColor;
+
+void main()
+{
+    uint idx = pc.indexBuffer.indexData[pc.indexOffset+uint(gl_VertexIndex)];
+    uint base = pc.vertexOffset + idx * pc.vertexStride;
+
+    vec3 pos = vec3(
+        pc.vertexBuffer.vertexData[base + 0],
+        pc.vertexBuffer.vertexData[base + 1],
+        pc.vertexBuffer.vertexData[base + 2]
+    );
+
+    vec3 normal = vec3(
+        pc.vertexBuffer.vertexData[base + 3],
+        pc.vertexBuffer.vertexData[base + 4],
+        pc.vertexBuffer.vertexData[base + 5]
+    );
+
+    vec2 uv = vec2(
+        pc.vertexBuffer.vertexData[base + 6],
+        pc.vertexBuffer.vertexData[base + 7]
+    );
+
+    vec4 color = vec4(
+        pc.vertexBuffer.vertexData[base + 8],
+        pc.vertexBuffer.vertexData[base + 9],
+        pc.vertexBuffer.vertexData[base + 10],
+        pc.vertexBuffer.vertexData[base + 11]
+    );
+
+    if (pc.useVertexColor == 0u) {
+        color = vec4(1.0);
+    }
+
+    vec4 viewPos =  pc.proj * pc.modelView*vec4(pos, 1.0);
+
+    mat3 mv3 = mat3(pc.modelView);
+    vec3 normalVS = normalize(mv3 * normal);
+
+    vViewPos = viewPos.xyz;
+    vNormalVS = normalVS;
+    vUV = uv;
+    vColor = color * pc.materialBaseColor;
+
+    gl_Position = viewPos;
+}
+""".trimIndent()
+
+    val gltfFragmentShader = """
+#version 450
+layout(location = 0) out vec4 uFragColor;
+layout(location = 3) in vec4 vColor;
+layout(location = 1) in vec3 vNormalVS;
+
+void main()
+{
+    float d = abs(dot(vNormalVS.xyz, normalize(vec3(1, 0.4, -0.2))));
+    uFragColor = vec4(vNormalVS.rgb*d,1);
+}
+""".trimIndent()
+
+    // Simple textured fragment: samples first available texture; falls back to vertex color if none bound.
+    // Expects descriptor array of combined image samplers at set=0, binding=1.
+    val gltfFragmentShaderTextured = """
+#version 450
+layout(location = 0) out vec4 uFragColor;
+layout(location = 3) in vec4 vColor;
+layout(location = 2) in vec2 vUV;
+
+layout(set = 0, binding = 1) uniform sampler2D uTextures[6];
+
+void main()
+{
+    uFragColor = vColor*texture(uTextures[0], vUV);
+}
+""".trimIndent()
+}
+
+
+fun List<TRSSample>.sample(time: Float): TRS? {
+    if (isEmpty()) return null
+    if (size == 1) return this[0].trs
+    if (time <= this[0].time) return this[0].trs
+    if (time >= last().time) return last().trs
+
+    // Find this to interpolate between
+    var i = 0
+    while (i < size - 1 && time > this[i + 1].time) {
+        i++
+    }
+
+    val a = this[i]
+    val b = this[i + 1]
+    val t = ((time - a.time) / (b.time - a.time)).coerceIn(0f, 1f)
+
+    return TRS(
+        Vector3f(a.trs.t).lerp(b.trs.t, t),
+        Quaternionf(a.trs.r).slerp(b.trs.r, t),
+        Vector3f(a.trs.s).lerp(b.trs.s, t)
+    )
+}

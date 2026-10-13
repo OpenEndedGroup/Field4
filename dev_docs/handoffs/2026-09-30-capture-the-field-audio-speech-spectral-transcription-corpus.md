@@ -46,7 +46,7 @@ and choosing between them is a decision about the capture system:
 1. **Model-free preview fixtures, the way `audio_ai_analysis.md:33` does it.** Construct an
    `AnalysisPreview`/`CorpusPreview` in the fence and call the no-fetch renderers:
    `speechEmbeddingPreviewVisualizationHtml` / `spectralEmbeddingPreviewVisualizationHtml`
-   (`src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpeechEmbeddingVisualization.kt:58`, `:76`),
+   (`src/jvmMain/kotlin/afield/audio/ai/SpeechEmbeddingVisualization.kt:58`, `:76`),
    `analysisPreviewVisualizationHtml` with transcription notes (`AnalysisVisualization.kt:60`),
    `corpusMicroscopeHtml` (`CorpusMicroscope.kt:52`). The renderer is real, but the data is
    invented. That is defensible for a layout figure, but the speech/spectral portraits then show

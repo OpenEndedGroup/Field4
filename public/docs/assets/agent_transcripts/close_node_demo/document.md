@@ -14,17 +14,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-Not a hand-built fixture: this is what afield.stdlib.arrow returns when you ask for a
+Not a hand-built fixture: this is what afield.graphics.render.arrow returns when you ask for a
 head at both ends. Its appendHead ends each arrowhead with close(), so the node list is
 MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 and the first Close has a whole arrowhead after it.
 
 ```edn [field-box id="close_node_arrow" role="properties"]
-{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2673 "sha256" "9cde80bfb40b7e0dc9d95b5d7a760cd4c36195f83e86f22b0100af252600f61f"}]}
+{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2682 "sha256" "2dc6717bc2480416864eebea3f62d57a78f55c5c42d22c7b79a49c9a44616beb"}]}
 ```
 
 ```kotlin [field-property box="close_node_arrow" name="code" path="close_node_arrow_code_.kt"]
-// Not a hand-built fixture: this is what afield.stdlib.arrow returns when you ask for a
+// Not a hand-built fixture: this is what afield.graphics.render.arrow returns when you ask for a
 // head at both ends. Its appendHead ends each arrowhead with close(), so the node list is
 //   MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 // and the first Close has a whole arrowhead after it.

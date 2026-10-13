@@ -8,11 +8,11 @@ The deliverable of this page is not the fit. It is the **bias**: how far soft co
 area coverage, where, and by how much. A differentiable renderer's job is to be a gradient source;
 believing it is also a renderer is how a fit quietly absorbs the difference into its answer.
 
-- Lowering, soft raster and gradient: `src/jvmMain/kotlin/afield/rectsl/RectSLSoftRaster.kt`
-- Exact reference and the bias measurement: `src/jvmMain/kotlin/afield/rectsl/RectSLCoverage.kt`
-- Figures: `src/jvmMain/kotlin/afield/rectsl/RectSLSoftRasterFigure.kt`
-- Ratchet (in `check`): `src/jvmTest/kotlin/afield/rectsl/RectSLSoftRasterTest.kt`
-- Survey (opt-in): `src/jvmTest/kotlin/afield/rectsl/RectSLSoftRasterMeasurements.kt`
+- Lowering, soft raster and gradient: `src/jvmMain/kotlin/afield/lang/rectsl/RectSLSoftRaster.kt`
+- Exact reference and the bias measurement: `src/jvmMain/kotlin/afield/lang/rectsl/RectSLCoverage.kt`
+- Figures: `src/jvmMain/kotlin/afield/lang/rectsl/RectSLSoftRasterFigure.kt`
+- Ratchet (in `check`): `src/jvmTest/kotlin/afield/lang/rectsl/RectSLSoftRasterTest.kt`
+- Survey (opt-in): `src/jvmTest/kotlin/afield/lang/rectsl/RectSLSoftRasterMeasurements.kt`
 
 ## Why the differentiable layer is `AD`, not `Fn`
 

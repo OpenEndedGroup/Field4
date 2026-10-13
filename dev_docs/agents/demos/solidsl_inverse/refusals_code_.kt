@@ -1,4 +1,4 @@
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val body = cuboid(1.0, 1.0, 0.4) - cylinder(1.2, 0.3).at(0.3, 0.0, 0.0)
 

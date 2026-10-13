@@ -35,7 +35,7 @@ sentence is the right tool whenever the artifact's value is the writing rather t
 
 ## The contract
 
-`afield.docs.AgentTranscriptIndexGuard`, run by `./gradlew checkAgentTranscriptIndex` and wired into
+`afield.tools.docs.AgentTranscriptIndexGuard`, run by `./gradlew checkAgentTranscriptIndex` and wired into
 `check`. It reads text files only — no boxes, no runloop, no GPU — and takes about a second, unlike
 its heavyweight sibling `checkAgentTranscripts` (~25 s, because that one builds real boxes).
 

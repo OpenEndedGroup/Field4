@@ -1,15 +1,18 @@
 package afield.examples.four
 
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
-import afield.four.*
-import afield.four.modules.*
-import afield.four.targets.RenderTarget
-import afield.four.texture.LoadedTexture
-import afield.four.util.Projection
-import afield.four.util.Window
-import afield.four.util.updateForever
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import afield.graphics.vulkan.*
+import afield.document.context.*
+import afield.graphics.vulkan.targets.RenderTarget
+import afield.graphics.texture.LoadedTexture
+import afield.graphics.vulkan.util.Projection
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.updateForever
 import java.util.Random
 
 

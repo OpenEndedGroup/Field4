@@ -4,7 +4,7 @@
 // This is one call to `showSignals`, the house terse-plot helper. There is no new plotting
 // code anywhere in this feature: `showSignals` already takes named series, a shared x, and
 // `marks` drawn as full-height dashed rules carrying their label into the legend.
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 prop<PathTracingRenderer>(tracer)
 prop<PathTraceConvergence>(log)

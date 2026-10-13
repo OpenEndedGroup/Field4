@@ -10,10 +10,10 @@ posting messages fail. The rest of the slideshow still works.
 
 ## Ownership
 
-- `src/jvmMain/kotlin/afield/server/chat.kt` — Field RPC-to-HTTP proxy and Field-client broadcast.
-- `src/jvmMain/kotlin/afield/SlideShow.kt` — per-step opt-in and thread-ID selection.
-- `src/jsMain/kotlin/afield/Main.kt` — widgets, posting, reload, and rendering.
-- `src/commonMain/kotlin/rpc.kt` — serialized Field messages.
+- `src/jvmMain/kotlin/afield/app/server/chat.kt` — Field RPC-to-HTTP proxy and Field-client broadcast.
+- `src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt` — per-step opt-in and thread-ID selection.
+- `src/jsMain/kotlin/afield/app/client/Main.kt` — widgets, posting, reload, and rendering.
+- `src/commonMain/kotlin/afield/app/protocol/rpc.kt` — serialized Field messages.
 - `src/jvmMain/kotlin/afield/examples/slideshow_example.kt` — compiled example.
 
 The browser uses Field's JVM bridge; it does not connect directly to the former Flask Socket.IO

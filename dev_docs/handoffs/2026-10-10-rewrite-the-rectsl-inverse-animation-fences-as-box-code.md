@@ -7,7 +7,7 @@
 
 The prose of `public/docs/rectsl_inverse_animation.md` was reordered on 2026-10-10 (usage first, internals under "How the fit works"), but its five `diffstatic_runner` fences were left byte-identical and still break the box-code rules in `dev_docs/agents/DOCS_WRITING_RULES.md`:
 
-- `import afield.stdlib.Functions` in four fences (the opening fit, the sin identity, the free-param scene, the exact step).
+- `import afield.math.functions.Functions` in four fences (the opening fit, the sin identity, the free-param scene, the exact step).
 - Hand-built HTML (`<pre style=...>`, `<img src='data:...'>`) for output that is text or a single picture; use Markdown output / the image display helpers.
 - Long comments that narrate the check ("This box is that claim, checked, rather than that claim, asserted", the 377-character "+277 chars" comment) — internal self-talk inside user code.
 - The opening fence is ~80 lines of nested `BinaryDoubleTrack` constructors; consider folding the `channel(...)` builder and the `RectSLFitFigure.render` call with the fold facilities, or leading with the shorter RectSL-source `free-param` box.

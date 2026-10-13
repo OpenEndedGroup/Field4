@@ -15,8 +15,8 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="inverse" name="code" path="inverse_code_.kt"]
-import afield.solidsl.*
-import afield.stdlib.MeshView
+import afield.lang.solidsl.*
+import afield.geometry.mesh.MeshView
 
 // ---- the problem ---------------------------------------------------------------------
 // Somebody hands you a bag of points with a signed distance at each. What shape is it?
@@ -97,11 +97,11 @@ showMesh(
 ```
 
 ```kotlin [field-property box="gradient" name="code" path="gradient_code_.kt"]
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // ---- the shape, written once, as a value ------------------------------------------
 // A ball blended onto a rod. Change a number and everything below follows, because a
-// SolidExpr is a value rather than a closure — which is the whole of afield.solidsl.
+// SolidExpr is a value rather than a closure — which is the whole of afield.lang.solidsl.
 val part = smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), k = 0.18)
 // -------------------------------------------------------------------------------------
 
@@ -180,7 +180,7 @@ part.gradientNotes().forEach { println("  - $it") }
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val body = cuboid(1.0, 1.0, 0.4) - cylinder(1.2, 0.3).at(0.3, 0.0, 0.0)
 

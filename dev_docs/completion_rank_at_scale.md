@@ -69,7 +69,7 @@ vocabulary is a decision and not a measurement."
     tools/scrape_completion_corpus.py --wide --out tools/completion-corpus/rank-carets.tsv
     ./gradlew -p tools/code-use-semantic-sidecar run --args="--port <p> --workspace $PWD"
     python3 tools/record_rank_corpus.py --port <p>
-    ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'
+    ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 
 1. **Harvest.** For `expr.member` in code a human wrote and shipped in a doc, the member they wrote
    *is* the label — free, large and unarguable. The harvest was 22 carets from 8 named docs; 70 of the
@@ -95,7 +95,7 @@ vocabulary is a decision and not a measurement."
 
 The recording is checked in: `src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz`, 39 221 payload
 rows over 6 679 distinct ones, 191 KB. 101 distinct receivers, `kotlin.collections.List` 41 times,
-`java.lang.Math` 12, `afield.graphics.FLine` 10.
+`java.lang.Math` 12, `afield.geometry.path.FLine` 10.
 
 It carries one field the 7-case fixture never has: **`proximity`**. `fieldSuggest.js` scores
 `own`/`supertype`/`universal` at 0 / −20 / −85, its largest negative term, and `rank-payloads.json`

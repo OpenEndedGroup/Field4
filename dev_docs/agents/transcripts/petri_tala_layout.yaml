@@ -29,8 +29,8 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 360.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
-
+          import afield.simulation.petri.*
+          
           // Five philosophers, five forks. Every philosopher needs both neighbouring forks to eat,
           // which is what makes this dense rather than deep: 25 nodes and 40 arcs, all in one
           // strongly connected lump with no layering to find.
@@ -48,10 +48,10 @@ operations:
                   }
               }
           }
-
+          
           val net = philosophers()
           showPetriNet(net, layout = PetriLayout.FORCE, w = 620.0, h = 520.0)
-
+          
           // PetriLayoutSolver does not trust the physics: a spring model finds *a* minimum of its
           // own energy, which is not the same as a drawing you can read. So it relaxes from 48
           // different random starts and scores each result on crossings, overlaps and edges
@@ -65,9 +65,9 @@ operations:
       frame: { x: 780.0, y: 60.0, w: 400.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
-          import afield.layout.D2Layout
-
+          import afield.simulation.petri.*
+          import afield.ui.layout.D2Layout
+          
           fun philosophers(count: Int = 5): PetriNet = petri {
               for (index in 0 until count) place("fork.$index", tokens = 1)
               for (index in 0 until count) {
@@ -82,11 +82,11 @@ operations:
                   }
               }
           }
-
+          
           val net = philosophers()
           // Asking for TALA is safe whether or not the helper exists — that is the whole contract.
           showPetriNet(net, layout = PetriLayout.TALA, w = 620.0, h = 520.0)
-
+          
           if (D2Layout.available)
               "TALA: d2 ${D2Layout.version}, places sized as real boxes and arcs routed"
           else
@@ -98,9 +98,9 @@ operations:
       frame: { x: 60.0, y: 700.0, w: 400.0, h: 100.0 }
       properties:
         code: |
-          import afield.petri.*
-          import afield.layout.D2Layout
-
+          import afield.simulation.petri.*
+          import afield.ui.layout.D2Layout
+          
           fun philosophers(count: Int = 5): PetriNet = petri {
               for (index in 0 until count) place("fork.$index", tokens = 1)
               for (index in 0 until count) {
@@ -115,9 +115,9 @@ operations:
                   }
               }
           }
-
+          
           val net = philosophers()
-
+          
           // Timing each layout once, in order, is the obvious thing and it lies: the first one pays
           // for JVM warmup and the second does not. Both are warmed, then measured three times from
           // a cleared cache, and the minimum kept — the reading least polluted by whatever else the
@@ -136,26 +136,26 @@ operations:
               }
               return bestNs / 1_000_000
           }
-
+          
           val forceMs = best(PetriLayout.FORCE)
           val talaMs = best(PetriLayout.TALA)
-
+          
           val force = net.frame(PetriLayout.FORCE)
           val tala = net.frame(PetriLayout.TALA)
           val differ = net.placeNames.any { force.position(it) != tala.position(it) }
-
+          
           val headline = if (D2Layout.available)
               "helper present — d2 ${D2Layout.version}"
           else
               "helper absent — boxes 1 and 2 are the same drawing"
-
+          
           val detail = if (D2Layout.available)
               "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
           else
               "differ = <b>$differ</b>, which is the fallback working. Build it with " +
               "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +
               "Field prints that line itself, with an install hint when <code>go</code> is not on PATH."
-
+          
           // Rendered rather than returned as a string, so the demo is something to look at.
           display("main", """
             <div style="font:13px/1.55 ui-monospace,SFMono-Regular,monospace;background:#0d0d0d;
@@ -176,7 +176,7 @@ operations:
                 <code>PetriLayout.AUTO</code>, so nothing already drawn changes.</div>
             </div>
           """.trimIndent())
-
+          
           headline
   - execute:
       box: petri_tala_force

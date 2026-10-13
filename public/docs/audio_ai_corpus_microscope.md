@@ -10,7 +10,7 @@ counts. The examples here query six seconds of Nancy against Final Out at Candle
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_corpus_microscope/neighbours.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-corpus" alt="Real Nancy query and two Candlestick neighbour windows with waveforms, distance bars and splice players" capture-profile="linux-nvidia"}
 :::static
-import afield.four.audio.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json

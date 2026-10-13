@@ -45,12 +45,12 @@ From `code`
 A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
 
 ```edn [field-box id="cs_table" role="properties"]
-{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1020 "sha256" "bc6aebeeffc2a47d95b9f70219926a43fe9e683feacfb51462a4e7e0a93441f6"}]}
+{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1026 "sha256" "00df8e88e2ff0e6f60acdfaf53e0bb825eb2c0d2484b1b19b1480f595d6c6c19"}]}
 ```
 
 ```kotlin [field-property box="cs_table" name="code" path="cs_table_code_.kt"]
 // A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 giWave  ftgen  1, 0, 4096, 10, 1
 instr Play
   asig  poscil  0.3, 220, giWave
@@ -281,12 +281,12 @@ From `code`
 Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
 
 ```edn [field-box id="cs_measured" role="properties"]
-{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1010 "sha256" "c3478e06efd46154a5fb8eca0a89bee9e6bd558532b60a9f8ede252bc2828d4c"}]}
+{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1016 "sha256" "4d92947c243bb7e1b4a44daba040b3e8307e218ad7ecc6687f709e7092cf257e"}]}
 ```
 
 ```kotlin [field-property box="cs_measured" name="code" path="cs_measured_code_.kt"]
 // Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500

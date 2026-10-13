@@ -1,7 +1,7 @@
 # A function, played and read back
 
 Play a `Functions.Fn` as a sound, analyse the sound, and you can put what the analysis found next
-to the function it came from. `afield.stdlib.Functions` builds the function, and `FnInterval`
+to the function it came from. `afield.math.functions.Functions` builds the function, and `FnInterval`
 certifies its range on any interval.
 A Dough graph plays it, rendered offline to a 16-bit `.wav`. `PatOnsetDetection` and
 `PatPitchDetection` read the file back. The time-axis viewer draws the function, its certified band,
@@ -34,13 +34,13 @@ read the file back from disk.
 
 Here is the loudness render:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_fn_sound_roundtrip/loudness.wav" audio-spec="loudness" audio-renderer="afield.four.synth.FnSoundDocs" embed=true hidden=true name="chain-fn-loudness-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_fn_sound_roundtrip/loudness.wav" audio-spec="loudness" audio-renderer="afield.audio.synth.FnSoundDocs" embed=true hidden=true name="chain-fn-loudness-audio"}
 // Offline-rendered by FnSoundDocs.renderWav("loudness").
 ```
 
 And the pitch render, the same curve as a glide:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_fn_sound_roundtrip/pitch.wav" audio-spec="pitch" audio-renderer="afield.four.synth.FnSoundDocs" embed=true hidden=true name="chain-fn-pitch-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_fn_sound_roundtrip/pitch.wav" audio-spec="pitch" audio-renderer="afield.audio.synth.FnSoundDocs" embed=true hidden=true name="chain-fn-pitch-audio"}
 // Offline-rendered by FnSoundDocs.renderWav("pitch").
 ```
 
@@ -70,8 +70,8 @@ and their errors on one timeline, with the loudness render underneath.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/roundtrip.png" wait="12" capture="box" open-outputs="true" w="1180" h="900" padding="18" timeout="240" name="chain-fn-roundtrip" embed=true alt="A four-lane time-axis viewer over three seconds. The top two lanes draw the function in white, a slow swell, a step up to a wobbling plateau and one narrow spike, with its certified band behind it, too tight to separate from the line at this zoom, and the curves recovered from the loudness and from the pitch of the rendered sound drawn dashed on top of it and hidden by it. The two lower lanes are the recovery errors: flat near zero except for a spike at the narrow bump, with a faint ripple along the pitch lane's plateau. Below, an audio player showing the loudness render's waveform, and a table of frame counts, errors, lags and certified-band containment for both encodings"}
 :::static
-import afield.four.synth.FnSoundDocs
-import afield.four.synth.FnSoundDocs.Encoding
+import afield.audio.synth.FnSoundDocs
+import afield.audio.synth.FnSoundDocs.Encoding
 
 // Each roundTrip renders through FnSignal, writes a 16-bit .wav with no normalisation, reads that
 // file back, and analyses what it read. `inside` is checked against the proven bounds of
@@ -127,9 +127,9 @@ bridges and zooms in on the narrow bump.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/delays.png" wait="12" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="240" name="chain-fn-delays" embed=true alt="A two-lane time-axis viewer zoomed to thirty milliseconds around the narrow bump. In the top lane the curve read back from the per-sample render sits on the function; in the lower lane the curve read back from the per-block Param render is visibly shifted to the right of it. Below, a table of the four trips giving each one's RMS error, the delay that best aligns it in samples, the RMS error at that delay, and, for pitch, the delay measured from the centre of the samples YIN compared"}
 :::static
-import afield.four.synth.FnSoundDocs
-import afield.four.synth.FnSoundDocs.Encoding
-import afield.four.synth.FnSoundDocs.Route
+import afield.audio.synth.FnSoundDocs
+import afield.audio.synth.FnSoundDocs.Encoding
+import afield.audio.synth.FnSoundDocs.Route
 
 // Two encodings through two bridges. bestLagSamples reads f at each frame's reported centre minus
 // a lag; bestLagFromSupportSamples does the same from the centre of the samples the frame compared.

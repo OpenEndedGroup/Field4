@@ -1,4 +1,4 @@
-# afield.four Graphics
+# Field 4 Graphics
 
 Open **Welcome → Starting points → canonical_graphics** to get an editable copy
 of this complete graphics curriculum, including its code and shader sidecars.
@@ -597,7 +597,7 @@ The name `bbc` is the bridge. Kotlin creates `prop<LoadedTexture>(bbc)`, the sha
 A shader can declare an *array* of samplers, and the Kotlin side binds it by publishing an array of image views under the array's name. The reflected-name contract is the same as the single texture above; only the type changes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04b-multi-texture.png" alt="the same multicoloured checkerboard quad with its white and black crossing diagonals. It is pixel-identical to the single-texture figure on purpose: all three entries of the sampler array point at the same image file, so what the figure shows is that the array binds, links and draws at all" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-multi-texture" source-box="assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.texture.*
+import afield.graphics.texture.*
 
 var bbc = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
@@ -846,8 +846,8 @@ A target you can read *and* write in the same pass is a contradiction, so feedba
 
 ```diffstatic {data-lang=kotlin}
 import org.lwjgl.vulkan.VK10.*
-import afield.four.targets.*
-import afield.four.texture.*
+import afield.graphics.vulkan.targets.*
+import afield.graphics.texture.*
 
 prop<PingPongRenderToTexture>(target) = PingPongRenderToTexture {
     clearFirst = false
@@ -884,7 +884,7 @@ void main()
 Reading `otherView` at a slightly offset coordinate and writing the channels back swapped (`c.gr`) is what makes the image drift and recolour over time rather than settle. The consuming box then displays `target.thisImageView`, the half that was just written:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.texture.*
+import afield.graphics.texture.*
 
 prop<HasImageView>(bbc) = target.thisImageView
 ```
@@ -1111,7 +1111,7 @@ In the corpus this box also carries a `//%-` line, which is Field's execution br
 Templating gets more interesting when the substituted source is itself generated from a Kotlin type. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05c-push-constants.png" alt="one right triangle filling a black window in flat dark crimson, the same geometry as the templating figure with a different colour. The value arrives through a push-constant block GLSL never declared by hand, reflected out of a Kotlin class" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-push-constants" source-box="assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.util.*
+import afield.graphics.vulkan.util.*
 
 class MyPC(
     var a : Vec4,
@@ -1397,8 +1397,6 @@ Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC
 The last lesson is the shortest, because the work is packaged:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.*
-
 var dla = ShaderDlaSystem() {
     width = 1024
     height = 1024
@@ -1606,7 +1604,7 @@ order is written up in `dev_docs/renderer_teardown_order.md`.
 Every example on this page is a box in a real Field document, `canonical_graphics`, which is
 committed under `public/docs/assets/canonical_graphics/` and is what the viewer at the top of this
 page is showing. If you want to read the code rather than the prose, or you are an agent about to
-write `afield.four` code and want a known-good pattern to adapt, start from
+write Field 4 graphics code and want a known-good pattern to adapt, start from
 [the lesson index](assets/canonical_graphics/LESSONS.md). It lists every lesson with its Kotlin and
 shader files, records the parent chain each one needs in order to run, and carries a reverse index
 from Field API name (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to

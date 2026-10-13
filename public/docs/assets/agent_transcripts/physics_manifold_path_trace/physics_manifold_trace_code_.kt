@@ -1,19 +1,19 @@
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.physics.PlaneCollider
-import afield.four.physics.SimdVerlet
-import afield.four.physics.SphereCollider
-import afield.four.physics.addCloth
-import afield.four.physics.addColliders
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.simulation.physics.PlaneCollider
+import afield.simulation.physics.SimdVerlet
+import afield.simulation.physics.SphereCollider
+import afield.simulation.physics.addCloth
+import afield.simulation.physics.addColliders
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)

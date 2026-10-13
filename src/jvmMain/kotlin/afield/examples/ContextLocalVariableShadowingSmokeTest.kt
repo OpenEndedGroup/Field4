@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.OperationTranscript
-import afield.Box
-import afield.SavingContext
-import afield.SessionInformation
-import afield.thisSessionInfo
+import afield.tools.automation.OperationTranscript
+import afield.document.graph.Box
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -23,7 +23,7 @@ expect:
     - "ContextLocalVariableShadowingSmokeTest ok"
 */
 /**
- * Regression test for the self-pinning bug in `fromContext` (afield.four.modules, Mesh.kt).
+ * Regression test for the self-pinning bug in `fromContext` (afield.document.context).
  *
  * The canonical idiom is
  *
@@ -63,7 +63,7 @@ println("parent set 2")
     private fun childCode(label: String, optIn: Boolean): String {
         val call = if (optIn) "fromContext<AtomicInteger>(includeLocalVariables = true)" else "fromContext<AtomicInteger>()"
         return """import java.util.concurrent.atomic.AtomicInteger
-import afield.four.modules.fromContext
+import afield.document.context.fromContext
 val holder = $call
 println("$label holder=" + holder.get())
 """
@@ -219,15 +219,15 @@ ${childCode("optin pass2", optIn = true).trimEnd().prependIndent("        ")}
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "context-shadowing-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "context-shadowing-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("ContextLocalVariableShadowingSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("ContextLocalVariableShadowingSmokeTest: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 
     private fun stripHtml(html: String): String =

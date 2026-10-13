@@ -17,12 +17,12 @@ operations:
       frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.Functions
-          import afield.stdlib.SignalChannel
-          import afield.stdlib.SignalViewer
-          import afield.stdlib.SignalViewerOptions
-          import afield.stdlib.displaySignal
-
+          import afield.math.functions.Functions
+          import afield.ui.visualization.SignalChannel
+          import afield.ui.visualization.SignalViewer
+          import afield.ui.visualization.SignalViewerOptions
+          import afield.ui.visualization.displaySignal
+          
           // One hour: a slow 40-second swing, plus a glitch 10 ms wide at 1234.57 s — exactly halfway
           // between two of the viewer's 0.02 s samples. Built from Functions ops rather than a
           // fn { } lambda, so every node has a formula. Box 2 needs that.
@@ -30,12 +30,12 @@ operations:
               sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) +
                   gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
           }
-
+          
           // The sampled envelope, drawn the way the function workbench draws it: min and max per bin.
           val viewer = SignalViewer(listOf(SignalChannel("x", signal::eval)), 0.0, 3600.0)
           displaySignal(viewer, "main",
               SignalViewerOptions(label = "sampled envelope only", viewKey = "certified_envelope:sampled"))
-
+          
           // The same query the plot makes, read back as numbers. Bin 342 holds the glitch.
           val bins = viewer.window(0.0, 3600.0, 1000).lanes[0].current
           val bin = (1234.57 / 3.6).toInt()
@@ -51,13 +51,13 @@ operations:
       frame: { x: 60.0, y: 760.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.Functions
-          import afield.stdlib.SignalViewer
-          import afield.stdlib.SignalViewerOptions
-          import afield.stdlib.certifiedEnvelope
-          import afield.stdlib.certifiedSignalChannel
-          import afield.stdlib.displaySignal
-
+          import afield.math.functions.Functions
+          import afield.ui.visualization.SignalViewer
+          import afield.ui.visualization.SignalViewerOptions
+          import afield.math.functions.certifiedEnvelope
+          import afield.ui.visualization.certifiedSignalChannel
+          import afield.ui.visualization.displaySignal
+          
           // The same signal as box 1. certifiedSignalChannel draws its sampled envelope in white and,
           // behind it in amber, a certified bound per bin: every value the function takes in the bin
           // lies inside, whether or not a sample landed on it. Nothing here is sampled more finely.
@@ -68,7 +68,7 @@ operations:
           val viewer = SignalViewer(listOf(certifiedSignalChannel("x", signal)), 0.0, 3600.0)
           displaySignal(viewer, "main",
               SignalViewerOptions(label = "sampled envelope, with its certified band", viewKey = "certified_envelope:certified"))
-
+          
           // The band, read back: bin 342 is bounded above by the glitch's true height.
           val band = signal.certifiedEnvelope(0.0, 3600.0, 1000)
           val bin = (1234.57 / 3.6).toInt()
@@ -84,11 +84,11 @@ operations:
       frame: { x: 60.0, y: 1480.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.Functions
-          import afield.stdlib.certifiedNeverExceeds
-          import afield.stdlib.certifiedRange
-          import afield.stdlib.certifiedReaches
-
+          import afield.math.functions.Functions
+          import afield.math.functions.certifiedNeverExceeds
+          import afield.math.functions.certifiedRange
+          import afield.math.functions.certifiedReaches
+          
           // Branch-and-bound over the hour: the true maximum is at least the value reached at the
           // witness, and at most the proven bound. The same for the minimum.
           val signal = with(Functions) {
@@ -103,7 +103,7 @@ operations:
               .row("max", max.value, max.witness, max.bound, max.enclosures)
               .row("min", min.value, min.witness, min.bound, min.enclosures)
               .role("at x", CellRole.ACCENT))
-
+          
           // Yes/no questions with the same guarantee. A refutation carries the x that breaks the claim.
           val claims = listOf(
               signal.certifiedNeverExceeds(0.7, 0.0, 3600.0),
@@ -119,17 +119,17 @@ operations:
       frame: { x: 60.0, y: 1800.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.Functions
-          import afield.stdlib.certifiedEquals
-          import afield.stdlib.certifiedNeverExceeds
-          import afield.stdlib.enclose
-
+          import afield.math.functions.Functions
+          import afield.math.functions.certifiedEquals
+          import afield.math.functions.certifiedNeverExceeds
+          import afield.math.functions.enclose
+          
           // What refuses. The function workbench's channels are fn(0.0..3600.0, name) { seconds -> ... }
           // lambdas: one opaque node each, so there is nothing for an interval walk to read. It refuses by
           // name rather than guess.
           val lambdaChannel = with(Functions) { fn(0.0..3600.0, "x") { t -> 0.45 + 0.2 * kotlin.math.sin(t) } }
           val refused = lambdaChannel.enclose(0.0, 3600.0)
-
+          
           // The workbench's claim that an event holds exactly 1 for 30 seconds, rebuilt from formula ops:
           // rise 185..285, hold to 315, fall to 415, over the moving background.
           val held = with(Functions) {
@@ -154,15 +154,15 @@ operations:
       frame: { x: 60.0, y: 2120.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.Functions
-          import afield.stdlib.FnIntervals
-          import afield.stdlib.StudyEvent
-          import afield.stdlib.certifiedEquals
-          import afield.stdlib.certifiedNeverBelow
-          import afield.stdlib.certifiedNeverExceeds
-          import afield.stdlib.certifiedRange
+          import afield.math.functions.Functions
+          import afield.math.functions.FnIntervals
+          import afield.math.functions.StudyEvent
+          import afield.math.functions.certifiedEquals
+          import afield.math.functions.certifiedNeverBelow
+          import afield.math.functions.certifiedNeverExceeds
+          import afield.math.functions.certifiedRange
           import kotlin.math.PI
-
+          
           // The function workbench's worked example (public/docs/assets/function_conversation/final.kt),
           // twice. `lambda` is its channel code, verbatim: one fn { } per channel, which the interval walk
           // refuses. `formula` is the same function from formula-bearing ops. The only construct that needed
@@ -173,7 +173,7 @@ operations:
               StudyEvent("e3", 1425.0, 200.0, 30.0, 100.0), StudyEvent("e5", 2585.0, 100.0, 30.0, 100.0),
               StudyEvent("e6", 3185.0, 100.0, 30.0, 100.0))
           val names = listOf("x", "y", "z")
-
+          
           fun smooth01(value: Double): Double { val u = value.coerceIn(0.0, 1.0); return u * u * u * (10.0 + u * (-15.0 + 6.0 * u)) }
           fun backgroundOf(seconds: Double, channel: Int): Double {
               val drift = 2.0 * PI / 3.0 * kotlin.math.sin(2.0 * PI * seconds / 100.0)
@@ -207,7 +207,7 @@ operations:
                   }
               }
           }
-
+          
           fun formula(index: Int, name: String) = with(Functions) {
               val all = Functions.Domain.ALL
               fun k(v: Double) = c(v, all)
@@ -244,7 +244,7 @@ operations:
               }
               sum + (one - inside) * base
           }
-
+          
           val rows = mutableListOf<List<Any?>>()
           for ((i, name) in names.withIndex()) {
               val l = lambda(i, name)
@@ -263,7 +263,7 @@ operations:
               title = "the worked example's claims, on its formula rewrite")
               .rows(rows)
               .role("<= 1", CellRole.WARN))
-
+          
           // How far above 1: certifiedRange's proven bound is the certificate for <= 1 + 1e-9 (x only; ~11 s).
           val xMax = formula(0, "x").certifiedRange(0.0, 3600.0, tolerance = 9e-10).max!!
           display("max", Table(listOf("what", "value"), title = "channel x, the whole hour")

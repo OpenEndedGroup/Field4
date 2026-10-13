@@ -1,12 +1,12 @@
 # Physics: particles, constraints and cloth
 
-Field has a particle solver. `afield.four.physics.SimdVerlet` holds some thousands of particles in
+Field has a particle solver. `afield.simulation.physics.SimdVerlet` holds some thousands of particles in
 flat float arrays, pulls them toward each other with distance constraints, and integrates them with
 Verlet. `Cloth` wires a rectangular grid of those constraints for you. `SimdVerlet.debugLines()`
 draws the solver's own state so you can see when the wiring is wrong.
 
 It is a **CPU** solver with **no renderer of its own**. It hands you `FLine`s, and where those go is
-your business: `showPlane` into a box output, `Box.lines` into the 3D view, an `afield.four`
+your business: `showPlane` into a box output, `Box.lines` into the 3D view, a Field 4
 renderer. Nothing here needs a GPU.
 
 The API is in the [codebase reference](reference/simulation.md). This page covers the thing that
@@ -82,7 +82,7 @@ the only difference is where the factors of `stiffness × iterations = 960` sit.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/equivalence.png" wait="4.0" capture="box" open-outputs="true" w="1020" h="820" padding="14" name="physics-equivalence"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, and a ruler for comparing two of them
 // A 20 x 10 sheet hanging from every fourth particle of row 0. The plane view has y growing DOWN
@@ -164,7 +164,7 @@ every frame, plotted as its base-10 logarithm.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/equivalence_drift.png" wait="4.0" capture="box" open-outputs="true" w="1080" h="620" padding="14" name="physics-equivalence-drift"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the same sheet and ruler as above
 fun sheet(stiffness: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -231,7 +231,7 @@ where 100 % means a spring stretched to twice its rest length.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/tuning_ladder.png" wait="6.0" capture="box" open-outputs="true" w="1660" h="1000" padding="14" name="physics-tuning-ladder"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, and a strain meter that reads the solver's own rest lengths
 fun sheet(stiffness: Float, curvature: Float = 0f) =
@@ -352,7 +352,7 @@ The strain trace carries plenty of warning before the `NaN` arrives, for anyone 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/divergence.png" wait="5.0" capture="box" open-outputs="true" w="1200" h="620" padding="14" name="physics-divergence"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet and the strain meter, exactly as above
 fun sheet(stiffness: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -454,7 +454,7 @@ against 1.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/curvature.png" wait="5.0" capture="box" open-outputs="true" w="1180" h="720" padding="14" name="physics-curvature"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, now with a curvature strength, and the same ruler
 fun sheet(curvature: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -568,7 +568,7 @@ crease.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/debug_view.png" wait="5.0" capture="box" open-outputs="true" w="1080" h="900" padding="14" name="physics-debug-view"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, and the ruler
 fun sheet() = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -657,7 +657,7 @@ Two more things about the drawing:
   the 3-slot `constraints`. An unused slot (neighbour `-1`, or zero stiffness) draws nothing, so a
   constraint that was never wired shows up as a *gap*.
 - **`thickness` and `pointSize` are in the units the output uses.** Pixels of the mapped frame for
-  `showPlane` / `showPlaneGrid`; world units for `Box.lines` and the `afield.four` renderers, where
+  `showPlane` / `showPlaneGrid`; world units for `Box.lines` and the Field 4 renderers, where
   they want to be very much smaller. The dot radius convention is `pointSize * 3`.
 
 Pass `particles = cloth.base until cloth.end` to draw one cloth out of a busier simulation, and
@@ -668,7 +668,7 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 ## Also in the box
 
-`afield.four.physics` holds more than the particle solver, and the rest is not covered here:
+`afield.simulation.physics` holds more than the particle solver, and the rest is not covered here:
 
 - **The world layer** — `Collider`/`ColliderSet` (sphere, plane, box, capsule and a general signed
   distance function), `Tearing`, `Wind`, and `Strand`, a rope that can be knotted to a cloth. These

@@ -2,7 +2,7 @@
 
 The current user tour and real captures are in `public/docs/reading_your_values.md`. The rendering
 contract and limits belong on `ValueVisualizer` in
-`src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`; graphics-specific registrations live
+`src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt`; graphics-specific registrations live
 in `afield/four/FourVisualizers.kt` and synth registrations in `afield/four/synth/Visualizers.kt`.
 
 Extension points:
@@ -17,7 +17,7 @@ that distinction explicit when adding formatters.
 ## `.h2`: the same value, three renderings
 
 `.h2` is `LazyValueVisualizer.visualize` in
-`src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt`. When it engages it retains the
+`src/jvmMain/kotlin/afield/ui/visualization/LazyValueVisualizer.kt`. When it engages it retains the
 value under a token and draws **three independent renderings of it**, which is the fact that governs
 every change here:
 
@@ -36,7 +36,7 @@ both renderers, or none.
 
 Extension points, in the order to try them:
 
-1. **Nothing.** `H2Reflect` (`src/jvmMain/kotlin/afield/visualization/H2Reflect.kt`) reflects any
+1. **Nothing.** `H2Reflect` (`src/jvmMain/kotlin/afield/ui/visualization/H2Reflect.kt`) reflects any
    domain object with two or more public properties. Both renderers read
    `H2Reflect.properties` — deliberately the single enumerator, so `/tree` and the panel cannot
    report different children for one value.
@@ -77,14 +77,14 @@ graph is cyclic by construction now that `nestInto` creates the `parents`/`child
 
 Verification sources:
 
-- `src/jvmTest/kotlin/afield/LinalgThumbnailVisualizerTest.kt`
-- `src/jvmTest/kotlin/afield/H2StructuredExplorerTest.kt` — the gate, the refusals, the reflective
+- `src/jvmTest/kotlin/afield/ui/visualization/LinalgThumbnailVisualizerTest.kt`
+- `src/jvmTest/kotlin/afield/ui/visualization/H2StructuredExplorerTest.kt` — the gate, the refusals, the reflective
   traps, and the four adapters. It restates the pre-change `isHeavyStructure` predicate as
   `oldGateAdmits` and asserts the premise first, so a sample that is secretly a collection fails
   loudly instead of making the rest vacuous.
-- `src/jvmTest/kotlin/afield/server/H2ExplorerRecordRowsTest.kt` — panel cell content for the
+- `src/jvmTest/kotlin/afield/app/server/H2ExplorerRecordRowsTest.kt` — panel cell content for the
   record/table path.
-- `src/jvmTest/kotlin/afield/UnitValueVisualizerTest.kt` — the fence that `.h2` on a `Quantity`
+- `src/jvmTest/kotlin/afield/ui/visualization/UnitValueVisualizerTest.kt` — the fence that `.h2` on a `Quantity`
   stays with the unit-aware compact renderer.
 - `tools/run_ui_regressions.py --id h2-domain-explorer` — pixels, reading the iframe's own DOM.
   `--id h2-panel-sizing` is the list/geometry counterpart.

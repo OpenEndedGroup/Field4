@@ -1,6 +1,6 @@
 # Dough DSP plot-capture harness
 
-`afield.four.synth.DoughDspPlotGallery` is the headless **response-gallery / plot-capture
+`afield.audio.synth.DoughDspPlotGallery` is the headless **response-gallery / plot-capture
 harness** for the dough DSP ports in `DoughDsp.kt` (`PlateReverb`, `Phaser`,
 `ChamberlinLowpass`, `CurvedADSR`, `SoftDistort`, `ZawOsc`/`PulzeOsc`). It is the visual
 companion to `DoughDspSmokeTest` (`synth.dough-dsp.smoke`), which asserts the same behaviour

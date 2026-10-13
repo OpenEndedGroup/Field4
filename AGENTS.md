@@ -11,7 +11,7 @@ of rules that became code live in
 
 **Field·4** is a Kotlin live-coding environment for graphics and exploratory data visualization:
 
-- **Backend (JVM/Kotlin)**: a Ktor HTTPS + WebSocket server (`afield.Server`) that manages
+- **Backend (JVM/Kotlin)**: a Ktor HTTPS + WebSocket server (`afield.app.server.Server`) that manages
   documents, runs user code, and optionally drives Vulkan/OpenXR rendering via `afield.four`.
 - **Frontend (Kotlin/JS)**: a browser UI (canvas + Monaco editor) talking to the server over a
   small JSON RPC protocol defined in `src/commonMain`.
@@ -27,7 +27,7 @@ Top-level layout:
 - `dev_docs/agents/transcripts/`, `dev_docs/agents/demos/`, `templates/`: authored examples and templates;
   generated transcript documents live under `public/docs/assets/agent_transcripts/`.
 - `python/`: Python that ships with Field, appended to `sys.path` in Python boxes — `fieldcv`
-  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.python.NumpyShared`;
+  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.lang.python.NumpyShared`;
   optional `cv` dependency group, see `python/fieldcv/README.md`).
 - `dev_docs/`: internal design notes, grouped in topical folders (`agents/`, `animation/`,
   `workspace/`, `physics/`, `testing/`, ...).
@@ -192,6 +192,16 @@ branch with `tools/merge_regen.py main`, which regenerates rather than hand-merg
 
 ## 4. Backdoor essentials
 
+For work the user expects to see in Field's Electron app, begin with the MCP
+`field_status` and `field_electron_tabs` tools. Check `serverWorkspace`, the
+selected tab and its URL before using document or box operations. Inspect and
+capture the existing tab with `field_electron_inspect` and
+`field_electron_screenshot`; use `field_electron_act` for labelled controls and
+`field_electron_console` for its recent warnings and errors. Use an independent
+browser capture when the task calls for an isolated test, and label that capture
+as a separate browser view. The active output-iframe bridge addresses content
+inside a box's output area.
+
 Prefer `tools/field_backdoor.py` to driving a browser by hand. Full reference:
 [`dev_docs/agents/FIELD_BACKDOOR.md`](dev_docs/agents/FIELD_BACKDOOR.md) (workflow, capture
 signatures and recipes, suite details); cheat sheet:
@@ -272,9 +282,9 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 
 ### RPC
 
-Messages are `kotlinx.serialization` JSON in the `afield.Message` envelope. Both sides send via
+Messages are `kotlinx.serialization` JSON in the `afield.app.protocol.Message` envelope. Both sides send via
 `_send(...)` (JVM actual in `Server.kt`, JS actual in `Message.kt`); `handle(message)` looks up
-`handlers[message.name]`, many of which `afield.Server.server()` installs. Replies:
+`handlers[message.name]`, many of which `afield.app.server.Server.server()` installs. Replies:
 `sendWithReply(message, callbackName, handler)` sets `replyTo`, and the receiver answers with
 `Message(callbackName)` (often via `message.toName(...)`). A new RPC is (1) payload types in
 `rpc.kt`, (2) a server handler in `Server.kt` or `afield/server/*`, (3) a frontend sender or
@@ -292,7 +302,7 @@ scripts may still use globals exposed on `window`; new module scripts import.
 
 Field has more than one main loop, and conflating them makes bugs hard fast.
 
-- `afield.Runloop` (`src/jvmMain/kotlin/afield/Runloop.kt`), started from `Server.kt`, advances
+- `afield.runtime.lifecycle.Runloop` (`src/jvmMain/kotlin/afield/Runloop.kt`), started from `Server.kt`, advances
   the coarse frame counter (`Runloop.frame`), runs `preRun` / `main.frame()` / `postRun` once per
   tick, and hosts main-thread coordination: UI, box/runtime bookkeeping, websocket-adjacent work,
   graphics setup that must step with the app frame, and low-rate control updates (graph/query
@@ -402,15 +412,15 @@ canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt
 
 ### FLine
 
-`afield.graphics.FLine` (`afield/graphics/FLine.kt`) is the core drawn line/path type, with
+`afield.geometry.path.FLine` (`afield/graphics/FLine.kt`) is the core drawn line/path type, with
 geometry in `FLineGeometry.kt` (sampling, offsets, boolean ops, smoothing) and
 `FLinesAndJavaShapes.kt` (round-trips through `java.awt.geom`). It renders to SVG/HTML
 (`afield/graphics/someSkiko.kt`, Skia `SVGCanvas`; `Box.lines(...)` displays it) and to Vulkan
-(`afield/graphics/StandardDrawing.kt` streams into `afield.four.buffers.DynamicallyWriteable`).
+(`afield/graphics/StandardDrawing.kt` streams into `afield.graphics.vulkan.buffers.DynamicallyWriteable`).
 
 ---
 
-## 6. Graphics (`afield.four`)
+## 6. Vulkan graphics (`afield.four`)
 
 The Vulkan stack under `src/jvmMain/kotlin/afield/four/` is built on LWJGL (Vulkan, VMA,
 shaderc, SPIRV-Cross via the `spvc` bindings) with optional OpenXR targets for VR.
@@ -422,7 +432,7 @@ KosmicKrisp manifest by default on Apple silicon with macOS 26+ (MoltenVK elsewh
 `AFIELD_VULKAN_DRIVER=moltenvk`, which the IOSurface features still need;
 `dev_docs/KOSMICKRISP.md`). `Window` and `Instance` call it themselves, so no entrypoint can skip
 it. With no SDK, LWJGL's bundled MoltenVK is used.
-`afield.four.util.VulkanProbe` probes loader, driver, layers and SDK in a child JVM and shows them
+`afield.graphics.vulkan.util.VulkanProbe` probes loader, driver, layers and SDK in a child JVM and shows them
 in the `/welcome` Vulkan panel (`/welcome#vulkan`, `GET /api/vulkan-status[?refresh=1]`), with
 per-OS install steps. Shader introspection uses LWJGL's SPIRV-Cross bindings; the old checked-in
 `bin/spirv-cross-*` binaries are no longer needed.

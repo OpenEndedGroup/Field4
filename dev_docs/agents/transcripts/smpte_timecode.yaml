@@ -12,8 +12,8 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
-
+          import afield.io.timecode.*
+          
           val t = Timecode.parse("00:00:59;29")
           markdown("main", "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29")}` + 1 frame = `${Timecode.parse("00:09:59;29") + 1}`  \nan hour of drop-frame labels is ${"%.3f".format(Timecode.parse("01:00:00;00").totalSeconds)} s of wall time")
   - create:
@@ -22,12 +22,12 @@ operations:
       frame: { x: 520.0, y: 60.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
-
+          import afield.io.timecode.*
+          
           // Four seconds of 29.97 drop-frame LTC across the one-minute boundary.
           val start = Timecode.parse("00:00:58;00")
           val ltc = LtcEncoder.render(start, 4.0, sampleRate = 48000)
-
+          
           // Play it back badly: quiet, offset, noisy, and speeding up from 0.9x to 1.1x.
           val rng = java.util.Random(1)
           val played = ArrayList<Float>()
@@ -38,9 +38,9 @@ operations:
               played += v * 0.1f + 0.2f + rng.nextGaussian().toFloat() * 0.01f
               p += 0.9 + 0.2 * p / ltc.size
           }
-
+          
           val frames = LtcDecoder(48000, TimecodeRate.FPS_2997_DF).decodeAll(played.toFloatArray())
-
+          
           // Decoded frame number against playback time, and the speed the decoder measured.
           val w = 640.0; val h = 220.0
           val tMax = played.size / 48000.0
@@ -65,12 +65,12 @@ operations:
       frame: { x: 60.0, y: 260.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
-
+          import afield.io.timecode.*
+          
           // A locate, then two seconds of running MTC at 25 fps, decoded as it would be on the far end of a cable.
           val decoder = MtcDecoder()
           val clock = TimecodeClock(TimecodeRate.FPS_25).followMtc(decoder)
-
+          
           var tc = Timecode.parse("09:59:58:00", TimecodeRate.FPS_25)
           decoder.accept(Mtc.fullFrameMessage(tc))
           val afterLocate = clock.now()
@@ -86,8 +86,8 @@ operations:
       frame: { x: 520.0, y: 260.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.timecode.*
-
+          import afield.io.timecode.*
+          
           // Follow LTC delivered in audio-sized blocks, and read the clock between blocks, as a draw loop would.
           val clock = TimecodeClock(TimecodeRate.FPS_24).followLtc(48000)
           val ltc = LtcEncoder.render(Timecode.parse("01:00:00:00", TimecodeRate.FPS_24), 1.0)

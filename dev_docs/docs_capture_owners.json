@@ -189,7 +189,7 @@
       "asset": "public/docs/assets/pat_transcription/pat-transcription-roundtrip.svg",
       "page": "sound.md",
       "owner": "synth.pat.transcription",
-      "generator": "src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt",
+      "generator": "src/jvmMain/kotlin/afield/audio/synth/PatTranscriptionGallery.kt",
       "command": "PAT_TRANSCRIPTION_DIR=/tmp/pat_transcription python3 tools/run_field_tests.py --id synth.pat.transcription && cp /tmp/pat_transcription/* public/docs/assets/pat_transcription/",
       "artifact": "SVG, emitted directly by the gallery rather than converted. The test asserts every rectangle in each file corresponds to a reference note, a recovered note or a declined span, that no coordinate is non-finite, and that the panels which are supposed to disagree do. Check the recovered-note counts in the panel headings against the page's prose before replacing these."
     },
@@ -197,7 +197,7 @@
       "asset": "public/docs/assets/pat_transcription/pat-transcription-opposite-failures.svg",
       "page": "sound.md",
       "owner": "synth.pat.transcription",
-      "generator": "src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt",
+      "generator": "src/jvmMain/kotlin/afield/audio/synth/PatTranscriptionGallery.kt",
       "command": "PAT_TRANSCRIPTION_DIR=/tmp/pat_transcription python3 tools/run_field_tests.py --id synth.pat.transcription && cp /tmp/pat_transcription/* public/docs/assets/pat_transcription/",
       "artifact": "SVG, emitted directly by the gallery rather than converted. The test asserts every rectangle in each file corresponds to a reference note, a recovered note or a declined span, that no coordinate is non-finite, and that the panels which are supposed to disagree do. Check the recovered-note counts in the panel headings against the page's prose before replacing these."
     },
@@ -205,7 +205,7 @@
       "asset": "public/docs/assets/pat_transcription/pat-transcription-refusals-and-limits.svg",
       "page": "sound.md",
       "owner": "synth.pat.transcription",
-      "generator": "src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt",
+      "generator": "src/jvmMain/kotlin/afield/audio/synth/PatTranscriptionGallery.kt",
       "command": "PAT_TRANSCRIPTION_DIR=/tmp/pat_transcription python3 tools/run_field_tests.py --id synth.pat.transcription && cp /tmp/pat_transcription/* public/docs/assets/pat_transcription/",
       "artifact": "SVG, emitted directly by the gallery rather than converted. The test asserts every rectangle in each file corresponds to a reference note, a recovered note or a declined span, that no coordinate is non-finite, and that the panels which are supposed to disagree do. Check the recovered-note counts in the panel headings against the page's prose before replacing these."
     }

@@ -10,9 +10,9 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.AudioVisualizer
-          import afield.stdlib.AudioVisualizerOptions
-          import afield.four.audio.WavFloatArrayLoader
+          import afield.ui.visualization.AudioVisualizer
+          import afield.ui.visualization.AudioVisualizerOptions
+          import afield.audio.engine.WavFloatArrayLoader
           import java.io.File
           import java.nio.file.Path
           val json = FieldAudioClient.json

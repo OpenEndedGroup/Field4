@@ -15,14 +15,14 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
-
+          import afield.io.syphon.*
+          
           run {
           if (!Syphon.isAvailable) {
               markdown(Syphon.describe())
               return@run
           }
-
+          
           val servers = Syphon.servers(waitMs = 1000)
           markdown(if (servers.isEmpty()) "No Syphon servers are running."
                    else servers.joinToString("\n") { "- **${it.appName}** ${it.name}" })
@@ -33,20 +33,20 @@ operations:
       frame: { x: 80.0, y: 520.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
+          import afield.io.syphon.*
           import java.awt.BasicStroke
           import java.awt.Color
           import java.awt.RenderingHints
           import java.awt.image.BufferedImage
-
+          
           // without the library this stops here and says how to build it
           check(Syphon.isAvailable) { Syphon.describe() }
-
+          
           // other applications list this as "java — Field pattern" (or Field's app name)
           val out = syphonServer("Field pattern")
           val img = BufferedImage(640, 360, BufferedImage.TYPE_INT_ARGB)
           var t = 0.0
-
+          
           loop {
               t += 1.0 / 60
               val g = img.createGraphics()
@@ -72,14 +72,14 @@ operations:
       frame: { x: 80.0, y: 960.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
-
+          import afield.io.syphon.*
+          
           // without the library this stops here and says how to build it
           check(Syphon.isAvailable) { Syphon.describe() }
-
+          
           // a server's name, app name or uuid; "" takes the first one announced
           val inp = syphonClient("Field pattern")
-
+          
           loop {
               inp.png()?.let { display("main", it) }
               delay(250)

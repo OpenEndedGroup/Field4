@@ -43,7 +43,7 @@ from Kotlin), and writes the result (keeping its size in `.w`) into a
 second buffer. The vertex shader expands six vertices per particle into a
 camera-facing quad; the fragment shader draws a soft dot. This is the ordinary
 two-module (compute + draw) pattern from
-[afield.four Graphics](afield_four_graphics.md). The only probe-specific lines
+[Field 4 Graphics](afield_four_graphics.md). The only probe-specific lines
 are the include and the single `fieldProbe(length(delta))` call, which records
 how far each particle moved this step (its speed).
 

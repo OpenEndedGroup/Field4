@@ -1,7 +1,7 @@
-import afield.onnx.ClipImage
-import afield.onnx.clipEncode
-import afield.onnx.DepthAnything
-import afield.util.PngEncoder
+import afield.ai.inference.onnx.ClipImage
+import afield.ai.inference.onnx.clipEncode
+import afield.ai.inference.onnx.DepthAnything
+import afield.media.image.util.PngEncoder
 import org.bytedeco.javacv.OpenCVFrameConverter
 import org.bytedeco.javacv.OpenCVFrameGrabber
 import org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGBA

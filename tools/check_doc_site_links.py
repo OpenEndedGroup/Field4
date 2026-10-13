@@ -81,7 +81,7 @@ of the built site on 2026-09-17, ``reference/source/jvmMain/afield/outputs/index
 ``<pre class="code-diff-fence-static" …><code>… &lt;iframe … src="/keyframe_browser.html?root=$token"``
 — already escaped, already inert. Nothing was reaching the browser; the extractor was reading
 displayed code. So the fix is here, in the extractor, and ``generate_source_pages``
-(which is ``afield.docs.SourcePageGenerator``, emitting ``diffstatic`` fences) needs no change.
+(which is ``afield.tools.docs.SourcePageGenerator``, emitting ``diffstatic`` fences) needs no change.
 
 Measured on the full build the same night, over 613 pages: of 146724 ``href``/``src``/``poster``/
 ``srcset`` attribute matches in the raw HTML, 51 sit inside a ``<pre>`` or ``<code>``. 39 of

@@ -17,20 +17,20 @@ From `code`
 Repair it, cut it, and be told what could not be done.
 
 ```edn [field-box id="mesh-repair-fix" role="properties"]
-{"id" "mesh-repair-fix" "index" 0 "name" "Mesh repair — fill the holes, then cut it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — fill the holes, then cut it" "_tombstone" false "frame" #afield/rect [620.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-fix_code_.kt" "lines" 61 "characters" 2396 "sha256" "37b59f031e1db6d7576de653b661e3f5eb9d8e7c6bd2276687a58b2c61d143ab"}]}
+{"id" "mesh-repair-fix" "index" 0 "name" "Mesh repair — fill the holes, then cut it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — fill the holes, then cut it" "_tombstone" false "frame" #afield/rect [620.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-fix_code_.kt" "lines" 61 "characters" 2476 "sha256" "6303513cb79ca261113191b9e945e6cb864c5e7036f1f8b3f5a512a9132153fe"}]}
 ```
 
 ```kotlin [field-property box="mesh-repair-fix" name="code" path="mesh-repair-fix_code_.kt"]
 // Repair it, cut it, and be told what could not be done.
 
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.stdlib.TriMesh
-import afield.stdlib.defectFLines
-import afield.stdlib.icosphereMesh
-import afield.stdlib.repairToSolid
-import afield.stdlib.signedVolume
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.defectFLines
+import afield.geometry.mesh.icosphereMesh
+import afield.geometry.mesh.repairToSolid
+import afield.geometry.mesh.signedVolume
 
 run {
 
@@ -99,7 +99,7 @@ point — diagnose() and showMeshDiagnosis exist only where mesh_repair.kt does,
 box compiles at all, the Field running it has that code.
 
 ```edn [field-box id="mesh-repair-diagnose" role="properties"]
-{"id" "mesh-repair-diagnose" "index" 1 "name" "Mesh repair — why is this not a solid?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — why is this not a solid?" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-diagnose_code_.kt" "lines" 57 "characters" 2494 "sha256" "49c9120b22a73220a3124712d1996a305353f20d274ba31c1b2d6dcbea5bf3ec"}]}
+{"id" "mesh-repair-diagnose" "index" 1 "name" "Mesh repair — why is this not a solid?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — why is this not a solid?" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-diagnose_code_.kt" "lines" 57 "characters" 2552 "sha256" "0b4fbdba44a4d00143507a889da01eafce7ca55ebe9fb269469770d1e423b873"}]}
 ```
 
 ```kotlin [field-property box="mesh-repair-diagnose" name="code" path="mesh-repair-diagnose_code_.kt"]
@@ -109,12 +109,12 @@ box compiles at all, the Field running it has that code.
 // point — diagnose() and showMeshDiagnosis exist only where mesh_repair.kt does, so if this
 // box compiles at all, the Field running it has that code.
 
-import afield.manifold.ManifoldLibrary
-import afield.manifold.isValidSolid
-import afield.stdlib.TriMesh
-import afield.stdlib.diagnose
-import afield.stdlib.icosphereMesh
-import afield.stdlib.showMeshDiagnosis
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.isValidSolid
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.diagnose
+import afield.geometry.mesh.icosphereMesh
+import afield.geometry.mesh.showMeshDiagnosis
 
 run {
 

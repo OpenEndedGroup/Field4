@@ -96,7 +96,7 @@ From `code`
 
 The engine is SHARED, and that is the point of the whole exercise.
 
-Field had two population searches before tonight and they shared no code: afield.morpho's
+Field had two population searches before tonight and they shared no code: afield.lang.morpho's
 (GraalJS, not stdlib) and FunctionEvolve's, over Fn graphs. Neither was parametric.
 
 FunctionEvolve.evolve no longer contains a search. Its body is
@@ -115,13 +115,13 @@ acceptedMutations=12  evaluations=961
 Below is that same search, running here.
 
 ```edn [field-box id="shared_core" role="properties"]
-{"id" "shared_core" "index" 1 "name" "4 — The engine is shared: FunctionEvolve too" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — The engine is shared: FunctionEvolve too" "_tombstone" false "frame" #afield/rect [60.0 510.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_core_code_.kt" "lines" 50 "characters" 2380 "sha256" "2ca1b47188430d56dc93af5287f4bb605acd50ee5df318ae76103fccf80c8a07"}]}
+{"id" "shared_core" "index" 1 "name" "4 — The engine is shared: FunctionEvolve too" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — The engine is shared: FunctionEvolve too" "_tombstone" false "frame" #afield/rect [60.0 510.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_core_code_.kt" "lines" 50 "characters" 2385 "sha256" "87416c2e5ebd743d06d50fdfadc6fce068d8de1868ce5111b1446412eaf93854"}]}
 ```
 
 ```kotlin [field-property box="shared_core" name="code" path="shared_core_code_.kt"]
 // The engine is SHARED, and that is the point of the whole exercise.
 //
-// Field had two population searches before tonight and they shared no code: afield.morpho's
+// Field had two population searches before tonight and they shared no code: afield.lang.morpho's
 // (GraalJS, not stdlib) and FunctionEvolve's, over Fn graphs. Neither was parametric.
 //
 // FunctionEvolve.evolve no longer contains a search. Its body is
@@ -184,7 +184,7 @@ The same engine, a completely different genome.
 A life-like rule is a TABLE: which neighbour counts cause a birth, which cause survival. At a
 radius-2 neighbourhood that is 24 birth bits and 25 survival bits, a fixed-length bit string, and
 therefore a genome two parents can be recombined across. Field had exactly one other two-parent
-crossover before this (afield.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
+crossover before this (afield.lang.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
 crossover over the rule table and it is real recombination, not a graft.
 
 Radius 2 rather than the classic Moore 8 is a deliberate choice and it is the most useful thing
@@ -194,7 +194,7 @@ for exactly that reason. A control arm that nearly wins is telling you the probl
 that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 
 ```edn [field-box id="evolve_ca" role="properties"]
-{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 210.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 73 "characters" 3962 "sha256" "c0418b3b6d2cd06a8cab5b16ae7ef515d4aabd77bf78b290dfd27390c244afc2"}]}
+{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 210.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 73 "characters" 3967 "sha256" "e7cdca3bcecabccdce2f620bbc39bf07887d7089b44659b2f02ffee2a8dc977d"}]}
 ```
 
 ```kotlin [field-property box="evolve_ca" name="code" path="evolve_ca_code_.kt"]
@@ -203,7 +203,7 @@ that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 // A life-like rule is a TABLE: which neighbour counts cause a birth, which cause survival. At a
 // radius-2 neighbourhood that is 24 birth bits and 25 survival bits, a fixed-length bit string, and
 // therefore a genome two parents can be recombined across. Field had exactly one other two-parent
-// crossover before this (afield.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
+// crossover before this (afield.lang.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
 // crossover over the rule table and it is real recombination, not a graft.
 //
 // Radius 2 rather than the classic Moore 8 is a deliberate choice and it is the most useful thing

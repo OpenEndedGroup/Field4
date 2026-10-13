@@ -59,7 +59,7 @@ Capture (screenshots, output collection) is **not** a macro op — it is done wi
 
 ## Graphics Topology Rule
 
-`afield.four` examples get their `Renderer` from graph topology, not from global state. The renderer box must be launched first, and each graphics example box must be connected as a child of that renderer box before it runs.
+Field 4 examples get their `Renderer` from graph topology, not from global state. The renderer box must be launched first, and each graphics example box must be connected as a child of that renderer box before it runs.
 
 Use this sequence for new graphics automation:
 
@@ -70,7 +70,7 @@ Use this sequence for new graphics automation:
 5. In example code, resolve `val renderer: Renderer = fromContext()` at top level before calling `start(...)` or launching suspend work.
 6. Pass that renderer explicitly into async helpers that render or capture.
 
-If a graphics example reports `must pass in a value for context parameter afield.four.Renderer`, treat it as a broken parent-child setup or a renderer lookup that happened after coroutine context was lost. Fix the transcript topology or capture the renderer before `start(...)`; do not add sleeps or window-system screenshot fallbacks.
+If a graphics example reports `must pass in a value for context parameter afield.graphics.vulkan.Renderer`, treat it as a broken parent-child setup or a renderer lookup that happened after coroutine context was lost. Fix the transcript topology or capture the renderer before `start(...)`; do not add sleeps or window-system screenshot fallbacks.
 
 For renderer boxes, keep `start(renderer::run)` as the final expression of the launched code. Field uses the returned `Frames` object as the running job; adding logging or setup after `start(...)` can leave a constructed renderer whose frame counter never advances.
 
@@ -106,7 +106,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   1024 x 1024 square onto a million points in three discs and paints each pixel by its target.
   The two still boxes execute and the morph is launched for 90 frames and stopped.
 - `paint_canvas.yaml`: three pure-CPU boxes that paint and draw FLines through
-  `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
+  `afield.graphics.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
   blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
   without it every box says so and stops.
 - `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
@@ -122,7 +122,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   population as `branchState`, so a chat rewind rewinds the search and `evolve_crossbreed` can breed
   with a branch left behind. The transcript only runs the box, which renders the target and nothing
   else; searching needs a person (or `agent-task --chat-box Evolve`) and a provider.
-- `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
+- `syphon_bridge.yaml`: three boxes over `afield.io.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
 - `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
@@ -151,7 +151,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `two_box_context.yaml`: creates two boxes, connects them, and runs child code that depends on graph context.
 - `gp_instruments.yaml`: **Gaussian processes as tuning instruments** — a `GpOptimizer` fitting a curve's three dials to a target in thirty tries, a `GpPreference` A/B loop over a rosette driven by two buttons, and the same loop against a simulated judge whose favourite walks to its hidden ideal.
 - `gp_drawing.yaml`: **Drawing with Gaussian processes**, to play with — a closed loop through six draggable pins (periodic kernel, no seam), four 1-D measurements with length-scale and noise sliders, and a 2-D field's mean, draws and standard deviation. Companion to `public/docs/gaussian_processes.md`.
-- `graphics_renderer_launch.yaml`: creates the reusable `agent_graphics_context` renderer box, launches it with `start(renderer::run)`, prints `agent graphics renderer ready`, and waits three Runloop frames. Run this before child `afield.four` graphics transcripts.
+- `graphics_renderer_launch.yaml`: creates the reusable `agent_graphics_context` renderer box, launches it with `start(renderer::run)`, prints `agent graphics renderer ready`, and waits three Runloop frames. Run this before child Field 4 graphics transcripts.
 - `field_ui_browser_texture.yaml`: self-contained recursive graphics proof and puppet-browser starting point. A hidden Electron window opens the same Field document, transfers accelerated offscreen IOSurfaces into the JVM, and a Vulkan mesh samples the stable resident texture. The native window's mouse and keyboard control Chromium, `browserControl` publishes the full navigation/input/JavaScript/CDP interface for experimentation, and the launch performs a page-to-Field-to-JavaScript promise round trip. Start Field normally, then run the renderer box before the connected panel box.
 - `youtube_mouse_keyboard_browser.yaml`: the direct desktop-input puppet-browser starting point. It opens a full YouTube watch page into a matching 1280×720 native window and routes that window's mouse motion/buttons/wheel plus physical keyboard, modifiers, and text input straight into Chromium. There is no OpenXR or controller stand-in: click the EU consent controls, use the search field, and operate the player as an ordinary browser. Electron keeps page audio live.
 - `youtube_kaleidoscope.yaml`: the deliberately excessive native-compositing proof. It accepts the EU consent page and starts a real YouTube video through the puppet JavaScript bridge, then samples the fully composited Chromium tab across 224 independently animated Vulkan triangles. The vertex stage opens moving cracks; the fragment stage folds, mirrors and chromatically separates a different region of the browser texture in every shard. Its public walkthrough and live docs capture are in `public/docs/puppet_browser.md`.

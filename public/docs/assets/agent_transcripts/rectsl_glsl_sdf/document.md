@@ -23,7 +23,7 @@ channels are tracks — which is why so little of the language has to be
 ported. See rectsl_cheatsheet.md, "Lowering to GLSL".
 
 ```edn [field-box id="sdf_lower" role="properties"]
-{"id" "sdf_lower" "index" 0 "name" "rectsl -> glsl sdf" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "rectsl -> glsl sdf" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sdf_lower_code_.kt" "lines" 35 "characters" 1199 "sha256" "d686e1bf4978aa39635674b67ba0898c356e17e4121d6403c37527b22fab0060"}]}
+{"id" "sdf_lower" "index" 0 "name" "rectsl -> glsl sdf" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "rectsl -> glsl sdf" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sdf_lower_code_.kt" "lines" 35 "characters" 1209 "sha256" "556c670d8c310cd5d1256968f0e74ade0b9bfab233b89433e5060c803d13919a"}]}
 ```
 
 ```kotlin [field-property box="sdf_lower" name="code" path="sdf_lower_code_.kt"]
@@ -34,8 +34,8 @@ ported. See rectsl_cheatsheet.md, "Lowering to GLSL".
 // before this point. What reaches the GPU is a flat list of rects whose
 // channels are tracks — which is why so little of the language has to be
 // ported. See rectsl_cheatsheet.md, "Lowering to GLSL".
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
 
 val rectsl = """
 #rectsl
@@ -77,16 +77,16 @@ from the single float that `scene` returns, and none of it is available
 from the rasterized-quad path that RectSL normally renders through.
 
 ```edn [field-box id="sdf_use" role="properties"]
-{"id" "sdf_use" "index" 1 "name" "using the distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "using the distance" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sdf_use_code_.kt" "lines" 52 "characters" 2196 "sha256" "9384bd2c099a1f1feaf6e8c45fce0abd95130f10b818bee3ef45e5783c94e7ea"}]}
+{"id" "sdf_use" "index" 1 "name" "using the distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "using the distance" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sdf_use_code_.kt" "lines" 52 "characters" 2211 "sha256" "8975720265994a1591235f9211acab1784b76767ef8f96f3fa4153b0766d17eb"}]}
 ```
 
 ```kotlin [field-property box="sdf_use" name="code" path="sdf_use_code_.kt"]
 // A distance is worth more than a coverage mask. Everything below comes
 // from the single float that `scene` returns, and none of it is available
 // from the rasterized-quad path that RectSL normally renders through.
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
-import afield.rectsl.RectSLSdfLook
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
+import afield.lang.rectsl.RectSLSdfLook
 
 val rectsl = """
 #rectsl

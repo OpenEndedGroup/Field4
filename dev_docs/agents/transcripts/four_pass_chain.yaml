@@ -48,7 +48,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -66,16 +66,16 @@ operations:
       frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.applyScenePlan
-          import afield.stdlib.linalg.Matrix4f
-          import afield.stdlib.linalg.Vector3f
-
+          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.applyScenePlan
+          import afield.math.linalg.Matrix4f
+          import afield.math.linalg.Vector3f
+          
           prop<StandardRenderer.Bundle>(bundle)
-
+          
           val r: Renderer = fromContext()
-
+          
           once.bundle {
               val b = StandardRenderer.build(
                   r,
@@ -91,7 +91,7 @@ operations:
               b.scene.lightIntensity = 3.4f
               b.scene.shadowStrength = 1f
               b.scene.aoStrength = 0.8f
-
+          
               for (ix in -2..2) {
                   for (iz in -2..2) {
                       b.registerSphere(name = "ball-$ix-$iz", radius = 0.3f, slices = 24, stacks = 24, renderer = r)
@@ -111,16 +111,16 @@ operations:
       frame: { x: 640.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.fabricated.FabricateBuiltChain
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.addPassChain
-
+          import afield.graphics.scene.fabricated.FabricateBuiltChain
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.addPassChain
+          
           prop<FabricateBuiltChain>(chain)
-
+          
           val r: Renderer = fromContext()
           val b: StandardRenderer.Bundle = fromContext()
-
+          
           // Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
           // quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
           // rejoins at full resolution while sampling the small blur. `printReport` prints the plan
@@ -142,12 +142,12 @@ operations:
               b.present(renderer = r)
               c
           }
-
+          
           // ── live knobs. Edit a number, hit run. No rebuild, no reallocation. ──
           chain.setPush("aperture-near", "radius", 4f)
           chain.setPush("aperture-far", "radius", 14f)
           chain.setPush("composite", "blend", 0.92f)
-
+          
           println(chain.plan.report())
   - connect: { parent: pc_renderer, child: pc_scene }
   - connect: { parent: pc_scene, child: pc_chain }

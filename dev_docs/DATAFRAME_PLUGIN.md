@@ -73,7 +73,7 @@ it across (`DataFramePluginSpike.kt:39#FirDeclarationDataRegistry`).
 
 ### The spike, and its five probes
 
-`kotlin.dataframe-plugin.spike`, runner `jvm-main`, entrypoint `afield.DataFramePluginSpike`
+`kotlin.dataframe-plugin.spike`, runner `jvm-main`, entrypoint `afield.runtime.kotlin.DataFramePluginSpike`
 (`DataFramePluginSpike.kt:8#kotlin.dataframe-plugin.spike`). It asserts two invariants loudly and then
 reports either way on five probes — the invariants exist because a spike that silently measures plain
 Kotlin is worse than no spike:
@@ -174,7 +174,7 @@ preamble re-entry point, not just a text split.**
 
 ## 4. `DataFrameVisualizer`
 
-`src/jvmMain/kotlin/afield/visualization/DataFrameVisualizer.kt`, 148 lines, `package afield`.
+`src/jvmMain/kotlin/afield/ui/visualization/DataFrameVisualizer.kt`, 148 lines, `package afield`.
 
 `DataFrame` is a third-party interface and cannot implement `ToHTML` the way `Table` and `Img` do,
 which is what `ValuePrinterRegistry` (compact `.h`) and `H2ValueRegistry` (`.h2`) exist for:

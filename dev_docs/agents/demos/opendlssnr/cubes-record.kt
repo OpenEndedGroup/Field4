@@ -1,4 +1,4 @@
-import afield.four.neuralrendering.OpenDlssNrStudy
+import afield.graphics.render.neural.OpenDlssNrStudy
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 

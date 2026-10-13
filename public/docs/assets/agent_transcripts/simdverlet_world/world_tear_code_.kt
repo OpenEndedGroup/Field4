@@ -1,5 +1,5 @@
-import afield.four.physics.*
-import afield.stdlib.vec
+import afield.simulation.physics.*
+import afield.math.linalg.vec
 
 /*
 Tearing, with something doing the tearing: a sphere pushed through a sheet that is pinned

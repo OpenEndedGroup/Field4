@@ -102,7 +102,7 @@ In a box connected beneath your renderer, this wraps an existing `source` RTT.
 The processor schedules the source render and supplies a sampled output target:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.diffusion.*
+import afield.media.video.diffusion.*
 
 val root = StreamDiffusionSupport.configuredRoot()
 val config = root?.let {
@@ -182,8 +182,8 @@ opt into the controls. The provider records a GPU correspondence target in the
 supplied command buffer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.diffusion.*
-import afield.four.device.CommandBuffer
+import afield.media.video.diffusion.*
+import afield.graphics.vulkan.device.CommandBuffer
 
 val config = StreamDiffusionConfig(checkNotNull(root),
     displayReprojection = true, historyBlend = .35, noiseAdvection = .8)

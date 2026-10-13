@@ -1,6 +1,6 @@
 # Searching for MorphoHDL circuits
 
-`afield.morpho` gained a generative / evolutionary search layer on 2026-08-01, twelve hours after
+`afield.lang.morpho` gained a generative / evolutionary search layer on 2026-08-01, twelve hours after
 the MorphoHDL bridge itself landed (`2a698dfc`). This is what it does, what it found, and — the
 longer half — what it did not find.
 

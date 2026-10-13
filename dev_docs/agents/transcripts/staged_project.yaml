@@ -62,7 +62,7 @@ operations:
           // to its neighbour on side "e" (east) or "s" (south). Loot is [x, y, path budget].
           import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
           import com.fasterxml.jackson.module.kotlin.readValue
-
+          
           val json = jacksonObjectMapper()
           val first = """
           {"rooms": {"hall": [0, 0, 6, 4], "yard": [6, 0, 6, 4], "armory": [12, 0, 5, 4],
@@ -74,7 +74,7 @@ operations:
           Box.ioPersistentProperties.add("level")
           Box.ioSeparateProperties["level"] = "json"
           if (getPropertyRaw("level") == null) setPropertyRaw("level", json.writeValueAsString(json.readTree(first)))
-
+          
           // Every check a level must pass. Edits that break one are refused and change nothing.
           fun problems(level: Map<String, Any?>): List<String> {
               val out = mutableListOf<String>()
@@ -98,7 +98,7 @@ operations:
               if ((level["loot"] as? Map<*, *>).isNullOrEmpty()) out += "a level needs at least one loot point"
               return out
           }
-
+          
           val plan = SourceStudy(java.io.File(BoxStudies.directory(thisBox), "level"), "json",
               { getPropertyRaw("level", "").toString() }, BoxStudies.replacer(thisBox, "level"),
               admit = { source, _ ->
@@ -107,7 +107,7 @@ operations:
                   StudyAdmission(source)
               })
           if (plan.resume() == SourceStudy.EMPTY) plan.edit(SourceStudy.EMPTY, SourceStudy.hash(plan.liveSource()), plan.liveSource(), "The level as first drawn")
-
+          
           // One edit: a list of operations, applied together or not at all.
           fun edited(source: String, operations: List<Map<String, Any?>>): String {
               val level = json.readValue<MutableMap<String, Any?>>(source)
@@ -124,7 +124,7 @@ operations:
               }
               return json.writeValueAsString(level)
           }
-
+          
           // The plan view: rooms, doors, the spawn and the loot, and paths when there are any, at s pixels a cell.
           val drawLevel = { source: String, paths: List<List<List<Number>>>, s: Double ->
               val level = json.readValue<Map<String, Any?>>(source)
@@ -158,10 +158,10 @@ operations:
               out
           }
           thisBox.properties["drawLevel"] = drawLevel
-
+          
           fun showPlan() = BoxStudies.show(thisBox, "plan", linesToHTML(drawLevel(plan.revision().source, emptyList(), 24.0), 440.0, 240.0, true))
           showPlan()
-
+          
           // The edit level.edit makes, kept in a property so other boxes can make it too.
           val editLevel = { expectedRevision: String, operations: List<Map<String, Any?>>, description: String ->
               val live = plan.liveSource()
@@ -172,11 +172,11 @@ operations:
           }
           thisBox.properties["editLevel"] = editLevel
           thisBox.properties["levelPlan"] = plan
-
+          
           aiTool("level.inspect") {
               describe("Read the level: rooms [x, y, w, h], doors [x, y, side] (side e or s opens to the east or south neighbour), the spawn [x, y] " +
                   "and loot [x, y, path budget], with the revision to quote to level.edit. Changes nothing.")
-              effects(afield.ai.core.ToolEffect.READ_DOCUMENT)
+              effects(afield.ai.tools.ToolEffect.READ_DOCUMENT)
               action { mapOf("revision" to plan.currentId(), "level" to json.readTree(plan.revision().source),
                   "editedOutsideTools" to (plan.liveSource() != plan.revision().source)) }
           }
@@ -185,7 +185,7 @@ operations:
                   "{op: removeRoom|removeDoor|removeLoot, id} removes one; {op: spawn, at: [x, y]} moves the spawn. Quote the revision from level.inspect. " +
                   "An edit that leaves rooms overlapping, a door not between two rooms, or the spawn or loot outside a room is refused and changes nothing. " +
                   "Every build of the level goes stale; rebuild it.")
-              effects(afield.ai.core.ToolEffect.MUTATE_DOCUMENT)
+              effects(afield.ai.tools.ToolEffect.MUTATE_DOCUMENT)
               val expectedRevision by param<String>("revision from level.inspect")
               val operations by param<List<Map<String, Any?>>>("the operations")
               val description by param<String>("what the edit is for", default = "")
@@ -207,10 +207,10 @@ operations:
           import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
           import com.fasterxml.jackson.module.kotlin.readValue
           import kotlin.math.*
-
+          
           val json = jacksonObjectMapper()
           typealias Cell = Pair<Int, Int>
-
+          
           // Which room each cell is in, and which neighbouring cells a door joins.
           class Grid(source: String) {
               val level = json.readValue<Map<String, Any?>>(source)
@@ -228,7 +228,7 @@ operations:
               val loot = (level["loot"] as Map<String, List<Number>>).mapValues { (_, l) -> cell(l) to l[2].toDouble() }
               fun step(a: Cell, b: Cell) = room[a] != null && room[b] != null && (room[a] == room[b] || (a to b) in doors)
           }
-
+          
           val blockout = StudyBuildStage("blockout", "Blockout", "blockout-v1", setOf("level"),
               resultNotes = { r -> listOf(StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)) }) { c ->
               val g = Grid(c.inputs.getValue("level"))
@@ -244,15 +244,15 @@ operations:
               c.file("blockout.obj").writeText(mesh.toObj("blockout"))
               val area = g.rooms.values.sumOf { it[2] * it[3] }
               // With Manifold installed, the pieces are also joined into one solid and measured.
-              val solid = if (!afield.manifold.ManifoldLibrary.isAvailable) null else afield.manifold.Solid.scope {
-                  val joined = afield.manifold.Solid.union(pieces.map { p -> afield.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2]) })
+              val solid = if (!afield.geometry.solid.manifold.ManifoldLibrary.isAvailable) null else afield.geometry.solid.manifold.Solid.scope {
+                  val joined = afield.geometry.solid.manifold.Solid.union(pieces.map { p -> afield.geometry.solid.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2]) })
                   mapOf("status" to joined.status.toString(), "volume" to joined.volume)
               }
               val summary = "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +
                   (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" } ?: "; install Manifold to check it as one solid")
               StudyBuildProduct(listOf("blockout.obj"), mapOf("rooms" to g.rooms.size, "floorCells" to area, "wallPieces" to walls.size, "solid" to solid, "summary" to summary))
           }
-
+          
           // The shortest walk on the grid from one cell to another, or null.
           fun rough(g: Grid, from: Cell, to: Cell): List<Cell>? {
               val back = mutableMapOf(from to from)
@@ -265,7 +265,7 @@ operations:
               }
               return null
           }
-
+          
           // Whether a straight line between two cell centres stays on the floor and passes walls only through doors.
           fun clear(g: Grid, a: Cell, b: Cell): Boolean {
               val n = (max(abs(b.first - a.first), abs(b.second - a.second)) * 8).coerceAtLeast(1)
@@ -282,7 +282,7 @@ operations:
               }
               return true
           }
-
+          
           // The rough walk pulled tight: from each point, straight to the furthest later point in clear view.
           fun relaxed(g: Grid, path: List<Cell>): List<Cell> {
               val out = mutableListOf(path.first())
@@ -294,14 +294,14 @@ operations:
               }
               return out
           }
-
+          
           fun length(p: List<Cell>) = p.zipWithNext().sumOf { (a, b) -> hypot((b.first - a.first).toDouble(), (b.second - a.second).toDouble()) }
           fun turn(p: List<Cell>) = p.windowed(3).sumOf { (a, b, c) ->
               val u = atan2((b.second - a.second).toDouble(), (b.first - a.first).toDouble())
               val v = atan2((c.second - b.second).toDouble(), (c.first - b.first).toDouble())
               abs(Math.toDegrees(atan2(sin(v - u), cos(v - u))))
           }
-
+          
           val traversal = StudyBuildStage("traversal", "Traversal", "traversal-v1", setOf("level"), resultNotes = { r ->
               (r.facts["loot"] as Map<String, Map<String, Any?>>).map { (id, m) ->
                   if (m["reachable"] != true) StudyBuildNotice("$id cannot be reached from the spawn.", StudyBuildNoticeKind.ERROR)
@@ -338,16 +338,16 @@ operations:
               StudyBuildProduct(listOf("traversal.json"), mapOf("loot" to measures, "outOfReach" to outOfReach,
                   "sightlines" to measures.values.sumOf { (it["seenBy"] as? Int) ?: 0 }))
           }
-
+          
           // Placement waits until every loot point can be reached within its path budget.
           val reachable = StudyBuildGate("reachable loot", dependencies = listOf("traversal")) { evidence ->
               val far = evidence.facts("traversal")["outOfReach"] as List<*>
               if (far.isEmpty()) null else "Out of reach within its path budget: ${far.joinToString()}."
           }
-
+          
           // Each rule text is compiled once, so the corpus does not compile the same rule for every variant.
           val compiledRules = java.util.concurrent.ConcurrentHashMap<String, (String) -> Map<String, String>>()
-
+          
           val placement = StudyBuildStage("placement", "Placement", "placement-v1", setOf("reachable loot", "rule"), listOf("traversal"),
               inputHelp = StudyBuildInputHelp("Needs the loot rule", "Run the Loot rule box; placement follows its rule."),
               resultNotes = { r -> listOf(StudyBuildNotice((r.facts["placed"] as Map<*, *>).entries.joinToString { "${it.key} ${it.value}" } +
@@ -361,12 +361,12 @@ operations:
               c.file("placement.json").writeText(json.writeValueAsString(placed))
               StudyBuildProduct(listOf("rule-input.txt", "placement.json"), mapOf("placed" to placed, "encounters" to placed.values.count { "guarded" in it }))
           }
-
+          
           val stages = listOf(blockout, traversal, placement)
           val gates = listOf(reachable)
           thisBox.properties["levelStages"] = stages
           thisBox.properties["levelGates"] = gates
-
+          
           val builds = studyBuilds("stages", stages, gates = gates) {
               buildMap {
                   (runCatching { thisBox.named("Level").getPropertyRaw("level") }.getOrNull() as? String)?.let { put("level", it) }
@@ -374,7 +374,7 @@ operations:
               }
           }
           showStudyBuilds("stages")
-
+          
           // Draw the current traversal's relaxed paths over the plan, with the Level box's drawing, whenever it changes.
           // The watcher stops when this runner closes, which happens when the box runs again or is stopped.
           kotlin.concurrent.thread(isDaemon = true) {

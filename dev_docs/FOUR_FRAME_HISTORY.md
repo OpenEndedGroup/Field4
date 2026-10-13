@@ -1,8 +1,8 @@
-# Frame history and reprojection in `afield.four`
+# Frame history and reprojection in Field 4
 
 ## The gap this closes, and the two thirds of it that already existed
 
-The brief this was built from claimed that `afield.four` had "no camera matrices, no previous
+The brief this was built from claimed that Field 4 had "no camera matrices, no previous
 view-projection, no per-pixel velocity". Two of those three were already there, and saying so is the
 starting point rather than a footnote — the work here is *narrower* than it looked, and knowing which
 part was missing is what kept it from becoming a second, parallel motion-vector path.

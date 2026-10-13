@@ -32,7 +32,7 @@ Returning `synth` from the box is what makes it sound: [PatSynthBank](sound_path
 Field's audio engine for as long as the box runs. Stop the box and ORCA stops with it. This is
 eight seconds of it:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/orca/hello.wav" audio-spec="hello" audio-renderer="afield.four.synth.OrcaSoundDocs" embed=true hidden=true name="orca-hello-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/orca/hello.wav" audio-spec="hello" audio-renderer="afield.audio.synth.OrcaSoundDocs" embed=true hidden=true name="orca-hello-audio"}
 // OrcaSoundDocs.render("hello"): the grid above, run by ORCA's own operators, voiced by PatSynthBank
 ```
 
@@ -203,7 +203,7 @@ single cell, `echo[5 + i, 3] = note` or `lead[x, 3] = ...`, which ORCA picks up 
 
 Sixteen seconds of the duet:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/orca/duet.wav" audio-spec="duet" audio-renderer="afield.four.synth.OrcaSoundDocs" embed=true hidden=true name="orca-duet-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/orca/duet.wav" audio-spec="duet" audio-renderer="afield.audio.synth.OrcaSoundDocs" embed=true hidden=true name="orca-duet-audio"}
 // OrcaSoundDocs.render("duet"): both grids and the exchange above, run by ORCA's own operators
 ```
 

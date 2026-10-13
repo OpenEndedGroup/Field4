@@ -1,4 +1,4 @@
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 // A retained message stays on the broker: anything that subscribes later gets it straight away.
 // This is how a device learns the current scene when it boots.

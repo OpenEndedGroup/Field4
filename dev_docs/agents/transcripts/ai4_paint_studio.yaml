@@ -26,10 +26,10 @@ operations:
           // before it; /branches and /branch switch between versions. /canvas, /palette, /tools and /gallery show
           // the easel, the tube paints, the kept tools and the hung paintings.
           // Needs the paint library: ./gradlew buildPaintNative.
-          import afield.paint.*
+          import afield.graphics.paint.*
           import java.io.File
           import java.util.Base64
-
+          
           // The canvas is kept on the box, not in a script variable, so re-running this box keeps the painting.
           fun fresh(ground: PaintGround = PaintGround.Oil, aspect: Double = 1.25, seed: Long = 7) =
               PaintCanvas(900, aspect = aspect, ground = ground, seed = seed)
@@ -38,12 +38,12 @@ operations:
           fun replace(c: PaintCanvas) { thisBox.properties["studio.canvas"] = c }
           // The tools the painter keeps by name, on the box for the same reason: a brush stays dirty between requests.
           fun tools(): PaintToolbox = thisBox.properties.getOrPut("studio.tools") { PaintToolbox() } as PaintToolbox
-
+          
           fun pngUrl(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
           fun show() = display("main", canvas().png())
           // Another box's tool can paint on this easel: it finds the canvas here and calls this to show the result.
           thisBox.properties["studio.refresh"] = { show() }
-
+          
           // "#rrggbb", one tube ("ultramarine blue"), or a pile of tubes by parts ("lead white:3, yellow ochre:1").
           class Paint(val color: Vec4, val tubes: Map<String, Double>?)
           fun paintOf(spec: String): Paint {
@@ -62,7 +62,7 @@ operations:
               require(tubes.isNotEmpty()) { "no colour given" }
               return Paint(Tubes.mix(tubes), tubes)
           }
-
+          
           // A smooth curve through flat [x0, y0, x1, y1, ...] (Catmull-Rom as cubics), closed when asked.
           fun through(xy: List<Double>, closed: Boolean = false): FLine {
               val p = xy.chunked(2).filter { it.size == 2 }
@@ -81,7 +81,7 @@ operations:
           }
           fun region(xy: List<Double>) = through(xy, closed = true)
           fun rad(degrees: Double) = degrees * PI / 180
-
+          
           fun brushOf(name: String) = BrushKind.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
               ?: throw IllegalArgumentException("no brush \"$name\": ${BrushKind.entries.joinToString { it.name }}")
           // A kept brush by name, or a fresh one of a kind (loaded below); a fresh one needs a colour.
@@ -118,7 +118,7 @@ operations:
                   if (d.watercolour) "laid %.1f mm³ of water and %.1f µg of pigment, the brush %s full".format(r.waterLaid, r.pigmentLaid, pct(d.fill))
                   else "the brush ${pct(d.fill)} loaded") +
                   (if (d.retainedBend > 0.05) "; its hairs have taken a set of %.0f°".format(Math.toDegrees(d.retainedBend)) else "")
-
+          
           fun lightOf(name: String) = when (name.lowercase()) {
               "flat" -> null
               "raking" -> PaintLight.Raking
@@ -127,7 +127,7 @@ operations:
           }
           fun handlingOf(name: String) = Handling.entries.firstOrNull { it.name.equals(name, ignoreCase = true) }
               ?: throw IllegalArgumentException("no handling \"$name\": ${Handling.entries.joinToString { it.name }}")
-
+          
           fun pct(x: Double) = "${(x * 100).roundToInt()}%"
           fun state(): String = canvas().stats.let {
               "about ${it.handMinutes.roundToInt()} minutes of a painter's work so far; " +
@@ -153,11 +153,11 @@ operations:
                       "<figcaption style='font-style:italic;text-align:center'>${f.nameWithoutExtension}</figcaption></figure>"
               })
           }
-
+          
           fun done(what: String): Map<String, Any> { show(); return mapOf("ok" to true, "did" to what, "canvas" to state()) }
-
+          
           if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.agentExtension("studio") {
-
+          
               tool("paint.look") {
                   describe("Look at the painting as it stands: an image of the canvas (dried, lit from the upper left), and how wet it is.")
                   effects(ToolEffect.CAPTURE_IMAGE)
@@ -183,7 +183,7 @@ operations:
                       image(pngUrl(png), state())
                   }
               }
-
+          
               tool("paint.stroke") {
                   describe("Drag a loaded brush along one or more paths. Each path is one movement of the hand, a smooth curve through " +
                       "[x0, y0, x1, y1, ...]; the brush is loaded once, before the first, and runs out along the rest the way a real one does.")
@@ -214,7 +214,7 @@ operations:
                       done("${paths().size} stroke(s), " + (tool()?.let { "with $it, now ${pct(b.fullness)} loaded" } ?: "${brush()} ${width()}"))
                   }
               }
-
+          
               tool("paint.dab") {
                   describe("Touch the brush down at points and lift it: dabs, petals, leaves, highlights. One load for all of them.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -233,7 +233,7 @@ operations:
                       done("${points().size / 2} dab(s)")
                   }
               }
-
+          
               tool("paint.wash") {
                   describe("Watercolour or ink with a round watercolour brush: the water on the paper flows, sinks in, dries with dark edges, " +
                       "settles and blooms on its own. A full brush lays a wet wash; a nearly dry one (fill 0.1-0.3), light and fast, " +
@@ -257,7 +257,7 @@ operations:
                       done("laid %.1f mm³ of water and %.1f µg of pigment, took up %.1f mm³; the brush is %s full".format(r.waterLaid, r.pigmentLaid, r.waterTaken, pct(b.fill)))
                   }
               }
-
+          
               tool("paint.gesture") {
                   describe("Paint with a kept brush of moving hairs (paint_tool moving=true) through timed movements of the hand: how fast, how hard, " +
                       "how the handle is tilted and turned. The hairs bend, drag, splay and flick as a real brush's do, pick up and lay paint where " +
@@ -293,7 +293,7 @@ operations:
                       done(movingReport(tool(), d, r))
                   }
               }
-
+          
               tool("paint.drop") {
                   describe("Let drops of watercolour or ink fall on the paper (or clean water into a damp wash, for a bloom). Each spreads and the paper takes it.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -306,7 +306,7 @@ operations:
                       done("${points().size / 2} drop(s)")
                   }
               }
-
+          
               tool("paint.wet") {
                   describe("Lay water over a region at once with a wide mop: clean water to paint wet-in-wet into, or a flat wash of colour.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -315,7 +315,7 @@ operations:
                   val color by param<String>("\"water\", or pigments by concentration", default = "water")
                   action { canvas().wet(region(outline()), microns(), waterPaintOf(color())); done("wet a region with ${microns()} µm") }
               }
-
+          
               tool("paint.tilt") {
                   describe("Tilt the board: wet washes run downhill, gather and drip off the edge. 0 lays it flat again.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -323,7 +323,7 @@ operations:
                   val toward by param<Double>("the direction it falls, degrees: 90 down the canvas, 0 to the right", default = 90.0)
                   action { canvas().tilt(degrees(), toward()); done("tilted ${degrees()}° toward ${toward()}°") }
               }
-
+          
               tool("paint.tool") {
                   describe("Pick up a tool and keep it by name for later requests: a brush stays dirty with what it last picked up until you " +
                       "load or wipe it, a knife keeps its bead, a rag its load. Replaces a kept tool of the same name.")
@@ -354,7 +354,7 @@ operations:
                       mapOf("ok" to true, "kept" to name(), "tools" to tools().describe(c))
                   }
               }
-
+          
               tool("paint.load") {
                   describe("Load a kept brush or knife with paint, or dampen a kept rag with spirits. A brush mixes the new paint into what is " +
                       "left in it unless you wipe it; dip one edge (side, share) to double-load it.")
@@ -389,7 +389,7 @@ operations:
                       mapOf("ok" to true, "tools" to tools().describe(c))
                   }
               }
-
+          
               tool("paint.knife") {
                   describe("Pull a painting knife along paths: it lays flat slabs of paint with ridges at the blade's ends, or, with lay=false and " +
                       "pressed hard, scrapes wet paint off back to the dry surface. The paint it scrapes stays on the blade.")
@@ -409,7 +409,7 @@ operations:
                       done("${paths().size} knife pull(s), the blade ${pct(k.fullness)} loaded")
                   }
               }
-
+          
               tool("paint.wipe") {
                   describe("Lift wet paint with a rag: wipe along paths (streaks, wiped-out lights) or blot at points (a crumpled patch). Only paint " +
                       "that is still open comes away. A dampened rag (paint_load) lifts nearly to the ground.")
@@ -429,7 +429,7 @@ operations:
                       done("lifted ${"%.1f".format(lifted)} mm³ of paint; the rag's face is ${pct(c.ragState(r).load)} loaded")
                   }
               }
-
+          
               tool("paint.spatter") {
                   describe("Flick a loaded brush: the loose paint flies off in droplets that land in a cone toward the flick. Fluid or turps-thinned " +
                       "paint spatters readily, stiff paint barely; harder flicks throw more, smaller drops.")
@@ -449,7 +449,7 @@ operations:
                       done("$n droplets landed")
                   }
               }
-
+          
               tool("paint.work") {
                   describe("Cover a region with many strokes planned like a painter's: Broad to lay in, Body for the main painting, Detail " +
                       "(clipped), Hatch, Glaze (thin, soft), Scumble (broken), or Blend (a clean brush that softens wet paint, lays nothing).")
@@ -468,7 +468,7 @@ operations:
                       done("worked a region, ${handling()}")
                   }
               }
-
+          
               tool("paint.glaze") {
                   describe("A thin transparent glaze over a region or the whole canvas, to warm, cool or deepen. Dries the canvas first.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -482,7 +482,7 @@ operations:
                       done("glazed")
                   }
               }
-
+          
               tool("paint.draw") {
                   describe("Draw lines in graphite or chalk: underdrawing, contours, a ruled horizon. 'sketch' restates each line a few times, the way a hand searches for it.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -498,7 +498,7 @@ operations:
                       done("${paths().size} line(s) in ${pencil()}")
                   }
               }
-
+          
               tool("paint.hatch") {
                   describe("Hatch a region with parallel pencil or chalk strokes, for shading in a drawing.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -512,7 +512,7 @@ operations:
                       done("hatched")
                   }
               }
-
+          
               tool("paint.stipple") {
                   describe("Stipple a region with many small touches: foliage, texture, sparkle on water, distant crowds.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -528,7 +528,7 @@ operations:
                       done("stippled")
                   }
               }
-
+          
               tool("paint.wait") {
                   describe("Let simulated time pass: wet oil sets (minutes); water flows, sinks in and evaporates (seconds: a wash goes from wet " +
                       "to damp in a minute or two). Or dry the canvas completely: paint laid afterwards no longer mixes into what is there. " +
@@ -547,7 +547,7 @@ operations:
                       done(seconds()?.let { "waited $it s" } ?: minutes()?.let { "waited $it minutes" } ?: "dried")
                   }
               }
-
+          
               tool("paint.fresh") {
                   describe("Put a new canvas on the easel. The old one is not lost: it stays with the conversation, and rewinding brings it back.")
                   effects(ToolEffect.CONTROL_RUNTIME)
@@ -565,7 +565,7 @@ operations:
                       done("a fresh ${ground()} ${if (paper != null) "sheet" else "canvas"}, ${aspect()}")
                   }
               }
-
+          
               tool("paint.crack") {
                   describe("Age the finished painting: craquelure through paint and ground, with dirt in the cracks. Irreversible on this branch.")
                   exposure(ToolExposure.DEFERRED)
@@ -573,7 +573,7 @@ operations:
                   val even by param<Boolean>("one even network instead of an aged hierarchy", default = false)
                   action { canvas().crack(if (even()) CrackKind.Even else CrackKind.Aged); done("cracked") }
               }
-
+          
               tool("paint.hang") {
                   describe("Hang the painting in the gallery under a title: a dried, lit PNG in the document's gallery folder, shown in this box's gallery panel.")
                   effects(ToolEffect.FILESYSTEM_WRITE)
@@ -586,7 +586,7 @@ operations:
                       mapOf("ok" to true, "hung" to file.name)
                   }
               }
-
+          
               context("canvas") {
                   val c = canvas()
                   "The canvas on the Studio easel is 1000 units wide and ${c.heightUnits.roundToInt()} tall (aspect ${c.aspect}), " +
@@ -594,7 +594,7 @@ operations:
                       "${"%.2f".format(c.mmPerUnit)} mm: a 10 mm brush is ${(10 / c.mmPerUnit).roundToInt()} units wide. ${state()}. " +
                       "Kept tools: " + tools().describe(c).lines().joinToString("; ")
               }
-
+          
               context("craft", changesOften = false) {
                   """
                   |You are painting in oils on a simulated canvas with the paint_* tools; your painting is the Studio box's output.
@@ -632,7 +632,7 @@ operations:
                   |yellow make green). Tubes: ${Tubes.names.joinToString()}.
                   """.trimMargin()
               }
-
+          
               command("canvas", "show the canvas here") { "![the canvas](${pngUrl(canvas().png())})\n\n${state()}" }
               command("tools", "list the kept tools and what they carry") { _ -> tools().describe(canvas()).lines().joinToString("\n") { "- $it" } }
               command("gallery", "list the hung paintings") { _ ->
@@ -645,7 +645,7 @@ operations:
                       "- <span style=\"display:inline-block;width:1em;height:1em;background:$hex;vertical-align:middle\"></span> **${t.name}** — ${t.pigment}, hiding ${t.hiding}"
                   }
               }
-
+          
               // The canvas belongs to the conversation: a rewind restores it even over changes made outside the chat
               // (the replaced canvas is saved first), and reopening the document puts it back where the chat left it.
               branchState("canvas",
@@ -658,7 +658,7 @@ operations:
                   restore = { f -> thisBox.properties["studio.tools"] = f?.let { PaintToolbox.load(it) } ?: PaintToolbox() },
                   onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
           }
-
+          
           if (PaintCanvas.isAvailable) { show(); showGallery() }
   - create:
       box: ai4_paint_scribbler
@@ -666,22 +666,22 @@ operations:
       frame: { x: 820.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.paint.*
+          import afield.graphics.paint.*
           import kotlin.random.Random
-
+          
           // A brush the painter does not have yet: a scribble, painted on the Studio's easel.
           val studio = thisBox.inside.boxes.values.single { it.name == "Studio" }
-
+          
           fun inside(ring: List<List<Double>>, x: Double, y: Double) = ring.indices.count { i ->
               val a = ring[i]; val b = ring[(i + 1) % ring.size]
               (a[1] > y) != (b[1] > y) && x < a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])
           } % 2 == 1
-
+          
           fun ink(spec: String): Vec4 = if (spec.startsWith("#")) {
               val v = spec.drop(1).chunked(2).map { it.toInt(16) / 255.0 }
               rgb(v[0], v[1], v[2])
           } else Tubes[spec].color
-
+          
           aiTool("scribble") {
               describe("Scribble inside a region: rows of looping, wandering line that fill the outline the way a quick hand " +
                   "does. Dense scribbles read as tone, loose ones as texture; layer colours for depth.")

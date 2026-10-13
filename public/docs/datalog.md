@@ -6,7 +6,7 @@ does nothing feed into, which two boxes both write the same property. `graphPath
 ([Querying Object Graphs](graph_query.md)) can address a slot by pattern, but it cannot follow an
 edge and then follow it again.
 
-`afield.datalog` can. It is a small deductive database: you state facts, you write rules that
+`afield.data.query.datalog` can. It is a small deductive database: you state facts, you write rules that
 derive more facts from them, and the engine runs the rules to exhaustion. Recursion is the normal
 case rather than a special one, so transitive closure is two lines. Facts can come from Datalog
 text, from Kotlin collections, or from the document you have open.

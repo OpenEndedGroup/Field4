@@ -11,7 +11,7 @@ Slughorn `409c4a2e68cafcb49e11ea0edd0145d4e255cbea`.
   passes bounds, determinism, implicit closure, contour, tolerance and malformed-input checks.
   Forty local two-contour preparations including process startup: median 3.21 ms,
   maximum 5.33 ms. These are preparation timings, not a rendering benchmark.
-- `./gradlew jvmTest --tests 'afield.graphics.slug.SlugPathTest'` checks real
+- `./gradlew jvmTest --tests 'afield.graphics.text.slug.SlugPathTest'` checks real
   native output, defensive copies, invalid metrics and GPU addresses, FLine
   serialization, actual shader compilation, 96-byte reflected push layout and
   the persisted lesson's topology/source parity.

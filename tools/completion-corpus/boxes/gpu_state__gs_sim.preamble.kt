@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.four.buffers.FrameBufferGroup
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
 /*start*/
 /*compute-structure-type:State:State*/
 class State(
@@ -14,7 +17,7 @@ class State(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun StateByteSize(): Long = 16L
 fun StateLayoutMembers(): List<Introspected.Member> =
@@ -35,7 +38,7 @@ class Anchors(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun AnchorsByteSize(): Long = 16L
 fun AnchorsLayoutMembers(): List<Introspected.Member> =
@@ -56,7 +59,7 @@ class Heat(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun HeatByteSize(): Long = 16L
 fun HeatLayoutMembers(): List<Introspected.Member> =
@@ -97,7 +100,7 @@ class FieldProbeBuffer(
     var maxOrderedY by Structure.FromStructure<UInt>()
     var maxOrderedZ by Structure.FromStructure<UInt>()
     var maxOrderedW by Structure.FromStructure<UInt>()
-    var samples by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun FieldProbeBufferByteSize(): Long = 4194384L
 fun FieldProbeBufferLayoutMembers(): List<Introspected.Member> =
@@ -132,30 +135,30 @@ fun BufferParameters.asFieldProbeBuffer(): FieldProbeBuffer =
 /*start*/
 /*stack-auto:force*/
 var ModulePointer.force: String
-    get() = afield.stdlib.stackAutoShaderSource(this, "force")
-    set(value) { afield.stdlib.stackAutoShaderSource(this, "force", value) }
+    get() = afield.graphics.shader.stackAutoShaderSource(this, "force")
+    set(value) { afield.graphics.shader.stackAutoShaderSource(this, "force", value) }
 var ComputeModulePointer.force: String
-    get() = afield.stdlib.stackAutoShaderSource(this, "force")
-    set(value) { afield.stdlib.stackAutoShaderSource(this, "force", value) }
+    get() = afield.graphics.shader.stackAutoShaderSource(this, "force")
+    set(value) { afield.graphics.shader.stackAutoShaderSource(this, "force", value) }
 var MeshModulePointer.force: String
-    get() = afield.stdlib.stackAutoShaderSource(this, "force")
-    set(value) { afield.stdlib.stackAutoShaderSource(this, "force", value) }
+    get() = afield.graphics.shader.stackAutoShaderSource(this, "force")
+    set(value) { afield.graphics.shader.stackAutoShaderSource(this, "force", value) }
 /*end*/
 /*compute-pc-structure:state*/ var Structure.state by Structure.FromStructure<Any>() // this frame's half of the ping-pong — written
-/*compute-pc-binding:state*/ var ComputeMesh.state by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // this frame's half of the ping-pong — written
-/*compute-pc-binding-group:state*/ var ComputeMeshGroup.state by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // this frame's half of the ping-pong — written
+/*compute-pc-binding:state*/ var ComputeMesh.state by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // this frame's half of the ping-pong — written
+/*compute-pc-binding-group:state*/ var ComputeMeshGroup.state by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // this frame's half of the ping-pong — written
 /*compute-pc-structure:prevState*/ var Structure.prevState by Structure.FromStructure<Any>() // last frame's half — read
-/*compute-pc-binding:prevState*/ var ComputeMesh.prevState by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // last frame's half — read
-/*compute-pc-binding-group:prevState*/ var ComputeMeshGroup.prevState by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // last frame's half — read
+/*compute-pc-binding:prevState*/ var ComputeMesh.prevState by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // last frame's half — read
+/*compute-pc-binding-group:prevState*/ var ComputeMeshGroup.prevState by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // last frame's half — read
 /*compute-pc-structure:anchors*/ var Structure.anchors by Structure.FromStructure<Any>() // written once, read every frame, device-local
-/*compute-pc-binding:anchors*/ var ComputeMesh.anchors by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // written once, read every frame, device-local
-/*compute-pc-binding-group:anchors*/ var ComputeMeshGroup.anchors by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // written once, read every frame, device-local
+/*compute-pc-binding:anchors*/ var ComputeMesh.anchors by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // written once, read every frame, device-local
+/*compute-pc-binding-group:anchors*/ var ComputeMeshGroup.anchors by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // written once, read every frame, device-local
 /*compute-pc-structure:heat*/ var Structure.heat by Structure.FromStructure<Any>() // zero-initialised, device-local, shader-owned
-/*compute-pc-binding:heat*/ var ComputeMesh.heat by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // zero-initialised, device-local, shader-owned
-/*compute-pc-binding-group:heat*/ var ComputeMeshGroup.heat by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // zero-initialised, device-local, shader-owned
+/*compute-pc-binding:heat*/ var ComputeMesh.heat by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // zero-initialised, device-local, shader-owned
+/*compute-pc-binding-group:heat*/ var ComputeMeshGroup.heat by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // zero-initialised, device-local, shader-owned
 /*compute-pc-structure:knobs*/ var Structure.knobs by Structure.FromStructure<Any>() // .x seconds, .y force gain
-/*compute-pc-binding:knobs*/ var ComputeMesh.knobs by ComputeMesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // .x seconds, .y force gain
-/*compute-pc-binding-group:knobs*/ var ComputeMeshGroup.knobs by ComputeMeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // .x seconds, .y force gain
+/*compute-pc-binding:knobs*/ var ComputeMesh.knobs by ComputeMesh.BoundFromStructure<afield.math.linalg.Vector4f>() // .x seconds, .y force gain
+/*compute-pc-binding-group:knobs*/ var ComputeMeshGroup.knobs by ComputeMeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // .x seconds, .y force gain
 /*compute-pc-structure:count*/ var Structure.count by Structure.FromStructure<Any>()
 /*compute-pc-binding:count*/ var ComputeMesh.count by ComputeMesh.BoundFromStructure<UInt>()
 /*compute-pc-binding-group:count*/ var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<UInt>()

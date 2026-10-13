@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 3 - A player that lives on the canvas, not in an output.
 //
@@ -15,7 +15,7 @@ val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" })
 
 val dirt = patRenderStereoDirt(hybrid, cycles = 2, cps = 0.35)  // 5.7s; 24-slot bar, so 4.2 hits/s
 val rendered = dirt.audio
-val bytes = afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+val bytes = afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
     rendered.left, rendered.right, PatSoundDocs.SR, 0.9f
 )
 

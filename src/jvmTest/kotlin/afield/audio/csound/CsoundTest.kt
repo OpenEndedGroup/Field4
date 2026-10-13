@@ -1,0 +1,295 @@
+package afield.audio.csound
+
+import java.io.File
+import kotlin.math.abs
+import kotlin.math.sqrt
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+
+/**
+ * libcsound through FFM, measured from the samples.
+ *
+ * Optional like libpd: without a built Csound every test but the first prints a SKIPPED line and
+ * returns. Build it with `python3 tools/build_csound_native.py`.
+ */
+class CsoundTest {
+
+    private fun available(): Boolean {
+        if (!CsoundLibrary.isAvailable) {
+            println("SKIPPED Csound tests: ${CsoundLibrary.describe()}")
+            return false
+        }
+        return true
+    }
+
+    private val sine = """
+        instr 1
+          a1 oscili 0.25, 440
+          outs a1, a1
+        endin
+    """
+
+    private fun ups(x: FloatArray, from: Int = 0, to: Int = x.size) = (from + 1 until to).count { x[it - 1] < 0f && x[it] >= 0f }
+    private fun rms(x: FloatArray, from: Int = 0, to: Int = x.size) = sqrt((from until to).sumOf { x[it].toDouble() * x[it] } / (to - from))
+
+    @Test fun missingLibraryIsReportedNotThrownAtClassLoad() {
+        assertTrue(CsoundLibrary.searchedPaths.isNotEmpty())
+        assertTrue(CsoundLibrary.HOW_TO_BUILD.contains("build_csound_native.py"))
+    }
+
+    @Test fun aSineRendersAtItsFrequencyAndAmplitude() {
+        if (!available()) return
+        CsoundInstance(sine, "i1 0 1", sampleRate = 48_000).use { cs ->
+            assertTrue(cs.version >= 6180, "version ${cs.version}")
+            val (left, right) = cs.renderOffline()
+            assertTrue(cs.finished, "the score ended")
+            assertTrue(left.size - 48_000 in 0..1024, "Csound ends a few blocks after the last event; rendered ${left.size} frames for a 1 s score")
+            val n = 48_000
+            val crossings = ups(left, 0, n)
+            assertTrue(abs(crossings - 440) <= 1, "expected ~440 upward zero crossings, got $crossings")
+            assertEquals(0.25, left.take(n).maxOf { abs(it) }.toDouble(), 0.002)
+            assertEquals(0.25 / sqrt(2.0), rms(left, 0, n), 0.002)
+            assertTrue(left.contentEquals(right), "outs a1, a1 is the same on both sides")
+        }
+    }
+
+    // Csound 6 leaves a chn_k channel at 0 whatever its idflt; Field writes the default, or a cutoff read from it is 0 Hz.
+    @Test fun aChnKChannelStartsAtItsDeclaredDefault() {
+        if (!available()) return
+        val orc = """
+            chn_k "cutoff", 1, 3, 2400, 200, 8000
+            chn_k "plain", 1
+            instr 1
+              k1 chnget "cutoff"
+              a1 oscili 0.25, 440
+              a1 butterlp a1, k1
+              outs a1, a1
+            endin
+        """
+        CsoundInstance(orc, "i1 0 0.5").use { cs ->
+            assertEquals(2400.0, cs.channel("cutoff"))
+            assertEquals(0.0, cs.channel("plain"))
+            val (left, _) = cs.renderOffline()
+            // 440 Hz through a 2400 Hz lowpass is barely touched; at 0 Hz it would be silent.
+            assertTrue(left.maxOf { abs(it) } > 0.2f, "peak ${left.maxOf { abs(it) }}")
+        }
+    }
+
+    // The defaults come from Csound's channel list, so a chn_k the regex could not see (a string
+    // variable for the name) still gets its default, and a commented-out one does not.
+    @Test fun channelDefaultsComeFromCsoundsChannelList() {
+        if (!available()) return
+        val orc = """
+            Sname = "gain"
+            chn_k Sname, 1, 2, 0.5, 0, 1
+            ; chn_k "ghost", 1, 2, 7, 0, 10
+            chn_k "level", 2, 2, 0.25, 0, 1
+            chn_S "label", 1
+            instr 1
+              k1 chnget "gain"
+              chnset k1, "level"
+            endin
+        """
+        CsoundInstance(orc, "i1 0 0.1").use { cs ->
+            assertEquals(0.5, cs.channel("gain"))
+            val byName = cs.channels().associateBy { it.name }
+            assertTrue("ghost" !in byName, "listed: ${byName.keys}")
+            val gain = byName.getValue("gain")
+            assertEquals(CsoundNative.CONTROL_CHANNEL, gain.kind)
+            assertEquals(CsoundInstance.ControlHints(2, 0.5, 0.0, 1.0), gain.hints)
+            val level = byName.getValue("level")
+            assertEquals(0.25, level.hints?.default)
+            assertEquals(CsoundNative.STRING_CHANNEL, byName.getValue("label").kind)
+            assertEquals(null, byName.getValue("label").hints)
+        }
+    }
+
+    @Test fun oddSizedRendersJoinUpExactly() {
+        if (!available()) return
+        val whole = CsoundInstance(sine, "i1 0 1").use { cs -> FloatArray(300).also { cs.render(it, FloatArray(300), 300) } }
+        val pieces = CsoundInstance(sine, "i1 0 1").use { cs ->
+            val out = FloatArray(300)
+            var at = 0
+            for (n in listOf(1, 31, 100, 168)) {
+                val l = FloatArray(n)
+                cs.render(l, FloatArray(n), n)
+                System.arraycopy(l, 0, out, at, n)
+                at += n
+            }
+            out
+        }
+        assertTrue(whole.contentEquals(pieces))
+    }
+
+    @Test fun aControlChannelSetsTheFrequencyAndChnsetReportsBack() {
+        if (!available()) return
+        val orc = """
+            instr 1
+              kf chnget "freq"
+              a1 oscili 0.2, kf
+              outs a1, a1
+              chnset rms(a1), "level"
+            endin
+        """
+        CsoundInstance(orc, "i1 0 2").use { cs ->
+            cs.setChannel("freq", 220)
+            val (a, _) = cs.renderOffline(1.0)
+            cs.setChannel("freq", 660)
+            val (b, _) = cs.renderOffline(1.0)
+            assertTrue(abs(ups(a) - 220) <= 2, "first second at 220 Hz, got ${ups(a)}")
+            assertTrue(abs(ups(b) - 660) <= 2, "second second at 660 Hz, got ${ups(b)}")
+            assertEquals(0.2 / sqrt(2.0), cs.channel("level"), 0.01)
+        }
+    }
+
+    @Test fun liveEventsAndInstrumentsArriveAtTheNextBlock() {
+        if (!available()) return
+        CsoundInstance(sine, "f0 10").use { cs ->
+            val (silent, _) = cs.renderOffline(0.25)
+            assertEquals(0f, silent.maxOf { abs(it) })
+            cs.compile("instr 2\n a1 oscili 0.1, 330\n outs a1, a1\nendin")
+            cs.event('i', 2, 0, 1)
+            val (sound, _) = cs.renderOffline(1.0)
+            assertTrue(abs(ups(sound) - 330) <= 2, "instr 2 compiled live plays 330 Hz, got ${ups(sound)}")
+        }
+    }
+
+    @Test fun printedLinesReachTheCallback() {
+        if (!available()) return
+        val lines = ArrayList<String>()
+        CsoundInstance("instr 1\n prints \"hello from csound\\n\"\nendin", "i1 0 0.1").use { cs ->
+            cs.onMessage { lines += it }
+            cs.renderOffline()
+        }
+        assertTrue(lines.any { it.contains("hello from csound") }, "got: $lines")
+    }
+
+    @Test fun aSyntaxErrorIsPlacedOnItsLine() {
+        if (!available()) return
+        val orc = "instr 1\n  a1 oscili 0.2, 440\n  a2 = a1 +* 2\n  outs a1, a1\nendin"
+        val e = assertFailsWith<CsoundCompileError> { CsoundInstance(orc, "i1 0 1") }
+        println(e.printed.joinToString("\n"))
+        assertTrue(e.problems.any { it.line == 3 }, "problems: ${e.problems}")
+    }
+
+    @Test fun anUnknownOpcodeIsPlacedOnItsLine() {
+        if (!available()) return
+        val orc = "instr 1\n  a1 oscilx 0.2, 440\n  outs a1, a1\nendin"
+        val e = assertFailsWith<CsoundCompileError> { CsoundInstance(orc, "i1 0 1") }
+        println(e.printed.joinToString("\n"))
+        assertTrue(e.problems.any { it.line == 2 }, "problems: ${e.problems}")
+    }
+
+    @Test fun aLeadingBlankLineStillCounts() {
+        if (!available()) return
+        // A box writes `csound("""` and starts the orchestra on the next line; Csound's line numbers
+        // must be lines of the string as written.
+        val e = assertFailsWith<CsoundCompileError> { CsoundInstance("\n  instr 1\n    a1 oscilx 0.2, 440\n  endin\n", "i1 0 1") }
+        assertTrue(e.problems.any { it.line == 3 }, "problems: ${e.problems}")
+    }
+
+    @Test fun renderToWavWritesAStereoFile() {
+        if (!available()) return
+        val dir = kotlin.io.path.createTempDirectory("csound-wav").toFile()
+        try {
+            val f = CsoundInstance(sine, "i1 0 0.5").use { it.renderToWav(File(dir, "sine.wav")) }
+            val header = f.readBytes()
+            assertEquals("RIFF", String(header, 0, 4))
+            assertTrue(header.size > 44 + 4 * 24_000 - 1000)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test fun anOpenScoreKeepsTakingEvents() {
+        if (!available()) return
+        CsoundInstance(sine.replace("440", "p4"), "f0 z").use { cs ->
+            cs.renderOffline(3.0)
+            assertTrue(!cs.finished, "f0 z holds the score open")
+            cs.event('i', 1, 0, 0.5, 550)
+            val (a, _) = cs.renderOffline(0.5)
+            assertTrue(abs(ups(a) - 275) <= 2, "550 Hz for half a second, got ${ups(a)}")
+        }
+    }
+
+    @Test fun chnKDeclarationsAreRead() {
+        val chans = afield.audio.synth.csoundChannels("""
+            chn_k "freq", 1, 2, 220, 55, 880  ; pitch
+            chn_k "level", 2
+            instr 1
+            endin
+        """)
+        assertEquals(listOf("freq", "level"), chans.map { it.name })
+        assertEquals(afield.audio.synth.CsoundChannel("freq", 1, 220.0, 55.0, 880.0), chans[0])
+        assertTrue(chans[0].isInput && !chans[1].isInput)
+    }
+
+    @Test fun oneDiagnosticIsOneProblemOnItsLine() {
+        // Csound 6.18.1's own output for `asig oscilx 0.2, 440` on line 4, as the typo demo box prints it.
+        val printed = listOf(
+            "error:  Unable to find opcode entry for 'oscilx' with matching argument types:",
+            "",
+            "Found: a oscilx cc",
+            "       asig oscilx 0.2 ...",
+            "Line: 4",
+            " from file *string* (1),Parsing failed due to syntax errors",
+            "Stopping on parser failure",
+        )
+        assertEquals(listOf(CsoundInstance.Problem(
+            "Unable to find opcode entry for 'oscilx' with matching argument types:\nFound: a oscilx cc\nasig oscilx 0.2 ...", 4)),
+            CsoundInstance.problemsIn(printed))
+    }
+
+    @Test fun aSyntaxErrorKeepsItsOffendingTextAndTheSummaryOnlyWhenNothingIsPlaced() {
+        val syntax = listOf(
+            "error: syntax error, unexpected '*'  (token \"* \")",
+            " line 3:",
+            " >>>   a2 = a1 +*  <<<",
+            "Parsing failed due to 1 syntax error!",
+            "Stopping on parser failure",
+        )
+        assertEquals(listOf(CsoundInstance.Problem("syntax error, unexpected '*'  (token \"* \")\n>>>   a2 = a1 +*  <<<", 3)),
+            CsoundInstance.problemsIn(syntax))
+        assertEquals(listOf(CsoundInstance.Problem("Parsing failed due to 1 syntax error!\nStopping on parser failure", -1)),
+            CsoundInstance.problemsIn(listOf("Parsing failed due to 1 syntax error!", "Stopping on parser failure")))
+    }
+
+    @Test fun routineChatterIsDroppedAndWarningsAndPrintsAreKept() {
+        val dropped = listOf(
+            "Score finished in csoundPerformKsmps() with 2.",
+            "SECTION 1:",
+            "end of score.\t\t   overall amps:  0.25000  0.25000",
+            "new alloc for instr Pluck:",
+            "inactive allocs returned to freespace",
+            "overall amps:  0.24998  0.24998",
+            "\t   overall samples out of range:        0        0",
+            "0 errors in performance",
+            " B  0.000 ..  1.000 T  1.000 TT  1.000 M:  0.25000  0.25000",
+            "rtevent:\t   T  0.500 TT  0.500 M:  0.00000  0.00000",
+            "",
+        )
+        val kept = listOf(
+            "WARNING: instr Pluck not found",
+            "INIT ERROR in instr 1 (opcode poscil.kk) line 3: table not found",
+            "hello from csound",
+            "level 0.033",
+            "Key 62",
+        )
+        for (l in dropped) assertTrue(CsoundInstance.isRoutineChatter(l), "should drop: $l")
+        for (l in kept) assertTrue(!CsoundInstance.isRoutineChatter(l), "should keep: $l")
+    }
+
+    @Test fun printedLinesStillReachTheCallbackButTheScoreEndDoesNot() {
+        if (!available()) return
+        val lines = ArrayList<String>()
+        CsoundInstance("instr 1\n prints \"hello\\n\"\nendin", "i1 0 0.1").use { cs ->
+            cs.onMessage { lines += it }
+            cs.renderOffline()
+            assertTrue(cs.console.any { it.startsWith("Score finished") }, "the console keeps everything: ${cs.console}")
+        }
+        assertTrue(lines.contains("hello"), "$lines")
+        assertTrue(lines.none { it.startsWith("Score finished") }, "$lines")
+    }
+}

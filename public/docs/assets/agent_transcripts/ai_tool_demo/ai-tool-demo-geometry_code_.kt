@@ -9,11 +9,11 @@
 // This box builds a mesh, writes it somewhere the tools are allowed to read, and then calls
 // them exactly as a model would. No API key, no model.
 
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
-import afield.four.modules.InspectGeometryFileResult
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.CarriesToolImages
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
+import afield.graphics.render.InspectGeometryFileResult
 import java.io.File
 
 // ---------------------------------------------------------------- somewhere to look

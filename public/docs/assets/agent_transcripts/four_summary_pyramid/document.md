@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sp_renderer" index="0" -->
 
 ```edn [field-box id="sp_renderer" role="properties"]
-{"id" "sp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sp_bundle"] "properties" {"children" #{#afield/box "sp_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "8251a3f6a4fdf54cacf976a2bd1dcd6a751183b0b9587f88304830c00777ea1f"}]}
+{"id" "sp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sp_bundle"] "properties" {"children" #{#afield/box "sp_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_renderer_code_.kt" "lines" 11 "characters" 266 "sha256" "f4e7c43f0339e8891463e878b54d2d60a16d8be1b83f5c139a30d7fa2fdfede3"}]}
 ```
 
 ```kotlin [field-property box="sp_renderer" name="code" path="sp_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -36,17 +36,17 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 
 ```edn [field-box id="sp_bundle" role="properties"]
-{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 28 "characters" 1013 "sha256" "4a0e744a265a5e311bb014e36b178641aab5638bc270c24f25fb2af585f064a5"}]}
+{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 28 "characters" 1041 "sha256" "e10a94bd4ec76a27cd42dd1cff394855129e3df2f126f9f24cd4525b77a7cb4a"}]}
 ```
 
 ```kotlin [field-property box="sp_bundle" name="code" path="sp_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -78,18 +78,18 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="sp_summary" index="2" -->
 
 ```edn [field-box id="sp_summary" role="properties"]
-{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 139 "characters" 6723 "sha256" "54bf91fb82219207af0e3a5aa7c5bb310e68fcd81cdd0b68d07252679dfb3bb5"}]}
+{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 139 "characters" 6783 "sha256" "20a4006e2148b0c21b9c506ceec5b71b015c143d8029a7507c6845887ba705fb"}]}
 ```
 
 ```kotlin [field-property box="sp_summary" name="code" path="sp_summary_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.addPassChain
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
-prop<afield.four.fabricated.FabricateBuiltChain>(summary)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(summary)
 
 // The field being summarised: three anisotropic blobs that drift and rotate, with the
 // mass in alpha and a value ramp in red. A chain head that synthesises its own input is

@@ -17,14 +17,14 @@ operations:
       frame: { x: 80.0, y: 60.0, w: 360.0, h: 100.0 }
       properties:
         code: |
-          import afield.rectsl.*
-
+          import afield.lang.rectsl.*
+          
           val duration = 4.0
-
+          
           // A clamped identity in time: RectSL's way of saying "follow the clock".
           fun clock(d: Double): Track<Double> =
               LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
-
+          
           fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
               BinaryDoubleTrack(
                   BinaryDoubleTrack(
@@ -42,10 +42,10 @@ operations:
                   FreeParamTrack("$axis-centre", 0.0),
                   TrackOp2.ADD
               )
-
+          
           val seedX = channel("x", 1.1, TrackOp1.COS)
           val seedY = channel("y", 1.1, TrackOp1.SIN)
-
+          
           // Where the rect must be, and when.
           val waypoints = listOf(
               RectSLFitFigure.Marker(0.4, -6.5, 2.6),
@@ -55,10 +55,10 @@ operations:
           val window = Functions.Domain(0.0, duration)
           val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
           val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
-
+          
           fun miss(x: Track<Double>, y: Track<Double>): Double =
               waypoints.maxOf { hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
-
+          
           display("figure", RectSLFitFigure.render(
               bands = listOf(
                   RectSLFitFigure.Band(
@@ -79,7 +79,7 @@ operations:
               rectSize = Vec2d(1.5, 1.5),
               times = (0..32).map { it * duration / 32.0 }
           ))
-
+          
           """x: ${fitX.initialParameters} -> ${fitX.parameters}
           |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
           |y: ${fitY.initialParameters} -> ${fitY.parameters}
@@ -89,14 +89,14 @@ operations:
       property: code
       type: fragment
       code: |
-          import afield.rectsl.*
-
+          import afield.lang.rectsl.*
+          
           val duration = 4.0
-
+          
           // A clamped identity in time: RectSL's way of saying "follow the clock".
           fun clock(d: Double): Track<Double> =
               LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
-
+          
           fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
               BinaryDoubleTrack(
                   BinaryDoubleTrack(
@@ -114,10 +114,10 @@ operations:
                   FreeParamTrack("$axis-centre", 0.0),
                   TrackOp2.ADD
               )
-
+          
           val seedX = channel("x", 1.1, TrackOp1.COS)
           val seedY = channel("y", 1.1, TrackOp1.SIN)
-
+          
           // Where the rect must be, and when.
           val waypoints = listOf(
               RectSLFitFigure.Marker(0.4, -6.5, 2.6),
@@ -127,10 +127,10 @@ operations:
           val window = Functions.Domain(0.0, duration)
           val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
           val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
-
+          
           fun miss(x: Track<Double>, y: Track<Double>): Double =
               waypoints.maxOf { hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
-
+          
           display("figure", RectSLFitFigure.render(
               bands = listOf(
                   RectSLFitFigure.Band(
@@ -151,7 +151,7 @@ operations:
               rectSize = Vec2d(1.5, 1.5),
               times = (0..32).map { it * duration / 32.0 }
           ))
-
+          
           """x: ${fitX.initialParameters} -> ${fitX.parameters}
           |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
           |y: ${fitY.initialParameters} -> ${fitY.parameters}
@@ -168,8 +168,8 @@ operations:
       frame: { x: 80.0, y: 960.0, w: 360.0, h: 100.0 }
       properties:
         code: |
-          import afield.rectsl.*
-
+          import afield.lang.rectsl.*
+          
           // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
           // constant it is now, so the scene plays as written.
           val program = RectAnimationOracle.compile(
@@ -178,9 +178,9 @@ operations:
               ->wall 18 8 meters
               ->duration 4
               ->fps 30
-
+          
               linear-track "sweep" '( 0=0   4=4 )
-
+          
               "marker" rect
                 0 0 ->xy
                 1.4 1.4 ->wh
@@ -189,18 +189,18 @@ operations:
               ;
               """.trimIndent()
           ).program
-
+          
           val node = program.nodes.filterIsInstance<RectNode>().single()
           val x = node.x
-
+          
           // Two waypoints and two unknowns. The sweep follows the clock, so -4 at t=1 and +4 at t=3 means
           // gain = 4 and bias = -8.
           val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
           val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
-
+          
           fun missOf(track: Track<Double>): Double =
               targets.maxOf { abs(track.sample(it.time) - it.value) }
-
+          
           display("before / after", RectSLFitFigure.render(
               bands = listOf(
                   RectSLFitFigure.Band(
@@ -217,7 +217,7 @@ operations:
               rectSize = Vec2d(1.4, 1.4),
               times = (0..32).map { it * 4.0 / 32.0 }
           ))
-
+          
           markdown("fit", """
               ~~~
               IR before:   ${x.describe()}
@@ -233,8 +233,8 @@ operations:
       property: code
       type: fragment
       code: |
-          import afield.rectsl.*
-
+          import afield.lang.rectsl.*
+          
           // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
           // constant it is now, so the scene plays as written.
           val program = RectAnimationOracle.compile(
@@ -243,9 +243,9 @@ operations:
               ->wall 18 8 meters
               ->duration 4
               ->fps 30
-
+          
               linear-track "sweep" '( 0=0   4=4 )
-
+          
               "marker" rect
                 0 0 ->xy
                 1.4 1.4 ->wh
@@ -254,18 +254,18 @@ operations:
               ;
               """.trimIndent()
           ).program
-
+          
           val node = program.nodes.filterIsInstance<RectNode>().single()
           val x = node.x
-
+          
           // Two waypoints and two unknowns. The sweep follows the clock, so -4 at t=1 and +4 at t=3 means
           // gain = 4 and bias = -8.
           val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
           val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
-
+          
           fun missOf(track: Track<Double>): Double =
               targets.maxOf { abs(track.sample(it.time) - it.value) }
-
+          
           display("before / after", RectSLFitFigure.render(
               bands = listOf(
                   RectSLFitFigure.Band(
@@ -282,7 +282,7 @@ operations:
               rectSize = Vec2d(1.4, 1.4),
               times = (0..32).map { it * 4.0 / 32.0 }
           ))
-
+          
           markdown("fit", """
               ~~~
               IR before:   ${x.describe()}

@@ -1,6 +1,6 @@
 # StackSL's CPU backend
 
-`afield.stacksl.cpu` runs StackSL programs with no GPU, no window and no graphics context. It does
+`afield.lang.stacksl.cpu` runs StackSL programs with no GPU, no window and no graphics context. It does
 that by **interpreting the GLSL the StackSL compiler emits** — the same text a GPU is handed, byte
 for byte.
 
@@ -27,7 +27,7 @@ private data class StackValue(id: Int, expression: String, deps: List<Int>, …)
 ```
 
 and `expression` is *already GLSL text*, produced by `String`-returning lambdas (`unary` and
-`binary`, `StackSL.kt:2024-2035`). There is no symbolic op anywhere in `afield.stacksl` to give a
+`binary`, `StackSL.kt:2024-2035`). There is no symbolic op anywhere in `afield.lang.stacksl` to give a
 second arm to. Adding an `eval:` per word means rewriting the emitter across the whole word set, and
 every one of those rewrites is a chance for the CPU arm to disagree with the GPU arm.
 
@@ -68,7 +68,7 @@ The evaluator is deliberately AWT-free, so a live Field box can render a program
 output: `PngEncoder` → `display()`.
 
 ```kotlin
-import afield.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLCpu
 display(StackSLCpu.renderStill("uv 6 * fbm palette saturate").toPngBytes())
 ```
 

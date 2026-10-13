@@ -1,38 +1,38 @@
 package afield.examples.steamaudio
 
-import afield.four.audio.steamaudio.AudioBuffer
-import afield.four.audio.steamaudio.AudioSettings
-import afield.four.audio.steamaudio.BinauralEffect
-import afield.four.audio.steamaudio.BinauralEffectParams
-import afield.four.audio.steamaudio.DirectEffect
-import afield.four.audio.steamaudio.DirectEffectFlags
-import afield.four.audio.steamaudio.DirectEffectParams
-import afield.four.audio.steamaudio.DirectSimulationFlags
-import afield.four.audio.steamaudio.Hrtf
-import afield.four.audio.steamaudio.Material
-import afield.four.audio.steamaudio.Matrix4x4
-import afield.four.audio.steamaudio.OcclusionType
-import afield.four.audio.steamaudio.PathBakeSettings
-import afield.four.audio.steamaudio.PathBaker
-import afield.four.audio.steamaudio.PathEffect
-import afield.four.audio.steamaudio.PathEffectParams
-import afield.four.audio.steamaudio.ProbeArray
-import afield.four.audio.steamaudio.ProbeBatch
-import afield.four.audio.steamaudio.ProbeGenerationParams
-import afield.four.audio.steamaudio.Scene
-import afield.four.audio.steamaudio.SimulationFlags
-import afield.four.audio.steamaudio.SimulationInputs
-import afield.four.audio.steamaudio.SimulationOutputs
-import afield.four.audio.steamaudio.SimulationSettings
-import afield.four.audio.steamaudio.SimulationSharedInputs
-import afield.four.audio.steamaudio.Simulator
-import afield.four.audio.steamaudio.Source
-import afield.four.audio.steamaudio.SpeakerLayout
-import afield.four.audio.steamaudio.SteamAudio
-import afield.four.audio.steamaudio.SteamAudioContext
-import afield.four.audio.steamaudio.WallSegment
-import afield.four.audio.steamaudio.WallSet
-import afield.four.audio.steamaudio.World2D
+import afield.audio.spatial.steamaudio.AudioBuffer
+import afield.audio.spatial.steamaudio.AudioSettings
+import afield.audio.spatial.steamaudio.BinauralEffect
+import afield.audio.spatial.steamaudio.BinauralEffectParams
+import afield.audio.spatial.steamaudio.DirectEffect
+import afield.audio.spatial.steamaudio.DirectEffectFlags
+import afield.audio.spatial.steamaudio.DirectEffectParams
+import afield.audio.spatial.steamaudio.DirectSimulationFlags
+import afield.audio.spatial.steamaudio.Hrtf
+import afield.audio.spatial.steamaudio.Material
+import afield.audio.spatial.steamaudio.Matrix4x4
+import afield.audio.spatial.steamaudio.OcclusionType
+import afield.audio.spatial.steamaudio.PathBakeSettings
+import afield.audio.spatial.steamaudio.PathBaker
+import afield.audio.spatial.steamaudio.PathEffect
+import afield.audio.spatial.steamaudio.PathEffectParams
+import afield.audio.spatial.steamaudio.ProbeArray
+import afield.audio.spatial.steamaudio.ProbeBatch
+import afield.audio.spatial.steamaudio.ProbeGenerationParams
+import afield.audio.spatial.steamaudio.Scene
+import afield.audio.spatial.steamaudio.SimulationFlags
+import afield.audio.spatial.steamaudio.SimulationInputs
+import afield.audio.spatial.steamaudio.SimulationOutputs
+import afield.audio.spatial.steamaudio.SimulationSettings
+import afield.audio.spatial.steamaudio.SimulationSharedInputs
+import afield.audio.spatial.steamaudio.Simulator
+import afield.audio.spatial.steamaudio.Source
+import afield.audio.spatial.steamaudio.SpeakerLayout
+import afield.audio.spatial.steamaudio.SteamAudio
+import afield.audio.spatial.steamaudio.SteamAudioContext
+import afield.audio.spatial.steamaudio.WallSegment
+import afield.audio.spatial.steamaudio.WallSet
+import afield.audio.spatial.steamaudio.World2D
 import java.lang.foreign.Arena
 import java.nio.file.Files
 import java.nio.file.Path
@@ -171,7 +171,7 @@ fun main() {
                         println(" done")
 
                         val dataSize = probeBatch.dataSize(
-                            afield.four.audio.steamaudio.BakedDataIdentifier.PATHING,
+                            afield.audio.spatial.steamaudio.BakedDataIdentifier.PATHING,
                         )
                         println("  baked pathing data: $dataSize bytes")
                         check(dataSize > 0) { "the bake produced no pathing data" }

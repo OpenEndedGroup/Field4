@@ -1,6 +1,6 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.four.reconstruction.ReconstructionDemo
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.media.reconstruction.ReconstructionDemo
 var Box.lab by Inheritance<ReconstructionDemo>() /**/
 val Once.lab by Onceing<ReconstructionDemo>() /**/
 val Why.lab by Whying() /**/

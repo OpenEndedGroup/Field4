@@ -31,7 +31,7 @@ sliver, where conditioning starts to hurt.
 
 The sliver worry that prompted this turned out to be unfounded for both. MMG never produced one at
 any setting; TetGen produced exactly one at its own default `-q1.414`, and `-q1.2` removes it for
-no measurable cost, which is why 1.2 is the default in `afield.tetgen.Tetgen`.
+no measurable cost, which is why 1.2 is the default in `afield.geometry.mesh.tetgen.Tetgen`.
 
 ### The finding that decided it
 

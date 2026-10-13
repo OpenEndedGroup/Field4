@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="diffusion_renderer" index="0" -->
 
 ```edn [field-box id="diffusion_renderer" role="properties"]
-{"id" "diffusion_renderer" "index" 0 "name" "2 · renderer" "parents" ["root"] "children" ["diffusion_curves"] "properties" {"children" #{#afield/box "diffusion_curves"} "parents" #{#afield/box "root"} "name" "2 · renderer" "_tombstone" false "frame" #afield/rect [40.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_renderer_code_.kt" "lines" 15 "characters" 264 "sha256" "051c1e051ccb4633a234da266481a3f323dbab51c778a82b4e1df62ce158b550"}]}
+{"id" "diffusion_renderer" "index" 0 "name" "2 · renderer" "parents" ["root"] "children" ["diffusion_curves"] "properties" {"children" #{#afield/box "diffusion_curves"} "parents" #{#afield/box "root"} "name" "2 · renderer" "_tombstone" false "frame" #afield/rect [40.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_renderer_code_.kt" "lines" 15 "characters" 275 "sha256" "e90393b044932ad7e022f5505bec768466f0d819aaa553c877bfe061d981c6d2"}]}
 ```
 
 ```kotlin [field-property box="diffusion_renderer" name="code" path="diffusion_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -37,14 +37,14 @@ start(renderer::run)
 <!-- field-box id="diffusion_curves" index="1" -->
 
 ```edn [field-box id="diffusion_curves" role="properties"]
-{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 91 "characters" 4607 "sha256" "efef326c64d2b3d1214056481d0d8d5947f2c0bcd63a5759d6ce69abfd05eabf"}]}
+{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 91 "characters" 4638 "sha256" "ffe0cde4cf8066ad5f59157f8031dfabfaccea9dbcff624c8841f8670eb076eb"}]}
 ```
 
 ```kotlin [field-property box="diffusion_curves" name="code" path="diffusion_curves_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.diffusion.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.media.video.diffusion.*
+import afield.document.context.fromContextWithNameOrNull
 
 // Connect this box beneath a running renderer box before launching it.
 val owner: Renderer = fromContext()

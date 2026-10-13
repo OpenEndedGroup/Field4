@@ -127,7 +127,7 @@ curtains alone, before lines 56–59 colour them emerald and violet and lay them
 
 AI4 offers these tools to any conversation opened on a box's `stackSL` property, and each works on
 that box's program. They are library code, in
-[`afield.stacksl.study`](assets/stacksl_conversation/StackSLStudyTools.kt), registered through
+[`afield.lang.stacksl.study`](assets/stacksl_conversation/StackSLStudyTools.kt), registered through
 [AI4's tool interface](aiFeatures.md#give-the-ai-a-tool-of-your-own):
 
 | Tool | Purpose |
@@ -165,8 +165,8 @@ the tool; two documents can each have their own tool of the same name.
 
 <!-- stacksl-study-source:colour-tool -->
 ```diffstatic {data-lang=kotlin}
-import afield.ai.core.AgentToolExtensions
-import afield.stacksl.study.StackSLStudyShader
+import afield.ai.tools.AgentToolExtensions
+import afield.lang.stacksl.study.StackSLStudyShader
 import com.fasterxml.jackson.annotation.JsonClassDescription
 
 @JsonClassDescription("The colours a StackSL program types, as the window shows them.")

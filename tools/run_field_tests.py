@@ -309,7 +309,7 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
 
 
 # Command-line markers identifying a JVM this repo launched: the Field server
-# (build.gradle.kts `runJvm` -> mainClass afield.Server), the jvm-main test
+# (build.gradle.kts `runJvm` -> mainClass afield.app.server.Server), the jvm-main test
 # launcher and the completion Analysis API sidecar. Matching the main class
 # rather than the java binary is what keeps the reaper off Gradle/Kotlin daemons,
 # IDEs and unrelated JVMs.
@@ -318,8 +318,8 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
 # [_command_belongs_to] for that half, which is what keeps parallel agents in sibling
 # worktrees from SIGKILLing each other's tests.
 FIELD_JVM_MARKERS = (
-    "afield.Server",
-    "afield.AgentJvmMainLauncher",
+    "afield.app.server.Server",
+    "afield.tools.automation.AgentJvmMainLauncher",
     "afield.tools.codeuse.CodeUseSemanticSidecarKt",
 )
 
@@ -442,7 +442,7 @@ def _attribute_command(command: str, root: Path) -> Attribution:
       ``<root>/build/aot/field.aot``. It is the cheapest and most direct answer.
     * a ``-classpath``/``-cp`` entry under ``<root>/build/`` or the semantic sidecar's
       ``<root>/tools/code-use-semantic-sidecar/build/``. Not a theoretical fallback: an
-      observed ``afield.AgentJvmMainLauncher`` running
+      observed ``afield.tools.automation.AgentJvmMainLauncher`` running
       ``afield.examples.DemoTranscriptExecSmokeTest`` carried **no**
       ``-Dafield.aot.cache.path`` argument at all, and its classpath was the only thing naming
       its checkout. The property is also emitted *empty* when ``-PfieldAotCache=false``
@@ -1294,7 +1294,7 @@ def wrap_snippet_for_backdoor(test: dict[str, Any], snippet: str) -> str:
         source_literal = json.dumps(snippet)
         return f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
-import afield.docs.renderForthDocsSnippet
+import afield.tools.docs.renderForthDocsSnippet
 
 val __forthSource = {source_literal}
 renderForthDocsSnippet(__forthSource)
@@ -1765,7 +1765,7 @@ def collect_execution_problems(backdoor_results: list[dict[str, Any]]) -> list[s
                 html = str(payload.get("html", "")).replace("\n", " ").strip()
                 # An error event with no text is not an error: it is how a runtime *clears* the
                 # marker a previous failed run left on the box (see `HasOutput.error`'s "an error of
-                # null,,-1 means 'clear errors'" in `src/jvmMain/kotlin/afield/outputs.kt`).
+                # null,,-1 means 'clear errors'" in `src/jvmMain/kotlin/afield/ui/output/outputs.kt`).
                 # DatalogExecution sends one on every success and ClojureExecution now does too, so
                 # reading it as a failure would fail every test whose box merely ran cleanly — and
                 # report it as the bare string "execution error", with nothing to go on.

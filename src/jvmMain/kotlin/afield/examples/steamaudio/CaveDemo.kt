@@ -1,37 +1,37 @@
 package afield.examples.steamaudio
 
-import afield.four.audio.steamaudio.AmbisonicsDecodeEffect
-import afield.four.audio.steamaudio.AmbisonicsDecodeEffectParams
-import afield.four.audio.steamaudio.AudioBuffer
-import afield.four.audio.steamaudio.AudioSettings
-import afield.four.audio.steamaudio.BinauralEffect
-import afield.four.audio.steamaudio.BinauralEffectParams
-import afield.four.audio.steamaudio.Box
-import afield.four.audio.steamaudio.CoordinateSpace3
-import afield.four.audio.steamaudio.DirectEffect
-import afield.four.audio.steamaudio.DirectEffectFlags
-import afield.four.audio.steamaudio.DirectEffectParams
-import afield.four.audio.steamaudio.DirectSimulationFlags
-import afield.four.audio.steamaudio.Hrtf
-import afield.four.audio.steamaudio.InstancedMesh
-import afield.four.audio.steamaudio.Material
-import afield.four.audio.steamaudio.Matrix4x4
-import afield.four.audio.steamaudio.OcclusionType
-import afield.four.audio.steamaudio.QualityPreset
-import afield.four.audio.steamaudio.ReflectionEffect
-import afield.four.audio.steamaudio.ReflectionEffectParams
-import afield.four.audio.steamaudio.ReflectionEffectType
-import afield.four.audio.steamaudio.Scene
-import afield.four.audio.steamaudio.SimulationFlags
-import afield.four.audio.steamaudio.SimulationInputs
-import afield.four.audio.steamaudio.SimulationOutputs
-import afield.four.audio.steamaudio.SimulationSettings
-import afield.four.audio.steamaudio.SimulationSharedInputs
-import afield.four.audio.steamaudio.Simulator
-import afield.four.audio.steamaudio.StaticMesh
-import afield.four.audio.steamaudio.SteamAudio
-import afield.four.audio.steamaudio.SteamAudioContext
-import afield.four.audio.steamaudio.Vector3
+import afield.audio.spatial.steamaudio.AmbisonicsDecodeEffect
+import afield.audio.spatial.steamaudio.AmbisonicsDecodeEffectParams
+import afield.audio.spatial.steamaudio.AudioBuffer
+import afield.audio.spatial.steamaudio.AudioSettings
+import afield.audio.spatial.steamaudio.BinauralEffect
+import afield.audio.spatial.steamaudio.BinauralEffectParams
+import afield.audio.spatial.steamaudio.Box
+import afield.audio.spatial.steamaudio.CoordinateSpace3
+import afield.audio.spatial.steamaudio.DirectEffect
+import afield.audio.spatial.steamaudio.DirectEffectFlags
+import afield.audio.spatial.steamaudio.DirectEffectParams
+import afield.audio.spatial.steamaudio.DirectSimulationFlags
+import afield.audio.spatial.steamaudio.Hrtf
+import afield.audio.spatial.steamaudio.InstancedMesh
+import afield.audio.spatial.steamaudio.Material
+import afield.audio.spatial.steamaudio.Matrix4x4
+import afield.audio.spatial.steamaudio.OcclusionType
+import afield.audio.spatial.steamaudio.QualityPreset
+import afield.audio.spatial.steamaudio.ReflectionEffect
+import afield.audio.spatial.steamaudio.ReflectionEffectParams
+import afield.audio.spatial.steamaudio.ReflectionEffectType
+import afield.audio.spatial.steamaudio.Scene
+import afield.audio.spatial.steamaudio.SimulationFlags
+import afield.audio.spatial.steamaudio.SimulationInputs
+import afield.audio.spatial.steamaudio.SimulationOutputs
+import afield.audio.spatial.steamaudio.SimulationSettings
+import afield.audio.spatial.steamaudio.SimulationSharedInputs
+import afield.audio.spatial.steamaudio.Simulator
+import afield.audio.spatial.steamaudio.StaticMesh
+import afield.audio.spatial.steamaudio.SteamAudio
+import afield.audio.spatial.steamaudio.SteamAudioContext
+import afield.audio.spatial.steamaudio.Vector3
 import java.lang.foreign.Arena
 import java.lang.foreign.ValueLayout
 import java.nio.file.Files
@@ -234,7 +234,7 @@ fun main() {
                     simulator.setScene(scene)
                     simulator.commit()
 
-                    afield.four.audio.steamaudio.Source(
+                    afield.audio.spatial.steamaudio.Source(
                         simulator,
                         SimulationFlags.DIRECT or SimulationFlags.REFLECTIONS,
                     ).use { source ->
@@ -324,7 +324,7 @@ private const val PANEL_CLOSED_RADIUS = 2.8
  *
  *  - Simulation runs at [SIMULATION_HZ], not block rate, and would live on its own thread.
  *  - The audio path runs every block and only ever *reads* the latest simulation result via
- *    [afield.four.audio.steamaudio.Source.getOutputs], which is cheap and non-blocking.
+ *    [afield.audio.spatial.steamaudio.Source.getOutputs], which is cheap and non-blocking.
  *  - Every buffer and parameter block is allocated once, up front.
  */
 private class CaveRenderer(
@@ -333,7 +333,7 @@ private class CaveRenderer(
     arena: Arena,
     private val scene: Scene,
     private val simulator: Simulator,
-    private val source: afield.four.audio.steamaudio.Source,
+    private val source: afield.audio.spatial.steamaudio.Source,
     private val direct: DirectEffect,
     private val binaural: BinauralEffect,
     private val reflection: ReflectionEffect,
@@ -568,7 +568,7 @@ private class CaveRenderer(
         while (blocks < maxBlocks && !(reflectionDone && binauralDone)) {
             if (!binauralDone) {
                 binauralDone = binaural.getTail(directStereo) ==
-                    afield.four.audio.steamaudio.AudioEffectState.TAIL_COMPLETE
+                    afield.audio.spatial.steamaudio.AudioEffectState.TAIL_COMPLETE
             } else {
                 directStereo.clear()
             }

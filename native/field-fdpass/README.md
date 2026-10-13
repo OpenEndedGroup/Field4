@@ -1,7 +1,7 @@
 # field-fdpass
 
 A tiny JNI shim (one function) so the JVM can hand a raw file descriptor to another process via
-SCM_RIGHTS over a Unix domain socket. Used by `afield.four.texture.UnixFdPass` to get a
+SCM_RIGHTS over a Unix domain socket. Used by `afield.graphics.texture.UnixFdPass` to get a
 Vulkan-exported opaque fd into the `field-encode-linux` helper process — see
 `../field-encode/WIRE_FORMAT.md`'s "Linux sender addendum" for the full protocol context.
 

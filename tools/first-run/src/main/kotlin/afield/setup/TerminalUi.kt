@@ -1,6 +1,6 @@
 package afield.setup
 
-import afield.asciiWelcome
+import afield.app.server.asciiWelcome
 import java.util.concurrent.TimeUnit
 
 internal enum class TerminalColor { NONE, ANSI, TRUE_COLOR }

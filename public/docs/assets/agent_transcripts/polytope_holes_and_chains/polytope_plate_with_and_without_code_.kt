@@ -1,5 +1,5 @@
-import afield.stdlib.MeshView
-import afield.stdlib.Vec3
+import afield.geometry.mesh.MeshView
+import afield.math.linalg.Vec3
 
 // ***** CHANGE THIS LINE ***** the hole's half-width; 0 or more, less than 1.
 val hole = 0.45f

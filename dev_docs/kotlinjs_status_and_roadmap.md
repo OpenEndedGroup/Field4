@@ -148,15 +148,15 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
 
 | Area | File |
 |---|---|
-| Compiler driver | `src/jvmMain/kotlin/afield/remotejs/KotlinToJsCompiler.kt` |
-| Head runtime / language | `src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt` |
-| Head profiles + transport | `src/jvmMain/kotlin/afield/remotejs/KotlinJsHeadProfiles.kt`, `RemoteJS.kt` |
-| Binding model + renderer | `src/jvmMain/kotlin/afield/graphics/KotlinJsBinding.kt` |
-| RemoteAR surface | `src/jvmMain/kotlin/afield/graphics/RemoteArKotlinJs.kt` |
-| Vision Metal surface | `src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt` |
-| Vision Metal channel + `msl` property + reload commands | `src/jvmMain/kotlin/afield/graphics/VisionMetal.kt` |
-| MSL Monaco language | `src/commonMain/resources/msl.js`, `src/jvmMain/kotlin/afield/graphics/MslEditorLanguage.kt` |
-| Completion client / sidecar | `src/jvmMain/kotlin/afield/AaCompletionClient.kt`, `tools/code-use-semantic-sidecar/…/AaCompletion.kt` |
+| Compiler driver | `src/jvmMain/kotlin/afield/lang/remotejs/KotlinToJsCompiler.kt` |
+| Head runtime / language | `src/jvmMain/kotlin/afield/lang/remotejs/KotlinJs.kt` |
+| Head profiles + transport | `src/jvmMain/kotlin/afield/lang/remotejs/KotlinJsHeadProfiles.kt`, `RemoteJS.kt` |
+| Binding model + renderer | `src/jvmMain/kotlin/afield/lang/remotejs/KotlinJsBinding.kt` |
+| RemoteAR surface | `src/jvmMain/kotlin/afield/lang/remotejs/RemoteArKotlinJs.kt` |
+| Vision Metal surface | `src/jvmMain/kotlin/afield/graphics/visionos/VisionMetalKotlinJs.kt` |
+| Vision Metal channel + `msl` property + reload commands | `src/jvmMain/kotlin/afield/graphics/visionos/VisionMetal.kt` |
+| MSL Monaco language | `src/commonMain/resources/msl.js`, `src/jvmMain/kotlin/afield/graphics/shader/MslEditorLanguage.kt` |
+| Completion client / sidecar | `src/jvmMain/kotlin/afield/runtime/completion/AaCompletionClient.kt`, `tools/code-use-semantic-sidecar/…/AaCompletion.kt` |
 | Runtime the surface mirrors | `src/commonMain/resources/extensions/remote_ar/{ar,field}/*.js` |
 | Smokes | `src/jvmMain/kotlin/afield/examples/KotlinJs*SmokeTest.kt`, `KotlinToJsSpikeTest.kt` |
 

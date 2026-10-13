@@ -15,8 +15,8 @@ at `4546d72b5`:
 | `src/jvmTest/kotlin/afield/ml/tests` | 15 files, 6409 lines |
 | test-to-implementation line ratio | 0.72 |
 | published FieldML pages before this one | 4 (`fieldml_cheatsheet.md` 262 lines, `fieldml_examples.md` 453, `fieldml_host_bridge.md` 372, `reference/languages.md`) |
-| `afield.ml` files with a generated signature table | 19 of 19 |
-| `afield.ml` files with a KDoc file overview | 3 of 19 |
+| `afield.lang.fieldml` files with a generated signature table | 19 of 19 |
+| `afield.lang.fieldml` files with a KDoc file overview | 3 of 19 |
 | hits for `Lowerer\|CoreExpr\|Inferencer` in `public/docs/**.md` outside `reference/` | **1** |
 
 That last row is the whole justification. Four pages, a complete signature table, a cheatsheet and a
@@ -28,7 +28,7 @@ because the two are easy to conflate.
 
 Two claims in circulation that this pass falsified, so they stop being re-derived:
 
-- *"`afield.ml` test coverage is zero; the directory has no files."* False. The glob that produced it
+- *"`afield.lang.fieldml` test coverage is zero; the directory has no files."* False. The glob that produced it
   looked at `src/jvmTest/kotlin/afield/ml/` and the files are one level deeper, in `…/ml/tests/`.
   **A zero deserves the same suspicion as an absence** — this one, and the sibling error in the same
   brief, were both a glob that did not recurse.

@@ -1,4 +1,4 @@
-import afield.stdlib.path
+import afield.document.workspace.path
 import java.util.concurrent.CompletableFuture
 
 val client = LorisClient()

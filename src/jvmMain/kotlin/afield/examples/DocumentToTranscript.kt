@@ -1,13 +1,13 @@
 package afield.examples
 
-import afield.Box
-import afield.METAROOT_ID
-import afield.OperationTranscript
-import afield.Rect
-import afield.SavingContext
-import afield.isTrue
-import afield.nestedIn
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.document.graph.METAROOT_ID
+import afield.tools.automation.OperationTranscript
+import afield.app.protocol.Rect
+import afield.document.persistence.SavingContext
+import afield.document.graph.isTrue
+import afield.document.graph.nestedIn
+import afield.app.server.thisSessionInfo
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import kotlin.system.exitProcess

@@ -233,7 +233,7 @@ From `code`
 Kotlin: what Field recorded for each line of "hello" when it last ran. Run "hello" first.
 
 ```edn [field-box id="lua_notes" role="properties"]
-{"id" "lua_notes" "index" 12 "name" "line notes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "line notes" "_tombstone" false "frame" #afield/rect [420.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lua_notes_code_.kt" "lines" 6 "characters" 348 "sha256" "1f6df51aff1dd7906f961eb74bd517c097f3f6d94c3abc9b9db86e64444390d2"}]}
+{"id" "lua_notes" "index" 12 "name" "line notes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "line notes" "_tombstone" false "frame" #afield/rect [420.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lua_notes_code_.kt" "lines" 6 "characters" 351 "sha256" "287d058432506bac664d86967206b5d742baf7429c78dcf5263d9ae343c05c40"}]}
 ```
 
 ```kotlin [field-property box="lua_notes" name="code" path="lua_notes_code_.kt"]
@@ -241,7 +241,7 @@ Kotlin: what Field recorded for each line of "hello" when it last ran. Run "hell
 val hello = root.children.first { it.name == "hello" }
 val code = hello.getPropertyRaw("code") as String
 code.lines().forEachIndexed { i, _ ->
-    afield.stdlib.LineNotes.note(hello, "code", code, i + 1)?.let { println("line ${i + 1}: ${it.caption}") }
+    afield.ui.output.LineNotes.note(hello, "code", code, i + 1)?.let { println("line ${i + 1}: ${it.caption}") }
 }
 ```
 

@@ -44,8 +44,8 @@ operations:
         code: |
           // The import is load-bearing: nothing in the audioai package is in the REPL intro, so
           // without it the popup correctly offers nothing here at all (measured, not guessed).
-          import afield.stdlib.noir.audioai.*
-
+          import afield.audio.ai.*
+          
           // Caret at the end of the next line, then Ctrl+Space.
           // These come from `@file:CompletionCategory("Audio AI")`, so the group header must read
           // exactly "Audio AI" — two capitals, no "Audio Ai".

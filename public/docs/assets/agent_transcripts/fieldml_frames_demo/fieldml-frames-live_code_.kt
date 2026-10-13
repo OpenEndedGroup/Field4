@@ -1,4 +1,4 @@
-// A whole afield.four scene, described from FieldML -- and, unlike the still-life demo
+// A whole Field 4 scene, described from FieldML -- and, unlike the still-life demo
 // next door, one that MOVES. There is no hostAs anywhere in this box.
 //
 // This box needs a live Vulkan device. Run the `window and renderer` box above it first;
@@ -19,7 +19,7 @@ let inherited name box =
 let renderer = thisBox |> inherited "renderer"
 
 let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-let Phased = hostClass "afield.PhasedKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
 // One push-constant member, read by both stages. The name that matters is the MEMBER name

@@ -4,7 +4,7 @@
 
 Before this, the solver knew about particles and distance constraints and nothing else: a cloth
 could sag under gravity and that was the entire vocabulary. It could not drape over anything, tear,
-or flutter. The nearest thing to a collider anywhere in `afield.four.physics` was
+or flutter. The nearest thing to a collider anywhere in `afield.simulation.physics` was
 `SimdVerletDyn4jBridge`, which nominates individual particles to become circle rigid bodies in a
 separate 2D world and hard-requires `CollisionPlane.XY`.
 

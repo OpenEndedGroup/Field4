@@ -37,7 +37,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Warp only background passage 1100..1250 with a 6-second C2 delay bump: slow first half, catch up second, positive clock rate and pinned endpoints; preserve all events and other times.","expectedRevision":"r7-ebc54198e3ae","expectedSourceHash":"ebc54198e3aea15a0ca6ce900be84524d3d9ea946a54fd81939f042ac0616f42","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundC...
+{"description":"Warp only background passage 1100..1250 with a 6-second C2 delay bump: slow first half, catch up second, positive clock rate and pinned endpoints; preserve all events and other times.","expectedRevision":"r7-ebc54198e3ae","expectedSourceHash":"ebc54198e3aea15a0ca6ce900be84524d3d9ea946a54fd81939f042ac0616f42","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundC...
 <<progress>>
 EditFunctionStudy finished
 r8-e4aea058bc8b Compiled, checked and activated images=0

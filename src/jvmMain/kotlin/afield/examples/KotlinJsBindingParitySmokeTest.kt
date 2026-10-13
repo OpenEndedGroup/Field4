@@ -1,6 +1,6 @@
 package afield.examples
 
-import afield.graphics.RemoteArKotlinJs
+import afield.lang.remotejs.RemoteArKotlinJs
 
 /*
 FIELD_TEST

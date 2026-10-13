@@ -1,6 +1,6 @@
 # Polytope algebra: current architecture and next work
 
-The first complete vertical slice of `afield.stdlib.polytope` is now in place: immutable incidence
+The first complete vertical slice of `afield.geometry.polytope` is now in place: immutable incidence
 topology, realized solids, Conway transforms, realization repair, Field-native polygon output, and
 provenance-preserving triangle output. The loadable worked example is
 `dev_docs/agents/transcripts/polytope_conway_demo.yaml`.

@@ -5,7 +5,7 @@
 // surface). That is deliberate. A control group is a single `ControllerControl` record served to two
 // renderers, so a law belongs in one place they both read rather than in two places that agree today.
 //
-// The Kotlin side of every function here is in `src/jvmMain/kotlin/afield/ControlLaw.kt`, and
+// The Kotlin side of every function here is in `src/jvmMain/kotlin/afield/ui/controls/ControlLaw.kt`, and
 // `ControlSurfaceProbeTest` runs this exact file under node against the HTML the Kotlin builder emits,
 // on a shared matrix of laws and values. So the two implementations cannot drift apart quietly — which
 // they otherwise would, because the failure looks like "the number under the handle is slightly wrong"

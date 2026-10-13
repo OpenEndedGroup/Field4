@@ -1,12 +1,12 @@
 package afield.examples.functions
 
-import afield.stdlib.FnEvolveRun
-import afield.stdlib.FnVarietyRun
-import afield.stdlib.Functions
-import afield.stdlib.evolve
-import afield.stdlib.evolveVariety
-import afield.stdlib.graphSignature
-import afield.stdlib.matchFitness
+import afield.math.functions.FnEvolveRun
+import afield.math.functions.FnVarietyRun
+import afield.math.functions.Functions
+import afield.math.functions.evolve
+import afield.math.functions.evolveVariety
+import afield.math.functions.graphSignature
+import afield.math.functions.matchFitness
 
 /*
 FIELD_TEST

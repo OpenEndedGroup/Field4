@@ -1,19 +1,19 @@
-// `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, and the `prop<>` type
 // argument is written out in full on purpose: `prop<>` rewrites the box's code and the
 // rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
 // under an `import ...StandardRenderer` fails against the *import* line.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Matrix4f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+
+prop<afield.graphics.scene.fabricated.StandardRenderer.Bundle>(bundle)
 
 // The registration handles, kept so the next box can move each ball independently.
 // `registerSphere` returns the `PullingMeshPair` it registered and there is no by-name
 // lookup on a bundle, so the handle is the only way back to an object once it is in the
 // scene — hold it at registration or you cannot animate it at all.
-prop<MutableList<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>>(balls)
+prop<MutableList<afield.graphics.scene.fabricated.StandardRenderer.Bundle.PullingMeshPair>>(balls)
 
 // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
 // so re-running it would strand the bundle the chain is appended to.
@@ -36,7 +36,7 @@ once.bundle {
     // Silhouette edges, so there is something for a reprojection to be right or wrong about.
     // The handles go into `balls` in row-major order, ix outer and iz inner, which is the
     // order the animation box relies on to recover (ix, iz) from an index.
-    val handles = mutableListOf<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
+    val handles = mutableListOf<afield.graphics.scene.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
     for (ix in -2..2) for (iz in -2..2) {
         handles.add(
             b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)

@@ -1,14 +1,15 @@
 package afield.examples.four
 
-import afield.Box
-import afield.stdlib._fragment
-import afield.stdlib._mesh
-import afield.stdlib.fragment
-import afield.stdlib.macro_meshModuleHere
-import afield.stdlib.macro_moduleHereWithDefaultShaders
-import afield.stdlib.mesh
-import afield.stdlib.task
-import afield.stdlib.vertex
+import afield.document.graph.Box
+import afield.graphics.shader._fragment
+import afield.graphics.shader._mesh
+import afield.data.graph.fragment
+import afield.graphics.shader.fragment
+import afield.graphics.shader.macro_meshModuleHere
+import afield.graphics.shader.macro_moduleHereWithDefaultShaders
+import afield.graphics.shader.mesh
+import afield.graphics.shader.task
+import afield.graphics.shader.vertex
 
 class ShaderCopyPushConstantTemplateSmokeTest {
     companion object {

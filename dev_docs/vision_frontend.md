@@ -45,7 +45,7 @@ detach logic is in `Server.kt`; frontend application is in `Main.kt` and
 ## Deferred Kotlin/JS fork
 
 `src/jsVision/resources/index.html` is a served static placeholder, so `/vision`
-does not normally 404. `src/jsVision/kotlin/afield/Main.kt` is a tracked seed but
+does not normally 404. `src/jsVision/kotlin/afield/app/client/Main.kt` is a tracked seed but
 is not included in a Gradle compilation and no `afield-vision.mjs` is built.
 Its `_send` implementation is therefore illustrative, not live transport.
 

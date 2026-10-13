@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // What the compiler says about a program's own interface. This is the whole reason the
 // controls in the first box are generated rather than written.

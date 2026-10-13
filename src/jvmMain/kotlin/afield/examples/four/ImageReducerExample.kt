@@ -1,10 +1,10 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.targets.RenderTarget
-import afield.four.texture.LoadedTexture
-import afield.four.util.ImageReducer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.targets.RenderTarget
+import afield.graphics.texture.LoadedTexture
+import afield.graphics.vulkan.util.ImageReducer
+import afield.graphics.vulkan.util.Window
 
 /**
  * Example demonstrating the usage of ImageReducer utility class.
@@ -12,7 +12,7 @@ import afield.four.util.Window
  * Shows both the "just do it once" case ([runOnce], via [ImageReducer.reduceNow]) and the
  * "do it every frame" case ([runPerFrame], via [ImageReducer.installInto]).
  *
- * See the KDoc on [afield.four.util.ImageReducer] for the authoritative API, buffer layout, and
+ * See the KDoc on [afield.graphics.vulkan.util.ImageReducer] for the authoritative API, buffer layout, and
  * sampled-texture binding model.
  */
 class ImageReducerExample {

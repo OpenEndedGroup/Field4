@@ -1,11 +1,11 @@
 package afield.examples
 
-import afield.Box
-import afield.FileWatchManager
-import afield.SavingContext
-import afield.SessionInformation
-import afield.box
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.document.persistence.FileWatchManager
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.document.graph.box
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap

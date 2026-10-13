@@ -246,7 +246,7 @@ errors. A tool lets it work on *yours*. You write an ordinary Kotlin class and a
 ordinary Kotlin lambda, register the pair, and from the next turn onward the
 model can call it by name, with arguments it chose, and read what you return.
 
-The whole surface is `afield.ai.core.AgentToolExtensions`. Nothing needs to be
+The whole surface is `afield.ai.tools.AgentToolExtensions`. Nothing needs to be
 edited in Field to add a tool: the registration goes the other way.
 
 ### The smallest version
@@ -272,9 +272,9 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -497,7 +497,7 @@ JSON is spent as text tokens: the model cannot see an image encoded in a string.
 
 ### A worked example you can run
 
-`afield.four.modules.GeometryAgentTools` is a real, public tool set built exactly
+`afield.graphics.render.GeometryAgentTools` is a real, public tool set built exactly
 this way, over the loaders in [Geometry from disk](geometry_from_disk.md). Point
 it at a directory and the model can find out what geometry you have and look at
 any of it:
@@ -557,11 +557,11 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
-import afield.four.modules.InspectGeometryFileResult
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.CarriesToolImages
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
+import afield.graphics.render.InspectGeometryFileResult
 import java.io.File
 
 val root = File(System.getProperty("java.io.tmpdir"), "field-ai-tool-docs").also { it.mkdirs() }

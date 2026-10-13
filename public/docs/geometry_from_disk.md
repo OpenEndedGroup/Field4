@@ -354,7 +354,7 @@ per-vertex colours only; `assimpToTriMesh` drops the material. For a textured, r
 no CPU point-cloud type, no surface reconstruction, and no downsampling. `convexHullMesh` over the
 positions and `voronoi3d` are what there is.
 
-**Gaussian splats** are better served. `SplatRaster` ([`SplatRaster.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/modules/SplatRaster.kt)) renders a
+**Gaussian splats** are better served. `SplatRaster` ([`SplatRaster.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/render/SplatRaster.kt)) renders a
 splat cloud on the CPU into PNG bytes, matching the GPU renderer's framing for the same `Config`.
 `SplatContactSheet` puts a whole capture in one image, and `SplatCloud` lets you crop, filter,
 decimate, transform and merge a cloud and write a `.compressed.ply` back out.
@@ -620,7 +620,7 @@ negative volume. `fixWinding()` is the fix.
     Each figure is a box's own output area, captured by the docs build running the fence above it.
     The ToyCar figure reads the committed `assets/fabricate_demo/ToyCar.glb`; replace that file and
     the page's counts describe a different car. The counts are pinned in
-    `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
+    `src/jvmTest/kotlin/afield/geometry/mesh/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
     behaviour they rest on.
 
 ??? aside "Forcing these captures to re-run"
@@ -804,7 +804,7 @@ and shows the schema and the picture the model receives.
 
 Related pages: [Meshes and 3D geometry](mesh_examples.md) for everything you can *do* with a mesh
 once you have one; [the Fabricate renderer](fabricate_renderer.md) for textured PBR rendering of the
-same files; [afield.four graphics](afield_four_graphics.md) for the module/shader layer the GPU
+same files; [Field 4 graphics](afield_four_graphics.md) for the module/shader layer the GPU
 loaders plug into; [FLine examples](fline_examples.md) for `toFLines`, the route from a mesh back into
 Field's drawing. Developer notes: [`dev_docs/MESH_GEOMETRY.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_GEOMETRY.md) and
 [`dev_docs/ply_loader.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/ply_loader.md).

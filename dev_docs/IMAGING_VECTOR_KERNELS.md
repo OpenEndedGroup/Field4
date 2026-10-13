@@ -3,7 +3,7 @@
 How `afield.stdlib`'s CPU imaging operators are made fast, and what to reach for when you add the
 next one. Written 2026-07-27, after closing the largest gaps against single-threaded OpenCV 4.9.
 
-The layer is `src/jvmMain/kotlin/afield/stdlib/imaging_simd.kt` — one `internal object ImgSimd` of
+The layer is `src/jvmMain/kotlin/afield/media/image/imaging_simd.kt` — one `internal object ImgSimd` of
 span kernels. It is deliberately **not public**: it is an implementation detail of
 `imaging_filters.kt`, and keeping it out of the generated codebase reference means adding a kernel
 does not churn public API.

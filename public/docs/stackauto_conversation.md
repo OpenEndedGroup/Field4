@@ -393,7 +393,7 @@ max
 ## The tools
 
 A box whose code binds a slot has these in its AI4 chat, from
-[`afield.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
+[`afield.lang.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
 
 | Tool | What it does |
 | --- | --- |

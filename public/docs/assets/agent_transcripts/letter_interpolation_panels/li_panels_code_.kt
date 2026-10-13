@@ -1,7 +1,7 @@
-import afield.stdlib.ShaderNeuralParticles
-import afield.stdlib.blendWith
+import afield.simulation.particles.ShaderNeuralParticles
+import afield.simulation.particles.blendWith
 
-prop<List<afield.stdlib.ShaderNeuralParticles>>(panels)
+prop<List<afield.simulation.particles.ShaderNeuralParticles>>(panels)
 
 // 0.5 is the ring. The other two are where the form is buckling -- a ring with the S's
 // spine pressing into it -- and they are the reason this figure is not just "a circle".

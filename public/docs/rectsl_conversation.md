@@ -139,7 +139,7 @@ seconds with the scrubber:
 
 AI4 offers these tools to any conversation opened on a box's `rectSL` property, and each works on
 that box's scene. They are library code, in
-[`afield.rectsl.study`](assets/rectsl_conversation/RectSLStudyTools.kt), registered through
+[`afield.lang.rectsl.study`](assets/rectsl_conversation/RectSLStudyTools.kt), registered through
 [AI4's tool interface](aiFeatures.md#give-the-ai-a-tool-of-your-own):
 
 | Tool | Purpose |
@@ -180,8 +180,8 @@ The [StackSL page](stacksl_conversation.md#adding-a-tool-of-your-own) shows the 
 
 <!-- rectsl-study-source:rectangles-tool -->
 ```diffstatic {data-lang=kotlin}
-import afield.ai.core.AgentToolExtensions
-import afield.rectsl.compileRectSLWithSource
+import afield.ai.tools.AgentToolExtensions
+import afield.lang.rectsl.compileRectSLWithSource
 import com.fasterxml.jackson.annotation.JsonClassDescription
 
 @JsonClassDescription("The rectangles a RectSL scene makes, by the line that makes them.")

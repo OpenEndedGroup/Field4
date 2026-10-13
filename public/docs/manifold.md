@@ -8,7 +8,7 @@ still a closed solid, which is what you need to make a part.
 
 Coincident faces, near-degenerate triangles and features below the floating-point noise floor are
 what make that hard. [Manifold](https://github.com/elalish/manifold) is a library that handles them,
-and `afield.manifold` makes it available in a box as `Solid` (3D) and `Section` (2D). Both carry
+and `afield.geometry.solid.manifold` makes it available in a box as `Solid` (3D) and `Section` (2D). Both carry
 KDoc, and the [manifold_solids](agent_transcripts.md) starting point has the examples below ready to
 run. This plate with four bores drilled through it is typical:
 
@@ -56,7 +56,7 @@ folding `+` (Manifold plans the whole batch instead of nesting *n−1* operation
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/booleans.png" alt="an output panel headed 'Four bored bosses and a rounded slot, from eleven Booleans', holding a flat-shaded grey triangle mesh of a rectangular plate seen in perspective. A large rectangular window is cut through the middle, a rounded boss stands at each of the four corners with a cylindrical bore through it, and a rounded slot runs along one side. The corner header reads 3312 tri; the footer reads 1648 verts, 3312 tris, extent 60.000 x 40.000 x 14.000, chi=-8 genus 5, watertight, volume 15420.9314, and beneath it 'genus 5 - 3312 triangles - every step guaranteed closed'" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="booleans" embed=true}
 :::static
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 
 val part = Solid.scope {
     val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
@@ -195,7 +195,7 @@ stroke that is a *shape* rather than a rendering hint.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/offsets.png" alt="six cards in two rows of three. Each of the first four draws the same white source outline - a rectangle with a notch bitten out of its right edge and a ring near its left end - with a blue curve offset 2.5 outside it, and differs only in how that blue curve turns the outside corners: 'offset +2.5 with SQUARE', area 1354.0098 and 78 vertices; 'offset +2.5 with ROUND', area 1352.3844 and 264 vertices; 'offset +2.5 with MITER', area 1360.4438 and 72 vertices; 'offset +2.5 with BEVEL', area 1341.6938 and 78 vertices. The fifth, 'a 3mm wall, following every corner', fills the band between the outline and outline.offset(-3.0) in solid orange and reads 494.1382 mm-squared in 3 contours. The sixth, 'an opening - offset(-2.5) then offset(+2.5)', is captioned 'the corners do not come back sharp' and picks out in green the arcs where four corners and the notch have been rounded off by the round trip" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="offsets" embed=true}
 :::static
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 
 // A plate with a hole and a notch — concave and convex corners, so the join types have somewhere
 // to show themselves.
@@ -278,7 +278,7 @@ can immediately subtract from.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/levelset.png" alt="an output panel headed 'A gyroid-thickened torus, marched from a Kotlin function', holding a grey triangulated ring lying at an angle, its hole still open in the middle. The surface is not a smooth tube: it rises and falls in deep rounded lobes all the way round, the gyroid showing through as thickening and thinning rather than as a pattern on the surface. The triangles are fine and even enough to read as a mesh. The footer reads 14869 verts, 29738 tris, extent 59.498 x 59.498 x 15.870, chi=0 genus 1, watertight, volume 17750.1245" wait="8" capture="box" open-outputs="true" padding="20" requires="manifold" name="levelset" embed=true}
 :::static
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -356,8 +356,8 @@ Each layer is a `Section`, so it offsets, which is how a layer outline becomes a
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/slices.png" alt="three cards, each a plan view of the same part: an outer circle, a concentric bore, and twelve radial spokes between them, the six webs read end-on. The first, '11 layers superimposed in plan', is drawn in blue and captioned 'blue = each slice's outline'; because the webs exist only in the middle band, the spokes are drawn by fewer layers than the two circles are. The second, 'the same layers offset inward by 0.6mm', is the same figure in orange, captioned 'orange = where the nozzle centre may go', with every corner arrived at as an arc. The third, 'both together', superimposes the two, and the orange sits a constant step into the material everywhere: inside the outer circle, outside the bore, and outside each spoke, with its corners rounded where the blue ones are sharp" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="slices" embed=true}
 :::static
-import afield.graphics.FLine
-import afield.manifold.*
+import afield.geometry.path.FLine
+import afield.geometry.solid.manifold.*
 
 // A part with internal structure, so the slices have something to say.
 val part = Solid.scope {
@@ -517,8 +517,8 @@ lie in the same plane. `planarContacts(a, b)` finds those patches without being 
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.manifold.*
-import afield.stdlib.planning.Point3D
+import afield.geometry.solid.manifold.*
+import afield.geometry.path.planning.Point3D
 
 val area = Solid.scope {
     val a = Solid.cube(10.0).toPlanarMesh()
@@ -544,7 +544,7 @@ the requested distance of its finite chord, returning a polyline including both 
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.stdlib.planning.*
+import afield.geometry.path.planning.*
 
 val curve = CubicBezier3D(
     Point3D(10.0, 0.0, 0.0), Point3D(10.0, 5.5, 0.0),
@@ -563,7 +563,7 @@ interval certification; the polyline error bound does not prove containment in a
 
 ## Internals: how the binding is built
 
-`afield.manifold` binds Manifold through Java's foreign-function interface (FFM, "Panama"), with no
+`afield.geometry.solid.manifold` binds Manifold through Java's foreign-function interface (FFM, "Panama"), with no
 C++ of its own. Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from
 `manifoldc.h`), and Homebrew's bottle contains it. That is what makes this binding small, and it is
 the whole argument for FFM over JNI, because the alternative needs a compiled shim per platform and

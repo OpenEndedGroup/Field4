@@ -1,4 +1,4 @@
-import afield.four.synth.*
+
 
 // 3 - Close the loop: samples in, structure out.
 //
@@ -37,7 +37,7 @@ showPatRollOf(
 // they are the same bar, and the point of a shortest notation is that shortening it cost nothing.
 display(
     "played",
-    afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+    afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
         audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f
     )
 )

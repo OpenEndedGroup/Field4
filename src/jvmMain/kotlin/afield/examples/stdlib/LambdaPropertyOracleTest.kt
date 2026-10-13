@@ -1,12 +1,12 @@
 package afield.examples.stdlib
 
-import afield.stdlib.ActivationOrder
-import afield.stdlib.Lambda
-import afield.stdlib.LambdaTerms
-import afield.stdlib.NodeState
-import afield.stdlib.Term
-import afield.stdlib.net
-import afield.stdlib.vec
+import afield.data.graph.ActivationOrder
+import afield.data.graph.Lambda
+import afield.lang.lambda.LambdaTerms
+import afield.data.graph.NodeState
+import afield.lang.lambda.Term
+import afield.data.graph.net
+import afield.math.linalg.vec
 
 /*
 FIELD_TEST

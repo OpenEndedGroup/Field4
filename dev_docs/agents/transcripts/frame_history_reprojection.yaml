@@ -33,7 +33,7 @@ operations:
       frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -49,20 +49,20 @@ operations:
       frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.applyScenePlan
-          import afield.stdlib.linalg.Matrix4f
-          import afield.stdlib.linalg.Vector3f
-
+          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.applyScenePlan
+          import afield.math.linalg.Matrix4f
+          import afield.math.linalg.Vector3f
+          
           prop<StandardRenderer.Bundle>(bundle)
-
+          
           // The registration handles, kept so the next box can move each ball independently.
           // `registerSphere` returns the `PullingMeshPair` it registered and there is no by-name
           // lookup on a bundle, so the handle is the only way back to an object once it is in the
           // scene — hold it at registration or you cannot animate it at all.
           prop<MutableList<StandardRenderer.Bundle.PullingMeshPair>>(balls)
-
+          
           // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
           // so re-running it would strand the bundle the chain is appended to.
           once.bundle {
@@ -84,7 +84,7 @@ operations:
               // Silhouette edges, so there is something for a reprojection to be right or wrong about.
               // The handles go into `balls` in row-major order, ix outer and iz inner, which is the
               // order the animation box relies on to recover (ix, iz) from an index.
-              val handles = mutableListOf<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
+              val handles = mutableListOf<afield.graphics.scene.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
               for (ix in -2..2) for (iz in -2..2) {
                   handles.add(
                       b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)
@@ -104,14 +104,14 @@ operations:
       frame: { x: 60.0, y: 2040.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.fabricated.FabricatePassChain
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.addPassChain
-          import afield.stdlib.linalg.Matrix4f
+          import afield.graphics.scene.fabricated.FabricatePassChain
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.addPassChain
+          import afield.math.linalg.Matrix4f
           import kotlin.math.sin
-
-          prop<afield.four.fabricated.FabricateBuiltChain>(chain)
-
+          
+          prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(chain)
+          
           // `persistent` says WHAT last frame's pixels were. `frameHistory` says WHERE they were.
           // `temporalAccumulate` declares both, and that composition is the whole point: without the
           // second it accumulates correctly while the camera is still and smears the moment it moves.
@@ -144,7 +144,7 @@ operations:
           )
           bundle.attachTo(renderer)
           bundle.present(renderer = renderer)
-
+          
           // PER-OBJECT motion, not just camera motion, and the distinction is the whole reason this
           // box moves the balls rather than only turning the camera.
           //

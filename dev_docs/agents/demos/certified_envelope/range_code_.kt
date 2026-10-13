@@ -1,7 +1,7 @@
-import afield.stdlib.Functions
-import afield.stdlib.certifiedNeverExceeds
-import afield.stdlib.certifiedRange
-import afield.stdlib.certifiedReaches
+import afield.math.functions.Functions
+import afield.math.functions.certifiedNeverExceeds
+import afield.math.functions.certifiedRange
+import afield.math.functions.certifiedReaches
 
 // Branch-and-bound over the hour: the true maximum is at least the value reached at the
 // witness, and at most the proven bound. The same for the minimum.

@@ -1,4 +1,4 @@
-// A WHOLE afield.four SCENE BUILT BY A SOURCE MACRO, FROM FIELDML.
+// A WHOLE FIELD 4 SCENE BUILT BY A SOURCE MACRO, FROM FIELDML.
 //
 // The still-life and the moving demos next door hand-build their pipeline:
 // `parameters(renderer) { vertex = ...; fragment = ... }`, then `Module(params)`,
@@ -9,7 +9,7 @@
 //
 // Mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md. There is no hostAs anywhere here.
 let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-let Phased = hostClass "afield.PhasedKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
 let renderer = prop "renderer"

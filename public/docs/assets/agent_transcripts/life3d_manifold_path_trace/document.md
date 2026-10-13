@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["life3d_manifold_trace"] "properties" {"children" #{#afield/box "life3d_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 220 "sha256" "c468f59499b1de0bb236e49269d719d7a01585f0875835faae127b23e41c00c6"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["life3d_manifold_trace"] "properties" {"children" #{#afield/box "life3d_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 231 "sha256" "285956a05c5130ec22296e474edf82cea52a6a177e40f7e9410029ec0f549cb7"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,27 +31,27 @@ start(renderer::run)
 <!-- field-box id="life3d_manifold_trace" index="1" -->
 
 ```edn [field-box id="life3d_manifold_trace" role="properties"]
-{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 177 "characters" 8084 "sha256" "c5f6c0ccb655815d8addb13d7cff1403f1b64a780ae3f3843e34d00af3a6ea65"}]}
+{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 177 "characters" 8263 "sha256" "4152428fac56adc9781df29e6c5c6ed5af2aaaed259511faf53a03b9eb06ebba"}]}
 ```
 
 ```kotlin [field-property box="life3d_manifold_trace" name="code" path="life3d_manifold_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.IntVolume
-import afield.stdlib.LIFE3D_BLOB
-import afield.stdlib.asDensityField
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.marchBounds
-import afield.stdlib.step
-import afield.stdlib.toMesh
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.simulation.automata.IntVolume
+import afield.simulation.automata.LIFE3D_BLOB
+import afield.simulation.automata.asDensityField
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
+import afield.simulation.automata.marchBounds
+import afield.simulation.automata.step
+import afield.simulation.automata.toMesh
 import java.io.File
 import kotlin.random.Random
 
@@ -147,7 +147,7 @@ val floor = scene.material(PathTraceMaterial.plastic(0.30f, 0.31f, 0.33f, 0.5f))
 // Centre the volume on the origin and scale it into view: the field is in voxels.
 val centre = Vector3f(n / 2f, n / 2f, n / 2f)
 val scale = 2.4f / n
-val placement = afield.stdlib.linalg.Matrix4f()
+val placement = afield.math.linalg.Matrix4f()
     .scale(scale, scale, scale)
     .translate(-centre.x, -centre.y, -centre.z)
 

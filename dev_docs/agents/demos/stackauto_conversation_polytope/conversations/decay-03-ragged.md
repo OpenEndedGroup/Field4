@@ -120,7 +120,7 @@ WorkspaceSymbolSearch finished (5 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'Polytope', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'Polytope', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/92ac6fc2c04f3f1e9ea1.jpg)
 <<ai>>
@@ -135,7 +135,7 @@ _after the patch — 9 moments across 4.8 s, numbered and read left to right, th
 ![tool image](images/be89cda88daafb9b337a.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_Post-shader-reload screenshot of the afield.four render window, captured after a rendered frame. Inspect it against what the user asked for, together with any earlier screenshot. If the requested visual result is not achieved, edit and reload again before finalizing._
+_Post-shader-reload screenshot of the Field 4 render window, captured after a rendered frame. Inspect it against what the user asked for, together with any earlier screenshot. If the requested visual result is not achieved, edit and reload again before finalizing._
 
 ![tool image](images/caa90dac7a1a80780c03.jpg)
 <<ai>>
@@ -145,7 +145,7 @@ _over time — 9 moments across 4.8 s, numbered and read left to right, then dow
 ![tool image](images/76c610ff0e72ea0b56b8.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_Post-shader-reload screenshot of the afield.four render window, captured after a rendered frame. Inspect it against what the user asked for, together with any earlier screenshot. If the requested visual result is not achieved, edit and reload again before finalizing._
+_Post-shader-reload screenshot of the Field 4 render window, captured after a rendered frame. Inspect it against what the user asked for, together with any earlier screenshot. If the requested visual result is not achieved, edit and reload again before finalizing._
 
 ![tool image](images/ccb65199f9f0704c78ce.jpg)
 <<ai>>

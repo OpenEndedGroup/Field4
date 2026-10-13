@@ -9,11 +9,11 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.AudioVisualizer
-          import afield.stdlib.AudioVisualizerOptions
-          import afield.four.audio.WavFloatArrayLoader
-          import afield.stdlib.path
-
+          import afield.ui.visualization.AudioVisualizer
+          import afield.ui.visualization.AudioVisualizerOptions
+          import afield.audio.engine.WavFloatArrayLoader
+          import afield.document.workspace.path
+          
           val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
           val sync = "loris-source-study"
           val client = LorisClient()
@@ -39,8 +39,8 @@ operations:
       frame: { x: 1120.0, y: 40.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.path
-
+          import afield.document.workspace.path
+          
           val client = LorisClient()
           val minimumTrackSeconds = 0.03
           val frequencyScale = 0.75
@@ -71,9 +71,9 @@ operations:
       frame: { x: 40.0, y: 2200.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.path
+          import afield.document.workspace.path
           import java.util.concurrent.CompletableFuture
-
+          
           val client = LorisClient()
           val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
           val passes = listOf(
@@ -98,11 +98,11 @@ operations:
       frame: { x: 1120.0, y: 2200.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.path
+          import afield.document.workspace.path
           import kotlin.math.PI
           import kotlin.math.pow
           import kotlin.math.sin
-
+          
           val client = LorisClient()
           val chunkStart = 6.0
           val chunkDuration = 3.0
@@ -143,8 +143,8 @@ operations:
       frame: { x: 40.0, y: 4400.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.path
-
+          import afield.document.workspace.path
+          
           val client = LorisClient()
           client.analyzeWavAsync(
               "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,

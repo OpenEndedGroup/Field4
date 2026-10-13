@@ -24,7 +24,7 @@ serves both, so they should be done together.
 
 - Every figure on this page is a `capture="window"` still (`draw.png`, `fontana.png`, `projection.png`,
   `crescendo.png`; the fences at lines 32, 101, 124, 148). In those captures the drawing layer is inactive:
-  marks render, but Excalidraw is in view mode and shows no toolbar (`src/jsMain/kotlin/afield/drawingLayer.kt`,
+  marks render, but Excalidraw is in view mode and shows no toolbar (`src/jsMain/kotlin/afield/app/canvas/drawingLayer.kt`,
   the class KDoc, "Modal input"). No runner attribute turns the layer on for a window capture.
 - The only mode that can script the page is `capture="ui"` (a `drive` op). As `1c8526f9` records, `clip=`
   is not applied to ui captures (`clip_screenshot` in `public/docs_hooks.py` is called only on the ordinary

@@ -1,17 +1,80 @@
-@file:afield.CompletionCategory("Function")
+@file:afield.runtime.completion.CompletionCategory("Function")
 
-package afield.stdlib
+package afield.math.functions
 
-import afield.Box
-import afield.RunsAt
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.ToolExecutionContext
-import afield.displayClear
-import afield.displayOpen
-import afield.early
-import afield.newRoot
-import afield.notify
-import afield.plugins
+import afield.app.commands.action
+import afield.data.collections.invoke
+import afield.data.collections.s
+import afield.data.graph.main
+import afield.document.graph.minusAssign
+import afield.document.graph.named
+import afield.document.graph.plusAssign
+import afield.graphics.render.color
+import afield.graphics.render.rangeTo
+import afield.io.osc.main
+import afield.math.autodiff.div
+import afield.math.autodiff.max
+import afield.math.autodiff.min
+import afield.math.autodiff.minus
+import afield.math.autodiff.plus
+import afield.math.control.main
+import afield.math.linalg.invoke
+import afield.math.linalg.remAssign
+import afield.math.linalg.set
+import afield.math.linalg.x
+import afield.math.statistics.main
+import afield.math.units.div
+import afield.math.units.minus
+import afield.math.units.plus
+import afield.media.image.open
+import afield.media.video.image
+import afield.runtime.lifecycle.once
+import afield.simulation.automata.history
+import afield.simulation.automata.main
+import afield.study.search.Selection
+
+import afield.app.commands.Action
+import afield.app.commands.actions
+import afield.audio.synth.*
+import afield.data.collections.get
+import afield.data.collections.r
+import afield.data.collections.times
+import afield.document.properties.compareTo
+import afield.document.workspace.FileManager
+import afield.document.workspace.file
+import afield.document.workspace.files
+import afield.graphics.render.label
+import afield.graphics.vulkan.buffers.add
+import afield.math.autodiff.compareTo
+import afield.math.autodiff.sum
+import afield.math.autodiff.times
+import afield.math.linalg.f
+import afield.math.linalg.times
+import afield.math.units.times
+import afield.media.image.channel
+import afield.media.image.close
+import afield.runtime.execution.end
+import afield.runtime.execution.start
+import afield.study.evidence.StudyReport
+import afield.study.source.BoxStudies
+import afield.study.source.LiveStudy
+import afield.study.source.StudyRequest
+import afield.study.source.StudyToolClasses
+import afield.study.source.registerStudyTools
+import afield.ui.visualization.SignalChannel
+import afield.ui.visualization.SignalViewer
+import afield.ui.visualization.SignalViewerOptions
+
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.ui.output.displayClear
+import afield.ui.output.displayOpen
+import afield.runtime.lifecycle.early
+import afield.runtime.lifecycle.newRoot
+import afield.app.notifications.notify
+import afield.runtime.lifecycle.plugins
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import kotlin.math.abs
@@ -33,7 +96,7 @@ data class InspectFunctionStudy(override val revision: String = "current") : Stu
 data class EditFunctionStudy(
     val expectedRevision: String,
     val expectedSourceHash: String,
-    @JsonPropertyDescription("Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.")
+    @JsonPropertyDescription("Complete Kotlin source with imports. Last expression returns afield.math.functions.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.")
     val source: String,
     val description: String,
     val previewStartSeconds: Double = 0.0,
@@ -76,9 +139,9 @@ object FunctionStudies {
 
     /** The source a new function study starts from: three flat channels over an hour. */
     val STARTER = """
-        |import afield.stdlib.Functions
-        |import afield.stdlib.StudyComposition
-        |import afield.stdlib.StudyChoice
+        |import afield.math.functions.Functions
+        |import afield.math.functions.StudyComposition
+        |import afield.math.functions.StudyChoice
         |
         |// Three empty channels. Describe the function you want in this box's AI4 chat.
         |with(Functions) {
@@ -269,7 +332,7 @@ fun installFunctionStudyTools() {
 }
 
 /** The [FunctionStudyGuide] tool's answer. */
-data class FunctionStudyGuideText(val text: String) : afield.ai.core.SummarisesForToolLog {
+data class FunctionStudyGuideText(val text: String) : afield.ai.tools.SummarisesForToolLog {
     override fun toolLogSummary(): String = "guide ${text.length} chars"
 }
 
@@ -289,7 +352,7 @@ fun installFunctionStudyWatcher() {
                         FunctionStudies.ready(box)
                         FunctionStudies.showSignal(box)
                         box.displayOpen("overview")
-                    }.onFailure { afield.logger.lprintln("warning,study", "showing function study '${box.name}' failed: $it") }
+                    }.onFailure { afield.app.diagnostics.logging.lprintln("warning,study", "showing function study '${box.name}' failed: $it") }
                 }
             }
     }.start()
@@ -298,7 +361,7 @@ fun installFunctionStudyWatcher() {
 /** Keep the `aiStudy` mark with the document. */
 @RunsAt(early)
 fun installFunctionStudyMark() {
-    afield.Box.ioPersistentProperties.add(FunctionStudies.MARK)
+    afield.document.graph.Box.ioPersistentProperties.add(FunctionStudies.MARK)
 }
 
 /** "Make a Function Study": mark the selected boxes as function studies, seeding an empty one with [FunctionStudies.STARTER]. */
@@ -314,7 +377,7 @@ fun installFunctionStudyAction(root: Box) {
             box.properties["_functionStudyShown"] = true
             opening.execute {
                 runCatching { FunctionStudies.ready(box); FunctionStudies.showSignal(box); box.displayOpen("overview") }
-                    .onFailure { afield.logger.lprintln("warning,study", "showing function study '${box.name}' failed: $it") }
+                    .onFailure { afield.app.diagnostics.logging.lprintln("warning,study", "showing function study '${box.name}' failed: $it") }
             }
             notify("'${box.name}' is a function study: open its AI4 chat and describe a function", "study")
         }

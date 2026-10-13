@@ -169,7 +169,7 @@ each side, and leaning in toward the kick and back. Listen on headphones. While 
 hat passes behind you to your right; while it steps, the kick sweeps across; while it leans in, the
 kick grows as the hat and snare fall away behind.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/head-tracked.wav" audio-spec="head-tracked" audio-renderer="afield.four.synth.PatSpatialHeadTrackedDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-head-tracked"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/head-tracked.wav" audio-spec="head-tracked" audio-renderer="afield.audio.synth.PatSpatialHeadTrackedDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-head-tracked"}
 // PatSpatialHeadTrackedDocs.renderWav("head-tracked", …)
 // HeadTrackedPatternDemo's four movements through Steam Audio's HRTF, 5 s each
 ```
@@ -184,7 +184,7 @@ A headset reports its pose as it happens instead, through `followHead`.
 These two clips are the mono signal one `spat` group sends to Steam Audio, before it is placed. The
 placed, binaural result is the clip in [Following a head](#following-a-head) above.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.audio.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}
 // PatSpatialSoundDocs.renderWav("spatial-source-plain", …)
 // patSpatialEventsForArc(pat("36 ~ 48 ~, 72*4") with gain(0.9), az = -70, dist = 1.5)
 // -> one DoughEngine, 128-frame blocks, left channel only
@@ -192,7 +192,7 @@ placed, binaural result is the clip in [Following a head](#following-a-head) abo
 
 The mono source for one `spat` group, before Steam Audio places it.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-forwarded.wav" audio-spec="spatial-source-forwarded" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-forwarded"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-forwarded.wav" audio-spec="spatial-source-forwarded" audio-renderer="afield.audio.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-forwarded"}
 // PatSpatialSoundDocs.renderWav("spatial-source-forwarded", …)
 // the same pattern, plus param("lpf", 700) — not a spatial tag, so forwarded verbatim
 ```
@@ -278,4 +278,4 @@ to schedule the render thread; if it is near the elapsed time, the work does not
 
 - [Making a sound in Field](sound_paths.md) compares this with every other sound path.
 - [Pattern language](pattern_language.md) covers `pat`, `with` and mini-notation.
-- The full API is in [`afield.four.synth` in the generated reference](reference/patterns.md#patspatial-kt).
+- The full API is in [`afield.audio.synth` in the generated reference](reference/patterns.md#patspatial-kt).

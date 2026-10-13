@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Sixteen notes in half a second: 31 ms each.
 val notation = "60 62 64 65 67 69 71 72 72 71 69 67 65 64 62 60"

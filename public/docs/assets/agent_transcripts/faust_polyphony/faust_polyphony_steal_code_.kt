@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The one knob in this feature with an *audible* consequence, and the only way to know what it
 // does is to render the same passage twice.
@@ -51,7 +51,7 @@ for (frames in listOf(steal, 1L, 1440L).distinct()) {
     )
     display(
         "steal=" + frames,
-        afield.four.audio.WavFloatArrayWriter.encodeStereo16(r.left, r.right, r.sampleRate, 0.9f)
+        afield.audio.engine.WavFloatArrayWriter.encodeStereo16(r.left, r.right, r.sampleRate, 0.9f)
     )
 }
 println()

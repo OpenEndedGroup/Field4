@@ -111,7 +111,7 @@ The voice is short and detached: each note holds for 40% of its length and its t
 later, so the glissando's steps are separate strikes you can count, and so the onset detector
 further down can find each one. Two cycles:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score.wav" audio-spec="drawn-score" audio-renderer="afield.four.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score.wav" audio-spec="drawn-score" audio-renderer="afield.audio.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-audio"}
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score").
 ```
 
@@ -143,7 +143,7 @@ showPatRollOf("read" to patTimed(notes, beats = 8.0), "C minor pentatonic" to pa
 
 The pentatonic reading, two cycles:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score-pentatonic.wav" audio-spec="drawn-score-pentatonic" audio-renderer="afield.four.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-pentatonic-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score-pentatonic.wav" audio-spec="drawn-score-pentatonic" audio-renderer="afield.audio.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-pentatonic-audio"}
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score-pentatonic").
 ```
 

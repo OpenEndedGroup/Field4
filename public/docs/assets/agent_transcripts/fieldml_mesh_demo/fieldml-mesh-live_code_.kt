@@ -20,7 +20,7 @@ let inherited name box =
 let renderer = thisBox |> inherited "renderer"
 
 let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-let Phased = hostClass "afield.PhasedKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
 // Two vertex inputs. `Mesh.resize` reads these back out of the compiled SPIR-V

@@ -5,7 +5,7 @@ to ask it the question you actually want to ask: *how many separate things are l
 `LIFE3D_BLOB` for eight generations, turns the surviving cells into a Manifold solid, asks that
 question with one call, and traces the answer.
 
-`alife_ca.kt` runs the automaton, `afield.manifold` turns it into closed solids and counts them,
+`alife_ca.kt` runs the automaton, `afield.geometry.solid.manifold` turns it into closed solids and counts them,
 and the GPU path tracer draws the result.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_life3d_render/clusters.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="life3d study converged" embed=true hidden=true timeout="300" name="chain-life3d-clusters" alt="Several dozen small blue faceted lumps floating in a loose constellation over a pale floor with the Venice lagoon behind, with one larger lump near the centre rendered in gold" macro-file="../../dev_docs/agents/transcripts/life3d_manifold_path_trace.yaml" capture-box="life3d_manifold_trace"}
@@ -25,7 +25,7 @@ census. It needs no renderer: everything before the trace runs on the CPU.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_life3d_render/readout.png" wait="10" capture="box" open-outputs="true" w="1100" h="320" padding="18" timeout="180" name="chain-life3d-readout" embed=true alt="Tables: live cells per generation falling from 1852 to 164; Field's marching cubes reporting 10688 triangles, watertight, genus 0 against Manifold's level set reporting 5374 triangles and genus minus 47; a cluster census whose 48 volumes sum exactly to the whole solid's; and a sweep showing both the cluster count and the volume changing with the sampling spacing"}
 :::static
-import afield.manifold.Solid
+import afield.geometry.solid.manifold.Solid
 import afield.stdlib.*
 import kotlin.random.Random
 

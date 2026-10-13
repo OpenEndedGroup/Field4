@@ -48,12 +48,12 @@ println("renderer ready - now run the FieldML box")
 start(renderer::run)
 ```
 
-## 2. FieldML - a moving afield.four scene
+## 2. FieldML - a moving Field 4 scene
 
 <!-- field-box id="fieldml-frames-root" index="1" -->
 
 ```edn [field-box id="fieldml-frames-root" role="properties"]
-{"id" "fieldml-frames-root" "index" 1 "name" "FieldML - a moving afield.four scene" "parents" ["root" "fieldml-frames-renderer"] "children" ["fieldml-frames-live"] "properties" {"children" #{#afield/box "fieldml-frames-live"} "parents" #{#afield/box "root" #afield/box "fieldml-frames-renderer"} "name" "FieldML - a moving afield.four scene" "_tombstone" false "frame" #afield/rect [40.0 170.0 300.0 100.0] "isFieldMLRoot" true "mainLanguage" "fieldml"} "blockProperties" []}
+{"id" "fieldml-frames-root" "index" 1 "name" "FieldML - a moving Field 4 scene" "parents" ["root" "fieldml-frames-renderer"] "children" ["fieldml-frames-live"] "properties" {"children" #{#afield/box "fieldml-frames-live"} "parents" #{#afield/box "root" #afield/box "fieldml-frames-renderer"} "name" "FieldML - a moving Field 4 scene" "_tombstone" false "frame" #afield/rect [40.0 170.0 300.0 100.0] "isFieldMLRoot" true "mainLanguage" "fieldml"} "blockProperties" []}
 ```
 
 ## 3. A triangle that spins, driven by eachFrame
@@ -64,7 +64,7 @@ start(renderer::run)
 
 From `code`
 
-A whole afield.four scene, described from FieldML -- and, unlike the still-life demo
+A whole Field 4 scene, described from FieldML -- and, unlike the still-life demo
 next door, one that MOVES. There is no hostAs anywhere in this box.
 
 This box needs a live Vulkan device. Run the `window and renderer` box above it first;
@@ -76,11 +76,11 @@ parameter is a Continuation, and the bridge now drops that continuation, hands t
 the real `Frames`, and coerces the result to the type declared inside the continuation.
 
 ```edn [field-box id="fieldml-frames-live" role="properties"]
-{"id" "fieldml-frames-live" "index" 2 "name" "A triangle that spins, driven by eachFrame" "parents" ["root" "fieldml-frames-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-frames-root"} "name" "A triangle that spins, driven by eachFrame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-live_code_.kt" "lines" 77 "characters" 4476 "sha256" "25422d20e68e1420b9b9c23ca9c7a1fb9e625481002ef7fbf194e9c846bd43f2"}]}
+{"id" "fieldml-frames-live" "index" 2 "name" "A triangle that spins, driven by eachFrame" "parents" ["root" "fieldml-frames-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-frames-root"} "name" "A triangle that spins, driven by eachFrame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-live_code_.kt" "lines" 77 "characters" 4490 "sha256" "6791f86bd7d7ab884dad44652a2e6514826d5fba3f5938274404444f9432204b"}]}
 ```
 
 ```kotlin [field-property box="fieldml-frames-live" name="code" path="fieldml-frames-live_code_.kt"]
-// A whole afield.four scene, described from FieldML -- and, unlike the still-life demo
+// A whole Field 4 scene, described from FieldML -- and, unlike the still-life demo
 // next door, one that MOVES. There is no hostAs anywhere in this box.
 //
 // This box needs a live Vulkan device. Run the `window and renderer` box above it first;
@@ -101,7 +101,7 @@ let inherited name box =
 let renderer = thisBox |> inherited "renderer"
 
 let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-let Phased = hostClass "afield.PhasedKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
 // One push-constant member, read by both stages. The name that matters is the MEMBER name

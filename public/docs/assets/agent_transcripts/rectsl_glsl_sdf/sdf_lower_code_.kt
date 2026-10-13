@@ -5,8 +5,8 @@
 // before this point. What reaches the GPU is a flat list of rects whose
 // channels are tracks — which is why so little of the language has to be
 // ported. See rectsl_cheatsheet.md, "Lowering to GLSL".
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
 
 val rectsl = """
 #rectsl

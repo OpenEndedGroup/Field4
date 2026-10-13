@@ -12,8 +12,8 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.loadStippleTransport
-
+          import afield.geometry.spatial.loadStippleTransport
+          
           // Run this in a Field box. The small portable model needs no Python at runtime.
           val field = loadStippleTransport("public/docs/assets/stipple_transport/two-images.json")
           val canonical = field.sourceParticles(400, seed = 44)
@@ -27,7 +27,7 @@ operations:
           var transportTime = 1.0
           var movieTime = 0.5
           var integrationSteps = 24
-
+          
           fun drawSheet() {
               // Always deform canonical coordinates, so particle i retains its identity.
               val particles = field.transport(canonical, transportTime, movieTime, integrationSteps)
@@ -48,7 +48,7 @@ operations:
               lines(warped + dots, w = 800.0, h = 540.0, fitToSize = true)
               markdown("times", "transport time **$transportTime** · movie time **$movieTime** · $integrationSteps integration steps")
           }
-
+          
           controlGroup("transport plane") {
               // Experimental ranges remain accessible; extrapolation is not trained.
               slider("transport time", min = -0.25, max = 1.4, step = 0.025, initialValue = transportTime) {

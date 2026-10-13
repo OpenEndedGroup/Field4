@@ -1,4 +1,4 @@
-import afield.stdlib.loadStippleTransport
+import afield.geometry.spatial.loadStippleTransport
 
 // Run this in a Field box. The small portable model needs no Python at runtime.
 val field = loadStippleTransport("public/docs/assets/stipple_transport/two-images.json")

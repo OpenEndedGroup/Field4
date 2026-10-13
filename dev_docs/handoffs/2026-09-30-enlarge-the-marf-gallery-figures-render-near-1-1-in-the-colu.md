@@ -24,7 +24,7 @@ is 1100×348 user units, so in a ~680px column it is drawn at about 0.6×, and i
 come out near 7px. That is why it reads as small.
 
 The SVG is generated, not hand-drawn: `MarfGallery.render` in
-`src/jvmMain/kotlin/afield/four/synth/MarfGallery.kt` (constants `WIDTH = 1100`, `LANE_H = 74`,
+`src/jvmMain/kotlin/afield/audio/synth/MarfGallery.kt` (constants `WIDTH = 1100`, `LANE_H = 74`,
 `TOP`, `LEFT = 220`, the font sizes in the SVG text elements). All eight `assets/marf/*.svg` go
 through that one renderer, and `MarfDocsGuardTest` holds the page to the gallery. Changing the
 drawing means editing Kotlin and regenerating through the `synth.marf.gallery` capture, which

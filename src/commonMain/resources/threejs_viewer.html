@@ -3470,7 +3470,7 @@ function buildPointsGeometry(points, color, alpha, size) {
 // [viewer-region planar-tessellation] BEGIN
 //
 // Everything between this sentinel and its END is lifted verbatim, as text, and executed on GraalJS
-// by `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt`, then compared ring-set by ring-set
+// by `src/jvmTest/kotlin/afield/graphics/three/ViewerJavaScript.kt`, then compared ring-set by ring-set
 // against `afield.graphics.PlanarTessellation` — the Kotlin it is a transliteration of — by
 // `ThreeJsViewerTessellationParityTest`. The extractor fails loudly if either sentinel goes missing,
 // so the seam cannot be quietly deleted. Two rules keep the region liftable, and both are asserted
@@ -3485,7 +3485,7 @@ function buildPointsGeometry(points, color, alpha, size) {
 // could disagree about both the holes and the facing of the *same* FLine. This is the rule the
 // server runs, so now they agree.
 //
-// Keep in step with `src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt`, and with the two
+// Keep in step with `src/jvmMain/kotlin/afield/geometry/path/PlanarTessellation.kt`, and with the two
 // tolerances in `Coplanarity`. Both are dimensionless: COPLANAR_SINE_OF_ANGLE is the sine of the
 // angle between two rings' unit Newell normals — unsigned, so antiparallel counts as parallel,
 // because a hole is normally wound against the ring it is a hole in — and COPLANAR_OFFSET_FRACTION

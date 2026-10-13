@@ -65,7 +65,7 @@ here and written straight into the mesh's vertex buffers.
 Run the `window and renderer` box above first; this one walks up to find it.
 
 ```edn [field-box id="fieldml-mesh-live" role="properties"]
-{"id" "fieldml-mesh-live" "index" 2 "name" "Sixteen triangles, recomputed per frame" "parents" ["root" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-root"} "name" "Sixteen triangles, recomputed per frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-live_code_.kt" "lines" 106 "characters" 5129 "sha256" "974292e87020aef0c22f05fba56c60c6564e5502a0d5ad500061d79714acee11"}]}
+{"id" "fieldml-mesh-live" "index" 2 "name" "Sixteen triangles, recomputed per frame" "parents" ["root" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-root"} "name" "Sixteen triangles, recomputed per frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-live_code_.kt" "lines" 106 "characters" 5147 "sha256" "0ac8237ee9e830bcacddab88aef88c18c1fa558bb7096ffd2a6c6d14211296a5"}]}
 ```
 
 ```kotlin [field-property box="fieldml-mesh-live" name="code" path="fieldml-mesh-live_code_.kt"]
@@ -91,7 +91,7 @@ let inherited name box =
 let renderer = thisBox |> inherited "renderer"
 
 let ModuleKt = hostClass "afield.four.modules.ModuleKt"
-let Phased = hostClass "afield.PhasedKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
 // Two vertex inputs. `Mesh.resize` reads these back out of the compiled SPIR-V

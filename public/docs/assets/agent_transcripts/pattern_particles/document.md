@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pp_renderer" index="0" -->
 
 ```edn [field-box id="pp_renderer" role="properties"]
-{"id" "pp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["pp_audio"] "properties" {"children" #{#afield/box "pp_audio"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pp_renderer_code_.kt" "lines" 11 "characters" 253 "sha256" "dcd412c3067153db574b53ee08e47ed7a111b626272bc0e9e81db6e3094e54da"}]}
+{"id" "pp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["pp_audio"] "properties" {"children" #{#afield/box "pp_audio"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pp_renderer_code_.kt" "lines" 11 "characters" 264 "sha256" "08fed8b8e5f7e7325ccee01a9323429230d3de8e10c3f08ef0b05ec4e89832cb"}]}
 ```
 
 ```kotlin [field-property box="pp_renderer" name="code" path="pp_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -33,19 +33,19 @@ start(renderer::run)
 <!-- field-box id="pp_audio" index="1" -->
 
 ```edn [field-box id="pp_audio" role="properties"]
-{"id" "pp_audio" "index" 1 "name" "pattern, played and analysed" "parents" ["root" "pp_renderer"] "children" ["pp_compute"] "properties" {"children" #{#afield/box "pp_compute"} "parents" #{#afield/box "root" #afield/box "pp_renderer"} "name" "pattern, played and analysed" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pp_audio_code_.kt" "lines" 46 "characters" 1776 "sha256" "052acb1c7a829131803c7714a455e4f0e8fdb2dc8b984d8cabef0dcd5ae320a0"}]}
+{"id" "pp_audio" "index" 1 "name" "pattern, played and analysed" "parents" ["root" "pp_renderer"] "children" ["pp_compute"] "properties" {"children" #{#afield/box "pp_compute"} "parents" #{#afield/box "root" #afield/box "pp_renderer"} "name" "pattern, played and analysed" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pp_audio_code_.kt" "lines" 46 "characters" 1785 "sha256" "9c6dd1b5b32ec114801ba43b427aaed8c6254c3b5fb9837c6fcae59b0593668d"}]}
 ```
 
 ```kotlin [field-property box="pp_audio" name="code" path="pp_audio_code_.kt"]
-import afield.four.synth.PatSynthLaunch
-import afield.four.synth.PatWave
-import afield.four.synth.audioEngine
-import afield.four.synth.logBands
-import afield.four.synth.pat
-import afield.four.synth.patSynth
-import afield.four.synth.patVoice
-import afield.four.synth.snapshot
-import afield.four.synth.stack
+import afield.audio.synth.PatSynthLaunch
+import afield.audio.synth.PatWave
+import afield.audio.synth.audioEngine
+import afield.audio.synth.logBands
+import afield.audio.synth.pat
+import afield.audio.synth.patSynth
+import afield.audio.synth.patVoice
+import afield.audio.synth.snapshot
+import afield.audio.synth.stack
 
 // The numbers the compute box reads. An inherited property rather than a global, so the
 // box graph is what says which shader is listening to which pattern.
@@ -90,7 +90,7 @@ frames {
 <!-- field-box id="pp_compute" index="2" -->
 
 ```edn [field-box id="pp_compute" role="properties"]
-{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 55 "characters" 1669 "sha256" "f63ce0dd8a89ed96688dd9938874ce24fa5b74c82d4e6d9497b0fbfc150de1dc"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 51 "characters" 1579 "sha256" "121b2457c3ea98b079a839630a32d407e6a1ce21ae188526e698a6c64bf52697"}]}
+{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 55 "characters" 1669 "sha256" "f63ce0dd8a89ed96688dd9938874ce24fa5b74c82d4e6d9497b0fbfc150de1dc"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 51 "characters" 1590 "sha256" "b3334a936cf2b6f5eb66a6ad9d8f0a954656967c4edd651d11eb73717f36c366"}]}
 ```
 
 ```glsl [field-property box="pp_compute" name="compute" path="pp_compute_compute_.glsl"]
@@ -152,7 +152,7 @@ void main() {
 ```
 
 ```kotlin [field-property box="pp_compute" name="code" path="pp_compute_code_.kt"]
-import afield.four.buffers.FrameBufferGroup
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 
 val N = 24000
 // How hard each band energy pushes its ring (radius, thickness, particle size).

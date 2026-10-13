@@ -5,7 +5,7 @@ it, at half its pitch, or a third, or any fraction you like. Octave-divider peda
 guitar, and dub engineers use it to put weight under a kick drum. It also produces the giant voice
 in every film trailer.
 
-Field has three of these trackers in [`Subharmonic.kt`](https://github.com/OpenEndedGroup/field4/blob/main/src/jvmMain/kotlin/afield/four/synth/Subharmonic.kt).
+Field has three of these trackers in [`Subharmonic.kt`](https://github.com/OpenEndedGroup/field4/blob/main/src/jvmMain/kotlin/afield/audio/synth/Subharmonic.kt).
 This page runs them on a synth bassline, on a kick drum and a pluck from the
 [Dirt-Samples](sound.md#getting-real-drums-in-your-own-box) library, and on fourteen seconds of
 dialogue from *Night of the Living Dead* (George A. Romero, 1968), which is in the public domain.
@@ -43,7 +43,7 @@ showSignals(
 
 ![The tracked frequency stepping with each bass note, and the generated tone at half of it](assets/subharmonic_sound/bass-octave.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-octave.wav" audio-spec="bass-octave" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-octave-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-octave.wav" audio-spec="bass-octave" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-octave-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -135,7 +135,7 @@ showSignals(
 
 ![Four tracked-frequency traces over the bassline: the zero-crossing and quadrature traces sit on the notes, the plain PLL overshoots, and the quieter plain PLL wanders off](assets/subharmonic_sound/bass-trackers.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-trackers.wav" audio-spec="bass-trackers" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-trackers-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-trackers.wav" audio-spec="bass-trackers" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-trackers-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -211,7 +211,7 @@ showSignals(
 
 ![The tracked bassline stays the same while the generated frequency drops to a half, a third, two thirds, then sways, as the division changes](assets/subharmonic_sound/divisions.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/divisions.wav" audio-spec="divisions" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-divisions-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/divisions.wav" audio-spec="divisions" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-divisions-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -269,7 +269,7 @@ showSignals(
 
 ![Tracked pitch falling quickly from the attack to 49 Hz on each of two kicks, the generated pitch following at half](assets/subharmonic_sound/kick.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/kick.wav" audio-spec="kick" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-kick-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/kick.wav" audio-spec="kick" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-kick-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -323,7 +323,7 @@ showSignals(
 
 ![The tracked arpy melody stepping between 130 and 220 Hz, the generated line an octave below it, the same in both halves](assets/subharmonic_sound/arpy.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/arpy.wav" audio-spec="arpy" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-arpy-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/arpy.wav" audio-spec="arpy" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-arpy-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -364,7 +364,7 @@ pitch with the vowels rather than the voice.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-naive.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-naive"}
 :::fold imports
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 :::endfold
@@ -387,7 +387,7 @@ display("main", Plotly.plot {
 
 ![The zero-crossing tracker's estimate scattered far above the YIN pitch of the voice](assets/subharmonic_sound/film-naive.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-naive.wav" audio-spec="film-naive" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-naive-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-naive.wav" audio-spec="film-naive" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-naive-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -420,7 +420,7 @@ Four steps before the tracker and two after it turn this into a usable voice eff
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-shaped.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-shaped"}
 :::fold imports
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 :::endfold
@@ -447,7 +447,7 @@ display("main", Plotly.plot {
 
 ![The quadrature PLL's estimate running through the YIN pitch points of both voices](assets/subharmonic_sound/film-shaped.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-shaped.wav" audio-spec="film-shaped" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-shaped-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-shaped.wav" audio-spec="film-shaped" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-shaped-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -523,7 +523,7 @@ showSpectrogram(doughRenderMono(out, seconds = 8f), maxHz = 2000.0,
 
 ![Recorded plucks followed by their harmonic-bank replacement](assets/subharmonic_sound/phase-harmonics-spectrum.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-harmonics.wav" audio-spec="phase-harmonics" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-harmonics-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-harmonics.wav" audio-spec="phase-harmonics" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-harmonics-audio"}
 // Listen to the graph above.
 ```
 
@@ -544,7 +544,7 @@ val colored = analysis.synthesize(bank)
 audio { plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f) }
 ```
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-lattice.wav" audio-spec="phase-lattice" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-lattice-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-lattice.wav" audio-spec="phase-lattice" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-lattice-audio"}
 // The pluck graph above, with rationalLattice() in place of harmonics(8).
 ```
 

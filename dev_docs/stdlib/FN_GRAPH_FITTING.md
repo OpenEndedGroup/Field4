@@ -29,7 +29,7 @@ An explicit domain always wins. `fitBest` helps with local numeric minima but
 cannot add a missing operator. `fitHybrid` uses `evolve` for structure, then one
 `fitGradient` pass for its numeric leaves.
 
-Verification lives in `src/jvmTest/kotlin/afield/stdlib/FunctionFitTest.kt`.
+Verification lives in `src/jvmTest/kotlin/afield/math/functions/FunctionFitTest.kt`.
 The live transcript example is
 `dev_docs/agents/transcripts/fn_differentiable_fit_demo.yaml`.
 

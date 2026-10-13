@@ -29,6 +29,16 @@ def parser():
         cmd.add_argument('--workspace', action='append', type=Path, default=[], help='external workspace (repeatable)')
         cmd.add_argument('--out', required=True, type=Path, help='new private report/plan directory, outside inputs')
         cmd.add_argument('--engine', type=Path, default=ENGINE, help='prebuilt standalone parser executable')
+    cmd = commands.add_parser('declarations', help='index top-level Kotlin declarations in tracked source sets')
+    cmd.add_argument('--repo', type=Path, required=True)
+    cmd.add_argument('--out', type=Path, required=True)
+    cmd.add_argument('--engine', type=Path, default=ENGINE)
+    cmd = commands.add_parser('symbol-map', help='expand reviewed file/symbol assignments into a migration recipe')
+    cmd.add_argument('--repo', type=Path, required=True)
+    cmd.add_argument('--index', type=Path, required=True)
+    cmd.add_argument('--assignments', type=Path, required=True)
+    cmd.add_argument('--recipe', type=Path, required=True)
+    cmd.add_argument('--out', type=Path, required=True)
     cmd = commands.add_parser('apply')
     cmd.add_argument('plan', type=Path)
     cmd.add_argument('--root-id', default='0', help='root number in the plan report')
@@ -50,6 +60,17 @@ def main(argv=None):
         if args.command == 'build-engine':
             return subprocess.run([str(REPO / 'gradlew'), '-p', str(REPO / 'tools/refactor-engine'),
                                    'test', 'installDist', '--console=plain'], cwd=REPO).returncode
+        if args.command == 'declarations':
+            from tools.refactoring.symbols import inventory
+            with KotlinEngine(args.engine.resolve()) as engine:
+                result = inventory(args.repo, engine, args.out.resolve())
+            print(json.dumps({'declarations': len(result['declarations']), 'errors': len(result['errors']), 'out': str(args.out)}))
+            return 0
+        if args.command == 'symbol-map':
+            from tools.refactoring.symbols import generate
+            print(json.dumps(generate(json.loads(args.index.read_text()), json.loads(args.assignments.read_text()),
+                                      args.recipe, args.repo.resolve(), args.out.resolve())))
+            return 0
         if args.command in ('plan', 'inventory'):
             roots = [(p, True) for p in args.repo] + [(p, False) for p in args.workspace]
             if not roots:

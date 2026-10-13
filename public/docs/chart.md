@@ -173,7 +173,7 @@ FLine geometry under a shared transform and want the overflow.
 `toFLines()` lowers the whole figure to `List<FLine>` in pixel space and `plotRect()` reports the
 rectangle the marks are clipped to, so the chart can go
 into the same drawing as the rest of your geometry, under one transform. `toHTML()` goes through
-`afield.graphics.linesToHTML`, the same markup `Box.lines` builds.
+`afield.ui.visualization.linesToHTML`, the same markup `Box.lines` builds.
 
 Labels are glyph outlines. On a machine with no fonts, the chart is drawn without labels.
 
@@ -197,7 +197,7 @@ letters.
     [`dev_docs/chart_clip_and_note.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/chart_clip_and_note.md). Dots are twelve-sided polygons rather than `pointed` nodes
     because Skia exports each `pointed` node to SVG as several kilobytes of curves.
 
-    The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log
+    The arithmetic is tested separately from the pixels. `afield.ui.visualization.ChartTest` owns ticks, mapping, log
     refusals and expectations:
 
     ```diffstatic {data-lang=bash}

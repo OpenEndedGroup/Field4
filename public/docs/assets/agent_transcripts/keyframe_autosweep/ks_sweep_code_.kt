@@ -1,17 +1,17 @@
 // The whole of it. Twelve renders here so the box finishes while you watch; set `count`
 // to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
-import afield.stdlib.KeyframeScope
-import afield.stdlib.KeyframeSweep
-import afield.stdlib.SweepConfig
-import afield.stdlib.awaitFrames
-import afield.stdlib.captureClip
-import afield.stdlib.captureStill
-import afield.stdlib.path
-import afield.stdlib.rendersPerHour
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.KeyframeSweep
+import afield.animation.keyframes.SweepConfig
+import afield.animation.keyframes.awaitFrames
+import afield.animation.keyframes.captureClip
+import afield.animation.keyframes.captureStill
+import afield.document.workspace.path
+import afield.animation.keyframes.rendersPerHour
 
 val r: Renderer = fromContext()
 val keys: KeyframeScope = fromContext()
-val bundle: afield.four.fabricated.StandardRenderer.Bundle = fromContext()
+val bundle: afield.graphics.scene.fabricated.StandardRenderer.Bundle = fromContext()
 val pool = "%document/looks".path
 val archive = "%document/sweep".path
 
@@ -43,7 +43,7 @@ frames {
         render.captureClip(r, bundle.postStack.output(), frames = 8, fps = 12, settleFrames = 0) { _, t ->
             // A small orbit *around* the blended camera, so the clip moves without
             // overwriting the lane the key set.
-            val at = render.key["camera.at"] as afield.stdlib.linalg.Vector3f
+            val at = render.key["camera.at"] as afield.math.linalg.Vector3f
             val a = (t - 0.5) * 0.5
             bundle.scene.camera.at.set(
                 (at.x * kotlin.math.cos(a) - at.z * kotlin.math.sin(a)).toFloat(),

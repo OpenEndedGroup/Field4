@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rtpm-play" index="0" -->
 
 ```edn [field-box id="rtpm-play" role="properties"]
-{"id" "rtpm-play" "index" 0 "name" "3. Play into it (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Play into it (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rtpm-play_code_.kt" "lines" 15 "characters" 637 "sha256" "49b5fa3796740a85765d5e5a04aaada3e1e09b3b80d3fdcee8b97b3c32bc188b"}]}
+{"id" "rtpm-play" "index" 0 "name" "3. Play into it (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Play into it (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rtpm-play_code_.kt" "lines" 15 "characters" 641 "sha256" "2cf14cf6508e5c16cd0250fd3543709d7e7b62d4e9dd93949f1a261e66b18158"}]}
 ```
 
 ```kotlin [field-property box="rtpm-play" name="code" path="rtpm-play_code_.kt"]
-import afield.rtpmidi.*
+import afield.io.midi.rtp.*
 
 // Play an arpeggio from the peer session into the "Field" session; box 1 shows each note as it
 // arrives. Pointed at a Mac's session instead, these notes reach any DAW listening to it.
@@ -37,11 +37,11 @@ markdown("received", "box 1's session has received ${field.messageCount} message
 <!-- field-box id="rtpm-peer" index="1" -->
 
 ```edn [field-box id="rtpm-peer" role="properties"]
-{"id" "rtpm-peer" "index" 1 "name" "2. A peer joins (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. A peer joins (run)" "_tombstone" false "frame" #afield/rect [520.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rtpm-peer_code_.kt" "lines" 13 "characters" 698 "sha256" "0b24c1d90380d642898def66463a46a81c20c8daec2376e7bced1755ebfc1866"}]}
+{"id" "rtpm-peer" "index" 1 "name" "2. A peer joins (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. A peer joins (run)" "_tombstone" false "frame" #afield/rect [520.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rtpm-peer_code_.kt" "lines" 13 "characters" 702 "sha256" "0fc48c107bfee17dc28c5fb96644a750880e520f3d0cb02e4cd605c0e9c46c59"}]}
 ```
 
 ```kotlin [field-property box="rtpm-peer" name="code" path="rtpm-peer_code_.kt"]
-import afield.rtpmidi.*
+import afield.io.midi.rtp.*
 
 // A second session in the same Field, so the demo works with nothing else on the network.
 // It invites the "Field" session from box 1 the way a Mac or an iPad would.
@@ -61,11 +61,11 @@ markdown("peers", other.peers.joinToString("\n") { p ->
 <!-- field-box id="rtpm-session" index="2" -->
 
 ```edn [field-box id="rtpm-session" role="properties"]
-{"id" "rtpm-session" "index" 2 "name" "1. Open the session (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Open the session (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rtpm-session_code_.kt" "lines" 14 "characters" 775 "sha256" "dc6d1fa6d8f2eb627c956095f6b8ce846385d7b090b0bf33f4eda0ded9a32de7"}]}
+{"id" "rtpm-session" "index" 2 "name" "1. Open the session (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Open the session (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rtpm-session_code_.kt" "lines" 14 "characters" 779 "sha256" "b24a11df74af3d6ff53675705dfb1b5b5cd7ef39d32385b9f7ea6e4451edab91"}]}
 ```
 
 ```kotlin [field-property box="rtpm-session" name="code" path="rtpm-session_code_.kt"]
-import afield.rtpmidi.*
+import afield.io.midi.rtp.*
 
 // Open an RTP-MIDI network session called "Field" on UDP 5004/5005 and announce it over Bonjour.
 // In macOS Audio MIDI Setup -> MIDI Studio -> Network, "Field" now appears in the Directory:

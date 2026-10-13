@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidsl_shader" index="0" -->
 
 ```edn [field-box id="solidsl_shader" role="properties"]
-{"id" "solidsl_shader" "index" 0 "name" "SolidSL — the same value, lowered to GLSL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — the same value, lowered to GLSL" "_tombstone" false "frame" #afield/rect [80.0 700.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_shader_code_.kt" "lines" 61 "characters" 3032 "sha256" "eff37fb7f07e8cc030861efb0668894f24210191786482a5a61d8d1035ab1cb9"}]}
+{"id" "solidsl_shader" "index" 0 "name" "SolidSL — the same value, lowered to GLSL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — the same value, lowered to GLSL" "_tombstone" false "frame" #afield/rect [80.0 700.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_shader_code_.kt" "lines" 61 "characters" 3037 "sha256" "16586ebe39599fb8c2c1123d2b1be20daa9e18c8759098b125d4f44b124e3fec"}]}
 ```
 
 ```kotlin [field-property box="solidsl_shader" name="code" path="solidsl_shader_code_.kt"]
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // ---- change the twist and re-run: the shader changes with it ----------------------
 val twist = 140.0       // Degrees over the column's height.
@@ -83,16 +83,16 @@ println("  after simplifying:  ${noBlend.simplified().exactRefusal()?.why ?: "(n
 <!-- field-box id="solidsl_part" index="1" -->
 
 ```edn [field-box id="solidsl_part" role="properties"]
-{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 95 "characters" 4035 "sha256" "863ba45558be4fc26a70c6c8cab4f026bebba32d44291a7fc621de42b756cdfc"}]}
+{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 95 "characters" 4083 "sha256" "3b55e397bd6e7bafa2dfa5567df845e21ed36fa1a78ba915c8fa84ceb0b6750f"}]}
 ```
 
 ```kotlin [field-property box="solidsl_part" name="code" path="solidsl_part_code_.kt"]
-import afield.solidsl.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
+import afield.lang.solidsl.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.geometry.mesh.signedVolume
 
 // ---- the three parameters to change ----------------------------------------------
 val boreRadius = 0.30   // Push toward 0.55 and the four bores break into each other and

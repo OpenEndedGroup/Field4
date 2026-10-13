@@ -1,0 +1,156 @@
+@file:afield.runtime.completion.CompletionCategory("Workspace")
+
+package afield.document.properties
+
+import afield.data.collections.get
+import afield.data.collections.invoke
+import afield.data.collections.s
+import afield.data.collections.times
+import afield.document.context.Why
+import afield.document.context.Whying
+import afield.document.context.why
+import afield.document.graph.minusAssign
+import afield.document.graph.plusAssign
+import afield.document.workspace.file
+import afield.geometry.mesh.expanded
+import afield.graphics.render.rangeTo
+import afield.graphics.shader.callable
+import afield.math.autodiff.compareTo
+import afield.math.autodiff.div
+import afield.math.autodiff.minus
+import afield.math.autodiff.plus
+import afield.math.autodiff.times
+import afield.math.functions.rewrite
+import afield.math.linalg.invoke
+import afield.math.linalg.remAssign
+import afield.math.linalg.set
+import afield.math.linalg.times
+import afield.math.units.div
+import afield.math.units.minus
+import afield.math.units.plus
+import afield.math.units.times
+import afield.runtime.lifecycle.Once
+import afield.runtime.lifecycle.Onceing
+
+import afield.audio.synth.*
+import afield.data.collections.m
+import afield.document.graph.Box
+import afield.runtime.kotlin.kotlinImportStatementFor
+import afield.app.diagnostics.logging.lprintln
+import afield.runtime.macros.Insert
+import afield.runtime.macros.MacroRegistry
+
+/**
+ * The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot.
+ *
+ * [prop] and [rootProp] exist only as the declarations that make `prop<Int>(foo)` resolve; neither
+ * is meant to run, and calling one throws `MacroRegistry.MacroNotExpandedException`. The real work
+ * happens at expansion time in [macro_prop] and [macro_root_prop], which are handed the type
+ * argument and the name, and return an `Insert` that rewrites the call site to the bare name (or
+ * `root.name`) and pushes two declarations into the box's preamble: a
+ * `var Box.<name> by Inheritance<T>()`, a `val Once.<name> by Onceing<T>()` and a
+ * `val Why.<name> by Whying()` (so `why.<name>` explains where the value comes from). All three generated
+ * lines carry the trailing empty-comment marker that makes the preamble gather copy them down into
+ * child boxes, and an import for `T` is added via `kotlinImportStatementFor`. [macro_root_prop]
+ * differs only in targeting `this.root`, so the accessors land on the document root rather than
+ * on the calling box.
+ */
+
+/**
+ * Declares a typed, inheritable property on this box: `prop<Double>(speed)` and thereafter `speed` is a
+ * variable that children inherit and the property inspector can see.
+ *
+ * The one-liner that replaces writing the delegate out by hand. Expansion rewrites the call site to the bare
+ * name and adds `var Box.speed by Inheritance<Double>()` to the box's preamble, so reading it walks up the
+ * parents until some ancestor has a value and writing it shadows locally. The name is written **unquoted** —
+ * it is a name, not a string.
+ *
+ * A **macro placeholder**: it throws `MacroRegistry.MacroNotExpandedException` if it is ever really called,
+ * which is what you see if the macro registry did not get a chance to rewrite the call.
+ */
+fun <T> Box.prop(name: String) {
+    throw MacroRegistry.MacroNotExpandedException("prop should not be callable directly, but should be expanded as a macro")
+}
+
+/**
+ * [prop], but the accessors land on the **document root** rather than on this box — so every box in the
+ * document shares the one slot, wherever it is read from.
+ *
+ * Use it for document-wide settings, where `prop` would give each subtree its own shadowable copy. The call
+ * site becomes `root.name`, so it does not matter where in the graph the declaring box sits.
+ *
+ * A macro placeholder, and throws `MacroNotExpandedException` if actually called.
+ */
+fun <T> Box.rootProp(name: String) {
+    throw MacroRegistry.MacroNotExpandedException("prop should not be callable directly, but should be expanded as a macro")
+}
+
+/**
+ * Macro expansion for `prop<T>(name)`: rewrites the call to the bare name and pushes the delegate declarations
+ * into the box's preamble.
+ *
+ * Emits a `var Box.<name> by Inheritance<T>()`, a `val Once.<name> by Onceing<T>()` and a `val Why.<name> by Whying()`, each carrying the
+ * trailing empty-comment marker that makes the preamble gather copy it down into child boxes, plus an import
+ * for `T`. Called by `MacroRegistry`, not by you.
+ *
+ * @throws afield.runtime.macros.MacroRegistry.MacroExpansionProblem unless given exactly two pieces — the type argument
+ * and the name — which is what a malformed `prop(foo)` without a type looks like from here
+ */
+fun Box.macro_prop(contents: List<String>): Insert? {
+    if (contents.size != 2)
+        throw MacroRegistry.MacroExpansionProblem("prop should be called like prop<Int>(foo)")
+
+    val name = contents[1].trim().removeSurrounding("(", ")")
+    return Insert(
+        here = "$name", standaloneHere = "Unit",
+        preamble = propTypeImports(contents[0]), preambleAfterImports = """
+        var Box.${name} by Inheritance${contents[0]}() /**/
+        val Once.${name} by Onceing${contents[0]}() /**/
+        val Why.${name} by Whying() /**/
+    """.trimIndent()
+    )
+}
+
+/**
+ * Macro expansion for `rootProp<T>(name)` — the same declarations as [macro_prop], but the `Insert` targets
+ * `this.root` and the call site becomes `root.<name>`.
+ *
+ * @throws afield.runtime.macros.MacroRegistry.MacroExpansionProblem unless given exactly the type argument and the name
+ */
+fun Box.macro_root_prop(contents: List<String>): Insert? {
+    if (contents.size != 2)
+        throw MacroRegistry.MacroExpansionProblem("rootProp should be called like rootProp<Int>(foo)")
+
+    val name = contents[1].trim().removeSurrounding("(", ")")
+    return Insert(
+        here = "root.$name", standaloneHere = "Unit",
+        preamble = propTypeImports(contents[0]), preambleAfterImports = """
+        var Box.${name} by Inheritance${contents[0]}() /**/
+        val Once.${name} by Onceing${contents[0]}() /**/
+        val Why.${name} by Whying() /**/
+    """.trimIndent(), target = this.root
+    )
+}
+
+/**
+ * The imports the preamble needs for a `prop<T>` type argument: the classpath's import for `T`, plus every
+ * `import` line of this box's own code that names an identifier in `T`.
+ *
+ * The preamble is compiled apart from the box's code, so it does not see the box's imports. A type the
+ * classpath index cannot place on its own name — a nested one, `prop<StandardRenderer.Bundle>(bundle)`
+ * under `import afield.graphics.scene.fabricated.StandardRenderer` — used to fail with an unresolved reference
+ * reported against the box's import line.
+ */
+internal fun Box.propTypeImports(typeArgument: String): String {
+    val type = typeArgument.replace("<", " ").replace(">", " ").trim()
+    val names = Regex("""[A-Za-z_]\w*""").findAll(type).map { it.value }.toSet()
+    val own = ((getPropertyRaw("code") as? String) ?: "").lineSequence().map(String::trim).filter { line ->
+        val m = PROP_IMPORT.matchEntire(line) ?: return@filter false
+        val imported = m.groupValues[2].ifEmpty { m.groupValues[1].substringAfterLast('.') }
+        imported in names
+    }.toList()
+    return (listOfNotNull(kotlinImportStatementFor(typeArgument.replace("<", "").replace(">", "").trim())) + own)
+        .distinct().joinToString("\n")
+}
+
+private val PROP_IMPORT = Regex("""import\s+([\w.]+)(?:\s+as\s+(\w+))?\s*;?""")

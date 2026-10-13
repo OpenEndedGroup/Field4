@@ -47,7 +47,7 @@ stop.
 | `alife_animate.kt` | `Box.animateEvolution` and four "show a prefix of something" helpers |
 
 The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All eleven
-carry `@file:afield.CompletionCategory("ALife")`. Without it the generator falls back to the category
+carry `@file:afield.runtime.completion.CompletionCategory("ALife")`. Without it the generator falls back to the category
 `Uncategorised` (`StdlibReferenceGenerator.kt:819#private fun inferredCategory`) — which is how
 `alife_field.kt` first failed the reference drift guard, and how the gesture board came to be
 *published* on a page called "Uncategorised" from 2026-08-08 to 2026-08-14.
@@ -617,7 +617,7 @@ python3 tools/field_backdoor.py run-jvm-main afield.examples.AgentTranscriptMate
 Stated as leads rather than promises, and roughly in order of value per unit of work:
 
 - **GPU steppers.** Gray–Scott, Lenia and Physarum are all one ping-pong texture pass. The CPU versions
-  here are reference implementations; a StackSL or `afield.four` compute version would make them
+  here are reference implementations; a StackSL or Field 4 compute version would make them
   interactive at 512² and the CPU version becomes the oracle it is checked against.
 - **A `LeniaRule` from a published creature.** The right way to get Orbium is to load its array from a
   file the user supplies (or from a `.lenia` JSON), not to hardcode a remembered one. That would turn

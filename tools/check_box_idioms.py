@@ -13,7 +13,7 @@ This is the check that retires the prose. The rules:
   printed, never rewritten, and not a failure.
 - ``bind-push-constant``: ``mesh.push.bindPushConstant("n", { e }) { throw ... }``. ``moduleHere``
   generates ``var Mesh.n`` for every push-constant member it sees, so this is ``mesh.n = { e }``.
-- ``box-context-lookup``: ``Box.context.get()!!`` (or ``afield.Box.context.get() ?: throw ...``). That
+- ``box-context-lookup``: ``Box.context.get()!!`` (or ``afield.document.graph.Box.context.get() ?: throw ...``). That
   is ``thisBox``, and ``thisBox`` itself is rarely needed: the box is the implicit receiver, so
   ``thisBox.foo`` is ``foo``. (It cannot be spelled ``this``.) Rewritten to ``thisBox``. An alias
   (``val historyOwner = thisBox``) is usually a smell but not always wrong, so it is a note: printed,
@@ -78,18 +78,18 @@ BIND_PUSH = re.compile(
     r"^(?P<indent>\s*)(?P<target>[A-Za-z_][\w.]*)\.push\.bindPushConstant\(\s*\"(?P<name>\w+)\"\s*,\s*"
     r"(?P<lambda>\{.*\})\s*\)\s*\{\s*throw\b[^{}]*\}\s*$"
 )
-BOX_CONTEXT = re.compile(r"(?<![\w.])(?:afield\.)?Box\.context\.get\(\)(?:!!)?")
+BOX_CONTEXT = re.compile(r"(?<![\w.])(?:afield\.(?:document\.graph\.)?)?Box\.context\.get\(\)(?:!!)?")
 # `val owner = Box.context.get() ?: throw IllegalStateException("...")`: the lookup and its guard are one
 # `thisBox`, which cannot be null.
 LOOKUP_ALIAS = re.compile(
-    r"^(?P<head>\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*)(?:afield\.)?Box\.context\.get\(\)"
+    r"^(?P<head>\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*)(?:afield\.(?:document\.graph\.)?)?Box\.context\.get\(\)"
     r"(?:!!|\s*\?:\s*(?:throw\s+\w+\(.*\)|error\(.*\)))?(?P<tail>\s*(?://.*)?)$"
 )
 BOX_ALIAS = re.compile(r"^\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*thisBox\s*(?://.*)?$")
 SPACED_MARKER = re.compile(r"^(?P<indent>\s*)//\s+%-(?P<rest>.*)$")
 UNUSED_IMPORTS = {
-    "import afield.four.Renderer": re.compile(r"\bRenderer\b"),
-    "import afield.four.modules.fromContext": re.compile(r"\bfromContext\b"),
+    "import afield.graphics.vulkan.Renderer": re.compile(r"\bRenderer\b"),
+    "import afield.document.context.fromContext": re.compile(r"\bfromContext\b"),
 }
 
 

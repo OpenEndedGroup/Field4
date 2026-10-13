@@ -11,16 +11,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="log_blocks" index="0" -->
 
 ```edn [field-box id="log_blocks" role="properties"]
-{"id" "log_blocks" "index" 0 "name" "Blocks, and what the indent holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Blocks, and what the indent holds" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_blocks_code_.kt" "lines" 48 "characters" 1997 "sha256" "62c42ae130244fc73b4e87d25c5f73da17858920eeafe1d351e94380eedebabd"}]}
+{"id" "log_blocks" "index" 0 "name" "Blocks, and what the indent holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Blocks, and what the indent holds" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_blocks_code_.kt" "lines" 48 "characters" 2059 "sha256" "3f542699371790cc18aa0bd1587e15001b8933bb867635fb587b9e84c9a8aefe"}]}
 ```
 
 ```kotlin [field-property box="log_blocks" name="code" path="log_blocks_code_.kt"]
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogEvent
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lblock
-import afield.logger.lprintln
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogEvent
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lblock
+import afield.app.diagnostics.logging.lprintln
 
 // lblock brackets a scope with a BEGIN and an END event sharing a blockId, so a
 // consumer can fold what is between them.
@@ -70,11 +70,11 @@ display("main", Table(
 <!-- field-box id="log_mute" index="1" -->
 
 ```edn [field-box id="log_mute" role="properties"]
-{"id" "log_mute" "index" 1 "name" "Muting compares the whole string" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting compares the whole string" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_code_.kt" "lines" 21 "characters" 975 "sha256" "8f947fa6b1e36e45d6a0a7cee4f6b72c64f15fc54a00b249f0378789991e1cef"}]}
+{"id" "log_mute" "index" 1 "name" "Muting compares the whole string" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting compares the whole string" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_code_.kt" "lines" 21 "characters" 982 "sha256" "85fb821b46d19b403d0e88ff177fea7de0b80384884f6b733056cb5dab9c18fb"}]}
 ```
 
 ```kotlin [field-property box="log_mute" name="code" path="log_mute_code_.kt"]
-import afield.ai.core.ConsoleMute
+import afield.ai.diagnostics.ConsoleMute
 
 // The first of the three matchers, and the strictest: isMuted is
 //
@@ -102,15 +102,15 @@ display("main", Table(
 <!-- field-box id="log_mute_is_console_only" index="2" -->
 
 ```edn [field-box id="log_mute_is_console_only" role="properties"]
-{"id" "log_mute_is_console_only" "index" 2 "name" "Muting is a console policy, not a filter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting is a console policy, not a filter" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_is_console_only_code_.kt" "lines" 27 "characters" 1297 "sha256" "2f0ccc6945a5db41eb8edf08822ee49aed83c4fed57ffdd09703a2fa289a7ce0"}]}
+{"id" "log_mute_is_console_only" "index" 2 "name" "Muting is a console policy, not a filter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting is a console policy, not a filter" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_is_console_only_code_.kt" "lines" 27 "characters" 1342 "sha256" "eaf5f106540b5356d5c7010b3d062b4ae6fb6131509cd750bbc9100c25140501"}]}
 ```
 
 ```kotlin [field-property box="log_mute_is_console_only" name="code" path="log_mute_is_console_only_code_.kt"]
-import afield.ai.core.ConsoleMute
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lprintln
+import afield.ai.diagnostics.ConsoleMute
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lprintln
 
 // Muting does not drop the event. Both console sinks check the mute set and return
 // early; no other sink checks it at all. So a muted line is still in the log widget,
@@ -140,15 +140,15 @@ display("main", Table(
 <!-- field-box id="log_channels" index="3" -->
 
 ```edn [field-box id="log_channels" role="properties"]
-{"id" "log_channels" "index" 3 "name" "A channel, and a sink of your own" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A channel, and a sink of your own" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_channels_code_.kt" "lines" 27 "characters" 1297 "sha256" "150e8239e40959e5690d1d0ab4b6166ee19090de32f2a11b83e27a558fdd01fb"}]}
+{"id" "log_channels" "index" 3 "name" "A channel, and a sink of your own" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A channel, and a sink of your own" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_channels_code_.kt" "lines" 27 "characters" 1342 "sha256" "b4e47839b18ac412aa9fe217dbb28cff7f1696e9e5978bbcc8039657c7392429"}]}
 ```
 
 ```kotlin [field-property box="log_channels" name="code" path="log_channels_code_.kt"]
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogEvent
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lprintln
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogEvent
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lprintln
 
 // A channel is a comma-separated list of tags. Not a level, not a logger name, and
 // not a hierarchy — "error,mypage,disk" is three flat tags.
@@ -178,12 +178,12 @@ display("main", Table(listOf("channel", "tags", "message"), title = "what one si
 <!-- field-box id="log_filter" index="4" -->
 
 ```edn [field-box id="log_filter" role="properties"]
-{"id" "log_filter" "index" 4 "name" "The log widget takes any substring" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The log widget takes any substring" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_filter_code_.kt" "lines" 42 "characters" 1823 "sha256" "16e1753768e12d7747404eb26e0a2765b26dfe1b78edcfea94ebe30653dd3abb"}]}
+{"id" "log_filter" "index" 4 "name" "The log widget takes any substring" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The log widget takes any substring" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_filter_code_.kt" "lines" 42 "characters" 1844 "sha256" "7b41e92831901e704f66834d31d2189f0d42e688eb84f7ea3130dca6422044cc"}]}
 ```
 
 ```kotlin [field-property box="log_filter" name="code" path="log_filter_code_.kt"]
-import afield.logger.lprintln
-import afield.server.LogStream
+import afield.app.diagnostics.logging.lprintln
+import afield.app.server.LogStream
 
 // The third matcher, and the loosest. LogStream is the sink behind the log widget, and
 // its filter asks channel.contains(tag, ignoreCase = true) — a substring, not a tag.
@@ -231,12 +231,12 @@ display("main", Table(
 <!-- field-box id="log_stats" index="5" -->
 
 ```edn [field-box id="log_stats" role="properties"]
-{"id" "log_stats" "index" 5 "name" "Stat lines and the heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stat lines and the heatmap" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_stats_code_.kt" "lines" 35 "characters" 1482 "sha256" "a83f459a9e7e2dcbb235a8e688159b5fa155ddd359658a853c4f2fd5b6d438e6"}]}
+{"id" "log_stats" "index" 5 "name" "Stat lines and the heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stat lines and the heatmap" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_stats_code_.kt" "lines" 35 "characters" 1516 "sha256" "a2549c59243f6f89582810592349b80bba6a39790bfa4dc2c85ec7aeae3a5b78"}]}
 ```
 
 ```kotlin [field-property box="log_stats" name="code" path="log_stats_code_.kt"]
-import afield.logger.StatsHeatmap
-import afield.logger.formatMillis
+import afield.app.diagnostics.logging.StatsHeatmap
+import afield.app.diagnostics.logging.formatMillis
 
 // A channel that reports a number every frame gets coloured by whether each value rose
 // or fell since that channel last reported the same key. The contract is only a string

@@ -1,4 +1,4 @@
-@file:afield.CompletionCategory("Math")
+@file:afield.runtime.completion.CompletionCategory("Math")
 package afield.math.gp
 
 import kotlin.math.abs

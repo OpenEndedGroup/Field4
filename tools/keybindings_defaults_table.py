@@ -53,9 +53,9 @@ def drive_script(scratch: Path) -> str:
             "ui.pause(4000)",
             f'val scratch = java.io.File("{path}")',
             "scratch.delete()",
-            "afield.UserKeybindingsManager.watchFile(scratch)",
+            "afield.app.settings.UserKeybindingsManager.watchFile(scratch)",
             "ui.pause(500)",
-            "afield.UserKeybindingsManager.watchFile(null)",
+            "afield.app.settings.UserKeybindingsManager.watchFile(null)",
             'println("keybindings-table: wrote " + scratch.length() + " bytes")',
         ]
     )

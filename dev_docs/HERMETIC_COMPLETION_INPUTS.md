@@ -25,7 +25,7 @@ red again at `90230b1f4`. Nobody was careless: the same command really does prod
 ### The mechanism
 
 `prop<Window>(window)` expands to a preamble fragment plus an import, and the import comes from
-`kotlinImportStatementFor` (`src/jvmMain/kotlin/afield/internal/importHelp.kt`). Its rule is:
+`kotlinImportStatementFor` (`src/jvmMain/kotlin/afield/runtime/kotlin/importHelp.kt`). Its rule is:
 
 > emit an import only if **exactly one** importable class has this simple name.
 
@@ -50,7 +50,7 @@ warning,import  multiple classes called Window =
 
 — two importable candidates after filtering (`java.awt.Window` is removed by the `*awt*` blacklist
 pattern, `org.sqlite.Function$Window` because a nested name cannot be imported bare) — so no import.
-In a clean checkout only `afield.four.util.Window` survives the filter, so the import is emitted.
+In a clean checkout only `afield.graphics.vulkan.util.Window` survives the filter, so the import is emitted.
 
 That is the whole disagreement. Two checkouts, two classpaths, two correct answers.
 
@@ -60,7 +60,7 @@ From one clean worktree at `90230b1f4`, same command both times:
 
 | state | `checkCompletionCorpusFixtures` (before the fix) |
 | --- | --- |
-| no `src/personal` | **FAILED** — 19 drifts, each `+ import afield.four.util.Window` |
+| no `src/personal` | **FAILED** — 19 drifts, each `+ import afield.graphics.vulkan.util.Window` |
 | one `class Window` in `src/personal`, `./gradlew personalJar` | **SUCCESSFUL** — "fixtures match the corpus" |
 
 Reproduce it in five lines:
@@ -191,7 +191,7 @@ which is precisely why the repair went round three times. So the harvest now als
 `CompletionCorpus.typesDeclaredWithoutAnImport` counts a type as in scope if it is default-imported,
 imported explicitly, declared inline in the preamble (the `/*supermap*/` and
 `/*graphics-structure-type*/` forms do that), or covered by a star import — the last resolved through
-the class index rather than guessed, so `import afield.four.buffers.*` excuses `FrameBufferGroup` and
+the class index rather than guessed, so `import afield.graphics.vulkan.buffers.*` excuses `FrameBufferGroup` and
 does not excuse `Window`.
 
 Run against `389e1d8ff`'s fixtures it flagged exactly the same nineteen files and exactly one type,

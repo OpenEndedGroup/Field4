@@ -1,10 +1,10 @@
 package afield.examples.functions
 
-import afield.Box
-import afield.OperationTranscript
-import afield.SavingContext
-import afield.SessionInformation
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.tools.automation.OperationTranscript
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -53,7 +53,7 @@ object FnRewriteKotlinLiveBoxProbe {
      * Body re-entries, counted from inside the box.
      *
      * The box's `println` is macro-rewritten to box output and never reaches this process's stdout
-     * ([afield.stdlib.SourceBackedBlock] diagnosis notes the same), and `runMacro` only hands back its
+     * ([afield.study.source.SourceBackedBlock] diagnosis notes the same), and `runMacro` only hands back its
      * output when it returns — which, on the failing path, it does not. So the body calls straight back
      * into this object and a watchdog reads the counter live.
      */
@@ -98,8 +98,8 @@ object FnRewriteKotlinLiveBoxProbe {
      */
     private val SELF_BODY = (
         listOf(
-            "import afield.stdlib.Functions",
-            "import afield.stdlib.rewriteKotlin",
+            "import afield.math.functions.Functions",
+            "import afield.math.functions.rewriteKotlin",
             "afield.examples.functions.FnRewriteKotlinLiveBoxProbe.tick()",
             """println("$ENTER")""",
         ) + SPEC_LINES + listOf(
@@ -113,13 +113,13 @@ object FnRewriteKotlinLiveBoxProbe {
 
     /**
      * `host` — the workaround under test: the same spec run against a **different, idle** box's engine
-     * via [afield.stdlib.rewriteFn], the receiver form the KDoc offers for exactly this. If this works,
+     * via [afield.math.functions.rewriteFn], the receiver form the KDoc offers for exactly this. If this works,
      * `@{...}` is usable with a documented split; if it does not, the string form has no working caller.
      */
     private val HOST_BODY = (
         listOf(
-            "import afield.stdlib.Functions",
-            "import afield.stdlib.rewriteFn",
+            "import afield.math.functions.Functions",
+            "import afield.math.functions.rewriteFn",
             "afield.examples.functions.FnRewriteKotlinLiveBoxProbe.tick()",
             """println("$ENTER")""",
         ) + SPEC_LINES + listOf(
@@ -139,7 +139,10 @@ object FnRewriteKotlinLiveBoxProbe {
 
     /** Exercise a real compiler rejection, then repair the same idle engine and explicitly retry. */
     private val FAILURE_CACHE_BODY = listOf(
-        "import afield.stdlib.*",
+        "import afield.math.functions.Functions",
+        "import afield.math.functions.FnRewriteOptions",
+        "import afield.math.functions.SourceBackedFnRewriteNumberEvaluator",
+        "import afield.math.functions.previewRewrite",
         "afield.examples.functions.FnRewriteKotlinLiveBoxProbe.tick()",
         "val host = parents.last()",
         "val evaluator = SourceBackedFnRewriteNumberEvaluator(host.id)",
@@ -160,11 +163,11 @@ object FnRewriteKotlinLiveBoxProbe {
     ).joinToString("\n")
 
     /**
-     * `block` — the same question for [afield.stdlib.SourceBackedBlock], the other route into the same
+     * `block` — the same question for [afield.study.source.SourceBackedBlock], the other route into the same
      * trap: a rehydrating block invoked from inside its own box's running body.
      */
     private val BLOCK_SELF_BODY = listOf(
-        "import afield.stdlib.sourceBackedBlock",
+        "import afield.study.source.sourceBackedBlock",
         "afield.examples.functions.FnRewriteKotlinLiveBoxProbe.tick()",
         """println("$ENTER")""",
         """val b = sourceBackedBlock<Any?>(thisBox.id, "1.0 + 2.0")""",
@@ -173,7 +176,7 @@ object FnRewriteKotlinLiveBoxProbe {
 
     /** `blockhost` — the same block, hydrated in the idle parent instead. The positive control. */
     private val BLOCK_HOST_BODY = listOf(
-        "import afield.stdlib.sourceBackedBlock",
+        "import afield.study.source.sourceBackedBlock",
         "afield.examples.functions.FnRewriteKotlinLiveBoxProbe.tick()",
         """println("$ENTER")""",
         "val host = parents.last()",
@@ -355,11 +358,11 @@ object FnRewriteKotlinLiveBoxProbe {
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "fn-rewrite-probe-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "fn-rewrite-probe-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
@@ -389,7 +392,7 @@ expect:
  * running one — the positive control, and the pair that makes the one-box failure mean something.
  *
  * Without this, "the rewrite blows up" and "`@{...}` cannot work at all" are the same observation.
- * The box body calls `host.rewriteFn(base, spec)` ([afield.stdlib.rewriteFn]), the receiver form whose
+ * The box body calls `host.rewriteFn(base, spec)` ([afield.math.functions.rewriteFn]), the receiver form whose
  * KDoc exists for callers "not running inside the box whose context the snippets should compile in".
  */
 object FnRewriteKotlinTwoBoxProbe {
@@ -430,7 +433,7 @@ expect:
     - "whose body it therefore re-runs"
 */
 /**
- * [afield.stdlib.SourceBackedBlock]'s own route into the self-box trap, measured rather than inferred.
+ * [afield.study.source.SourceBackedBlock]'s own route into the self-box trap, measured rather than inferred.
  *
  * Its KDoc has documented the hazard at 327 nested runs since the `keyframe_code_blend` split; this is
  * the first test that actually drives it, and what gates `SourceBackedBlockSelfBoxReentry`.

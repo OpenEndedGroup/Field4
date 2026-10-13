@@ -1,8 +1,8 @@
 package afield.examples
 
-import afield.ai.SemanticRetrievalQueryRequest
-import afield.ai.SemanticRetrievalService
-import afield.stdlib.SemanticSearchManager
+import afield.ai.retrieval.SemanticRetrievalQueryRequest
+import afield.ai.retrieval.SemanticRetrievalService
+import afield.ai.retrieval.SemanticSearchManager
 import java.nio.file.Files
 
 /*

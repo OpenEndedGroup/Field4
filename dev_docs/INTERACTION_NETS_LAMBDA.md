@@ -174,10 +174,10 @@ One thing the fix above does *not* do is make the reducer right. It makes the re
 
 | path | what |
 |---|---|
-| `src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt` | front end, oracle, corpus |
+| `src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt` | front end, oracle, corpus |
 | `src/jvmMain/kotlin/afield/examples/stdlib/LambdaTermGenerator.kt` | the seeded generator, two families |
 | `src/jvmMain/kotlin/afield/examples/stdlib/LambdaPropertyOracleTest.kt` | `stdlib.lambda-terms.property`, the ledger, the pinned counterexamples |
-| `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt` | `Reducer.apply` wire chasing, `fan-fan`, `erase-erase`, `Lambda.fan` |
+| `src/jvmMain/kotlin/afield/data/graph/interactionnets.kt` | `Reducer.apply` wire chasing, `fan-fan`, `erase-erase`, `Lambda.fan` |
 | `src/jvmMain/kotlin/afield/examples/stdlib/LambdaTermsSmokeTest.kt` | `stdlib.lambda-terms.smoke` |
 | `src/jvmMain/kotlin/afield/examples/stdlib/LambdaNetFigure.kt` | the figure generator |
 | `dev_docs/agents/demos/interaction_nets_lambda/` | the loadable demo, three boxes |

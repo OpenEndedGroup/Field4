@@ -48,7 +48,7 @@ Demo: `dev_docs/agents/transcripts/csound_demo.yaml`.
 `compileNow` and `scoreNow` take the perform lock, so a live compile holds the next audio block for
 as long as it takes (milliseconds).
 
-## Data plane (matches `afield.pd`)
+## Data plane (matches `afield.audio.pd`)
 
 | Direction | Mechanism | Thread |
 | --- | --- | --- |
@@ -92,7 +92,7 @@ syntax and manual link (`csound.js`).
 
 ## Verification (2026-10-02)
 
-- jvmTest `afield.csound.*`: all green, none skipped (CsoundTest 12, CsoundDataPlaneTest 8,
+- jvmTest `afield.audio.csound.*`: all green, none skipped (CsoundTest 12, CsoundDataPlaneTest 8,
   CsoundLanguageTest 7, CsoundBoxApiTest 3). Filter test: a Field 1 kHz unit sine through `butterlp
   500` gives rms 0.17115, theory 0.17150.
 - Headless browser on 9611: `bithero/csound` loads, `csoundGrammarState()` reports 1220 opcodes, and

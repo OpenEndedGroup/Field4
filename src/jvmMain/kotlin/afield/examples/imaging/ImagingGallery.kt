@@ -1,7 +1,62 @@
 package afield.examples.imaging
 
-import afield.graphics.FLine
-import afield.stdlib.*
+import afield.geometry.path.FLine
+import afield.ai.learning.*
+import afield.ai.retrieval.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.animation.motion.*
+import afield.app.commands.*
+import afield.app.diagnostics.*
+import afield.audio.analysis.*
+import afield.audio.synth.*
+import afield.data.collections.*
+import afield.data.formats.*
+import afield.data.graph.*
+import afield.data.sorting.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.geometry.mesh.*
+import afield.geometry.path.*
+import afield.geometry.spatial.*
+import afield.graphics.color.*
+import afield.graphics.interaction.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.text.*
+import afield.graphics.vulkan.buffers.*
+import afield.io.osc.*
+import afield.io.process.*
+import afield.lang.lambda.*
+import afield.lang.python.*
+import afield.lang.remotejs.*
+import afield.lang.stacksl.*
+import afield.math.autodiff.*
+import afield.math.control.*
+import afield.math.estimation.*
+import afield.math.functions.*
+import afield.math.linalg.*
+import afield.math.optimization.*
+import afield.math.statistics.*
+import afield.math.units.*
+import afield.media.image.*
+import afield.media.video.*
+import afield.runtime.execution.*
+import afield.runtime.languages.*
+import afield.runtime.lifecycle.*
+import afield.simulation.agents.*
+import afield.simulation.automata.*
+import afield.simulation.particles.*
+import afield.study.build.*
+import afield.study.evidence.*
+import afield.study.search.*
+import afield.study.source.*
+import afield.study.ui.*
+import afield.ui.controls.*
+import afield.ui.output.*
+import afield.ui.visualization.*
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Font
@@ -301,11 +356,11 @@ object ImagingGallery {
                     Tile("shiTomasiResponse (viridis)", src.shiTomasiResponse().normalized().colormap("viridis")),
                     Tile(
                         "harrisCorners -> ${harris.size}", src,
-                        listOf(Overlay(afield.stdlib.cornersToFLines(harris, 70.0), ORANGE, 2f))
+                        listOf(Overlay(afield.media.image.cornersToFLines(harris, 70.0), ORANGE, 2f))
                     ),
                     Tile(
                         "fastCorners -> ${fast.size}", src,
-                        listOf(Overlay(afield.stdlib.cornersToFLines(fast, 70.0, box = true), GREEN, 2f))
+                        listOf(Overlay(afield.media.image.cornersToFLines(fast, 70.0, box = true), GREEN, 2f))
                     )
                 ),
                 "4/4 Harris corners within ${"%.2f".format(worst)} px of the true square corners"
@@ -335,7 +390,7 @@ object ImagingGallery {
             check(lines.any { it.theta < 0.05 && abs(it.rho - 1500.0) < 5.0 }) {
                 "vertical line (rho=1500, theta=0) not recovered: $lines"
             }
-            val flines = afield.stdlib.linesToFLines(lines, 2000, 2000)
+            val flines = afield.media.image.linesToFLines(lines, 2000, 2000)
             Figure(
                 listOf(
                     Tile("edge mask (3 lines + a decoy ring)", src),
@@ -363,7 +418,7 @@ object ImagingGallery {
                     Tile("thresholdOtsu()", mask),
                     Tile("open(2,DISC).close(2,DISC)", cleaned),
                     Tile("distanceTransform (magma)", dt.normalized().colormap("magma")),
-                    Tile("erode(3) vs dilate(3)", afield.stdlib.hstack(cleaned.erode(3), cleaned.dilate(3), gap = 4)),
+                    Tile("erode(3) vs dilate(3)", afield.media.image.hstack(cleaned.erode(3), cleaned.dilate(3), gap = 4)),
                     Tile(
                         "${cc.count} components, ${contours.size} contour FLines", cleaned,
                         listOf(Overlay(contours, PINK, 1.6f))
@@ -410,7 +465,7 @@ object ImagingGallery {
             val rectified = projected.warpQuadToRect(quad, 2000, 1400)
             val err = doc.crop(120, 120, 1760, 1160).meanAbsDiff(rectified.crop(120, 120, 1760, 1160))
             check(err < 0.10) { "rectification error $err is too large" }
-            val quadLine = afield.stdlib.contourToFLine(quad, closed = true)
+            val quadLine = afield.media.image.contourToFLine(quad, closed = true)
             Figure(
                 listOf(
                     Tile("source document", doc),
@@ -449,14 +504,14 @@ object ImagingGallery {
             }
             check(worstFit < 2.0) { "RANSAC's homography is off by up to $worstFit px" }
             val arrows = flow.toFLines(scale = 6.0, minMagnitude = 2.0, headSize = 40.0)
-            val seedDots = afield.stdlib.cornersToFLines(
-                seeds.map { afield.stdlib.Corner(it.x.toDouble(), it.y.toDouble(), 1.0) }, 25.0
+            val seedDots = afield.media.image.cornersToFLines(
+                seeds.map { afield.media.image.Corner(it.x.toDouble(), it.y.toDouble(), 1.0) }, 25.0
             )
             Figure(
                 listOf(
                     Tile("frame A", a, listOf(Overlay(seedDots, DIM, 1f))),
                     Tile("frame B (rotate 0.05 + shift 50,-30)", b),
-                    Tile("|A - B|", afield.stdlib.frameDifference(a, b).normalized().colormap("inferno")),
+                    Tile("|A - B|", afield.media.image.frameDifference(a, b).normalized().colormap("inferno")),
                     Tile(
                         "LK flow x6 — ${flow.tracked().size} tracks", a,
                         listOf(Overlay(arrows, ORANGE, 1.5f))
@@ -502,7 +557,7 @@ object ImagingGallery {
                     Tile("|difference| x20 (inferno)", (naive - correct).abs().luma().map { (it * 20f).coerceAtMost(1f) }.colormap("inferno")),
                     Tile(
                         "Colormaps: viridis / turbo / magma / coolwarm",
-                        afield.stdlib.vstack(
+                        afield.media.image.vstack(
                             ramp.colormap("viridis"), ramp.colormap("turbo"),
                             ramp.colormap("magma"), ramp.colormap("coolwarm"), gap = 3
                         )

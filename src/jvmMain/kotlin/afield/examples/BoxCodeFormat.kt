@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.formatBoxKotlin
-import afield.formatCodeProperty
+import afield.runtime.kotlin.formatBoxKotlin
+import afield.runtime.kotlin.formatCodeProperty
 import java.io.File
 import kotlin.system.exitProcess
 

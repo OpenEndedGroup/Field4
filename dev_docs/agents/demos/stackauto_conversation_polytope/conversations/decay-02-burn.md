@@ -26,7 +26,7 @@ CompileKotlinRequest finished (58 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'Polytope', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'Polytope', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/753242c263333d1873b9.jpg)
 <<ai>>

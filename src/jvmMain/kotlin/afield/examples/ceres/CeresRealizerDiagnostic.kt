@@ -1,9 +1,9 @@
 package afield.examples.ceres
 
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relaxWithCeres
+import afield.geometry.polytope.CeresRelaxationOptions
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.conway
+import afield.geometry.polytope.relaxWithCeres
 
 /** What the Ceres problem actually looks like for each solid, as Ceres itself reports it. */
 fun main() {

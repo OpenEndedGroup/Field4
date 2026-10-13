@@ -69,7 +69,7 @@ The picture below runs both versions on one box, plotted over the same `0.0..3.0
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions/oscillator-domain-clamp-before-after.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-oscillator-domain-clamp-before-after"}
 :::static
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 with(Functions) {
     // A gentle rise defined across the whole 0..3 window.

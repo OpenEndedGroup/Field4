@@ -3,7 +3,7 @@
 The numbers `morpho_examples.md` quotes about how big a circuit is and how long it takes to compile,
 grow and relax, with the run they came from.
 
-Source: `src/jvmTest/kotlin/afield/morpho/MorphoMeasurements.kt`. **Nothing here is asserted.** That
+Source: `src/jvmTest/kotlin/afield/lang/morpho/MorphoMeasurements.kt`. **Nothing here is asserted.** That
 class prints and returns; the gate counts have a guard elsewhere (see `dev_docs/MORPHO_AGREEMENT.md`)
 but the cell, net, expansion and timing columns do not, and the timings are one machine's.
 

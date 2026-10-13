@@ -239,7 +239,7 @@ The same holds offline. `renderSignalsOffline` advances any number of signals th
 blocks, without a device, which is how this box measures a Csound filter on a Field sine:
 
 ```diffstatic {data-lang=kotlin}
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500

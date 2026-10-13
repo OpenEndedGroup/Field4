@@ -1,31 +1,31 @@
 package afield.examples.ceres
 
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresExpressionResidual
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.CeresManifold
-import afield.stdlib.ceres.CeresProgram
-import afield.stdlib.ceres.CeresVariableDecl
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.RobustLoss
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
-import afield.stdlib.ceres.SolveResult
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.ceres.buildCeresProgram
-import afield.stdlib.ceres.c
-import afield.stdlib.ceres.hessePlaneOf
-import afield.stdlib.ceres.planarHesseExpression
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.PlaneFormulation
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.canonicalDiagnostics
-import afield.stdlib.polytope.canonicalize
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relaxWithCeres
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresExprVec
+import afield.math.optimization.ceres.CeresExpressionResidual
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.CeresManifold
+import afield.math.optimization.ceres.CeresProgram
+import afield.math.optimization.ceres.CeresVariableDecl
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.RobustLoss
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
+import afield.math.optimization.ceres.SolveResult
+import afield.math.optimization.ceres.Vec3
+import afield.math.optimization.ceres.buildCeresProgram
+import afield.math.optimization.ceres.c
+import afield.math.optimization.ceres.hessePlaneOf
+import afield.math.optimization.ceres.planarHesseExpression
+import afield.geometry.polytope.CeresRelaxationOptions
+import afield.geometry.polytope.PlaneFormulation
+import afield.geometry.polytope.PolyhedralObject
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.canonicalDiagnostics
+import afield.geometry.polytope.canonicalize
+import afield.geometry.polytope.conway
+import afield.geometry.polytope.relaxWithCeres
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -292,9 +292,9 @@ fun main() {
         )
         // The free-variable readback: three components of normal plus one offset per face.
         val faces = seed.topology.elements(2).size
-        val program = afield.stdlib.polytope.CeresRealization.program(
+        val program = afield.geometry.polytope.CeresRealization.program(
             plan,
-            afield.stdlib.polytope.RealizationProblem.of(seed),
+            afield.geometry.polytope.RealizationProblem.of(seed),
             PlaneFormulation.HESSE_EXPRESSION,
             gaugeRotationWeight = 1.0,
         )
@@ -624,7 +624,7 @@ fun main() {
     fun rejectsNatively(what: String, values: List<Double>) {
         val outcome = runCatching {
             CachedCeresSolvers(backend).use {
-                it.getOrCompile(NO_POINTS, CeresProgram(listOf(afield.stdlib.ceres.RawProgramFragment(values))))
+                it.getOrCompile(NO_POINTS, CeresProgram(listOf(afield.math.optimization.ceres.RawProgramFragment(values))))
             }
         }
         expect("native rejects $what", outcome.isFailure)

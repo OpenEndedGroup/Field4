@@ -1,6 +1,6 @@
-# afield.four Vulkan Graphics System
+# Field 4 Vulkan Graphics System
 
-This guide summarizes the layout and responsibilities of the afield.four Vulkan stack (plus the live-coding shader stdlib), with 1–2 sentence notes per file.
+This guide summarizes the layout and responsibilities of the Field 4 Vulkan stack (plus the live-coding shader stdlib), with 1–2 sentence notes per file.
 
 ## Core Orchestrator
 - `afield/four/Renderer.kt`: Main render loop owning the Vulkan instance/device, queues, swapchains, command pools/buffers, and per-window contexts; records compute + graphics passes, submits/presents, and drives profiling/cleanup. Defines the `Target` interface and simple `target {}` helper.

@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="syphon_receive" index="0" -->
 
 ```edn [field-box id="syphon_receive" role="properties"]
-{"id" "syphon_receive" "index" 0 "name" "Syphon — receive a server's frames" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — receive a server's frames" "_tombstone" false "frame" #afield/rect [80.0 960.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_receive_code_.kt" "lines" 12 "characters" 316 "sha256" "ebf047738986060e7f1c0f52a4c92a725563adf3978c691a6064ea54c8ad099b"}]}
+{"id" "syphon_receive" "index" 0 "name" "Syphon — receive a server's frames" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — receive a server's frames" "_tombstone" false "frame" #afield/rect [80.0 960.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_receive_code_.kt" "lines" 12 "characters" 319 "sha256" "a7097cb34d62a0962c5418b935faecd4c8d896f19c4957d9232ce809badac698"}]}
 ```
 
 ```kotlin [field-property box="syphon_receive" name="code" path="syphon_receive_code_.kt"]
-import afield.syphon.*
+import afield.io.syphon.*
 
 // without the library this stops here and says how to build it
 check(Syphon.isAvailable) { Syphon.describe() }
@@ -34,11 +34,11 @@ loop {
 <!-- field-box id="syphon_publish" index="1" -->
 
 ```edn [field-box id="syphon_publish" role="properties"]
-{"id" "syphon_publish" "index" 1 "name" "Syphon — publish an animated picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — publish an animated picture" "_tombstone" false "frame" #afield/rect [80.0 520.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_publish_code_.kt" "lines" 33 "characters" 1126 "sha256" "20e9fcad2f24f8c60e651d993d108dfee2c4355948f9ef632f2ab405189219a2"}]}
+{"id" "syphon_publish" "index" 1 "name" "Syphon — publish an animated picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — publish an animated picture" "_tombstone" false "frame" #afield/rect [80.0 520.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_publish_code_.kt" "lines" 33 "characters" 1129 "sha256" "abf5f57b13314700b3a667816d5589d4ba1b9ce0b374c0229ddf2f113e06f0bf"}]}
 ```
 
 ```kotlin [field-property box="syphon_publish" name="code" path="syphon_publish_code_.kt"]
-import afield.syphon.*
+import afield.io.syphon.*
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.RenderingHints
@@ -78,11 +78,11 @@ loop {
 <!-- field-box id="syphon_servers" index="2" -->
 
 ```edn [field-box id="syphon_servers" role="properties"]
-{"id" "syphon_servers" "index" 2 "name" "Syphon — servers on this machine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — servers on this machine" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_servers_code_.kt" "lines" 12 "characters" 297 "sha256" "f91617e943c580f7e90c2f1f4c798efa3fad8071fc9f051e2f45786760b796fa"}]}
+{"id" "syphon_servers" "index" 2 "name" "Syphon — servers on this machine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — servers on this machine" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_servers_code_.kt" "lines" 12 "characters" 300 "sha256" "6f5dcc7f02f34269ffd292e93e245b48543114baff85cea963d13747335225cd"}]}
 ```
 
 ```kotlin [field-property box="syphon_servers" name="code" path="syphon_servers_code_.kt"]
-import afield.syphon.*
+import afield.io.syphon.*
 
 run {
 if (!Syphon.isAvailable) {

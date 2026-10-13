@@ -61,12 +61,12 @@ report("L-BFGS", lbfgsRun)
 <!-- field-box id="autodiff_fn_fit" index="1" -->
 
 ```edn [field-box id="autodiff_fn_fit" role="properties"]
-{"id" "autodiff_fn_fit" "index" 1 "name" "exact gradients through the Fn graph" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "exact gradients through the Fn graph" "_tombstone" false "frame" #afield/rect [60.0 3600.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_fn_fit_code_.kt" "lines" 38 "characters" 2011 "sha256" "a2ba7189c56c18a5f40b3aa4cc3abac7fc61606ed3e96a09a6b3fbe446a4ca81"}]}
+{"id" "autodiff_fn_fit" "index" 1 "name" "exact gradients through the Fn graph" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "exact gradients through the Fn graph" "_tombstone" false "frame" #afield/rect [60.0 3600.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "autodiff_fn_fit_code_.kt" "lines" 38 "characters" 2026 "sha256" "4b258f1b66068a8b6dd8f4d94d090d3ec2e0dca214c67eceff403cda3ad570f6"}]}
 ```
 
 ```kotlin [field-property box="autodiff_fn_fit" name="code" path="autodiff_fn_fit_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.FnGradientMode
+import afield.math.functions.Functions
+import afield.math.autodiff.FnGradientMode
 
 // Field's Fn is a closure over Double, so it cannot be differentiated by overloading its
 // arithmetic. But every Fn the stdlib builds carries an inspectable graph, and

@@ -9,6 +9,19 @@
 <link rel="stylesheet" href="/field-tool-pages.css">
 <style>
 /* Share the Docs pass shell; only the review layout is specific to this page. */
+.job-panel { position: sticky; top: 0; z-index: 8; padding: 10px 18px; background: #000; }
+.job-line { display: flex; gap: 12px; align-items: center; min-height: 32px; }
+.job-name, .job-run { white-space: nowrap; }
+.job-run { color: var(--cyan); }
+.job-last { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-line button { padding: 6px 12px; }
+.job-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--soft); flex: none; opacity: .4; }
+.job-panel.running .job-dot { background: var(--cyan); opacity: 1; animation: blink 1.2s ease-in-out infinite; }
+.job-panel.failed .job-dot { background: var(--danger); opacity: 1; }
+.job-panel.ok .job-dot { background: var(--ok); opacity: 1; }
+#job-detail pre { max-height: 40vh; }
+@media (max-width: 600px) { .job-line { flex-wrap: wrap; } .job-last { flex-basis: 100%; order: 1; } }
+@media (prefers-reduced-motion: reduce) { .job-panel.running .job-dot { animation: none; } }
 header nav { display: flex; gap: 20px; flex-wrap: wrap; }
 .spread { justify-content: space-between; margin: 0 0 12px; }
 .spread h2 { margin-bottom: 0; }
@@ -81,6 +94,10 @@ details.logs pre { max-height: 180px; }
 <script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
 <main>
 <header><div><h1>Refactoring</h1><p>Create a session, work in isolated copies, and verify the complete migration before delivery.</p></div><nav><a href="/docs-pass.html">Docs pass</a><a href="/land.html">Landing queue</a></nav></header>
+<section id="job-panel" class="job-panel idle" aria-label="Operation progress">
+<div class="job-line"><span class="job-dot" aria-hidden="true"></span><span id="job-title" class="job-name" role="status">No operation yet</span><span id="job-last" class="job-last muted"></span><span id="job-run" class="job-run"></span><button id="toggle-log" aria-expanded="false" aria-controls="job-detail">Log</button><button id="cancel-job" hidden>Stop operation</button></div>
+<div id="job-detail" hidden><p id="job-file" class="path muted"></p><pre id="job-log">No operation yet.</pre></div>
+</section>
 <div id="error" role="alert" hidden></div>
 <section id="import-panel"><h2>New refactor session</h2><p class="muted">Creates a worktree from this checkout’s current commit (HEAD) and copies the chosen workspaces. Uncommitted repository edits are not included. Backups and thumbnails are excluded.</p>
 <form id="start-form"><label>What is this refactor for?<input id="purpose" required placeholder="Organize packages for the public preview"></label>
@@ -94,7 +111,7 @@ details.logs pre { max-height: 180px; }
 <details open><summary>Resume a session</summary><div id="saved-sessions"></div><form id="resume-form" class="row"><label class="wide">Session directory<input id="resume-path" required placeholder="Absolute path to a saved session"></label><button id="resume-button">Resume</button></form></details>
 <p id="import-progress" role="status" class="muted"></p></section>
 <section id="scope-panel" hidden><div class="row spread"><h2>1 · Session worktree and copies</h2><span id="revision" class="tag"></span></div><div id="scope" class="scope"></div><details><summary>Package map and recipe</summary><pre id="recipe"></pre></details><div class="row"><button id="session-agent">Open worktree terminal</button><button id="close-session">Close session · keep worktree</button></div></section>
-<section id="actions-panel" hidden><h2>2 · Mechanical changes and verification</h2><p class="muted">Replan reads the integration worktree and workspace copies. Rehearse applies ready groups, checks their bytes, then undoes and checks restoration.</p><div class="row"><button id="replan">Replan copies</button><button id="rehearse">Rehearse ready changes</button><button id="refresh">Refresh</button><span id="job-state" role="status"></span><button id="cancel-job" hidden>Stop operation</button></div><details id="mechanical"><summary>Inspect proposed changes</summary><label>File<select id="change-list"><option>Select a change</option></select></label><div id="change-diff">Open this section to load the proposed files.</div></details><div id="verification"></div><details class="logs"><summary>Operation log</summary><pre id="log">No operation yet.</pre></details></section>
+<section id="actions-panel" hidden><h2>2 · Mechanical changes and verification</h2><p class="muted">Replan reads the integration worktree and workspace copies. Rehearse applies ready groups, checks their bytes, then undoes and checks restoration.</p><div class="row"><button id="replan">Replan copies</button><button id="rehearse">Rehearse ready changes</button><button id="refresh">Refresh</button></div><details id="mechanical"><summary>Inspect proposed changes</summary><label>File<select id="change-list"><option>Select a change</option></select></label><div id="change-diff">Open this section to load the proposed files.</div></details><div id="verification"></div></section>
 <section id="review-panel" hidden><div class="review-controls"><div class="row spread"><h2>3 · Review batches</h2><span id="counts" class="muted"></span></div><div class="controls"><label>Batch<select id="batch"></select></label><label>Root<select id="root"><option value="">All roots</option></select></label><label>Decision<select id="decision-filter"><option value="">All decisions</option><option value="open">Open</option><option value="question">Questions</option><option value="patch">Patch proposed</option><option value="preserve">Preserve</option><option value="adapter">Adapter needed</option><option value="stale">Changed since decision</option></select></label><label class="wide">Find a document or file<input id="search" placeholder="Filter by path"></label></div><div style="margin-top:16px"><label>Direction for this batch<textarea id="direction" placeholder="For example: update current display labels; preserve explicitly dated historical descriptions."></textarea></label><div class="row" style="margin-top:8px"><button id="run-agent" class="primary">Work through batch in terminal</button><span class="muted">One writer at a time. Batches do not commit or land.</span><span id="sessions"></span></div></div></div>
 <div class="review" id="review-body" hidden><aside><div id="items"></div></aside><article class="detail" id="detail"><p class="empty">Choose a review group to see its source and proposed changes.</p></article></div></section>
 <section id="delivery" hidden><h2>4 · Prepare, verify and deliver</h2>

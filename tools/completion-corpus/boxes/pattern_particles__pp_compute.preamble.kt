@@ -1,11 +1,14 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.four.synth.PatSynthLaunch
-import afield.four.buffers.FrameBufferGroup
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.audio.synth.PatSynthLaunch
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
 /*start*/
 /*compute-structure-type:Seeds:Seeds*/
 class Seeds(
@@ -15,7 +18,7 @@ class Seeds(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun SeedsByteSize(): Long = 16L
 fun SeedsLayoutMembers(): List<Introspected.Member> =
@@ -36,7 +39,7 @@ class Out(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun OutByteSize(): Long = 16L
 fun OutLayoutMembers(): List<Introspected.Member> =
@@ -49,11 +52,11 @@ fun BufferParameters.asOut(): Out =
     buffer.asOut()
 /*end*/
 /*compute-pc-structure:seeds*/ var Structure.seeds by Structure.FromStructure<Any>()
-/*compute-pc-binding:seeds*/ var ComputeMesh.seeds by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:seeds*/ var ComputeMeshGroup.seeds by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:seeds*/ var ComputeMesh.seeds by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:seeds*/ var ComputeMeshGroup.seeds by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:outData*/ var Structure.outData by Structure.FromStructure<Any>()
-/*compute-pc-binding:outData*/ var ComputeMesh.outData by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:outData*/ var ComputeMeshGroup.outData by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:outData*/ var ComputeMesh.outData by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:outData*/ var ComputeMeshGroup.outData by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
 /*compute-pc-binding:time*/ var ComputeMesh.time by ComputeMesh.BoundFromStructure<Float>()
 /*compute-pc-binding-group:time*/ var ComputeMeshGroup.time by ComputeMeshGroup.BoundFromStructure<Float>()

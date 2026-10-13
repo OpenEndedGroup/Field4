@@ -13,7 +13,7 @@ the source: a drawing, a video frame, an offscreen render, or Fabricate's scene
 output. Input and output have the same valid dimensions. This is neural
 rendering, not DLSS super-resolution or ray reconstruction.
 
-Proposed public types under `afield.four.neuralrendering`:
+Proposed public types under `afield.graphics.render.neural`:
 
 - `OpenDlssNrSupport`: native/model/device availability with explicit reasons.
 - `OpenDlssNrControls`: seed, network style ID, tone, structure, skin,

@@ -1,12 +1,12 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.Target
-import afield.four.device.CommandBuffer
-import afield.four.lighting.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.reconstruction.*
-import afield.four.texture.TextureSampler
-import afield.stdlib.fromViews
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.vulkan.Target
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.render.lighting.*
+import afield.document.context.fromContextWithNameOrNull
+import afield.media.reconstruction.*
+import afield.graphics.texture.TextureSampler
+import afield.graphics.shader.fromViews
 import org.lwjgl.vulkan.VK13.*
 
 // This guide conversion describes the existing opaque Lambertian RTXDI bridge.

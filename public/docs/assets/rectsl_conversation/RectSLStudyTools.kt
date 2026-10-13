@@ -1,18 +1,18 @@
-package afield.rectsl.study
+package afield.lang.rectsl.study
 
-import afield.Box
-import afield.RunsAt
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.ToolExecutionContext
-import afield.plugins
-import afield.stdlib.FileManager
-import afield.stdlib.StudySourceEdit
-import afield.stdlib.LiveStudy
-import afield.stdlib.StudyReport
-import afield.stdlib.StudyRequest
-import afield.stdlib.StudyToolClasses
-import afield.stdlib.registerStudyTools
-import afield.stdlib.numbers
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.runtime.lifecycle.plugins
+import afield.document.workspace.FileManager
+import afield.math.functions.StudySourceEdit
+import afield.study.source.LiveStudy
+import afield.study.evidence.StudyReport
+import afield.study.source.StudyRequest
+import afield.study.source.StudyToolClasses
+import afield.study.source.registerStudyTools
+import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -48,7 +48,7 @@ data class PatchRectSLStudy(override val expectedRevision: String, override val 
 data class RectSLNumberEdit(
     override val knob: Int,
     @JsonPropertyDescription("The new value; for a hex colour knob, the colour as a 24-bit number (0xff8800 is 16746496)") override val value: Double
-) : afield.stdlib.NumberEdit
+) : afield.study.ui.NumberEdit
 
 @JsonClassDescription("Set typed numbers and hex colours (knobs, by index from Inspect) to new values, rewritten in place. Checks and activates like an edit.")
 data class SetRectSLNumbers(override val expectedRevision: String, override val expectedSourceHash: String,
@@ -129,7 +129,7 @@ private val onAScene: (ToolExecutionContext) -> Boolean = { ctx ->
 }
 
 /** The scope the library's tools register under, so a document's own tool of the same name adds to them. */
-private const val LIBRARY = "afield.rectsl.study"
+private const val LIBRARY = "afield.lang.rectsl.study"
 
 private fun scene(ctx: ToolExecutionContext): Box =
     ctx.focus?.box ?: throw IllegalStateException("RectSL study tools work on the box whose chat is open")
@@ -180,6 +180,6 @@ fun installRectSLStudyTools() {
 }
 
 /** The [RectSLStudyGuide] tool's answer. */
-data class RectSLGuideText(val text: String) : afield.ai.core.SummarisesForToolLog {
+data class RectSLGuideText(val text: String) : afield.ai.tools.SummarisesForToolLog {
     override fun toolLogSummary(): String = "guide ${text.length} chars"
 }

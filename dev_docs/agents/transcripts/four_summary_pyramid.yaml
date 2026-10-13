@@ -74,7 +74,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -93,13 +93,13 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.applyScenePlan
-          import afield.stdlib.linalg.Vector3f
-
+          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.applyScenePlan
+          import afield.math.linalg.Vector3f
+          
           prop<StandardRenderer.Bundle>(bundle)
-
+          
           // `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
           // there is nothing to fetch with `fromContext()`.
           //
@@ -128,15 +128,15 @@ operations:
       frame: { x: 720.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.fabricated.FabricatePassChain
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.FabricatePassSize
-          import afield.four.fabricated.FabricatePassSpec
-          import afield.four.fabricated.addPassChain
+          import afield.graphics.scene.fabricated.FabricatePassChain
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.FabricatePassSize
+          import afield.graphics.scene.fabricated.FabricatePassSpec
+          import afield.graphics.scene.fabricated.addPassChain
           import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
-
-          prop<afield.four.fabricated.FabricateBuiltChain>(summary)
-
+          
+          prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(summary)
+          
           // The field being summarised: three anisotropic blobs that drift and rotate, with the
           // mass in alpha and a value ramp in red. A chain head that synthesises its own input is
           // self-contained whatever the post stack looked like before it.
@@ -147,7 +147,7 @@ operations:
                   float time;
               } push;
               layout(location = 0) out vec4 outColor;
-
+          
               float blob(vec2 uv, vec2 centre, float lean, vec2 radii) {
                   vec2 d = uv - centre;
                   float s = sin(lean);
@@ -155,7 +155,7 @@ operations:
                   vec2 r = vec2(d.x * c + d.y * s, -d.x * s + d.y * c) / radii;
                   return exp(-dot(r, r));
               }
-
+          
               void main() {
                   float t = push.time;
                   float mass = blob(vUv, vec2(0.32 + 0.05 * sin(t), 0.34), t * 0.5, vec2(0.10, 0.035))
@@ -173,7 +173,7 @@ operations:
                   outColor = vec4(value, mass * 0.45, mass, mass);
               }
           """
-
+          
           // The field as a *picture*, which is not the same thing as the field. `field` carries a
           // value in red over the whole frame because that is what the pyramid weighs and averages;
           // looking at it directly is looking at a red wash, because the mass that says which part
@@ -184,14 +184,14 @@ operations:
               layout(location = 0) in vec2 vUv;
               layout(set = 0, binding = 0) uniform sampler2D sourceTex;
               layout(location = 0) out vec4 outColor;
-
+          
               void main() {
                   vec4 f = texture(sourceTex, vUv);
                   vec3 warm = mix(vec3(0.65, 0.16, 0.06), vec3(1.0, 0.82, 0.30), f.r);
                   outColor = vec4(warm * f.a, 1.0);
               }
           """
-
+          
           // Declared every run. `addPassChain` replaces passes of the same name and reuses a target
           // whose shape has not changed, so editing a number and hitting run remakes the chain
           // without reallocating anything — which is why there is no `once` here. Wrapping the
@@ -249,7 +249,7 @@ operations:
           // The frame graph has to re-sync before the new passes are scheduled.
           bundle.attachTo(renderer)
           bundle.present(renderer = renderer)
-
+          
           // ── live knobs ──
           //
           // A lambda *binds*: the supplier is re-read every time the push buffer is written, so
@@ -263,7 +263,7 @@ operations:
           // passes all declare it — so turning this one number re-cuts the whole tree on the next
           // frame with nothing rebuilt and nothing reallocated.
           summary["threshold"] = 0.02f
-
+          
           println("summary pyramid: ${summary.names().size} passes, " +
                   "root ${summary.targetOf("summary-value-0")?.width}x" +
                   "${summary.targetOf("summary-value-0")?.height}")

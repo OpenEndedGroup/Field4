@@ -489,7 +489,7 @@ perspective, either project first with `FLine.byPerspectiveProjecting(...)` or r
 `threeLines`.
 
 **The ray tracer is not a separate renderer.** [Ray tracing examples](ray_tracing_examples.md) is
-`VK_KHR_ray_tracing_pipeline` inside `afield.four`, and Fabricate's `StandardRenderer` is a deferred
+`VK_KHR_ray_tracing_pipeline` inside Field 4, and Fabricate's `StandardRenderer` is a deferred
 g-buffer / shadow / AO / composite stack built on the same primitives. One Vulkan renderer, three
 front ends.
 

@@ -1,8 +1,8 @@
-import afield.four.fabricated.GltfSkinPose
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.importGltf
-import afield.four.modules.RiggedFixture
-import afield.four.modules.skinnedGltfToTriMesh
+import afield.graphics.scene.fabricated.GltfSkinPose
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.importGltf
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.skinnedGltfToTriMesh
 
 // The line this whole branch was aimed at.
 //

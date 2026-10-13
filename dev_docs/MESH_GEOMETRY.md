@@ -176,7 +176,7 @@ and fails on any broken invariant. `MESH_GALLERY_DIR=<dir>` regenerates the comm
 `dev_docs/assets/mesh_gallery/`; the FIELD_TEST run writes nothing into the tree.
 
 Rendering path: real `TriMesh` pipelines → `TriMesh.renderPixels` (the CPU rasterizer in
-`afield.graphics.VisionGeometryPreview` — perspective, z-buffer, perspective-correct attributes,
+`afield.graphics.visionos.VisionGeometryPreview` — perspective, z-buffer, perspective-correct attributes,
 near-plane clip, two-light lambert, depth-tested wireframe) → AWT compositing → `ImageIO` PNG, under
 `java.awt.headless = true`. AWT only draws the frames, captions and measurement strips.
 

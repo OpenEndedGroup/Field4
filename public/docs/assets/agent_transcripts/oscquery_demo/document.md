@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="oscq-mirror" index="0" -->
 
 ```edn [field-box id="oscq-mirror" role="properties"]
-{"id" "oscq-mirror" "index" 0 "name" "4. Mirror as sliders (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Mirror as sliders (run)" "_tombstone" false "frame" #afield/rect [60.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-mirror_code_.kt" "lines" 6 "characters" 336 "sha256" "be470f1a8a1a2084b2ea01d8a65f3c6aa32b68355c92a5e8c64f72858ef0a4f6"}]}
+{"id" "oscq-mirror" "index" 0 "name" "4. Mirror as sliders (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Mirror as sliders (run)" "_tombstone" false "frame" #afield/rect [60.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-mirror_code_.kt" "lines" 6 "characters" 340 "sha256" "54efd71725e68a51fd2300804f2bf18f1796865f3c40d2fbd533e39409508e33"}]}
 ```
 
 ```kotlin [field-property box="oscq-mirror" name="code" path="oscq-mirror_code_.kt"]
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // A slider or checkbox for every number and boolean the remote publishes. Moving one sets the
 // remote; when the remote moves (box 5 animates /demo/lfo), the slider follows over LISTEN.
@@ -28,11 +28,11 @@ oscQueryMirror(remote, "mirror") { it.path.startsWith("/demo") }
 <!-- field-box id="oscq-controls" index="1" -->
 
 ```edn [field-box id="oscq-controls" role="properties"]
-{"id" "oscq-controls" "index" 1 "name" "2. Field controls, published (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Field controls, published (run)" "_tombstone" false "frame" #afield/rect [520.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-controls_code_.kt" "lines" 10 "characters" 394 "sha256" "dd919298349d3df79e6b1585923c8ed98b6d27bbeae1578137cd260542c3f433"}]}
+{"id" "oscq-controls" "index" 1 "name" "2. Field controls, published (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Field controls, published (run)" "_tombstone" false "frame" #afield/rect [520.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-controls_code_.kt" "lines" 10 "characters" 398 "sha256" "52afc59d4aeca62525e63032ee120f3b0025b1f2c5fe8ec4caa0c722a229b260"}]}
 ```
 
 ```kotlin [field-property box="oscq-controls" name="code" path="oscq-controls_code_.kt"]
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // Field controls that are also OSCQuery parameters, under /surface. Drag them here and every
 // listening remote sees the change; set them from a remote and the Field control moves.
@@ -49,11 +49,11 @@ oscQuery("Field demo").controls("/surface") {
 <!-- field-box id="oscq-remote" index="2" -->
 
 ```edn [field-box id="oscq-remote" role="properties"]
-{"id" "oscq-remote" "index" 2 "name" "3. Read it back as a remote (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Read it back as a remote (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-remote_code_.kt" "lines" 10 "characters" 598 "sha256" "fb17392629adaa89244499e8ef0fce3f0535e41be3c2b90bc3373de08a3224c6"}]}
+{"id" "oscq-remote" "index" 2 "name" "3. Read it back as a remote (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Read it back as a remote (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-remote_code_.kt" "lines" 10 "characters" 602 "sha256" "dbb7810727fd03be4366aa17f0f62c1fff7a609436cf0b241fd9d86a431798bc"}]}
 ```
 
 ```kotlin [field-property box="oscq-remote" name="code" path="oscq-remote_code_.kt"]
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // The other direction: read an OSCQuery service as a remote. Here it is this Field's own,
 // so run box 1 first; point it at TouchDesigner or Chataigne by changing the host and port.
@@ -70,11 +70,11 @@ markdown("**${remote.name}** — OSC on port ${remote.oscPort}, LISTEN: ${remote
 <!-- field-box id="oscq-lfo" index="3" -->
 
 ```edn [field-box id="oscq-lfo" role="properties"]
-{"id" "oscq-lfo" "index" 3 "name" "5. Animate /demo/lfo (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5. Animate /demo/lfo (launch)" "_tombstone" false "frame" #afield/rect [520.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-lfo_code_.kt" "lines" 10 "characters" 385 "sha256" "f95639481cec9ca6f4c682857bb95b626f03cc51cd795d7b0ef62bb4bc6588f0"}]}
+{"id" "oscq-lfo" "index" 3 "name" "5. Animate /demo/lfo (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5. Animate /demo/lfo (launch)" "_tombstone" false "frame" #afield/rect [520.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-lfo_code_.kt" "lines" 10 "characters" 389 "sha256" "9479e78dfea604c084a2a4fced0dd80c343aa02f858e0b7a0354113e360cf719"}]}
 ```
 
 ```kotlin [field-property box="oscq-lfo" name="code" path="oscq-lfo_code_.kt"]
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // A value Field changes by itself: every listener (box 4's slider, TouchDesigner) follows it.
 val q = oscQuery("Field demo")
@@ -91,11 +91,11 @@ loop {
 <!-- field-box id="oscq-publish" index="4" -->
 
 ```edn [field-box id="oscq-publish" role="properties"]
-{"id" "oscq-publish" "index" 4 "name" "1. Publish parameters (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Publish parameters (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-publish_code_.kt" "lines" 18 "characters" 970 "sha256" "93eea9bffa636505589b06e94ab744cc7ce0d8c8935cdba0f24f4cec1531f680"}]}
+{"id" "oscq-publish" "index" 4 "name" "1. Publish parameters (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Publish parameters (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-publish_code_.kt" "lines" 18 "characters" 974 "sha256" "23eb0baf1e958d9cedc348a12bc5a5813ba867d718bdfa2a9910e66350e2dc89"}]}
 ```
 
 ```kotlin [field-property box="oscq-publish" name="code" path="oscq-publish_code_.kt"]
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // Publish four parameters as an OSCQuery service on http port 9020 (OSC UDP on 9021),
 // advertised over DNS-SD so TouchDesigner, Max, Chataigne and VDMX list it as "Field demo".
@@ -120,11 +120,11 @@ markdown("Browse **http://localhost:${q.httpPort}/** for the namespace, or **?HO
 <!-- field-box id="oscq-discover" index="5" -->
 
 ```edn [field-box id="oscq-discover" role="properties"]
-{"id" "oscq-discover" "index" 5 "name" "6. Discover on the network (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6. Discover on the network (run)" "_tombstone" false "frame" #afield/rect [980.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-discover_code_.kt" "lines" 7 "characters" 403 "sha256" "b976e60662eb77c90d555bd5ef8297a851ce2a3e91d7ee2892843daa389c2944"}]}
+{"id" "oscq-discover" "index" 5 "name" "6. Discover on the network (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6. Discover on the network (run)" "_tombstone" false "frame" #afield/rect [980.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-discover_code_.kt" "lines" 7 "characters" 407 "sha256" "64f9dd547eb0ca310a06c959e333fa9a3dfd387e50479e665937062706ffb121"}]}
 ```
 
 ```kotlin [field-property box="oscq-discover" name="code" path="oscq-discover_code_.kt"]
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // OSCQuery services announcing themselves on this network (DNS-SD _oscjson._tcp), this Field's
 // included once box 1 has run. Each one can be opened with oscQueryRemote(address, port).

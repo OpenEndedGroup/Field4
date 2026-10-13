@@ -176,7 +176,7 @@ showPlaneGrid(
         .format(loose.advanceWidth, tight.glyphs.size - 1, t) to
         (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
     channel = "metrics", columns = 1, cellWidth = 880, cellHeight = 240,
-    window = afield.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40),
+    window = afield.app.protocol.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40),
 )
 showImgGrid(
     *TextAlign.entries.map { a ->

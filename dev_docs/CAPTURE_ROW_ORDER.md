@@ -7,7 +7,7 @@ flip.** But that is a derived result, not an axiom, and it has been got wrong in
 so the reasoning is written out here, and the table is enforced by a test rather than trusted.
 
 The machine-readable version of this table is
-[`CaptureOrientation`](../src/jvmMain/kotlin/afield/four/CaptureOrientation.kt), and
+[`CaptureOrientation`](../src/jvmMain/kotlin/afield/graphics/vulkan/CaptureOrientation.kt), and
 `CaptureOrientationTest` fails the build if a path's code disagrees with its declaration, or if a
 new flip-bearing path appears in `afield.four` without being declared.
 
@@ -94,7 +94,7 @@ had no callers, so it was pure trap.
 
 The common cause is that the convention was per-path and unwritten, so each site was decided by
 whatever comment was nearest. Hence
-[`CaptureOrientation`](../src/jvmMain/kotlin/afield/four/CaptureOrientation.kt): the row order is
+[`CaptureOrientation`](../src/jvmMain/kotlin/afield/graphics/vulkan/CaptureOrientation.kt): the row order is
 now data, with the reason attached, and adding a path without declaring it fails the build.
 
 ## How the flip was measured

@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="confluence_grid" index="0" -->
 
 ```edn [field-box id="confluence_grid" role="properties"]
-{"id" "confluence_grid" "index" 0 "name" "Confluence in 3D: 5 terms x 4 schedulers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Confluence in 3D: 5 terms x 4 schedulers" "_tombstone" false "frame" #afield/rect [40.0 40.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "confluence_grid_code_.kt" "lines" 277 "characters" 12989 "sha256" "9576077a280b27a46fdc43c927869ad8a8debfda3bd853f5e3f0c99bc1618db2"}]}
+{"id" "confluence_grid" "index" 0 "name" "Confluence in 3D: 5 terms x 4 schedulers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Confluence in 3D: 5 terms x 4 schedulers" "_tombstone" false "frame" #afield/rect [40.0 40.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "confluence_grid_code_.kt" "lines" 277 "characters" 12994 "sha256" "569d64bbc623f18502e8b7f43e76406b9e19979b957638051a656891000f5c0a"}]}
 ```
 
 ```kotlin [field-property box="confluence_grid" name="code" path="confluence_grid_code_.kt"]
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 // A 5x4 confluence grid in 3D. Row = term, column = scheduler, all twenty reducing together.
 //

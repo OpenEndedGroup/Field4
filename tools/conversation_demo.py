@@ -394,7 +394,7 @@ def render_turn(body: str, default_label: str = "AI4") -> str:
         image = re.fullmatch(r"_(.+?)_\s*\n\n!\[tool image\]\((images/[^)]+)\)", text, flags=re.DOTALL)
         if image:
             caption, path = image[1], image[2]
-            window = caption.startswith("afield.four render window")
+            window = caption.startswith(("Vulkan render window", "Field 4 render window"))
             shown = "The live window, captured for the model" if window else caption
             sections.append(f'<figure class="{"window" if window else "evidence"}"><a href="{path}" title="Open full size">'
                             f'<img src="{path}" alt="{escape(shown)}" loading="lazy"></a><figcaption>{escape(shown)}</figcaption></figure>')

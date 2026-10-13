@@ -6,7 +6,7 @@ it is already mid-evaluation, and the engine responds by re-running the body —
 expression, recursively, until the stack gives out. **Guarded since 2026-09-09** — see the next
 section; the numbers below are what the unguarded path did, and are why the guard exists.
 
-This is the same hazard [`SourceBackedBlock`](../src/jvmMain/kotlin/afield/stdlib/SourceBackedBlock.kt)
+This is the same hazard [`SourceBackedBlock`](../src/jvmMain/kotlin/afield/study/source/SourceBackedBlock.kt)
 documents in its KDoc (measured there at 327 nested runs and 355 seconds), reached by a second route.
 `SourceBackedFnRewriteNumberExpression.hydrate` calls `sourceBackedBlockBox(boxId)`, which returns
 `Box.context.get()` when the ids match — and they always match, because `kotlinRewriteOptions` takes
@@ -85,7 +85,7 @@ expression with its own freshly-built evaluator.
 `functions.rewrite-kotlin.two-box` is the positive control, and without it "the rewrite blows up" and
 "`@{...}` cannot work at all" would be the same observation. The same spec, the same graph, the only
 difference being that the snippet is compiled in a **second, idle** box via
-[`Box.rewriteFn`](../src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt) — the receiver form
+[`Box.rewriteFn`](../src/jvmMain/kotlin/afield/math/functions/FunctionRewriteKotlin.kt) — the receiver form
 whose KDoc exists for callers "not running inside the box whose context the snippets should compile
 in":
 
@@ -130,7 +130,7 @@ are the first tests that do. Measured 2026-09-09:
 | outcome | completes, `b() = 3.0` | completes, `b() = 3.0` |
 | guard message | `error,source-block` | — |
 
-**The two guards share one in-flight set** ([`hydratingBoxes`](../src/jvmMain/kotlin/afield/stdlib/SourceBackedBlock.kt)),
+**The two guards share one in-flight set** ([`hydratingBoxes`](../src/jvmMain/kotlin/afield/study/source/SourceBackedBlock.kt)),
 deliberately rather than one each: both routes hydrate by evaluating a snippet on a box's own engine,
 so a `SourceBackedBlock` invoked from a body that a `@{...}` hydration is already re-running is the
 same recursion arriving by two doors. Two sets would let that mixed case through.
@@ -147,7 +147,7 @@ normally, so the memo caches successes and not failures. That is true, and it is
 - A hydration failure is **not** retried per matched node. Nothing between `hydrate()` and the caller
   catches — not `applyNumberAction`, not `previewRewrite`'s per-node lambda, not `deepCopy`'s
   recursion — so the first failure ends the whole rewrite with the other matched nodes unvisited.
-  Fenced by [`FnRewriteHydrateFailureTest`](../src/jvmTest/kotlin/afield/stdlib/FnRewriteHydrateFailureTest.kt):
+  Fenced by [`FnRewriteHydrateFailureTest`](../src/jvmTest/kotlin/afield/math/functions/FnRewriteHydrateFailureTest.kt):
   11 matching nodes, one attempt.
 - The repeat compiles above are on **different objects**. Every level runs a fresh `rewriteKotlin`
   call, which builds a fresh `SourceBackedFnRewriteNumberEvaluator` and thus a fresh expression with

@@ -29,7 +29,7 @@ operations:
         code: |
           // The window and the Vulkan renderer every other box in this document inherits.
           // `once.renderer` means re-running this box does not build a second window.
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -50,12 +50,12 @@ operations:
           // it costs no frames. This replaces the shape four scratch boxes were written in last night --
           // `frames { repeat(180) { frame() } }` with a `println` inside -- which spends 180 real frames
           // to learn what the log already knows.
-          import afield.four.fabricated.*
+          import afield.graphics.scene.fabricated.*
           import java.io.File
-
+          
           prop<PathTracingRenderer>(tracer)
           prop<PathTraceConvergence>(log)
-
+          
           tracer = PathTraceDemo.install(renderer,
               File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
           tracer.samplesPerFrame = 1
@@ -63,7 +63,7 @@ operations:
           tracer.indirectClamp = 10f
           tracer.exposure = 1.5f
           tracer.blitToScreen()
-
+          
           log = tracer.recordConvergence()
           println("${tracer.backend}: ${tracer.triangleCount} triangles, ${tracer.width} x ${tracer.height}")
   - create:
@@ -75,7 +75,7 @@ operations:
           // This is the whole instrument. One line.
           //
           // Until tonight it produced
-          //   PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+          //   PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3
           // and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
           // data class and had no value printer registered, so `ValueVisualizer` fell all the way through
           // to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
@@ -90,8 +90,8 @@ operations:
           // were printing `camera.up` and its three components as `toRawBits()`, hunting exactly this, and
           // no property tree could have shown it to them: the value is a local inside a private method.
           // The row only appears when the two disagree.
-          import afield.four.fabricated.PathTracingRenderer
-
+          import afield.graphics.scene.fabricated.PathTracingRenderer
+          
           prop<PathTracingRenderer>(tracer)
           display("output", tracer)
   - create:
@@ -106,11 +106,11 @@ operations:
           // This is one call to `showSignals`, the house terse-plot helper. There is no new plotting
           // code anywhere in this feature: `showSignals` already takes named series, a shared x, and
           // `marks` drawn as full-height dashed rules carrying their label into the legend.
-          import afield.four.fabricated.*
-
+          import afield.graphics.scene.fabricated.*
+          
           prop<PathTracingRenderer>(tracer)
           prop<PathTraceConvergence>(log)
-
+          
           println(log)
           println("resets so far: " + log.resetMarks())
           showConvergence(log)
@@ -121,20 +121,20 @@ operations:
       properties:
         code: |
           // Three calls, three different answers, and that is the whole point of the type.
-          import afield.four.fabricated.*
-
+          import afield.graphics.scene.fabricated.*
+          
           prop<PathTracingRenderer>(tracer)
-
+          
           // 1. No argument offers the packaged integrator -- which is exactly what is already
           //    running. UNCHANGED. `ComputeModulePointer.reload` answers a bare `false` here, the
           //    same `false` it answers for a compile failure, so a `check(...)` around it throws on
           //    a no-op. That is why this returns three outcomes instead of a boolean.
           println(tracer.reloadIntegrator())
-
+          
           // 2. A source that does not compile. FAILED, with the compiler's own messages, and the
           //    last working pipeline keeps rendering -- watch the window: the image does not blink.
           println(tracer.reloadIntegrator("#version 460\nvoid main() { this is not glsl }"))
-
+          
           // 3. A real swap, and a deliberately unphysical one: multiply the direct and indirect
           //    terms where the integrator adds them, scale, and curve the result. One line changes,
           //    but the whole ~30 KB integrator is recompiled and hot-swapped under a running camera.
@@ -150,7 +150,7 @@ operations:
               .replace("return vec4(radiance+indirect,1);",
                   "return vec4(pow(radiance*indirect*2, vec3(0.76)),1);")
           println(tracer.reloadIntegrator(remix))
-
+          
           // Anything the camera sees with no bounce behind it multiplies to zero, so the sunset
           // environment drops to black and the three spheres become the only lit things in the frame,
           // each keeping its own colour over a soft pool on the floor; the gold one holds just its sun
@@ -165,13 +165,13 @@ operations:
           // The same no-argument call that answered UNCHANGED in box 3 now RELOADS, because the live
           // pipeline is the patched one. Nothing about the tracer had to be rebuilt to get here: same
           // scene, same environment, same accumulation buffers, same camera.
-          import afield.four.fabricated.*
-
+          import afield.graphics.scene.fabricated.*
+          
           prop<PathTracingRenderer>(tracer)
-
+          
           println(tracer.reloadIntegrator())
           println("reset: '" + tracer.lastResetReason + "' generation=" + tracer.resetGeneration)
-
+          
           // And the instrument again, so you can read the generation count going up and the reason
           // changing. Re-run box 2 to see the reset land on the convergence curve as a labelled rule.
           display("output", tracer)

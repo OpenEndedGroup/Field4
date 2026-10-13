@@ -263,8 +263,8 @@ smoothing coefficient per frequency, so high resonators settle faster than low o
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/resonator_bank.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.four.audio.resonate
-import afield.four.audio.resonatorAlphaHeuristics
+import afield.audio.engine.resonate
+import afield.audio.engine.resonatorAlphaHeuristics
 
 // --- same rising chirp (300 -> 3000 Hz) + two tones (700, 1800 Hz), as a Float signal ---
 val sampleRate = 8000f
@@ -385,7 +385,7 @@ other per-sample filter in the toolkit.
 - **Features** — `SpectralFeatures.centroid / spread / rolloff / flux / flatness / rms / energy`.
 - **Mel** — `Mel.hzToMel`, `Mel.melToHz`, and a triangular `Mel.filterBank(...)` for perceptual /
   log-frequency band energies.
-- **Resonator bank** (`afield.four.audio`) — `resonate(...)` / `ResonatorBank` for a fixed complex
+- **Resonator bank** (`afield.audio.engine`) — `resonate(...)` / `ResonatorBank` for a fixed complex
   filterbank at frequencies you choose, `trackingResonate(...)` / `TrackingResonatorBank` for
   resonators that lock onto and follow moving partials, with `resonatorAlphaHeuristics(...)` for
   per-frequency time constants.

@@ -39,7 +39,7 @@ CHAT_FILE = "polytope_source_ai4_chat_history_.md"
 CODE_FILE = "polytope_source_code_.kt"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", "polytope_renderer_code_.kt", CODE_FILE,
                  "polytope_source_vertex_.glsl", "polytope_source_fragment_.glsl")
-TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudyTools.kt"
+TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt"
 CAPTURED = ("starter.png", "burst.mp4", "card.png", "in-shader.png", "saved-chat.png")
 IMAGE_REF = re.compile(r"\]\((images/[0-9a-f]{20}\.(?:png|jpg))\)")
 TITLE = "A polytope that bursts and burns"

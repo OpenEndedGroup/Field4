@@ -40,7 +40,7 @@ afterStop:
   - "lifecycle-census @deleted --expect-empty --timeout 20"
 */
 private val LIFECYCLE_CENSUS_SNIPPET = """
-import afield.four.synth.*
+import afield.audio.synth.*
 
 var frames = 0
 slider("census", 0.0, 1.0) { }
@@ -85,7 +85,7 @@ afterStop:
   - "lifecycle-census @deleted --expect-empty --timeout 20"
 */
 private val LIFECYCLE_RELAUNCH_SNIPPET = """
-import afield.four.synth.*
+import afield.audio.synth.*
 
 prop<Any>(censusOnceSlider)
 prop<Any>(censusOnceFeeder)

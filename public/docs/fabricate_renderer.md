@@ -99,7 +99,7 @@ Reloads reuse the pass's existing `Parameters`, so the renderer's texture bindin
 
 ## Scene graph and transforms
 
-Fabricate has a small scene layer on top of `afield.four`: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
+Fabricate has a small scene layer on top of Field 4: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(renderer)

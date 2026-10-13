@@ -23,7 +23,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="midi_devices" name="code" path="midi_devices_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 3 - What MIDI hardware can this machine see, and can Field drive it?
 //
@@ -78,7 +78,7 @@ markdown(
 ```
 
 ````kotlin [field-property box="midi_audition" name="code" path="midi_audition_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.io.File
 
 // 4 - Hear it. Two routes, and this box tells you which one it took.
@@ -150,7 +150,7 @@ markdown("main", report)
 ```
 
 ```kotlin [field-property box="midi_write" name="code" path="midi_write_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.io.File
 
 // 1 - Write a MIDI file a DAW will open.
@@ -217,7 +217,7 @@ markdown(
 ```
 
 ```kotlin [field-property box="midi_read" name="code" path="midi_read_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.io.File
 
 // 2 - Read it back, and check the round trip actually held.

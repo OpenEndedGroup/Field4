@@ -1,6 +1,6 @@
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyChoice
 
 // A blank musical page: three constant channels. Ask AI4 to grow this Kotlin.
 // The final expression returns a candidate; the tools box compiles and checks it.

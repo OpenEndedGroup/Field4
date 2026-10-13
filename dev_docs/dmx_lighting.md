@@ -1,4 +1,4 @@
-# `afield.dmx` — Art-Net 4 and sACN: design, verification, traps
+# `afield.io.dmx` — Art-Net 4 and sACN: design, verification, traps
 
 Added 2026-09-27 (nightly branch `nightly/2026-09-27/1-artnet-sacn-lighting`). The user-facing page
 is `public/docs/dmx_lighting.md`; the loadable demo is `public/docs/assets/dmx_lighting_demo/`.
@@ -7,13 +7,13 @@ is `public/docs/dmx_lighting.md`; the loadable demo is `public/docs/assets/dmx_l
 
 | file | what |
 | --- | --- |
-| `src/jvmMain/kotlin/afield/dmx/ArtNet.kt` | ArtDmx / ArtSync / ArtPoll / ArtPollReply codecs, `PortAddress` |
-| `src/jvmMain/kotlin/afield/dmx/Sacn.kt` | E1.31 data / sync / discovery codecs, `SacnSequence` (§6.7.2) |
-| `src/jvmMain/kotlin/afield/dmx/DmxOutput.kt` | frame buffers + sender thread (send-on-change, repeats, keep-alive, sync, terminate) |
-| `src/jvmMain/kotlin/afield/dmx/DmxInput.kt` | receiver: merge (priority, HTP/LTP), timeouts, sync hold, ArtPoll replies |
-| `src/jvmMain/kotlin/afield/dmx/Patch.kt` | `Slot`, `FixtureProfile`, `Fixture`, `Patch` (allocation, mappers, `animate`) |
-| `src/jvmMain/kotlin/afield/dmx/DmxVisual.kt` | `toFLines`, `universeToFLines`, `showPatch`, `showUniverse`, `renderLinesPng` |
-| `src/jvmMain/kotlin/afield/dmx/DmxBox.kt` | box ownership (`artnetOut`/`sacnOut`/`artnetIn`/`sacnIn`), `artPoll` |
+| `src/jvmMain/kotlin/afield/io/dmx/ArtNet.kt` | ArtDmx / ArtSync / ArtPoll / ArtPollReply codecs, `PortAddress` |
+| `src/jvmMain/kotlin/afield/io/dmx/Sacn.kt` | E1.31 data / sync / discovery codecs, `SacnSequence` (§6.7.2) |
+| `src/jvmMain/kotlin/afield/io/dmx/DmxOutput.kt` | frame buffers + sender thread (send-on-change, repeats, keep-alive, sync, terminate) |
+| `src/jvmMain/kotlin/afield/io/dmx/DmxInput.kt` | receiver: merge (priority, HTP/LTP), timeouts, sync hold, ArtPoll replies |
+| `src/jvmMain/kotlin/afield/io/dmx/Patch.kt` | `Slot`, `FixtureProfile`, `Fixture`, `Patch` (allocation, mappers, `animate`) |
+| `src/jvmMain/kotlin/afield/io/dmx/DmxVisual.kt` | `toFLines`, `universeToFLines`, `showPatch`, `showUniverse`, `renderLinesPng` |
+| `src/jvmMain/kotlin/afield/io/dmx/DmxBox.kt` | box ownership (`artnetOut`/`sacnOut`/`artnetIn`/`sacnIn`), `artPoll` |
 | `src/jvmTest/kotlin/afield/dmx/*` | 11 byte-layout tests, 17 service tests, 2 demo-bundle tests |
 | `dev_docs/dmx/independent_decode.py` | Python decoders/senders written from the protocol documents |
 
@@ -57,7 +57,7 @@ numbers (4 s refresh and sync timeout, 10 s merge timeout) are the least verifie
 
 ## Verification record (2026-09-27)
 
-**JVM tests.** `./gradlew jvmTest --tests 'afield.dmx.*'`: `DmxProtocolTest` 11/11,
+**JVM tests.** `./gradlew jvmTest --tests 'afield.io.dmx.*'`: `DmxProtocolTest` 11/11,
 `DmxServicesTest` 17/17, `DmxLightingDemoBundleTest` 2/2. The byte tests spell out expected bytes
 from the spec tables rather than round-tripping, so a field in the wrong place fails.
 
@@ -137,7 +137,7 @@ start codes; no sequence-based reordering for Art-Net (optional in the spec). Ar
 treats any ArtSync as applying to every held source, where the spec narrows it to the controller
 that sent the ArtDmx. No hardware was driven: every test was loopback on one Mac.
 
-`afield.dmx` is not in `StdlibReferenceGenerator.SOURCE_ROOTS`, so it has no rows in
+`afield.io.dmx` is not in `StdlibReferenceGenerator.SOURCE_ROOTS`, so it has no rows in
 `public/docs/reference/`. Adding a root is treated in that file as its own change (a blurb, a
 category page — this package's category is `Lighting`, which has no page — and corpus-global
 evidence links), so it was left for one.

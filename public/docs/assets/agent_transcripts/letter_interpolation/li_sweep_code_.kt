@@ -1,7 +1,7 @@
-import afield.stdlib.ShaderNeuralParticles
-import afield.stdlib.blendWith
+import afield.simulation.particles.ShaderNeuralParticles
+import afield.simulation.particles.blendWith
 
-prop<afield.stdlib.ShaderNeuralParticles>(particles)
+prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
 once.particles {
     ShaderNeuralParticles(fieldA, renderer) {

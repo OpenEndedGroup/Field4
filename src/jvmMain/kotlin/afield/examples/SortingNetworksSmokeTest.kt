@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.stdlib.SortingComparator
-import afield.stdlib.SortingNetwork
+import afield.data.sorting.SortingComparator
+import afield.data.sorting.SortingNetwork
 
 /*
 FIELD_TEST

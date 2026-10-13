@@ -28,12 +28,12 @@ does not itself use.
 
 | file | lines | what it is |
 |---|---|---|
-| `src/jvmMain/kotlin/afield/four/synth/Midi.kt` | 653 | the note/clip model, the SMF reader and writer, quantize/swing, General MIDI |
-| `src/jvmMain/kotlin/afield/four/synth/MidiPat.kt` | 362 | `PatPattern` ↔ `MidiClip`, the transcription bridge, the piano roll as FLines |
-| `src/jvmMain/kotlin/afield/four/synth/MidiDevices.kt` | 445 | live device enumeration and I/O, offline WAV rendering |
-| `src/jvmMain/kotlin/afield/four/synth/MidiSmokeTest.kt` | 222 | `synth.midi-file.smoke`, and the generator for the figure below |
-| `src/jvmTest/kotlin/afield/four/synth/MidiRoundTripTest.kt` | 481 | thirteen cases: round trips, the live loopback, the audio render |
-| `src/jvmTest/kotlin/afield/four/synth/AbletonMidiReadCharacterizationTest.kt` | 183 | the fence that made the lift a measurement |
+| `src/jvmMain/kotlin/afield/audio/synth/Midi.kt` | 653 | the note/clip model, the SMF reader and writer, quantize/swing, General MIDI |
+| `src/jvmMain/kotlin/afield/audio/synth/MidiPat.kt` | 362 | `PatPattern` ↔ `MidiClip`, the transcription bridge, the piano roll as FLines |
+| `src/jvmMain/kotlin/afield/audio/synth/MidiDevices.kt` | 445 | live device enumeration and I/O, offline WAV rendering |
+| `src/jvmMain/kotlin/afield/audio/synth/MidiSmokeTest.kt` | 222 | `synth.midi-file.smoke`, and the generator for the figure below |
+| `src/jvmTest/kotlin/afield/audio/synth/MidiRoundTripTest.kt` | 481 | thirteen cases: round trips, the live loopback, the audio render |
+| `src/jvmTest/kotlin/afield/audio/synth/AbletonMidiReadCharacterizationTest.kt` | 183 | the fence that made the lift a measurement |
 
 Zero new dependencies. `javax.sound.midi` is in the JDK.
 

@@ -1,6 +1,6 @@
 # Driving Lights: Art-Net and sACN
 
-`afield.dmx` lets a box drive DMX lighting over a network, and lets Field act as a lighting node
+`afield.io.dmx` lets a box drive DMX lighting over a network, and lets Field act as a lighting node
 itself. It speaks the two protocols nearly every LED controller, pixel driver and console accepts:
 **Art-Net 4** (UDP 6454) and **sACN**, ANSI E1.31 (UDP 5568, usually multicast). On top of the wire
 formats sits a small patch model: fixtures with channel layouts and addresses, strips that overflow
@@ -25,7 +25,7 @@ received back in the same box.
 This sets two channels on a node at a fixed address:
 
 ```diffstatic {data-lang=kotlin}
-import afield.dmx.*
+import afield.io.dmx.*
 
 val out = artnetOut("192.168.1.50")      // a node's IP, or a broadcast address
 out.universe(1)[1] = 255                 // channel 1 of universe 1, full
@@ -42,7 +42,7 @@ hands back the same output, so the socket and the lights carry on; stopping the 
 Stream_Terminated packets, so receivers let go at once rather than holding the last look.
 
 Channels are **1-based**, as on a console and in every fixture manual. Art-Net numbers universes
-from 0 and sACN from 1; `afield.dmx` passes the number you give straight through, so universe 1 is
+from 0 and sACN from 1; `afield.io.dmx` passes the number you give straight through, so universe 1 is
 Art-Net port-address `0:0:1` and sACN universe 1.
 
 ## Fixtures and a patch
@@ -51,7 +51,7 @@ Addresses by hand get old quickly. A `Patch` holds fixtures, each a `FixtureProf
 does what) at a universe and start address, placed at a position in the room:
 
 ```diffstatic {data-lang=kotlin}
-import afield.dmx.*
+import afield.io.dmx.*
 
 val patch = Patch(startUniverse = 1)
 val strip = patch.strip(200, vec(0.0, 0.0), vec(400.0, 0.0))            // 200 RGB pixels
@@ -118,7 +118,7 @@ patch.map { _, _, _ -> colorTemperature(3200.0) }   // tungsten; 5600.0 is dayli
 Here 200 pixels go on a curve, are coloured once by position, and are drawn with `showPatch`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dmx_lighting/patch_strip_along_curve.png" alt="200 RGB pixels along an S-shaped curve, their colours cycling through the hues along its length" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="lights" capture="box" embed=true trim=true name="dmx-strip-along-curve" w="760" h="300"}
-import afield.dmx.*
+import afield.io.dmx.*
 
 val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
 val patch = Patch(startUniverse = 1)
@@ -161,7 +161,7 @@ This box sends an image to a 16 × 8 matrix of RGBW fixtures as sACN, receives i
 machine, and draws both. Launch it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dmx_lighting/rgbw_matrix.png" alt="two output panels: a 16 by 8 matrix of RGBW fixtures coloured by a gradient with a band of brightness across it, and below it universe 10 as received over sACN, the same fixtures drawn in wire order with every other row reversed" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="universe 10" embed=true trim=true name="dmx-rgbw-matrix" w="760" h="640"}
-import afield.dmx.*
+import afield.io.dmx.*
 
 // 128 RGBW fixtures x 4 slots fill universe 10 exactly; the matrix is wired serpentine, as most are.
 val patch = Patch(startUniverse = 10)
@@ -222,7 +222,7 @@ and draws the two universes it receives. 170 pixels fill universe 1; the other 3
 universe 2, which is why its grid is mostly empty. Launch it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dmx_lighting/artnet_received.png" alt="two output panels of received universes: universe 1 full with 170 coloured RGB pixels, universe 2 with 30 coloured pixels and the rest of the grid empty" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="universe 2" embed=true name="dmx-artnet-received" w="760" h="560"}
-import afield.dmx.*
+import afield.io.dmx.*
 
 val input = artnetIn()                    // Field as a node on UDP 6454
 

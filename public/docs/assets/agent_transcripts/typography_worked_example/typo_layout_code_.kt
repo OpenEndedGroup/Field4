@@ -29,7 +29,7 @@ showPlaneGrid(
     "tracking 0.16em — ${"%.0f".format(loose.advanceWidth)} units wide" to
         (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
     columns = 1, cellWidth = 820, cellHeight = 240,
-    window = afield.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40)
+    window = afield.app.protocol.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40)
 )
 
 // Multi-line and alignment, measured by the real layout so the wrap is right for the

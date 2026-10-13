@@ -152,7 +152,7 @@ From `code`
 No audio device: render one second, measure it, read back what Pd recorded.
 
 ```edn [field-box id="pd_offline" role="properties"]
-{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 27 "characters" 1077 "sha256" "6927c2dd0731ca1d5c1f7c99074ee14698dd80229353f28052b858a44315eb69"}]}
+{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 27 "characters" 1089 "sha256" "8e2c9361d01f6fd2ddc0140e938d230469fdb4a250aa141abddc23d1c76b0351"}]}
 ```
 
 ```kotlin [field-property box="pd_offline" name="code" path="pd_offline_code_.kt"]
@@ -171,7 +171,7 @@ val text = """
 #X connect 1 0 3 0;
 #X connect 4 0 3 0;
 """
-val pd = afield.pd.PdInstance(sampleRate = 48000)
+val pd = afield.audio.pd.PdInstance(sampleRate = 48000)
 pd.openPatchText(text)
 // Not `val (left, _) = …`: a top-level `_` in a destructuring never completes in a box.
 val (left, right) = pd.renderOffline(1.0)
@@ -182,7 +182,7 @@ val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
 val peak = left.maxOf { abs(it) }
 println("$ups upward zero crossings in 1 s, peak ${"%.4f".format(peak)}, channels equal: ${left.contentEquals(right)}")
 showSignals("tabwrite~ scope" to scope.toList(), channel = "scope", title = "[table scope], recorded by Pd")
-lines(afield.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
+lines(afield.audio.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
 ```
 
 ## 6. drone

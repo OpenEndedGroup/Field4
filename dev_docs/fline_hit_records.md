@@ -38,7 +38,7 @@ quietly mis-calibrated.**
 | a line asks for interaction | `FLine.onClick`, `FLine.hoverColor`, `FLine.label` (`StandardDrawing.kt`) | — |
 | the renderer emits it | `buildInteractiveSVG` (`someSkiko.kt`) | `onclick`, `data-fline-callback-id`, `data-fline-index`, `data-fline-label`, `data-fline-vertices`, `data-fline-elements`, `data-fline-pick`, `data-fit-*`, one `data-fline-calibration` rect per figure |
 | the browser reconstructs the hit | `__flineIntersectionFromSvg` (`sliders.js`) | kind, line, node, subpath, element, `u`, `v`, the point on the element |
-| the browser posts it | `sendFLineClick` → `afield.send('fline-click', …)` | `FLineClick` (`rpc.kt`) |
+| the browser posts it | `sendFLineClick` → `afield.app.protocol.send('fline-click', …)` | `FLineClick` (`rpc.kt`) |
 | the server dispatches it | `fline-click` handler (`Server.kt`), `FLineClick.toIntersection()` (`outputs.kt`) | `FLineIntersection` |
 | three.js does the same | `installThreeJsHandler`, `buildThreeGeometryPayload` (`ThreeJsViewer.kt`), `intersectionForHit` + the `fline-hit-picking` region (`threejs_viewer.html`) | the same record: kind, line, label, node, subpath, element, `u`/`v`, the point on the element |
 

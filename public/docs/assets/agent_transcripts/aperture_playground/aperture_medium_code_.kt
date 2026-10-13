@@ -1,5 +1,5 @@
-import afield.four.targets.RenderToTexture
-import afield.four.modules.fromContextWithNameOrNull
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK10.*
 
 val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!

@@ -1,4 +1,4 @@
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 // Every temperature, whichever room it comes from: `+` stands for one level of the topic.
 // The callback runs on Field's main loop, so it can update outputs directly.

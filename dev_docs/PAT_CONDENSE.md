@@ -2,7 +2,7 @@
 
 Built on `nightly/2026-09-10/1-pattern-structure-synthesis`, on top of `c08b19003`.
 
-`src/jvmMain/kotlin/afield/four/synth/PatCondense.kt` takes a rhythm — a boolean step mask, a
+`src/jvmMain/kotlin/afield/audio/synth/PatCondense.kt` takes a rhythm — a boolean step mask, a
 `PatPattern<String>`, a `PatTranscription`, or a mini-notation string — and returns the shortest
 string in Field's own mini-notation whose parse renders to an **identical** event set, together with
 the structure it found and the compression it achieved.
@@ -108,7 +108,7 @@ is nothing shorter" from "the search stopped looking".
 
 ## Measurements
 
-All from `src/jvmTest/kotlin/afield/four/synth/PatCondenseTest.kt`, 2026-09-10, every floor asserted
+All from `src/jvmTest/kotlin/afield/audio/synth/PatCondenseTest.kt`, 2026-09-10, every floor asserted
 in the file rather than printed.
 
 **Round trip over the corpus that already existed.** The corpus is the set of distinct `pat("…")`

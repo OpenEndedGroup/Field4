@@ -1,7 +1,7 @@
 # Hearing pitch, and writing it back down
 
 Field could render notation to sound exactly, and could hear **rhythm** back
-([`PatOnsetDetection.kt`](../src/jvmMain/kotlin/afield/four/synth/PatOnsetDetection.kt)). It could not
+([`PatOnsetDetection.kt`](../src/jvmMain/kotlin/afield/audio/synth/PatOnsetDetection.kt)). It could not
 hear **pitch**, and it had no way to turn anything it heard back into something it can re-render:
 there is no mini-notation printer anywhere in the repo, in either direction. `public/docs/audio_render_analysis.md`
 draws the loop — notate, render, analyse, revise — and its last arrow, *"→ revise the generating
@@ -12,11 +12,11 @@ audio device, or needs a GPU.
 
 | file | what it adds |
 | --- | --- |
-| [`PatPitchDetection.kt`](../src/jvmMain/kotlin/afield/four/synth/PatPitchDetection.kt) | frame-wise monophonic F0 (YIN), voiced/unvoiced, note segmentation in cents, a pitch-change onset criterion, and the refusals |
-| [`PatTranscription.kt`](../src/jvmMain/kotlin/afield/four/synth/PatTranscription.kt) | step-grid fitting, `pat("…")` emission, and the scoring types |
-| [`PatTranscriptionCorpus.kt`](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionCorpus.kt) | 13 notated cases scored against their own notation, plus the Dough legato probe |
-| [`PatTranscriptionGallery.kt`](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt) | the notated-against-recovered SVG figures, and the `Box.showPatTranscription*` helpers |
-| [`PatPitchTranscriptionTest.kt`](../src/jvmTest/kotlin/afield/four/synth/PatPitchTranscriptionTest.kt) | 25 tests; the floors |
+| [`PatPitchDetection.kt`](../src/jvmMain/kotlin/afield/audio/synth/PatPitchDetection.kt) | frame-wise monophonic F0 (YIN), voiced/unvoiced, note segmentation in cents, a pitch-change onset criterion, and the refusals |
+| [`PatTranscription.kt`](../src/jvmMain/kotlin/afield/audio/synth/PatTranscription.kt) | step-grid fitting, `pat("…")` emission, and the scoring types |
+| [`PatTranscriptionCorpus.kt`](../src/jvmMain/kotlin/afield/audio/synth/PatTranscriptionCorpus.kt) | 13 notated cases scored against their own notation, plus the Dough legato probe |
+| [`PatTranscriptionGallery.kt`](../src/jvmMain/kotlin/afield/audio/synth/PatTranscriptionGallery.kt) | the notated-against-recovered SVG figures, and the `Box.showPatTranscription*` helpers |
+| [`PatPitchTranscriptionTest.kt`](../src/jvmTest/kotlin/afield/audio/synth/PatPitchTranscriptionTest.kt) | 25 tests; the floors |
 
 **Convention for the numbers below.** A figure in **bold** is asserted by a test in
 `PatPitchTranscriptionTest`, so a change that breaks it fails the build. A figure marked *(observed)*

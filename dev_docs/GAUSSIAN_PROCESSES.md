@@ -5,7 +5,7 @@ The public tutorial is `public/docs/gaussian_processes.md`.
 ## Model and ownership
 
 The library is package `afield.math.gp` (`src/jvmMain/kotlin/afield/math/gp/`), imported into
-every box by `intro` in `Boxes.kt`. The FLine adapters stay in `afield.graphics`.
+every box by `intro` in `Boxes.kt`. The FLine adapters stay in `afield.geometry.path`, with `FLine`.
 
 - `GpKernel.kt`: `GpKernel`, `GpDifferentiableKernel` (∂k/∂b and ∂²k/∂a∂b), and `GpKernels`.
   Radial kernels (RBF, Matérn 3/2 and 5/2, rational quadratic) share one implementation in terms

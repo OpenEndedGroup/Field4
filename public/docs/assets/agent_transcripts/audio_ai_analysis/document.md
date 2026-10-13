@@ -95,11 +95,11 @@ display("analysis board", analysisPreviewDashboardHtml(
 <!-- field-box id="analyse_nancy" index="2" -->
 
 ```edn [field-box id="analyse_nancy" role="properties"]
-{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 54 "characters" 2458 "sha256" "1d6c04fbf99133d1e6292b2ea725775b99d8fce63945252d6ef5bc3c818772a3"}]}
+{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 54 "characters" 2468 "sha256" "bd7075e7ffe7cdb7b81538d2b763d685cef4594c3231cdacf52e5dc7583d8e43"}]}
 ```
 
 ```kotlin [field-property box="analyse_nancy" name="code" path="analyse_nancy_code_.kt"]
-import afield.stdlib.AudioVisualizerOptions
+import afield.ui.visualization.AudioVisualizerOptions
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()

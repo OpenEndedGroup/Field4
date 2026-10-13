@@ -1,8 +1,8 @@
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogEvent
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lprintln
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogEvent
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lprintln
 
 // A channel is a comma-separated list of tags. Not a level, not a logger name, and
 // not a hierarchy — "error,mypage,disk" is three flat tags.

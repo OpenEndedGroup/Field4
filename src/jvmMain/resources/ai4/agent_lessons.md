@@ -12,4 +12,4 @@ distilled: 2026-09-30T04:07:36.258513Z from agent-eval mode=live openai gpt-6-as
 
 ## Distilled
 
-- `CaptureRenderWindowRequest` failed 8 times in 3 tasks (html-table, draw-sun, bars-sorted-red) answering "No capturable afield.four Window is visible from this box.". No later call of it in those tasks worked.
+- `CaptureRenderWindowRequest` failed 8 times in 3 tasks (html-table, draw-sun, bars-sorted-red) answering "No capturable Field 4 render window is visible from this box.". No later call of it in those tasks worked.

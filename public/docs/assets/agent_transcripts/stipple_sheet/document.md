@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="stipple_sheet" index="0" -->
 
 ```edn [field-box id="stipple_sheet" role="properties"]
-{"id" "stipple_sheet" "index" 0 "name" "stipple sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stipple sheet" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stipple_sheet_code_.kt" "lines" 54 "characters" 2108 "sha256" "6297aea1174cfe1a8eeaf228864c981b5ec44bcd9b51260243a55870e922ce4d"}]}
+{"id" "stipple_sheet" "index" 0 "name" "stipple sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stipple sheet" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stipple_sheet_code_.kt" "lines" 54 "characters" 2118 "sha256" "ebbc9438949ea70878bf891912f252bcfeb21f60567b22da31f5f2f408b32d95"}]}
 ```
 
 ```kotlin [field-property box="stipple_sheet" name="code" path="stipple_sheet_code_.kt"]
-import afield.stdlib.loadStippleTransport
+import afield.geometry.spatial.loadStippleTransport
 
 // Run this in a Field box. The small portable model needs no Python at runtime.
 val field = loadStippleTransport("public/docs/assets/stipple_transport/two-images.json")

@@ -1,4 +1,4 @@
-# Heterogeneous multi-resolution pass chains in `afield.four`
+# Heterogeneous multi-resolution pass chains in Field 4
 
 ## The gap this closes, and the gap it does not
 
@@ -429,7 +429,7 @@ decision lives at the tree's scale and the drawing at the picture's.
 exactly** — the defining property of a quadtree cut, and the one thing here worth asserting
 numerically rather than looking at.
 
-[`SubdivisionCriterion`](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePassLibrary.kt) offers
+[`SubdivisionCriterion`](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePassLibrary.kt) offers
 four, each two lines over planes that were already there: `VALUE_VARIANCE` (the classic image
 quadtree, and the only one that depends on `SummaryStatistics`), `OCCUPANCY` (refines along a
 boundary and leaves both sides coarse), `CENTROID_OFFSET` (refines where a cell reports a position
@@ -539,7 +539,7 @@ argument for writing it that way.)
 
 ## Verification
 
-### GPU-free — `./gradlew jvmTest --tests 'afield.four.fabricated.*'`, 42 tests
+### GPU-free — `./gradlew jvmTest --tests 'afield.graphics.scene.fabricated.*'`, 42 tests
 
 `FabricatePassChainTest` (35) covers sizes, formats, mip cost, input wiring, backwards-only reads,
 lifetimes, slot packing and the cost report. The one non-obvious test is
@@ -841,25 +841,25 @@ point rather than brevity:
 
 Both cost real time when the demo was first written, and neither is specific to this layer.
 
-- **`afield.four.fabricated` is not among a box's automatic imports.** `afield.four`,
-  `afield.four.modules`, `afield.four.targets`, `afield.four.buffers` and `afield.four.texture` all
-  are (see `intro` in `src/jvmMain/kotlin/afield/Boxes.kt`), but the fabricated renderer is not — so
+- **`afield.graphics.scene.fabricated` is not among a box's automatic imports.** `afield.four`,
+  `afield.four.modules`, `afield.graphics.vulkan.targets`, `afield.graphics.vulkan.buffers` and `afield.graphics.texture` all
+  are (see `intro` in `src/jvmMain/kotlin/afield/document/graph/Boxes.kt`), but the fabricated renderer is not — so
   `StandardRenderer.build(renderer)`, which several published pages show being typed straight into a
   box, needs an explicit import first.
 - **`prop<T>()`'s code rewrite does not carry the snippet's own `import` statements.** With
-  `import afield.four.fabricated.StandardRenderer` at the top,
+  `import afield.graphics.scene.fabricated.StandardRenderer` at the top,
   `prop<StandardRenderer.Bundle>(bundle)` fails — and the error, `Unresolved reference
   'StandardRenderer'`, is reported against the *import* line, which reads like a missing class
   rather than a rewrite dropping it. Every other reference in the same box resolves normally
   through that same line. The workaround in the transcript is to write the `prop<>` type argument
-  fully qualified: `prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)`.
+  fully qualified: `prop<afield.graphics.scene.fabricated.StandardRenderer.Bundle>(bundle)`.
 
 And two about `MouseEvents`, which the fluid box needs in order to be painted into:
 
 - **A bare `{ true }` on `onDown`/`onUp` is an overload resolution ambiguity.** The candidates are
   `MouseEvents.kt:66#onDown` and `MouseEvents.kt:69#onDown`, overloaded on `() -> Boolean` and
   `(MouseEvent) -> DownResult`. Name the parameter's type — `{ _: MouseEvent -> DownResult.Keep }` —
-  and it resolves. (`DownResult` is top-level in `afield.four.util`, declared in `KeyEvents.kt`, not
+  and it resolves. (`DownResult` is top-level in `afield.graphics.vulkan.util`, declared in `KeyEvents.kt`, not
   nested in `MouseEvents`.)
 
     This is **not** box-only, though it first turned up in a box and reads exactly like the

@@ -51,9 +51,9 @@ collects the three channels. The conversation replaces and extends this same cod
 
 <!-- function-study-source:starter -->
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyChoice
 
 // Three empty channels. Describe the function you want in this box's AI4 chat.
 with(Functions) {
@@ -130,9 +130,9 @@ this same source; the first saved conversation grows r2 into r3.
 
 <!-- function-study-source:recorded-start -->
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyChoice
 
 // A blank musical page: three constant channels. Ask AI4 to grow this Kotlin.
 // The final expression returns a candidate; the tools box compiles and checks it.
@@ -297,10 +297,10 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
 ???+ example "Complete final source · r9-82456e1e48ac"
 
     ```diffstatic {data-lang=kotlin}
-    import afield.stdlib.Functions
-    import afield.stdlib.StudyComposition
-    import afield.stdlib.StudyEvent
-    import afield.stdlib.StudyChoice
+    import afield.math.functions.Functions
+    import afield.math.functions.StudyComposition
+    import afield.math.functions.StudyEvent
+    import afield.math.functions.StudyChoice
     import kotlin.math.PI
 
     with(Functions) {

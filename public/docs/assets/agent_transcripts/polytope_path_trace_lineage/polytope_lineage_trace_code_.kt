@@ -1,10 +1,10 @@
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)

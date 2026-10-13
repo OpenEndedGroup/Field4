@@ -18,7 +18,7 @@ Give Field's AI a tool of its own — the whole mechanism, in one box, and with 
 
 A tool is an ordinary Kotlin class (which becomes the schema the model reads) plus an
 ordinary Kotlin lambda (which becomes what happens when the model calls it). Register the
-pair through afield.ai.core.AgentToolExtensions and the model can call it by name.
+pair through afield.ai.tools.AgentToolExtensions and the model can call it by name.
 
 Nothing in Field has to be edited to add one: the registration goes the other way.
 
@@ -26,7 +26,7 @@ public/docs/aiFeatures.md      — "Give the AI a tool of your own"
 dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not covered
 
 ```edn [field-box id="ai-tool-demo-minimal" role="properties"]
-{"id" "ai-tool-demo-minimal" "index" 0 "name" "Give the AI a tool — the whole mechanism" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Give the AI a tool — the whole mechanism" "_tombstone" false "frame" #afield/rect [60.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-minimal_code_.kt" "lines" 101 "characters" 4632 "sha256" "dc03b4ef9a50f6c7c1012aa4cf4973dfb9fab5fd3798a1997f814f72a77e2b4c"}]}
+{"id" "ai-tool-demo-minimal" "index" 0 "name" "Give the AI a tool — the whole mechanism" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Give the AI a tool — the whole mechanism" "_tombstone" false "frame" #afield/rect [60.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-minimal_code_.kt" "lines" 101 "characters" 4636 "sha256" "f7a1b8115d8db02304da21e170e3546b10aff3460ccfc514e8cd1b2b75d7c745"}]}
 ```
 
 ```kotlin [field-property box="ai-tool-demo-minimal" name="code" path="ai-tool-demo-minimal_code_.kt"]
@@ -34,16 +34,16 @@ dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not cover
 //
 // A tool is an ordinary Kotlin class (which becomes the schema the model reads) plus an
 // ordinary Kotlin lambda (which becomes what happens when the model calls it). Register the
-// pair through afield.ai.core.AgentToolExtensions and the model can call it by name.
+// pair through afield.ai.tools.AgentToolExtensions and the model can call it by name.
 //
 // Nothing in Field has to be edited to add one: the registration goes the other way.
 //
 //   public/docs/aiFeatures.md      — "Give the AI a tool of your own"
 //   dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not covered
 
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -153,7 +153,7 @@ This box builds a mesh, writes it somewhere the tools are allowed to read, and t
 them exactly as a model would. No API key, no model.
 
 ```edn [field-box id="ai-tool-demo-geometry" role="properties"]
-{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 80 "characters" 4054 "sha256" "6f980c3bf539b90fde0b770d7608064752727cfc6397b885a5ba48f9e7811e52"}]}
+{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 80 "characters" 4061 "sha256" "349ec123edfa19054fb59bae4aa9824e74a62fb94a79253ab82dee942935c889"}]}
 ```
 
 ```kotlin [field-property box="ai-tool-demo-geometry" name="code" path="ai-tool-demo-geometry_code_.kt"]
@@ -168,11 +168,11 @@ them exactly as a model would. No API key, no model.
 // This box builds a mesh, writes it somewhere the tools are allowed to read, and then calls
 // them exactly as a model would. No API key, no model.
 
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
-import afield.four.modules.InspectGeometryFileResult
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.CarriesToolImages
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
+import afield.graphics.render.InspectGeometryFileResult
 import java.io.File
 
 // ---------------------------------------------------------------- somewhere to look

@@ -23,10 +23,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
-import afield.solidsl.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.isWatertight
+import afield.lang.solidsl.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.isWatertight
 
 // ---- a part that is half CSG and half field -------------------------------------------
 // A plate you could machine, unioned with a blob you could not: the fillet where the ball
@@ -94,7 +94,7 @@ println()
 // What the naive version would have cost: one level set over the whole part, same edge length.
 val raw = part.bounds()!!
 val edge = maxOf(raw.size.x, raw.size.y, raw.size.z) / 90.0
-val naive = afield.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge, parallel = true) { x, y, z ->
+val naive = afield.geometry.solid.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge, parallel = true) { x, y, z ->
     part.toLevelSetField().at(x, y, z)
 }
 println("hybrid  ${build.solid.triangleCount} triangles")
@@ -130,16 +130,16 @@ build.close()
 ```
 
 ```kotlin [field-property box="cross_check" name="code" path="cross_check_code_.kt"]
-import afield.solidsl.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
+import afield.lang.solidsl.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.geometry.mesh.signedVolume
 
 // ---- the shape, written once -------------------------------------------------------
 // Everything below reads THIS. Change a number and both evaluations follow, because the
-// shape is a value rather than a closure — which is the whole of what afield.solidsl is.
+// shape is a value rather than a closure — which is the whole of what afield.lang.solidsl is.
 val boreRadius = 0.30      // the two side bores. Past ~0.55 they break into the slot;
                            // watch `genus` and the agreement react rather than the
                            // picture silently becoming wrong.
@@ -179,7 +179,7 @@ if (!ManifoldLibrary.isAvailable) {
     println("Only one of the two evaluations is available, so there is nothing to cross-check.")
     showMesh(
         part.marchedMesh(SolidQuality(edgeLengthFraction = 1.0 / 110.0)),
-        title = "afield.solidsl through marching cubes",
+        title = "afield.lang.solidsl through marching cubes",
         caption = "Install Manifold (brew install manifold) and re-run to get the exact CSG " +
             "evaluation of the same expression beside it, and the agreement between them.",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 720, height = 460),
@@ -262,7 +262,7 @@ exact.close()
 ```
 
 ```kotlin [field-property box="glsl_backend" name="code" path="glsl_backend_code_.kt"]
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // ---- a shape that is worth ray-marching ----------------------------------------------
 // A twisted star column standing in a bored plate, blended where they meet. Change the

@@ -1,4 +1,4 @@
-import afield.four.synth.*
+
 import java.io.File
 
 // 1 - Write a MIDI file a DAW will open.

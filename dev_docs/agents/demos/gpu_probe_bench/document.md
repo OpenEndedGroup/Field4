@@ -23,9 +23,9 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="probe_renderer" name="code" path="probe_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
-// `afield.four` has no headless mode: a compute-only dispatch still needs a Window for
+// Field 4 has no headless mode: a compute-only dispatch still needs a Window for
 // the device to exist, and it needs an awake display. So every box below is a child of
 // this one and resolves `renderer` from it.
 //
@@ -59,7 +59,7 @@ val Once.renderer by Onceing<Renderer>() /**/
 ```
 
 ```kotlin [field-property box="probe_chain" name="code" path="probe_chain_code_.kt"]
-import afield.four.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbe
 
 // The chain the workspace document actually runs, at a size that fits in a box.
 //
@@ -264,8 +264,8 @@ frames {
 ```
 
 ```kotlin [field-property box="probe_caught" name="code" path="probe_caught_code_.kt"]
-import afield.four.util.GpuProbe
-import afield.four.util.GpuProbeNeverLanded
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbeNeverLanded
 
 // The same shader as box 2, told to write half as many cells on purpose. This is the
 // box that says whether the sentinel is load-bearing: a hand-rolled probe that waits
@@ -316,7 +316,7 @@ frames {
 ```
 
 ```kotlin [field-property box="probe_hello" name="code" path="probe_hello_code_.kt"]
-import afield.four.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbe
 
 // A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
 // what is NOT here: no `defaultBuffer` whose access pattern you have to remember

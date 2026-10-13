@@ -1,4 +1,4 @@
-import afield.stdlib.path
+import afield.document.workspace.path
 
 val client = LorisClient()
 client.analyzeWavAsync(

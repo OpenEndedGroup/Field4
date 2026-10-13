@@ -1,6 +1,8 @@
 // Run through Field's backdoor in a disposable box. Reads the saved, model-authored
 // sources and compiles their actual Functions.Fn values. Never edits the live study.
-import afield.stdlib.*
+import afield.math.functions.FunctionStudy
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyEvent
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 import java.nio.file.Files

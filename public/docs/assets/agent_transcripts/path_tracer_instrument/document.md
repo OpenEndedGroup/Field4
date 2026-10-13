@@ -18,13 +18,13 @@ The window and the Vulkan renderer every other box in this document inherits.
 `once.renderer` means re-running this box does not build a second window.
 
 ```edn [field-box id="pt_renderer" role="properties"]
-{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_tracer"] "properties" {"children" #{#afield/box "pt_tracer"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 11 "characters" 376 "sha256" "222b70d82ea228bf683ec36607c7aa5b95577edf131b8254914a021320de7609"}]}
+{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_tracer"] "properties" {"children" #{#afield/box "pt_tracer"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 11 "characters" 387 "sha256" "21db7a14df2e5196cca0e276155dca6635ce1b1afa37b747c8591205089e7602"}]}
 ```
 
 ```kotlin [field-property box="pt_renderer" name="code" path="pt_renderer_code_.kt"]
 // The window and the Vulkan renderer every other box in this document inherits.
 // `once.renderer` means re-running this box does not build a second window.
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -51,7 +51,7 @@ it costs no frames. This replaces the shape four scratch boxes were written in l
 to learn what the log already knows.
 
 ```edn [field-box id="pt_tracer" role="properties"]
-{"id" "pt_tracer" "index" 1 "name" "The tracer, with a log" "parents" ["root" "pt_renderer"] "children" ["pt_instrument" "pt_plot" "pt_swap" "pt_restore"] "properties" {"children" #{#afield/box "pt_instrument" #afield/box "pt_plot" #afield/box "pt_swap" #afield/box "pt_restore"} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "The tracer, with a log" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_tracer_code_.kt" "lines" 22 "characters" 912 "sha256" "1d52c766d77d020b00c8c3a67573a341fe8bd2488093f03808cd568d5a0ef001"}]}
+{"id" "pt_tracer" "index" 1 "name" "The tracer, with a log" "parents" ["root" "pt_renderer"] "children" ["pt_instrument" "pt_plot" "pt_swap" "pt_restore"] "properties" {"children" #{#afield/box "pt_instrument" #afield/box "pt_plot" #afield/box "pt_swap" #afield/box "pt_restore"} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "The tracer, with a log" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_tracer_code_.kt" "lines" 22 "characters" 922 "sha256" "dd13d79a679b42ea921fa98f3f5b702be41f074855f559828ea8df26a8287c79"}]}
 ```
 
 ```kotlin [field-property box="pt_tracer" name="code" path="pt_tracer_code_.kt"]
@@ -61,7 +61,7 @@ to learn what the log already knows.
 // it costs no frames. This replaces the shape four scratch boxes were written in last night --
 // `frames { repeat(180) { frame() } }` with a `println` inside -- which spends 180 real frames
 // to learn what the log already knows.
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -90,12 +90,12 @@ From `code`
 Three calls, three different answers, and that is the whole point of the type.
 
 ```edn [field-box id="pt_swap" role="properties"]
-{"id" "pt_swap" "index" 2 "name" "Swap the integrator, live" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "Swap the integrator, live" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_swap_code_.kt" "lines" 36 "characters" 2198 "sha256" "cd2a04435b765e4c228075e1e5e8c9bed3509cca30a493651017e511566460a5"}]}
+{"id" "pt_swap" "index" 2 "name" "Swap the integrator, live" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "Swap the integrator, live" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_swap_code_.kt" "lines" 36 "characters" 2208 "sha256" "902e0e0cee75c1d31f129bad6eaa52a808bf0ae107d1f284a8afff18bd95dc9b"}]}
 ```
 
 ```kotlin [field-property box="pt_swap" name="code" path="pt_swap_code_.kt"]
 // Three calls, three different answers, and that is the whole point of the type.
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 prop<PathTracingRenderer>(tracer)
 
@@ -148,7 +148,7 @@ code anywhere in this feature: `showSignals` already takes named series, a share
 `marks` drawn as full-height dashed rules carrying their label into the legend.
 
 ```edn [field-box id="pt_plot" role="properties"]
-{"id" "pt_plot" "index" 3 "name" "The convergence curve" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "The convergence curve" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_plot_code_.kt" "lines" 14 "characters" 614 "sha256" "7c9d2e3240422e6a36b7688995530f5e5897aec013a0eeefbb0f47575573e5da"}]}
+{"id" "pt_plot" "index" 3 "name" "The convergence curve" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "The convergence curve" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_plot_code_.kt" "lines" 14 "characters" 624 "sha256" "291a8d5cbe0aabfba57fe77eba0062315bb85ba5b5df908f1bc51924c0c0b8f0"}]}
 ```
 
 ```kotlin [field-property box="pt_plot" name="code" path="pt_plot_code_.kt"]
@@ -158,7 +158,7 @@ code anywhere in this feature: `showSignals` already takes named series, a share
 // This is one call to `showSignals`, the house terse-plot helper. There is no new plotting
 // code anywhere in this feature: `showSignals` already takes named series, a shared x, and
 // `marks` drawn as full-height dashed rules carrying their label into the legend.
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 prop<PathTracingRenderer>(tracer)
 prop<PathTraceConvergence>(log)
@@ -181,14 +181,14 @@ pipeline is the patched one. Nothing about the tracer had to be rebuilt to get h
 scene, same environment, same accumulation buffers, same camera.
 
 ```edn [field-box id="pt_restore" role="properties"]
-{"id" "pt_restore" "index" 4 "name" "Put the integrator back" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "Put the integrator back" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_restore_code_.kt" "lines" 13 "characters" 654 "sha256" "df9c4fe0a0f1c2aad75ebbbd62b5c856c2b63994fcf2fdb2bd90f52d66265a1e"}]}
+{"id" "pt_restore" "index" 4 "name" "Put the integrator back" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "Put the integrator back" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_restore_code_.kt" "lines" 13 "characters" 664 "sha256" "9b7b35dcd02ab56b8405ff1ef87166e38a31877f096ec50e17e254d4c0135c8f"}]}
 ```
 
 ```kotlin [field-property box="pt_restore" name="code" path="pt_restore_code_.kt"]
 // The same no-argument call that answered UNCHANGED in box 3 now RELOADS, because the live
 // pipeline is the patched one. Nothing about the tracer had to be rebuilt to get here: same
 // scene, same environment, same accumulation buffers, same camera.
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 prop<PathTracingRenderer>(tracer)
 
@@ -211,7 +211,7 @@ From `code`
 This is the whole instrument. One line.
 
 Until tonight it produced
-PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3
 and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
 data class and had no value printer registered, so `ValueVisualizer` fell all the way through
 to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
@@ -228,14 +228,14 @@ no property tree could have shown it to them: the value is a local inside a priv
 The row only appears when the two disagree.
 
 ```edn [field-box id="pt_instrument" role="properties"]
-{"id" "pt_instrument" "index" 5 "name" "The instrument, in one line" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "The instrument, in one line" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_instrument_code_.kt" "lines" 22 "characters" 1312 "sha256" "acefd92c86d5ea950503e52a5a63fe19b3dea8fda3a52735b97b22d007e1baeb"}]}
+{"id" "pt_instrument" "index" 5 "name" "The instrument, in one line" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "The instrument, in one line" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_instrument_code_.kt" "lines" 22 "characters" 1332 "sha256" "31fc58d0342007b91192e213e485e338d688230db1b66654bdb47ae6287529a0"}]}
 ```
 
 ```kotlin [field-property box="pt_instrument" name="code" path="pt_instrument_code_.kt"]
 // This is the whole instrument. One line.
 //
 // Until tonight it produced
-//   PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+//   PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3
 // and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
 // data class and had no value printer registered, so `ValueVisualizer` fell all the way through
 // to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
@@ -250,7 +250,7 @@ The row only appears when the two disagree.
 // were printing `camera.up` and its three components as `toRawBits()`, hunting exactly this, and
 // no property tree could have shown it to them: the value is a local inside a private method.
 // The row only appears when the two disagree.
-import afield.four.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.PathTracingRenderer
 
 prop<PathTracingRenderer>(tracer)
 display("output", tracer)

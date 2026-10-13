@@ -16,7 +16,7 @@ tool calls/results, repair attempts and wall-clock timings are retained.
 
 | Existing surface | What this experiment uses |
 | --- | --- |
-| `src/jvmMain/kotlin/afield/stdlib/Functions.kt` | Scalar `Fn(domain, graph, evaluator)`; `eval(t)` is unchecked, `evalSafe` respects domain. Arithmetic intersects domains. Lambdas can be opaque; graph-aware combinators remain available. Channels are a list of ordinary Fn values. |
+| `src/jvmMain/kotlin/afield/math/functions/Functions.kt` | Scalar `Fn(domain, graph, evaluator)`; `eval(t)` is unchecked, `evalSafe` respects domain. Arithmetic intersects domains. Lambdas can be opaque; graph-aware combinators remain available. Channels are a list of ordinary Fn values. |
 | `FunctionGraph.kt`, `FunctionRewriteKotlin.kt` | Existing graph inspection/rewrite machinery remains usable for graph-aware expressions; opaque event closures are edited as readable source. No second AST or function language. |
 | Functions time/shape operations | Existing oscillators, envelopes, interpolation, timelines, `stretchBy`, phase modulation and transforms. The generated chirp explicitly integrates instantaneous Hz; this is distinct from a frequency parameter passed to an oscillator. |
 | `Fn.plotHtml` and `Fn.plot` | Existing interactive single-function plot API remains available. Added aligned PNG min/max plots because uniform overview line plots conceal sub-second pulses over an hour. Both PNGs and measurements evaluate the actual Fn. |

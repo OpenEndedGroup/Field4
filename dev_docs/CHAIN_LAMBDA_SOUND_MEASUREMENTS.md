@@ -3,7 +3,7 @@
 Companion to [`public/docs/chain_lambda_sound.md`](../public/docs/chain_lambda_sound.md). The page
 carries the figures; this carries the numbers, the reasoning, and the things that did not go on the
 page. Every number here comes out of one run of the `synth.lambda.sound` FIELD_TEST
-(`afield.four.synth.LambdaSoundDocs`), which is the same code the page's fences call.
+(`afield.audio.synth.LambdaSoundDocs`), which is the same code the page's fences call.
 
 Replay the whole thing with:
 
@@ -19,7 +19,7 @@ It takes about six seconds and writes nothing to the repository.
 one `LambdaSoundDocs.Beat` per reaction → a boolean β mask → `patCondense` → `patRenderStereo`.
 
 Four subsystems: `afield.stdlib.lambdaterms`, `afield.stdlib.interactionnets`,
-`afield.four.synth.PatCondense`, `afield.four.synth.PatSynth`. No missing bridge — everything the
+`afield.audio.synth.PatCondense`, `afield.audio.synth.PatSynth`. No missing bridge — everything the
 route needed was already public, which is what makes this a C rather than a swing. The only new
 code is the recorder and the assertions.
 
@@ -57,7 +57,7 @@ Three files said, in three wordings:
 
 * `public/docs/interaction_nets_examples.md:19`
 * `dev_docs/INTERACTION_NETS_LAMBDA.md`, "What to be careful of"
-* the `LambdaTerms.Run` KDoc, `src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt`
+* the `LambdaTerms.Run` KDoc, `src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt`
 
 The rule-book half is right: a reaction here counts betas, fan meetings and erasures alike, so it
 is not a β-step count and is not comparable to one. **The schedule half is false on every term

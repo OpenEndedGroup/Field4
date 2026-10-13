@@ -77,7 +77,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
         val i = (y * w + x) * 4
         px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
     }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
+    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
 })
 
 val tools = registerStudyTools("Rings", rings, about = "The source is three numbers: ring count, ink brightness, warmth 0..1.")
@@ -136,7 +136,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
         val i = (y * w + x) * 4
         px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
     }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
+    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
 })
 
 val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
@@ -188,7 +188,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
         val i = (y * w + x) * 4
         px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
     }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
+    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
 })
 
 val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))

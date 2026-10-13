@@ -2,9 +2,9 @@
 // modifier chain (`0.35s3` — an amount modulated by a sine at frequency 3) and a random
 // range (`0.2_0.5`). No mix expression can be written at either position, so a runtime
 // blend cannot reach them and says so rather than pretending.
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.planStackSLCodeBlend
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.planStackSLCodeBlend
 
 val quiet = "uv 0.35s3 * fbm 0.2_0.5 +"
 val loud = "uv 0.80s3 * fbm 0.6_0.9 +"

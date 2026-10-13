@@ -16,14 +16,14 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 534.2, h: 136.0 }
       properties:
         code: |
-          import afield.solidsl.*
-
+          import afield.lang.solidsl.*
+          
           // ---- the shape, written once, as a value ------------------------------------------
           // A ball blended onto a rod. Change a number and everything below follows, because a
-          // SolidExpr is a value rather than a closure — which is the whole of afield.solidsl.
+          // SolidExpr is a value rather than a closure — which is the whole of afield.lang.solidsl.
           val part = smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), k = 0.18)
           // -------------------------------------------------------------------------------------
-
+          
           // Every Double in the tree that a parameter could be bound to, at its structural address.
           // There are no names inside a SolidExpr — it is an anonymous tree of data classes — so the
           // only stable way to point at the rod's radius is to say where it is.
@@ -34,7 +34,7 @@ operations:
           println("integer facet count that toScalarField() ignores completely, so there is no")
           println("derivative to take. Try sphere(0.45, segments = 64).numericSlots().")
           println()
-
+          
           // Promote three of them into named parameters. `barRadius` drives BOTH radii, which is how
           // a symmetry constraint is written: "the rod is a cylinder, not a frustum", in the
           // parameterisation rather than in a comment.
@@ -43,11 +43,11 @@ operations:
               param("barHeight", "SmoothUnion/b/Translate/Cylinder.height")
               param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
           }.orThrow()
-
+          
           println("---- the template ----")
           print(template.report())
           println()
-
+          
           // The gradient at a point — position AND parameters, from one reverse-mode tape.
           val g = template.gradientAt(0.9, 0.0, 0.0, template.seed)
           println("---- the gradient at (0.9, 0, 0) ----")
@@ -55,7 +55,7 @@ operations:
           println("  the position gradient is the surface normal, unnormalised")
           println("  the parameter gradient says how the distance HERE moves when each number moves")
           println()
-
+          
           // And the second opinion, computed on the spot rather than remembered. `usableComponents`
           // is the oracle declining to have an opinion where a central difference disagrees with
           // itself between h and h/2 — at a sphere's own centre, on a polygon's outline, within h of
@@ -72,7 +72,7 @@ operations:
               println("  dParam (%5.2f, %5.2f, %5.2f)  %s".format(x, y, z, c))
           }
           println()
-
+          
           // The same four points, for the POSITION gradient — and the last one is the interesting
           // one. At the ball's own centre sqrt(x2+y2+z2) has an infinite derivative, so the analytic
           // answer is not a number and the check reports 0/3 usable rather than pretending. The
@@ -83,7 +83,7 @@ operations:
               println("  dPos   (%5.2f, %5.2f, %5.2f)  %s".format(x, y, z, c))
           }
           println()
-
+          
           // The third notes function in this package, beside fieldNotes() and allRefusals(). Every
           // place the derivative is a choice, and what was chosen.
           println("---- where the derivative is a choice ----")
@@ -94,26 +94,26 @@ operations:
       frame: { x: 700.0, y: 60.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.solidsl.*
-          import afield.stdlib.MeshView
-
+          import afield.lang.solidsl.*
+          import afield.geometry.mesh.MeshView
+          
           // ---- the problem ---------------------------------------------------------------------
           // Somebody hands you a bag of points with a signed distance at each. What shape is it?
           val truth = doubleArrayOf(0.45, 1.90, 0.16)     // the answer, used ONLY to make the target
           val seed = doubleArrayOf(0.26, 1.05, 0.34)      // where the search starts: wrong by 42%, 45%, 112%
           // -----------------------------------------------------------------------------------------
-
+          
           val template = smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), k = 0.18)
               .parameterize {
                   param("sphereRadius", "SmoothUnion/a/Sphere.radius")
                   param("barHeight", "SmoothUnion/b/Translate/Cylinder.height")
                   param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
               }.orThrow()
-
+          
           val target = template.withValues(truth).sampleField(count = 2400, seed = 91)
           println("target: $target")
           println()
-
+          
           // One tape per evaluation carries all 2400 residuals and all 3 parameters, and one backward
           // sweep reads every derivative off it. The alternative — central-differencing the loss —
           // costs 2n extra full sweeps per step and needs an fdStep tuned per problem.
@@ -127,18 +127,18 @@ operations:
           println("recovered  ${fit.values.joinToString(", ") { "%.9f".format(it) }}")
           println("error      ${truth.indices.joinToString(", ") { "%.2e".format(kotlin.math.abs(fit.values[it] - truth[it])) }}")
           println()
-
+          
           // The fitted answer is an ordinary SolidExpr again — not a bag of numbers — so it goes
           // straight back to every other thing this package can do.
           println("fitted     ${fit.fitted}")
           println("GLSL       ${fit.fitted.toGlsl().statementCount} statements")
           println("bounds     ${fit.fitted.bounds()}")
           println()
-
+          
           // Log scale, because the descent covers twenty orders of magnitude and a linear axis
           // would be a vertical line at iteration 0 followed by a flat one.
           showSignals("ln(loss)" to fit.run.losses.map { kotlin.math.ln(it + 1e-30) })
-
+          
           val view = MeshView(yawDegrees = 32.0, pitchDegrees = 22.0, width = 660, height = 430)
           showMesh(
               template.withValues(seed).march(resolution = 110),
@@ -171,10 +171,10 @@ operations:
       frame: { x: 60.0, y: 226.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.solidsl.*
-
+          import afield.lang.solidsl.*
+          
           val body = cuboid(1.0, 1.0, 0.4) - cylinder(1.2, 0.3).at(0.3, 0.0, 0.0)
-
+          
           // The differentiable reading is TOTAL on the algebra — every node with a field form has a
           // differentiable form, because AD is closed over everything Field3 uses. So the refusals
           // are not in the lowering. They are in the *parameterisation*, and there are seven.
@@ -203,19 +203,19 @@ operations:
           println("loses the reason at the first runCatching. A mis-bound parameter is exactly the")
           println("failure that presents as 'the optimiser ran and nothing happened'.")
           println()
-
+          
           // ---- and now the failure mode that is NOT a refusal -----------------------------------
           // A parameter can be perfectly legal and still have a gradient of exactly zero, which
           // presents as a CONVERGED optimisation. This is the thing to know about inverse design.
           val outer = sphere(1.0)
           val inner = sphere(0.25)                 // entirely swallowed by `outer`
           val samples = outer.sampleField(count = 800, seed = 3)
-
+          
           fun deadUnder(expr: SolidExpr, path: String): SolidFit {
               val t = expr.parameterize { param("inner", path) }.orThrow()
               return t.fitParameters(samples, doubleArrayOf(0.25), SolidFitOptions(iterations = 1))
           }
-
+          
           println("---- a swallowed child, under two kinds of union ----")
           val hard = deadUnder(unionOf(listOf(outer, inner)), "Union/1/Sphere.radius")
           val soft = deadUnder(smoothUnion(outer, inner, 0.9), "SmoothUnion/b/Sphere.radius")

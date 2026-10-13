@@ -1,10 +1,10 @@
-import afield.four.modules.fromContextWithNameOrNull
+import afield.document.context.fromContextWithNameOrNull
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")) { "Missing resetFlow; run Resources first" }
+val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")) { "Missing resetFlow; run Resources first" }
 val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")) { "Missing travel; run Resources first" }
 val settings = listOf("force", "grainCell", "strokeTime", "flowWidth").map { parameterName ->
-    requireNotNull(fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>(parameterName)) {
+    requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
         "Run Resources first: missing parameter $parameterName"
     }.snapshot()
 }

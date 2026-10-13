@@ -12,8 +12,8 @@ Start with the ordinary case: one signal, one graph. Once a stack can become a c
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/harmonic_stack_box.png" wait="1.0" capture="box" w="1200"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
 
 with(Functions) {
     val x0 = 40.0
@@ -81,8 +81,8 @@ Smooth oscillation is only one side of the system. Edges, gates, bursts, latches
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/pulse_stack_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
 
 with(Functions) {
     val x0 = 30.0
@@ -142,9 +142,9 @@ Amplitude and offset are easy to fit. **Oscillator frequency is not.** The error
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_to_target_box.png" wait="1.5" capture="box" w="1200"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.Functions
-import afield.stdlib.fitBest
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
+import afield.math.functions.fitBest
 
 with(Functions) {
     val x0 = 40.0; val x1 = 940.0
@@ -195,10 +195,10 @@ once: the target, the seed it started from, and where it ended up.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_before_after_box.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="functions-fit-before-after"}
 :::static
-import afield.graphics.FLine
-import afield.graphics.byDashing
-import afield.stdlib.Functions
-import afield.stdlib.fitGradient
+import afield.geometry.path.FLine
+import afield.geometry.path.byDashing
+import afield.math.functions.Functions
+import afield.math.functions.fitGradient
 
 with(Functions) {
     // The same graph structure as the target, with the wrong numbers in it: a fifth of the
@@ -242,10 +242,10 @@ And the descent itself, one frame every 8 iterations from 0 to 320. Each frame i
 
 ```diffstatic_runner {data-lang=kotlin video="assets/functions_examples/fit_convergence.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="3" fps="20" timeout="240" w="1200" embed=true name="functions-fit-convergence" alt="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the iteration count and its error printed under it"}
 :::static
-import afield.graphics.FLine
-import afield.graphics.byDashing
-import afield.stdlib.Functions
-import afield.stdlib.fitGradient
+import afield.geometry.path.FLine
+import afield.geometry.path.byDashing
+import afield.math.functions.Functions
+import afield.math.functions.fitGradient
 
 // One frame every 8 iterations, from 0 to 320, then the last frame held. Each frame is its own
 // fitGradient run, truncated at that iteration count, so the error under it belongs to that run.
@@ -296,8 +296,8 @@ A function stack does not have to mean "height over x". Two of them can steer a 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/parametric_lissajous_box.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
 
 with(Functions) {
     val tDomain = 0.0..1.0
@@ -370,8 +370,8 @@ Sometimes the useful coordinates are radius and angle, not x and y. That shift s
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/parametric_rosette_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
 
 with(Functions) {
     val tDomain = 0.0..1.0
@@ -444,8 +444,8 @@ With `Functions`, a small edit can materially change the drawing. That makes dif
 
 ```diff_runner {data-lang=kotlin screenshot="assets/functions_examples/diff_runner_after.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::before
-import afield.graphics.FLine
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
 
 with(Functions) {
     val a = sin(frequency = 2.0, amplitude = 0.7)
@@ -471,8 +471,8 @@ with(Functions) {
     markdown("notes", "**Before**: simple sin + pulse stack.")
 }
 :::after
-import afield.graphics.FLine
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
 
 with(Functions) {
     val a = sin(frequency = 2.0, amplitude = 0.7)
@@ -536,7 +536,7 @@ The first form builds the pulse train with `0.0..0.8` as its construction-time d
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/domain-over-pulsetrain-difference.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-domain-over-pulsetrain-difference"}
 :::static
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 with(Functions) {
     val a = pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
@@ -565,7 +565,7 @@ val relabeled = hannWindow() over (0.0..0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/domain-over-hannwindow-difference.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-domain-over-hannwindow-difference"}
 :::static
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 with(Functions) {
     val shaped = hannWindow(0.0..0.8)
@@ -608,7 +608,7 @@ val custom = pulseTrain(0.1).stretchBy(0.0..4.0, warp = smoothStep(0.0, 1.0))
 ```
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 with(Functions) {
     val tone = ((sin(5) * 1.4) / delay(0.4) / slower(2)) over (0.0..10.0)
@@ -701,9 +701,9 @@ sweep.rectify(Functions.RectifyMode.FULL)  // absolute value, folded about zero
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/waveshaper_transfer_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-waveshaper-transfer"}
 :::static
-import afield.graphics.FLine
-import afield.graphics.byDashing
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.geometry.path.byDashing
+import afield.math.functions.Functions
 
 with(Functions) {
     // Push a rising ramp through each shaper: what comes out is the shape it imposes.
@@ -753,9 +753,9 @@ corners in it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/waveshaper_on_sine_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-waveshaper-on-sine"}
 :::static
-import afield.graphics.FLine
-import afield.graphics.byDashing
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.geometry.path.byDashing
+import afield.math.functions.Functions
 
 with(Functions) {
     val tone = sin(frequency = 2.0, amplitude = 1.2)
@@ -849,9 +849,9 @@ envelope, then folded, then soft-clipped:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/composed_pipeline_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-composed-pipeline"}
 :::static
-import afield.graphics.FLine
-import afield.graphics.byDashing
-import afield.stdlib.Functions
+import afield.geometry.path.FLine
+import afield.geometry.path.byDashing
+import afield.math.functions.Functions
 
 with(Functions) {
     // One signal, plotted at each stage of its pipeline.
@@ -907,7 +907,7 @@ transform builder you write yourself.
     The completion engine reads the operator's declared parameter type by completing the
     operator token itself (an infix `foo` surfaces as `foo(ParamType)`), then ranks candidates
     whose return type matches. See `InfixCompletion` in
-    [`execution.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/execution.kt).
+    [`execution.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/execution.kt).
 
 Once you can build one gesture this way, you can evolve a whole *family* of them: the
 [variety-generation section](#variety-generation-novelty-search-for-a-set-of-gestures)
@@ -918,7 +918,7 @@ grows a set of behaviourally distinct shapes from a seed using the same pure-`Fn
 All snippets below assume:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 with(Functions) {
     // examples here
 }
@@ -946,8 +946,8 @@ val f = fn { x -> x * x }
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = fn { x -> kotlin.math.sin(20.0 * x) * kotlin.math.exp(-3.0 * x) }
@@ -979,8 +979,8 @@ val clipped = sin(frequency = c(2.0))     // domain is now 0.0..1.0
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/c-constant.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-c-constant"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (constant(0.6) + valueNoise(5, 12.0, 0.05)).clamp(0.0, 1.0)
@@ -1004,8 +1004,8 @@ val gate = one()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/zero-one.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-zero-one"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val gate = (one() - pulseTrain(period = 0.2, duty = 0.8)).clip(1.0)
@@ -1029,8 +1029,8 @@ val x = identity()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/identity.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-identity"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val spiralT = identity().pow(1.7).withEdge(Functions.EdgeMode.CLAMP)
@@ -1054,8 +1054,8 @@ val r = ramp(0.0, 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/ramp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-ramp"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val env = ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)
@@ -1079,8 +1079,8 @@ val s = step(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/step.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-step"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val trem = step(sin(2.0, amplitude = 0.15, offset = 0.5))
@@ -1104,8 +1104,8 @@ val s = smoothStep(0.2, 0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/smoothstep.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-smoothstep"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val mask = smoothStep(valueNoise(2, 3.0, 0.2), 0.9)
@@ -1134,8 +1134,8 @@ should continue beyond `0..1`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/tween-ease.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-tween-ease"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     // A settling spring, textured with a windowed tremor — the headline motion gesture.
@@ -1165,8 +1165,8 @@ val f = sin(frequency = 3.0, amplitude = 0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sin.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sin"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = sin(2.0, phase = valueNoise(7, 5.0, 0.3), amplitude = 0.7)
@@ -1190,8 +1190,8 @@ val f = cos(frequency = 2.0, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cos.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cos"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = cos(5.0, phase = ramp(0.0, Math.PI), amplitude = 0.5)
@@ -1215,8 +1215,8 @@ val f = saw(period = 0.25, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/saw.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-saw"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = saw(period = 0.14, amplitude = 0.7).softClip(1.6)
@@ -1240,8 +1240,8 @@ val f = triangle(period = 0.2, amplitude = 0.9)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/triangle.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-triangle"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = triangle(0.2, amplitude = fbm(9, 1.0, 0.6))
@@ -1265,8 +1265,8 @@ val f = square(period = 0.25, duty = 0.5, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/square.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-square"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = square(0.125, duty = sin(1.0, amplitude = 0.2, offset = 0.5), amplitude = 0.8)
@@ -1290,8 +1290,8 @@ val f = pulseTrain(period = 0.2, duty = 0.35)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrain.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrain"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = pulseTrain(period = 0.15, duty = 0.4, rise = 0.01, fall = 0.02, profile = HANN, jitter = 0.08, seed = 42)
@@ -1315,8 +1315,8 @@ val f = pulseTrainWidth(period = 0.2, width = 0.08)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainwidth.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainwidth"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = pulseTrainWidth(period = 0.18, width = sin(0.5, amplitude = 0.05, offset = 0.08), profile = GAUSSIAN)
@@ -1340,8 +1340,8 @@ val f = pulseTrainHz(frequency = 8.0, duty = 0.3)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainhz.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainhz"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = pulseTrainHz(frequency = ramp(4.0, 16.0), duty = 0.22, edge = Functions.PulseEdge.SINE)
@@ -1365,8 +1365,8 @@ val f = pulseTrainPattern(doubleArrayOf(1.0, 0.5, 1.0, 0.2), period = 0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainpattern.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainpattern"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = pulseTrainPattern(doubleArrayOf(1.0, 0.0, 0.8, 0.3, 1.2), period = 0.11, jitter = 0.1, profile = TRIANGLE)
@@ -1390,8 +1390,8 @@ val f = impulseTrain(period = 0.1, width = 0.01)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/impulsetrain.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-impulsetrain"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = impulseTrain(period = 0.12, width = 0.02, sigma = 0.09, jitter = 0.2, seed = 9)
@@ -1415,8 +1415,8 @@ val f = pulseBurst(count = 5, period = 0.1, start = 0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulseburst.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulseburst"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = pulseBurst(9, period = 0.07, start = 0.12, edge = EXP, curve = 3.0, profile = HANN)
@@ -1440,8 +1440,8 @@ val f = gaussian(mean = 0.5, sigma = 0.1, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/gaussian.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-gaussian"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = gaussian(mean = sin(0.5, amplitude = 0.15, offset = 0.5), sigma = 0.08, amplitude = 0.9)
@@ -1468,8 +1468,8 @@ val f = sin(2.0) + saw(0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/plus-minus.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-plus-minus"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (sin(3.0) * pulseTrain(0.18)) / (one() + constant(0.2))
@@ -1493,8 +1493,8 @@ val f = sin(2.0).mapY { it * 0.5 }
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mapy.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mapy"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = valueNoise(3, 14.0, 1.0).mapY { v -> kotlin.math.sign(v) * kotlin.math.sqrt(kotlin.math.abs(v)) }
@@ -1518,8 +1518,8 @@ val f = sin(2.0).mapX { x -> x * 0.5 }
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mapx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mapx"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = sin(4.0).mapX { x -> x + 0.08 * kotlin.math.sin(16.0 * x) }
@@ -1543,8 +1543,8 @@ val f = sin(2.0).shift(0.1)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/shift-delay.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-shift-delay"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = valueNoise(7, 10.0, 0.7).delay(sin(0.5, amplitude = 0.03))
@@ -1568,8 +1568,8 @@ val f = saw(0.2).scaleX(2.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/scalex-faster-slower.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-scalex-faster-slower"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (sin(3.0).faster(2.0) / slower(0.75)).scaleX(scale = ramp(0.8, 1.6), about = 0.5)
@@ -1593,8 +1593,8 @@ val f = sin(2.0).scaleY(0.5).offsetY(0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/scaley-offsety.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-scaley-offsety"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = fbm(1, 2.0, 1.0).scaleY(smoothStep(0.0, 1.0)).offsetY(valueNoise(2, 3.0, 0.1))
@@ -1618,8 +1618,8 @@ val f = ramp(0.0, 1.0).reverse()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/reverse-flip.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-reverse-flip"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (sin(2.0).reverse(0.5) + triangle(0.12)).flip()
@@ -1643,8 +1643,8 @@ val f = sin(3.0).abs()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/abs-sign-rectify.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-abs-sign-rectify"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = fbmPerlin(7, 2.5, 1.0).sign().rectify()
@@ -1668,8 +1668,8 @@ val f = ramp(0.0, 1.0).pow(2.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pow-exp-log.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pow-exp-log"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (gaussian(0.5, 0.12, 1.0) + constant(1.2)).log(kotlin.math.E).exp()
@@ -1693,8 +1693,8 @@ val f = sin(2.0).clip(0.7)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/clamp-clip-softclip-fold-wrapy.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-clamp-clip-softclip-fold-wrapy"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (saw(0.11) * constant(2.5)).fold(0.8).softClip(1.4).wrapY(-0.7, 0.7)
@@ -1718,8 +1718,8 @@ val f = sin(3.0).withEdge(Functions.EdgeMode.CLAMP)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/withedge.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-withedge"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = gaussian(0.5, 0.08, 1.0).withEdge(Functions.EdgeMode.MIRROR, outside = valueNoise(8, 4.0, 0.05))
@@ -1743,8 +1743,8 @@ val f = sin(2.0).quantize(8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/quantize-bitcrush.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-quantize-bitcrush"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (fbm(4, 3.0, 1.0).bitCrush(5)).mix(sin(1.0), constant(0.2))
@@ -1768,8 +1768,8 @@ val f = sin(2.0).mix(saw(0.2), 0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mix-crossfade.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mix-crossfade"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = triangle(0.12).crossfade(fbmPerlin(11, 2.0, 1.0), center = 0.55, width = 0.35)
@@ -1793,8 +1793,8 @@ val f = sin(2.0).cut(0.2..0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cut-trim-slice-replace.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cut-trim-slice-replace"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = saw(0.18).replace(0.35..0.6, pulseTrain(0.08, duty = 0.4))
@@ -1818,8 +1818,8 @@ val f = sin(2.0).window(hannWindow())
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/window-amplitudemod-ringmod-warp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-window-amplitudemod-ringmod-warp"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = sin(4.0).amplitudeMod(fbm(2, 6.0, 0.7), depth = 0.8).ringMod(cos(9.0), 0.5).warp(valueNoise(2, 5.0, 1.0), 0.05)
@@ -1843,8 +1843,8 @@ val f = sin(2.0).sampleHold(0.05)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/quantizex-samplehold.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-quantizex-samplehold"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = valueNoise(9, 16.0, 0.8).quantizeX(step = ramp(0.02, 0.09)).sampleHold(step = 0.03, offset = 0.01)
@@ -1868,8 +1868,8 @@ val f = sin(2.0).phaseMod(sin(8.0), 0.02)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/phasemod-frequencymod.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-phasemod-frequencymod"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = triangle(0.2).frequencyMod(fbmPerlin(5, 4.0, 1.0), depth = 0.04)
@@ -1893,8 +1893,8 @@ val f = sin(2.0).saturate(1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/saturate-jitterx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-saturate-jitterx"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = pulseTrain(0.15, duty = 0.3).jitterX(0.03, seed = 7).saturate(1.8)
@@ -1918,8 +1918,8 @@ val f = sin(2.0).repeat(0.25, 0.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeat-mirrorrepeat-tile-pad-echo.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeat-mirrorrepeat-tile-pad-echo"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = saw(0.2).mirrorRepeat(0.17).tile(6, 0.12).pad(0.05, 0.08, 0.0).echo(0.03, 0.45, repeats = 6)
@@ -1943,8 +1943,8 @@ val slope = sin(2.0).derivative()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/derivative-integral.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-derivative-integral"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val area = (pulseTrain(0.2) * hannWindow()).integral(step = 1e-3, origin = 0.0)
@@ -1968,8 +1968,8 @@ val sm = valueNoise(3, 14.0, 1.0).movingAverage(0.08, samples = 64)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/convolve-correlate-movingaverage-blur.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-convolve-correlate-movingaverage-blur"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = fbm(9, 2.0, 1.0).convolve(gaussianWindow(-0.06..0.06, sigma = 0.3), samples = 41, kernelDomain = -0.06..0.06, normalize = true).blur(0.01, samples = 31)
@@ -1995,8 +1995,8 @@ val piped = sin(5.0) / stretch(0.0..10.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/over-pipe.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-over-pipe"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = ((sin(5.0) * 1.4) / delay(0.4) / softClipBy(1.2)) over (0.0..10.0)
@@ -2020,8 +2020,8 @@ val f = sin(3.0) / gain(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fntransform.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fntransform"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val shape = delay(0.1) / gain(0.75) / hold(0.02)
@@ -2049,8 +2049,8 @@ val f = doubleArrayOf(0.0, 1.0, 0.4, -0.2).toFn(domain = 0.0..1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/doublearray-tofn-list-tofn.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-doublearray-tofn-list-tofn"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = [0.0, 0.4, 1.0, 0.2, -0.4].toFn(domain = 0.0..1.0, interpolation = CUBIC).softClip(1.5)
@@ -2074,8 +2074,8 @@ val ys = sin(2.0).sampleAt(doubleArrayOf(0.0, 0.25, 0.5))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sampleat-samplesat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sampleat-samplesat"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = fbmPerlin(8, 2.0, 1.0)
@@ -2100,8 +2100,8 @@ val ys = sin(3.0).toDoubleArray(128)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/todoublearray-tovec2list.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-todoublearray-tovec2list"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val pts = pulseTrain(0.13, duty = 0.32).toVec2List(256)
@@ -2126,8 +2126,8 @@ val c0 = sin(2.0).cursor(start = 0.0, step = 0.01)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val scratch = fbm(6, 3.0, 0.8).cursor(0.0, 0.002).next(1024).toFn(0.0..1.0)
@@ -2151,8 +2151,8 @@ val first = sin(2.0).stream(start = 0.0, step = 0.01).take(8).toList()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/stream-streamwithx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-stream-streamwithx"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val pairs = pulseTrain(0.15).streamWithX(0.0, 0.005).take(200).toList()
@@ -2177,8 +2177,8 @@ val line = sin(2.0).toFLine(samples = 600)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/tofline.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-tofline"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = sin(2.0) + fbm(5, 6.0, 0.2)
@@ -2206,8 +2206,8 @@ val w = hannWindow()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/hannwindow-hammingwindow-blackmanwindow-gaussianwindow.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-hannwindow-hammingwindow-blackmanwindow-gaussianwindow"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val w = gaussianWindow(sigma = 0.25).mix(blackmanWindow(), constant(0.4))
@@ -2231,8 +2231,8 @@ val n = valueNoise(seed = 1, frequency = 12.0, amplitude = 0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/whitenoise-valuenoise-perlinnoise.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-whitenoise-valuenoise-perlinnoise"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val n = whiteNoise(4, 24.0, 0.3).mix(perlinNoise(5, 3.0, 0.7), constant(0.65))
@@ -2256,8 +2256,8 @@ val n = fbm(seed = 2, frequency = 2.0, amplitude = 1.0, octaves = 5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fbm-fbmperlin-randomwalk.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fbm-fbmperlin-randomwalk"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val n = fbmPerlin(4, 1.8, 1.0, octaves = 6).mix(randomWalk(8, step = 0.03, amplitude = 0.02), constant(0.3))
@@ -2281,8 +2281,8 @@ val f = fbm(4, 2.0, 1.0).autoScale()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/autoscale-znormalize-whitencdf.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-autoscale-znormalize-whitencdf"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = valueNoise(12, 18.0, 1.0).zNormalize().whitenCdf(bins = 128, targetMin = -1.0, targetMax = 1.0)
@@ -2306,8 +2306,8 @@ val s = sin(2.0).sampleUniform(32)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sampleuniform-samplejittered-samplerandom.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sampleuniform-samplejittered-samplerandom"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = fbm(2, 3.0, 1.0)
@@ -2332,8 +2332,8 @@ val zc = sin(6.0).sampleZeroCrossings()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/samplebydensity-samplezerocrossings-samplepeaks.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-samplebydensity-samplezerocrossings-samplepeaks"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val source = sin(3.0) + fbm(1, 7.0, 0.25)
@@ -2361,8 +2361,8 @@ val pts = points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/points.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-points"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val pts = points(0.0 to 0.0, 0.12 to 0.9, 0.32 to -0.4, 0.75 to 0.7, 1.0 to 0.0)
@@ -2387,8 +2387,8 @@ val f = piecewise(zero(), 0.0..0.5 to one(), 0.5..1.0 to zero())
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/piecewise.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-piecewise"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = piecewise(default = valueNoise(3, 8.0, 0.1), 0.0..0.33 to sin(3.0), 0.33..0.66 to saw(0.2), 0.66..1.0 to pulseTrain(0.1))
@@ -2412,8 +2412,8 @@ val f = piecewiseLinear(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/piecewiselinear-catmullromspline-monotonecubic.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-piecewiselinear-catmullromspline-monotonecubic"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = catmullRomSpline(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.2, 0.9, "linear"), Keyframe(0.6, -0.4, "linear"), Keyframe(1.0, 0.2, "linear")), alpha = 0.5).mix(monotoneCubic(listOf(Keyframe(0.0, 0.1, "linear"), Keyframe(0.4, 0.8, "linear"), Keyframe(1.0, 0.0, "linear"))), constant(0.35))
@@ -2437,8 +2437,8 @@ val f = bSplineQuadratic(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0,
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/hermitefromhandles-bsplinequadratic.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-hermitefromhandles-bsplinequadratic"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = hermiteFromHandles(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.3, 0.8, "linear"), Keyframe(0.75, -0.2, "linear"), Keyframe(1.0, 0.1, "linear"))).softClip(constant(1.2))
@@ -2462,8 +2462,8 @@ val f = stepHold(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/stephold-nearestvalue-cosineinterp-smoothstepinterp-smootherstepinterp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-stephold-nearestvalue-cosineinterp-smoothstepinterp-smootherstepinterp"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = cosineInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))).mix(smootherStepInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))), constant(0.5))
@@ -2487,8 +2487,8 @@ val f = differentiate(sin(2.0))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/gaussiansmooth-differentiate-fromkeyframeeditor-resample.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-gaussiansmooth-differentiate-fromkeyframeeditor-resample"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = gaussianSmooth(fromKeyframeEditor(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "bezier"), Keyframe(1.0, 0.1, "linear"))), sigma = 0.03, taps = 41).let { resample(it, sampleCount = 512, interpolation = CUBIC) }
@@ -2512,8 +2512,8 @@ val f = rbfThinPlate(points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/rbf-rbfquadratic-rbfcubic-rbfthinplate-and-fn-variants.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-rbf-rbfquadratic-rbfcubic-rbfthinplate-and-fn-variants"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = sin(2.0).rbf(points(0.1 to 0.6, 0.52 to -0.3, 0.9 to 0.7), kernel = RbfKernels.gaussian(2.5), smoothing = 1e-4)
@@ -2540,8 +2540,8 @@ val w = spliceWindow(fadeIn = 0.1, fadeOut = 0.1)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/splicewindow.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-splicewindow"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val w = spliceWindow(0.2, 0.35).pow(constant(0.7))
@@ -2567,8 +2567,8 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-timeline.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-timeline"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val t = timeline(name = "scene") { mark("start")
@@ -2596,8 +2596,8 @@ val phrase = (sin(2.0) over (0.0..1.0)) then (saw(0.15) over (0.0..1.0))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/then-overlapping-overlapwith.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-then-overlapping-overlapwith"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val phrase = ((sin(2.0) over (0.0..1.0)) overlapping ramp(0.05, 0.25)) with (pulseTrain(0.1) / gain(0.4))
@@ -2622,8 +2622,8 @@ val phrase = [sin(2.0), saw(0.12), square(0.18)].sequence(overlap = 0.05)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-sequence-palindrome-roundrobin.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-sequence-palindrome-roundrobin"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val cycle = [sin(2.0), pulseTrain(0.09), fbm(3, 4.0, 0.4)].palindrome(overlap = ramp(0.02, 0.12)) / repeatEvery(2.0)
@@ -2647,8 +2647,8 @@ val f = [sin(2.0), saw(0.2)].sequenceLoop() over (0.0..8.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-sequenceloop-shuffleloop.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-sequenceloop-shuffleloop"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = [sin(2.0), saw(0.13), pulseTrain(0.08)].shuffleLoop(seed = 12, overlap = 0.1) over (0.0..12.0)
@@ -2672,8 +2672,8 @@ val f = [sin(2.0), saw(0.2)].randomSequence(seed = 3, slot = 0.4) over (0.0..6.0
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-randomsequence-weightedsequence.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-randomsequence-weightedsequence"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = [sin(2.0), saw(0.12), pulseTrain(0.08)].weightedSequence([0.6, ramp(0.1, 0.35), 0.15], seed = 7, overlap = ramp(0.02, 0.08)) over (0.0..10.0)
@@ -2697,8 +2697,8 @@ val f = [sin(2.0), saw(0.2) * 0.3].stack()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-stack-average-select-morph.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-stack-average-select-morph"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = [sin(2.0), saw(0.14), fbm(3, 3.0, 0.6)].morph(ramp(0.0, 2.0))
@@ -2722,8 +2722,8 @@ val f = sin(3.0) / stretch(0.0..4.0) / faster(2.0) / lowPass(0.04) / gain(0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/transform-palette.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-transform-palette"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (fbm(4, 5.0, 1.0) / all / slower(ramp(0.8, 1.7)) / highPass(remap(0.02, 0.08)) / turbulence(0.02, ramp(8.0, 18.0)) / crush(5) / mirrorEvery(0.4)) over (0.0..4.0)
@@ -2755,8 +2755,8 @@ val f = (ramp(-2.0, 2.0) over (0.0..1.0)) / fold(0.7)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fold-rectify-quantize.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fold-rectify-quantize"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     // A loud sine, folded then rectified then staircased — a full distortion chain.
@@ -2775,7 +2775,7 @@ with(Functions) {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/waveshape-transfer-curves.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-waveshape-transfer-curves"}
 :::static
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 with(Functions) {
     // A ramp sweeping -2..2 across the window: plotting a shaper of it against x draws
@@ -2801,7 +2801,7 @@ with(Functions) {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chebyshev-harmonic-ladder.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chebyshev-harmonic-ladder"}
 :::static
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 with(Functions) {
     val fundamental = sin(1.0) over (0.0..1.0)
@@ -2819,7 +2819,7 @@ Because a waveshaper reshapes *amplitude*, `chebyshev` colours any bounded signa
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chebyshev-perlin-waveshaping.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chebyshev-perlin-waveshaping"}
 :::static
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 with(Functions) {
     // Amplified toward [-1, 1] so the shaper has full range (chebyshev clamps internally).
@@ -2847,8 +2847,8 @@ val f = sin(3.0) / copyPaste(0.1..0.3, 0.7..0.9)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/copypaste-randomrepeat-randomcopypaste.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-copypaste-randomrepeat-randomcopypaste"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = (pulseTrain(0.08) / randomRepeat(period = ramp(0.12, 0.28), seed = 4) / randomCopyPaste(grain = ramp(0.04, 0.12), seed = 8, density = ramp(0.35, 0.85))) over (0.0..6.0)
@@ -2874,8 +2874,8 @@ val g = timelineGraph {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeattofit-stretchtofit-snapshot-lookback.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeattofit-stretchtofit-snapshot-lookback"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val g = timelineGraph {
@@ -2903,8 +2903,8 @@ val f = sin(3.0).granular(grainSize = 0.05, spacing = 0.04)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/granular.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-granular"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = fbmPerlin(1, 3.0, 0.8).granular(grainSize = 0.04, spacing = 0.027, jitter = 0.35, overlap = 2, seed = 3, window = gaussianWindow(0.0..1.0, 0.3))
@@ -2928,8 +2928,8 @@ val s = sin(2.0).lowpassStream(alpha = 0.2).take(64).toList()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/lowpassstream-highpassstream.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-lowpassstream-highpassstream"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val s = (pulseTrain(0.12) + valueNoise(5, 22.0, 0.2)).highpassStream(alpha = 0.88, step = 0.004).take(256).toList()
@@ -2954,8 +2954,8 @@ val result = demo(sampleCount = 256)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/demo.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-demo"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val result = demo(sampleCount = 1024, seed = 77, domain = -0.25..1.25, printSummary = false)
@@ -3160,8 +3160,8 @@ val f = sin(2.0).withName("lead")
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/withdomain-withname.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-withdomain-withname"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = ((valueNoise(4, 12.0, 0.5) over (0.1..0.9)) / all).withName("noise-bed")
@@ -3190,8 +3190,8 @@ val y = cur.next()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor-next.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor-next"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val cur = fbm(5, 3.0, 0.7).cursor(0.0, 0.002)
@@ -3217,8 +3217,8 @@ val ys = sin(2.0).cursor().next(16)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor-next-count.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor-next-count"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val ys = pulseTrain(0.15).cursor(start = 0.25, step = 0.003).next(1024)
@@ -3266,8 +3266,8 @@ val s = ch.sampleAt(0.3)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinechunk-contains-sampleat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinechunk-contains-sampleat"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val ch = Functions.TimelineChunk(fbm(2, 2.0, 0.5), sourceDomain = 0.0..1.0, domain = 1.0..2.0, mapMode = Functions.ChunkMapMode.WRAP, window = hannWindow(0.0..1.0))
@@ -3293,8 +3293,8 @@ val w = Functions.TimelineChunk(sin(2.0), domain = 0.0..1.0).weightAt(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinechunk-weightat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinechunk-weightat"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val ch = Functions.TimelineChunk(saw(0.2), domain = 0.0..1.0, window = spliceWindow(0.2, 0.2, 0.0..1.0), gain = valueNoise(1, 4.0, 0.2))
@@ -3323,8 +3323,8 @@ val y = g.eval(0.4)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-eval-invoke.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-eval-invoke"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val g = timelineGraph {
@@ -3354,8 +3354,8 @@ val f = timelineGraph {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-asfn-tap.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-asfn-tap"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val delayed = timelineGraph {
@@ -3388,8 +3388,8 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mark-marker.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mark-marker"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val t = timeline {
@@ -3421,8 +3421,8 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/moveto-movetomark-advance-rewind.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-moveto-movetomark-advance-rewind"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val t = timeline {
@@ -3453,8 +3453,8 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeattofit-stretchtofit.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeattofit-stretchtofit"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val t = timeline {
@@ -3482,8 +3482,8 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-place-overlap-splice.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-place-overlap-splice"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val t = timeline {
@@ -3514,8 +3514,8 @@ val cs = timeline(start = 0.0) { }.withName("empty")
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chunks-buildgraph-build.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chunks-buildgraph-build"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = Functions.TimelineBuilder(start = 0.0).apply {
@@ -3547,8 +3547,8 @@ val f = rbf(points(0.0 to 0.0, 1.0 to 1.0), kernel = RbfKernels.linear)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/functions-rbfkernels-linear-quadratic-cubic-thinplate.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-functions-rbfkernels-linear-quadratic-cubic-thinplate"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = rbf(points(0.0 to 0.0, 0.3 to 1.0, 0.8 to -0.5, 1.0 to 0.2), kernel = RbfKernels.thinPlate, smoothing = 1e-3)
@@ -3572,8 +3572,8 @@ val f = rbf(points(0.0 to 0.0, 1.0 to 0.4), kernel = RbfKernels.gaussian(2.0))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/functions-rbfkernels-gaussian-multiquadric-inverse.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-functions-rbfkernels-gaussian-multiquadric-inverse"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val f = rbf(points(0.0 to 0.2, 0.4 to 0.9, 1.0 to -0.1), kernel = RbfKernels.inverseQuadratic(0.5), base = sin(2.0))
@@ -3598,8 +3598,8 @@ val y = i.eval(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/rbfinterpolator-eval.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-rbfinterpolator-eval"}
 :::static
-import afield.Keyframe
-import afield.stdlib.Functions
+import afield.animation.keyframes.Keyframe
+import afield.math.functions.Functions
 
 with(Functions) {
     val i = RbfInterpolator(points(0.0 to 0.0, 0.2 to 0.9, 0.9 to -0.2), RbfKernels.gaussian(3.0), smoothing = 1e-4, base = sin(1.0))
@@ -3683,9 +3683,9 @@ sin/*/saw => op=triangle
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-graph-inspection.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-graph-inspection"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.graphSvg
-import afield.stdlib.rewriteKotlin
+import afield.math.functions.Functions
+import afield.math.functions.graphSvg
+import afield.math.functions.rewriteKotlin
 
 with(Functions) {
     val base = sin(sin(saw(0.25))).withName("nested carrier")
@@ -4079,10 +4079,10 @@ The same run, plotted live in a box: target, seed, and `run.best` overlaid by co
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-overlay.png" wait="2.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-overlay"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.Functions
-import afield.stdlib.evolve
-import afield.stdlib.matchFitness
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
+import afield.math.functions.evolve
+import afield.math.functions.matchFitness
 
 with(Functions) {
     val x0 = 40.0; val x1 = 940.0
@@ -4161,9 +4161,9 @@ Passing `normalize = true` z-scores each descriptor (subtract the mean, divide b
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-variety.png" wait="2.5" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-variety"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.Functions
-import afield.stdlib.evolveVariety
+import afield.geometry.path.FLine
+import afield.math.functions.Functions
+import afield.math.functions.evolveVariety
 
 with(Functions) {
     // Same run as the harness: grow 6 behaviourally distinct gestures from one seed by
@@ -4230,8 +4230,8 @@ This example rewrites a nested graph in two ways: it changes a descendant `saw` 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-language-plot.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-language-plot"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.rewriteKotlin
+import afield.math.functions.Functions
+import afield.math.functions.rewriteKotlin
 
 with(Functions) {
     val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)

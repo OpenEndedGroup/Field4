@@ -1,5 +1,5 @@
-import afield.logger.lprintln
-import afield.server.LogStream
+import afield.app.diagnostics.logging.lprintln
+import afield.app.server.LogStream
 
 // The third matcher, and the loosest. LogStream is the sink behind the log widget, and
 // its filter asks channel.contains(tag, ignoreCase = true) — a substring, not a tag.

@@ -1,4 +1,4 @@
-import afield.stdlib.polytope.*
+
 
 // A snub dodecahedron, each face with its own vertices, so the faces can fly apart whole.
 val module = moduleHere()

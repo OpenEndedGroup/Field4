@@ -14,7 +14,7 @@ the same Field joins the first, so it works with nothing else on the network.
 This box opens a session called "Field" and shows the last note and controller that arrive:
 
 ```diffstatic {data-lang=kotlin}
-import afield.rtpmidi.*
+import afield.io.midi.rtp.*
 
 val midi = rtpMidi("Field")
 
@@ -118,7 +118,7 @@ A session accepts every invitation it receives, from any machine on the network.
 
 ??? aside "How this page was checked"
     The fences are static. The protocol is covered by
-    `src/jvmTest/kotlin/afield/rtpmidi/RtpMidiLoopbackTest.kt`: two sessions over loopback UDP
+    `src/jvmTest/kotlin/afield/io/midi/rtp/RtpMidiLoopbackTest.kt`: two sessions over loopback UDP
     connect, exchange clocks, and pass notes, controllers, running status and SysEx both ways; a
     hand-built packet with a journal tail checks that journals are skipped. The demo document's
     three boxes were run in Field through the backdoor. Interoperation with macOS's own network

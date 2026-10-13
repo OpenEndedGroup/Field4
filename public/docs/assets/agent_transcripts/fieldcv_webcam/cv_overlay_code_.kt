@@ -1,4 +1,4 @@
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 // every polyline channel box 1 publishes, and the colour it is drawn in
 val channels = listOf(

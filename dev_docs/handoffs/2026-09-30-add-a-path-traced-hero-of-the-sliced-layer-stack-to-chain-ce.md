@@ -9,7 +9,7 @@
 ## The notes that led here
 
 - `8dd248d6` (public/docs/chain_ceres_manifold_contours.md:3): need hero image to match other sections
-  > Three parts of Field, one object, and none of the three knows the other two exist. afield.stdlib.polytope holds the Conway operator algebra, the canonicalisation iteration and a second-order realizer over Ceres. afield.manifold does exact geometry on closed solids over Manifold's C ABI. Solid.slice is the single call that crosses from 3D down to 2D, and a stack of those is a print.
+  > Three parts of Field, one object, and none of the three knows the other two exist. afield.geometry.polytope holds the Conway operator algebra, the canonicalisation iteration and a second-order realizer over Ceres. afield.geometry.solid.manifold does exact geometry on closed solids over Manifold's C ABI. Solid.slice is the single call that crosses from 3D down to 2D, and a stack of those is a print.
 
 ## What was asked
 
@@ -42,7 +42,7 @@ minSharpAngle = 20.0)` → `scene.importTriMesh`):
 1. `conway("gC").polyhedron.canonicalize()`, triangulate with `NormalPolicy.Flat`, `weld(1e-6)`,
    `toSolid()`, then gauge it to volume 1 on the bed, the same way the page's `onTheBed` does.
 2. Slice at the page's 48 layer midpoints. Turn each `Section` into a slab with
-   `Section.extruded(h / n)` (`src/jvmMain/kotlin/afield/manifold/Section.kt`, `fun extruded`),
+   `Section.extruded(h / n)` (`src/jvmMain/kotlin/afield/geometry/solid/manifold/Section.kt`, `fun extruded`),
    translated to the bottom of its layer. The result is the object *as printed*: a stepped
    pentagonal icositetrahedron.
 3. Optionally put the raw `gC` stack next to it. It is a plain unit cube, which is the page's

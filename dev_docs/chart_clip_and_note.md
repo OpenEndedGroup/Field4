@@ -10,7 +10,7 @@ checks. `dev_docs/chart_primitive.md` is the primitive's own design note; this i
 ## The mechanism
 
 A `Chart` declares a `width` × `height` frame and maps every datum it is given into pixels inside
-it. `Chart.toHTML` hands the resulting lines to `afield.graphics.linesToHTML`, which computes the
+it. `Chart.toHTML` hands the resulting lines to `afield.ui.visualization.linesToHTML`, which computes the
 geometry's **own union bounds** and stamps them on the wrapper as `data-afield-bounds-*`. A box
 output panel, and the docs capture behind it, then fit *those* bounds into the space available.
 

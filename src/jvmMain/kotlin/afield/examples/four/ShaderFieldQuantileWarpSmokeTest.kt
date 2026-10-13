@@ -1,21 +1,21 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.modules.ShaderKind
-import afield.four.util.FIELD_PROBE_BUFFER_NAME
-import afield.four.util.Options
-import afield.four.util.GpuProbe
-import afield.four.util.Window
-import afield.stdlib.AdaptiveQuantileWarp
-import afield.stdlib.QuantileWarpConfig
-import afield.stdlib.QuantileWarpState
-import afield.stdlib.ShaderProbeQuantileWarpConfig
-import afield.stdlib.TargetDistributions
-import afield.stdlib.UniformQuantileFeatureExtractor
-import afield.stdlib.fieldProbeHere
-import afield.stdlib.fieldProbeQuantileWarp
-import afield.stdlib.preprocess
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.shader.ShaderKind
+import afield.graphics.vulkan.util.FIELD_PROBE_BUFFER_NAME
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.Window
+import afield.math.statistics.AdaptiveQuantileWarp
+import afield.math.statistics.QuantileWarpConfig
+import afield.math.statistics.QuantileWarpState
+import afield.math.statistics.ShaderProbeQuantileWarpConfig
+import afield.math.statistics.TargetDistributions
+import afield.math.control.UniformQuantileFeatureExtractor
+import afield.graphics.shader.fieldProbeHere
+import afield.math.statistics.fieldProbeQuantileWarp
+import afield.graphics.shader.preprocess
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -161,7 +161,7 @@ class ShaderFieldQuantileWarpSmokeTest {
                 val outputControls = mutableMapOf<String, Any>("time" to 0f, "warpStrength" to 1f)
                 identityWarp.applyToPushConstants(setVec4 = { name, value -> outputControls[name] = value })
 
-                fun stageFor(box: Box, shader: String, probe: afield.four.util.ShaderFieldProbe,
+                fun stageFor(box: Box, shader: String, probe: afield.graphics.vulkan.util.ShaderFieldProbe,
                              name: String, controls: Map<String, Any>) {
                     bench.stage(name, preprocess(box, shader, ShaderKind.COMPUTE_SHADER)) {
                         fieldProbe = probe

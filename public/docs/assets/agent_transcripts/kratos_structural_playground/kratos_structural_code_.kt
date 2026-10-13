@@ -1,11 +1,11 @@
-import afield.frames
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.TriMesh
-import afield.stdlib.showMeshGrid
-import afield.tetgen.Tetgen
-import afield.tetgen.TetgenLibrary
+import afield.runtime.lifecycle.frames
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.showMeshGrid
+import afield.geometry.mesh.tetgen.Tetgen
+import afield.geometry.mesh.tetgen.TetgenLibrary
 import java.util.concurrent.atomic.AtomicReference
 
 // Launch (Alt-R). Drag a slider to reshape the bracket — that part is instant.

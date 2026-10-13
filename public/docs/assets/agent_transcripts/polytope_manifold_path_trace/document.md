@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["polytope_manifold_trace"] "properties" {"children" #{#afield/box "polytope_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 221 "sha256" "4234324aea74e30a33f6b7e4be99ae1e3cf71405d4e2ee18297fb7f01d6597be"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["polytope_manifold_trace"] "properties" {"children" #{#afield/box "polytope_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 232 "sha256" "c2a1e4830e417be8ec9f5aacacc7bccb051e9d50e64bb61d002be6cfdd577ece"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,24 +31,24 @@ start(renderer::run)
 <!-- field-box id="polytope_manifold_trace" index="1" -->
 
 ```edn [field-box id="polytope_manifold_trace" role="properties"]
-{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 108 "characters" 5238 "sha256" "95072a1bb2771a524107fd5907da019b451674e1c4ddc51e1450dc8c837dd2d6"}]}
+{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 108 "characters" 5370 "sha256" "96e1059de12263d6ede7ad2ab47ac133fd31ad60c923dbc486ae45bf27967d73"}]}
 ```
 
 ```kotlin [field-property box="polytope_manifold_trace" name="code" path="polytope_manifold_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.signedVolume
-import afield.stdlib.weld
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
+import afield.geometry.mesh.signedVolume
+import afield.geometry.mesh.weld
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)

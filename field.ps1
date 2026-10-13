@@ -358,6 +358,15 @@ public static class FieldLocalCertificateTrust {
             $electronDir = (Get-Content "build\field-launch\electron-dir" -Raw).Trim()
             $eArgs = @()
             if (Test-Path "build\field-launch\electron-args") { $eArgs = @(Get-Content "build\field-launch\electron-args" | Where-Object { $_ -ne "" }) }
+            $cdpSetting = if ($env:FIELD_ELECTRON_CDP_PORT) { $env:FIELD_ELECTRON_CDP_PORT.Trim() } else { "$([int]$port + 20000)" }
+            if ($cdpSetting -ne "off") {
+                $cdpPort = 0
+                if (-not [int]::TryParse($cdpSetting, [ref]$cdpPort) -or $cdpPort -lt 1 -or $cdpPort -gt 65535) {
+                    throw "field: FIELD_ELECTRON_CDP_PORT must be a valid port or off"
+                }
+                $eArgs += "--remote-debugging-address=127.0.0.1"
+                $eArgs += "--remote-debugging-port=$cdpPort"
+            }
             $electron = Start-Process -FilePath $electronBin -ArgumentList ($eArgs + ".") -WorkingDirectory $electronDir -PassThru
         }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build libcsound — Csound as a C library — for `afield.csound`, on macOS or Linux.
+"""Build libcsound — Csound as a C library — for `afield.audio.csound`, on macOS or Linux.
 
-`afield.csound` binds Csound's C API (`csound.h`) directly through Java FFM, so there is no
+`afield.audio.csound` binds Csound's C API (`csound.h`) directly through Java FFM, so there is no
 wrapper library of Field's own — only libcsound itself, double precision (`USE_DOUBLE=ON`, the
 default every Csound release ships).
 

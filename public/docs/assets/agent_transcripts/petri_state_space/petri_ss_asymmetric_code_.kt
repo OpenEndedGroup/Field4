@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 fun table(reverseLast: Boolean) = petri {
     conflict = PetriConflict.ORDER

@@ -1,5 +1,5 @@
-import afield.logger.StatsHeatmap
-import afield.logger.formatMillis
+import afield.app.diagnostics.logging.StatsHeatmap
+import afield.app.diagnostics.logging.formatMillis
 
 // A channel that reports a number every frame gets coloured by whether each value rose
 // or fell since that channel last reported the same key. The contract is only a string

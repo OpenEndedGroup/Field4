@@ -9,8 +9,8 @@
 // renders whatever fragment shader you hand it, so the `{{ stack.auto.program }}` template below
 // is the same kind of thing a live module would carry, `sampler2D` and push constant included.
 
-import afield.stacksl.cpu.CpuTexture2D
-import afield.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.CpuTexture2D
+import afield.lang.stacksl.cpu.StackSLCpu
 
 run {
 
@@ -77,7 +77,7 @@ run {
         val x0 = index * (dim + gutter)
         for (y in 0 until dim) System.arraycopy(frame, y * dim, strip, y * stripWidth + x0, dim)
     }
-    display(afield.util.PngEncoder.encode(strip, stripWidth, dim))
+    display(afield.media.image.util.PngEncoder.encode(strip, stripWidth, dim))
 
     // The thing to notice: nothing in the program draws the smeared structure. It is the previous
     // frame, read back through a nine-tap `blur`, faded by `0.975 *`, ninety-six times over. If

@@ -1,20 +1,20 @@
 package afield.examples
 
-import afield.stdlib.findAttractors
-import afield.stdlib.kauffmanNetwork
-import afield.stdlib.notateAttractorsHtml
-import afield.stdlib.notateHtml
-import afield.stdlib.segmentPolarityNetwork
-import afield.stdlib.threeNodeNetwork
-import afield.stdlib.toggleNetwork
-import afield.stdlib.drawAttractorBasins
-import afield.stdlib.drawNetworkGraph
-import afield.stdlib.drawStateTransitionGraph
-import afield.stdlib.drawUnrolled
-import afield.stdlib.drawRhythmGrid
-import afield.stdlib.trajectory
-import afield.stdlib.trajectoryUntilCycle
-import afield.stdlib.repeatedCycle
+import afield.simulation.automata.findAttractors
+import afield.simulation.automata.kauffmanNetwork
+import afield.simulation.automata.notateAttractorsHtml
+import afield.simulation.automata.notateHtml
+import afield.simulation.automata.segmentPolarityNetwork
+import afield.simulation.automata.threeNodeNetwork
+import afield.simulation.automata.toggleNetwork
+import afield.simulation.automata.drawAttractorBasins
+import afield.simulation.automata.drawNetworkGraph
+import afield.simulation.automata.drawStateTransitionGraph
+import afield.simulation.automata.drawUnrolled
+import afield.simulation.automata.drawRhythmGrid
+import afield.simulation.automata.trajectory
+import afield.simulation.automata.trajectoryUntilCycle
+import afield.simulation.automata.repeatedCycle
 
 /*
 FIELD_TEST

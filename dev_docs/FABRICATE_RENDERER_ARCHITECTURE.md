@@ -1,7 +1,7 @@
 # Fabricate renderer architecture
 
 Fabricate is the higher-level scene, render-planning, and pass-graph layer over
-`afield.four`. Public usage lives in `public/docs/fabricate_renderer.md`; exact
+Field 4. Public usage lives in `public/docs/fabricate_renderer.md`; exact
 API behavior belongs in the KDoc of the files below.
 
 ## Code map

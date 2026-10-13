@@ -7,7 +7,7 @@
 
 Three runner fences import from `afield.stdlib`, which DOCS_WRITING_RULES.md rule 7 forbids in box code:
 
-- `public/docs/chain_lambda_sound.md`, fences `chain-lambda-one` and `chain-lambda-sweep`: `import afield.stdlib.ActivationOrder`, and the fully qualified `afield.stdlib.ActivationOrder` in the sweep's `sortedWith` type argument.
-- `public/docs/chain_skinned_volume.md`, fence `chain-skinned-volume-readout`: `import afield.stdlib.isWatertight` and `import afield.stdlib.signedVolume`.
+- `public/docs/chain_lambda_sound.md`, fences `chain-lambda-one` and `chain-lambda-sweep`: `import afield.data.graph.ActivationOrder`, and the fully qualified `afield.data.graph.ActivationOrder` in the sweep's `sortedWith` type argument.
+- `public/docs/chain_skinned_volume.md`, fence `chain-skinned-volume-readout`: `import afield.geometry.mesh.isWatertight` and `import afield.geometry.mesh.signedVolume`.
 
 Make these names resolve in a box without the import (or re-export them where the box preamble already reaches), then drop the imports, update `tools/completion-corpus/rank-carets.tsv` for the changed fence bytes, and recapture the three figures with the docs runner. Same shape as handoff edb89165.

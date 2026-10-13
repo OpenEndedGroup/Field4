@@ -1,14 +1,14 @@
 package afield.examples.petri
 
-import afield.layout.D2Layout
-import afield.petri.PetriLayout
-import afield.petri.PetriDrawing
-import afield.petri.arcCrossings
-import afield.petri.PetriNet
-import afield.petri.clearPetriLayoutCache
-import afield.petri.frame
-import afield.petri.petri
-import afield.petri.toSvg
+import afield.ui.layout.D2Layout
+import afield.simulation.petri.PetriLayout
+import afield.simulation.petri.PetriDrawing
+import afield.simulation.petri.arcCrossings
+import afield.simulation.petri.PetriNet
+import afield.simulation.petri.clearPetriLayoutCache
+import afield.simulation.petri.frame
+import afield.simulation.petri.petri
+import afield.simulation.petri.toSvg
 import java.io.File
 
 /*

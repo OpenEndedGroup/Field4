@@ -14,9 +14,9 @@ that are easy to misunderstand. It is not a second command reference.
   `FieldBackdoor.ensure_server()` in the same file; the startup budget is
   `ManagedStartupWatch` in `tools/verification_runtime.py`.
 - Server RPC handlers used by Playwright, native captures, and JVM entrypoints:
-  `src/jvmMain/kotlin/afield/Server.kt`.
+  `src/jvmMain/kotlin/afield/app/server/Server.kt`.
 - Semantic document operations and their guarantees:
-  `src/jvmMain/kotlin/afield/operation_transcript.kt` and
+  `src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt` and
   [`OPERATION_TRANSCRIPT.md`](OPERATION_TRANSCRIPT.md).
 - Smoke catalog runner: `tools/run_field_tests.py`.
 - Browser regression runner: `tools/run_ui_regressions.py`.

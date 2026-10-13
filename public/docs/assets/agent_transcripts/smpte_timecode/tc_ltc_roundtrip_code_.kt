@@ -1,4 +1,4 @@
-import afield.timecode.*
+import afield.io.timecode.*
 
 // Four seconds of 29.97 drop-frame LTC across the one-minute boundary.
 val start = Timecode.parse("00:00:58;00")

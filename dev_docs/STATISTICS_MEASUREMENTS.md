@@ -6,7 +6,7 @@ actually asserts.
 
 ## `chatterjeeXi` on a constant predictor: the one-ulp bound
 
-`src/jvmTest/kotlin/afield/stdlib/RollingDependenceTest.kt`, test
+`src/jvmTest/kotlin/afield/math/statistics/RollingDependenceTest.kt`, test
 `xi on a constant predictor is zero to within one ulp, whatever order the pairs arrived in`.
 
 The closed form for a single tie group is exactly zero: the numerator's expectation is

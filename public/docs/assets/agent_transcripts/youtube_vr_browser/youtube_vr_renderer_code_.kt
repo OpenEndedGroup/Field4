@@ -1,4 +1,4 @@
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -13,7 +13,7 @@ once.renderer {
     window = Window("YouTube · puppet browser")
     val created = Renderer(window)
     if (Options.enableVR) {
-        created.openXRHmdTarget = afield.four.targets.OpenXRHmdTarget(created)
+        created.openXRHmdTarget = afield.graphics.vulkan.targets.OpenXRHmdTarget(created)
     }
     created
 }

@@ -1,11 +1,11 @@
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserVrPanel
-import afield.four.browser.PuppetBrowserWindowInput
-import afield.four.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowserVrPanel
+import afield.media.browser.PuppetBrowserWindowInput
+import afield.graphics.vulkan.targets.SideBySideStereoTarget
 
 // prop declarations are lifted into Field's preamble before ordinary imports are applied.
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 
 // The producer is a full Chromium page, not an embed: consent, account state, player,
 // navigation and audio all behave as they do in an ordinary browser.

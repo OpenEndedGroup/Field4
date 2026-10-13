@@ -1,8 +1,8 @@
 package afield.examples
 
-import afield.graphics.RemoteArKotlinJs
-import afield.remotejs.KotlinJsHeadProfiles
-import afield.remotejs.KotlinToJsCompiler
+import afield.lang.remotejs.RemoteArKotlinJs
+import afield.lang.remotejs.KotlinJsHeadProfiles
+import afield.lang.remotejs.KotlinToJsCompiler
 
 /*
 FIELD_TEST
@@ -276,16 +276,16 @@ object KotlinJsRemoteArSurfaceSmokeTest {
     /** Complete against the generated completion mirror; null if no sidecar answered (→ skip). */
     private fun complete(snippet: String): List<String>? {
         val decl = RemoteArKotlinJs.completionDeclarations
-        val roots = afield.AaCompletionClient.kotlinStdlibRoots()
+        val roots = afield.runtime.completion.AaCompletionClient.kotlinStdlibRoots()
         var unreachable = true
         repeat(8) {
-            val o = afield.AaCompletionClient.complete(
+            val o = afield.runtime.completion.AaCompletionClient.complete(
                 snippet = snippet, cursor = snippet.length, preamble = "",
                 declarations = decl, implicitReceivers = emptyList(), classpathRootsOverride = roots,
                 jsTarget = true,
             )
             if (o.detail.let { !it.startsWith("no-sidecar") && !it.startsWith("error") && !it.startsWith("http") }) unreachable = false
-            (o.result as? afield.CompletionResult.Success)?.let { return it.metadata.map { m -> m.text } }
+            (o.result as? afield.runtime.kotlin.CompletionResult.Success)?.let { return it.metadata.map { m -> m.text } }
             Thread.sleep(400)
         }
         return if (unreachable) null else emptyList()

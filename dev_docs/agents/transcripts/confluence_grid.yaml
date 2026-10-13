@@ -61,8 +61,8 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 620.0, h: 170.0 }
       properties:
         code: |
-          import afield.graphics.FLine
-
+          import afield.geometry.path.FLine
+          
           // A 5x4 confluence grid in 3D. Row = term, column = scheduler, all twenty reducing together.
           //
           // Interaction nets are STRONGLY confluent, so every cell in a row takes the same NUMBER of
@@ -82,7 +82,7 @@ operations:
           // 2. The landing must be legible. While a cell reduces it runs its own 3D physics; when it
           //    reaches normal form it interpolates over 40 frames onto the canonical pose. Four dances,
           //    one final shape.
-
+          
           val terms = listOf(
               "succ two" to "(\\n f x. f (n f x)) (\\f x. f (f x))",
               "mul 2 3"  to "(\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x)))",
@@ -96,7 +96,7 @@ operations:
               "RIGHTMOST"   to ActivationOrder.RIGHTMOST_BY_ID,
               "ENERGY"      to ActivationOrder.HIGHEST_PAIR_ENERGY
           )
-
+          
           // Type -> colour, hand-converted from interactionnets.kt's own baseHueDegrees (APP 208, LAM 280,
           // DUP 28, ERASE 8, ROOT 160, VAR 190, CONST 48) so the 3D view and the 2D one agree. Note ERASE
           // and DUP are only 20 degrees apart there and VAR and APP 18, which is not eye-discriminable, so
@@ -110,7 +110,7 @@ operations:
               "VAR" to listOf(0.42, 0.88, 0.95),
               "CONST" to listOf(0.95, 0.90, 0.40)
           )
-
+          
           /** Three rounds of Weisfeiler-Leman refinement. Structural, so isomorphic nets agree. */
           fun wlLabels(net: Net): Map<String, String> {
               var lab = net.nodes.associate { it.id to it.type.name }
@@ -122,7 +122,7 @@ operations:
               }
               return lab
           }
-
+          
           /**
            * A pose determined by topology alone: BFS depth from ROOT for the layer, and within a layer an
            * ordering by WL label. Each layer is a ring in x/z so the thing has volume to orbit.
@@ -158,7 +158,7 @@ operations:
               }
               return out
           }
-
+          
           class Cell(val row: Int, val col: Int, val src: String, order: ActivationOrder) {
               val compiled = LambdaTerms.compile(LambdaTerms.parse(src))
               val reducer = Reducer(Lambda.rules(), order = order, relaxIterations = 0)
@@ -169,7 +169,7 @@ operations:
               var done = false
               var landing = 0
               var pose: Map<String, Vec3> = emptyMap()
-
+          
               fun seed() {
                   val r = java.util.Random((row * 31 + col * 7).toLong())
                   compiled.net.nodes.forEach {
@@ -177,7 +177,7 @@ operations:
                       vel[it.id] = vec(0.0, 0.0, 0.0)
                   }
               }
-
+          
               fun step() {
                   if (done) return
                   if (reducer.stepDetailed(compiled.net) == null) {
@@ -196,7 +196,7 @@ operations:
                       vel[n.id] = vec(0.0, 0.0, 0.0)
                   }
               }
-
+          
               /** 3D springs and repulsion on our own positions; Net.relax is 2D and we never call it. */
               fun physics() {
                   val ns = compiled.net.nodes.toList()
@@ -230,7 +230,7 @@ operations:
                       pos[n.id] = vec(p.x + nv.x, p.y + nv.y, p.z + nv.z)
                   }
               }
-
+          
               /** Once landed, ease the physics positions onto the canonical pose. */
               fun land() {
                   if (!done || landing >= 40) return
@@ -243,15 +243,15 @@ operations:
                                     p.z + (target.z - p.z) * t * 0.35)
                   }
               }
-
+          
               fun originX() = col * 2.9
               fun originY() = -row * 2.6
               fun at(id: String): Vec3? = pos[id]?.let { vec(it.x + originX(), it.y + originY(), it.z) }
           }
-
+          
           val cells = terms.flatMapIndexed { r, (_, src) -> orders.mapIndexed { c, (_, o) -> Cell(r, c, src, o) } }
           cells.forEach { it.seed(); repeat(60) { _ -> it.physics() } }
-
+          
           fun geometry(): List<FLine> {
               val out = mutableListOf<FLine>()
               // edges: one thin, translucent FLine each
@@ -291,10 +291,10 @@ operations:
               out += cage
               return out
           }
-
+          
           println("rows: " + terms.joinToString(", ") { it.first })
           println("cols: " + orders.joinToString(", ") { it.first })
-
+          
           // The driver is a sleep loop, NOT `frames { }`. Measured 2026-09-18: a frames loop in a box
           // with no Window/Renderer gets ZERO ticks in 60 s, because the frame clock IS the render loop.
           // Nothing here needs a renderer -- the 3D lives in the Three.js viewer in this box's output --
@@ -311,7 +311,7 @@ operations:
               lines(geometry())
           }
           Thread.sleep(300)
-
+          
           var frame = 0
           while (frame < 2600 && !cells.all { it.done && it.landing >= 40 }) {
               frame++

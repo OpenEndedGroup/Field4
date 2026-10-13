@@ -1,18 +1,18 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.modules.Introspection
-import afield.four.modules.ShaderKind
-import afield.four.util.FIELD_STATS_PARTIAL_BUFFER_NAME
-import afield.four.util.FIELD_STATS_RESULT_BUFFER_NAME
-import afield.four.util.Options
-import afield.four.util.ShaderFieldStatsBinding
-import afield.four.util.GpuProbe
-import afield.four.util.Window
-import afield.stdlib.fieldStatsHere
-import afield.stdlib.preprocess
-import afield.stdlib.useFieldStats
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.shader.Introspection
+import afield.graphics.shader.ShaderKind
+import afield.graphics.vulkan.util.FIELD_STATS_PARTIAL_BUFFER_NAME
+import afield.graphics.vulkan.util.FIELD_STATS_RESULT_BUFFER_NAME
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.ShaderFieldStatsBinding
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.Window
+import afield.graphics.shader.fieldStatsHere
+import afield.graphics.shader.preprocess
+import afield.graphics.shader.useFieldStats
 import kotlin.math.abs
 
 class FieldStatsSmokeTest {

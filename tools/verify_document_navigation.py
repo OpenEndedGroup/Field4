@@ -7,7 +7,6 @@ from pathlib import Path
 from field_backdoor import FieldBackdoor, SessionLogger
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = '''import afield.graphics.*
-import afield.stdlib.*
 three(name="navigation-proof", channel="geometry", width=620, height=430) {
  mesh(TriMesh(floatArrayOf(0f,0f,0f,1000f,0f,0f,0f,1000f,0f,0f,0f,1000f), intArrayOf(0,2,1,0,1,3,0,3,2,1,2,3)),
   id="shape", label="Navigation test geometry", pickable=true, cullBackFaces=false, flatShading=true)

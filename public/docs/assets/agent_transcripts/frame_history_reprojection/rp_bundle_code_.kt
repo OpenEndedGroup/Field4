@@ -1,8 +1,8 @@
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -33,7 +33,7 @@ once.bundle {
     // Silhouette edges, so there is something for a reprojection to be right or wrong about.
     // The handles go into `balls` in row-major order, ix outer and iz inner, which is the
     // order the animation box relies on to recover (ix, iz) from an index.
-    val handles = mutableListOf<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
+    val handles = mutableListOf<afield.graphics.scene.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
     for (ix in -2..2) for (iz in -2..2) {
         handles.add(
             b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)

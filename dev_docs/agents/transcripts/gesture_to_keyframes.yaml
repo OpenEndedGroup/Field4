@@ -5,7 +5,7 @@ description: >
   into, and three buttons — "bake take" (pad -> lanes), "smooth take" (takes the tremor out of the
   take and bakes it again) and "replay lanes" (lanes -> pad, after you edit them in the editor). Running the box bakes only when the lanes are empty, so edits survive
   a rerun. Demo for `GestureHandle.toKeyframes` / `Box.bakeGesture` / `GestureHandle.setTake`
-  (`src/jvmMain/kotlin/afield/math/gestureKeyframes.kt`, docs in public/docs/keyframe_editor.md).
+  (`src/jvmMain/kotlin/afield/animation/gesture/gestureKeyframes.kt`, docs in public/docs/keyframe_editor.md).
 
   A welcome-screen starting point: open it, run the box, then edit a lane and press "replay lanes".
 operations:

@@ -1,4 +1,4 @@
-import kotlin.math.*
+
 
 // The same loop with the human replaced by a judge whose taste we know: it likes dark-blue
 // five-petalled rosettes, deep and barely curled. Twenty-four answers, and we draw the

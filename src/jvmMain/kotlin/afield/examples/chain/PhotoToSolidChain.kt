@@ -1,23 +1,23 @@
 package afield.examples.chain
 
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.onnx.DepthAnything
-import afield.stdlib.Img
-import afield.stdlib.MeshView
-import afield.stdlib.TriMesh
-import afield.stdlib.gaussianBlur
-import afield.stdlib.imgFromFile
-import afield.stdlib.AxisAlignedBoundingBox3D
-import afield.stdlib.Vec3
-import afield.stdlib.reliefMesh
-import afield.stdlib.renderPng
-import afield.stdlib.resize
-import afield.stdlib.saveStl
-import afield.stdlib.scaleBy
-import afield.stdlib.toReliefMesh
-import afield.stdlib.topology
-import afield.stdlib.volume
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.ai.inference.onnx.DepthAnything
+import afield.media.image.Img
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.TriMesh
+import afield.media.image.gaussianBlur
+import afield.media.image.imgFromFile
+import afield.geometry.spatial.AxisAlignedBoundingBox3D
+import afield.math.linalg.Vec3
+import afield.geometry.mesh.reliefMesh
+import afield.geometry.mesh.renderPng
+import afield.media.image.resize
+import afield.geometry.mesh.saveStl
+import afield.media.image.scaleBy
+import afield.geometry.mesh.toReliefMesh
+import afield.geometry.mesh.topology
+import afield.geometry.mesh.volume
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -92,7 +92,7 @@ object PhotoToSolidChain {
 
     /**
      * Both ONNX models want tightly packed RGBA8 and an [Img] is interleaved floats — this is the
-     * whole adapter, and it is the same one `onnx.md` shows. Nothing in `afield.onnx` knows `Img`.
+     * whole adapter, and it is the same one `onnx.md` shows. Nothing in `afield.ai.inference.onnx` knows `Img`.
      */
     fun toRgba8(img: Img): ByteBuffer {
         val out = ByteBuffer.allocateDirect(img.width * img.height * 4).order(ByteOrder.nativeOrder())

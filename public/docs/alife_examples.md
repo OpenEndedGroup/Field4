@@ -77,7 +77,7 @@ which also says where to find them as documents you can open and edit.
 Limits:
 
 - **CPU only.** These are reference implementations you can read. The GPU story is
-  [`afield.four`](reference/graphics.md), [StackSL](stacksl_examples.md) and
+  [Field 4](reference/graphics.md), [StackSL](stacksl_examples.md) and
   [RectSL](rectsl_examples.md). Two systems from this family's neighbourhood do run on the GPU, as
   shaders you can edit: [diffusion-limited aggregation](afield_four_graphics.md#diffusion-limited-aggregation)
   and [Biham–Middleton–Levine traffic](afield_four_graphics.md#bml-traffic).

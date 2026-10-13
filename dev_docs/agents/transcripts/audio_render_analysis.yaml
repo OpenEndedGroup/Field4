@@ -29,9 +29,9 @@ operations:
       frame: { x: 520.0, y: 40.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
+          import afield.audio.synth.*
           import java.nio.file.Path
-
+          
           val client = FieldAudioClient()
           val pattern = (pat("{60 64 67 71, bd ~ sd ~, hh*8}")
               with gain(sine().range(0.22, 0.72))
@@ -42,7 +42,7 @@ operations:
               provenance = mapOf("field_box" to "analyse_pat_render", "pattern" to "pitched chord + drums"),
           )
           display("render", "rendered ${render.path} · ${"%.2f".format(render.durationSeconds)} s")
-
+          
           client.analyzeRenderedAudio(
               render,
               requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/pat") },
@@ -59,16 +59,15 @@ operations:
               display("analysis error", error.cause?.message ?: error.message ?: error.toString())
               null
           }
-
   - create:
       box: analyse_dough_render
       name: 3 · Dough render → analysis
       frame: { x: 40.0, y: 190.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
+          import afield.audio.synth.*
           import java.nio.file.Path
-
+          
           val client = FieldAudioClient()
           val source = ZawOsc(Param(110f)) * 0.35f
           val voice = source.through(Phaser(
@@ -81,7 +80,7 @@ operations:
               provenance = mapOf("field_box" to "analyse_dough_render", "voice" to "ZawOsc → Phaser"),
           )
           display("render", "rendered ${render.path} · ${render.sampleRate} Hz mono")
-
+          
           client.analyzeRenderedAudio(
               render,
               requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/dough") },
@@ -93,16 +92,15 @@ operations:
               display("analysis error", error.cause?.message ?: error.message ?: error.toString())
               null
           }
-
   - create:
       box: analyse_faust_render
       name: 4 · Faust render → analysis
       frame: { x: 520.0, y: 190.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
+          import afield.audio.synth.*
           import java.nio.file.Path
-
+          
           val client = FieldAudioClient()
           val faustSource = """
               import("stdfaust.lib");
@@ -110,7 +108,7 @@ operations:
               voice = os.sawtooth(sweep) : fi.lowpass(3, 900 + 650 * os.osc(0.07));
               process = voice * 0.18 <: _,_;
           """.trimIndent()
-
+          
           renderFaustWavAsync(
               Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),
               name = "faust-sweep-study", source = faustSource, seconds = 18.0,
@@ -129,16 +127,15 @@ operations:
               display("analysis error", error.cause?.message ?: error.message ?: error.toString())
               null
           }
-
   - create:
       box: analyse_sonic_pi_recording
       name: 5 · Sonic Pi recording → analysis
       frame: { x: 40.0, y: 340.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
+          import afield.audio.synth.*
           import java.nio.file.Path
-
+          
           val client = FieldAudioClient()
           val ruby = """
               use_bpm 92
@@ -154,7 +151,7 @@ operations:
                 sleep 1
               end
           """.trimIndent()
-
+          
           recordSonicPiWav(
               sonicPi(),
               Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
@@ -174,5 +171,4 @@ operations:
               display("analysis error", error.cause?.message ?: error.message ?: error.toString())
               null
           }
-
   - execute: { box: render_analysis_guide }

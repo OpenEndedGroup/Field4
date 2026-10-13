@@ -1,17 +1,17 @@
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.signedVolume
-import afield.stdlib.weld
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
+import afield.geometry.mesh.signedVolume
+import afield.geometry.mesh.weld
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)

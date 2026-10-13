@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Field4 MCP server — a thin stdio bridge onto the existing agent backdoor.
 
-This is *not* a new automation surface. It is a stdio Model Context Protocol
-server that translates MCP ``tools/call`` requests into the exact same
-WebSocket messages ``tools/field_backdoor.py`` already speaks (``agent-snapshot``,
+This is a stdio Model Context Protocol server. Document and box calls translate
+into the exact same WebSocket messages ``tools/field_backdoor.py`` already speaks (``agent-snapshot``,
 ``agent-open-document``, ``macro-transcript-command``, ``agent-create-box``,
 ``agent-box-screenshot``). All the semantics — the operation transcript op
 vocabulary, the awaited launch/settle barrier, box output capture — live in the
 JVM (`operation_transcript.kt`) and are reused verbatim. See
 ``dev_docs/agents/OPERATION_TRANSCRIPT.md`` and ``FIELD_BACKDOOR.md``.
+The Electron tab tools address the user's existing WebContentsViews through
+loopback CDP and the tab identity exposed by the app's preload.
 
 Design intent (why a bridge, not a JVM MCP server): the transcript/backdoor
 split (`dev_docs/agents/README.md`) parked in-JVM MCP servers
@@ -67,9 +68,19 @@ from field_backdoor import (  # noqa: E402
     make_unverified_ssl_context,
 )
 from verification_runtime import field_instance_info  # noqa: E402
+from field_electron_mcp import (  # noqa: E402
+    ElectronUnavailable,
+    act_on_tab,
+    inspect_tab,
+    list_tabs,
+    public_tab,
+    recent_console,
+    screenshot_tab,
+    select_tab,
+)
 
 SERVER_NAME = "field"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.2.0"
 DEFAULT_PROTOCOL_VERSION = "2024-11-05"
 ADHOC_MACRO_NAME = "mcp-adhoc"
 
@@ -375,6 +386,24 @@ class FieldMcpServer:
         result["attachedDocument"] = self.attached_document
         return result
 
+    async def tool_electron_tabs(self, _args: dict[str, Any]) -> dict[str, Any]:
+        return {"tabs": [public_tab(tab) for tab in await list_tabs(self.port)]}
+
+    async def tool_electron_inspect(self, args: dict[str, Any]) -> dict[str, Any]:
+        return await inspect_tab(await select_tab(self.port, args.get("tab")))
+
+    async def tool_electron_act(self, args: dict[str, Any]) -> dict[str, Any]:
+        return await act_on_tab(
+            await select_tab(self.port, args.get("tab")),
+            args["action"], args["target"], args.get("value"),
+        )
+
+    async def tool_electron_screenshot(self, args: dict[str, Any]) -> list[dict[str, Any]]:
+        return await screenshot_tab(await select_tab(self.port, args.get("tab")))
+
+    async def tool_electron_console(self, args: dict[str, Any]) -> dict[str, Any]:
+        return recent_console(await select_tab(self.port, args.get("tab")), int(args.get("limit", 30)))
+
     async def tool_list_open_documents(self, _args: dict[str, Any]) -> dict[str, Any]:
         if not health_check(self.port, self.ssl_context):
             raise McpToolError(f"Field4 is not running on port {self.port}.")
@@ -651,7 +680,7 @@ class FieldMcpServer:
         # a fresh canvas in a child JVM: no document needs to be open
         client = await self._ensure_client()
         payload = await client.run_jvm_main(
-            "afield.paint.GestureReplayMain", jvm_args=[str(request_path)], timeout=max(self.timeout, 300.0)
+            "afield.graphics.paint.GestureReplayMain", jvm_args=[str(request_path)], timeout=max(self.timeout, 300.0)
         )
         stdout = str(payload.get("stdout") or "")
         try:
@@ -722,7 +751,7 @@ class FieldMcpServer:
         else:
             # Source mode: probe any loaded class/file by name. The JDI helper matches
             # on the source basename and/or fully-qualified class name, so a repo path
-            # like "src/jvmMain/kotlin/afield/Server.kt" reduces to "Server.kt".
+            # like "src/jvmMain/kotlin/afield/app/server/Server.kt" reduces to "Server.kt".
             source_name = Path(str(file_arg)).name if file_arg else None
             class_name = str(class_arg) if class_arg else None
             payload = await client.debug_source_probe(
@@ -786,6 +815,11 @@ class FieldMcpServer:
     # ---- MCP protocol -----------------------------------------------------
 
     TOOLS: list[dict[str, Any]] = [
+        {"name": "field_electron_tabs", "description": "List the real Field Electron windows and tabs, including the selected tab, URL, document, and app identity. Does not open a browser copy or change tabs.", "inputSchema": {"type": "object", "properties": {}}},
+        {"name": "field_electron_inspect", "description": "Read the selected live Field Electron tab's visible text, headings, links and labelled controls. Pass tab id or distinctive title to inspect another existing tab.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}}}},
+        {"name": "field_electron_act", "description": "Click or fill one visible labelled control in the live Field Electron tab. Matches a unique accessible label, text or id; returns ambiguity instead of guessing. This changes the user's visible app.", "inputSchema": {"type": "object", "required": ["action", "target"], "properties": {"tab": {"type": "string"}, "action": {"type": "string", "enum": ["click", "fill"]}, "target": {"type": "string"}, "value": {"type": "string"}}}},
+        {"name": "field_electron_screenshot", "description": "Capture the actual live Field Electron tab's viewport as an MCP image. Defaults to the selected tab; no independent browser is opened.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}}}},
+        {"name": "field_electron_console", "description": "Read recent warning and error console messages recorded by the real Field Electron tab.", "inputSchema": {"type": "object", "properties": {"tab": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}}}},
         {"name": "field_reply_note", "description": "Append a persistent reply to a geometry annotation for findings, decisions, verification or handoff context. Replies do not resolve or reopen notes. Requires the current note version and geometry revision. Original note, previous replies and images remain intact.", "inputSchema": {"type":"object", "required":["viewId","noteId","text","actor","checkedRevision","expectedVersion"], "properties": {
             "viewId":{"type":"string"}, "noteId":{"type":"string"}, "text":{"type":"string","description":"Durable findings and evidence, up to 16000 characters."},
             "actor":{"type":"string","description":"Person or agent/task name."}, "checkedRevision":{"type":"string"}, "expectedVersion":{"type":"integer"}
@@ -1024,8 +1058,8 @@ class FieldMcpServer:
                 "type, thread, resolution) plus any in-scope 'scope' symbols.\n\n"
                 "Two targeting modes (give exactly one):\n"
                 "  • Source mode — probe ANYWHERE in loaded src/ code: pass 'file' (e.g. "
-                "'Server.kt' or 'src/jvmMain/kotlin/afield/Server.kt') and/or 'class' (fully "
-                "qualified, e.g. 'afield.Server'), with 'line' the real file line.\n"
+                "'Server.kt' or 'src/jvmMain/kotlin/afield/app/server/Server.kt') and/or 'class' (fully "
+                "qualified, e.g. 'afield.app.server.Server'), with 'line' the real file line.\n"
                 "  • Box mode — probe a running box's snippet: pass 'box' (uid/name), 'line' within "
                 "the box 'property' (default 'code'); run the box first.\n\n"
                 "Preconditions: Field launches with remote debugging on by default (JDWP); the "
@@ -1049,7 +1083,7 @@ class FieldMcpServer:
                     },
                     "class": {
                         "type": "string",
-                        "description": "Source mode: fully-qualified class, e.g. 'afield.Server'.",
+                        "description": "Source mode: fully-qualified class, e.g. 'afield.app.server.Server'.",
                     },
                     "box": {
                         "type": "string",
@@ -1085,6 +1119,11 @@ class FieldMcpServer:
     def _dispatch_table(self):
         return {
             "field_status": self.tool_status,
+            "field_electron_tabs": self.tool_electron_tabs,
+            "field_electron_inspect": self.tool_electron_inspect,
+            "field_electron_act": self.tool_electron_act,
+            "field_electron_screenshot": self.tool_electron_screenshot,
+            "field_electron_console": self.tool_electron_console,
             "field_inspect_view": self.tool_inspect_view,
             "field_review_note": self.tool_review_note,
             "field_reply_note": self.tool_reply_note,
@@ -1199,6 +1238,8 @@ class FieldMcpServer:
                     content = [{"type": "text", "text": json.dumps(result, indent=2, default=str)}]
                 return self._ok(msg_id, {"content": content, "isError": False})
             except McpToolError as exc:
+                return self._ok(msg_id, {"content": [{"type": "text", "text": str(exc)}], "isError": True})
+            except ElectronUnavailable as exc:
                 return self._ok(msg_id, {"content": [{"type": "text", "text": str(exc)}], "isError": True})
             except BackdoorError as exc:
                 log("backdoor error:", exc)

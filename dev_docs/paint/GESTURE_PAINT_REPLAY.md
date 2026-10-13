@@ -8,15 +8,15 @@ below.
 
 Code:
 
-- `src/jvmMain/kotlin/afield/paint/gestureReplay.kt` has three `PaintCanvas.gesture(...)`
+- `src/jvmMain/kotlin/afield/graphics/paint/gestureReplay.kt` has three `PaintCanvas.gesture(...)`
   overloads and `penPose`.
-- `src/jvmMain/kotlin/afield/visualizers.kt` holds `gesture(pen = true)`, `PenSample`,
+- `src/jvmMain/kotlin/afield/ui/visualization/visualizers.kt` holds `gesture(pen = true)`, `PenSample`,
   `GestureHandle.penSamples`, `penLane` and `setTake(List<PenSample>)`.
 - `src/commonMain/resources/arrayControls.js` and `controllers.js` record the pen.
-- `src/jvmMain/kotlin/afield/paint/GestureReplayMain.kt` is the agent entry point.
+- `src/jvmMain/kotlin/afield/graphics/paint/GestureReplayMain.kt` is the agent entry point.
 - `tools/field_mcp.py` has the `field_paint_gesture` tool.
 
-Test: `src/jvmTest/kotlin/afield/paint/GesturePaintReplayTest.kt`. It needs the paint library
+Test: `src/jvmTest/kotlin/afield/graphics/paint/GesturePaintReplayTest.kt`. It needs the paint library
 (`./gradlew buildPaintNative`) and skips without it. The lander has no dylib, so run it locally.
 Demo: `dev_docs/agents/transcripts/gesture_paint_replay.yaml`.
 

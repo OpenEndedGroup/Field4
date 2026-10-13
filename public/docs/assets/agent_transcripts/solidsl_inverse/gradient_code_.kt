@@ -1,8 +1,8 @@
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // ---- the shape, written once, as a value ------------------------------------------
 // A ball blended onto a rod. Change a number and everything below follows, because a
-// SolidExpr is a value rather than a closure — which is the whole of afield.solidsl.
+// SolidExpr is a value rather than a closure — which is the whole of afield.lang.solidsl.
 val part = smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), k = 0.18)
 // -------------------------------------------------------------------------------------
 

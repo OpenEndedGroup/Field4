@@ -214,7 +214,7 @@ only when Python has published a new frame, and puts it on a quad that fills the
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/python_cv/native_shared_memory.png" alt="A native Field render window showing Katherine Murphy on the swing from Ballet Mécanique as a full-window texture, with green point tracks and a pink pose skeleton drawn over her as GPU line geometry." wait="6" timeout="300" capture="native-window" native-wait-frames="90" trim-native=true graphics-context=true embed=true name="python-cv-native-shared-memory" macro-file="../../python/fieldcv/examples/shared_memory.yaml" capture-box="cv_camera_quad" requires="jep,python:cv2,python:mediapipe"}
 :::static
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
 
@@ -236,7 +236,7 @@ A second box draws the tracks and the skeleton, rebuilt every frame from
 becomes a thin quad of two triangles, because a GPU line is one pixel wide whatever the window:
 
 ```diffstatic {data-lang=kotlin}
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 val tracks = NumpyShared.lines("tracks")
 val skeleton = NumpyShared.lines("skeleton")
@@ -356,4 +356,4 @@ Python boxes share one interpreter, so the pipeline's thread is an ordinary Pyth
 running after the cell that started it returns, and it can call into the JVM. Field's **Stop** on its
 own cancels only a box's asyncio tasks, so `fieldcv` registers each pipeline with the box that
 started it and closes it when that box stops. See also
-[Python in a Box](python.md) and [afield.four graphics](afield_four_graphics.md).
+[Python in a Box](python.md) and [Field 4 graphics](afield_four_graphics.md).

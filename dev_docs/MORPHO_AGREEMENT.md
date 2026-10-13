@@ -3,8 +3,8 @@
 `morpho_examples.md` says that Field's netlists are checked two independent ways and what each way
 compares. This file is the corpus, the tables, and which of the numbers a test actually asserts.
 
-Sources: `src/jvmTest/kotlin/afield/morpho/MorphoBridgeTest.kt`,
-`src/jvmTest/kotlin/afield/morpho/MorphoLanguageTest.kt`.
+Sources: `src/jvmTest/kotlin/afield/lang/morpho/MorphoBridgeTest.kt`,
+`src/jvmTest/kotlin/afield/lang/morpho/MorphoLanguageTest.kt`.
 
 ## Oracle one: arithmetic
 

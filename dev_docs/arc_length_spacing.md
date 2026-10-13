@@ -48,7 +48,7 @@ about it either without checking.
 
 ## The fix
 
-Two changes in `src/jvmMain/kotlin/afield/graphics/PathFlattener.kt`:
+Two changes in `src/jvmMain/kotlin/afield/geometry/path/PathFlattener.kt`:
 
 1. **`subdivisionErrorFor` = `max(flatnessFor, parameterSkewFor)`.** The new term is
    `|B(0.5) - (a + b) / 2|`: the gap between the curve's mid-*parameter* point and the chord's
@@ -71,7 +71,7 @@ Two changes in `src/jvmMain/kotlin/afield/graphics/PathFlattener.kt`:
 
 ## The numbers
 
-From `src/jvmTest/kotlin/afield/graphics/ArcLengthSpacingTest.kt`, which scores the real Kotlin path
+From `src/jvmTest/kotlin/afield/geometry/path/ArcLengthSpacingTest.kt`, which scores the real Kotlin path
 against `ArcLengthOracle` — an independent high-resolution numerical arc-length table that shares no
 code with `PathFlattener` (it walks the node list itself, in double precision, 8192 samples per
 segment). 64 equally spaced `setD` requests per curve, `tol = 0.01`:
@@ -205,9 +205,9 @@ the dashes now visibly bend with the curve where they used to be straight chords
 
 | file | what |
 |---|---|
-| `src/jvmMain/kotlin/afield/graphics/PathFlattener.kt` | `subdivisionErrorFor`, `parameterSkewFor`, `minSubDiv` |
-| `src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt` | `endOf` / `subpathStartAt`; a leftover debug `println` removed from `evaluateDCubicFrame`; `normal2` KDoc now says it is not normalized |
-| `src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt` | `byDashing` follows the curve; `resolution` parameter |
-| `src/jvmTest/kotlin/afield/graphics/ArcLengthSpacingTest.kt` | `ArcLengthOracle`, the curve family, five scoring tests |
-| `src/jvmTest/kotlin/afield/graphics/CursorClosedLineTest.kt` | the `Close`-node regressions |
+| `src/jvmMain/kotlin/afield/geometry/path/PathFlattener.kt` | `subdivisionErrorFor`, `parameterSkewFor`, `minSubDiv` |
+| `src/jvmMain/kotlin/afield/geometry/path/java2d/FLinesAndJavaShapes.kt` | `endOf` / `subpathStartAt`; a leftover debug `println` removed from `evaluateDCubicFrame`; `normal2` KDoc now says it is not normalized |
+| `src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt` | `byDashing` follows the curve; `resolution` parameter |
+| `src/jvmTest/kotlin/afield/geometry/path/ArcLengthSpacingTest.kt` | `ArcLengthOracle`, the curve family, five scoring tests |
+| `src/jvmTest/kotlin/afield/geometry/path/CursorClosedLineTest.kt` | the `Close`-node regressions |
 | `dev_docs/agents/transcripts/arclength_spacing_demo.yaml` | the replayable before/after |

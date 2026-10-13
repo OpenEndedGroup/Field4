@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_chained_vocabulary" index="0" -->
 
 ```edn [field-box id="polytope_chained_vocabulary" role="properties"]
-{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 45 "characters" 2291 "sha256" "db8d8dcf39ac838e381f78b780a2e343c3b56a58d982d21bea484a4076e52325"}]}
+{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 45 "characters" 2298 "sha256" "ae12ff9c701d6701701ee6fa0a49da840c1145eebf5cd3a5e0eded69dd8b2e9d"}]}
 ```
 
 ```kotlin [field-property box="polytope_chained_vocabulary" name="code" path="polytope_chained_vocabulary_code_.kt"]
-import afield.stdlib.MeshView
+import afield.geometry.mesh.MeshView
 
 // Until 2026-08-05 none of these compiled: the eight composites were declared on
 // PolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no
@@ -67,12 +67,12 @@ viz("chain", long.summary())
 <!-- field-box id="polytope_plate_with_and_without" index="1" -->
 
 ```edn [field-box id="polytope_plate_with_and_without" role="properties"]
-{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 65 "characters" 3356 "sha256" "54cdcfa605301f39c6c99d1c09d0c3ab0a2392c3331966845f307a5d4098876b"}]}
+{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 65 "characters" 3368 "sha256" "a326f315b30121c8f18b8d78b8efef9b2ae673c2b4df32863731cc0dbdf2a809"}]}
 ```
 
 ```kotlin [field-property box="polytope_plate_with_and_without" name="code" path="polytope_plate_with_and_without_code_.kt"]
-import afield.stdlib.MeshView
-import afield.stdlib.Vec3
+import afield.geometry.mesh.MeshView
+import afield.math.linalg.Vec3
 
 // ***** CHANGE THIS LINE ***** the hole's half-width; 0 or more, less than 1.
 val hole = 0.45f

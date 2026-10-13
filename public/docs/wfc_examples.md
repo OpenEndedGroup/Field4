@@ -21,9 +21,9 @@ Most of the work is in the rules, not the solver.
 
 ## Source files
 
-The solver is [`wfc.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/wfc.kt), with no dependencies beyond `java.awt.image` and `ImageIO`.
+The solver is [`wfc.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/automata/wfc.kt), with no dependencies beyond `java.awt.image` and `ImageIO`.
 The views that put it on the canvas (`ToHTML`, heatmaps, montages) are in
-[`wfc_field.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/wfc_field.kt). The solver covers:
+[`wfc_field.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/simulation/automata/wfc_field.kt). The solver covers:
 
 - **The core solver** on integer tile IDs — [`WfcSolver`](reference/data.md#wfc-kt-wfcsolver), with
   weighted Shannon-entropy cell selection, weighted collapse, and bitset propagation that reuses
@@ -974,7 +974,7 @@ would yield one unique tile per distinct value. Quantise first. At the six level
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/scalar-field.png" wait="2.0" timeout="180" capture="box" open-outputs="true" w="1200" name="wfc-scalar-field"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 :::fold build the source field: a sum of bumps quantised to six levels
 fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {

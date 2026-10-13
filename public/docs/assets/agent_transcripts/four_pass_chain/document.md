@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pc_renderer" index="0" -->
 
 ```edn [field-box id="pc_renderer" role="properties"]
-{"id" "pc_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["pc_scene"] "properties" {"children" #{#afield/box "pc_scene"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_renderer_code_.kt" "lines" 11 "characters" 250 "sha256" "3136c727cd3fd3d333acf6cd802906e64dbef95f446c869224d5fd0b491ca3e2"}]}
+{"id" "pc_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["pc_scene"] "properties" {"children" #{#afield/box "pc_scene"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_renderer_code_.kt" "lines" 11 "characters" 261 "sha256" "e4db4ddb0df79f9f886e9dc24d719fc6e9609a6d4eb47eb1f7e07273cbc6fe54"}]}
 ```
 
 ```kotlin [field-property box="pc_renderer" name="code" path="pc_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -36,18 +36,18 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
 
 ```edn [field-box id="pc_scene" role="properties"]
-{"id" "pc_scene" "index" 1 "name" "scene" "parents" ["root" "pc_renderer"] "children" ["pc_chain"] "properties" {"children" #{#afield/box "pc_chain"} "parents" #{#afield/box "root" #afield/box "pc_renderer"} "name" "scene" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_scene_code_.kt" "lines" 38 "characters" 1198 "sha256" "65b80104bfaa9f7c9b54413599f8f62f1e27f5b539535ed1a00525f2f8c4bff7"}]}
+{"id" "pc_scene" "index" 1 "name" "scene" "parents" ["root" "pc_renderer"] "children" ["pc_chain"] "properties" {"children" #{#afield/box "pc_chain"} "parents" #{#afield/box "root" #afield/box "pc_renderer"} "name" "scene" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_scene_code_.kt" "lines" 38 "characters" 1224 "sha256" "8f0485fa7999ed359e081809c017231acb56e9483422f34e7160621cece094f1"}]}
 ```
 
 ```kotlin [field-property box="pc_scene" name="code" path="pc_scene_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -88,14 +88,14 @@ println("scene ready: ${bundle.postStack.names()}")
 <!-- field-box id="pc_chain" index="2" -->
 
 ```edn [field-box id="pc_chain" role="properties"]
-{"id" "pc_chain" "index" 2 "name" "pass chain" "parents" ["root" "pc_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pc_scene"} "name" "pass chain" "_tombstone" false "frame" #afield/rect [640.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_chain_code_.kt" "lines" 38 "characters" 1371 "sha256" "310a470e88ed8057770a79cdeefd65c979211239ad2b060e74e1d8f2d34b3bc7"}]}
+{"id" "pc_chain" "index" 2 "name" "pass chain" "parents" ["root" "pc_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pc_scene"} "name" "pass chain" "_tombstone" false "frame" #afield/rect [640.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_chain_code_.kt" "lines" 38 "characters" 1411 "sha256" "39a684eda8bc9e594bacdcb397857764a016f4d4550611b6f3256f575940a6d4"}]}
 ```
 
 ```kotlin [field-property box="pc_chain" name="code" path="pc_chain_code_.kt"]
-import afield.four.fabricated.FabricateBuiltChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricateBuiltChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.addPassChain
 
 prop<FabricateBuiltChain>(chain)
 

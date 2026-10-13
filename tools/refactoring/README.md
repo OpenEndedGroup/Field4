@@ -159,6 +159,66 @@ and `fc` types, plus the linalg, arena and storage wildcards. A future intro pro
 post-migration names. The existing live-box `analyzeBoxImports`/`formatBoxImports` helper can do
 broader cleanup with classpath/K2 evidence; this standalone tool does not infer that evidence.
 
+## Generate a split-package symbol map
+
+The map needs a declaration inventory and reviewed destination choices. Generate the inventory
+from the unmodified session worktree before changing source:
+
+```sh
+uv run python tools/refactor.py declarations --repo /path/to/session/repository \
+  --out /path/to/session/declaration-index
+```
+
+This indexes Git-tracked `.kt` files in Kotlin source directories, including common/JVM/JS and
+standalone tools. It uses PSI rather than regex to identify top-level classes, objects, aliases,
+properties and functions. It records source hashes, signatures, visibility and individual overloads.
+Class members and local declarations are not separate package-level symbols; nested references
+follow the owning type's mapping. Parser errors are explicit inventory gaps. This is syntax
+inventory, not a resolved symbol/ABI index.
+
+Assign coherent files to destination packages, with exact symbol choices for mixed files:
+
+```json
+{
+  "schema": 1,
+  "files": {
+    "src/jvmMain/kotlin/afield/graphics/color/Colormaps.kt": "afield.graphics.color"
+  },
+  "symbols": {
+    "afield.four.modules.fromContext": "afield.document.context.fromContext"
+  },
+  "keep": []
+}
+```
+
+```sh
+uv run python tools/refactor.py symbol-map --repo /path/to/session/repository \
+  --index /path/to/session/declaration-index/declarations.json \
+  --assignments /path/to/assignments.json --recipe /path/to/session/recipe.json \
+  --out /path/to/session/symbol-map
+```
+
+The output `recipe.json` expands file choices into exact symbol families; `symbol-map.json` keeps
+per-declaration evidence and unassigned families, and `report.md` groups remaining choices by file.
+`assignments.template.json` lists the remaining files with null destinations: fill in coherent
+file destinations, leaving null entries unresolved, then generate into a new output directory.
+A file assignment covers all overloads/platform counterparts of each named family, even when some
+are declared elsewhere. Conflicting family choices are rejected rather than picking the last one.
+Private top-level declarations stay in the inventory but are not exported into reference rules.
+Explicit `keep` families become `retainedSymbols`; they cannot overlap move rules. Stale source
+hashes, added/removed tracked sources, unknown choices, parser errors in assigned files and direct
+destination collisions fail closed.
+
+The generated `knownPackages` records old and proposed package ownership. A split applies to its
+own declarations, not automatically to every descendant package. This avoids treating an unmoved
+child such as `afield.math.gp` as part of a split of the root `afield` package. Unknown qualified
+names remain findings.
+
+Review the generated recipe, copy it to the session's `recipe.json`, then replan. This step does
+not move declarations out of mixed files, add same-package imports, or resolve split star imports.
+Those remain held until extraction and binding-aware repair are done. Do not treat an empty
+unassigned list as proof of equivalent JVM names, overload resolution or script defaults.
+
 ## Containers and document boundaries
 
 - Kotlin source and scripts: PSI edits preserve import aliases, comments, LF/CRLF and Unicode offsets.
@@ -183,6 +243,35 @@ Kotlin files. Any blocking finding in that group holds all of its proposed edits
 individual groups. Generated starting points remain generator-owned in repository mode. Backups
 and logs are preserved; migrating code restored from history is a later explicit scan, not an
 automatic restore hook in this version.
+
+## Expanding wildcard imports from split packages
+
+The symbol-map generator emits `splitStarImports` for each fully assigned split package:
+
+```json
+{"splitStarImports": {"old.mixed": ["new.geometry", "new.graphics"]}}
+```
+
+The engine replaces `import old.mixed.*` with both destination wildcard imports. It deduplicates
+against existing destination stars and the configured script host imports, preserves line endings
+and trailing comments, and leaves explicit/aliased imports to their normal symbol rules.
+Explicitly retained declarations keep the original package among the destination stars.
+
+For scripts, expansion requires an explicit `scriptImports` destination-host profile. A missing
+profile keeps split stars held; it must not spray dozens of imports into box code whose host
+already supplies them. When the intro covers all destination stars, the old import is removed.
+When it covers some, only the missing ones are added. An explicit empty list opts into expansion
+for standalone scripts with no host imports. The profile is a caller assertion for all scripts in
+the selected roots, so do not mix incompatible script hosts in one plan. Migrate the central Field
+intro first and populate this profile from its destination imports. Compiled source files never
+use the script profile to remove imports.
+
+The generator recomputes these lists from the inventory every time. Unassigned declarations,
+parser gaps in that package, renamed symbols, or destinations that are another split package
+prevent expansion. Missing mappings never mean that a declaration stays put. Comments inside
+an import keep that import held for review. These are syntactic proposals: broader imports can
+introduce ambiguity or change overload resolution, so build, runtime and binding checks remain
+necessary. Regenerate the symbol map and replan after completing or changing assignments.
 
 ## Apply, verify, undo
 
@@ -251,6 +340,12 @@ ignored pointer. Keep the host server in that checkout while working in the sess
    so it releases the writer lease, then replan. Decisions remain review records; they never alter
    the immutable plan. Preserve permits an intentional unchanged reference at delivery only if
    that group has no proposed edits. Held edits must be resolved in source or by an adapter.
+   Large agent batches should write dispositions as a JSON array of
+   `{"item":"ITEM_ID","state":"patch","reason":"What changed"}` records, then run
+   `tools/refactor_pass.py decide-many --file /absolute/path/to/decisions.json` once.
+   The command checks every item and its current source hashes under the session state lock,
+   then saves all records together. An invalid or stale preservation record rejects the whole
+   submission without partial writes. These records do not clear migration holds.
 3. **Rehearse:** apply ready groups in the copies, verify their bytes, undo, and verify restoration.
    Rehearsals use fresh journals and can be repeated. This is not build or runtime verification.
 4. **Prepare:** once the relevant findings are resolved, apply the complete plan and leave it
@@ -301,3 +396,47 @@ uv run --group backdoor python tools/refactor_pass.py resume --session /path/to/
 
 Sidecar filename conventions are unchanged. Private source and operations retain the
 loopback/same-site boundary used by Docs pass and terminals.
+
+### Field box intro coverage
+
+Use `boxImports` (import paths without the `import` keyword) when the destination defaults are
+Field's `intro`. It overrides `scriptImports` only for Kotlin properties in `metadata.edn` and
+sidecars explicitly registered by those documents. Standalone scripts, unregistered `.kt` files,
+and Markdown fences do not inherit this profile. Compiled Kotlin never uses host coverage.
+
+Migrate the central intro first and copy its exact import list into `boxImports`. An identical
+host import is redundant even while a split package still has unresolved declarations: remove it
+from boxes rather than expanding it there. During a staged migration the central intro may keep
+an old split wildcard as a temporary fallback alongside its known destinations. That is not a
+complete split map or permission to leave the package unchanged; finish the declaration assignments
+and remove the fallback before delivery. A complete `splitStarImports` entry lets boxes drop the
+old wildcard once all destinations are supplied centrally. Named imports are removed only when
+the identical explicit import is in the intro; wildcard coverage alone cannot prove they are
+redundant. Syntax errors and existing EDN/sidecar drift continue to hold their document groups.
+
+For a multiplatform package, set `boxSplitStarImports` to its JVM/common declaration destinations
+from the expanded inventory. Each entry must be a subset of the complete `splitStarImports` map,
+and every selected destination must have a wildcard in `boxImports`. This limits registered box
+code to its host platform; it does not change the global map used for compiled source or unrelated
+scripts. Review this runtime projection with the intro: validation checks membership and coverage,
+while the inventory's source sets provide the evidence that no JVM declaration was omitted.
+
+### Overload families that split across domains
+
+A qualified function name may identify several different receivers. Assign these with
+`declarations: {inventoryDeclarationId: destinationQualifiedName}` in the assignments file.
+Provide every public/internal declaration in that family; partial or stale assignments fail.
+Per-declaration assignments override file defaults, but cannot contradict an explicit whole-family
+assignment. The inventory and expanded map retain source file, signature and source set.
+
+Generation emits `splitSymbols` for families with multiple destinations. These are assigned
+owners, not unassigned work. Complete split-star imports include their destination packages;
+explicit imports (including aliases) and qualified call sites remain `split-symbol` findings
+that list the candidate destinations. The syntax-only engine never guesses a receiver's type.
+A compile/binding pass must resolve these uses. Reuse the declaration assignments when regenerating;
+a previous recipe's split list alone is not evidence of current declaration coverage.
+
+Declaration IDs include source path and declaration signature, not line numbers: moving a comment
+or changing the intro does not discard ownership decisions. Inventories still check complete file
+hashes before generation, so refresh the inventory after any source edit. Renamed or moved
+declarations and changed signatures need refreshed assignments.

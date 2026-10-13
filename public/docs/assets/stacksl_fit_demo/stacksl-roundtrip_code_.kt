@@ -10,9 +10,9 @@
 // program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
 // column off by one, a token mismatched — it would not be small, it would be a different picture.
 
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 import kotlin.math.abs
 
 run {
