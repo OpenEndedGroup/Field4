@@ -233,28 +233,41 @@ def detail(repo, item_id):
     item = next((i for i in json.loads((Path(state['plan']) / 'review-index.json').read_text()) if i['id'] == item_id), None)
     if item is None:
         raise RefactorError('Unknown review item')
-    plan_dir = Path(state['plan']); plan = load_plan(plan_dir)
+    plan_dir = Path(state['plan'])
+    return item_detail(state, plan_dir, load_plan(plan_dir), item)
+
+
+def item_detail(state, plan_dir, plan, item, *, compact=True):
+    """Render an item from one validated plan; batch callers reuse that plan."""
+    item_id = item['id']
     root = next(r for r in plan['roots'] if r['id'] == item['root'])
     working = next(r for r in state['roots'] if r['id'] == item['root'])
     stale = current_hashes(Path(working['path']), item['snapshots']) != item['snapshots']
     snippets = []
     names = list(plan['recipe']['packages']) + list(plan['recipe']['symbols']) + plan['recipe'].get('splitPackages', [])
+    texts = {}; extracted = {}; excerpts = {}
     for finding in item['findings']:
-        path = finding['path']; text = source_text(plan_dir, root, path)
+        path = finding['path']
+        if path not in texts:
+            texts[path] = source_text(plan_dir, root, path)
+        text = texts[path]
         excerpt = None; location = 'file'
         if text is not None:
             unit_name = finding.get('unit')
             if unit_name:
                 try:
-                    units = extract(path, text, PROPERTIES | set(plan['recipe'].get('kotlinProperties', [])), workspace=root['kind'] == 'workspace').units
-                    unit = next((u for u in units if u.identity == unit_name), None)
+                    if path not in extracted:
+                        extracted[path] = {u.identity: u for u in extract(path, text, PROPERTIES | set(plan['recipe'].get('kotlinProperties', [])), workspace=root['kind'] == 'workspace').units}
+                    unit = extracted[path].get(unit_name)
                     if unit:
                         excerpt = numbered(unit.code, finding.get('line', 1)); location = unit_name + ' (unit line numbers)'
                 except (ContainerError, ValueError):
                     pass
             if excerpt is None:
-                matches = [i for i, line in enumerate(text.splitlines(), 1) if any(n in line for n in names)]
-                excerpt = '\n\n'.join(numbered(text, n, 2) for n in matches[:8]) or numbered(text, finding.get('line', 1))
+                if path not in excerpts:
+                    matches = [i for i, line in enumerate(text.splitlines(), 1) if any(n in line for n in names)]
+                    excerpts[path] = '\n\n'.join(numbered(text, n, 2) for n in matches[:8])
+                excerpt = excerpts[path] or numbered(text, finding.get('line', 1))
         snippets.append(finding | {'excerpt': excerpt, 'location': location,
                                   'sourceAvailable': text is not None})
     diffs = []
@@ -265,7 +278,7 @@ def detail(repo, item_id):
         after = (plan_dir / 'blobs' / change['after']).read_text()
         diffs.append({'path': change['path'], 'destination': change.get('destination', change['path']),
                       'diff': unified_text(before, after, change['path'], change.get('destination', change['path'])),
-                      'compactChanges': compact_changes(before, after), 'held': change['held']})
+                      'compactChanges': compact_changes(before, after) if compact else None, 'held': change['held']})
     no_proposal = None
     if not diffs:
         outside_prose_scope = any(f['kind'] == 'unregistered-reference' and f['path'].endswith('.md') and
@@ -377,7 +390,17 @@ def brief(repo, batch, direction=''):
     # Commands are explanatory text, not shell-interpolated execution.
     brief_id = batch + '-' + uuid.uuid4().hex[:12]
     data_path = directory / 'briefs' / (brief_id + '.json')
-    data = [detail(repo, i['id']) for i in items]
+    print(f'Preparing {len(items)} review groups for {BATCHES[batch]}…', file=sys.stderr, flush=True)
+    plan_dir = Path(state['plan'])
+    plan = load_plan(plan_dir)
+    data = []
+    last_progress = time.monotonic()
+    for number, item in enumerate(items, 1):
+        # The agent needs exact unified diffs, not the UI-only word-diff rendering.
+        data.append(item_detail(state, plan_dir, plan, item, compact=False))
+        if number == len(items) or time.monotonic() - last_progress >= 2:
+            print(f'Prepared {number}/{len(items)} review groups', file=sys.stderr, flush=True)
+            last_progress = time.monotonic()
     save_json(data_path, data)
     text = f'''# Refactor batch: {BATCHES[batch]}
 
@@ -415,6 +438,7 @@ Stop after recording outcomes. The pass owner handles combined verification and 
 
 
 def agent(repo, batch, direction):
+    print('Preparing refactor agent session…', file=sys.stderr, flush=True)
     directory, state = load(repo)
     with writer(directory):
         directory, state = load(repo)
@@ -427,6 +451,7 @@ def agent(repo, batch, direction):
         if not executable:
             raise RefactorError('Configured coding agent is not installed')
         prompt = 'Read the refactor batch brief at ' + prepared['path'] + ' and follow it. Stay on the integration branch; do not land partial work.'
+        print(f'Starting {Path(executable).name} in {state["worktree"]}', file=sys.stderr, flush=True)
         return subprocess.call([executable, prompt, '--add-dir', str(directory)], cwd=state['worktree'])
 
 
