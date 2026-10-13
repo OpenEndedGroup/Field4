@@ -764,6 +764,17 @@ launch_electron_when_ready() {
     if [ -f build/field-launch/electron-args ]; then
         while IFS= read -r earg; do [ -n "$earg" ] && set -- "$@" "$earg"; done < build/field-launch/electron-args
     fi
+    CDP_PORT="${FIELD_ELECTRON_CDP_PORT:-$((PORT + 20000))}"
+    if [ "$CDP_PORT" != off ]; then
+        case "$CDP_PORT" in
+            ''|*[!0-9]*) echo "field: invalid FIELD_ELECTRON_CDP_PORT: $CDP_PORT" >&2; return 1 ;;
+        esac
+        if [ "$CDP_PORT" -lt 1 ] || [ "$CDP_PORT" -gt 65535 ]; then
+            echo "field: Electron debugging port is out of range: $CDP_PORT" >&2
+            return 1
+        fi
+        set -- "$@" "--remote-debugging-address=127.0.0.1" "--remote-debugging-port=$CDP_PORT"
+    fi
     cd "$(cat build/field-launch/electron-dir)" || return 0
     APP_URL="$APP_URL" WITH_DEVTOOLS="${WITH_DEVTOOLS:-0}" exec "$ELECTRON_BIN" "$@" .
 }

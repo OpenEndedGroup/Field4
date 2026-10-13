@@ -1321,6 +1321,26 @@ function createMainWindow() {
   };
   ipcMain.on("field4-renderer-diagnostic", onRendererDiagnostic);
 
+  const onTabIdentity = (event) => {
+    const tab = tabs.find((candidate) => liveContents(candidate) === event.sender);
+    if (!tab) return null;
+    return {
+      windowId: win.id,
+      tabId: tab.id,
+      webContentsId: event.sender.id,
+      active: tab.id === activeTabId,
+      title: tab.title,
+      url: contentsUrl(tab),
+      document: (() => {
+        try { return new URL(contentsUrl(tab)).searchParams.get("file"); }
+        catch (_) { return null; }
+      })(),
+      utility: isUtilityUrl(contentsUrl(tab)),
+      diagnosticLogPath,
+    };
+  };
+  ipcMain.handle("field4-tab-identity", onTabIdentity);
+
   const onlyFromStrip =
     (handler) =>
     (event, ...args) => {
@@ -1556,6 +1576,7 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-reveal", onRevealTabs);
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
     ipcMain.removeHandler("field4-history-capture-window");
+    ipcMain.removeHandler("field4-tab-identity");
     ipcMain.removeListener("field4-renderer-diagnostic", onRendererDiagnostic);
   });
 

@@ -507,7 +507,7 @@ class PassTest(unittest.TestCase):
         self.repo = TempRepo()
         self.repo.write("public/docs/guide.md", GUIDE)
         self.repo.write("public/docs/other.md", "# Other\n\nA second page with a sentence.\n")
-        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n__pycache__/\n")
         self.repo.write("agent.py", FAKE_AGENT)
         self.repo.write("sleepy.py", SLEEPY_AGENT)
         # The real queue's enqueue, so the pass talks to the same files the lander reads.

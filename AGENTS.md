@@ -192,6 +192,16 @@ branch with `tools/merge_regen.py main`, which regenerates rather than hand-merg
 
 ## 4. Backdoor essentials
 
+For work the user expects to see in Field's Electron app, begin with the MCP
+`field_status` and `field_electron_tabs` tools. Check `serverWorkspace`, the
+selected tab and its URL before using document or box operations. Inspect and
+capture the existing tab with `field_electron_inspect` and
+`field_electron_screenshot`; use `field_electron_act` for labelled controls and
+`field_electron_console` for its recent warnings and errors. Use an independent
+browser capture when the task calls for an isolated test, and label that capture
+as a separate browser view. The active output-iframe bridge addresses content
+inside a box's output area.
+
 Prefer `tools/field_backdoor.py` to driving a browser by hand. Full reference:
 [`dev_docs/agents/FIELD_BACKDOOR.md`](dev_docs/agents/FIELD_BACKDOOR.md) (workflow, capture
 signatures and recipes, suite details); cheat sheet:
