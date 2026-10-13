@@ -3575,6 +3575,21 @@ tasks.register<Exec>("buildLearnedShaders") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// The compiler alone, for live Slang boxes (`vertex_fragment`, `compute_s`, ...): no submodule, no shader
+// builds. First-run setup offers it as its own extra; buildLearnedShaders also records the same pointer.
+tasks.register<Exec>("prepareSlangCompiler") {
+    group = "build"
+    description = "Fetches the pinned Slang compiler and records it in build/lighting/slangc.path for live Slang shaders."
+    inputs.file("tools/lighting/build_learned_shader.py")
+    inputs.file("tools/native_download_cache.py")
+    inputs.file("optional/lighting/toolchains.json")
+    outputs.file(layout.buildDirectory.file("lighting/slangc.path"))
+    outputs.upToDateWhen { false }
+    commandLine(rootPythonCommand + listOf("tools/lighting/build_learned_shader.py", "--compiler-only") +
+        if (gradle.startParameter.isOffline) listOf("--offline") else emptyList())
+    if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
+}
+
 // Native preparation scripts use the platform Python command, like the source launcher.
 val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
 
