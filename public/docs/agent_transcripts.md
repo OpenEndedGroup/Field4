@@ -570,6 +570,10 @@ rules side by side on a ring. From the measuring sections of [Drawing with FLine
 
 **Exact booleans and cubic offsets, side by side with the old paths.** Two boxes, each with a dot on every node: the union and difference of a blob and a circle through `Area` and through `booleanExact`, and a star and an S-curve offset by `byOffsetting` and by `byOffsettingExact`. From [Drawing with FLines](fline_examples.md#exact-booleans-and-offsets).
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fline_exact_booleans.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-fline-exact-booleans" alt="Offsets of a star and an S-curve, with a dot on every node. On the left, in orange, the sampled byOffsetting: the star offset crosses itself in loops at every point, and the S-curve offset is a dense chain of dots. On the right, in blue, byOffsettingExact: clean outlines with rounded joins on a handful of nodes" macro-file="../../dev_docs/agents/transcripts/fline_exact_booleans.yaml" capture-box="fline-exact-offsets"}
+// The transcript builds and runs both boxes; this is the offsets box.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/fline_exact_booleans/metadata.edn)
 
 ### sound_render_path
@@ -1240,6 +1244,10 @@ paints the take itself, tilt included. Shift-drag on the pad, with a tablet pen 
 tilt, to record your own, then press **bake take**. `what the pad drops` paints one take four
 ways: position and time only, as a mouse records it; with the pen's pressure; with pressure and
 tilt; and the same path at an even speed. CI executes both boxes.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/gesture_paint_replay.png" capture="box" open-outputs="true" wait="6.0" embed=true hidden=true timeout="180" padding="12" name="gallery-gesture-paint-replay" alt="The pad to paint box with every panel open: three keyframe lanes for x (a rising line), y (one wave) and pressure (a single hump, hardest in the middle); the pen pad with its bake take, paint lanes, paint take and replay lanes buttons; and a cream sheet with one brown brush stroke along the wave, dark and heavy where it starts and fading as the pressure lifts" macro-file="../../dev_docs/agents/transcripts/gesture_paint_replay.yaml" capture-box="gpr_pad"}
+// The transcript builds and runs both boxes; this is the pad box.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gesture_paint_replay/metadata.edn)
 

@@ -76,7 +76,7 @@ operations:
   - create:
       box: gpr_dimensions
       name: what the pad drops
-      frame: { x: 340.0, y: 30.0, w: 260.0, h: 60.0 }
+      frame: { x: 1160.0, y: 30.0, w: 260.0, h: 60.0 }
       properties:
         code: |
           import afield.paint.*
