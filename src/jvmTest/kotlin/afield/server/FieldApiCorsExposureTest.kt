@@ -207,6 +207,7 @@ class FieldApiCorsExposureTest {
             "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
             "refuseUnlessLocalDocsClient" to listOf("loopback"),
             "isSameSiteRequest" to listOf("same-site"),
+            "patchySameSite" to listOf("same-site"),
             // agentRouteAccess.kt. Its own policy, so the docs-annotation opt-ins cannot loosen it;
             // the Host allowlist is the DNS-rebinding check the docs guards do not make.
             "agentRouteRefusal" to listOf("loopback", "localhost-host", "same-site"),
@@ -538,6 +539,7 @@ class FieldApiCorsExposureTest {
             // and deliberately no switch or token (2026-09-30; see docsPass.kt's header and
             // DocsPassRouteTest).
             "POST /api/docs-improvement/pass" to "loopback + same-site",
+            "POST /api/refactor-pass" to "loopback + same-site",
             // /terminal.html (terminal.kt): starts an interactive `claude` in the checkout. The
             // client picks a kind, never a command; same boundary as the revision pass.
             "POST /api/terminal" to "loopback + same-site",
