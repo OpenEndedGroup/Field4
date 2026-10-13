@@ -1,0 +1,10 @@
+{
+  "source": "https://github.com/SethRobinson/Patchy.git",
+  "revision": "b81377425c54ff9eca30e180d3cd9e6f11eb17da",
+  "emsdk": "https://github.com/emscripten-core/emsdk.git",
+  "emsdkRevision": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
+  "emscriptenVersion": "4.0.7",
+  "qtVersion": "6.10.3",
+  "aqtinstallVersion": "3.3.0",
+  "ninjaVersion": "1.12.1"
+}

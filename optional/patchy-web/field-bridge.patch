@@ -1,0 +1,281 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f99ad12..e7bbaff 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1441,6 +1441,7 @@ ${PATCHY_LUPDATE_MANIFEST_SOURCES}
+       # qt_add_executable generates the wasm deployment sidecars (patchy.html,
+       # qtloader.js) that a plain add_executable does not.
+       qt_add_executable(patchy src/app/main.cpp)
++      target_sources(patchy PRIVATE src/app/field_web_bridge.hpp src/app/field_web_bridge.cpp)
+       # The pthread pool must cover the largest fan-out that can be spawned
+       # while the spawning thread immediately blocks on the results (Edit >
+       # Flatten runs the strip compositor on the main thread, up to 16 strips;
+diff --git a/src/app/field_web_bridge.cpp b/src/app/field_web_bridge.cpp
+new file mode 100644
+index 0000000..de3e470
+--- /dev/null
++++ b/src/app/field_web_bridge.cpp
+@@ -0,0 +1,168 @@
++#include "app/field_web_bridge.hpp"
++#include "ui/main_window.hpp"
++#include <emscripten.h>
++#include <QByteArray>
++#include <QDir>
++#include <QFile>
++#include <QTimer>
++
++namespace {
++EM_JS(int, has_same_origin_parent, (), {
++  try { return window.parent !== window && window.parent.location.origin === window.location.origin; }
++  catch (_) { return false; }
++});
++
++// Only a same-origin parent frame can call Patchy's document API. The parent
++// receives JSON-RPC replies from the same live session as the visible editor.
++EM_JS(void, install_field_message_listener, (), {
++  if (window.parent === window) return;
++  Module.fieldPatchyQueue = [];
++  Module.fieldPatchyFileQueue = [];
++  window.addEventListener('message', function(event) {
++    if (event.source !== window.parent || event.origin !== window.location.origin) return;
++    var data = event.data;
++    if (data && data.type === 'field-patchy-load-file' && data.bytes instanceof ArrayBuffer) {
++      Module.fieldPatchyFileQueue.push({type: 'load', bytes: new Uint8Array(data.bytes)});
++      return;
++    }
++    if (data && data.type === 'field-patchy-read-file') {
++      Module.fieldPatchyFileQueue.push({type: 'read'});
++      return;
++    }
++    if (!data || data.type !== 'field-patchy-request' ||
++        !data.message || typeof data.message !== 'object') return;
++    try { Module.fieldPatchyQueue.push(JSON.stringify(data.message)); }
++    catch (_) { /* A malformed browser message cannot enter the native session. */ }
++  });
++});
++
++EM_JS(int, field_file_request_kind, (), {
++  var queue = Module.fieldPatchyFileQueue;
++  if (!queue || !queue.length) return 0;
++  return queue[0].type === 'load' ? 1 : 2;
++});
++
++EM_JS(int, field_load_file_length, (), {
++  return Module.fieldPatchyFileQueue[0].bytes.length;
++});
++
++EM_JS(void, copy_field_load_file, (char* destination), {
++  var item = Module.fieldPatchyFileQueue.shift();
++  HEAPU8.set(item.bytes, destination);
++});
++
++EM_JS(void, discard_field_file_request, (), {
++  Module.fieldPatchyFileQueue.shift();
++});
++
++EM_JS(void, post_field_file_loaded, (int ok), {
++  window.parent.postMessage({type: 'field-patchy-file-loaded', ok: !!ok}, window.location.origin);
++});
++
++EM_JS(void, post_field_file_read, (const char* bytes, int length), {
++  var copy = bytes ? HEAPU8.slice(bytes, bytes + length) : null;
++  window.parent.postMessage({type: 'field-patchy-file-read', bytes: copy && copy.buffer},
++                            window.location.origin, copy ? [copy.buffer] : []);
++});
++
++EM_JS(int, field_message_length, (), {
++  var queue = Module.fieldPatchyQueue;
++  return queue && queue.length ? lengthBytesUTF8(queue[0]) : -1;
++});
++
++EM_JS(void, copy_field_message, (char* destination, int capacity), {
++  stringToUTF8(Module.fieldPatchyQueue.shift(), destination, capacity);
++});
++
++EM_JS(void, discard_field_message, (), {
++  Module.fieldPatchyQueue.shift();
++});
++
++EM_JS(void, post_field_ready, (), {
++  if (window.parent !== window) {
++    window.parent.postMessage({type: 'field-patchy-ready'}, window.location.origin);
++  }
++});
++
++EM_JS(void, post_field_reply_bytes, (const char* reply), {
++  if (window.parent !== window) {
++    window.parent.postMessage(
++      {type: 'field-patchy-response', message: JSON.parse(UTF8ToString(reply))},
++      window.location.origin);
++  }
++});
++
++void post_field_reply(const QByteArray& bytes) { post_field_reply_bytes(bytes.constData()); }
++}  // namespace
++
++namespace patchy {
++bool field_web_bridge_available() { return has_same_origin_parent() != 0; }
++
++FieldWebBridge::FieldWebBridge(ui::MainWindow& window)
++    : session_(window, true, post_field_reply) {
++  QDir().mkpath(QStringLiteral("/field"));
++  session_.connect_from_any_thread();
++  install_field_message_listener();
++  auto* inbox_timer = new QTimer(&window);
++  inbox_timer->setInterval(10);
++  QObject::connect(inbox_timer, &QTimer::timeout, &window, [this] {
++    const int length = field_message_length();
++    if (length < 0) return;
++    if (length > 16 * 1024 * 1024) {
++      discard_field_message();
++      return;
++    }
++    QByteArray message(length + 1, '\0');
++    copy_field_message(message.data(), message.size());
++    message.chop(1);
++    session_.receive_line(message);
++  });
++  inbox_timer->start();
++  auto* file_timer = new QTimer(&window);
++  file_timer->setInterval(10);
++  QObject::connect(file_timer, &QTimer::timeout, &window, [] {
++    constexpr auto path = "/field/painting.psd";
++    const int kind = field_file_request_kind();
++    if (kind == 1) {
++      const int length = field_load_file_length();
++      if (length <= 0 || length > 512 * 1024 * 1024) {
++        discard_field_file_request();
++        post_field_file_loaded(0);
++        return;
++      }
++      QByteArray bytes(length, '\0');
++      copy_field_load_file(bytes.data());
++      QDir().mkpath(QStringLiteral("/field"));
++      QFile file(QString::fromLatin1(path));
++      const bool ok = file.open(QIODevice::WriteOnly | QIODevice::Truncate) &&
++          file.write(bytes) == bytes.size();
++      post_field_file_loaded(ok ? 1 : 0);
++    } else if (kind == 2) {
++      discard_field_file_request();
++      QFile file(QString::fromLatin1(path));
++      if (!file.open(QIODevice::ReadOnly)) { post_field_file_read(nullptr, 0); return; }
++      const auto bytes = file.readAll();
++      post_field_file_read(bytes.constData(), bytes.size());
++    }
++  });
++  file_timer->start();
++  auto* ready_timer = new QTimer(&window);
++  ready_timer->setInterval(0);
++  QObject::connect(ready_timer, &QTimer::timeout, &window, [this, ready_timer] {
++    if (session_.ready()) {
++      ready_timer->stop();
++      ready_timer->deleteLater();
++      post_field_ready();
++    } else if (session_.closed()) {
++      ready_timer->stop();
++      ready_timer->deleteLater();
++    }
++  });
++  ready_timer->start();
++}
++
++FieldWebBridge::~FieldWebBridge() {
++  session_.shutdown();
++}
++
++}  // namespace patchy
+diff --git a/src/app/field_web_bridge.hpp b/src/app/field_web_bridge.hpp
+new file mode 100644
+index 0000000..74e612a
+--- /dev/null
++++ b/src/app/field_web_bridge.hpp
+@@ -0,0 +1,25 @@
++#pragma once
++
++#include "ui/mcp_session.hpp"
++
++namespace patchy::ui { class MainWindow; }
++
++namespace patchy {
++
++/** True only for an iframe with a same-origin host. */
++bool field_web_bridge_available();
++
++// The browser host speaks the existing MCP document protocol over postMessage.
++// The session remains owned by Patchy's visible window and runs on its UI thread.
++class FieldWebBridge {
++ public:
++  explicit FieldWebBridge(ui::MainWindow& window);
++  ~FieldWebBridge();
++  FieldWebBridge(const FieldWebBridge&) = delete;
++  FieldWebBridge& operator=(const FieldWebBridge&) = delete;
++
++ private:
++  ui::McpSession session_;
++};
++
++}  // namespace patchy
+diff --git a/src/app/main.cpp b/src/app/main.cpp
+index e3951f9..987a1d6 100644
+--- a/src/app/main.cpp
++++ b/src/app/main.cpp
+@@ -14,6 +14,9 @@
+ #include "ui/stress_test.hpp"
+ #include "ui/theme_manager.hpp"
+ #include "ui/user_fonts.hpp"
++#ifdef Q_OS_WASM
++#include "app/field_web_bridge.hpp"
++#endif
+ #ifdef PATCHY_MCP_EXECUTABLE
+ #include "app/mcp_server.hpp"
+ #include <QTemporaryDir>
+@@ -828,6 +831,13 @@ int main(int argc, char* argv[]) {
+       qWarning("Patchy MCP attachment: %s", qPrintable(mcp_attachment->error()));
+     }
+   }
++#endif
++#ifdef Q_OS_WASM
++  // The same live document is controlled from a same-origin Field iframe host.
++  std::unique_ptr<patchy::FieldWebBridge> field_web_bridge;
++  if (!headless_mode && !screenshot_mode && patchy::field_web_bridge_available()) {
++    field_web_bridge = std::make_unique<patchy::FieldWebBridge>(window);
++  }
+ #endif
+   const int exec_result = app.exec();
+   // The window (declared after `app`) is destroyed before the application object; drop
+diff --git a/src/ui/dialog_utils.cpp b/src/ui/dialog_utils.cpp
+index ef54b24..5cbf706 100644
+--- a/src/ui/dialog_utils.cpp
++++ b/src/ui/dialog_utils.cpp
+@@ -8,6 +8,7 @@
+ #include "ui/window_effects.hpp"
+ 
+ #ifdef Q_OS_WASM
++#include "app/field_web_bridge.hpp"
+ #include "ui/dialog_utils_wasm.hpp"
+ #endif
+ 
+@@ -2393,6 +2394,9 @@ QString get_save_file_name(QWidget* parent, const QString& caption, const QStrin
+ 
+ void offer_browser_download_for_saved_file(const QString& path) {
+ #ifdef Q_OS_WASM
++  // Field's embedded editor transfers this private MEMFS file to its owning
++  // document. An autosave must not trigger a browser download each time.
++  if (patchy::field_web_bridge_available() && path == QStringLiteral("/field/painting.psd")) return;
+   wasm_files::download_file_in_browser(path);
+ #else
+   // Desktop builds write real files; there is nothing to offer.
+diff --git a/src/ui/main_window_ai_selection.cpp b/src/ui/main_window_ai_selection.cpp
+index c591222..c877be8 100644
+--- a/src/ui/main_window_ai_selection.cpp
++++ b/src/ui/main_window_ai_selection.cpp
+@@ -113,7 +113,9 @@ void configure_automatic_selection_models() {
+ namespace {
+ 
+ // Persisted settings key (never rename): the first-use offer was shown.
++#ifndef Q_OS_WASM
+ constexpr auto kHighQualityOfferedKey = "automaticSelection/highQualityModelOffered";
++#endif
+ 
+ // Decimal megabytes, as download sizes are usually given.
+ int megabytes(qint64 bytes) {

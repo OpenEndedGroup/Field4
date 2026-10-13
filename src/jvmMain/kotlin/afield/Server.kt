@@ -3754,8 +3754,10 @@ class Server {
 
                     // Patchy's threaded WebAssembly build needs an isolated top-level Field page.
                     // Enable this only for a Field instance serving a local Patchy build.
+                    val patchyInstalledSite = File(System.getProperty("user.home"), ".field4/patchy-web/site")
                     val patchyWebRoot = System.getenv("AFIELD_PATCHY_WEB_ROOT")?.takeIf { it.isNotBlank() }
                         ?.let { File(it).canonicalFile }
+                        ?: patchyInstalledSite.takeIf { File(it, "field-patchy.json").isFile }?.canonicalFile
                     if (patchyWebRoot != null) {
                         require(File(patchyWebRoot, "patchy.html").isFile) {
                             "AFIELD_PATCHY_WEB_ROOT must contain patchy.html"

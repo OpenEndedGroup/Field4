@@ -1,14 +1,22 @@
 # Patchy from Kotlin
 
 [Patchy](https://github.com/SethRobinson/Patchy) can also run as a live editor inside a Field
-output. This experimental path uses a local build of the Field Patchy fork. Start Field with
-`AFIELD_PATCHY_WEB_ROOT` pointing to the directory that contains `patchy.html`, `patchy.js`,
-and `patchy.wasm`. Field serves that build from `/patchy/` and enables the isolation headers
-required by Patchy's WebAssembly threads for this Field instance.
+output. Choose **Patchy layered painting editor** in `./field.sh --setup` (Windows:
+`field.bat --setup`) and approve its optional **BUILD** step. Or build it later:
 
 ```diffstatic {data-lang=bash}
-AFIELD_PATCHY_WEB_ROOT=/absolute/path/to/Patchy/build/wasm-release ./field.sh
+./gradlew buildPatchyWeb
 ```
+
+The recipe fetches a pinned upstream Patchy revision, applies Field's small bridge patch, and
+builds the threaded WebAssembly editor. Its source, Qt and Emscripten toolchains, and finished
+site are cached under `~/.field4/patchy-web/`, outside the Field checkout. Expect several GB of
+downloads and a long first build. Rebuilds reuse the cache. Field finds the finished site on its
+next launch and serves it from `/patchy/` with the isolation headers Patchy requires. This
+optional task is outside Field's normal build and `check`.
+
+To use a separately built site while developing, set `AFIELD_PATCHY_WEB_ROOT` to its directory
+before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`, and `patchy.data`.
 
 In a Kotlin box, keep the layered painting in the Field document's `files/` directory:
 
@@ -75,5 +83,5 @@ closes the user's Patchy window. `displayPatchy(p.preview(doc))` shows a snapsho
 output; call it again to refresh after edits.
 
 The hosted [browser edition](https://rtsoft.com/patchy/) remains independent of the desktop
-connector. The Field fork's web bridge controls the iframe's own Patchy session. Field does not
-bundle the Patchy WebAssembly files; use a local fork build for the embedded editor.
+connector. The Field bridge controls the iframe's own Patchy session. The WebAssembly files are
+prepared only when the optional Patchy build is selected.

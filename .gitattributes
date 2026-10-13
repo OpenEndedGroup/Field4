@@ -44,6 +44,7 @@ src/commonMain/resources/vendor/klecks/** whitespace=-blank-at-eol,-blank-at-eof
 # Unified-diff context lines carry a literal leading space, including empty context lines.
 optional/opendlssnr/*.patch whitespace=-blank-at-eol,-blank-at-eof
 optional/streamdiffusion/upstream/*.patch whitespace=-blank-at-eol,-blank-at-eof
+optional/patchy-web/*.patch whitespace=-blank-at-eol,-blank-at-eof
 
 # Hand-written prose that may carry derived numerals, `**1025**<!--count:key-->`. The `field-counts`
 # driver (`tools/merge_derived_counts.py`) is an ordinary text merge that first takes our side's

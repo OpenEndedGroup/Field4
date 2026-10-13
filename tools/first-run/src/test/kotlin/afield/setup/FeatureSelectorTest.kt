@@ -39,6 +39,12 @@ class FeatureSelectorTest {
         assertFalse(windows.any { it.extra.id in setOf("syphon", "csound", "tracker") })
         assertTrue("cl" in windows.first { it.extra.id == "tetgen" }.prerequisites)
         assertTrue("python" in windows.first { it.extra.id == "python" }.prerequisites)
+        for (platform in listOf("mac", "linux", "windows")) {
+            val patchy = options(platform).first { it.extra.id == "patchy-web" }
+            assertEquals("buildPatchyWeb", patchy.extra.task)
+            assertTrue(patchy.enabled)
+            assertTrue(patchy.prerequisites.containsAll(setOf("git", "cmake")))
+        }
     }
 
     @Test fun oldRustDisablesPaintAndMovementStopsAtListEdges() {
