@@ -28,6 +28,8 @@ data class Recipe(
     val rewriteComments: Boolean = false,
     val knownPackages: Set<String> = emptySet(),
     val retainedSymbols: Set<String> = emptySet(),
+    val splitStarImports: Map<String, List<String>> = emptyMap(),
+    val scriptImportsKnown: Boolean = false,
 ) {
     private fun prefix(path: String, old: String) = path == old || path.startsWith("$old.")
     fun retained(path: String) = retainedSymbols.any { prefix(path, it) }
@@ -135,6 +137,12 @@ class Engine : AutoCloseable {
             Finding("parse-error", line(it.textOffset), it.errorDescription)
         }, emptyList(), file.packageFqName.asString())
         val imports = file.importDirectives.mapNotNull { it.importedFqName?.asString() }
+        fun isSplit(path: String) = path in recipe.splitPackages ||
+            recipe.symbols.keys.any { it.substringBeforeLast('.') == path }
+        val emittedStars = file.importDirectives.filter { it.isAllUnder && !isSplit(it.importedFqName?.asString().orEmpty()) }
+            .mapNotNull { it.importedFqName?.asString() }.map { recipe.moved(it) ?: it }.toMutableSet()
+        if (script) emittedStars += recipe.scriptImports.filter { it.endsWith(".*") }.map { it.removeSuffix(".*") }
+        val newline = if (code.contains("\r\n")) "\r\n" else "\n"
         for (directive in file.importDirectives) {
             val path = directive.importedFqName?.asString() ?: continue
             val expression = directive.importedReference ?: continue
@@ -145,7 +153,21 @@ class Engine : AutoCloseable {
             val split = directive.isAllUnder && (path in recipe.splitPackages ||
                 recipe.symbols.keys.any { it.substringBeforeLast('.') == path })
             if (split) {
-                findings += Finding("split-star", line(directive.textOffset), "Resolve uses of $path.* before selecting destination imports")
+                val targets = recipe.splitStarImports[path]
+                if (script && !recipe.scriptImportsKnown && recipe.scriptImports.isEmpty()) {
+                    findings += Finding("split-star", line(directive.textOffset),
+                        "Configure destination scriptImports before expanding $path.*; box imports may already be supplied by the host intro")
+                } else if (targets.isNullOrEmpty() || importComments.any { it.textOffset < expression.textRange.endOffset }) {
+                    findings += Finding("split-star", line(directive.textOffset),
+                        if (targets.isNullOrEmpty()) "Complete the declaration map for $path before expanding $path.*"
+                        else "Review comments inside $path.* before expanding it")
+                } else {
+                    val replacement = targets.distinct().filter { emittedStars.add(it) }
+                        .joinToString(newline) { "import $it.*" }
+                    var end = importComments.minOfOrNull { it.textOffset } ?: directive.textRange.endOffset
+                    while (end > directive.textOffset && normalized[end - 1].isWhitespace()) end--
+                    edits += Edit(offsets[directive.textRange.startOffset], offsets[end], replacement)
+                }
             } else if (script && directive.aliasName == null && destinationImport in recipe.scriptImports &&
                 importComments.none { it.textOffset < expression.textRange.endOffset }) {
                 // Remove only an identical host import. A star does not prove that a named import
@@ -271,7 +293,9 @@ fun main() {
                     config["scriptImports"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
                     config["rewriteComments"]?.jsonPrimitive?.boolean ?: false,
                     config["knownPackages"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
-                    config["retainedSymbols"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty())
+                    config["retainedSymbols"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
+                    config["splitStarImports"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty(),
+                    config.containsKey("scriptImports"))
                 val result = engine.rewrite(request.getValue("code").jsonPrimitive.content,
                     request["script"]?.jsonPrimitive?.boolean ?: true, recipe)
                 buildJsonObject {

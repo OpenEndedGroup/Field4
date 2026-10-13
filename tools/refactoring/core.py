@@ -91,7 +91,7 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -126,6 +126,21 @@ def load_recipe(path: Path) -> dict:
     if any(v == old or v.startswith(old + '.') or old.startswith(v + '.')
            for v in recipe.get('retainedSymbols', []) for old in all_rules):
         raise RefactorError('retained symbols overlap move rules')
+    stars = recipe.get('splitStarImports', {})
+    if not isinstance(stars, dict):
+        raise RefactorError('splitStarImports must map split packages to destination package lists')
+    for old, targets in stars.items():
+        if (old not in splits or not isinstance(targets, list) or not targets or
+                any(not isinstance(v, str) or not name.fullmatch(v) for v in targets) or len(set(targets)) != len(targets)):
+            raise RefactorError('splitStarImports requires exact split packages and nonempty unique destinations')
+        mapped = {v.rsplit('.', 1)[0] for k, v in recipe['symbols'].items() if k.rsplit('.', 1)[0] == old}
+        if any(v.rsplit('.', 1)[0] == old for v in recipe.get('retainedSymbols', [])):
+            mapped.add(old)
+        if set(targets) != mapped or any(k.rsplit('.', 1)[0] == old and k.rsplit('.', 1)[-1] != v.rsplit('.', 1)[-1]
+                                          for k, v in recipe['symbols'].items()):
+            raise RefactorError('splitStarImports must match mapped owners and preserve symbol names')
+        if any(v != old and v in splits for v in targets):
+            raise RefactorError('splitStarImports destinations cannot be another unresolved split package')
     script_imports = recipe.get('scriptImports', [])
     if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
         raise RefactorError('scriptImports must list destination import paths, optionally ending in .*')

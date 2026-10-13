@@ -244,6 +244,35 @@ individual groups. Generated starting points remain generator-owned in repositor
 and logs are preserved; migrating code restored from history is a later explicit scan, not an
 automatic restore hook in this version.
 
+## Expanding wildcard imports from split packages
+
+The symbol-map generator emits `splitStarImports` for each fully assigned split package:
+
+```json
+{"splitStarImports": {"old.mixed": ["new.geometry", "new.graphics"]}}
+```
+
+The engine replaces `import old.mixed.*` with both destination wildcard imports. It deduplicates
+against existing destination stars and the configured script host imports, preserves line endings
+and trailing comments, and leaves explicit/aliased imports to their normal symbol rules.
+Explicitly retained declarations keep the original package among the destination stars.
+
+For scripts, expansion requires an explicit `scriptImports` destination-host profile. A missing
+profile keeps split stars held; it must not spray dozens of imports into box code whose host
+already supplies them. When the intro covers all destination stars, the old import is removed.
+When it covers some, only the missing ones are added. An explicit empty list opts into expansion
+for standalone scripts with no host imports. The profile is a caller assertion for all scripts in
+the selected roots, so do not mix incompatible script hosts in one plan. Migrate the central Field
+intro first and populate this profile from its destination imports. Compiled source files never
+use the script profile to remove imports.
+
+The generator recomputes these lists from the inventory every time. Unassigned declarations,
+parser gaps in that package, renamed symbols, or destinations that are another split package
+prevent expansion. Missing mappings never mean that a declaration stays put. Comments inside
+an import keep that import held for review. These are syntactic proposals: broader imports can
+introduce ambiguity or change overload resolution, so build, runtime and binding checks remain
+necessary. Regenerate the symbol map and replan after completing or changing assignments.
+
 ## Apply, verify, undo
 
 The default approach for somebody else's workspace is a new copy:
