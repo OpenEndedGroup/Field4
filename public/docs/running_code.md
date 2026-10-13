@@ -98,6 +98,9 @@ Both write into the same place, the box's **preamble**: the shared, auto-regener
 
 A handful of things that look like ordinary function calls are actually **source macros**, expanded at compile time. The most important are `prop` / `rootProp`, `moduleHere` / `computeModuleHere` / `meshModuleHere` / `shadertoyHere`, `fieldStatsHere`, `print` / `println`, and the two that keep their own source, `sourceBlock` and `interpolant`.
 
+These are Field's built-in macros. To write your own source rewrite rules in a box, see
+[Rewriting your own syntax](pattern_rewrite.md) for the `rewrite { … }` DSL.
+
 They are intercepted before the compiler sees them. Most have a bare declaration that exists only to fail loudly if a call ever reaches the compiler un-expanded:
 
 ```diffstatic {data-lang=kotlin}
