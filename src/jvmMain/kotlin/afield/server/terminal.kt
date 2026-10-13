@@ -172,7 +172,8 @@ private class TerminalSession(val info: TerminalInfo, val process: PtyProcess) {
     private val subscribers = mutableSetOf<Channel<ByteArray>>()
     @Volatile var exitCode: Int? = null
     /** When output last arrived, 0 before any; [writeToTerminal] waits for a shell to settle on it. */
-    @Volatile var lastOutputAtMs = 0L
+    @Volatile
+    var lastOutputAtMs = 0L
     /** Code's writes, in order, off the caller's thread. */
     val writer: java.util.concurrent.ExecutorService by lazy {
         java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "terminal-write-${info.id}").apply { isDaemon = true } }
