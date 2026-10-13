@@ -480,7 +480,13 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                             else:
                                 destinations[rel] = destination
                 for value in response['findings']:
-                    finding(rel, dict(value, unit=unit.identity))
+                    # A refactor is not a syntax sweep of every historical snippet. Keep evidence
+                    # about untouched, unrelated fragments without making them migration blockers.
+                    unrelated_syntax = (value['kind'] == 'parse-error' and
+                                        response['code'] == unit.code and not pattern.search(unit.code))
+                    finding(rel, dict(value, unit=unit.identity, **(
+                        {'retained': True, 'retentionReason': 'Unchanged unit has no names affected by this migration'}
+                        if unrelated_syntax else {})))
                 records.append({'path': rel, 'unit': unit.identity, 'imports': response.get('imports', []),
                                 'package': response.get('package', ''),
                                 'evidence': response.get('evidence', 'syntax')})
