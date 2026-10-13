@@ -122,7 +122,8 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
     fun note(html: String, persistent: Boolean = false, anchorBox: Box? = null, animated: Boolean = false) {
         this.noteHtml = html
         this.persistent = persistent
-        this.noteAnchorBox = anchorBox
+        // Only an explicit anchor overrides: `anchorNoteTo(box)` before or after `note(...)` both work.
+        if (anchorBox != null) this.noteAnchorBox = anchorBox
         this.animated = animated
     }
 
@@ -363,6 +364,27 @@ class SlideShowInstance(
     var currentStepIndex = -1
         private set
 
+    companion object {
+        private val activeByRoot = java.util.WeakHashMap<Box, SlideShowInstance>()
+
+        /**
+         * The slideshow whose step is on screen in the document rooted at [root], or null. Note links
+         * (`#slideshow:next`, `#custom:name`) are routed here, so a document may hold several guide
+         * boxes and the links drive the one the reader is looking at.
+         */
+        fun activeIn(root: Box): SlideShowInstance? = synchronized(activeByRoot) { activeByRoot[root] }
+
+        private fun rootOf(box: Box): Box? = if (box.isInsideInitialized()) box.root else null
+    }
+
+    private fun markActive(active: Boolean) {
+        val root = rootOf(hostBox) ?: return
+        synchronized(activeByRoot) {
+            if (active) activeByRoot[root] = this
+            else if (activeByRoot[root] === this) activeByRoot.remove(root)
+        }
+    }
+
     val currentStep: SlideStep?
         get() = if (currentStepIndex >= 0 && currentStepIndex < steps.size) steps[currentStepIndex] else null
 
@@ -405,6 +427,7 @@ class SlideShowInstance(
         currentStep?.onExit?.invoke()
 
         currentStepIndex = index
+        markActive(true)
         val step = steps[index]
 
         // Execute onEnter
@@ -423,7 +446,7 @@ class SlideShowInstance(
                 else -> slideshowId // Default to slideshow ID
             }
             
-            _send(Message("show-slide-note").payload(
+            sendToHostDocument(hostBox, Message("show-slide-note").payload(
                 ShowSlideNote(
                     html = processedHtml,
                     uid = step.noteAnchorBox?.id ?: hostBox.id,
@@ -435,12 +458,12 @@ class SlideShowInstance(
                 )
             ))
         } else {
-            _send(Message("hide-slide-note").payload(HideSlideNote()))
+            sendToHostDocument(hostBox, Message("hide-slide-note").payload(HideSlideNote()))
         }
 
         // Select and scroll to box if specified
         if (step.targetBox != null) {
-            _send(Message("select-and-edit-box").payload(
+            sendToHostDocument(hostBox, Message("select-and-edit-box").payload(
                 SelectAndEditBox(
                     uid = step.targetBox.id,
                     property = step.targetProperty,
@@ -500,7 +523,8 @@ class SlideShowInstance(
     suspend fun stop() {
         currentStep?.onExit?.invoke()
         currentStepIndex = -1
-        _send(Message("hide-slide-note").payload(HideSlideNote()))
+        markActive(false)
+        sendToHostDocument(hostBox, Message("hide-slide-note").payload(HideSlideNote()))
     }
 
     /**
@@ -514,13 +538,23 @@ class SlideShowInstance(
     fun hasPrevious(): Boolean = currentStepIndex > 0
 }
 
+/**
+ * Send a slideshow message only to the browsers showing [box]'s document. Before 2026-10-13 notes
+ * and selections were broadcast to every open document, so a guide in one document put its note
+ * over another. A box with no document (a unit test) falls back to the broadcast.
+ */
+internal fun sendToHostDocument(box: Box, message: Message) {
+    val document = outputDocument(box)
+    if (document.isNotBlank()) _send(message, document = Regex.escape(document)) else _send(message)
+}
+
 // Convenience extension functions for Box
 
 /**
  * Quick select and edit a box with optional line navigation
  */
 fun Box.selectAndEdit(property: String = "code", line: Int? = null, highlight: Int? = null) {
-    _send(Message("select-and-edit-box").payload(
+    sendToHostDocument(this, Message("select-and-edit-box").payload(
         SelectAndEditBox(
             uid = this.id,
             property = property,
@@ -567,7 +601,7 @@ fun Box.showNote(
         knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
     }
     
-    _send(Message("show-slide-note").payload(
+    sendToHostDocument(this, Message("show-slide-note").payload(
         ShowSlideNote(
             html = processedHtml,
             uid = anchorBox?.id ?: this.id,
