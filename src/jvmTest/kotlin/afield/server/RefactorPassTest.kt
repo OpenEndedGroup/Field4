@@ -23,7 +23,12 @@ class RefactorPassTest {
     @Test fun actionsAreStructuredAndRequireSpecificReviewItems() {
         assertEquals(listOf("create", "--plan", "/tmp/a plan"), refactorPassArguments(RefactorPassAction("create", plan = "/tmp/a plan")))
         assertNull(refactorPassArguments(RefactorPassAction("create", plan = "../elsewhere")))
-        assertNull(refactorPassArguments(RefactorPassAction("land")))
+        assertEquals(listOf("land"), refactorPassArguments(RefactorPassAction("land")))
+        assertEquals(listOf("prepare"), refactorPassArguments(RefactorPassAction("prepare")))
+        assertNull(refactorPassArguments(RefactorPassAction("publish", root = "0", destination = "../original")))
+        assertNull(refactorPassArguments(RefactorPassAction("start", recipe = "{}", workspaces = listOf("relative"))))
+        assertEquals(listOf("start", "--recipe-json", "{}", "--workspace", "/tmp/a workspace"),
+            refactorPassArguments(RefactorPassAction("start", recipe = "{}", workspaces = listOf("/tmp/a workspace"))))
         assertNull(refactorPassArguments(RefactorPassAction("decide", item = "../file", state = "preserve", reason = "yes")))
         assertNull(refactorPassArguments(RefactorPassAction("decide", item = "a".repeat(24), state = "done", reason = "yes")))
         assertNull(refactorPassArguments(RefactorPassAction("decide", item = "a".repeat(24), state = "preserve")))

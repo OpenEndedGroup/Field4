@@ -234,48 +234,70 @@ automatic generator scheduling, typed Java/build/embedded-command adapters, vers
 live workspace leases and an upgrade UI. The current report distinguishes these gaps from completed
 mechanical changes; it is not yet an unattended whole-repository cutover engine.
 
-## Refactor pass: contextual review in Field
+## Refactor sessions in Field
 
-Open `/refactor-pass.html` in the same Field server as the docs pass (there is a link from the
-Docs pass page), and import the absolute directory of a migration plan. The pass creates one
-`codex/refactor-pass-…` integration worktree and new workspace copies, excluding the same backups
-and thumbnails as the migration tool. Private pass state, copied plans, briefs and decisions live
-under `~/.afield/refactor-passes/`; the checkout keeps only an ignored pointer. The original
-repository and workspaces are not edited by review sessions.
+Open **Refactoring** from welcome or `/refactor-pass.html`. A session owns a repository
+worktree, workspace copies, a recipe, immutable plans, review decisions and delivery receipts.
+Session data lives under `~/.afield/refactor-passes`; the hosting checkout stores only an
+ignored pointer. Keep the host server in that checkout while working in the session worktree.
 
-The first version provides:
+1. **Create:** describe the refactor, enter old → new package pairs (or a complete recipe), and
+   choose workspace directories. The repository starts at the host checkout's HEAD; uncommitted
+   host edits are not copied. Workspace copies exclude backups and thumbnails. Leave the map
+   empty to develop it with the session agent. An existing plan can still be imported.
+2. **Review:** inspect mechanical diffs and highlighted findings. Batch terminals use the same
+   configured agent as Docs pass and open as separate Electron tabs. **Open worktree terminal**
+   handles cross-batch work or development of the recipe. Close the agent session when finished
+   so it releases the writer lease, then replan. Decisions remain review records; they never alter
+   the immutable plan. Preserve permits an intentional unchanged reference at delivery only if
+   that group has no proposed edits. Held edits must be resolved in source or by an adapter.
+3. **Rehearse:** apply ready groups in the copies, verify their bytes, undo, and verify restoration.
+   Rehearsals use fresh journals and can be repeated. This is not build or runtime verification.
+4. **Prepare:** once the relevant findings are resolved, apply the complete plan and leave it
+   applied. The original repository and workspaces remain untouched. Inspect the repository diff
+   from the session's base, the listed new files and workspace copies before delivery.
+5. **Verify:** configure named commands with `kind` (`generate`, `build`, `test`, `runtime`) and
+   `argv` (an argument array, never shell text). At least build, test and runtime are required.
+   Generators run first. Other checks must not change source. Commands run in the worktree;
+   `{worktree}` and `{root:1}` arguments expand to session roots. `FIELD_REFACTOR_SESSION` and
+   `FIELD_REFACTOR_ROOT_<id>` are also available. Tailored runtime commands should exercise the
+   migrated documents. Exit codes and log paths are retained. A successful receipt binds the
+   recipe, check configuration and content/modes of all nonexcluded input files, including binaries.
+6. **Deliver:** **Commit and enqueue repository** commits the dedicated worktree and invokes the
+   existing lander. The queue receipt is displayed; queued does not mean landed. **Publish verified
+   workspace copy** writes to a new, nonoverlapping directory without overwriting an original.
+   Publication refuses workspace symlinks and rechecks copied content. Open that copy with the
+   migrated Field version after landing. Either action refuses files changed since verification.
 
-- The recipe, root counts, file moves and proposed diffs, including held changes.
-- Review groups with actual source excerpts and decoded code-unit line numbers. Before/after
-  blobs preserve the evidence even when the original source later changes.
-- Suggested batches for prose, display labels, dynamic names, languages, incomplete syntax,
-  generated outputs and source layout. These are suggestions for review, not automatic approvals.
-- Decisions per document/file group: patch proposed, preserve with a reason, adapter needed,
-  question or open. Recipe, group-source and finding fingerprints reopen changed decisions.
-- The existing interactive terminal, using the configured agent. A generated private brief includes
-  exact findings and proposed changes. One writer lease serializes agent sessions, replanning and
-  rehearsal. Decisions can be recorded while the agent owns the lease.
-- Replanning against the working copies, followed by apply/verify/undo/verify of ready groups.
-  Each plan can be rehearsed once; replan for another rehearsal.
+**Undo preparation** restores the mechanical edits only when doing so will not overwrite later
+work. If verification exposes a defect, use the worktree terminal to fix it and rerun verification.
+Use **Keep edits and replan** to retain the applied migration and any fixes as the input to a new
+review plan. Earlier delivery journals remain retained for inspection. Undo never discards later changes. Interrupted preparation remains visible and can be undone.
+An interrupted verification can be rerun. **Close session · keep worktree** detaches the page;
+resume from the saved-session list or directory. It does not delete files or stop active writers.
+The writer lease prevents closing or mutating a session while an agent/check is active.
 
-The page's state survives a reload and the terminal can be reattached. A decision does not alter
-an immutable plan or waive its held groups. The agent stops after recording outcomes; its brief
-forbids partial commits/landings. This first pass does not enqueue the namespace cutover or publish
-workspace upgrades. Compilation, runtime validation, deliberate preservation rules, and final
-coordinated delivery remain required. Sidecar filename conventions are unchanged.
+The default commands are a starting point for Field; add required generators and adapt runtime
+checks to the particular migration. Passing configured commands proves those commands passed,
+not that every possible document or API binding was tested. The example preview recipe still
+represents a proposed hierarchy; it does not authorize silently dropping remaining holds.
 
-The same operations are available from the CLI:
+The same operations are available in the CLI:
 
 ```sh
-uv run --project . --group backdoor python tools/refactor_pass.py create --plan /path/to/migration
-uv run --project . --group backdoor python tools/refactor_pass.py status
-uv run --project . --group backdoor python tools/refactor_pass.py item --item <id>
-uv run --project . --group backdoor python tools/refactor_pass.py decide --item <id> --state preserve --reason 'Dated historical description'
-uv run --project . --group backdoor python tools/refactor_pass.py brief --batch dynamic-names
-uv run --project . --group backdoor python tools/refactor_pass.py replan
-uv run --project . --group backdoor python tools/refactor_pass.py rehearse
+uv run --group backdoor python tools/refactor_pass.py start --recipe-json '<recipe JSON>' --workspace /path/to/workspace
+uv run --group backdoor python tools/refactor_pass.py create --plan /path/to/existing-plan
+uv run --group backdoor python tools/refactor_pass.py replan
+uv run --group backdoor python tools/refactor_pass.py rehearse
+uv run --group backdoor python tools/refactor_pass.py prepare
+uv run --group backdoor python tools/refactor_pass.py configure --checks-json '<named argument arrays>'
+uv run --group backdoor python tools/refactor_pass.py validate
+uv run --group backdoor python tools/refactor_pass.py delivery-diff
+uv run --group backdoor python tools/refactor_pass.py land
+uv run --group backdoor python tools/refactor_pass.py publish --root 1 --destination /new/workspace
+uv run --group backdoor python tools/refactor_pass.py close
+uv run --group backdoor python tools/refactor_pass.py resume --session /path/to/session
 ```
 
-The server must stay in its hosting checkout while the migration is developed in the integration
-worktree. Agent sessions use `tools/field_agent.py`'s choice; browser reads and writes use the same
-loopback/same-site boundary as docs passes and terminals because reports contain private source.
+Sidecar filename conventions are unchanged. Private source and operations retain the
+loopback/same-site boundary used by Docs pass and terminals.

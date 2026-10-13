@@ -2263,6 +2263,10 @@
                             </div>
                         </div>
                         <div class="ai-docs-panel">
+                            <div class="ai-docs-header"><span class="ai-docs-label">Developer tools</span></div>
+                            <div class="ai-docs-actions"><button id="open-refactor-pass" type="button">Refactoring</button></div>
+                        </div>
+                        <div class="ai-docs-panel">
                             <div class="ai-docs-header">
                                 <span class="ai-docs-label">Agent tool use</span>
                                 <span id="ai-tool-use-improvement-state">checking</span>
@@ -5757,6 +5761,7 @@
             node.textContent = parts.join(" · ");
         } catch (ignored) { node.textContent = "unavailable"; }
     }
+    document.getElementById("open-refactor-pass")?.addEventListener("click", () => window.open("/refactor-pass.html", "_blank", "noopener"));
     document.getElementById("open-docs-pass")?.addEventListener("click", () => window.open("/docs-pass.html", "_blank", "noopener"));
     refreshDocsPassState();
     setInterval(() => { if (!document.hidden) refreshDocsPassState(); }, 20000);
