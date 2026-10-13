@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from tools.refactoring.core import KotlinEngine, RefactorError, affected_pattern, save_json
+from tools.refactoring.core import KotlinEngine, RefactorError, affected_pattern, save_json, load_recipe, make_plan
 from tools.refactoring.symbols import inventory, generate
 
 ENGINE = Path(__file__).parent / 'refactor-engine/build/install/field-refactor-engine/bin/field-refactor-engine'
@@ -25,7 +25,7 @@ class SymbolMapTests(unittest.TestCase):
         with KotlinEngine(ENGINE.resolve()) as engine:
             self.index=inventory(self.repo,engine,self.root/'index')
         self.recipe=self.root/'recipe.json'
-        save_json(self.recipe,{'schema':1,'id':'split','packages':{},'symbols':{},'splitPackages':['mixed']})
+        save_json(self.recipe,{'schema':1,'id':'split','packages':{},'symbols':{},'splitPackages':['mixed'],'scriptImports':[]})
 
     def run_map(self, assignments):
         return generate(self.index,dict(schema=1,**assignments),self.recipe,self.repo,self.root/'out')
@@ -38,6 +38,11 @@ class SymbolMapTests(unittest.TestCase):
         rows=json.loads((self.root/'out/symbol-map.json').read_text())['declarations']
         self.assertEqual(2,sum(d['fqn']=='mixed.value' for d in rows))
         self.assertNotIn('mixed.hidden',recipe['symbols'])
+        self.assertEqual({'mixed':['domain.color','mixed']},recipe['splitStarImports'])
+        with KotlinEngine(ENGINE.resolve()) as engine:
+            result=engine.rewrite('import mixed.*\nval x = Color()', True, recipe)
+        self.assertEqual('import domain.color.*\nimport mixed.*\nval x = Color()',result['code'])
+        self.assertFalse(result['findings'])
 
     def test_conflicting_overloads_refused(self):
         with self.assertRaisesRegex(RefactorError,'Conflicting'):
@@ -62,6 +67,47 @@ class SymbolMapTests(unittest.TestCase):
         self.assertEqual(2,result['unassignedFamilies'])
         template=json.loads((self.root/'out/assignments.template.json').read_text())
         self.assertIsNone(template['files'][self.b])
+        recipe=json.loads((self.root/'out/recipe.json').read_text())
+        self.assertEqual({},recipe['splitStarImports'])
+
+    def test_edn_split_stars_rewrite_inline_and_sidecar_together(self):
+        from tools.test_refactor import metadata
+        self.run_map({'files':{self.a:'domain.color'},'keep':['mixed.Pending']})
+        recipe=load_recipe(self.root/'out/recipe.json')
+        workspace=self.root/'workspace';workspace.mkdir()
+        source='import mixed.*\nval x = Color()'
+        (workspace/'metadata.edn').write_text(metadata(source,'box_code_.kt'))
+        (workspace/'box_code_.kt').write_text(source)
+        with KotlinEngine(ENGINE.resolve()) as engine:
+            make_plan([(workspace,False)],recipe,self.root/'plan',engine)
+        plan=json.loads((self.root/'plan/plan.json').read_text())
+        changes=plan['roots'][0]['changes']
+        self.assertEqual({'metadata.edn','box_code_.kt'},{c['path'] for c in changes})
+        self.assertTrue(all(not c['held'] for c in changes))
+        for change in changes:
+            after=(self.root/'plan/blobs'/change['after']).read_text()
+            self.assertIn('import domain.color.*',after)
+            self.assertIn('import mixed.*',after)
+
+    def test_inventory_errors_prevent_star_completeness(self):
+        self.index['errors'].append({'path':self.b,'detail':'incomplete declaration'})
+        self.run_map({'files':{self.a:'domain.color'},'keep':['mixed.Pending']})
+        recipe=json.loads((self.root/'out/recipe.json').read_text())
+        self.assertEqual({},recipe['splitStarImports'])
+
+    def test_renamed_symbols_prevent_star_expansion(self):
+        self.run_map({'symbols':{'mixed.Color':'domain.Hue','mixed.value':'domain.value','mixed.Pending':'domain.Pending'}})
+        recipe=json.loads((self.root/'out/recipe.json').read_text())
+        self.assertEqual({},recipe['splitStarImports'])
+
+    def test_invalid_manual_star_map_is_rejected(self):
+        recipe=json.loads(self.recipe.read_text())
+        recipe['symbols']={'mixed.Color':'domain.Color'}
+        for stars in [{'other':['domain']}, {'mixed':[]}, {'mixed':['wrong']}, {'mixed':['domain','domain']}]:
+            recipe['splitStarImports']=stars
+            save_json(self.recipe,recipe)
+            with self.subTest(stars=stars),self.assertRaises(RefactorError):
+                load_recipe(self.recipe)
 
 
 class OwnershipTests(unittest.TestCase):

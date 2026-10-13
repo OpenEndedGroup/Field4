@@ -62,6 +62,41 @@ class EngineTest {
         assertEquals(setOf("split-star", "unmapped-import"), result.findings.map { it.kind }.toSet())
     }
 
+    @Test fun completeSplitStarsExpandDeduplicateAndPreserveCrlfAndComments() = Engine().use { engine ->
+        val r = recipe.copy(splitStarImports = mapOf("afield.mixed" to listOf("afield.model", "afield.other")), scriptImportsKnown = true)
+        val before = "import afield.model.*\r\nimport afield.mixed.* // keep\r\nimport afield.mixed.*\r\nval x = Thing()"
+        val result = engine.rewrite(before, true, r)
+        assertEquals("import afield.model.*\r\nimport afield.other.* // keep\r\n\r\nval x = Thing()", result.code)
+        assertTrue(result.findings.isEmpty())
+        assertEquals(result.code, engine.rewrite(result.code, true, r).code)
+        val withHost = engine.rewrite("import afield.mixed.*", true, r.copy(scriptImports = setOf("afield.model.*")))
+        assertEquals("import afield.other.*", withHost.code)
+    }
+
+    @Test fun scriptsWaitForHostProfileAndDropSplitStarsCoveredByIntro() = Engine().use { engine ->
+        val targets = (1..37).map { "afield.domain$it" }
+        val r = recipe.copy(splitStarImports = mapOf("afield.mixed" to targets))
+        val source = "import afield.mixed.*\nval x = Thing()"
+        val held = engine.rewrite(source, true, r)
+        assertEquals(source, held.code)
+        assertTrue(held.findings.any { it.kind == "split-star" && it.detail.contains("scriptImports") })
+        val covered = r.copy(scriptImports = targets.map { "$it.*" }.toSet())
+        assertEquals("\nval x = Thing()", engine.rewrite(source, true, covered).code)
+        assertTrue(engine.rewrite(source, true, covered).findings.isEmpty())
+        assertEquals(37, engine.rewrite(source, false, covered).code.lines().count { it.startsWith("import ") })
+    }
+
+    @Test fun retainedPackageStarIsStableAndInternalImportCommentsRemainHeld() = Engine().use { engine ->
+        val r = recipe.copy(splitStarImports = mapOf("afield.mixed" to listOf("afield.mixed", "afield.model")))
+        val result = engine.rewrite("import afield.mixed.*\nval x = Thing()", false, r)
+        assertEquals("import afield.mixed.*\nimport afield.model.*\nval x = Thing()", result.code)
+        assertEquals(result.code, engine.rewrite(result.code, false, r).code)
+        val comment = "import afield./* important */mixed.*"
+        val held = engine.rewrite(comment, true, r)
+        assertEquals(comment, held.code)
+        assertTrue(held.findings.any { it.kind == "split-star" })
+    }
+
     @Test fun individualMovesMapNestedImports() = Engine().use { engine ->
         val result = engine.rewrite("import afield.mixed.Thing.Nested as N\nval x = 1", true, recipe)
         assertEquals("import afield.model.Thing.Nested as N\nval x = 1", result.code)

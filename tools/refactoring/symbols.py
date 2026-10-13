@@ -114,6 +114,22 @@ def generate(index, assignments, recipe_path, repo, out):
             old = max(matches, key=len)
             destinations.add(recipe['packages'][old] + package[len(old):])
     recipe['knownPackages'] = sorted(set(index['packages']) | destinations)
+    # An absent assignment is unresolved, never implicit permission to retain it.
+    # Recompute rather than carrying forward a completeness claim from an older inventory.
+    blocked = {families[item['fqn']][0]['package'] for item in pending}
+    blocked.update(index['files'][e['path']]['package'] for e in index['errors'])
+    stars = {}
+    for package in recipe['splitPackages']:
+        declarations = [d for d in expanded if d['package'] == package]
+        if package in blocked or not declarations:
+            continue
+        if any(d['name'] != d['destination'].rsplit('.', 1)[-1] for d in declarations):
+            continue  # A star cannot express a renamed symbol's old spelling.
+        targets = sorted({d['destination'].rsplit('.', 1)[0] for d in declarations})
+        if any(t != package and t in recipe['splitPackages'] for t in targets):
+            continue
+        stars[package] = targets
+    recipe['splitStarImports'] = stars
     # Validate the expanded recipe before publishing any output.
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
@@ -137,4 +153,4 @@ def generate(index, assignments, recipe_path, repo, out):
         report.extend([f'### {path}', '', ', '.join(f'`{n}`' for n in names), ''])
     (out / 'report.md').write_text('\n'.join(report) + '\n')
     return {'mappedFamilies': len(generated), 'retainedFamilies': len(keep), 'unassignedFamilies': len(pending),
-            'inventoryErrors': len(index['errors']), 'out': str(out)}
+            'inventoryErrors': len(index['errors']), 'expandedStarPackages': len(stars), 'out': str(out)}
