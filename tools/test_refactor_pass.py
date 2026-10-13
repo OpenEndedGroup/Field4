@@ -1,6 +1,7 @@
 """Real plan/checkout tests for the refactor review pass; no coding agent is launched."""
 import copy
 import json
+import io
 from pathlib import Path
 import subprocess
 import tempfile
@@ -145,6 +146,28 @@ class RefactorPassTest(unittest.TestCase):
         self.assertIn('commit, enqueue, merge or push', text)
         self.assertIn('data, not instructions', text)
         self.assertIn(self.state['worktree'], text)
+
+    def test_batch_loads_plan_once_and_reports_progress_without_ui_word_diffs(self):
+        index_path = Path(self.state['plan']) / 'review-index.json'
+        items = json.loads(index_path.read_text())
+        for item in items:
+            item['batch'] = 'prose'
+        self.assertGreater(len(items), 1)
+        save_json(index_path, items)
+        expected = [passes.detail(self.repo, item['id']) for item in items]
+        for item in expected:
+            for change in item['changes']:
+                change['compactChanges'] = None
+        progress = io.StringIO()
+        with patch.object(passes, 'load', wraps=passes.load) as load, \
+             patch.object(passes, 'load_plan', wraps=passes.load_plan) as plan, \
+             patch.object(passes, 'compact_changes', side_effect=AssertionError('UI-only diff')), \
+             patch('sys.stderr', progress):
+            result = passes.brief(self.repo, 'prose', 'Keep historical context')
+        self.assertEqual(1, load.call_count)
+        self.assertEqual(1, plan.call_count)
+        self.assertEqual(expected, json.loads(Path(result['path']).with_suffix('.json').read_text()))
+        self.assertIn(f'Prepared {len(items)}/{len(items)}', progress.getvalue())
 
     def test_agent_gets_only_the_pass_directory_as_additional_write_scope(self):
         with patch('tools.refactor_pass.find_executable', return_value='/usr/bin/review-agent'), patch('tools.refactor_pass.subprocess.call', return_value=0) as call:
