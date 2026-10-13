@@ -50,7 +50,7 @@ and `NO_COLOR` get plain output.
 
 `OptionalExtras.kt` is the shared menu and preparation inventory. It covers Vulkan, Python/JEP,
 computer vision, voice, Ceres, TetGen, paint, libpd, Csound, Manifold, LuaJIT, Syphon,
-Slang/learned shaders, NGX, OpenDLSS-NR, Kratos, particle tracking, transport training,
+the pinned Slang compiler, Slang/learned shaders, NGX, OpenDLSS-NR, Kratos, particle tracking, transport training,
 StreamDiffusion, audio AI, agent tools, docs, AI providers, OpenXR, ONNX models, guide/template services and the pinned Dirt audio samples.
 The complete checkbox list opens immediately. Up/Down moves, Space toggles, Enter reviews;
 Page Up/Down scrolls, `a` selects available features, `n` clears and `q` cancels without saving.
