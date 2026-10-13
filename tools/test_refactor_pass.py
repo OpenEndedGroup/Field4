@@ -10,6 +10,31 @@ from unittest.mock import patch
 from tools import refactor_pass as passes
 from tools.refactoring.core import RefactorError, make_plan, save_json, load_plan
 from tools.test_refactor import RECIPE, ENGINE
+from tools.refactoring.diffs import unified_text, compact_changes
+
+
+class ReviewDiffTest(unittest.TestCase):
+    def test_unterminated_replacements_are_separate_patch_lines_and_apply_exactly(self):
+        for before, after in [('old', 'new'), ('old\n', 'new'), ('old', 'new\n'), ('same\nold', 'same\nnew')]:
+            with self.subTest(before=before, after=after), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / 'example').write_text(before)
+                rendered = unified_text(before, after, 'example', 'example')
+                self.assertIn('\n+new\n', rendered)
+                result = subprocess.run(['patch', '-s', '-p0'], cwd=root, input=rendered, text=True, capture_output=True)
+                self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertEqual(after, (root / 'example').read_text())
+
+    def test_compact_single_line_metadata_shows_each_replacement_with_context(self):
+        before = ' '.join(f'"box{i}" "' + ('surrounding code ' * 20) + 'import afield.solidsl.*"' for i in range(4))
+        after = before.replace('afield.solidsl', 'afield.lang.solidsl')
+        edits = compact_changes(before, after)
+        self.assertEqual(4, len(edits))
+        for edit in edits:
+            self.assertIn('afield.solidsl', edit['before'])
+            self.assertIn('afield.lang.solidsl', edit['after'])
+            self.assertLess(len(edit['before']), 180)
+        self.assertIsNone(compact_changes('old\n', 'new\n'))
 
 
 class ReviewEngine:

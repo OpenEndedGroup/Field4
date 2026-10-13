@@ -21,6 +21,21 @@ function renderDiff(node, patch) {
     }));
     return node;
 }
+function renderChange(node, change) {
+    node.replaceChildren();
+    if(change.compactChanges?.length) {
+        node.append(text('p', `${change.compactChanges.length} text edits in a single-line file · unchanged text omitted below.`, 'muted'));
+        for(const edit of change.compactChanges) {
+            const pre = text('pre', '', 'patch');
+            pre.append(text('span', '− ' + edit.before + '\n', 'del'), text('span', '+ ' + edit.after, 'add'));
+            node.append(pre);
+        }
+        const raw = document.createElement('details');
+        raw.append(text('summary', 'Full diff'), renderDiff(document.createElement('pre'), change.diff));
+        node.append(raw);
+    } else node.append(renderDiff(document.createElement('pre'), change.diff || `${change.path} → ${change.destination}`));
+    return node;
+}
 async function guarded(fn) { try {error(); await fn();} catch(e) {error(e.message);} }
 function options(node, values) {
     const value = node.value; node.replaceChildren();
@@ -77,7 +92,7 @@ async function showItem(id) {
         $('detail').append(node);
     });
     const diff=document.createElement('details');diff.className='finding';diff.append(text('summary',`Proposed changes (${item.changes.length} files)`));
-    for(const c of item.changes) diff.append(text('h3',c.destination===c.path?c.path:`${c.path} → ${c.destination}`),renderDiff(document.createElement('pre'),c.diff||'Directory move only.'));
+    for(const c of item.changes) diff.append(text('h3',c.destination===c.path?c.path:`${c.path} → ${c.destination}`),renderChange(document.createElement('div'),c));
     if(!item.changes.length) diff.append(text('p','Reference-only finding: the mechanical pass proposed no edit.','muted'));
     $('detail').append(diff);
     const form=document.createElement('form');form.className='decision';
@@ -100,7 +115,7 @@ $('import-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/a
 for(const action of ['replan','rehearse']) $(action).onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action});await refresh();});
 $('refresh').onclick=()=>guarded(refresh);
 $('mechanical').addEventListener('toggle',()=>{if($('mechanical').open) guarded(async()=>{const result=await api('/api/refactor-pass?changes=1');if(result.error) throw new Error(result.error);options($('change-list'),[['','Choose a file'],...result.data.map(c=>[c.id,`${c.held?'HELD':'READY'} · root ${c.root} · ${c.path}`])]);});});
-$('change-list').onchange=()=>guarded(async()=>{if(!$('change-list').value)return;const result=await api(`/api/refactor-pass?change=${$('change-list').value}`);if(result.error)throw new Error(result.error);renderDiff($('change-diff'),result.data.diff||`${result.data.path} → ${result.data.destination}`);});
+$('change-list').onchange=()=>guarded(async()=>{if(!$('change-list').value)return;const result=await api(`/api/refactor-pass?change=${$('change-list').value}`);if(result.error)throw new Error(result.error);renderChange($('change-diff'),result.data);});
 for(const id of ['batch','root','decision-filter','search']) $(id).addEventListener(id==='search'?'input':'change',renderItems);
 $('run-agent').onclick=()=>guarded(async()=>{const session=await api('/api/terminal',{kind:'refactor-batch',batch:$('batch').value,text:$('direction').value});openTerminal(session.id);await refresh();});
 $('plan-path').value=new URLSearchParams(location.search).get('plan')||'';
