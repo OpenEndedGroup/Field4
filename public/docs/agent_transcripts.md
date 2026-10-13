@@ -211,8 +211,10 @@ headless, since the drawing is data on the server and needs no window. See
 A four-step guide over two small boxes. Run `tour` and follow the links in its note: the first step
 selects the guide, the second selects `numbers` and draws a line to it while counting your visits,
 the third opens `squares` with line 3 highlighted and a dashed line drawn to it, and the last has a
-link whose callback updates a count the note shows. The replay runs all three boxes headless; the
-notes need a browser to be seen. See [Interactive Guides](interactive_guides.md).
+link whose callback updates a count the note shows. The whole tour, captured from a Field window
+for [Interactive Guides](interactive_guides.md#a-guide-to-open):
+
+<video controls muted loop playsinline preload="metadata" src="assets/interactive_guides/slideshow_guide.mp4" width="1500" height="620" style="max-width:100%;height:auto;aspect-ratio:1500/620" aria-label="The slideshow_guide document in a Field window: tour, numbers and squares on the left, the editor on the right. Tour's note types itself in and Start is clicked; numbers is selected and a green line runs from the note to it, with one visit counted; squares opens in the editor with line 3 marked and a dashed line to it; the last note's star link is clicked twice and the count reads 2; Finish closes the note."></video>
 
 [Open ↗](offline.html?file=assets/agent_transcripts/slideshow_guide/metadata.edn)
 
