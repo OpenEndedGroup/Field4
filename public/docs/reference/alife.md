@@ -4,7 +4,7 @@
 
 Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through.
 
-11 source file(s), 635 public symbol(s), 432 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+12 source file(s), 655 public symbol(s), 452 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -316,6 +316,86 @@ a saturating field indistinguishable from a dying one. So every call site passes
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">rasterizeFLinesFramed</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">reference</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/stdlib/alife_animate/#L213) | `rasterizeFLines`, but with the framing taken from `reference` rather than from `lines`. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">flinePrefix</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">fraction</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/alife_animate/#L243) | The first `fraction` of a turtle's path, in the order the turtle walked it — so an L-system can be animated by *drawing*, which is what a turtle does, rather than by cutting between derivation depths. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Aggregate</span><span class="p">.</span><span class="nf">arrivalPrefixImg</span><span class="p">(</span><span class="n">upTo</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/stdlib/alife_animate/#L282) | The first `upTo` particles of this aggregate, coloured by arrival order **on the full cluster's scale**. |
+
+## alife_bml.kt { #alife-bml-kt }
+
+The Biham–Middleton–Levine traffic model on the GPU: a torus of cells, each empty or holding one
+car, advanced by a single full-screen fragment pass into a ping-pong texture.
+
+### The rule
+
+There are two kinds of car. Eastbound cars (red) only ever move one cell to the right, southbound
+cars (blue) only ever move one cell down, and the two take turns: on even steps every eastbound
+car whose right-hand cell is empty moves into it, all at once; on odd steps the southbound cars do
+the same downwards. The grid wraps in both directions. Nothing else happens, and no car is ever
+created or destroyed.
+
+What makes the model famous is that its only parameter, the fraction of cells holding a car, has
+a sharp transition: at low density the cars sort themselves into diagonal bands that flow freely,
+at high density a single jam spanning the grid forms and nothing moves. On a 512 × 512 torus, 0.20
+reaches a moving fraction of 0.998 and 0.45 reaches 0 by step 1750, while 0.32 is near the
+transition and decays slowly from flow toward a jam.
+
+### One texel is one cell
+
+[`ShaderBmlSystem`](alife.md#alife-bml-kt-shaderbmlsystem) holds the state in an RGBA8 ping-pong target: red at 1 is an eastbound car, blue
+at 1 a southbound one, black an empty cell. Each frame the pass reads the previous frame's texture
+and writes this one, so one frame is one half-step, and a full step (both colours) takes two
+frames. An 8-bit target is enough because the values are only ever 0 or 1.
+
+The update is a pure gather. A cell becomes empty if it holds a car of the moving colour and the
+cell ahead is empty, becomes that car if it is empty and the cell behind holds one, and otherwise
+keeps what it had. Each cell decides from three texels of the previous frame, so the whole grid
+advances in parallel with no conflicts and conserves the car count exactly.
+
+The first frame after construction or `ShaderBmlSystem.reset` ignores the previous texture and
+scatters cars instead, each cell independently holding a car with probability
+`ShaderBmlSettings.density`, eastbound with probability `ShaderBmlSettings.eastboundFraction`.
+
+### Getting one on screen
+
+`installInto` registers the simulation as a pre-target of the render list and blits it to the
+window. As with [`ShaderDlaSystem`](alife.md#alife-dla-kt-shaderdlasystem), constructing it inside a box seeds that box's `fragment` tab with
+the update rule, so the rule arrives as source you can edit. The CPU-side alife family does not
+have this model; nothing here reads the grid back.
+
+`src/jvmMain/kotlin/afield/stdlib/alife_bml.kt` — [read the source](source/jvmMain/afield/stdlib/alife_bml/)
+
+### ShaderBmlSettings { #alife-bml-kt-shaderbmlsettings }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ShaderBmlSettings</span><span class="p">(</span><span class="k">var</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;bml&quot;</span><span class="p">,</span> <span class="k">var</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="k">var</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="k">var</span> <span class="n">density</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.32f</span><span class="p">,</span> <span class="k">var</span> <span class="n">eastboundFraction</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="k">var</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">var</span> <span class="n">randomSeed</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L73)
+
+Everything [`ShaderBmlSystem`](alife.md#alife-bml-kt-shaderbmlsystem) reads. Most are bound as lambdas, so changing one while it runs takes effect on the next frame; `density`, `eastboundFraction` and `randomSeed` are only read by the scatter, so they take effect at the next `ShaderBmlSystem.reset`.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">var</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> | Prefix for the module, mesh and pre-target names. Two systems in one renderer need two names. |
+| <code class="highlight"><span class="k">var</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> | Width of the torus in cells, which is also the texture width in pixels. |
+| <code class="highlight"><span class="k">var</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> | Height of the torus in cells. Must be positive, as must `width`. |
+| <code class="highlight"><span class="k">var</span> <span class="n">density</span><span class="p">:</span> <span class="nc">Float</span></code> | The fraction of cells that hold a car. On a 512 × 512 torus 0.20 flows freely, 0.45 locks, and the default sits near the transition between them. |
+| <code class="highlight"><span class="k">var</span> <span class="n">eastboundFraction</span><span class="p">:</span> <span class="nc">Float</span></code> | The fraction of cars that are eastbound (red); the rest are southbound (blue). |
+| <code class="highlight"><span class="k">var</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `false` holds the grid as it is; `true` advances it one half-step per frame. |
+| <code class="highlight"><span class="k">var</span> <span class="n">randomSeed</span><span class="p">:</span> <span class="nc">Int</span></code> | Seed for the scatter; `ShaderBmlSystem.reset` can override it. |
+
+### ShaderBmlSystem { #alife-bml-kt-shaderbmlsystem }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">ShaderBmlSystem</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">ShaderBmlSettings</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="nc">HasImageViewArray</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L98)
+
+A shader-driven BML traffic model: one fragment pass into a ping-pong target, half a step per frame. Build one, call `installInto`, and it runs. The file overview above describes the rule and the encoding.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span></code> | The renderer to build the target and module on; by default the one this box is running in. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">settings</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L105) | The settings this system was built with, after `configure` ran, and the handle for changing it live. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">step</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L111) | How many half-steps have been recorded since the last `reset`. Even values move the eastbound cars, odd values the southbound ones, so `step / 2` is the model's time. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">simulation</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L119) | The ping-pong pair holding the grid. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stepModule</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L132) | The full-screen pass that applies the rule. This is the module a surrounding box adopts. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">imageView</span><span class="p">:</span> <span class="nc">ImageView</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L175) | The grid as a texture: red is an eastbound car, blue a southbound one. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">imageViewArray</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HasImageView</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L179) | The same single colour attachment, in the list form the array-sampling path asks for. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L183) | Runs one half-step. Called by whatever the system is registered with; see `installInto`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">settings</span><span class="p">.</span><span class="n">randomSeed</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L202) | Scatter a fresh grid on the next frame from `ShaderBmlSettings.density` and `ShaderBmlSettings.eastboundFraction`, and restart `step` from 0. Passing no seed reuses `ShaderBmlSettings.randomSeed`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installInto</span><span class="p">(</span><span class="n">renderTarget</span><span class="p">:</span> <span class="nc">RenderTarget</span> <span class="o">=</span> <span class="n">renderer</span><span class="p">.</span><span class="n">renderList</span><span class="p">,</span> <span class="n">withPreview</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">previewName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;${settings.name}-preview&quot;</span><span class="p">,</span> <span class="n">previewViewport</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L211) | Wire the simulation into a render target as a pre-target and, by default, blit it to the window. Returns the preview module, or `null` with `withPreview = false`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">blitToScreen</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">RenderTarget</span> <span class="o">=</span> <span class="n">renderer</span><span class="p">.</span><span class="n">renderList</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;${settings.name}-preview&quot;</span><span class="p">,</span> <span class="n">viewport</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">sourceRect</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code>](source/jvmMain/afield/stdlib/alife_bml/#L236) | Draw the grid to a target without registering the simulation with it. `viewport` is where it lands and `sourceRect` which part of the grid is taken; a small `sourceRect` over a large viewport is how to see individual cars. |
 
 ## alife_ca.kt { #alife-ca-kt }
 
