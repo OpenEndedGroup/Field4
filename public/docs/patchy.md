@@ -89,11 +89,15 @@ The tools run in the same live Patchy instance as the person painting. Re-runnin
 replaces its AI4 tools; the saved PSD is restored before a queued tool call starts. `p.state()`
 reports the current documents, layers, and IDs, including edits made by hand. The four tools
 above are box code: change their descriptions or add another operation as your painting evolves.
+The final `go { ... }` makes the first mark when the box runs. Those Patchy calls wait for replies
+from the iframe, so ordinary box code starts them in a coroutine. An AI tool's `action { ... }`
+already supports suspend calls and needs no `go` wrapper.
 
 ## Kotlin API
 
 Every operation below is on the `PatchyWebSession` returned by `patchyWeb(...)`. Its methods
-are suspend functions, so call them inside `go { ... }` or an `aiTool { action { ... } }`.
+are suspend functions, so call them inside [`go { ... }`](running_code.md#calling-suspend-functions-with-go)
+or an `aiTool { action { ... } }`.
 
 | Call | Result |
 | --- | --- |
