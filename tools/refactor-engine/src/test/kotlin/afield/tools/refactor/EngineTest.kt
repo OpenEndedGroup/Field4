@@ -162,6 +162,18 @@ class EngineTest {
         assertTrue(result.findings.any { it.kind == "qualified-type" })
     }
 
+    @Test fun redundantSplitStarCanBeRemovedWhileIntroStillHasATransitionalFallback() = Engine().use { engine ->
+        val rules = recipe.copy(scriptImports = setOf("afield.mixed.*", "afield.model.*"))
+        val source = "import afield.mixed.* // host owns the migration\nval x = Thing()"
+        val result = engine.rewrite(source, true, rules)
+        assertEquals(" // host owns the migration\nval x = Thing()", result.code)
+        assertTrue(result.findings.isEmpty())
+        assertEquals(source, engine.rewrite(source, false, rules).code)
+        assertTrue(engine.rewrite(source, false, rules).findings.any { it.kind == "split-star" })
+        val broken = "import afield.mixed.*\nval x = ("
+        assertEquals(broken, engine.rewrite(broken, true, rules).code)
+    }
+
     @Test fun identicalIntroImportsAreDroppedOnlyInScripts() = Engine().use { engine ->
         val rules = recipe.copy(scriptImports = setOf("afield.newplace.*", "afield.newplace.Thing"))
         val source = "import afield.old.*\r\nimport afield.old.Thing // keep\r\nimport afield.old.Other\r\nimport afield.old.Thing as T\r\nval x = T()\r\n"

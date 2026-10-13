@@ -396,3 +396,20 @@ uv run --group backdoor python tools/refactor_pass.py resume --session /path/to/
 
 Sidecar filename conventions are unchanged. Private source and operations retain the
 loopback/same-site boundary used by Docs pass and terminals.
+
+### Field box intro coverage
+
+Use `boxImports` (import paths without the `import` keyword) when the destination defaults are
+Field's `intro`. It overrides `scriptImports` only for Kotlin properties in `metadata.edn` and
+sidecars explicitly registered by those documents. Standalone scripts, unregistered `.kt` files,
+and Markdown fences do not inherit this profile. Compiled Kotlin never uses host coverage.
+
+Migrate the central intro first and copy its exact import list into `boxImports`. An identical
+host import is redundant even while a split package still has unresolved declarations: remove it
+from boxes rather than expanding it there. During a staged migration the central intro may keep
+an old split wildcard as a temporary fallback alongside its known destinations. That is not a
+complete split map or permission to leave the package unchanged; finish the declaration assignments
+and remove the fallback before delivery. A complete `splitStarImports` entry lets boxes drop the
+old wildcard once all destinations are supplied centrally. Named imports are removed only when
+the identical explicit import is in the intro; wildcard coverage alone cannot prove they are
+redundant. Syntax errors and existing EDN/sidecar drift continue to hold their document groups.

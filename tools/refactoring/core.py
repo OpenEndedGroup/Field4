@@ -91,7 +91,7 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -141,11 +141,12 @@ def load_recipe(path: Path) -> dict:
             raise RefactorError('splitStarImports must match mapped owners and preserve symbol names')
         if any(v != old and v in splits for v in targets):
             raise RefactorError('splitStarImports destinations cannot be another unresolved split package')
-    script_imports = recipe.get('scriptImports', [])
-    if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
-        raise RefactorError('scriptImports must list destination import paths, optionally ending in .*')
-    if any(s == old or s.startswith(old + '.') for s in script_imports for old in all_rules):
-        raise RefactorError('scriptImports must describe the destination intro, not old packages')
+    for field in ('scriptImports', 'boxImports'):
+        script_imports = recipe.get(field, [])
+        if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
+            raise RefactorError(f'{field} must list destination import paths, optionally ending in .*')
+        if any(s == old or s.startswith(old + '.') for s in script_imports for old in all_rules):
+            raise RefactorError(f'{field} must describe the destination intro, not old packages')
     qualified_properties = recipe.get('qualifiedNameProperties', {})
     if not isinstance(qualified_properties, dict) or any(
             not isinstance(glob, str) or not glob.endswith('.properties') or not isinstance(keys, list) or
@@ -336,9 +337,30 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
         prose = markdown_prose_enabled(recipe, rel, repo)
         return extract(rel, text, properties, workspace=not repo, qualified_names=keys, markdown_prose=prose)
 
-    def rewrite_unit(unit):
+    # A Field intro belongs to saved boxes, not arbitrary .kts files or Markdown fences.
+    # Only metadata-registered sidecars inherit it; a filename alone proves no host.
+    box_sidecars = set()
+    if 'boxImports' in recipe:
+        for rel in paths:
+            if Path(rel).name != 'metadata.edn':
+                continue
+            try:
+                target = confined(root, rel)
+                if target.stat().st_size > MAX_BYTES:
+                    continue
+                extraction = extract_file(rel, target.read_text())
+                for reference in extraction.references:
+                    side = confined(root / Path(rel).parent, reference).relative_to(root).as_posix()
+                    box_sidecars.add(side)
+            except (OSError, ValueError, RecursionError):
+                pass  # Normal extraction below reports malformed/unsafe containers.
+    box_recipe = dict(recipe, scriptImports=recipe.get('boxImports', []))
+
+    def rewrite_unit(unit, rel):
         if not unit.identity.startswith('prose:'):
-            return engine.rewrite(unit.code, unit.script, recipe)
+            host = box_recipe if 'boxImports' in recipe and unit.script and (
+                Path(rel).name == 'metadata.edn' or rel in box_sidecars) else recipe
+            return engine.rewrite(unit.code, unit.script, host)
         after = rewrite_qualified_text(unit.code, recipe)
         pending = [issue('prose-reference', 'Unmapped qualified name in prose requires contextual review')] if pattern.search(after) else []
         return {'code': after, 'findings': pending, 'imports': [], 'package': '', 'evidence': 'exact-qualified-text'}
@@ -384,7 +406,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
             for unit in extraction.units:
                 if unit.sidecar:
                     continue
-                response = rewrite_unit(unit)
+                response = rewrite_unit(unit, rel)
                 package = response.get('package', '')
                 if not unit.script and unit.identity == 'source' and package:
                     rule = max((old for old in recipe['packages'] if package == old or package.startswith(old + '.')),
@@ -448,7 +470,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                 if after != unit.code:
                     edits.append((unit.start, unit.end, unit.encode(after)))
             else:
-                response = rewrite_unit(unit)
+                response = rewrite_unit(unit, rel)
                 if response['code'] != unit.code:
                     edits.append((unit.start, unit.end, unit.encode(response['code'])))
         outputs[rel] = patch(originals[rel], edits)
@@ -468,7 +490,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                     side = confined(root / Path(rel).parent, old.sidecar).relative_to(root).as_posix()
                     expected = outputs.get(side, old.code)
                 else:
-                    expected = rewrite_unit(old)['code']
+                    expected = rewrite_unit(old, rel)['code']
                 if new.code != expected:
                     raise ContainerError(f'container round-trip changed {old.identity}')
         except (ContainerError, ValueError) as error:
