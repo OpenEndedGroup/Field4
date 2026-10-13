@@ -129,3 +129,11 @@ operations:
               }
           }
           lines(out, w = 560.0, h = 360.0, fitToSize = true)
+  - execute:
+      box: fline-exact-booleans
+      property: code
+      type: fragment
+  - execute:
+      box: fline-exact-offsets
+      property: code
+      type: fragment
