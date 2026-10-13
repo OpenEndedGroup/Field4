@@ -26,13 +26,23 @@ data class Recipe(
     // Exact imports supplied by the destination script host, without the `import` keyword.
     val scriptImports: Set<String> = emptySet(),
     val rewriteComments: Boolean = false,
+    val knownPackages: Set<String> = emptySet(),
+    val retainedSymbols: Set<String> = emptySet(),
 ) {
     private fun prefix(path: String, old: String) = path == old || path.startsWith("$old.")
-    fun affected(path: String): Boolean =
-        packages.keys.any { prefix(path, it) } || symbols.keys.any { prefix(path, it) } ||
-            splitPackages.any { prefix(path, it) }
+    fun retained(path: String) = retainedSymbols.any { prefix(path, it) }
+    private val roots = (packages.keys + symbols.keys + splitPackages).map { it.substringBefore('.') }.toSet()
+    fun affected(path: String): Boolean {
+        if (path.substringBefore('.') !in roots || retained(path)) return false
+        if (packages.keys.any { prefix(path, it) } || symbols.keys.any { prefix(path, it) }) return true
+        val owner = knownPackages.filter { prefix(path, it) }.maxByOrNull(String::length)
+        return if (owner != null) owner in splitPackages else splitPackages.any { prefix(path, it) }
+    }
+    fun affectedText(text: String) = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*")
+        .findAll(text).any { affected(it.value) }
 
     fun moved(path: String): String? {
+        if (retained(path)) return null
         val symbol = symbols.keys.filter { prefix(path, it) }.maxByOrNull(String::length)
         if (symbol != null) return symbols.getValue(symbol) + path.removePrefix(symbol)
         val pkg = packages.keys.filter { prefix(path, it) }.maxByOrNull(String::length) ?: return null
@@ -60,6 +70,47 @@ class Engine : AutoCloseable {
         }, EnvironmentConfigFiles.JVM_CONFIG_FILES,
     )
     private val factory = KtPsiFactory(environment.project, false)
+
+    fun declarations(code: String): JsonObject {
+        val normalized = code.replace("\r\n", "\n").replace('\r', '\n')
+        val file = factory.createFile("index.kt", normalized)
+        val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+        return buildJsonObject {
+            put("package", file.packageFqName.asString())
+            putJsonArray("errors") { errors.forEach { add("line ${normalized.take(it.textOffset).count { c -> c == '\n' } + 1}: ${it.errorDescription}") } }
+            putJsonArray("declarations") {
+                if (errors.isEmpty()) for (declaration in file.declarations.filterIsInstance<KtNamedDeclaration>()) {
+                    val name = declaration.name ?: continue
+                    val kind = when (declaration) {
+                        is KtNamedFunction -> "function"
+                        is KtProperty -> "property"
+                        is KtTypeAlias -> "typealias"
+                        is KtObjectDeclaration -> "object"
+                        is KtClass -> if (declaration.isInterface()) "interface" else "class"
+                        else -> "unsupported"
+                    }
+                    val body = when (declaration) {
+                        is KtNamedFunction -> declaration.bodyExpression
+                        is KtProperty -> declaration.initializer ?: declaration.delegateExpression
+                        is KtClassOrObject -> declaration.body
+                        else -> null
+                    }
+                    val headerStart = declaration.docComment?.textRange?.endOffset ?: declaration.textRange.startOffset
+                    val header = normalized.substring(headerStart, body?.textOffset ?: declaration.textRange.endOffset)
+                        .replace(Regex("\\s+"), " ").trim()
+                    add(buildJsonObject {
+                        put("name", name)
+                        put("fqn", listOf(file.packageFqName.asString(), name).filter { it.isNotBlank() }.joinToString("."))
+                        put("kind", kind); put("signature", header)
+                        put("line", normalized.take(declaration.textOffset).count { it == '\n' } + 1)
+                        put("visibility", listOf("private", "internal", "protected", "public").firstOrNull {
+                            declaration.modifierList?.text?.split(Regex("\\s+"))?.contains(it) == true
+                        } ?: "public")
+                    })
+                }
+            }
+        }
+    }
 
     fun rewrite(code: String, script: Boolean, recipe: Recipe): Result {
         // IntelliJ PSI requires LF. Preserve a UTF-16 offset map back to the untouched input.
@@ -110,7 +161,8 @@ class Engine : AutoCloseable {
             }
         }
         val pkg = file.packageFqName.asString()
-        if (recipe.affected(pkg) && pkg.isNotBlank()) {
+        if (pkg.isNotBlank() && (recipe.packageMove(pkg) != null || pkg in recipe.splitPackages ||
+                recipe.symbols.keys.any { it.substringBeforeLast('.') == pkg })) {
             val destination = recipe.packageMove(pkg)
             val wholePackage = destination != null && pkg !in recipe.splitPackages &&
                 recipe.symbols.keys.none { it.substringBeforeLast('.') == pkg }
@@ -174,16 +226,15 @@ class Engine : AutoCloseable {
         }
         // Embedded programs, reflection names, and annotations containing strings need a container
         // adapter or explicit consumer rule. Comment rewriting is an explicit recipe option.
-        val oldNames = recipe.packages.keys + recipe.symbols.keys + recipe.splitPackages
         for (comment in PsiTreeUtil.findChildrenOfType(file, PsiComment::class.java)) {
             val afterComment = if (recipe.rewriteComments) recipe.rewriteText(comment.text) else comment.text
             if (afterComment != comment.text)
                 edits += Edit(offsets[comment.textRange.startOffset], offsets[comment.textRange.endOffset], afterComment)
-            if (oldNames.any { old -> Regex("(?<![\\w.])${Regex.escape(old)}(?![\\w/])").containsMatchIn(afterComment) })
+            if (recipe.affectedText(afterComment))
                 findings += Finding("comment-reference", line(comment.textOffset), "KDoc, example or historical reference; review without changing prose blindly")
         }
         for (literal in PsiTreeUtil.findChildrenOfType(file, KtStringTemplateExpression::class.java)) {
-            if (oldNames.any { old -> Regex("(?<![\\w.])${Regex.escape(old)}(?=[.\\s\"$]|$)").containsMatchIn(literal.text) })
+            if (recipe.affectedText(literal.text))
                 findings += Finding("string-reference", line(literal.textOffset), "Potential embedded code or dynamic name; requires a typed adapter")
         }
         var after = code
@@ -209,11 +260,18 @@ fun main() {
         generateSequence(::readlnOrNull).forEach { line ->
             val result = try {
                 val request = Json.parseToJsonElement(line).jsonObject
+                if (request["operation"]?.jsonPrimitive?.content == "declarations") {
+                    println(engine.declarations(request.getValue("code").jsonPrimitive.content))
+                    System.out.flush()
+                    return@forEach
+                }
                 val config = request.getValue("recipe").jsonObject
                 val recipe = Recipe(config.mapping("packages"), config.mapping("symbols"),
                     config["splitPackages"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
                     config["scriptImports"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
-                    config["rewriteComments"]?.jsonPrimitive?.boolean ?: false)
+                    config["rewriteComments"]?.jsonPrimitive?.boolean ?: false,
+                    config["knownPackages"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
+                    config["retainedSymbols"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty())
                 val result = engine.rewrite(request.getValue("code").jsonPrimitive.content,
                     request["script"]?.jsonPrimitive?.boolean ?: true, recipe)
                 buildJsonObject {

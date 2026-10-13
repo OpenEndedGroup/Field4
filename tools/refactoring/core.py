@@ -91,7 +91,7 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -119,6 +119,13 @@ def load_recipe(path: Path) -> dict:
         raise RefactorError('splitPackages must be qualified package names')
     if set(splits) & set(recipe['packages']):
         raise RefactorError('a package cannot be both moved whole and split')
+    for key in ('knownPackages', 'retainedSymbols'):
+        values = recipe.get(key, [])
+        if not isinstance(values, list) or any(not isinstance(v, str) or not name.fullmatch(v) for v in values):
+            raise RefactorError(f'{key} must list qualified names')
+    if any(v == old or v.startswith(old + '.') or old.startswith(v + '.')
+           for v in recipe.get('retainedSymbols', []) for old in all_rules):
+        raise RefactorError('retained symbols overlap move rules')
     script_imports = recipe.get('scriptImports', [])
     if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
         raise RefactorError('scriptImports must list destination import paths, optionally ending in .*')
@@ -139,14 +146,36 @@ def load_recipe(path: Path) -> dict:
 
 
 def affected_pattern(recipe: dict):
+    def prefix(path, parent):
+        return path == parent or path.startswith(parent + '.')
+
     names = sorted(set(recipe['packages']) | set(recipe['symbols']) | set(recipe['splitPackages']), key=len, reverse=True)
-    return re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in names) + r')(?![\w/])') if names else re.compile(r'(?!)')
+    candidates = re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in names) + r')(?![\w/])') if names else re.compile(r'(?!)')
+    qualified = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*')
+    class References:
+        def search(self, text):
+            for candidate in candidates.finditer(text):
+                match = qualified.match(text, candidate.start())
+                path = match.group()
+                if text[match.end():match.end() + 1] == '/':
+                    continue
+                if any(prefix(path, v) for v in recipe.get('retainedSymbols', [])):
+                    continue
+                if any(prefix(path, v) for v in recipe['packages'] | recipe['symbols']):
+                    return match
+                owner = max((v for v in recipe.get('knownPackages', []) if prefix(path, v)), key=len, default=None)
+                if (owner in recipe['splitPackages'] if owner else any(prefix(path, v) for v in recipe['splitPackages'])):
+                    return match
+            return None
+    return References()
 
 
 def rewrite_qualified_text(text: str, recipe: dict) -> str:
     def replace(match):
         name = match.group()
         if text[match.end():match.end() + 1] == '/':
+            return name
+        if any(name == v or name.startswith(v + '.') for v in recipe.get('retainedSymbols', [])):
             return name
         for rules in (recipe['symbols'], recipe['packages']):
             old = max((p for p in rules if name == p or name.startswith(p + '.')), key=len, default=None)
@@ -209,6 +238,17 @@ class KotlinEngine:
         self.proc = subprocess.Popen([str(executable)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=None, text=True, encoding='utf-8', bufsize=1)
         self.cache = {}
+
+    def declarations(self, code: str) -> dict:
+        self.proc.stdin.write(json.dumps({'operation': 'declarations', 'code': code}, ensure_ascii=False) + '\n')
+        self.proc.stdin.flush()
+        line = self.proc.stdout.readline()
+        if not line:
+            raise RefactorError('Kotlin declaration indexer exited unexpectedly')
+        result = json.loads(line)
+        if 'error' in result:
+            raise RefactorError(result['error'])
+        return result
 
     def rewrite(self, code: str, script: bool, recipe: dict) -> dict:
         key = digest(canonical([code, script, recipe]))
