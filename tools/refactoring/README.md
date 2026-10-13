@@ -230,3 +230,49 @@ ambiguous qualified references, operators and individual declaration moves. Othe
 automatic generator scheduling, typed Java/build/embedded-command adapters, version-chain selection,
 live workspace leases and an upgrade UI. The current report distinguishes these gaps from completed
 mechanical changes; it is not yet an unattended whole-repository cutover engine.
+
+## Refactor pass: contextual review in Field
+
+Open `/refactor-pass.html` in the same Field server as the docs pass (there is a link from the
+Docs pass page), and import the absolute directory of a migration plan. The pass creates one
+`codex/refactor-pass-…` integration worktree and new workspace copies, excluding the same backups
+and thumbnails as the migration tool. Private pass state, copied plans, briefs and decisions live
+under `~/.afield/refactor-passes/`; the checkout keeps only an ignored pointer. The original
+repository and workspaces are not edited by review sessions.
+
+The first version provides:
+
+- The recipe, root counts, file moves and proposed diffs, including held changes.
+- Review groups with actual source excerpts and decoded code-unit line numbers. Before/after
+  blobs preserve the evidence even when the original source later changes.
+- Suggested batches for prose, display labels, dynamic names, languages, incomplete syntax,
+  generated outputs and source layout. These are suggestions for review, not automatic approvals.
+- Decisions per document/file group: patch proposed, preserve with a reason, adapter needed,
+  question or open. Recipe, group-source and finding fingerprints reopen changed decisions.
+- The existing interactive terminal, using the configured agent. A generated private brief includes
+  exact findings and proposed changes. One writer lease serializes agent sessions, replanning and
+  rehearsal. Decisions can be recorded while the agent owns the lease.
+- Replanning against the working copies, followed by apply/verify/undo/verify of ready groups.
+  Each plan can be rehearsed once; replan for another rehearsal.
+
+The page's state survives a reload and the terminal can be reattached. A decision does not alter
+an immutable plan or waive its held groups. The agent stops after recording outcomes; its brief
+forbids partial commits/landings. This first pass does not enqueue the namespace cutover or publish
+workspace upgrades. Compilation, runtime validation, deliberate preservation rules, and final
+coordinated delivery remain required. Sidecar filename conventions are unchanged.
+
+The same operations are available from the CLI:
+
+```sh
+uv run --project . --group backdoor python tools/refactor_pass.py create --plan /path/to/migration
+uv run --project . --group backdoor python tools/refactor_pass.py status
+uv run --project . --group backdoor python tools/refactor_pass.py item --item <id>
+uv run --project . --group backdoor python tools/refactor_pass.py decide --item <id> --state preserve --reason 'Dated historical description'
+uv run --project . --group backdoor python tools/refactor_pass.py brief --batch dynamic-names
+uv run --project . --group backdoor python tools/refactor_pass.py replan
+uv run --project . --group backdoor python tools/refactor_pass.py rehearse
+```
+
+The server must stay in its hosting checkout while the migration is developed in the integration
+worktree. Agent sessions use `tools/field_agent.py`'s choice; browser reads and writes use the same
+loopback/same-site boundary as docs passes and terminals because reports contain private source.

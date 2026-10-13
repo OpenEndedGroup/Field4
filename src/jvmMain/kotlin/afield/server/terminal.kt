@@ -298,7 +298,9 @@ internal fun Route.installTerminalRoutes(policy: DocsAccessPolicy) {
         val checkout = docsImprovementCheckout()
             ?: return@post call.respond(HttpStatusCode.ServiceUnavailable, "The checkout is not usable; set $DOCS_IMPROVEMENT_DIRECTORY_ENV.")
         val launch = call.receive<TerminalLaunch>()
-        val plan = terminalPlan(launch, checkout, terminalExecutable(fieldAgent()), terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
+        val planned = if (launch.kind == "refactor-batch") refactorTerminalPlan(launch, checkout, terminalExecutable("uv"))
+            else terminalPlan(launch, checkout, terminalExecutable(fieldAgent()), terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
+        val plan = planned
             .getOrElse { return@post call.respond(HttpStatusCode.BadRequest, it.message ?: "bad request") }
         TerminalSessions.start(launch, plan)
             .onSuccess { call.respondTerminal(it) }
