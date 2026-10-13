@@ -13,12 +13,40 @@ reference is `public/docs/linear_algebra_api.md`.
   matrix operations.
 - `tools/linalg-generator/.../KotlinEmitter.kt`: heap, arena, segment, bulk, and
   transform emission.
+- `tools/linalg-generator/src/main/resources/linalg-packages.properties`: output
+  package names and external helper/annotation names. Arena, storage and bulk
+  packages are derived from the linalg root; extension outputs have a separate root.
 - `src/generatedLinalg/kotlin/`: checked-in generated Kotlin. Do not edit it by
   hand.
 - `public/docs/linear_algebra_api.md`: generated Markdown from the same model.
 
 `./gradlew generateLinalg` regenerates Kotlin and Markdown.
 `./gradlew checkGeneratedLinalg` checks both against the model byte-for-byte.
+It also runs the generator's package-configuration tests.
+
+## Package migrations
+
+Change the package configuration, then regenerate. The emitter, output paths,
+reference prose and package headers for both compatibility templates all use the
+same settings. Templates contain the declaration bodies, without a package line.
+The generator's own implementation package is independent of its output packages.
+
+For a rehearsal, supply a complete alternative configuration and fresh output roots:
+
+```sh
+./gradlew :tools:linalg-generator:run --args="--packages /tmp/linalg-packages.properties --output /tmp/linalg/kotlin --docs-output /tmp/linalg/docs"
+```
+
+Unknown, missing or duplicate settings and invalid qualified names are errors.
+When writing into an existing output root, regeneration removes obsolete files
+only if they have a recognized output filename and the linalg generator's ownership
+header. Check mode reports such files without deleting them. Handwritten files remain.
+
+The import migrator's linalg example registers the configuration through
+`qualifiedNameProperties`; it can rewrite these typed name fields without treating
+every string in the emitter as embedded code. Generated sources and reference docs
+remain owned by `generateLinalg`. Actual package migration still needs updates to
+handwritten APIs and callers, followed by compilation.
 
 ## Shipped representations
 

@@ -7,7 +7,14 @@
   "packages": {"afield.stdlib.linalg": "afield.math.linalg"},
   "symbols": {},
   "splitPackages": [],
+  "qualifiedNameProperties": {
+    "tools/linalg-generator/src/main/resources/linalg-packages.properties": [
+      "linalg.package", "extensions.package", "halfCodec.package", "completionAnnotation.type"
+    ]
+  },
   "generated": [
+    {"glob": "src/generatedLinalg/kotlin/*", "regenerate": "./gradlew generateLinalg"},
+    {"glob": "public/docs/linear_algebra_api.md", "regenerate": "./gradlew generateLinalg"},
     {"glob": "public/docs/assets/agent_transcripts/*", "regenerate": "./gradlew regenerateAgentTranscriptStartingPoints"},
     {"glob": "public/docs/reference/*", "regenerate": "./gradlew generateCodebaseReference"},
     {"glob": "tools/completion-corpus/*", "regenerate": "AFIELD_HARVEST_WRITE=1 ./gradlew checkCompletionCorpusFixtures"}

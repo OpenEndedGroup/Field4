@@ -1041,8 +1041,8 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 va is Vector2f && vb is Vector2f -> Vector2f(va).lerp(vb, tf)
                 va is Vector3f && vb is Vector3f -> Vector3f(va).lerp(vb, tf)
                 va is Vector4f && vb is Vector4f -> Vector4f(va).lerp(vb, tf)
-                va is afield.stdlib.linalg.Quaternionf && vb is afield.stdlib.linalg.Quaternionf -> afield.stdlib.linalg.Quaternionf(va).slerp(vb, tf)
-                va is afield.stdlib.linalg.DualQuaternionf && vb is afield.stdlib.linalg.DualQuaternionf -> afield.stdlib.linalg.DualQuaternionf(va).sclerp(vb, tf)
+                va is Quaternionf && vb is Quaternionf -> Quaternionf(va).slerp(vb, tf)
+                va is DualQuaternionf && vb is DualQuaternionf -> DualQuaternionf(va).sclerp(vb, tf)
                 va is CameraPose && vb is CameraPose -> va.sclerp(vb, tf)
                 va is StackSLString && vb is StackSLString -> blendStackSLValue(va, vb, tEffective)
                 va is String && vb is String -> if (tEffective >= 1.0) vb else va
@@ -1696,9 +1696,10 @@ private fun kotlinValueLiteral(value: Any?): String =
         is Vector2f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)})"
         is Vector3f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)})"
         is Vector4f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
-        is Quaternionf -> "afield.stdlib.linalg.Quaternionf(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
-        is DualQuaternionf -> "afield.stdlib.linalg.DualQuaternionf(afield.stdlib.linalg.Quaternionf(${kotlinNumberLiteral(value.real.x)}, ${kotlinNumberLiteral(value.real.y)}, ${kotlinNumberLiteral(value.real.z)}, ${kotlinNumberLiteral(value.real.w)}), afield.stdlib.linalg.Quaternionf(${kotlinNumberLiteral(value.dual.x)}, ${kotlinNumberLiteral(value.dual.y)}, ${kotlinNumberLiteral(value.dual.z)}, ${kotlinNumberLiteral(value.dual.w)}))"
-        is CameraPose -> "afield.four.util.CameraPose(${kotlinValueLiteral(value.transform)}, ${kotlinNumberLiteral(value.focusDistance)})"
+        // Name the supported constructor, not value::class: a runtime subclass may be anonymous.
+        is Quaternionf -> "${Quaternionf::class.qualifiedName}(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
+        is DualQuaternionf -> "${DualQuaternionf::class.qualifiedName}(${kotlinValueLiteral(value.real)}, ${kotlinValueLiteral(value.dual)})"
+        is CameraPose -> "${CameraPose::class.qualifiedName}(${kotlinValueLiteral(value.transform)}, ${kotlinNumberLiteral(value.focusDistance)})"
         else -> "/* unsupported ${value::class.java.name} */ null"
     }
 

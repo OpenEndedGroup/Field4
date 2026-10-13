@@ -89,7 +89,7 @@ def load_recipe(path: Path) -> dict:
         import yaml
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
-               'kotlinProperties', 'generated', 'description', 'scriptImports'}
+               'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -117,6 +117,12 @@ def load_recipe(path: Path) -> dict:
         raise RefactorError('scriptImports must list destination import paths, optionally ending in .*')
     if any(s == old or s.startswith(old + '.') for s in script_imports for old in all_rules):
         raise RefactorError('scriptImports must describe the destination intro, not old packages')
+    qualified_properties = recipe.get('qualifiedNameProperties', {})
+    if not isinstance(qualified_properties, dict) or any(
+            not isinstance(glob, str) or not glob.endswith('.properties') or not isinstance(keys, list) or
+            not keys or any(not isinstance(k, str) or not re.fullmatch(r'[A-Za-z_][\w.-]*', k) for k in keys)
+            for glob, keys in qualified_properties.items()):
+        raise RefactorError('qualifiedNameProperties must map .properties path patterns to nonempty lists of literal keys')
     for entry in recipe.setdefault('generated', []):
         if not isinstance(entry, dict) or set(entry) != {'glob', 'regenerate'} or not all(isinstance(v, str) and v for v in entry.values()):
             raise RefactorError('generated entries need glob and regenerate strings')
@@ -243,6 +249,11 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
     def finding(rel, value):
         findings.append(dict(value, path=rel, group=group_for(rel, documents)))
 
+    def extract_file(rel, text):
+        keys = {key for glob, names in recipe.get('qualifiedNameProperties', {}).items()
+                if Path(rel).match(glob) or __import__('fnmatch').fnmatch(rel, glob) for key in names}
+        return extract(rel, text, properties, workspace=not repo, qualified_names=keys)
+
     for index, rel in enumerate(paths):
         if progress and index % 1000 == 0:
             progress(f'{root.name}: inspected {index}/{len(paths)} files')
@@ -270,7 +281,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
             continue
         originals[rel] = text
         try:
-            extraction = extract(rel, text, properties, workspace=not repo)
+            extraction = extract_file(rel, text)
             extracted[rel] = extraction
             for value in extraction.findings:
                 finding(rel, value)
@@ -357,7 +368,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
         if after == originals[rel]:
             continue
         try:
-            units_after = extract(rel, after, properties, workspace=not repo).units
+            units_after = extract_file(rel, after).units
             units_before = extracted[rel].units
             if len(units_after) != len(units_before):
                 raise ContainerError('container round-trip changed code-unit count')

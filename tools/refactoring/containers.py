@@ -323,7 +323,44 @@ def yaml_units(text: str, properties: set[str]) -> Extraction:
     return result
 
 
-def extract(path: str, text: str, properties: set[str], *, workspace=False) -> Extraction:
+def qualified_name_properties(text: str, keys: set[str]) -> Extraction:
+    """Explicitly registered Java-properties fields holding qualified Kotlin names.
+
+    Literal key=value syntax only: reject escapes/continuations rather than misread Java's
+    property semantics. Feed values through the existing import mapper, preserving all other bytes.
+    """
+    result = Extraction()
+    seen = set()
+    offset = 0
+    for line in text.splitlines(keepends=True):
+        if line.strip() and not line.lstrip().startswith(('#', '!')):
+            match = re.fullmatch(r'[ \t]*([A-Za-z_][\w.-]*)[ \t]*=[ \t]*([^\r\n]*?)[ \t]*(?:\r?\n)?', line)
+            if not match or '\\' in line:
+                raise ContainerError('qualified-name properties require literal key=value lines, without escapes or continuations')
+            key, value = match.group(1, 2)
+            if key in seen:
+                raise ContainerError(f'duplicate property: {key}')
+            seen.add(key)
+            if key in keys:
+                if not re.fullmatch(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', value):
+                    raise ContainerError(f'{key} must contain a qualified Kotlin name')
+
+                def encode(code):
+                    if not re.fullmatch(r'import [A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+\n', code):
+                        raise ContainerError('qualified-name mapping produced something other than one import')
+                    return code.removeprefix('import ').removesuffix('\n')
+
+                result.units.append(Unit(f'qualified-name:{key}', f'import {value}\n',
+                                         offset + match.start(2), offset + match.end(2), encode, script=False))
+        offset += len(line)
+    if keys - seen:
+        raise ContainerError(f'missing registered qualified-name properties: {sorted(keys - seen)}')
+    return result
+
+
+def extract(path: str, text: str, properties: set[str], *, workspace=False, qualified_names=None) -> Extraction:
+    if qualified_names:
+        return qualified_name_properties(text, qualified_names)
     p = Path(path)
     if p.suffix in ('.kt', '.kts'):
         # Docs, templates, UI-regression fixtures and box sidecars use .kt for script fragments.
