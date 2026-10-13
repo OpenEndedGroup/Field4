@@ -30,13 +30,27 @@ data class Recipe(
     val retainedSymbols: Set<String> = emptySet(),
     val splitStarImports: Map<String, List<String>> = emptyMap(),
     val scriptImportsKnown: Boolean = false,
+    val splitSymbols: Map<String, List<String>> = emptyMap(),
 ) {
     private fun prefix(path: String, old: String) = path == old || path.startsWith("$old.")
+    private val destinationPackages = packages.values.toSet() + symbols.values.map { it.substringBeforeLast('.') } +
+        splitSymbols.values.flatten().map { it.substringBeforeLast('.') }
+    private fun destinationReference(path: String): Boolean {
+        var destination = 0
+        var source = 0
+        var part = path
+        while (part.isNotEmpty()) {
+            if (part != path && part in destinationPackages) destination = maxOf(destination, part.length)
+            if (part in packages || part in symbols || part in splitSymbols) source = maxOf(source, part.length)
+            part = part.substringBeforeLast('.', "")
+        }
+        return destination > 0 && destination >= source
+    }
     fun retained(path: String) = retainedSymbols.any { prefix(path, it) }
-    private val roots = (packages.keys + symbols.keys + splitPackages).map { it.substringBefore('.') }.toSet()
+    private val roots = (packages.keys + symbols.keys + splitSymbols.keys + splitPackages).map { it.substringBefore('.') }.toSet()
     fun affected(path: String): Boolean {
-        if (path.substringBefore('.') !in roots || retained(path)) return false
-        if (packages.keys.any { prefix(path, it) } || symbols.keys.any { prefix(path, it) }) return true
+        if (path.substringBefore('.') !in roots || retained(path) || destinationReference(path)) return false
+        if (packages.keys.any { prefix(path, it) } || symbols.keys.any { prefix(path, it) } || splitSymbols.keys.any { prefix(path, it) }) return true
         val owner = knownPackages.filter { prefix(path, it) }.maxByOrNull(String::length)
         return if (owner != null) owner in splitPackages else splitPackages.any { prefix(path, it) }
     }
@@ -44,7 +58,7 @@ data class Recipe(
         .findAll(text).any { (includePaths || text.getOrNull(it.range.last + 1) != '/') && affected(it.value) }
 
     fun moved(path: String): String? {
-        if (retained(path)) return null
+        if (retained(path) || destinationReference(path)) return null
         val symbol = symbols.keys.filter { prefix(path, it) }.maxByOrNull(String::length)
         if (symbol != null) return symbols.getValue(symbol) + path.removePrefix(symbol)
         val pkg = packages.keys.filter { prefix(path, it) }.maxByOrNull(String::length) ?: return null
@@ -57,7 +71,7 @@ data class Recipe(
     }
 
     fun rewriteText(text: String): String = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+")
-        .replace(text) { match -> if (text.getOrNull(match.range.last + 1) == '/') match.value else moved(match.value) ?: match.value }
+        .replace(text) { match -> if (text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else moved(match.value) ?: match.value }
 }
 
 data class Edit(val start: Int, val end: Int, val replacement: String)
@@ -140,19 +154,22 @@ class Engine : AutoCloseable {
         fun isSplit(path: String) = path in recipe.splitPackages ||
             recipe.symbols.keys.any { it.substringBeforeLast('.') == path }
         val emittedStars = file.importDirectives.filter { it.isAllUnder && !isSplit(it.importedFqName?.asString().orEmpty()) }
-            .mapNotNull { it.importedFqName?.asString() }.map { recipe.moved(it) ?: it }.toMutableSet()
+            .mapNotNull { it.importedFqName?.asString() }.map { recipe.packageMove(it) ?: it }.toMutableSet()
         if (script) emittedStars += recipe.scriptImports.filter { it.endsWith(".*") }.map { it.removeSuffix(".*") }
         val newline = if (code.contains("\r\n")) "\r\n" else "\n"
         for (directive in file.importDirectives) {
             val path = directive.importedFqName?.asString() ?: continue
             val expression = directive.importedReference ?: continue
-            val destination = recipe.moved(path) ?: path
+            val destination = (if (directive.isAllUnder) recipe.packageMove(path) else recipe.moved(path)) ?: path
             val destinationImport = destination + if (directive.isAllUnder) ".*" else ""
             val importComments = PsiTreeUtil.findChildrenOfType(directive, PsiComment::class.java)
             // A star can cover individually moved declarations even if its containing package stays.
             val split = directive.isAllUnder && (path in recipe.splitPackages ||
                 recipe.symbols.keys.any { it.substringBeforeLast('.') == path })
-            if (script && directive.aliasName == null && destinationImport in recipe.scriptImports &&
+            if (!directive.isAllUnder && path in recipe.splitSymbols) {
+                findings += Finding("split-symbol", line(directive.textOffset),
+                    "Overloads have assigned destinations; resolve this use: ${recipe.splitSymbols.getValue(path).joinToString()}")
+            } else if (script && directive.aliasName == null && destinationImport in recipe.scriptImports &&
                 importComments.none { it.textOffset < expression.textRange.endOffset }) {
                 // Remove only an identical host import. A star does not prove that a named import
                 // is redundant: that explicit import might disambiguate two star packages.
@@ -177,9 +194,9 @@ class Engine : AutoCloseable {
                     edits += Edit(offsets[directive.textRange.startOffset], offsets[end], replacement)
                 }
             } else {
-                val moved = recipe.moved(path)
+                val moved = if (directive.isAllUnder) recipe.packageMove(path) else recipe.moved(path)
                 if (moved != null) edits += Edit(offsets[expression.textRange.startOffset], offsets[expression.textRange.endOffset], moved)
-                else if (recipe.affected(path)) findings += Finding("unmapped-import", line(directive.textOffset), path)
+                else if (recipe.affected(path) && !(directive.isAllUnder && path in recipe.knownPackages)) findings += Finding("unmapped-import", line(directive.textOffset), path)
             }
         }
         val pkg = file.packageFqName.asString()
@@ -217,6 +234,12 @@ class Engine : AutoCloseable {
             if (names.isEmpty()) return
             val path = names.joinToString(".") { it.getReferencedName() }
             if (!recipe.affected(path)) return
+            val splitName = recipe.splitSymbols.keys.filter { path == it || path.startsWith("$it.") }.maxByOrNull(String::length)
+            if (splitName != null) {
+                findings += Finding("split-symbol", line(names.first().textOffset),
+                    "Overloads have assigned destinations; resolve this use: ${recipe.splitSymbols.getValue(splitName).joinToString()}")
+                return
+            }
             val old = recipe.symbols.keys.filter { path == it || path.startsWith("$it.") }.maxByOrNull(String::length)
                 ?: recipe.packages.keys.filter { path == it || path.startsWith("$it.") }.maxByOrNull(String::length)
             if (old == null && kind == "qualified-reference" &&
@@ -239,6 +262,10 @@ class Engine : AutoCloseable {
         }
         for (qualified in PsiTreeUtil.findChildrenOfType(file, KtDotQualifiedExpression::class.java)) {
             if (importRanges.any { it.contains(qualified.textRange) }) continue
+            // Judge the complete package path before an old property name in its prefix.
+            // Call boundaries still terminate paths, so factory().member stays a value access.
+            val parent = qualified.parent as? KtDotQualifiedExpression
+            if (parent?.receiverExpression === qualified && expressionNames(parent).isNotEmpty()) continue
             rewriteNames(expressionNames(qualified), "qualified-reference")
         }
         for (type in PsiTreeUtil.findChildrenOfType(file, KtUserType::class.java)) {
@@ -295,7 +322,8 @@ fun main() {
                     config["knownPackages"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
                     config["retainedSymbols"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
                     config["splitStarImports"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty(),
-                    config.containsKey("scriptImports"))
+                    config.containsKey("scriptImports"),
+                    config["splitSymbols"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty())
                 val result = engine.rewrite(request.getValue("code").jsonPrimitive.content,
                     request["script"]?.jsonPrimitive?.boolean ?: true, recipe)
                 buildJsonObject {

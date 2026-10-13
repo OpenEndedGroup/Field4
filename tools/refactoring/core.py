@@ -91,7 +91,7 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -112,7 +112,7 @@ def load_recipe(path: Path) -> dict:
     if set(recipe['packages']) & set(recipe['symbols']):
         raise RefactorError('a name cannot be both a package and a symbol rule')
     # Reject rule chains/cycles: applying the same recipe twice must be inert.
-    if any(new == old or new.startswith(old + '.') for new in all_rules.values() for old in all_rules):
+    if any(new == old or (new.startswith(old + '.') and not (old in recipe['symbols'] and old.rsplit('.', 1)[-1][0].islower())) for new in all_rules.values() for old in all_rules):
         raise RefactorError('recipe destinations overlap old names (not idempotent)')
     splits = recipe.setdefault('splitPackages', [])
     if not isinstance(splits, list) or any(not isinstance(s, str) or not name.fullmatch(s) for s in splits):
@@ -126,6 +126,22 @@ def load_recipe(path: Path) -> dict:
     if any(v == old or v.startswith(old + '.') or old.startswith(v + '.')
            for v in recipe.get('retainedSymbols', []) for old in all_rules):
         raise RefactorError('retained symbols overlap move rules')
+    split_symbols = recipe.get('splitSymbols', {})
+    if not isinstance(split_symbols, dict):
+        raise RefactorError('splitSymbols must map overload families to destination lists')
+    for old, targets in split_symbols.items():
+        if (not isinstance(old, str) or not name.fullmatch(old) or old in all_rules or
+                old.rsplit('.', 1)[0] not in splits or not isinstance(targets, list) or len(targets) < 2 or
+                any(not isinstance(t, str) or not name.fullmatch(t) or t.rsplit('.', 1)[-1] != old.rsplit('.', 1)[-1] for t in targets) or
+                len(set(targets)) != len(targets)):
+            raise RefactorError('splitSymbols requires distinct destinations with the same short name in an exact split package')
+    old_names = set(all_rules) | set(split_symbols)
+    new_names = list(all_rules.values()) + [t for targets in split_symbols.values() for t in targets]
+    if any(new == old or (new.startswith(old + '.') and not (old in recipe['symbols'] and old.rsplit('.', 1)[-1][0].islower())) for new in new_names for old in old_names):
+        raise RefactorError('splitSymbols destinations overlap old names')
+    if any(v == old or v.startswith(old + '.') or old.startswith(v + '.')
+           for v in recipe.get('retainedSymbols', []) for old in split_symbols):
+        raise RefactorError('retained symbols overlap split families')
     stars = recipe.get('splitStarImports', {})
     if not isinstance(stars, dict):
         raise RefactorError('splitStarImports must map split packages to destination package lists')
@@ -134,6 +150,7 @@ def load_recipe(path: Path) -> dict:
                 any(not isinstance(v, str) or not name.fullmatch(v) for v in targets) or len(set(targets)) != len(targets)):
             raise RefactorError('splitStarImports requires exact split packages and nonempty unique destinations')
         mapped = {v.rsplit('.', 1)[0] for k, v in recipe['symbols'].items() if k.rsplit('.', 1)[0] == old}
+        mapped.update(t.rsplit('.', 1)[0] for k, targets in split_symbols.items() if k.rsplit('.', 1)[0] == old for t in targets)
         if any(v.rsplit('.', 1)[0] == old for v in recipe.get('retainedSymbols', [])):
             mapped.add(old)
         if set(targets) != mapped or any(k.rsplit('.', 1)[0] == old and k.rsplit('.', 1)[-1] != v.rsplit('.', 1)[-1]
@@ -145,8 +162,18 @@ def load_recipe(path: Path) -> dict:
         script_imports = recipe.get(field, [])
         if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
             raise RefactorError(f'{field} must list destination import paths, optionally ending in .*')
-        if any(s == old or s.startswith(old + '.') for s in script_imports for old in all_rules):
+        if any((s == old or s.startswith(old + '.')) and not destination_reference(s, recipe, destination_packages(recipe))
+               for s in script_imports for old in all_rules):
             raise RefactorError(f'{field} must describe the destination intro, not old packages')
+    box_stars = recipe.get('boxSplitStarImports', {})
+    if not isinstance(box_stars, dict):
+        raise RefactorError('boxSplitStarImports must map split packages to JVM intro destinations')
+    for old, targets in box_stars.items():
+        if (old not in stars or not isinstance(targets, list) or not targets or
+                any(not isinstance(t, str) for t in targets) or len(set(targets)) != len(targets) or
+                not set(targets).issubset(stars[old]) or
+                any(t + '.*' not in recipe.get('boxImports', []) for t in targets)):
+            raise RefactorError('boxSplitStarImports must select mapped destinations all supplied by boxImports')
     qualified_properties = recipe.get('qualifiedNameProperties', {})
     if not isinstance(qualified_properties, dict) or any(
             not isinstance(glob, str) or not glob.endswith('.properties') or not isinstance(keys, list) or
@@ -161,11 +188,28 @@ def load_recipe(path: Path) -> dict:
     return recipe
 
 
+def destination_packages(recipe: dict) -> set[str]:
+    return (set(recipe['packages'].values()) | {v.rsplit('.', 1)[0] for v in recipe['symbols'].values()} |
+            {v.rsplit('.', 1)[0] for targets in recipe.get('splitSymbols', {}).values() for v in targets})
+
+
+def destination_reference(path: str, recipe: dict, destinations: set[str]) -> bool:
+    parts = path.split('.')
+    prefixes = ['.'.join(parts[:n]) for n in range(1, len(parts) + 1)]
+    new = max((len(p) for p in prefixes[:-1] if p in destinations), default=0)
+    if not new:
+        return False
+    old = max((len(p) for p in prefixes if p in recipe['symbols'] or p in recipe['packages'] or
+               p in recipe.get('splitSymbols', {})), default=0)
+    return new >= old
+
+
 def affected_pattern(recipe: dict):
     def prefix(path, parent):
         return path == parent or path.startswith(parent + '.')
 
-    names = sorted(set(recipe['packages']) | set(recipe['symbols']) | set(recipe['splitPackages']), key=len, reverse=True)
+    destinations = destination_packages(recipe)
+    names = sorted(set(recipe['packages']) | set(recipe['symbols']) | set(recipe['splitPackages']) | set(recipe.get('splitSymbols', {})), key=len, reverse=True)
     candidates = re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in names) + r')(?![\w/])') if names else re.compile(r'(?!)')
     qualified = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*')
     class References:
@@ -173,11 +217,13 @@ def affected_pattern(recipe: dict):
             for candidate in candidates.finditer(text):
                 match = qualified.match(text, candidate.start())
                 path = match.group()
+                if destination_reference(path, recipe, destinations):
+                    continue
                 if text[match.end():match.end() + 1] == '/':
                     continue
                 if any(prefix(path, v) for v in recipe.get('retainedSymbols', [])):
                     continue
-                if any(prefix(path, v) for v in recipe['packages'] | recipe['symbols']):
+                if any(prefix(path, v) for v in recipe['packages'] | recipe['symbols'] | recipe.get('splitSymbols', {})):
                     return match
                 owner = max((v for v in recipe.get('knownPackages', []) if prefix(path, v)), key=len, default=None)
                 if (owner in recipe['splitPackages'] if owner else any(prefix(path, v) for v in recipe['splitPackages'])):
@@ -187,8 +233,11 @@ def affected_pattern(recipe: dict):
 
 
 def rewrite_qualified_text(text: str, recipe: dict) -> str:
+    destinations = destination_packages(recipe)
     def replace(match):
         name = match.group()
+        if name in destinations or destination_reference(name, recipe, destinations):
+            return name
         if text[match.end():match.end() + 1] == '/':
             return name
         if any(name == v or name.startswith(v + '.') for v in recipe.get('retainedSymbols', [])):
@@ -354,7 +403,8 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                     box_sidecars.add(side)
             except (OSError, ValueError, RecursionError):
                 pass  # Normal extraction below reports malformed/unsafe containers.
-    box_recipe = dict(recipe, scriptImports=recipe.get('boxImports', []))
+    box_recipe = dict(recipe, scriptImports=recipe.get('boxImports', []),
+                      splitStarImports=recipe.get('splitStarImports', {}) | recipe.get('boxSplitStarImports', {}))
 
     def rewrite_unit(unit, rel):
         if not unit.identity.startswith('prose:'):
