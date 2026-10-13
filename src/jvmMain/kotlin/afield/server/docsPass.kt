@@ -55,7 +55,7 @@ import kotlin.concurrent.thread
 data class DocsPassAction(
     val action: String,
     val jobs: Int = 4,
-    val agent: String = "claude",
+    val agent: String = fieldAgent(),
     val tags: List<String> = emptyList(),
     val pages: List<String> = emptyList(),
     val mode: String = "never",

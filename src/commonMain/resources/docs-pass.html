@@ -142,7 +142,7 @@
 
     <section>
         <h2>3 · Handoffs <span class="count" id="handoff-count"></span></h2>
-        <p class="muted">Work an agent judged too big for a page, worked through in batches, in order: decisions first, because they change what the navigation work is; navigation next, because it moves the pages captures and code land on. <em>Start session</em> makes a worktree for one batch with a brief listing its handoffs, and gives you the <code>claude</code> command to run there. Or say in a sentence what the batch should do and press <em>Run in Claude</em>: an interactive <code>claude</code> works through the batch in that worktree, in a terminal page you answer it in. A blocking handoff holds its page's notes until it is closed.</p>
+        <p class="muted">Work an agent judged too big for a page, worked through in batches, in order: decisions first, because they change what the navigation work is; navigation next, because it moves the pages captures and code land on. <em>Start session</em> makes a worktree for one batch with a brief listing its handoffs, and gives you the command to run there. Or say in a sentence what the batch should do and press <em>Run</em>: an interactive agent (<code>claude</code>, or <code>codex</code> with <code>FIELD_AGENT=codex</code> or <code>~/.afield/agent</code>) works through the batch in that worktree, in a terminal page you answer it in. A blocking handoff holds its page's notes until it is closed.</p>
         <div class="row"><button id="group-handoffs" type="button">Group handoffs into batches</button><span class="muted" id="group-hint"></span></div>
         <div id="handoffs"></div>
     </section>
@@ -311,7 +311,10 @@
             + (open ? `<div class="expand"><pre>${esc(open.text)}</pre><p class="muted">${esc(open.file)}</p>${renderThread(h.thread)}</div>` : "") + `</td>`
             + `<td class="num"><select data-act="batch" title="move to another batch">${options}</select> <button data-act="read">${open ? "hide" : "read"}</button> <button data-act="taken">taken</button> <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button></td></tr>`;
     };
-    // The sentence box under a batch's action: what this batch should do, run by claude in its session.
+    // The agent the handoff terminals start: the server's configured one, not the pass's select.
+    const agentName = () => (view.status && view.status.agent) || "claude";
+    const agentLabel = () => agentName() === "codex" ? "Codex" : "Claude";
+    // The sentence box under a batch's action: what this batch should do, run by the agent in its session.
     const renderSentence = (batch, openRows) => {
         const ready = openRows.filter(h => !batch.notLanded.includes(h.id));
         if (!batch.session && !ready.length) return "";
@@ -319,7 +322,7 @@
             .map(t => `<a href="/terminal.html?id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">${esc(t.title)}</a>`).join(" · ");
         const waiting = view.pending.has(batch.key);
         return `<div class="row sentence"><textarea data-sentence="${esc(batch.key)}" rows="2" placeholder="What should this batch do? e.g. yes to every merge the handoffs propose; keep the old URLs as redirects.">${esc(view.sentences.get(batch.key) || "")}</textarea>`
-            + `<button data-act="claude" data-batch="${esc(batch.key)}" class="primary"${waiting ? " disabled" : ""}>${waiting ? "Starting session…" : batch.session ? "Run in Claude" : "Start session in Claude"}</button>`
+            + `<button data-act="claude" data-batch="${esc(batch.key)}" class="primary"${waiting ? " disabled" : ""}>${waiting ? "Starting session…" : batch.session ? `Run in ${agentLabel()}` : `Start session in ${agentLabel()}`}</button>`
             + (running ? ` <span class="muted">running: ${running}</span>` : "") + `</div>`;
     };
     const renderHandoffs = (status) => {
@@ -461,6 +464,8 @@
             if (!response.ok) { $("posture").innerHTML = `<div class="notice bad">${esc(await response.text())}</div>`; return; }
             const body = await response.json();
             view.status = body.status || {}; view.job = body.job;
+            // The machine's configured agent (FIELD_AGENT / ~/.afield/agent) is the pass's default until someone picks one.
+            if (view.status.agent && !$("agent").dataset.touched) $("agent").value = view.status.agent;
             renderPosture(body); renderPass(view.status); renderCounts(view.status); renderProgress(view.status.progress);
             renderQuestions(view.status); renderHandoffs(view.status); renderChanges(view.status); renderBuiltLinks(view.status); renderJob(view.job); setButtons();
         } catch (error) {
@@ -471,6 +476,7 @@
     $("create").onclick = () => act("create");
     $("finish").onclick = async () => await confirmed("Remove the pass's worktree and branch? The work is already on main.") && act("finish");
     $("abandon").onclick = async () => await confirmed("Throw the whole pass away: remove its worktree and delete its branch, landed or not? Notes the agents resolved stay resolved in the store.") && act("finish", { abandon: true });
+    $("agent").onchange = () => { $("agent").dataset.touched = "1"; };
     $("revise").onclick = () => act("revise", { agent: $("agent").value, jobs: Number($("jobs").value) || 4, tags: words($("tags").value), pages: words($("pages").value) });
     $("stop").onclick = () => act("stop");
     $("import-drafts").onclick = () => act("import-drafts");
@@ -546,7 +552,7 @@
             }
             const later = (batch.notLandedDetail || []).length ? `\n\nLeft for a later session, because its document is not on main yet: ${batch.notLandedDetail.map(d => d.title).join("; ")}.` : "";
             const warning = batch.earlierOpen.length ? `\n\nStill open in earlier batches: ${batch.earlierOpen.join(", ")}.` : "";
-            if (!await confirmed(`Start a ${batch.title} session (a worktree off main, its handoffs marked taken) and run claude there${text ? " with your sentence" : ""}?${later}${warning}`)) return;
+            if (!await confirmed(`Start a ${batch.title} session (a worktree off main, its handoffs marked taken) and run ${agentName()} there${text ? " with your sentence" : ""}?${later}${warning}`)) return;
             view.pending.set(batch.key, { text, at: Date.now() });
             renderHandoffs(view.status);
             await act("start-session", { batch: batch.key });

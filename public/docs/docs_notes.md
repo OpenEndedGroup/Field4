@@ -54,7 +54,8 @@ uv run python tools/docs_notes.py revise --jobs 4 --commit
 
 `revise` takes a few options:
 
-- `--agent claude` (the default) or `--agent codex`. `--agent-command` runs anything else, and
+- `--agent claude` or `--agent codex`; the default is the machine's
+  [configured agent](landing_queue.md#which-agent). `--agent-command` runs anything else, and
   replaces `{prompt_file}` in it with the path of a file holding the prompt.
 - `--tag voice` or `--page sound.md` to run only part of the queue.
 - `--commit` makes one commit per page once every agent has finished. Each commit has a

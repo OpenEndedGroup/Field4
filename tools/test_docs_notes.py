@@ -511,7 +511,8 @@ class PassTest(unittest.TestCase):
         self.repo.write("agent.py", FAKE_AGENT)
         self.repo.write("sleepy.py", SLEEPY_AGENT)
         # The real queue's enqueue, so the pass talks to the same files the lander reads.
-        self.repo.write("tools/land.py", (Path(__file__).resolve().parent / "land.py").read_text())
+        for tool in ("land.py", "field_agent.py"):  # land.py imports field_agent
+            self.repo.write(f"tools/{tool}", (Path(__file__).resolve().parent / tool).read_text())
         self.repo.commit("docs")
         self.store_path = self.repo.root / "store.json"
         other = "https://openendedgroup.com/field4/other/"
