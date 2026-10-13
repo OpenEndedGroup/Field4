@@ -3,21 +3,75 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Refactor pass · Field</title>
+<meta name="color-scheme" content="dark">
+<link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/iosevka.css">
+<link rel="stylesheet" href="/field-tool-pages.css">
 <style>
-@font-face{font-family:Iosevka;src:url('/woff2/iosevka-semicondensedlight.woff2') format('woff2');font-display:swap}
-:root{color-scheme:dark;font:14px/1.5 Iosevka,"Iosevka Web",monospace;color:#dedede;background:#080808}
-*{box-sizing:border-box}body{margin:0}a{color:inherit;text-underline-offset:3px}button,input,select,textarea{font:inherit;color:inherit;background:#111;border:1px solid #505050;border-radius:3px;padding:7px 10px}button{cursor:pointer}button:hover{border-color:#eee;background:#242424}button:disabled{opacity:.4;cursor:default}button.primary{background:#ddd;color:#080808;border-color:#ddd}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #fff;outline-offset:3px}h1,h2,h3,p{margin:0 0 12px}h1{font-size:24px;font-weight:500}h2{font-size:17px;font-weight:500}h3{font-size:14px}small,.muted{color:#969696}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spread{justify-content:space-between}header{padding:25px 30px 20px;border-bottom:1px solid #333}header nav{display:flex;gap:20px}section{padding:20px 30px;border-bottom:1px solid #333}.scope{display:grid;grid-template-columns:1fr 1fr;gap:20px}.path{overflow-wrap:anywhere;font-size:12px}.metrics{font-size:20px;margin-bottom:4px}.tag{border:1px solid #555;padding:2px 7px;border-radius:3px;font-size:12px;white-space:nowrap}.controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}label{display:grid;gap:5px;color:#aaa;font-size:12px}input{min-width:230px}textarea{width:100%;resize:vertical;min-height:72px}.wide{flex:1;min-width:300px}.review{display:grid;grid-template-columns:350px minmax(0,1fr);min-height:430px}aside{padding:18px 12px 20px 22px;border-right:1px solid #333;max-height:78vh;overflow:auto}#items{display:grid;gap:5px}.item{display:block;text-align:left;width:100%;padding:11px 10px;background:transparent;border-color:transparent;border-left:2px solid transparent;border-radius:0;overflow-wrap:anywhere}.item.selected{border-left-color:#eee;background:#202020}.item small{display:block;margin-top:5px}.item-title{font-size:13px}.detail{padding:22px 30px;min-width:0;max-height:78vh;overflow:auto}.finding{border-top:1px solid #333;margin-top:14px;padding-top:14px}.finding summary{cursor:pointer;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#101010;border:1px solid #303030;padding:14px;font:12px/1.55 Iosevka,monospace;max-height:450px;overflow:auto}code{font:inherit}.empty{padding:45px 20px;color:#aaa}.notice{padding:12px 16px;border:1px solid #666;margin:12px 0}#error{padding:14px 30px;background:#242424;border-bottom:1px solid #bbb;white-space:pre-wrap}#terminal-pane{position:fixed;bottom:0;right:0;left:350px;height:42vh;background:#000;border:1px solid #777;z-index:3;display:flex;flex-direction:column}#terminal-pane[hidden]{display:none}#terminal-pane .row{padding:6px 10px}iframe{border:0;flex:1;width:100%;min-height:0}details.logs{margin-top:12px}details.logs pre{max-height:180px}.decision{margin-top:25px;padding-top:20px;border-top:1px solid #777}#recipe{max-height:240px}.check{margin:12px 0}.busy{display:inline-block;animation:blink 1.5s infinite}@keyframes blink{50%{opacity:.45}}[hidden]{display:none!important}@media(max-width:850px){.scope{grid-template-columns:1fr}.review{grid-template-columns:1fr}aside{max-height:260px;border-right:0;border-bottom:1px solid #333}.detail{max-height:none}#terminal-pane{left:0}header,section,.detail{padding-left:18px;padding-right:18px}header nav{font-size:12px}}
+/* Share the Docs pass shell; only the review layout is specific to this page. */
+header nav { display: flex; gap: 20px; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+h3 { margin: 0 0 8px; font-size: 14px; font-weight: 400; color: var(--cyan); }
+small { color: var(--soft); }
+.path { overflow-wrap: anywhere; font-size: 12px; }
+.metrics { font-size: 20px; margin-bottom: 4px; }
+.tag { border: 1px solid var(--border-strong); border-radius: 4px; padding: 2px 7px; color: var(--soft); font-size: 11px; }
+.controls { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+label, .row label { display: grid; gap: 5px; color: var(--soft); font-size: 12px; }
+input, select { min-width: 0; max-width: 100%; }
+textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; font-size: 12px; color: var(--cyan); background: rgba(0, 0, 0, .8); border: 1px solid var(--field-border-strong); border-radius: 7px; padding: 7px 10px; }
+textarea:focus { border-color: var(--cyan); }
+.wide { flex: 1; min-width: min(260px, 100%); }
+.review { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 430px; padding: 0; overflow: hidden; }
+.review aside { padding: 12px; border-right: 1px solid var(--border); max-height: 78vh; overflow: auto; }
+#items { display: grid; gap: 5px; }
+.item { display: block; text-align: left; width: 100%; padding: 10px; background: transparent; border-color: transparent; border-left: 2px solid transparent; border-radius: 4px; overflow-wrap: anywhere; }
+.item.selected { border-left-color: var(--cyan); background: var(--panel-2); }
+.item small { display: block; margin-top: 5px; }
+.item-title { font-size: 13px; }
+.detail { padding: 18px; min-width: 0; max-height: 78vh; overflow: auto; }
+.detail h2 { text-transform: none; letter-spacing: 0; overflow-wrap: anywhere; color: var(--cyan); }
+.finding { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+summary { cursor: pointer; overflow-wrap: anywhere; }
+pre { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-top: 8px; max-height: 450px; overflow: auto; }
+.empty { padding: 35px 18px; color: var(--soft); }
+#error { padding: 14px 18px; border: 1px solid var(--danger); border-radius: 7px; color: var(--danger); background: #000; white-space: pre-wrap; }
+#terminal-pane { position: fixed; bottom: 12px; right: 12px; left: max(12px, calc((100vw - 1180px) / 2 + 330px)); height: 42vh; background: #000; border: 5px solid black; border-radius: var(--radius); z-index: 9; display: flex; flex-direction: column; box-shadow: 0 0 0 1px var(--field-border-strong); overflow: hidden; }
+#terminal-pane .row { padding: 6px 10px; margin: 0; background: var(--panel); }
+iframe { border: 0; flex: 1; width: 100%; min-height: 0; }
+details.logs { margin-top: 12px; }
+details.logs pre { max-height: 180px; }
+.decision { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border-strong); display: grid; gap: 8px; }
+.decision button, .decision select { justify-self: start; }
+#recipe { max-height: 240px; }
+.check { margin: 12px 0; }
+.busy { color: var(--cyan); animation: blink 1.5s infinite; }
+@keyframes blink { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .busy { animation: none; } }
+@media (max-width: 850px) {
+    header { grid-template-columns: 1fr; }
+    .scope, .review { grid-template-columns: 1fr; }
+    .review aside { max-height: 260px; border-right: 0; border-bottom: 1px solid var(--border); }
+    .detail { max-height: none; }
+    #terminal-pane { left: 12px; }
+    .controls > label { max-width: 100%; }
+}
 </style>
 </head>
-<body>
-<header><div class="row spread"><div><small>FIELD / MAINTENANCE</small><h1>Refactor pass</h1></div><nav><a href="/docs-pass.html">Docs pass</a><a href="/land.html">Landing queue</a></nav></div><p class="muted">Review a migration, work through its holds, and verify the result in copies.</p></header>
+<body class="field-webgl-page">
+<script src="/fieldWebglBackground.js"></script>
+<script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
+<main>
+<header><div><h1>Refactor pass</h1><p>Review a migration, work through its holds, and verify the result in copies.</p></div><nav><a href="/docs-pass.html">Docs pass</a><a href="/land.html">Landing queue</a></nav></header>
 <div id="error" role="alert" hidden></div>
 <section id="import-panel"><h2>Start from a migration plan</h2><p class="muted">Creates one integration worktree and private workspace copies. Thumbnails and backups are excluded.</p><form id="import-form" class="row"><label class="wide">Plan directory<input id="plan-path" required placeholder="Absolute path to the migration plan directory"></label><button class="primary" id="import-button">Import plan</button></form><p id="import-progress" role="status" class="muted"></p></section>
 <section id="scope-panel" hidden><div class="row spread"><h2>1 · Scope</h2><span id="revision" class="tag"></span></div><div id="scope" class="scope"></div><details><summary>Package map and recipe</summary><pre id="recipe"></pre></details></section>
 <section id="actions-panel" hidden><h2>2 · Mechanical changes and verification</h2><p class="muted">Replan reads the integration worktree and workspace copies. Rehearse applies ready groups, checks their bytes, then undoes and checks restoration.</p><div class="row"><button id="replan">Replan copies</button><button id="rehearse">Rehearse ready changes</button><button id="refresh">Refresh</button><span id="job-state" role="status"></span></div><details id="mechanical"><summary>Inspect proposed changes</summary><label>File<select id="change-list"><option>Select a change</option></select></label><pre id="change-diff">Open this section to load the proposed files.</pre></details><div id="verification"></div><details class="logs"><summary>Operation log</summary><pre id="log">No operation yet.</pre></details></section>
 <section id="review-panel" hidden><div class="row spread"><h2>3 · Review batches</h2><span id="counts" class="muted"></span></div><div class="controls"><label>Batch<select id="batch"></select></label><label>Root<select id="root"><option value="">All roots</option></select></label><label>Decision<select id="decision-filter"><option value="">All decisions</option><option value="open">Open</option><option value="question">Questions</option><option value="patch">Patch proposed</option><option value="preserve">Preserve</option><option value="adapter">Adapter needed</option><option value="stale">Changed since decision</option></select></label><label class="wide">Find a document or file<input id="search" placeholder="Filter by path"></label></div><div style="margin-top:16px"><label>Direction for this batch<textarea id="direction" placeholder="For example: update current display labels; preserve explicitly dated historical descriptions."></textarea></label><div class="row" style="margin-top:8px"><button id="run-agent" class="primary">Work through batch in terminal</button><span class="muted">One writer at a time. Batches do not commit or land.</span><span id="sessions"></span></div></div></section>
-<div class="review" id="review-body" hidden><aside><div id="items"></div></aside><main class="detail" id="detail"><p class="empty">Choose a review group to see its source and proposed changes.</p></main></div>
+<section class="review" id="review-body" hidden><aside><div id="items"></div></aside><article class="detail" id="detail"><p class="empty">Choose a review group to see its source and proposed changes.</p></article></section>
 <section id="delivery" hidden><h2>4 · Coordinated delivery</h2><p>Review decisions do not clear migration holds. Replanning checks what remains; compilation and runtime checks are still required before the whole repository migration can land.</p><p class="muted">This first pass supports review and reversible rehearsal. It does not publish workspace changes or enqueue a partial package migration.</p><div id="branch" class="path"></div></section>
+</main>
 <div id="terminal-pane" hidden><div class="row spread"><a id="terminal-link" target="_blank" rel="noopener">Open terminal in its own page</a><button id="hide-terminal">Hide (keep running)</button></div><iframe id="terminal" title="Refactor review terminal"></iframe></div>
 <script type="module" src="/refactor-pass.js"></script>
 </body></html>
