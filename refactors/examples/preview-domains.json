@@ -61,5 +61,8 @@
     "public/docs/*.md",
     "dev_docs/*.md",
     "native/*.md"
+  ],
+  "workspaceMarkdownProse": [
+    "*.md"
   ]
 }

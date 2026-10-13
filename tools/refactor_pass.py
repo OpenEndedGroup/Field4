@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from contextlib import contextmanager
-import fnmatch
 import json
 import os
 from pathlib import Path
@@ -19,7 +18,7 @@ import uuid
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from tools.refactoring.core import (EXCLUDED, PROPERTIES, KotlinEngine, RefactorError, apply_plan,
-    atomic, canonical, confined, digest, group_for, identity, load_plan, load_recipe, lock, make_plan, save_json, undo, verify)
+    atomic, canonical, confined, digest, group_for, identity, load_plan, load_recipe, lock, make_plan, markdown_prose_enabled, save_json, undo, verify)
 from tools.refactoring.containers import ContainerError, extract
 from tools.refactoring.diffs import unified_text, compact_changes
 from tools.field_agent import configured_agent, find_executable
@@ -263,7 +262,7 @@ def detail(repo, item_id):
     no_proposal = None
     if not diffs:
         outside_prose_scope = any(f['kind'] == 'unregistered-reference' and f['path'].endswith('.md') and
-                                 not any(fnmatch.fnmatch(f['path'], pattern) for pattern in plan['recipe'].get('markdownProse', []))
+                                 not markdown_prose_enabled(plan['recipe'], f['path'], root['kind'] == 'repo')
                                  for f in item['findings'])
         no_proposal = ('This Markdown file is outside the recipe’s automatic prose-edit paths. '
                        'Review whether to update its references or preserve them as historical text.' if outside_prose_scope else

@@ -120,6 +120,30 @@ class ContainerTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
+    def test_workspace_markdown_scope_is_recursive_and_does_not_expand_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            repo, workspace = base / 'repo', base / 'workspace'
+            for root in (repo, workspace):
+                (root / 'nested').mkdir(parents=True)
+                for rel in ('root.md', 'nested/notes.md'):
+                    (root / rel).write_text('See old.pkg.Thing.\n')
+            subprocess.run(['git', 'init', '-q', str(repo)], check=True)
+            subprocess.run(['git', '-C', str(repo), 'add', '.'], check=True)
+            recipe_path = base / 'recipe.json'
+            save_json(recipe_path, dict(copy.deepcopy(RECIPE), workspaceMarkdownProse=['*.md']))
+            recipe = load_recipe(recipe_path)
+            plan = make_plan([(repo, True), (workspace, False)], recipe, base / 'plan', ImportFixture())
+            self.assertEqual([], plan['roots'][0]['changes'])
+            self.assertEqual({'root.md', 'nested/notes.md'}, {c['path'] for c in plan['roots'][1]['changes']})
+            self.assertTrue(all(not c['held'] for c in plan['roots'][1]['changes']))
+            apply_plan(base / 'plan', '1', offline=True)
+            for rel in ('root.md', 'nested/notes.md'):
+                self.assertEqual('See new.pkg.Thing.\n', (workspace / rel).read_text())
+                self.assertEqual('See old.pkg.Thing.\n', (repo / rel).read_text())
+            undo(base / 'plan', '1')
+            verify(base / 'plan', '1')
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.base = Path(self.temp.name)
