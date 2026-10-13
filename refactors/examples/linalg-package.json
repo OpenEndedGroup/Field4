@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "rehearsal-linalg-package-v1",
+  "fromApi": "current",
+  "toApi": "hypothetical-preview",
+  "description": "Rehearsal only: afield.math.linalg does not exist yet. Exercise on copies; this recipe does not make code runnable on the current Field.",
+  "packages": {"afield.stdlib.linalg": "afield.math.linalg"},
+  "symbols": {},
+  "splitPackages": [],
+  "generated": [
+    {"glob": "public/docs/assets/agent_transcripts/*", "regenerate": "./gradlew regenerateAgentTranscriptStartingPoints"},
+    {"glob": "public/docs/reference/*", "regenerate": "./gradlew generateCodebaseReference"},
+    {"glob": "tools/completion-corpus/*", "regenerate": "AFIELD_HARVEST_WRITE=1 ./gradlew checkCompletionCorpusFixtures"}
+  ]
+}
