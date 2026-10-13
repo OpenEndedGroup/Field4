@@ -70,6 +70,11 @@ data class Recipe(
         return packages.getValue(old) + path.removePrefix(old)
     }
 
+    fun isKnownPackage(path: String) = path in knownPackages || path in destinationPackages
+    fun importMove(path: String, star: Boolean): String? =
+        if (star && (isKnownPackage(path) || path in splitPackages)) packageMove(path)
+        else moved(path) // A class-member wildcard follows its class, including nested classes.
+
     fun rewriteText(text: String): String = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+")
         .replace(text) { match -> if (text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else moved(match.value) ?: match.value }
 }
@@ -154,13 +159,13 @@ class Engine : AutoCloseable {
         fun isSplit(path: String) = path in recipe.splitPackages ||
             recipe.symbols.keys.any { it.substringBeforeLast('.') == path }
         val emittedStars = file.importDirectives.filter { it.isAllUnder && !isSplit(it.importedFqName?.asString().orEmpty()) }
-            .mapNotNull { it.importedFqName?.asString() }.map { recipe.packageMove(it) ?: it }.toMutableSet()
+            .mapNotNull { it.importedFqName?.asString() }.map { recipe.importMove(it, true) ?: it }.toMutableSet()
         if (script) emittedStars += recipe.scriptImports.filter { it.endsWith(".*") }.map { it.removeSuffix(".*") }
         val newline = if (code.contains("\r\n")) "\r\n" else "\n"
         for (directive in file.importDirectives) {
             val path = directive.importedFqName?.asString() ?: continue
             val expression = directive.importedReference ?: continue
-            val destination = (if (directive.isAllUnder) recipe.packageMove(path) else recipe.moved(path)) ?: path
+            val destination = recipe.importMove(path, directive.isAllUnder) ?: path
             val destinationImport = destination + if (directive.isAllUnder) ".*" else ""
             val importComments = PsiTreeUtil.findChildrenOfType(directive, PsiComment::class.java)
             // A star can cover individually moved declarations even if its containing package stays.
@@ -194,9 +199,9 @@ class Engine : AutoCloseable {
                     edits += Edit(offsets[directive.textRange.startOffset], offsets[end], replacement)
                 }
             } else {
-                val moved = if (directive.isAllUnder) recipe.packageMove(path) else recipe.moved(path)
+                val moved = recipe.importMove(path, directive.isAllUnder)
                 if (moved != null) edits += Edit(offsets[expression.textRange.startOffset], offsets[expression.textRange.endOffset], moved)
-                else if (recipe.affected(path) && !(directive.isAllUnder && path in recipe.knownPackages)) findings += Finding("unmapped-import", line(directive.textOffset), path)
+                else if (recipe.affected(path) && !(directive.isAllUnder && recipe.isKnownPackage(path))) findings += Finding("unmapped-import", line(directive.textOffset), path)
             }
         }
         val pkg = file.packageFqName.asString()
