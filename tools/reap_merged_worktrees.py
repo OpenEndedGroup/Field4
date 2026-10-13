@@ -136,6 +136,12 @@ ARCHIVED_FILES = {
     ".claude/settings.local.json": "settings",
 }
 
+# A file of this name in a worktree's root means "a person needs this checkout; never remove it and
+# never clean its build output". Merged, clean and idle is not the same as unused: on 2026-10-12 the
+# reaper removed `split-panes-p0`, which Marc had asked to keep, the day its `http.server` stopped.
+# The marker is gitignored, so it does not make the tree dirty.
+KEEP_MARKER = ".reaper-keep"
+
 # Untracked (not ignored) paths that do not make a tree dirty. Every nightly tree carries a
 # ``.nightly-tmp/`` scratch directory, which used to make the whole nightly population read as dirty.
 SCRATCH_UNTRACKED = (".nightly-tmp/",)
@@ -528,6 +534,8 @@ def classify_worktree(
     if not path.exists():
         return Verdict("registered, but its directory is gone (git worktree prune drops it)",
                        "prunable", False, family)
+    if (path / KEEP_MARKER).exists():
+        return Verdict(f"kept by its {KEEP_MARKER} file", "kept", False, family)
     if family is None:
         return Verdict("out of retention policy", "no-family", False, None)
     active = pids_inside(path, cwds)
@@ -717,6 +725,7 @@ REFUSAL_LABELS = {
     "ignored-work": "holds ignored work",
     "submodule": "a submodule commit could be lost",
     "prunable": "registered, but its directory is gone",
+    "kept": f"kept by a {KEEP_MARKER} file",
 }
 
 
@@ -864,6 +873,7 @@ def print_policy(families: tuple[RetentionFamily, ...], enabled: frozenset[str])
     print("  idle (see --min-idle-hours), no ignored work outside build/cache output, and no")
     print("  submodule commit that exists only in the checkout. --family adds a population and")
     print("  --only-family narrows to the named ones.")
+    print(f"  a {KEEP_MARKER} file in a worktree's root keeps it from removal and from --clean-builds.")
 
 
 def run_clean_builds(
@@ -885,6 +895,9 @@ def run_clean_builds(
             continue
         family = family_for(path, tree.branch, families)
         if family is None or family.name not in enabled:
+            continue
+        if (path / KEEP_MARKER).exists():
+            print(f"keeping {path}: {KEEP_MARKER}")
             continue
         busy = pids_inside(path, cwds)
         if busy:
