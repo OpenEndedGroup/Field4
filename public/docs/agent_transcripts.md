@@ -1227,6 +1227,22 @@ out of it and bakes it again. CI launches the box, advances 90 frames, and stops
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gesture_to_keyframes/metadata.edn)
 
+### gesture_paint_replay
+
+A gesture recorded on a pad and painted with a brush. `pad to paint` holds a pen
+[gesture pad](visualizers.md#recording-a-gesture), made with `gesture(pen = true)`. Each sample
+keeps the pointer's pressure, tilt and twist as well as its position and time. The pad holds a
+wave, pressed hardest in the middle. Running the box bakes the take into x, y and pressure lanes
+and paints them with a [brush of moving hairs](paint_gestures.md):
+`canvas.gesture(x, y, pressureLane = pressure)` turns the lanes into a timed gesture, and the
+stroke moves as fast as the hand did. Edit a lane and press **paint lanes**. **paint take**
+paints the take itself, tilt included. Shift-drag on the pad, with a tablet pen for pressure and
+tilt, to record your own, then press **bake take**. `what the pad drops` paints one take four
+ways: position and time only, as a mouse records it; with the pen's pressure; with pressure and
+tilt; and the same path at an even speed. CI executes both boxes.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gesture_paint_replay/metadata.edn)
+
 ### keyframer_worked_example
 
 `KeyframeScope`, the thing that stops a look you spent twenty minutes

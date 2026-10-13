@@ -162,6 +162,10 @@ object DemoTranscriptExecSmokeTest {
         // plays the pad, its playhead and both lanes, stopped after 90 frames. Pure CPU; what running it
         // buys is bakeGesture, toKeyframes and setTake through the real box path.
         "gesture_to_keyframes",
+        // A pen gesture's take baked into x/y/pressure lanes and painted from them with a brush of
+        // moving hairs, and one take painted four ways to show what the pad keeps and drops. Two
+        // still CPU boxes through afield.paint; without the paint library both say so and stop.
+        "gesture_paint_replay",
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",

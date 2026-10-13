@@ -99,6 +99,10 @@ Native bridge tools (always present):
 - `field_outline` — a token-efficient one-line-per-box orientation map of the document.
 - `field_read_note` / `field_write_note` — read/write a box's persistent `notes` property.
 - `field_screenshot_box` — render a box's output as an image.
+- `field_paint_gesture` — replay a gesture take (rows `[t,x,y]` or `[t,x,y,pressure,tiltX,tiltY,twist]`)
+  or its keyframe lanes as a brush stroke on a fresh paint canvas and return the PNG; `bake` also
+  returns lanes to edit and pass back. Runs `afield.paint.GestureReplayMain` through `run-jvm-main`,
+  so no document needs to be open ([`GESTURE_PAINT_REPLAY.md`](../paint/GESTURE_PAINT_REPLAY.md)).
 - `field_debug_probe` — inspect a live variable's value at runtime (see
   [Runtime debug probe](#runtime-debug-probe) below).
 - `field_lifecycle_census` — what each box still holds (jobs, strands, stop hooks, audio
