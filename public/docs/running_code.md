@@ -52,6 +52,26 @@ palette.
 
 ---
 
+## Calling suspend functions with `go { }`
+
+Some Field APIs, including calls into embedded editors, are `suspend` functions: they wait for a
+reply while the rest of Field keeps running. From ordinary box code, put these calls in `go { }`:
+
+```diffstatic {data-lang=kotlin}
+go {
+    kotlinx.coroutines.delay(100)
+    println("done")
+}
+```
+
+`go { }` starts a coroutine on Field's run loop and returns immediately. Code after the call
+continues without waiting for the block to finish. Inside the block, suspend calls run in order,
+and an uncaught error appears on the box as an execution error. The block keeps this box as its
+context, so Field's usual box-scoped values and output work there. Use `go { }` when a box needs
+to start a suspend operation; an `aiTool { action { ... } }` can call suspend functions directly.
+
+---
+
 ## The pipeline, in five steps
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
