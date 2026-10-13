@@ -2298,7 +2298,16 @@ tasks.register<JavaExec>("regenerateAgentDemos") {
 // report a missing PIL as three test *errors* — a dependency-declaration problem wearing the
 // costume of a code defect. 2026-08-21 verified this gate against an already-populated `.venv` and
 // so could not see it; 2026-08-22's fresh worktree created the venv with this task and did.
+val checkRefactorEngine = tasks.register<Exec>("checkRefactorEngine") {
+    group = "verification"
+    description = "Tests and builds the standalone source-migration parser before the Python container/transaction integration tests."
+    workingDir = rootDir
+    val wrapper = if (osName.startsWith("Windows")) listOf("cmd", "/c", "gradlew.bat") else listOf("./gradlew")
+    commandLine(wrapper + listOf("--no-daemon", "--console=plain", "-p", "tools/refactor-engine", "test", "installDist"))
+}
+
 tasks.register<Exec>("checkPythonTools") {
+    dependsOn(checkRefactorEngine)
     group = "verification"
     description = "Runs the tools/test_*.py unittest suites — the backdoor argument emitter, the docs-capture freshness classifier and the worktree-scoped JVM reaper — and prints each suite's pass count."
     workingDir = rootDir
