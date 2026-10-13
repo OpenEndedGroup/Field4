@@ -73,7 +73,8 @@ and arguably duplicate: `CubicSegment3.closestToPoint` (a per-segment helper, no
 | tight bounds (`bounds`, `SkPath::computeTightBounds`) | `fast2DBounds` (control points) | `tightBounds2D()` |
 | contains with fill rule (`contains`, `SkPathFillType`) | `contains(p)`: non-zero on chords | `contains2D(p, rule = NonZero)`, `windingNumber2D(p)`, following curves |
 | intersections with params (`getIntersections`, `getCrossings`) | `findIntersectionsWith`, `findSelfIntersections`: points only | `crossings2D(other)`, `selfCrossings2D()` with `t` on both lines (the point-only wrappers are removed) |
-| booleans (`unite`, `SkPathOps`) | `byUnionWith` etc. through `java.awt.geom.Area` | unchanged (flattens; output is polyline) |
+| booleans (`unite`, `SkPathOps`) | `byUnionWith` etc. through `java.awt.geom.Area` | Area keeps cubics (it does not flatten, measured 2026-10-13) but splits at y-extrema; `booleanExact` / `exact = true` keep original curve pieces, ~30% fewer segments (`fline_exact_booleans.md`) |
+| offset (`PathKit` stroke, Paper `offset`) | `byOffsetting`: 50 samples per node, polyline, no joins | `byOffsettingExact`: cubic, within tolerance, round/miter/bevel joins, resolved outlines |
 
 ## Defects fixed (each pinned in `FLineMeasureTest`)
 
@@ -93,6 +94,7 @@ and arguably duplicate: `CubicSegment3.closestToPoint` (a per-segment helper, no
   throws "List sizes must match"; concatenate with `listOf(a, b).flatten()`.
 - `isClockwise2D()` is on-screen (y down), so a circle built counter-clockwise in y-up maths is
   clockwise; `area2D()` keeps the y-up sign convention.
-- Not done: exact (non-flattening) boolean ops, offsetting with exact cubic output, a
+- Exact booleans and cubic offsets: done 2026-10-13, see `fline_exact_booleans.md`.
+- Not done: a
   `getOffsetOf`-style inverse (point -> distance) for points not on the line, and arc segments as a
   node type. `selfCrossings2D` misses a crossing that falls exactly on a node join.

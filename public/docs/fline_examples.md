@@ -2887,14 +2887,15 @@ Blue is the default `tension = 1.0`; orange is `tension = 0.45`, which shortens 
 
 | Operation | Behavior |
 | --- | --- |
-| `fun FLine.byUnionWith(other: FLine): FLine` | Returns the union of the two filled XY regions using Java2D Area. The resulting boundary includes all regions covered by either input. |
-| `fun FLine.byDifferenceWith(other: FLine): FLine` | Subtracts the other filled XY region from this one, returning a new boundary. Swapping the two inputs changes which region is cut away. |
-| `fun FLine.byIntersectionWith(other: FLine): FLine` | Returns the filled XY region shared by both inputs. Disjoint regions produce an empty result. |
-| `fun FLine.byExclusiveOrWith(other: FLine): FLine` | Returns the XY regions covered by exactly one input. Overlap is removed from the result. |
+| `fun FLine.byUnionWith(other: FLine, exact: Boolean = false): FLine` | Returns the union of the two filled XY regions using Java2D Area. The resulting boundary includes all regions covered by either input. |
+| `fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false): FLine` | Subtracts the other filled XY region from this one, returning a new boundary. Swapping the two inputs changes which region is cut away. |
+| `fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false): FLine` | Returns the filled XY region shared by both inputs. Disjoint regions produce an empty result. |
+| `fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false): FLine` | Returns the XY regions covered by exactly one input. Overlap is removed from the result. |
+| `fun FLine.booleanExact(other: FLine, op: FLineBooleanOp): FLineBooleanResult` | The curve-preserving boolean (`Union`, `Intersect`, `Subtract`, `Xor`): `line` is the result, `exact` says whether it came from the exact engine or from the Area fallback, and `fallbackReason` says why. |
 
 </div>
 
-These use Java2D `Area` under the hood (via `FLinesAndJavaShapes`) to do 2D polygon boolean operations. Best results when your shapes are closed and reasonably well-behaved.
+By default these use Java2D `Area` (via `FLinesAndJavaShapes`). Both inputs are read as filled regions under the non-zero rule, and an open line is closed with a straight segment. Pass `exact = true` to get the curve-preserving engine described under [Exact booleans and offsets](#exact-booleans-and-offsets) below.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_ops_2d.png" embed=true}
 :::static
@@ -2920,6 +2921,133 @@ val i = a.byIntersectionWith(b).apply { color = vec(1.0, 0.5, 0.2, 0.55); filled
 
 lines(listOf(a, b, u, i), w = 420.0, h = 260.0, fitToSize = true)
 ```
+
+### Exact booleans and offsets
+
+`booleanExact` cuts both outlines exactly where they cross and keeps the pieces of the original curves. A cubic in the result is a piece of a cubic you drew, and a straight edge stays a `LineTo`. `Area` also keeps cubics, and it is just as accurate, but it splits every curve at its highest and lowest points, so its answers have more segments than they need. Each dot below is a node: the Area union of the blob and the circle has 9 segments and the exact one has 7. Before returning, the exact engine checks its answer's area against the Area answer. If they disagree, or the outline will not close into loops, you get the Area answer, and `exact = false` tells you so.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_exact_booleans.png" embed=true alt="The union (top) and difference (bottom) of a blob and a circle, orange through Area on the left with a dot on each of its nodes, blue through booleanExact on the right with fewer dots"}
+:::static
+
+fun circle(cx: Double, cy: Double, r: Double) = fline {
+    val k = 0.5522847 * r
+    moveTo(cx + r, cy)
+    cubicTo(cx + r, cy + k, cx + k, cy + r, cx, cy + r)
+    cubicTo(cx - k, cy + r, cx - r, cy + k, cx - r, cy)
+    cubicTo(cx - r, cy - k, cx - k, cy - r, cx, cy - r)
+    cubicTo(cx + k, cy - r, cx + r, cy - k, cx + r, cy)
+    close()
+}
+
+fun blob(x: Double, y: Double) = fline {
+    moveTo(x, y)
+    cubicTo(x + 40, y - 30, x + 90, y + 10, x + 100, y + 50)
+    cubicTo(x + 110, y + 90, x + 60, y + 70, x + 50, y + 110)
+    cubicTo(x + 40, y + 150, x - 20, y + 120, x - 10, y + 80)
+    cubicTo(x, y + 50, x - 30, y + 30, x, y)
+    close()
+}
+
+fun dot(x: Float, y: Float, c: Vec4) = fline {
+    moveTo(x + 2.5, y)
+    cubicTo(x + 2.5, y + 1.4, x + 1.4, y + 2.5, x, y + 2.5)
+    cubicTo(x - 1.4, y + 2.5, x - 2.5, y + 1.4, x - 2.5, y)
+    cubicTo(x - 2.5, y - 1.4, x - 1.4, y - 2.5, x, y - 2.5)
+    cubicTo(x + 1.4, y - 2.5, x + 2.5, y - 1.4, x + 2.5, y)
+    filled = true
+    stroked = false
+    color = c
+}
+
+val out = mutableListOf<FLine>()
+for ((row, op) in listOf(FLineBooleanOp.Union, FLineBooleanOp.Subtract).withIndex()) {
+    for (col in 0..1) {
+        val x = 40.0 + col * 260
+        val y = 40.0 + row * 190
+        val a = blob(x + 20, y)
+        val b = circle(x + 90, y + 60, 45.0)
+        val r = if (col == 1) a.booleanExact(b, op).line
+                else if (op == FLineBooleanOp.Union) a.byUnionWith(b) else a.byDifferenceWith(b)
+        val c = if (col == 0) vec(1.0, 0.45, 0.25, 1.0) else vec(0.3, 0.8, 1.0, 1.0)
+        r.filled = true
+        r.stroked = true
+        r.thickness = 1.5
+        r.color = vec(c.x, c.y, c.z, 0.35)
+        out.add(r)
+        r.nodes.mapNotNull { it.toOrNull }.forEach { out.add(dot(it.x, it.y, c)) }
+    }
+}
+
+lines(out, w = 460.0, h = 380.0, fitToSize = true)
+```
+
+Offsets are where the difference shows. `byOffsetting` samples the curve and joins the samples with straight lines, 50 per node, and leaves the corners open. `byOffsettingExact` returns cubics, typically one to four per input cubic, within `tolerance` of the true offset. It gives corners a `join` (`FLineStrokeJoin.ROUND`, `MITER` or `BEVEL`, with `miterLimit`). On a closed outline it removes the loops that form at concave corners and the parts that collapse when you shrink a shape. On an open line it trims the inner corners and cuts out the loops that form where the line bends tighter than the offset distance. Positive distances go the same way as in `byOffsetting`, towards `normal2D`.
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| Operation | Behavior |
+| --- | --- |
+| `fun FLine.byOffsettingExact(distance: Float, tolerance: Float = 0.01f, join: FLineStrokeJoin = FLineStrokeJoin.ROUND, miterLimit: Float = 4f): FLine` | Offsets every subpath by `distance` with cubic output, held within `tolerance` of the true offset, with `join` at corners. Closed subpaths come back as clean outlines; open ones as a single run each. |
+| `fun FLine.segmentCount2D(): Int` | The number of drawn, non-degenerate segments, the count the comparisons on this page use. |
+
+</div>
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_exact_offsets.png" embed=true alt="A star and an S-shaped line, each offset both ways: orange through byOffsetting on the left, a dense run of dots with crossed lines at the star's corners, blue through byOffsettingExact on the right with rounded outer corners and a few dots"}
+:::static
+
+fun star(cx: Double, cy: Double) = fline {
+    for (i in 0 until 10) {
+        val r = if (i % 2 == 0) 70.0 else 32.0
+        val a = kotlin.math.PI * i / 5
+        if (i == 0) moveTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
+        else lineTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
+    }
+    close()
+}
+
+fun sCurve(x: Double, y: Double) = fline {
+    moveTo(x, y)
+    cubicTo(x + 40, y - 55, x + 70, y + 55, x + 110, y)
+    cubicTo(x + 140, y - 35, x + 170, y + 30, x + 200, y + 5)
+    lineTo(x + 215, y + 55)
+}
+
+fun dot(x: Float, y: Float, c: Vec4) = fline {
+    moveTo(x + 2.0, y)
+    cubicTo(x + 2.0, y + 1.1, x + 1.1, y + 2.0, x, y + 2.0)
+    cubicTo(x - 1.1, y + 2.0, x - 2.0, y + 1.1, x - 2.0, y)
+    cubicTo(x - 2.0, y - 1.1, x - 1.1, y - 2.0, x, y - 2.0)
+    cubicTo(x + 1.1, y - 2.0, x + 2.0, y - 1.1, x + 2.0, y)
+    filled = true
+    stroked = false
+    color = c
+}
+
+val out = mutableListOf<FLine>()
+for (col in 0..1) {
+    val x = 30.0 + col * 280
+    for (s in listOf(star(x + 110, 100.0), sCurve(x, 270.0))) {
+        s.thickness = 1.0
+        s.color = vec(1.0, 1.0, 1.0, 0.6)
+        out.add(s)
+        for (d in listOf(12f, -12f)) {
+            val o = if (col == 0) s.byOffsetting(d) else s.byOffsettingExact(d)
+            val c = if (col == 0) vec(1.0, 0.45, 0.25, 1.0) else vec(0.3, 0.8, 1.0, 1.0)
+            o.thickness = 1.5
+            o.color = c
+            out.add(o)
+            o.nodes.mapNotNull { it.toOrNull }.forEach { out.add(dot(it.x, it.y, c)) }
+        }
+    }
+}
+
+lines(out, w = 560.0, h = 360.0, fitToSize = true)
+```
+
+The star's offsets have 20 and 15 segments here, against 501 each from `byOffsetting`, and the S-curve's have 16 and 13 against 150. `FLineExactOffsetTest` measures sixteen cases, including a star shrunk until its points vanish and a glyph-like ring. At the default tolerance the largest distance error is under 0.01, where `byOffsetting` is off by 0.002 to 30 units. The closed results' areas are within 1e-4 of the shape grown or shrunk by a round brush.
+
+??? aside "How these numbers were measured"
+    `FLineExactBooleanTest` builds a corpus of circles, overlapping rounded rectangles, a ring with a bar, a blob, and the hard cases (tangent circles, a shared edge, a shape with itself, nested circles), plus 60 seeded random blob pairs, under all four operations. For each result it measures how far points on the result's own segments stray from the nearest input curve (Area and exact both stay within about 1e-8 of the size, which is float storage), and the Hausdorff distance to the operation applied to polygons flattened to 1e-5 of the size. Exact answers came back for all 240 random cases, with 2141 segments against Area's 3020. The first plan assumed Area flattened its output to polylines; the measurements showed it does not, and that its only cost is the extra splits. The working notes are in `dev_docs/fline_exact_booleans.md`.
 
 ## Queries and analysis
 
