@@ -3284,7 +3284,23 @@ tasks.register("runDesktop") {
         } else {
             listOf(electronHostBinary().absolutePath) + linuxElectronGpuArgs + "."
         }
-        val electronBinary = File(electronCommand.first())
+        val cdpSetting = System.getenv("FIELD_ELECTRON_CDP_PORT")?.trim().orEmpty()
+        val cdpPort = when {
+            cdpSetting.equals("off", ignoreCase = true) -> null
+            cdpSetting.isEmpty() -> portNumber + 20000
+            else -> cdpSetting.toIntOrNull()
+                ?: throw GradleException("FIELD_ELECTRON_CDP_PORT must be a port or off; got '$cdpSetting'.")
+        }
+        if (cdpPort != null && cdpPort !in 1..65535) {
+            throw GradleException("Electron debugging port is out of range: $cdpPort.")
+        }
+        val electronLaunchCommand = if (cdpPort == null) electronCommand else
+            electronCommand.dropLast(1) + listOf(
+                "--remote-debugging-address=127.0.0.1",
+                "--remote-debugging-port=$cdpPort",
+                electronCommand.last(),
+            )
+        val electronBinary = File(electronLaunchCommand.first())
         if (!electronBinary.exists()) {
             backendProcess.destroyForcibly()
             throw GradleException("Electron binary not found at ${electronBinary.absolutePath}. Run ./gradlew electronInstall")
@@ -3367,7 +3383,7 @@ tasks.register("runDesktop") {
         }.getOrDefault("https://localhost:${port}/index.html")
         logger.lifecycle("Launching Electron with APP_URL=${appUrl}.")
 
-        val electronProcess = ProcessBuilder(electronCommand)
+        val electronProcess = ProcessBuilder(electronLaunchCommand)
             .directory(electronDir.asFile)
             .redirectInput(ProcessBuilder.Redirect.INHERIT)
             .apply {
