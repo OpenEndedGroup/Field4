@@ -227,7 +227,7 @@
         const readout = container.querySelector('.array-readout');
         if (readout) {
             readout.textContent = recording ? 'recording'
-                : take.length >= 6 ? `${take[take.length - 3].toFixed(1)} s take`
+                : take.length >= 2 * stride(container) ? `${take[take.length - stride(container)].toFixed(1)} s ${stride(container) === 7 ? 'pen ' : ''}take`
                 : 'shift-drag to record';
         }
     }
