@@ -36,7 +36,7 @@ it are three sections:
   took, and which guard ran: the full Gradle `guard`, or `no gradle` when nothing the guard cares
   about changed.
 
-Press `h` to ask what is going on, which sends the queue's state and logs to `claude -p` and
+Press `h` to ask what is going on, which sends the queue's state and logs to [the agent](#which-agent) and
 prints the answer (`land.py huh` does the same from the command line, and `huh --context` shows
 what it would send without asking). Press `q` to quit.
 
@@ -49,7 +49,7 @@ what it would send without asking). Press `q` to quit.
 | `wait <id>` | block until the item lands (exit 0) or bounces (exit 1) |
 | `mine [branch]` | every attempt to land this branch, newest first |
 | `sync [--push]` | fetch `origin/main` and land it through the queue |
-| `huh [--context]` | ask `claude -p` what the queue is doing |
+| `huh [--context]` | ask [the agent](#which-agent) what the queue is doing |
 | `run [--once]` | the lander itself; one per clone |
 
 An agent that needs the outcome runs `wait` as a background command rather than polling
@@ -81,7 +81,7 @@ enqueue again, and re-enqueueing keeps the branch's place in the queue.
 
 Many bounces are small slips: a count nobody updated, a citation pointing at a function that
 moved, a KDoc above the wrong declaration. When a round goes red, the lander hands the failure to
-`claude -p` before it bounces anything, so a slip like that can be fixed without sending the
+[the agent](#which-agent) before it bounces anything, so a slip like that can be fixed without sending the
 branch back and halving the batch to find it.
 
 The fixer works in the lander's own worktree, on the exact tree that failed, with the build still
@@ -105,6 +105,28 @@ branch's owner about it, with the command to take it: `git merge fixup/<branch>`
 Every attempt, fixed, declined or rejected, is a line in `fixer.jsonl` in the queue directory, and
 the most recent ones go back into the fixer's prompt. `FIELD_LAND_FIXER=off` in the lander's
 environment turns the fixer off, and `FIELD_LAND_FIXER_MIN` changes its time limit.
+
+## Which agent
+
+The fixer, `huh` and `bouncy` run Claude Code (`claude -p`) unless you choose Codex CLI
+(`codex exec`). The docs revision pass and its terminals on `/docs-pass.html` use the same
+choice. Set it for one shell with an environment variable:
+
+```diffstatic {data-lang=bash}
+:::static
+export FIELD_AGENT=codex
+```
+
+or for the whole machine, which also reaches a lander started by `launchd` that never sees your
+shell's environment:
+
+```diffstatic {data-lang=bash}
+:::static
+echo codex > ~/.afield/agent
+```
+
+The environment variable wins over the file, and with neither set the agent is `claude`. Any other
+name is ignored. The file is read each time an agent starts, so changing it needs no restart.
 
 To fix a bounce yourself, fix the branch, commit, and enqueue again. To bring `main` into your
 branch while you work, use `tools/merge_regen.py main`, which regenerates generated files

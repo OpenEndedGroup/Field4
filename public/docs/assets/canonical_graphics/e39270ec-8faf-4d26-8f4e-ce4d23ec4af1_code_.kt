@@ -1,8 +1,8 @@
 import afield.stdlib.*
 var dla = ShaderDlaSystem() {
-    width = window.width
-    height = window.height
-    particleCount = 1_000_000
+    width = 1024
+    height = 1024
+    particleCount = 300_000
 }
 
 // this installs editable shaders

@@ -1172,7 +1172,7 @@ Keys render themselves as HTML for box output ([`KeyDiff`](graphics.md#keyframer
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">KeyframeScope</span><span class="p">.</span><span class="nc">Key</span><span class="p">.</span><span class="n">h</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/keyframer/#L1706) | A key's `KeyframeScope.Key.toHTML` table, for `display()` and anywhere else HTML is what is wanted. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">KeyframeScope</span><span class="p">.</span><span class="nc">Key</span><span class="p">.</span><span class="n">h</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/keyframer/#L1707) | A key's `KeyframeScope.Key.toHTML` table, for `display()` and anywhere else HTML is what is wanted. |
 
 ### NumKind { #keyframer-kt-numkind }
 

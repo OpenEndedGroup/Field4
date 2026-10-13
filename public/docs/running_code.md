@@ -52,6 +52,27 @@ palette.
 
 ---
 
+## Calling suspend functions with `go { }`
+
+Some Field APIs, including calls into embedded editors, are `suspend` functions: they wait for a
+reply while the rest of Field keeps running. From ordinary box code, put these calls in `go { }`:
+
+```diffstatic {data-lang=kotlin}
+go {
+    kotlinx.coroutines.delay(100)
+    println("done")
+}
+```
+
+`go { }` starts a coroutine on Field's run loop and returns immediately. Code after the call
+continues without waiting for the block to finish. Inside the block, suspend calls run in order,
+and an uncaught error appears on the box as an execution error. The block keeps this box as its
+context, so Field's usual box-scoped values and output work there. Stopping the box cancels a
+running `go` block at its next suspension. Use `go { }` when a box needs to start a suspend
+operation; an `aiTool { action { ... } }` can call suspend functions directly.
+
+---
+
 ## The pipeline, in five steps
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
@@ -76,6 +97,9 @@ Both write into the same place, the box's **preamble**: the shared, auto-regener
 ## Macros: calls rewritten before they compile
 
 A handful of things that look like ordinary function calls are actually **source macros**, expanded at compile time. The most important are `prop` / `rootProp`, `moduleHere` / `computeModuleHere` / `meshModuleHere` / `shadertoyHere`, `fieldStatsHere`, `print` / `println`, and the two that keep their own source, `sourceBlock` and `interpolant`.
+
+These are Field's built-in macros. To write your own source rewrite rules in a box, see
+[Rewriting your own syntax](pattern_rewrite.md) for the `rewrite { … }` DSL.
 
 They are intercepted before the compiler sees them. Most have a bare declaration that exists only to fail loudly if a call ever reaches the compiler un-expanded:
 

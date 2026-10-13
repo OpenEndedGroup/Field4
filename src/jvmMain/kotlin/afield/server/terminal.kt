@@ -39,7 +39,8 @@ import kotlin.concurrent.thread
 
 // ─────────────────────────────────────────────────────────────────────────────
 // A real terminal in the browser: /terminal.html (xterm.js) over the /pty/<id> WebSocket, with a
-// pseudo-terminal (pty4j) on this side. Its first job is running an interactive `claude` on one
+// pseudo-terminal (pty4j) on this side. Its first job is running an interactive agent ([fieldAgent]:
+// `claude` or `codex`) on one
 // handoff batch of the documentation revision pass, started from that batch on /docs-pass.html
 // with one sentence of direction — so the agent works through the batch's handoffs and the human
 // answers it in place, instead of copying a command into a terminal of their own.
@@ -88,19 +89,20 @@ private val terminalJson = Json { encodeDefaults = true; explicitNulls = true; i
  * The argv and directory for [launch], or a readable refusal. Pure, so the tests can pin it:
  * [sessionWorktree] answers "where is this batch's open session", and nothing else is consulted.
  */
-internal fun terminalPlan(launch: TerminalLaunch, checkout: Path, claude: String, uv: String = "uv", sessionWorktree: (String) -> Path?): Result<TerminalPlan> {
+internal fun terminalPlan(launch: TerminalLaunch, checkout: Path, agent: String, uv: String = "uv", sessionWorktree: (String) -> Path?): Result<TerminalPlan> {
     val text = launch.text.trim()
     if (text.length > 4000 || text.any { it.code < 0x20 && it != '\n' && it != '\t' }) {
         return Result.failure(IllegalArgumentException("the text must be at most 4000 characters, without control characters"))
     }
     return when (launch.kind) {
-        "claude" -> Result.success(TerminalPlan(listOf(claude) + if (text.isEmpty()) emptyList() else listOf(text), checkout, "claude"))
+        // The kind keeps its old name on the wire; it starts whichever agent [fieldAgent] names.
+        "claude" -> Result.success(TerminalPlan(listOf(agent) + if (text.isEmpty()) emptyList() else listOf(text), checkout, Path.of(agent).fileName.toString()))
         "handoff-batch" -> {
             if (launch.batch !in docsPassBatches) return Result.failure(IllegalArgumentException("unknown batch '${launch.batch}'"))
             val worktree = sessionWorktree(launch.batch)
                 ?: return Result.failure(IllegalStateException("the ${launch.batch} batch has no open session; start one first"))
             val title = "${launch.batch}" + if (text.isEmpty()) "" else ": ${text.take(60)}"
-            Result.success(TerminalPlan(listOf(claude, handoffBatchBrief(text)), worktree, title))
+            Result.success(TerminalPlan(listOf(agent, handoffBatchBrief(text)), worktree, title))
         }
         "land-watch" -> Result.success(TerminalPlan(listOf("/usr/bin/env", "FIELD_LAND_PLAIN=1", uv, "run", "python", "tools/land.py", "status", "--watch"), checkout, "landing queue"))
         else -> Result.failure(IllegalArgumentException("unknown terminal kind '${launch.kind}'"))
@@ -128,6 +130,17 @@ internal fun handoffSessionWorktree(checkout: Path, batch: String): Path? = runC
         .lastOrNull { it["batch"]?.jsonPrimitive?.content == batch }
         ?.get("worktree")?.jsonPrimitive?.content?.let { Path.of(it) }
 }.getOrNull()?.takeIf { Files.isDirectory(it) }
+
+/**
+ * The coding agent Field starts: `claude` or `codex`. `FIELD_AGENT` in the environment, else the first
+ * word of `~/.afield/agent`, else `claude`; `tools/field_agent.py` reads the same two places, so the
+ * landing queue and the docs revision pass agree with the terminals here.
+ */
+internal fun fieldAgent(env: Map<String, String> = System.getenv(), file: Path = Paths.get(System.getProperty("user.home"), ".afield", "agent")): String {
+    val agents = setOf("claude", "codex")
+    val fromFile = runCatching { Files.readString(file).trim().split(Regex("\\s+")).first() }.getOrDefault("")
+    return listOf(env["FIELD_AGENT"].orEmpty(), fromFile).map { it.trim().lowercase() }.firstOrNull { it in agents } ?: "claude"
+}
 
 /** [name] on PATH or in the usual install places: a Field started from the Dock has a thin PATH. */
 internal fun terminalExecutable(name: String): String {
@@ -285,7 +298,7 @@ internal fun Route.installTerminalRoutes(policy: DocsAccessPolicy) {
         val checkout = docsImprovementCheckout()
             ?: return@post call.respond(HttpStatusCode.ServiceUnavailable, "The checkout is not usable; set $DOCS_IMPROVEMENT_DIRECTORY_ENV.")
         val launch = call.receive<TerminalLaunch>()
-        val plan = terminalPlan(launch, checkout, terminalExecutable("claude"), terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
+        val plan = terminalPlan(launch, checkout, terminalExecutable(fieldAgent()), terminalExecutable("uv")) { handoffSessionWorktree(checkout, it) }
             .getOrElse { return@post call.respond(HttpStatusCode.BadRequest, it.message ?: "bad request") }
         TerminalSessions.start(launch, plan)
             .onSuccess { call.respondTerminal(it) }

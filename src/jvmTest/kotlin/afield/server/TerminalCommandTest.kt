@@ -24,6 +24,25 @@ class TerminalCommandTest {
         terminalPlan(TerminalLaunch(kind, text, batch), checkout, "/bin/claude", sessionWorktree = sessions)
 
     @Test
+    fun theAgentIsTheEnvironmentsThenTheFilesThenClaude() {
+        val dir = Files.createTempDirectory("field-agent")
+        val file = dir.resolve("agent")
+        assertEquals("claude", fieldAgent(emptyMap(), file))
+        Files.writeString(file, "codex\n# chosen for this machine\n")
+        assertEquals("codex", fieldAgent(emptyMap(), file))
+        assertEquals("claude", fieldAgent(mapOf("FIELD_AGENT" to "Claude"), file))
+        assertEquals("codex", fieldAgent(mapOf("FIELD_AGENT" to "bash -c evil"), file), "an unknown name is ignored, never run")
+        Files.writeString(file, "/bin/sh")
+        assertEquals("claude", fieldAgent(emptyMap(), file))
+    }
+
+    @Test
+    fun aCodexTerminalIsTitledCodex() {
+        val p = terminalPlan(TerminalLaunch("claude"), checkout, "/opt/homebrew/bin/codex", sessionWorktree = sessions).getOrThrow()
+        assertEquals(TerminalPlan(listOf("/opt/homebrew/bin/codex"), checkout, "codex"), p)
+    }
+
+    @Test
     fun aPlainClaudeRunsInTheCheckoutWithTheTextAsItsFirstMessage() {
         assertEquals(TerminalPlan(listOf("/bin/claude"), checkout, "claude"), plan("claude").getOrThrow())
         assertEquals(listOf("/bin/claude", "rm -rf /; hello"), plan("claude", "rm -rf /; hello").getOrThrow().argv)
