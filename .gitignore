@@ -318,3 +318,6 @@ tools/excalidraw-bundle/node_modules/
 
 # Nightly agents' per-tree scratch (downloads, build logs); never source.
 .nightly-tmp/
+
+# A worktree a person needs: tools/reap_merged_worktrees.py never removes or cleans it.
+.reaper-keep

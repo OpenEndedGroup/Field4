@@ -307,6 +307,18 @@ class GitBackedTests(unittest.TestCase):
         self.assertEqual(verdict.reason, "prunable")
         self.assertIn(verdict.reason, REFUSAL_LABELS)
 
+    def test_a_keep_marker_refuses_a_tree_that_is_otherwise_removable(self) -> None:
+        """2026-10-12: a merged, clean, idle tree Marc needed was removed the day its server stopped."""
+        path = self.fx.add_worktree(self.fx.base, "needed", "nightly/2026-01-02/needed", "2026-01-02T00:00:00+00:00")
+        self.assertTrue(self.fx.classify(path, now=self.now).removable, "control: removable without it")
+        (path / reaper.KEEP_MARKER).write_text("")
+        verdict = self.fx.classify(path, now=self.now)
+        self.assertFalse(verdict.removable)
+        self.assertEqual(verdict.reason, "kept")
+        self.assertIn(verdict.reason, REFUSAL_LABELS)
+        # --completed waives the idle guard and the merge requirement, but not the marker.
+        self.assertEqual(self.fx.classify(path, now=self.now, completed=True).reason, "kept")
+
     # ---- report / candidate parity, which is the regression that matters ------------------
 
     def test_agent_root_tree_with_a_nightly_name_is_not_counted_as_reclaimable(self) -> None:
@@ -539,6 +551,28 @@ class CleanBuildsTests(unittest.TestCase):
         self.assertFalse(result.status_changed)
         self.assertEqual(self.fx.git("status", "--porcelain", cwd=path).stdout, before)
 
+    def test_a_keep_marker_keeps_build_output_too(self) -> None:
+        path = self.built_tree()
+        families = retention_families(self.fx.base.resolve(), self.fx.agent.resolve())
+        enabled = frozenset(f.name for f in families)
+        # Two days on, so neither the branch nor the files just written read as in use.
+        later = time.time() + 48 * 3600
+
+        def clean() -> None:
+            with contextlib.redirect_stdout(io.StringIO()):
+                reaper.run_clean_builds(
+                    self.fx.trees(), repo=self.fx.repo, families=families, enabled=enabled, cwds={},
+                    min_idle_hours=DEFAULT_MIN_IDLE_HOURS, now_epoch=later, apply=True,
+                )
+
+        (path / reaper.KEEP_MARKER).write_text("")
+        clean()
+        self.assertTrue((path / "build/js/a/b.js").exists(), "a kept tree's build output must survive")
+        # Control: the same run without the marker does clean it, so the marker is what kept it.
+        (path / reaper.KEEP_MARKER).unlink()
+        clean()
+        self.assertFalse((path / "build").exists())
+
     def test_a_recently_written_file_marks_the_tree_active(self) -> None:
         path = self.built_tree()
         now = time.time()
@@ -623,6 +657,14 @@ class CommandLineTests(unittest.TestCase):
         # Pruning is --apply's job; a dry run must not change git's worktree list either.
         listed = self.fx.git("worktree", "list", "--porcelain").stdout
         self.assertIn(str(path.resolve()), listed)
+
+    def test_completed_refuses_a_kept_tree_by_name(self) -> None:
+        path = self.fx.add_worktree(self.fx.base, "needed", "nightly/2026-01-02/needed", "2026-01-02T00:00:00+00:00")
+        (path / ".reaper-keep").write_text("")
+        result = self.run_tool("--base", str(self.fx.base), "--completed", str(path), "--apply")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("kept by its .reaper-keep file", result.stderr)
+        self.assertTrue(path.is_dir())
 
     def test_completed_on_a_protected_branch_does_not_suggest_a_flag(self) -> None:
         """There is no flag, and hinting at one invites somebody to go looking for it."""
