@@ -55,8 +55,9 @@ Top-level layout:
     refuses a non-existent directory before building, and treats a path to a document (a folder
     holding `metadata.edn`, or the file itself) as "the workspace above this, and open that".
     `./field.sh --print-workspace` answers "which one would I get?" without launching.
-  - With no argument the workspace is whatever was used last, recorded machine-wide in
-    `~/.afield/last-workspace.txt` — so a sibling clone or worktree may have written it.
+  - With no argument the workspace is whatever this checkout used last, recorded in its
+    gitignored `.afield-local/last-workspace.txt`; a checkout with no record yet falls back to the
+    machine-wide `~/.afield/last-workspace.txt` that every checkout used to share.
     `field.sh` prints the workspace it resolved, and where from, before it builds.
 - Open a document directly: `--document <name>` (resolved against the workspace; a path is
   reduced to its last segment). `/app-url` — what the launcher curls for the Electron window —

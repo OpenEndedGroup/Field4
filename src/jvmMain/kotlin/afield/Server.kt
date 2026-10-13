@@ -816,16 +816,31 @@ private fun fieldUserConfigDir(): File {
     }
 }
 
-private fun workspacePreferenceFile(): File =
+/** The machine-wide record every checkout shared before it became per checkout; still read as a fallback. */
+private fun machineWorkspacePreferenceFile(): File =
     File(fieldUserConfigDir(), "last-workspace.txt")
+
+/**
+ * Where this checkout remembers its last workspace: `AFIELD_WORKSPACE_PREFERENCE_FILE` (set by
+ * `field.sh`/`field.ps1` to `.afield-local/last-workspace.txt` beside the script), else that same
+ * file when the server runs from a checkout (`./gradlew runJvm`), else the machine-wide file.
+ */
+private fun workspacePreferenceFile(): File {
+    System.getenv("AFIELD_WORKSPACE_PREFERENCE_FILE")?.trim()?.takeIf { it.isNotEmpty() }?.let { return File(it) }
+    val checkout = File(System.getProperty("user.dir"))
+    if (File(checkout, "field.sh").isFile) return File(checkout, ".afield-local/last-workspace.txt")
+    return machineWorkspacePreferenceFile()
+}
 
 private fun workspaceRestartLogFile(): File =
     File(fieldUserConfigDir(), "workspace-restart.log")
 
 private fun readPersistedWorkspacePath(): String? =
-    runCatching {
-        workspacePreferenceFile().takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.takeIf { it.isNotBlank() }
-    }.getOrNull()
+    listOf(workspacePreferenceFile(), machineWorkspacePreferenceFile()).distinct().firstNotNullOfOrNull { file ->
+        runCatching {
+            file.takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
 
 private fun shouldPersistWorkspacePath(): Boolean {
     val setting = System.getenv("AFIELD_SKIP_WORKSPACE_PERSIST")?.trim()?.lowercase(Locale.US)

@@ -192,6 +192,8 @@ server/venv/
 server/__pycache__/
 *.egg-info/
 .field-backdoor/
+# This checkout's remembered workspace (field.sh / Server.kt); per checkout, never shared.
+.afield-local/
 
 .DS_Store
 
