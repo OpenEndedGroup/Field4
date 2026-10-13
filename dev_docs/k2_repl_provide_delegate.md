@@ -367,6 +367,7 @@ println("REACHED-RUNTIME abcd=" + abcd)
 
 ## Demo document
 
-`metadata_store/provide_delegate_defect/metadata.edn` — open that document in Field and run its
+The historical `provide_delegate_defect` document was archived with the retired example store
+in October 2026. Its original manual procedure was to run its
 three boxes top to bottom. They show, side by side, the broken idiom, the working control, and the
 workaround. The document predates both fixes: box 1 now compiles and runs, so its comments are stale.

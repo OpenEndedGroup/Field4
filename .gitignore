@@ -119,7 +119,6 @@ java_pid*.hprof
 ### Gradle template
 .gradle
 .kotlin/
-kotlin-js-store/
 
 # Note that you may need to exclude by hand other folders
 # named build if necessary (e.g., in src/)
@@ -131,28 +130,6 @@ kotlin-js-store/
 # Cache of project
 .gradletasknamecache
 
-### Metadata Server
-# User-provided metadata.edn files (keep examples only)
-metadata_store/*
-!metadata_store/example_template/
-!metadata_store/simple_hello/
-!metadata_store/agent_demo/
-!metadata_store/shared_types_demo/
-!metadata_store/provide_delegate_defect/
-!metadata_store/controls_handling/
-# Compiled shared-type generations (see afield.SharedTypes) are build output, per document.
-metadata_store/*/.field-shared-types/
-# Runtime artefacts Field writes into a workspace, and the per-workspace agent guides
-# ensureAgentGuides seeds: derived, not part of the demo document.
-# The first three are covered repo-wide below; these entries stay because `document.md`,
-# `AGENTS.md` and `README.md` are only derived *here*, under metadata_store.
-metadata_store/*/backups/
-metadata_store/*/history_metrics.edn
-metadata_store/*/transcript.edn
-metadata_store/*/document.md
-metadata_store/*/AGENTS.md
-metadata_store/*/README.md
-
 ### Field document side-artefacts, anywhere in the tree
 # Opening a Field document writes into the directory it came from. `SavingContext.save`
 # fans out to seven producers (saving.kt:444-521), and the five below are all derived from
@@ -160,22 +137,11 @@ metadata_store/*/README.md
 # documents live inside this repository — `dev_docs/agents/demos/`, `public/docs/assets/` —
 # so opening one used to leave four untracked paths in `git status`.
 #
-# Not scoped to metadata_store/: the rules above cover 5 of the 117 directories holding a
-# tracked metadata.edn (`git ls-files '*metadata.edn' | wc -l`), and the demo the docs tell
-# you to open is not one of them.
-#
-# These names collide with nothing else in the tree. Measured 2026-09-05: every tracked path
-# matching them (13 files) is itself a spill of exactly this kind, all under
-# public/docs/assets/. `.gitignore` does not affect already-tracked files, so those 13 keep
-# showing up in a diff, which is the correct outcome — they need deleting, not hiding.
 **/backups/
 **/history_metrics.edn
 **/transcript.edn
 **/operations.yaml
 **/history_screenshots/
-
-# Telemetry data
-metadata_server_telemetry.json
 
 ### Chat Server
 # Chat data storage
@@ -188,8 +154,6 @@ __pycache__/
 *.pyd
 .Python
 .venv/
-server/venv/
-server/__pycache__/
 *.egg-info/
 .field-backdoor/
 # This checkout's remembered workspace (field.sh / Server.kt); per checkout, never shared.
@@ -245,14 +209,8 @@ dev_docs/metadata_store/
 ### JVM / Kotlin generated resources
 bin/jvmMain/
 
-### Local scratch/debug artifacts
+### Local scratch/debug directory
 tmp/
-tmp_*
-field-css-bug.png
-ide.png
-history.csv
-history2.py
-two_timescale_bandit_toy*.txt
 
 # Dear ImGui window state. Field never writes this — ImGuiRenderToTexture.kt sets
 # io.iniFilename to null — but tools that render their own ImGui overlay into our process
@@ -293,19 +251,6 @@ config/field4-local.p12
 # That fix has now landed — see `afield.proofDir` in src/jvmTest/kotlin/afield/TestProofDir.kt —
 # so the ignores are gone with the litter they were hiding. Set AFIELD_PROOF_DIR to collect the
 # artifacts somewhere deliberate.
-
-### Ad-hoc render output at the repository root
-# A box that calls `renderer.captureWindowToFile(outputPath = "bridge-top-assembled.png")` — a bare
-# relative path — writes it to the JVM's working directory, which is the checkout root. There is no
-# library default to fix here the way `afield.proofDir` fixed jvmTest's proofs: the caller chose the
-# path. On 2026-08-25 that had left **68** loose PNGs at the root (angled-section-*, bridge-*,
-# collar-*, three-mitre-*, monkeypaw-*, bounded-*, planar-*, house-* and friends, all from the
-# rect/house and tessellation work), every one of which showed up in every `git status` and in the
-# untracked list of every agent session that read one. Root-anchored, so nothing under
-# public/docs/assets/, dev_docs/agents/artifacts/ or templates/ is affected; no tracked file at the
-# root is a PNG (tools/test_repository_root_inventory.py holds that down), and `git add -f` still
-# works if one ever should be.
-/*.png
 
 # Agent scratch and in-progress demo verification, not part of the demo corpus (2026-09-25).
 # `test_demo_build_scripts` and `AgentDemoRegistrationTest` enumerate this directory from the

@@ -472,7 +472,7 @@ class DocumentWriteBackLedgerTest {
          *
          * Mirrors the `.gitignore` block added alongside this test. `document.md`, `AGENTS.md`
          * and `README.md` (which older Fields seeded) are deliberately absent: they are derived
-         * under `metadata_store/` but authored content everywhere else.
+         * in the retired example store, but can be authored content in other documents.
          */
         private val DERIVED_ARTEFACT = Regex(
             """(^|/)(operations\.yaml|history_metrics\.edn|transcript\.edn)$|/backups/|/history_screenshots/"""

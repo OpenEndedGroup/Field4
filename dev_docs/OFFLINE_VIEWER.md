@@ -38,7 +38,7 @@ treated as untrusted.
 
 ## Verification
 
-Run `./build-offline-docs.sh`, serve `dist/offline-viewer/`, and verify the sample
+Run `./tools/build-offline-docs.sh`, serve `dist/offline-viewer/`, and verify the sample
 URL documented by the script. Check graph-only fallback by withholding
 `min/vs/loader.js`. Import testing must use a disposable workspace and confirm
 both name sanitization and collision suffixing; do not aim the test at a user's

@@ -65,7 +65,6 @@ CORPUS_ROOTS = (
     "dev_docs/agents/transcripts",
     "dev_docs/agents/demos",
     "public/docs",
-    "metadata_store",
     "templates",
 )
 GENERATED_ROOTS = ("public/docs/assets/agent_transcripts",)
