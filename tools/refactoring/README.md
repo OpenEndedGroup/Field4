@@ -413,3 +413,30 @@ and remove the fallback before delivery. A complete `splitStarImports` entry let
 old wildcard once all destinations are supplied centrally. Named imports are removed only when
 the identical explicit import is in the intro; wildcard coverage alone cannot prove they are
 redundant. Syntax errors and existing EDN/sidecar drift continue to hold their document groups.
+
+For a multiplatform package, set `boxSplitStarImports` to its JVM/common declaration destinations
+from the expanded inventory. Each entry must be a subset of the complete `splitStarImports` map,
+and every selected destination must have a wildcard in `boxImports`. This limits registered box
+code to its host platform; it does not change the global map used for compiled source or unrelated
+scripts. Review this runtime projection with the intro: validation checks membership and coverage,
+while the inventory's source sets provide the evidence that no JVM declaration was omitted.
+
+### Overload families that split across domains
+
+A qualified function name may identify several different receivers. Assign these with
+`declarations: {inventoryDeclarationId: destinationQualifiedName}` in the assignments file.
+Provide every public/internal declaration in that family; partial or stale assignments fail.
+Per-declaration assignments override file defaults, but cannot contradict an explicit whole-family
+assignment. The inventory and expanded map retain source file, signature and source set.
+
+Generation emits `splitSymbols` for families with multiple destinations. These are assigned
+owners, not unassigned work. Complete split-star imports include their destination packages;
+explicit imports (including aliases) and qualified call sites remain `split-symbol` findings
+that list the candidate destinations. The syntax-only engine never guesses a receiver's type.
+A compile/binding pass must resolve these uses. Reuse the declaration assignments when regenerating;
+a previous recipe's split list alone is not evidence of current declaration coverage.
+
+Declaration IDs include source path and declaration signature, not line numbers: moving a comment
+or changing the intro does not discard ownership decisions. Inventories still check complete file
+hashes before generation, so refresh the inventory after any source edit. Renamed or moved
+declarations and changed signatures need refreshed assignments.

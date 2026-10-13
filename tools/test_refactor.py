@@ -320,6 +320,34 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_box_split_coverage_excludes_other_platforms_and_requires_host_imports(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            (root / 'doc').mkdir(parents=True)
+            source = 'import old.mixed.* // host supplied\nval x = Thing()\n'
+            recipe = dict(copy.deepcopy(RECIPE), packages={}, splitPackages=['old.mixed'],
+                          symbols={'old.mixed.Thing': 'new.model.Thing', 'old.mixed.Browser': 'new.browser.Browser'},
+                          splitStarImports={'old.mixed': ['new.model', 'new.browser']},
+                          boxImports=['new.model.*'], boxSplitStarImports={'old.mixed': ['new.model']},
+                          scriptImports=[])
+            save_json(base / 'recipe.json', recipe)
+            load_recipe(base / 'recipe.json')
+            (root / 'doc/metadata.edn').write_text(metadata(source, 'code.kt'))
+            (root / 'doc/code.kt').write_text(source)
+            (root / 'standalone.kts').write_text(source)
+            make_plan([(root, False)], recipe, base / 'plan', engine)
+            apply_plan(base / 'plan', offline=True, allow_partial=True)
+            self.assertEqual(' // host supplied\nval x = Thing()\n', (root / 'doc/code.kt').read_text())
+            self.assertNotIn('new.browser', (root / 'doc/metadata.edn').read_text())
+            self.assertIn('import new.browser.*', (root / 'standalone.kts').read_text())
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], again['roots'][0]['changes'])
+            for targets in (['new.browser'], ['not.mapped'], [], ['new.model', 'new.model']):
+                save_json(base / 'recipe.json', dict(recipe, boxSplitStarImports={'old.mixed': targets}))
+                with self.subTest(targets=targets), self.assertRaises(RefactorError):
+                    load_recipe(base / 'recipe.json')
+
     def test_box_intro_removes_redundant_split_stars_only_from_registered_box_code(self):
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
             base = Path(tmp)
