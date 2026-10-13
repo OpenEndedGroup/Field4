@@ -1,0 +1,114 @@
+name: slideshow_guide
+description: >
+  A starting point for guides: a four-step slideshow that walks a reader through two other boxes
+  in the same document. Run `tour` and follow the links in its note. Step one selects the guide
+  itself; step two selects `numbers` and draws a line from the note to it, counting your visits
+  with onEnter and a {{visits}} template; step three opens `squares` at line 3, highlights it and
+  draws a dashed line to that line; step four has a #custom: link whose callback changes a value
+  the note shows, then Start again and Finish.
+
+  Companion to public/docs/interactive_guides.md. Pure CPU; no Window, no Renderer. The notes and
+  selections need a browser to be seen; headless, every box still runs.
+operations:
+  - create:
+      box: sg_numbers
+      name: numbers
+      frame: { x: 60.0, y: 320.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Ten numbers for squares to use.
+          val numbers = (1..10).toList()
+          println(numbers)
+  - create:
+      box: sg_squares
+      name: squares
+      frame: { x: 60.0, y: 440.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // Squares of the numbers 1 to 10.
+          val numbers = (1..10).toList()
+          val squares = numbers.map { it * it }
+          println(squares)
+  - create:
+      box: sg_tour
+      name: tour
+      frame: { x: 60.0, y: 140.0, w: 150.0, h: 50.0 }
+      properties:
+        code: |
+          // A four-step guide to this document. Run it, then follow the links in the note.
+          val guide = thisBox
+          val numbersBox = inside.boxes.values.first { it.name == "numbers" }
+          val squaresBox = inside.boxes.values.first { it.name == "squares" }
+          var visits = 0
+          var stars = 0
+          //%-
+
+          val show = slideShow {
+              step("Welcome") {
+                  markdownNote(
+                      """
+                      ## A tour of this document
+                      This guide has four steps. Each one selects the box it is about.
+
+                      [[next:Start →]]
+                      """.trimIndent(),
+                      animated = true
+                  )
+                  selectBox(guide)
+              }
+              step("numbers") {
+                  onEnter {
+                      visits += 1
+                      guide.properties["visits"] = visits
+                  }
+                  markdownNote(
+                      """
+                      ## `numbers` makes a list
+                      The green line points at it. Visits to this step: **{{visits}}**.
+
+                      [[back]] [[next]]
+                      """.trimIndent()
+                  )
+                  selectBox(numbersBox)
+                  annotate(id = "numbers", targetBox = numbersBox, color = "rgba(128, 255, 164, 0.8)", dashed = false)
+              }
+              step("squares") {
+                  markdownNote(
+                      """
+                      ## Line 3 does the work
+                      `squares` maps each number to its square.
+
+                      [[back]] [[next]]
+                      """.trimIndent()
+                  )
+                  selectBox(squaresBox, property = "code", line = 3, highlight = 3)
+                  annotateToLine(id = "line3", targetBox = squaresBox, line = 3, color = "rgba(255, 180, 100, 0.8)", dashed = true)
+              }
+              step("Your turn") {
+                  markdownNote(
+                      """
+                      ## Your turn
+                      [Give this guide a star](#custom:star). Stars so far: **{{stars}}**.
+
+                      [[home:Start again]] [[finish]]
+                      """.trimIndent()
+                  )
+                  linkCallback("star") {
+                      stars += 1
+                      here.properties["stars"] = stars
+                      show.goToStep(show.currentStepIndex)
+                  }
+                  selectBox(guide)
+              }
+          }
+
+          runBlocking { show.start() }
+  - execute:
+      box: sg_numbers
+      property: code
+  - execute:
+      box: sg_squares
+      property: code
+  - execute:
+      box: sg_tour
+      property: code

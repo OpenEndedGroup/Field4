@@ -206,6 +206,16 @@ headless, since the drawing is data on the server and needs no window. See
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
 
+### slideshow_guide
+
+A four-step guide over two small boxes. Run `tour` and follow the links in its note: the first step
+selects the guide, the second selects `numbers` and draws a line to it while counting your visits,
+the third opens `squares` with line 3 highlighted and a dashed line drawn to it, and the last has a
+link whose callback updates a count the note shows. The replay runs all three boxes headless; the
+notes need a browser to be seen. See [Interactive Guides](interactive_guides.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/slideshow_guide/metadata.edn)
+
 ### drawn_score
 
 A drawn score, heard, as five boxes. `score` draws a frame named "score" with a piano roll of
