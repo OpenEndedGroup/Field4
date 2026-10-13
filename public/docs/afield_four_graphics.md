@@ -1400,9 +1400,9 @@ The last lesson is the shortest, because the work is packaged:
 import afield.stdlib.*
 
 var dla = ShaderDlaSystem() {
-    width = window.width
-    height = window.height
-    particleCount = 1_000_000
+    width = 1024
+    height = 1024
+    particleCount = 300_000
 }
 
 // this installs editable shaders
@@ -1449,7 +1449,7 @@ void main() {
 
 `push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. The reflected-interface contract this page opened with still holds at a million particles: the shader is the thing you edit.
 
-Run this one live, and expect to tune it: whether the result branches depends on how densely the walkers cover the texture, and the useful range is narrow. A million walkers over a 4112×2524 window are too sparse to see anything: after 3000 frames the cluster is about a dozen pixels across. A million over a 900×560 texture, about two walkers per pixel, are too dense to branch: every point of the cluster's edge has a walker beside it, so it grows as a solid diamond rather than a dendrite. Between the two, 300 000 walkers on a 1024×1024 texture (about 0.3 per pixel) grows visible branches within 1500 frames and a cluster about 200 pixels across by 6000. At that density `solidDecayPerFrame` makes little visible difference.
+Whether the result branches depends on how densely the walkers cover the texture, and the useful range is narrow. The settings above, 300 000 walkers on 1024×1024 (about 0.3 per pixel), grow visible branches within 1500 frames and a cluster about 200 pixels across by 6000. A million walkers over a 4112×2524 window are too sparse: after 3000 frames the cluster is about a dozen pixels across. A million over 900×560, about two per pixel, are too dense to branch: every point of the cluster's edge has a walker beside it, so it grows as a solid diamond rather than a dendrite. At the density above `solidDecayPerFrame` makes little visible difference.
 
 ## Traffic: the Biham–Middleton–Levine model { #bml-traffic }
 
