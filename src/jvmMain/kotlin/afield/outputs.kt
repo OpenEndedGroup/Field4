@@ -33,10 +33,14 @@ interface HasOutput {
     /** Emits [message] followed by a newline. */
     fun println(message: Any?)
 
-    /** Displays [message] on the default output channel for this output target. */
+    /** Displays [message] on the default channel, `output`. */
     fun display(message: Any?)
 
-    /** Displays [message] on the named output [channel]. */
+    /**
+     * Displays [message] in the output panel named [channel], replacing what the panel held.
+     * A `String` is inserted as HTML; anything else is rendered with `.h` first. A channel whose
+     * name starts with `*` is a one-line row rather than a panel.
+     */
     fun display(channel: String, message: Any?)
 
     // an error of null,,-1 means 'clear errors'
@@ -84,19 +88,28 @@ private fun Box.sendOutputControl(action: String, channel: String? = null) {
     sendBoxOutput(this, Message("output-control").payload(OutputControl(uid = id, action = action, channel = channelValue)))
 }
 
-/** Opens the named output [channel] by sending an output-control message to this box. */
+/**
+ * Opens the output panel for [channel], making an empty one first if the channel has none yet.
+ * Panels made by [HasOutput.display] start closed; see `public/docs/box_output.md`.
+ */
 fun Box.displayOpen(channel: String) {
     sendOutputControl("open", channel)
 }
 
+/** Closes the output panel for [channel] to its title bar, keeping its content and size. */
 fun Box.displayClose(channel: String) {
     sendOutputControl("close", channel)
 }
 
+/**
+ * Removes the output panel for [channel] and its content (it does not merely empty it). The next
+ * display into [channel] makes a new, closed panel at the end of the list. `nested` is never removed.
+ */
 fun Box.displayClear(channel: String) {
     sendOutputControl("clear", channel)
 }
 
+/** Removes every output panel this box has, except `nested`, which holds its nested boxes. */
 fun Box.displayClearAll() {
     sendOutputControl("clear-all")
 }
@@ -748,21 +761,42 @@ fun Box.marco_printlnHere(contents: List<String>): Insert? {
     )
 }
 
-fun Box.tree(channel: String = "debug", a : Any?) {
-    val aa = a ?: "null"
-    val ln = Inspector.linkFor(aa, "/tree")
-    display(channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0;display:block;width:560px;height:220px;'></iframe>
-""")
+/**
+ * Shows [a] in output [channel] as an expandable tree: maps, lists, arrays, data classes and plain
+ * objects open lazily, one page of [afield.server.Inspector.DEFAULT_PAGE] children at a time, and
+ * each row names its type and a one-line summary. Rows that are open follow the value as it changes
+ * (about once a second). Keys: arrows to move and open, `/` to filter, `c` to copy the value, `p` to
+ * copy the row's path, `r` to refresh.
+ *
+ * Rows are the edges `afield.graphquery.graphPaths` walks, so the path `p` copies works in box code:
+ * `a.graphPath("particle/age")`. Typing a pattern containing `/`, `*` or `|` into the filter runs it
+ * with `graphPaths` from [a] and lists the matching paths.
+ *
+ * @param maxHeight the tallest the embed grows in the output panel before it scrolls, in pixels
+ * @param includePrivate also list private properties (as `GraphWalkOptions(includePrivate = true)`;
+ *   their paths then need that option in `graphPaths` too)
+ */
+fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520, includePrivate: Boolean = false) {
+    val options = afield.graphquery.GraphWalkOptions(includePrivate = includePrivate)
+    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/tree", options = options), maxHeight))
 }
 
-fun Box.column(channel: String = "debug", a : Any?) {
-    val aa = a ?: "null"
-    val ln = Inspector.linkFor(aa, "/browse")
-    display(channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0;display:block;width:560px;height:220px;'></iframe>
-""")
+/**
+ * Shows [a] in output [channel] as Finder-style columns: choosing a row opens its contents in the
+ * next column. Same values, paging, live update and keys as [tree], plus `←`/`→` between columns.
+ *
+ * @param maxHeight the tallest a column grows before it scrolls, in pixels
+ * @param includePrivate also list private properties, as for [tree]
+ */
+fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420, includePrivate: Boolean = false) {
+    val options = afield.graphquery.GraphWalkOptions(includePrivate = includePrivate)
+    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/browse", options = options), maxHeight))
 }
+
+/** The iframe for [tree] and [column]: full panel width, height from `iframe_autosize.js`. */
+internal fun inspectorIframe(link: String, maxHeight: Int): String =
+    "<iframe class='field-inspector' src='$link&maxh=${maxHeight.coerceAtLeast(80)}' " +
+        "style='border:none;padding:0;margin:0;display:block;width:100%;height:220px;'></iframe>"
 
 /**
  * Embeds Field's RemoteJS / WebXR browser head in this box's output pane and opens it, so the
@@ -925,7 +959,7 @@ fun Box.logs(
         if (latestOnly) append("&latestOnly=true")
     }
     display(channel, """
-<iframe src='/logs${qs}' style='border:none;padding:0;margin:0;width:100%;height:260px'>
+<iframe class='field-logs' src='/logs${qs}' style='border:none;padding:0;margin:0;display:block;width:100%;height:260px'></iframe>
 """)
 }
 
@@ -1182,6 +1216,9 @@ internal fun buildSliderHtml(
     // `send = false` to keep drags off the wire — `sliders.js` announces them as `field-slider-input`.
     extraAttributes: String = "",
     send: Boolean = true,
+    // What a double-click on the track (or Backspace on a focused slider) returns to.
+    defaultValue: Double = value,
+    ariaLabel: String = label,
 ): String {
     val stepDecimals = calculateDecimalPlaces(step)
     val clampedValue = value.coerceIn(minOf(min, max), maxOf(min, max))
@@ -1193,6 +1230,24 @@ internal fun buildSliderHtml(
     val padding = 14
     val trackLength = viewWidth - (padding * 2)
     val cx = padding + (trackLength * spec.normalizedFor(clampedValue))
+    // Guides: ticks at the halves, thirds and quarters of the travel (the ends and middle taller),
+    // a notch where double-click returns to, and a mark at zero when the range straddles it.
+    val ticks = SLIDER_TICK_FRACTIONS.joinToString("") { f ->
+        val x = "%.2f".format(java.util.Locale.ROOT, padding + trackLength * f)
+        val major = f == 0.0 || f == 0.5 || f == 1.0
+        val h = if (major) 5 else 3
+        "<line x1=\"$x\" y1=\"${centerY - h}\" x2=\"$x\" y2=\"${centerY + h}\" data-f=\"$f\" class=\"slider-tick${if (major) " major" else ""}\"></line>"
+    }
+    val lo = minOf(min, max)
+    val hi = maxOf(min, max)
+    val defaultF = spec.normalizedFor(defaultValue.coerceIn(lo, hi))
+    val defaultX = padding + trackLength * defaultF
+    val zeroMark = if (lo < 0.0 && hi > 0.0) {
+        val zf = spec.normalizedFor(0.0)
+        val zx = "%.2f".format(java.util.Locale.ROOT, padding + trackLength * zf)
+        "<line x1=\"$zx\" y1=\"${centerY - 8}\" x2=\"$zx\" y2=\"${centerY + 8}\" data-f=\"$zf\" class=\"slider-zero\"></line>"
+    } else ""
+    val defaultNotch = "<path d=\"M 0 ${centerY + 7} l -3 5 l 6 0 z\" transform=\"translate(${"%.2f".format(java.util.Locale.ROOT, defaultX)} 0)\" data-f=\"$defaultF\" class=\"slider-default\"></path>"
     val ownAttributes = (if (send) "" else " data-send=\"false\"") + (if (extraAttributes.isBlank()) "" else " $extraAttributes")
     return """
         <div class="field-control field-slider"
@@ -1206,11 +1261,15 @@ internal fun buildSliderHtml(
              data-law-center="${spec.center}"
              data-significant-digits="$significantDigits"
              data-value="$value"
+             data-default="${defaultValue.coerceIn(minOf(min, max), maxOf(min, max))}"
              data-view-width="$viewWidth"
-             data-padding="$padding"$ownAttributes>
-            <span class="field-label">$label</span>
-            <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
+             data-padding="$padding"
+             tabindex="0" role="slider" aria-label="${ariaLabel.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")}"
+             aria-valuemin="${minOf(min, max)}" aria-valuemax="${maxOf(min, max)}" aria-valuenow="$clampedValue"$ownAttributes>
+            <span class="field-label" title="${label.replace("\"", "&quot;")}">$label</span>
+            <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet">
                 <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="slider-hitbox"></rect>
+                $ticks$zeroMark$defaultNotch
                 <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="slider-track"></line>
                 <line x1="$padding" y1="$centerY" x2="$cx" y2="$centerY" class="slider-fill"></line>
                 <circle cx="$cx" cy="$centerY" r="5" class="slider-thumb"></circle>
@@ -1220,6 +1279,9 @@ internal fun buildSliderHtml(
         </div>
     """.trimIndent()
 }
+
+/** Where the slider's tick marks (and the vec2 pad's gridlines) sit, as fractions of the travel. */
+private val SLIDER_TICK_FRACTIONS = listOf(0.0, 0.25, 1.0 / 3.0, 0.5, 2.0 / 3.0, 0.75, 1.0)
 
 private fun calculateDecimalPlaces(step: Double): Int {
     if (step >= 1.0) return 0
@@ -1279,6 +1341,20 @@ private fun buildVec2Html(
     val angleDeg = Math.toDegrees(Math.atan2(initialValue.y.toDouble(), initialValue.x.toDouble()))
     val magnitude = kotlin.math.sqrt((initialValue.x * initialValue.x + initialValue.y * initialValue.y).toDouble())
     val center = viewSize / 2.0
+    // Guides: gridlines at the quarters and thirds of each axis, and rings at a quarter, half,
+    // three quarters and the full half-width around the centre (so |v| reads at a glance).
+    val grid = buildString {
+        for (f in SLIDER_TICK_FRACTIONS) {
+            if (f == 0.0 || f == 1.0 || f == 0.5) continue
+            val p = "%.2f".format(java.util.Locale.ROOT, padding + area * f)
+            append("<line x1=\"$p\" y1=\"$padding\" x2=\"$p\" y2=\"${viewSize - padding}\" class=\"vec2-grid\"></line>")
+            append("<line x1=\"$padding\" y1=\"$p\" x2=\"${viewSize - padding}\" y2=\"$p\" class=\"vec2-grid\"></line>")
+        }
+        append("<rect x=\"$padding\" y=\"$padding\" width=\"$area\" height=\"$area\" class=\"vec2-frame\"></rect>")
+        for (r in listOf(0.25, 0.5, 0.75, 1.0)) {
+            append("<circle cx=\"$center\" cy=\"$center\" r=\"${"%.2f".format(java.util.Locale.ROOT, area / 2.0 * r)}\" class=\"vec2-ring${if (r == 1.0) " unit" else ""}\"></circle>")
+        }
+    }
 
     return """
         <div class="field-control field-vec2"
@@ -1301,6 +1377,7 @@ private fun buildVec2Html(
                      width="$viewSize" height="$viewSize"
                      style="width:${viewSize}px;height:${viewSize}px;">
                     <rect x="0" y="0" width="$viewSize" height="$viewSize" class="vec2-pane"></rect>
+                    $grid
                     <line x1="${viewSize / 2}" y1="$padding" x2="${viewSize / 2}" y2="${viewSize - padding}" class="vec2-axis"></line>
                     <line x1="$padding" y1="${viewSize / 2}" x2="${viewSize - padding}" y2="${viewSize / 2}" class="vec2-axis"></line>
                     <line x1="$center" y1="$center" x2="$cx" y2="$cy" class="vec2-line"></line>
@@ -1494,7 +1571,7 @@ private fun buildColorPickerHtml(
         <div class="field-control field-color">
             <div class="field-header">
                 <span class="field-label">$label</span>
-                <span class="field-value" id="${controlId}-value">${String.format("rgba(%.2f, %.2f, %.2f, %.2f)", initialValue.x, initialValue.y, initialValue.z, initialValue.w)}</span>
+                <span class="field-value" id="${controlId}-value">${String.format(java.util.Locale.ROOT, "rgba(<span class=\"rgba-r\">%.2f</span>, <span class=\"rgba-g\">%.2f</span>, <span class=\"rgba-b\">%.2f</span>, <span class=\"rgba-a\">%.2f</span>)", initialValue.x, initialValue.y, initialValue.z, initialValue.w)}</span>
             </div>
             <div class="color-row">
                 <label class="color-swatch">
@@ -1503,7 +1580,7 @@ private fun buildColorPickerHtml(
                 <div class="alpha-column">
                     <div class="alpha-row">
                         <span class="field-label alpha-label">&alpha;</span>
-                        <svg class="alpha-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet"
+                        <svg class="alpha-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet"
                              data-view-width="$viewWidth" data-view-height="$viewHeight" data-padding="$padding">
                             <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="alpha-hitbox"></rect>
                             <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="alpha-track"></line>
@@ -1630,7 +1707,7 @@ private fun buildMeterHtml(
              data-view-width="$viewWidth"
              data-padding="$padding">
             <span class="field-label">$escaped</span>
-            <svg class="field-meter-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
+            <svg class="field-meter-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMinYMid meet">
                 <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="meter-track"></line>
                 <rect x="$padding" y="${centerY - 4}" width="$width" height="8" class="meter-fill"></rect>
             </svg>
@@ -2120,7 +2197,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         if (cached.previous?.value != null) {
             onUpdate(value)
         }
-        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits)
+        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits, defaultValue = initialValue)
         val control = ControllerControl(
             id = sliderId,
             type = "slider",
@@ -2548,63 +2625,69 @@ fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlG
     builder.runAfterShown()
 }
 
-// Convenience method for syncing controls to box properties
+/**
+ * Shows a control bound to the box property [propertyName] and marks that property persistent.
+ *
+ * The control's type follows [initialValue]: `Double` → [slider] over `0..1`, `Boolean` → [checkbox],
+ * `String` → [stringInput], `Vector2f` → [vec2Control], `Vector4f` → [colorPicker]. [initialValue] is
+ * only the value for a box that has never had the property: when the property already holds a value
+ * of the same type (set by an earlier run, or loaded from disk) the control starts there, so re-running
+ * the box does not throw the setting away. For a slider over another range use the overload that
+ * takes `min`/`max`.
+ */
 fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String = "controls", label: String = propertyName) {
-    when (initialValue) {
+    val stored = getPropertyRaw(propertyName)
+    val start = if (stored != null && initialValue::class.isInstance(stored)) stored else initialValue
+    val write: (Any) -> Unit = { setPropertyRaw(propertyName, it, doResync = true) }
+    when (start) {
         is Double -> {
-            var value = initialValue
-            slider(label, 0.0, 1.0, 0.01, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            // Mark as persistable
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
+            syncToProperty(propertyName, initialValue as Double, 0.0, 1.0, 0.01, channel, label)
+            return
         }
-        is Boolean -> {
-            var value = initialValue
-            checkbox(label, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
-        is String -> {
-            var value = initialValue
-            stringInput(label, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
-        is Vector2f -> {
-            var value = initialValue
-            vec2Control(label, value, channel = channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
-        is Vector4f -> {
-            var value = initialValue
-            colorPicker(label, value, channel) { newValue ->
-                value = newValue
-                setPropertyRaw(propertyName, value, doResync = true)
-            }
-            if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
-                Box.ioPersistentProperties.add(propertyName)
-            }
-        }
+        is Boolean -> checkbox(label, start, channel) { write(it) }
+        is String -> stringInput(label, start, channel) { write(it) }
+        is Vector2f -> vec2Control(label, start, channel = channel) { write(it) }
+        is Vector4f -> colorPicker(label, start, channel) { write(it) }
         else -> {
             lprintln("warning,controls", "syncToProperty: unsupported type for property '$propertyName': ${initialValue::class}")
+            return
         }
+    }
+    markPersistent(propertyName)
+}
+
+/**
+ * [syncToProperty] for a number over [min]..[max]: a [slider] whose value lives in the box property
+ * [propertyName], persists with the document, and survives re-runs. A double-click on the track
+ * returns to [initialValue].
+ *
+ * ```kotlin
+ * syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
+ * val g = getPropertyRaw("gain") as Double
+ * ```
+ */
+fun Box.syncToProperty(
+    propertyName: String,
+    initialValue: Double,
+    min: Double,
+    max: Double,
+    step: Double = 0.01,
+    channel: String = "controls",
+    label: String = propertyName,
+    law: ControlLaw = ControlLaw.LINEAR,
+) {
+    val start = (getPropertyRaw(propertyName) as? Double) ?: initialValue
+    val sliderId = "slider-${UUID.randomUUID()}"
+    registerSliderCallback(sliderId) { setPropertyRaw(propertyName, it, doResync = true) }
+    val spec = ControlLawSpec(law, min, max).also { it.validate(label) }
+    display(channel, buildSliderHtml(sliderId, label, min, max, step, start, spec, defaultValue = initialValue))
+    if (getPropertyRaw(propertyName) == null) setPropertyRaw(propertyName, start, doResync = true)
+    markPersistent(propertyName)
+}
+
+private fun markPersistent(propertyName: String) {
+    if (!Box.ioSeparateProperties.containsKey(propertyName) && !Box.ioPersistentProperties.contains(propertyName)) {
+        Box.ioPersistentProperties.add(propertyName)
     }
 }
 

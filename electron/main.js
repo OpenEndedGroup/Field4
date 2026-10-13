@@ -260,19 +260,25 @@ function filenameFromUrl(rawUrl) {
     if (file && file.trim()) return file.trim();
 
     const pathname = parsed.pathname.replace(/\/+$/, "");
-    if (pathname.endsWith("/welcome")) return "welcome";
-    if (pathname.endsWith("/dir")) return "/dir";
+    if (pathname.endsWith("/welcome")) return "Welcome";
+    if (/\/(field-docs|field4)(\/|$)/.test(pathname)) return "Documentation";
+    if (pathname.endsWith("/dir")) return "Directory";
     if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
     if (pathname.endsWith("/docs-pass.html")) return "Docs Pass";
     // Any other Field page (/history.html, /logs.html, ...) is named by its file, not the host.
     const page = pathname.match(/\/([^/]+)\.html$/);
-    if (page) return page[1];
+    if (page) return page[1].charAt(0).toUpperCase() + page[1].slice(1);
     if (parsed.hostname) return parsed.hostname;
   } catch (_) {
     // Ignore invalid URLs and fall back below.
   }
-  return "welcome";
+  return "Welcome";
+}
+
+// A utility tab is any Field page that is not a document (welcome, terminal, docs pass, ...).
+function isUtilityUrl(rawUrl) {
+  return documentKeyFromUrl(rawUrl) === null;
 }
 
 function documentKeyFromUrl(rawUrl) {
@@ -440,6 +446,10 @@ function createTabStripMarkup() {
       color: var(--text);
     }
 
+    .tab.utility {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
     .tab.active:hover {
       border-bottom-color: var(--tab-active-bg);
     }
@@ -528,13 +538,13 @@ function createTabStripMarkup() {
       addButton.hidden = welcomeOpen;
       addButton.disabled = welcomeOpen;
       tabsNode.innerHTML = tabs.map((tab) => {
-        const title = String(tab.title || 'welcome')
+        const title = String(tab.title || 'Welcome')
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
-        const activeClass = tab.active ? ' active' : '';
+        const activeClass = (tab.active ? ' active' : '') + (tab.utility ? ' utility' : '');
         return \`
           <button type="button" class="tab\${activeClass}" data-tab-id="\${tab.id}" aria-pressed="\${tab.active ? 'true' : 'false'}">
             <span class="tab-label">\${title}</span>
@@ -899,6 +909,7 @@ function createMainWindow() {
         title: tab.title,
         active: tab.id === activeTabId,
         welcome: isWelcomeUrl(tab.url),
+        utility: isUtilityUrl(tab.url),
       })),
       activeTabId,
     });

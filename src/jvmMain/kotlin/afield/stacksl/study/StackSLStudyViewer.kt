@@ -258,7 +258,7 @@ class StackSLStudyViewer(
                     val operand = purpose(k, sourceLines.getOrElse(k.line - 1) { "" })
                     val label = "<span class='locate' data-locate='${k.knob}' title='${esc(operand)} · ${esc(k.context)} — click to select ${esc(k.token)} in the editor'>" +
                         "k${k.knob} <span class='purpose'>${esc(names[k.knob] ?: operand)}</span></span>"
-                    append(afield.buildSliderHtml("$id-k${k.knob}", label, lo, hi, step, k.value, send = false, extraAttributes = "data-knob='${k.knob}'"))
+                    append(afield.buildSliderHtml("$id-k${k.knob}", label, lo, hi, step, k.value, send = false, extraAttributes = "data-knob='${k.knob}'", ariaLabel = "k${k.knob} ${names[k.knob] ?: operand}"))
                     shownCount++
                 }
             }

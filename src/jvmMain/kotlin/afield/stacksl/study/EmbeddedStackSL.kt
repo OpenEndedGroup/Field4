@@ -84,7 +84,9 @@ object EmbeddedStackSL {
     /** [line] (1-based) of [code]'s StackSL, as a note: the stage it ends, drawn alone; null outside StackSL. */
     fun lineNote(box: Box, code: String, line: Int): LineNotes.Note? {
         val lineStart = code.lines().take(line - 1).sumOf { it.length + 1 }
-        val region = regionAt(box, code, lineStart) ?: regionAt(box, code, lineStart + (code.lines().getOrNull(line - 1)?.length ?: 0)) ?: return null
+        val lineEnd = lineStart + (code.lines().getOrNull(line - 1)?.length ?: 0)
+        // The string the line overlaps: a one-line slot can sit mid-line, between `module.program =` and a comment.
+        val region = regions(code, slots(box)).firstOrNull { it.bodyStart <= lineEnd && it.bodyEnd >= lineStart } ?: return null
         val before = code.substring(0, region.bodyStart)
         val relative = line - (before.count { it == '\n' } + 1) + 1
         // Only the study's line-note machinery is needed; its folder is a scratch one, outside the document.

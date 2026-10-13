@@ -2,6 +2,7 @@ package afield.docs
 
 import afield.examples.DemoTranscriptExecSmokeTest
 import java.io.File
+import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -81,6 +82,8 @@ class AgentDemoRegistrationTest {
             "alife_evolution",
             "alife_script",
             "alife_walls",
+            // 2026-10-12: tree()/column()/logs() inspector embeds; registered EXECUTE.
+            "browse_embeds",
             // 2026-09-23: interval-arithmetic envelopes for Fn; registered EXECUTE.
             "certified_envelope",
             "chart_clip",
@@ -124,6 +127,10 @@ class AgentDemoRegistrationTest {
             // session that night. That routing was declared at the time and it cost exactly what
             // was predicted: nothing under `artifacts/` is named by any registry, so for one day
             // the only evidence its four boxes ran was that a human had run them once, by hand.
+            // 2026-10-10: Bayesian optimisation and A/B preference learning; registered EXECUTE.
+            "gp_instruments",
+            // 2026-10-10: Gaussian processes to play with (closed loop, 1-D, 2-D); registered EXECUTE.
+            "gp_drawing",
             "gpu_probe_bench",
             "interaction_nets_lambda",
             "keyframe_key_discovery",
@@ -271,24 +278,12 @@ class AgentDemoRegistrationTest {
      * launch ops; an EXECUTE transcript needs them added. Measured 2026-10-09.
      */
     private val ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS = setOf(
-        "ai_tool_demo",
         "brief_house_demo",
         "canonical_graphics",
-        "dmx_lighting_demo",
-        "fieldml_afield_four_demo",
-        "fieldml_frames_demo",
-        "fieldml_host_bridge_demo",
-        "fieldml_lambda_demo",
-        "fieldml_macro_demo",
-        "fieldml_macro_module_demo",
-        "fieldml_mesh_demo",
         "fline_examples",
         "nano_examples",
         "rectsl_gallery",
-        "rtp_midi_demo",
         "stacksl_cpu_demo",
-        "stacksl_fit_demo",
-        "stacksl_gallery",
         "stacksl_surrogate_demo",
         "three_mesh_pick_demo",
         "three_output_gallery",
@@ -297,17 +292,39 @@ class AgentDemoRegistrationTest {
     /**
      * Every directory under `dev_docs/agents/demos/` — the population [DEMO_CORPUS] is a list of.
      *
-     * Unfiltered on purpose. This is the thing a sibling branch grows, and the corpus assertion has
-     * to see an arrival whatever shape it is in; a directory that this method skipped would be
-     * invisible to every corpus guard in the tree, which is a worse failure than an unclassified one.
+     * Include untracked additions so the guard catches a new demo before it is committed. Git-ignored
+     * directories are local scratch data, not candidates for the published demo corpus.
      */
-    private fun demoDirectories(): List<String> {
-        val root = File(DEMOS)
+    private fun demoDirectories(root: File = File(DEMOS), gitRoot: File = File(".")): List<String> {
         assertTrue(root.isDirectory, "no demo corpus at ${root.absolutePath}")
         return (root.listFiles() ?: emptyArray())
-            .filter { it.isDirectory }
+            .filter { it.isDirectory && !gitIgnored(it, gitRoot) }
             .map { it.name }
             .sorted()
+    }
+
+    private fun gitIgnored(directory: File, gitRoot: File): Boolean {
+        val status = ProcessBuilder("git", "-C", gitRoot.canonicalPath, "check-ignore", "-q", "--", directory.canonicalPath)
+            .start().waitFor()
+        check(status == 0 || status == 1) { "git check-ignore failed for ${directory.path}: exit $status" }
+        return status == 0
+    }
+
+    @Test
+    fun gitIgnoredScratchIsNotADemoButAnUntrackedDirectoryIs() {
+        val repo = Files.createTempDirectory("demo-corpus-").toFile()
+        try {
+            val init = ProcessBuilder("git", "-c", "init.defaultBranch=main", "init", "-q", repo.path)
+                .start().waitFor()
+            assertEquals(0, init, "could not initialize a temporary Git repository")
+            File(repo, ".gitignore").writeText("demos/scratch/\n")
+            val demos = File(repo, "demos").apply { mkdir() }
+            File(demos, "scratch").mkdir()
+            File(demos, "new_demo").mkdir()
+            assertEquals(listOf("new_demo"), demoDirectories(demos, repo))
+        } finally {
+            repo.deleteRecursively()
+        }
     }
 
     /**

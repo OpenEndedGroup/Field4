@@ -10,7 +10,12 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** A small output card over the real runner, using Field's existing button transport. */
+/**
+ * A small output card over the real runner, using Field's existing button transport. Reading the
+ * stages re-reads the design's inputs and checks result files, so the card reads them every
+ * [STUDY_BUILD_POLL_MS] only while a build is queued or running, or when the runner's [StudyBuilds.revision]
+ * moves; otherwise every [STUDY_BUILD_IDLE_REFRESH_MS], which is how soon an unannounced design edit shows.
+ */
 internal class StudyBuildPanel(private val binding: BoxStudyBuildBinding, private val channel: String) : AutoCloseable {
     private val prefix = "study-build-${UUID.randomUUID()}"
     private val executor = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "study-build-panel").apply { isDaemon = true } }
@@ -19,6 +24,9 @@ internal class StudyBuildPanel(private val binding: BoxStudyBuildBinding, privat
     @Volatile private var error: String? = null
     @Volatile private var closed = false
     private var lastHtml = ""
+    private var seen: List<Long>? = null
+    private var lastRefresh = 0L
+    private var building = false
 
     init {
         val initial = binding.builds.stages()
@@ -39,13 +47,26 @@ internal class StudyBuildPanel(private val binding: BoxStudyBuildBinding, privat
                 refresh()
             } }
         }
-        executor.scheduleWithFixedDelay({ refresh() }, 0, 500, TimeUnit.MILLISECONDS)
+        // Publish the first card during showStudyBuilds(), before a short-lived scratch session
+        // can close. The scheduled poll remains responsible for later worker and input changes.
+        refresh()
+        executor.scheduleWithFixedDelay({ poll() }, STUDY_BUILD_POLL_MS, STUDY_BUILD_POLL_MS, TimeUnit.MILLISECONDS)
+    }
+
+    private fun poll() {
+        if (closed) return
+        val revision = runCatching { binding.builds.revision() }.getOrNull()
+        if (studyBuildPanelDue(building, revision, seen, System.nanoTime() - lastRefresh)) refresh()
     }
 
     private fun refresh() {
         if (closed) return
+        // Read before the stages, so a change recorded during this read brings the next poll back.
+        seen = runCatching { binding.builds.revision() }.getOrNull()
+        lastRefresh = System.nanoTime()
         val html = try {
             shown = binding.builds.stages()
+            building = shown.any { it.latest?.status in setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING) }
             val runs = shown.mapNotNull { it.latest?.id }.toSet()
             val read = { studyBuildFindings(binding.owner.inside.boxes.values + binding.owner.inside.root, runs) }
             findings = if (Runloop.isMainThread) read() else runBlocking { withContext(Runloop.runLoop.main) { read() } }
@@ -62,6 +83,16 @@ internal class StudyBuildPanel(private val binding: BoxStudyBuildBinding, privat
 
     override fun close() { closed = true; executor.shutdownNow() }
 }
+
+internal const val STUDY_BUILD_POLL_MS = 500L
+internal const val STUDY_BUILD_IDLE_REFRESH_MS = 5_000L
+
+/**
+ * Whether a [StudyBuildPanel] poll reads the stages: while [building], when the runner's [revision]
+ * differs from the one last [seen] (or cannot be read), or once [sinceRefreshNanos] reaches the idle interval.
+ */
+internal fun studyBuildPanelDue(building: Boolean, revision: List<Long>?, seen: List<Long>?, sinceRefreshNanos: Long): Boolean =
+    building || revision == null || revision != seen || sinceRefreshNanos >= STUDY_BUILD_IDLE_REFRESH_MS * 1_000_000
 
 /** Renders one stage's Field button; [StudyBuildPanel] passes the buttons it registered callbacks for. */
 internal typealias StudyBuildButton = (stage: String, action: String, label: String, important: Boolean) -> String

@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-34 source file(s), 1489 public symbol(s), 1254 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+35 source file(s), 1504 public symbol(s), 1269 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1739,7 +1739,7 @@ bvh.signedDistance(vec(0.5f, 0, 0))            // negative inside
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_measure.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_measure/)
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [FLine examples (Field graphics)](../fline_examples.md), [Three.js scenes with `three { … }`](../three_output.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Three.js scenes with `three { … }`](../three_output.md)
 
 ### Top-level functions { #mesh-measure-kt-functions }
 
@@ -3483,6 +3483,88 @@ What `slSweep` measured: the inputs it used and the `vec4` the program returned 
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">channel</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/stacksl/#L258) | One output channel across the whole sweep, as a list ready for a plot: `0` is x/r, `1` y/g, `2` z/b, `3` w/a. Any other index throws `IllegalArgumentException`. Non-finite samples are handed back as they are — it is the plot, not this, that filters them. |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/stacksl/#L278) | The sweep drawn as a self-contained SVG plot: one polyline per output channel, dots and guide lines on each channel's extremes, the first and last input/output pair, and a per-channel avg/min/median/max table. |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/stacksl/#L281) | A one-line summary — sample count plus the first and last output — for logs and assertions. |
+
+## stippling.kt { #stippling-kt }
+
+Stippling: place exactly N points so that they follow an image's brightness *and* keep an even,
+low-correlation ("blue-noise-ish") spacing from one another.
+
+```diffstatic {data-lang=kotlin}
+val dots = imgFromFile("face.png").stipple(5000)        // List<Vec2>, pixel coordinates
+```
+
+Sampling the brightness as a probability distribution gets the density right but clumps: two
+independent samples are as likely to land on top of each other as anywhere else. This file instead
+computes a **weighted centroidal Voronoi tessellation** (Secord's stippling) by Lloyd relaxation on
+the CPU. Each iteration
+
+1. rasterises the points into the pixel grid,
+2. finds every pixel's nearest point with a separable exact Euclidean distance transform
+   (a two-scan nearest-seed pass along each row, then Felzenszwalb–Huttenlocher's lower envelope of
+   parabolas down each column), which yields the Voronoi cells as a label raster in `O(pixels)`
+   regardless of the point count,
+3. moves each point to the density-weighted centroid of its cell.
+
+The rows and columns are split across a fork-join pool of their own, and nothing on the per-iteration
+path allocates: the label rasters, the column scratch and the per-worker centroid accumulators are
+all allocated once, in the constructor.
+
+### Where the points go, and what relaxation does not change
+
+The *number* of points in a region is decided by the starting sample. Relaxation evens out the
+spacing between neighbours and moves hardly any points from one region to another, so the point
+density is whatever the start gave, `brightness^densityPower`. With the default of 1, points follow
+brightness, and a larger power exaggerates contrast.
+
+That makes the start matter. An independent weighted random sample has the right density on
+average and random clumps everywhere, and relaxation keeps the clumps' counts: on a flat field the
+count variance in 48-pixel windows is 0.60 of a random scatter's after relaxing, which reads as
+blotches in a mid tone. So the start is stratified along a Hilbert curve instead. The curve visits
+the image in a way that keeps nearby pixels nearby, it is cut into `count` stretches of equal
+density, and each stretch gets one point. Every region the curve covers then starts with its exact
+share, and the same measurement after relaxing is 0.028.
+
+Theory predicts a different density: the *optimal* centroidal tessellation of a density `ρ` in 2-D
+has point density `ρ^(1/2)`. Lloyd iteration from a weighted start does not travel there. On a
+field half at brightness 1 and half at 0.5 the bright/dim count ratio stays at 2 through hundreds of
+iterations, against an optimum of 1.41, until the iteration reaches a fixed point on the raster
+where `Stippler.step` returns 0. `StipplingTest` pins both powers, the drift and the lumpiness.
+
+### Memory
+
+Besides five rasters of `supersample² * width * height` pixels, each worker keeps its own three
+`DoubleArray(count)` centroid accumulators so that workers never contend. That is cheap at ten or a hundred thousand
+points, and 384 MB at a million points on 16 workers — pass a smaller `threads` there.
+
+`src/jvmMain/kotlin/afield/stdlib/stippling.kt` — [read the source](source/jvmMain/afield/stdlib/stippling/)
+
+### Top-level functions { #stippling-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">stipple</span><span class="p">(</span><span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">densityPower</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">invert</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/stippling/#L78) | `count` stipple points following this image's brightness, after `iterations` rounds of weighted Lloyd relaxation. Points are in pixel coordinates: origin top-left, `y` down, a pixel's centre at `+0.5`. Use [`Stippler`](graphics.md#stippling-kt-stippler) directly to relax incrementally, for instance one step per frame. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stipplesToFLine</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code>](source/jvmMain/afield/stdlib/stippling/#L93) | Stipple points as one pointed `FLine`, ready for `lines(...)`: a `moveTo` per point and no segments, so it draws dots and nothing between them. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stipplesToImg</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">ink</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/stdlib/stippling/#L114) | Stipple points rasterised as anti-aliased discs: a 1-channel [`Img`](imaging.md#imaging-kt-img), for `showImg(...)`. |
+
+### Stippler { #stippling-kt-stippler }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">Stippler</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">densityPower</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">invert</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">threads</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Runtime</span><span class="p">.</span><span class="nf">getRuntime</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">availableProcessors</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">supersample</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/stippling/#L161)
+
+An incremental weighted Lloyd relaxation of `count` points over an image's brightness — the engine behind `stipple`, kept as an object so a box can watch it settle:
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code> | How many points; `points` always returns exactly this many. |
+| <code class="highlight"><span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span></code> | The seed for the initial placement and for re-placing empty cells. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">width</span></code>](source/jvmMain/afield/stdlib/stippling/#L173) | The image's width in pixels; points have `x` in `0..width`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">height</span></code>](source/jvmMain/afield/stdlib/stippling/#L176) | The image's height in pixels; points have `y` in `0..height`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">supersample</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/stippling/#L184) | How many times finer than the image the tessellation is computed. The centroid of a cell a few pixels across is quantised to the pixel grid, and in dense regions that lines the dots up into chains. So unless asked otherwise this picks the factor, up to 4, that gives an average cell at least 128 raster pixels. Points are reported in image pixels regardless. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">xs</span></code>](source/jvmMain/afield/stdlib/stippling/#L195) | Point `i`'s `x`, in pixels. Written by `step`; read it directly in a hot loop. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">ys</span></code>](source/jvmMain/afield/stdlib/stippling/#L198) | Point `i`'s `y`, in pixels, `y` down. Written by `step`. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">iterations</span></code>](source/jvmMain/afield/stdlib/stippling/#L201) | How many `step`s have run. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">points</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/stippling/#L283) | The points as values, in pixel coordinates. Allocates a fresh list; see `xs` / `ys` to avoid it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">relax</span><span class="p">(</span><span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Stippler</span></code>](source/jvmMain/afield/stdlib/stippling/#L289) | Run up to `iterations` `step`s, stopping early once the mean movement falls to `tolerance` pixels or below. Returns this, so `Stippler(img, n).relax(20).points()` reads in one line. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/stippling/#L299) | One Lloyd iteration: Voronoi cells by distance transform, then every point to its cell's density-weighted centroid. Returns the mean distance the points moved, in pixels — it falls towards zero as the tessellation settles, which makes it the thing to plot. |
 
 ## typography.kt { #typography-kt }
 

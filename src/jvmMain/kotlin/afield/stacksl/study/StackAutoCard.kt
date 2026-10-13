@@ -111,7 +111,7 @@ object StackAutoCard {
                     KnobNames.shouldAsk(box)) { refreshLater(box) }.orEmpty()
                 val inCode = offsetInCode(box, slot.source) != null
                 append("<div class='slot' data-slot='${slot.name}'>")
-                append("<div><b>stack.auto.${esc(slot.name)}</b> <span class='muted'>· ${if (knobs.isEmpty()) "no numbers to turn" else "${knobs.size} numbers · ${if (slot.live) "live" else "as compiled"}"} · the window shows your whole shader</span></div>")
+                append("<div><b>stack.auto.${esc(slot.name)}</b> <span class='muted'>· ${if (knobs.isEmpty()) "no numbers to turn" else "${knobs.size} ${if (knobs.size == 1) "number" else "numbers"} · ${if (slot.live) "live" else "as compiled"}"} · the window shows your whole shader</span></div>")
                 if (!inCode) append("<div class='warn'>This program is not written out in the box's code, so Keep cannot put numbers back into it.</div>")
                 knobs.groupBy { it.line }.forEach { (line, onLine) ->
                     val heading = lines.getOrNull(line - 2)?.trim()?.takeIf { it.startsWith("#") }?.removePrefix("#")?.trim()
@@ -130,7 +130,7 @@ object StackAutoCard {
                         registered += sliderId
                         val label = "<span class='locate' data-slot='${slot.name}' data-locate='${k.knob}' title='${esc(operand)} · ${esc(k.context)} — click to select ${esc(k.token)} in the editor'>" +
                             "k${k.knob} <span class='purpose'>${esc(names[k.knob] ?: operand)}</span></span>"
-                        append(buildSliderHtml(sliderId, label, minOf(lo, v), maxOf(hi, v), step, v, extraAttributes = "data-knob='${k.knob}' data-slot='${slot.name}'"))
+                        append(buildSliderHtml(sliderId, label, minOf(lo, v), maxOf(hi, v), step, v, extraAttributes = "data-knob='${k.knob}' data-slot='${slot.name}'", ariaLabel = "k${k.knob} ${names[k.knob] ?: operand}"))
                     }
                 }
                 append("<div style='margin-top:6px'>")

@@ -246,10 +246,18 @@ pub fn pressure_along(profile: &[f32], s: &[f32]) -> Vec<f32> {
 /// sideways by a small tremor (`tremor` units; none with `ruler`), with the
 /// pressure profile along it.
 pub fn hand_line(pts: &[(f32, f32)], profile: &[f32], smooth: bool, ruler: bool, tremor: f32, seed: u64) -> Mark {
+    hand_line_world(pts, None, profile, smooth, ruler, tremor, seed)
+}
+
+/// (Field) `hand_line` whose tremor and pressure profile follow `world`, the line's length along
+/// itself in the world at each of `pts` (units; `Canvas::stroke_arc`), instead of its length on the
+/// canvas: the same line seen by two eyes trembles and presses alike.
+pub fn hand_line_world(pts: &[(f32, f32)], world: Option<&[f32]>, profile: &[f32], smooth: bool, ruler: bool, tremor: f32, seed: u64) -> Mark {
     let step = 0.25;
     let mut p = resample(pts, smooth && !ruler, step);
+    let carry = |q: &[(f32, f32)]| -> Vec<f32> { world_along(pts, world, q) };
     if !ruler && tremor > 0.0 {
-        let s = arclen(&p);
+        let s = carry(&p);
         let q = p.clone();
         for i in 0..p.len() {
             let n = normal(&q, i);
@@ -258,9 +266,19 @@ pub fn hand_line(pts: &[(f32, f32)], profile: &[f32], smooth: bool, ruler: bool,
             p[i] = (q[i].0 + n.0 * w, q[i].1 + n.1 * w);
         }
     }
-    let s = arclen(&p);
+    let s = carry(&p);
     let pressure = pressure_along(profile, &s);
     Mark { pts: p, pressure }
+}
+
+/// (Field) The arc at each point of `q`, a resampling of `pts`: `world` (given at each of `pts`)
+/// carried along in proportion to the canvas arc, or `q`'s own canvas arc without it.
+fn world_along(pts: &[(f32, f32)], world: Option<&[f32]>, q: &[(f32, f32)]) -> Vec<f32> {
+    let sq = arclen(q);
+    let Some(w) = world.filter(|w| w.len() == pts.len() && pts.len() >= 2) else { return sq };
+    let a_in = arclen(pts);
+    let (a_tot, q_tot) = (a_in[a_in.len() - 1].max(1e-6), sq[sq.len() - 1].max(1e-6));
+    sq.iter().map(|&a| crate::field::interp(&a_in, w, a / q_tot * a_tot) - w[0]).collect()
 }
 
 /// Repeated passes over one path: `passes` light strokes along it, each
@@ -269,8 +287,16 @@ pub fn hand_line(pts: &[(f32, f32)], profile: &[f32], smooth: bool, ruler: bool,
 /// broken into more pieces the longer the path (about one per 120-400
 /// units); the first pass at 0.75 of `pressure`.
 pub fn sketch_marks(pts: &[(f32, f32)], pressure: f32, passes: usize, wander: f32, smooth: bool, tremor: f32, seed: u64) -> Vec<Mark> {
+    sketch_marks_world(pts, None, pressure, passes, wander, smooth, tremor, seed)
+}
+
+/// (Field) `sketch_marks` laid out along `world`, the line's length in the world at each of `pts`
+/// (units; `Canvas::stroke_arc`): the passes' starts, ends, breaks, wander and pressure fall at the
+/// same places along the line in either eye of a stereo pair, wherever those are on each canvas.
+#[allow(clippy::too_many_arguments)]
+pub fn sketch_marks_world(pts: &[(f32, f32)], world: Option<&[f32]>, pressure: f32, passes: usize, wander: f32, smooth: bool, tremor: f32, seed: u64) -> Vec<Mark> {
     let base = resample(pts, smooth, 0.25);
-    let s = arclen(&base);
+    let s = world_along(pts, world, &base);
     let total = s.last().copied().unwrap_or(0.0);
     if total <= 0.0 {
         return Vec::new();
@@ -305,7 +331,8 @@ pub fn sketch_marks(pts: &[(f32, f32)], pressure: f32, passes: usize, wander: f3
                 let d = side + amp * (2.0 * vnoise(a / 45.0, k as f32 * 3.1, ps) - 1.0) + tremor * (vnoise(a / 4.0, 1.7, ps + 1) - 0.5);
                 p.push((pt.0 + nm.0 * d, pt.1 + nm.1 * d));
             }
-            let sp = arclen(&p);
+            // (by the arc it was laid out along: the world's, or the canvas's)
+            let sp: Vec<f32> = if world.is_some() { (0..n).map(|j| (hi - lo) * j as f32 / (n - 1) as f32).collect() } else { arclen(&p) };
             // each stroke swells in and lifts off
             let pr = pressure_along(&[press * 0.5, press, press * rng.range(0.8, 1.1), press * 0.4], &sp);
             out.push(Mark { pts: p, pressure: pr });
@@ -580,6 +607,8 @@ impl Canvas {
         let film = std::mem::take(&mut self.film);
         let wetv: Vec<bool> = hits.iter().map(|&(i, _, _)| self.wet.vol[i] > 1e-5).collect();
         let mut px = std::mem::take(&mut self.px);
+        // (Field) a stereo pair's grain at the place on the reference canvas (`field::warp`)
+        let warp = self.warp.take();
         {
             let d = self.drawing_mut();
             for (k, &(i, cov, p)) in hits.iter().enumerate() {
@@ -595,6 +624,7 @@ impl Canvas {
                 let bite = lead.bite_um * p.powf(1.2) + 3.0;
                 let contact = (-depth.max(0.0) / bite).exp();
                 let (gx, gy) = ((i % f.w + f.x0) as i64, (i / f.w + f.y0) as i64);
+                let (gx, gy) = match &warp { Some(w) => { let (x, y) = w.map(gx as f32 + 0.5, gy as f32 + 0.5); (x.floor() as i64, y.floor() as i64) } None => (gx, gy) };
                 let grain = 1.0 - crumble * hash2(gx, gy, seed);
                 let dep = (lead.rate * contact * cov * grain * touch(p)).clamp(0.0, 1.0);
                 let cap = lead.cap * (0.55 + 0.45 * p);
@@ -611,6 +641,7 @@ impl Canvas {
             }
         }
         self.px = px;
+        self.warp = warp;
         self.film = film;
         s.last().copied().unwrap_or(0.0) * mmu
     }

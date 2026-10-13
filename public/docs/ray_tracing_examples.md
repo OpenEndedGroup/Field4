@@ -2,15 +2,14 @@
 
 Field's ray tracing support is built around Vulkan `VK_KHR_ray_tracing_pipeline`. The four examples below run from a raygen shader writing straight into a storage image to procedural spheres reflecting a traced floor, and between them they cover image binding, acceleration structures, shader groups, dispatch, and GLSL.
 
-These are real 1024 × 1024 captures from Field on Linux with an RTX 4090. The examples
+The figures are 1024 × 1024 captures from Field on Linux with an RTX 4090. The examples
 require an enabled `VK_KHR_ray_tracing_pipeline`; Field checks device features, independently
 of the operating system or GPU brand. The [path tracer](path_tracing.md) also has a compute
 BVH backend for devices without hardware ray tracing.
 
 ??? aside "Capture and test provenance"
 
-    Regenerated on 25 September 2026, NVIDIA driver 610.43.02. The old “Not Available” cards
-    have been removed, along with their placeholder-check exceptions. `RayTracingGpuAudit`
+    Captured on 25 September 2026, NVIDIA driver 610.43.02. `RayTracingGpuAudit`
     exercises these four captures with GPU pixel assertions, alongside the path tracer's two
     backends. It reports unsupported pipeline captures as skipped; pass `--require-pipeline`
     to require them. The capture harness throws on unavailable hardware or shader failure.

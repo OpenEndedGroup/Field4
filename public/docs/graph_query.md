@@ -252,7 +252,12 @@ Some behaviours to know about before you point this at something large:
   is therefore reachable under *each* of its addresses, while `a → b → a` still
   terminates. `maxDepth` and `maxRefs` bound the rest.
 - **Collections are transparent.** Maps are keyed by their stringified key,
-  lists and arrays by index, and mutable ones are writable.
+  lists and arrays by index, and mutable ones are writable. A `Set` is
+  addressed by position in iteration order and is read-only.
+- **You can browse the same edges.** `tree("t", value)` and `column("c", value)`
+  list exactly what this walk sees; `p` copies a row's path, and a filter
+  containing `/`, `*` or `|` runs `graphPaths` and lists the matches (see
+  [Trees and columns](visualizers.md#trees-and-columns)).
 - **Non-public classes work.** Your own `private` and `internal` model classes
   are read and written like any other.
 - **A throwing getter won't derail a walk**, but reading that one slot

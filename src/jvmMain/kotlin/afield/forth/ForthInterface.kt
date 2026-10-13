@@ -239,6 +239,9 @@ class ForthExecution(val inside: Box) : BoxExecution {
 
                 val job = inMain {
                     forth.addStrand(strand, strandWord)
+                    // Published as a Kotlin launch publishes it, so whatever asks whether this strand is
+                    // running (the docs video recorder's first-frame gate) gets the same answer.
+                    inside.currentRunningStates[strand] = RunningState(generation, "running")
                     try {
                         while (inside.runGeneration[strand] == generation) {
                             try {
@@ -262,6 +265,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
                             kotlinx.coroutines.yield()
                         }
                     } finally {
+                        if (inside.currentRunningStates[strand]?.watermark == generation) inside.currentRunningStates.remove(strand)
                         forth.removeStrand(strand)
                         send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                     }

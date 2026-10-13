@@ -31,8 +31,6 @@ After a restart or provider change, AI4 uses the recent saved text as context. T
 transcript stays in the document's `<box-id>_ai4_chat_history_.md` sidecar. To keep resumed
 requests bounded, model context uses at most the most recent 64,000 characters (preferring
 whole turns); saved images remain visible but must be attached again for fresh image analysis.
-Existing conversations from versions before this feature need to be exported before restarting
-those versions, because their transcripts lived only in memory.
 
 ### Writing while it works
 
@@ -139,8 +137,8 @@ transcript, with its images in the document's `ai4_blobs` folder.
 part of the instructions, its size, and what the provider keeps of it. That
 differs by provider. OpenAI keeps the conversation on its side, so the stable
 instructions go into it once and the context that changes between turns is added
-with every turn, which makes a long conversation grow; this was measured to cost
-less than sending it separately, because the conversation stays cacheable.
+with every turn. A long conversation grows that way, but it stays cacheable, which
+costs less than sending the changing context separately.
 Anthropic gets the stable instructions with every request and the changing context
 with the newest request only.
 
@@ -472,15 +470,14 @@ left it when the document opens. Leave it off for state the document saves itsel
 
 Two optional interfaces, both worth implementing:
 
-- **`SummarisesForToolLog`** — one line for Field's tool I/O log. Without it the
-  log records only your result's class name, which cannot distinguish a turn
+- `SummarisesForToolLog`: one line for Field's tool I/O log. Without it the
+  log records only your result's class name, so you cannot tell a turn
   where the model got what it needed from one where it got an error and gave up.
-- **`CarriesToolImages`** — pictures. Both agent loops send them as real images:
+- `CarriesToolImages`: pictures. Both agent loops send them as real images:
   OpenAI and OpenRouter as a message following the tool output, Anthropic as
   image blocks inside the tool result itself. This is how a tool lets a model
-  *look* at what it just did instead of taking your word for it. The exception is
-  a tool called over the MCP backdoor — that reply is JSON, so it carries the
-  numbers and not the picture. Put anything the model must not miss in the
+  *look* at what it just did. The exception is a tool called over the MCP
+  backdoor: that reply is JSON, so it carries the numbers and not the picture. Put anything the model must not miss in the
   result as well as in the image.
 
 ```diffstatic {data-lang=kotlin}
@@ -493,11 +490,10 @@ data class RoomReport(
 }
 ```
 
-`toolImages` is annotated `@get:JsonIgnore` on the interface, and it matters that
-you inherit that rather than reinventing it. A tool result is serialised to JSON
-and sent to the model as the function output; a base64 PNG that reaches *that*
-path is spent as text tokens and buys nothing, because a model cannot see an
-image encoded inside a JSON string. The picture has to travel as a picture.
+`toolImages` is annotated `@get:JsonIgnore` on the interface, so override it as
+shown rather than declaring your own image field. A tool result is serialised to
+JSON and sent to the model as the function output, and a base64 PNG inside that
+JSON is spent as text tokens: the model cannot see an image encoded in a string.
 
 ### A worked example you can run
 
@@ -539,9 +535,9 @@ Called on the glTF sample that ships with Field, it answers with 77429 vertices,
 
 ![The rendered mesh a model receives when it calls InspectGeometryFile](assets/ai_tool_demo/toycar_inspect.png)
 
-The full session — both descriptors, both calls, both results — is committed
-alongside it as `public/docs/assets/ai_tool_demo/session.md`, produced with no
-API key and no model.
+The full session (both descriptors, both calls, both results) is in
+[`session.md`](https://github.com/OpenEndedGroup/Field4/blob/main/public/docs/assets/ai_tool_demo/session.md);
+it needs no API key and no model.
 
 If you have no scans handy, this makes some and runs both tools over them,
 including putting the picture the model would receive into the box's output:
@@ -594,8 +590,8 @@ display("<img src='" + image.dataUrl + "' style='width:100%'/>")
 `execute` takes a name and a JSON string, which is exactly the shape a model's
 tool call arrives in, so this runs the real tool path with the model left out.
 
-There is a loadable document with both examples side by side:
-`public/docs/assets/ai_tool_demo/metadata.edn`.
+Both examples are side by side in the
+[ai_tool_demo](agent_transcripts.md#ai_tool_demo) starting point.
 
 ### If your tool takes a path, or anything else from the outside
 
@@ -607,8 +603,7 @@ search roots: it canonicalises the requested path and then walks up the parent
 chain, which refuses a `..` that escapes, a symlink that points out, and a
 sibling directory whose name merely starts with a root's name.
 
-The design notes — why the dependency points this way, what the two bridges do
-with your registration, and what is still not covered — are in
+How the two bridges (the chat and MCP) use your registration is described in
 `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
 
 A tool set that edits something which draws — a program, a scene, numbers in a
@@ -668,16 +663,18 @@ chat or from an external tool. External captures arrive as images. A failed shad
 may leave the last good picture visible, so its diagnostics remain separate from the
 screenshot.
 
-Kotlin launch receipts identify the source that completed setup. A pending running
-stripe is not proof that compilation succeeded, and successful setup is not proof of
-sustained animation. Dependent Kotlin macro operations stop on setup errors and preserve
-prior changes for inspection; undo is an explicit action.
+When AI4 launches a Kotlin box, it gets back a receipt naming the source that
+completed setup. A box showing its running stripe may still be compiling, and a box
+whose setup succeeded may still stop animating later, so the receipt is what says
+setup finished. A Kotlin macro whose later steps depend on a launch stops when setup
+fails, and keeps the changes made so far so you can inspect them; undoing them is up
+to you.
 
-Other language engines retain their normal macro dispatch behavior, with
-`setupVerified: false` and an explicit message that completion is unverified.
+Macros in other languages run as before, and their receipts say
+`setupVerified: false` with a message that completion was not checked.
 The external backdoor's awaited `run`, `launch` and `continue` commands get a receipt
-from every engine, not only Kotlin. The receipt is earned rather than assumed: an engine
-reporting success while the box printed an error still comes back failed.
+from every engine, not only Kotlin. A box that printed an error comes back failed even
+when its engine reported success.
 
 See [Flow grain and motion](flow_grain.md) for an editable graphics example with resets,
 parameters, motion correspondence and a repeatable profiling scenario.

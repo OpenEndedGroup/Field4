@@ -236,14 +236,18 @@ fn footprint_bounds_every_touched_pixel() {
 #[test]
 fn invalid_tools_are_rejected() {
     let t = Tool::round_sable(10.0);
+    // (Field: only what would break the simulation is refused; a dial past its range is not,
+    // `VENDORED.md`, "dials past their range")
     let bad: Vec<(&str, Tool)> = vec![
-        ("length<0", Tool { length: -1.0, ..t.clone() }),
         ("length nan", Tool { length: f32::NAN, ..t.clone() }),
         ("width 0", Tool { width: 0.0, ..t.clone() }),
         ("width inf", Tool { width: f32::INFINITY, ..t.clone() }),
+        ("bristles 0", Tool { bristles: 0, ..t.clone() }),
+    ];
+    for (name, tool) in [
+        ("length<0", Tool { length: -1.0, ..t.clone() }),
         ("stiffness>1", Tool { stiffness: 1.5, ..t.clone() }),
         ("stiffness<0", Tool { stiffness: -0.1, ..t.clone() }),
-        ("bristles 0", Tool { bristles: 0, ..t.clone() }),
         ("hair 0", Tool { hair: 0.0, ..t.clone() }),
         ("run 0", Tool { run: 0.0, ..t.clone() }),
         ("lay<0", Tool { lay: -1.0, ..t.clone() }),
@@ -251,7 +255,9 @@ fn invalid_tools_are_rejected() {
         ("push<0", Tool { push: -0.1, ..t.clone() }),
         ("splay<0", Tool { splay: -3.0, ..t.clone() }),
         ("ragged<0", Tool { ragged: -1.0, ..t.clone() }),
-    ];
+    ] {
+        assert!(tool.validate().is_ok(), "{name} refused");
+    }
     for (name, tool) in &bad {
         assert!(tool.validate().is_err(), "{name} accepted");
     }
@@ -259,11 +265,11 @@ fn invalid_tools_are_rejected() {
         tool.validate().unwrap();
     }
     // every painting entry point refuses them (before touching the canvas)
-    let neg = Tool { length: -1.0, ..t };
+    let neg = Tool { width: 0.0, ..t };
     let entry = |f: &dyn Fn(&mut Canvas)| {
         let mut c = Canvas::new(100, 1.0, hex("#c8b89a"));
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut c)));
-        assert!(r.is_err_and(|e| e.downcast_ref::<String>().is_some_and(|s| s.contains("length >= 0"))));
+        assert!(r.is_err_and(|e| e.downcast_ref::<String>().is_some_and(|s| s.contains("width > 0"))));
     };
     entry(&|c| {
         let mut h = Held::new(neg.clone(), 1);

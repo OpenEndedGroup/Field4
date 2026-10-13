@@ -10,33 +10,6 @@ copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer
     A web browser, including Field's HTTP mirror, shows a message instead of frames.
     Windows is not implemented.
 
-## Linux status
-
-Verified with Electron 44.5.1 on an NVIDIA RTX 4090 (driver 610.43.02):
-
-| Session | Vulkan texture shown in the canvas |
-| --- | --- |
-| Native Wayland | Yes; all source pixels matched |
-| Xorg | Blank with both default GL and ANGLE/Vulkan |
-| XWayland | Blank with both default GL and ANGLE/Vulkan |
-
-Use the app in a Wayland session. No ANGLE/Vulkan switch is needed for this view;
-forcing that backend can prevent the Wayland app window from appearing. The Linux
-view reports an error when opened through Xorg or XWayland.
-
-The Linux implementation uses a shared GPU image ring without CPU readback or video
-encoding. The tested 640×360 view showed about 20 frames per second, with roughly
-0.8 ms from the frame's GPU fence to the canvas draw. These measurements are from this
-machine; the macOS figures below are separate measurements.
-
-The same moving-square example shown below was captured in the Linux app:
-
-![Moving square in a Linux Wayland Field output panel](assets/four_in_output_areas/rtt-view-linux.png)
-
-The [verification record](assets/four_in_output_areas/linux-verification.json) includes the
-source and canvas pixel counts, exact switches, and checks after re-running and deleting the box.
-
-
 ## A view in a box
 
 This box draws a moving, colour-shifting square into a 640×360 view and shows it in the box's
@@ -93,6 +66,28 @@ and the time from the GPU finishing a frame to the panel showing it. At 640×360
 silicon Mac the view runs at the renderer's own rate, and that time is 1 to 3 ms on average, with
 occasional frames taking up to about 15 ms. The view holds three frames in flight, so a slow panel makes it
 skip frames instead of slowing the renderer down.
+
+## On Linux
+
+Use the app in a native Wayland session. Under Xorg or XWayland the canvas stays blank, and the view
+reports an error instead. No ANGLE/Vulkan switch is needed for this view; forcing that backend can
+stop the Wayland app window from appearing.
+
+The Linux view also passes frames through a shared GPU image ring, with no CPU readback or video
+encoding. On an NVIDIA RTX 4090 (driver 610.43.02, Electron 44.5.1) the 640×360 view showed about
+20 frames a second, with roughly 0.8 ms from the frame's GPU fence to the canvas draw. The same
+moving square, in the Linux app:
+
+![Moving square in a Linux Wayland Field output panel](assets/four_in_output_areas/rtt-view-linux.png)
+
+| Session on that machine | Vulkan texture shown in the canvas |
+| --- | --- |
+| Native Wayland | Yes; all source pixels matched |
+| Xorg | Blank with both default GL and ANGLE/Vulkan |
+| XWayland | Blank with both default GL and ANGLE/Vulkan |
+
+The [verification record](assets/four_in_output_areas/linux-verification.json) has the source and
+canvas pixel counts, the exact switches, and the checks after re-running and deleting the box.
 
 See also: [afield.four Graphics](afield_four_graphics.md) for meshes, modules and
 render-to-texture.

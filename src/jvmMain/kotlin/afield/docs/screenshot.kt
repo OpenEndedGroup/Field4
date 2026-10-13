@@ -377,13 +377,15 @@ private fun postProcessScreenshot(path: Path) {
       }
       "clickSelector" -> {
         val selector = request.selector ?: error("clickSelector requires a selector")
-        page.locator(selector).click()
+        // The first VISIBLE match: a page that has opened inline or embedded editors holds hidden
+        // `.monaco-editor`s too, and a click on the first one in the DOM waits out its timeout.
+        page.locator("$selector >> visible=true").first().click()
       }
       "hover" -> {
         val selector = request.selector
         val uid = request.uid
         when {
-          !selector.isNullOrBlank() -> page.locator(selector).hover()
+          !selector.isNullOrBlank() -> page.locator("$selector >> visible=true").first().hover()
           !uid.isNullOrBlank() -> {
             val (x, y) = locateBoxPoint(page, uid)
             page.mouse().move(x, y)
@@ -2849,12 +2851,13 @@ class DocsUiDriver internal constructor(
 
     /** Open (and pan to) a box's code editor, reusing the screenshot editor-prep path. */
     fun openEditor(uid: String, property: String = "code") {
-        runBlocking(playwrightDispatcher) {
+        val response = runBlocking(playwrightDispatcher) {
             requestWindowScreenshot(
                 pageProvider(),
                 WindowScreenshotRequest(uid = uid, property = property, showEditor = true, panIntoView = true)
             )
         }
+        check(response.success) { "openEditor($uid, $property): ${response.message}" }
     }
 
     /** Screenshot the whole page to [path] *now* (script-timed — use for transient states). */

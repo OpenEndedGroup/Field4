@@ -10,8 +10,8 @@ forward control with a breadcrumb trail appears so you can retrace your steps.
 Links only appear when they resolve. A `[Symbol]` that Field can't find stays
 plain, bracketed text.
 
-Why the popup lists one candidate above another is a separate question, and an internals one:
-[How completions are ranked](completion_ranking.md) covers it, including how a class of your own
+The order of the candidates in the popup is covered in
+[How completions are ranked](completion_ranking.md), including how a class of your own
 can promote its members.
 
 ## A worked example
@@ -59,8 +59,8 @@ try {
 The `Vec2` in the documentation is underlined: that is the code-link. The same
 sentence ends *"…converting each component to [Float]."*, and there `[Float]`
 stays literal: `Float` comes from the Kotlin standard library, whose source
-Field does not index, so there is nothing to link to. The `source …:line` line at the very bottom of the card is a link
-too, pointing at the definition's location in the source.
+Field does not index, so there is nothing to link to. The `source …:line` footer
+at the bottom of the card is a link too, to the line where `vec` is defined.
 
 ## Following a link
 

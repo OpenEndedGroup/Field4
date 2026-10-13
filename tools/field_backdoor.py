@@ -43,6 +43,7 @@ from verification_runtime import (  # noqa: E402
     automation_workspace,
     field_instance_info,
     field_instance_problem,
+    pinned_graalvm_args,
     select_automation_port,
 )
 from verification_runtime import env_seconds as _env_seconds  # noqa: E402
@@ -191,6 +192,32 @@ def health_check(port: int, ssl_context: ssl.SSLContext, timeout: float = 1.5) -
         return False
 
 
+# A loaded host can answer /health slower than health_check's 1.5 s. On 2026-10-08 and 10-10 a house-machine host at a
+# load of 35-40 usually answered in 0.03-0.6 s and sometimes in 1.7 s, and attachments read that as "no Field server is
+# listening" while it was serving: six corpus variants lost their native fabrication stages on 2026-10-10.
+SLOW_HEALTH_TIMEOUT_S = 10.0
+SLOW_HEALTH_TRIES = 3
+
+
+def port_accepts_connections(port: int, timeout: float = 1.0) -> bool:
+    try:
+        with socket.create_connection(("localhost", port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def patient_health_check(port: int, ssl_context: ssl.SSLContext) -> bool:
+    """A health check for a server that may be busy: while the port accepts connections, give /health several slow
+    tries; a closed port fails at once, so a server that is really gone is still reported quickly."""
+    for _ in range(SLOW_HEALTH_TRIES):
+        if not port_accepts_connections(port):
+            return False
+        if health_check(port, ssl_context, timeout=SLOW_HEALTH_TIMEOUT_S):
+            return True
+    return False
+
+
 def _same_directory(left: str, right: str) -> bool:
     """Do two workspace paths name the same directory?
 
@@ -252,6 +279,7 @@ def gradle_command(*tasks_and_args: str) -> list[str]:
     return [
         str(GRADLE_WRAPPER),
         f"-Dorg.gradle.jvmargs={GRADLE_JVMARGS}",
+        *pinned_graalvm_args(REPO_ROOT),
         *tasks_and_args,
     ]
 
@@ -791,6 +819,11 @@ class FieldBackdoor:
         self.logger.log("ensure_server_start", port=self.port, workspace=self.workspace)
         initial_health = health_check(self.port, self.ssl_context)
         self.logger.log("health_check", phase="initial", port=self.port, healthy=initial_health)
+        if not initial_health:
+            # A slow answer from a listening port is a busy server, not a missing one: neither attach-existing's
+            # "no server" nor starting a second server on its port is right.
+            initial_health = patient_health_check(self.port, self.ssl_context)
+            self.logger.log("health_check", phase="patient", port=self.port, healthy=initial_health)
         if initial_health:
             info = field_instance_info(self.port, self.ssl_context)
             problem = field_instance_problem(

@@ -18,7 +18,7 @@ Same two curves, ticked instead of dashed, so you can see the spacing itself rat
 than its effect on a dash.
 
 ```edn [field-box id="arclength_ticks" role="properties"]
-{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 96 "characters" 3910 "sha256" "4e182240b5102ea9a2146bac1f0bede14bade71600189d9bcc7ff1a2278037bf"}]}
+{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 96 "characters" 3912 "sha256" "65eb2bd52e29a5d90612ca2ae74b844489b18642ae816dd9730daadcaeb6c3ab"}]}
 ```
 
 ```kotlin [field-property box="arclength_ticks" name="code" path="arclength_ticks_code_.kt"]
@@ -45,10 +45,10 @@ val ticks = { line: FLine, byArcLength: Boolean ->
         val f = i.toFloat() / steps
         if (byArcLength) c.setD(total * f) else c.setT(span * f)
         val p = c.position()
-        // normal2() is the tangent rotated 90 degrees and is NOT normalised — its
+        // normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
         // magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
         // ticks come out as a fan hundreds of units long.
-        val n = c.normal2()
+        val n = c.normal2D()
         val len = kotlin.math.hypot(n?.x ?: 0f, n?.y ?: 1f).coerceAtLeast(1e-6f)
         val nx = (n?.x ?: 0f) / len
         val ny = (n?.y ?: 1f) / len

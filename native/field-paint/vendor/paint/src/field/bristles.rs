@@ -21,8 +21,21 @@
 //!   rest angle itself moves toward the bend (`plastic`, per second) — a hair pressed hard and dragged
 //!   sideways stays splayed or hooked after the stroke — and recovers toward straight only slowly
 //!   (`recover`, per second). The rest angles are part of the brush's state.
-//! - **Clumping**: in a wet brush the tips of neighbouring hairs are drawn together by the liquid
-//!   between them (`cohesion` times how full the brush is).
+//! - **Splay**: a hair pressed into the surface is pushed outward from the brush's middle, by the
+//!   tool's `splay` times how far it is pressed in, against the same grip as any slip: where the
+//!   pressure and the splay overcome the friction the hairs fan out, the outer ones furthest.
+//! - **Clumping**, two models blended by `clumping`. At 0 (the default) the tips of hairs that are
+//!   neighbours at the root are drawn together by the liquid between them (`cohesion` times how full
+//!   the brush is). At 1, in its place, liquid bridges between hairs: wherever two hairs' nodes at
+//!   the same joint come
+//!   within about the hairs' spacing at the root, and both hairs are wet, a bridge forms between them
+//!   and pulls them together (more toward the tips, more the wetter and thinner the paint and the
+//!   larger `cohesion`). A bridge holds until it is stretched past its rupture length, which is
+//!   longer the more liquid it holds, and then snaps. Neighbours are found as the hairs move, not
+//!   fixed at the root, so hairs pushed apart by splay tear the brush into clumps, and hairs pushed
+//!   together from across the brush join. Negative `cohesion` pushes nearby hairs apart. Between 0
+//!   and 1 the two pull together, weighted; past 1 the bridges pull harder and reach further; below 0
+//!   the tip pull is doubled at -1 and the bridges push instead of pull.
 //! - The handle: its position, how far it is pressed down (pressure 1 lowers the ferrule by
 //!   `PRESS_DEPTH` of the hairs' length below where the tips would just touch), its tilt from upright,
 //!   which way it leans (azimuth) and its roll about its own axis, interpolated through the gesture's
@@ -42,7 +55,7 @@
 //!
 //! Guide hairs stand for many: 16–64 are simulated where a real brush has thousands, and the dense
 //! bristles copy their guide's contact rather than having their own dynamics. Hairs do not collide
-//! with each other except through clumping. The liquid's own mechanics inside the brush (capillary
+//! with each other except through their bridges. The liquid's own mechanics inside the brush (capillary
 //! flow along hairs) is the belly's single reservoir, or upstream's per-bristle load.
 
 use super::aqueous::Water;
@@ -58,6 +71,43 @@ const ITERATIONS: usize = 6;
 pub const PRESS_DEPTH: f32 = 0.6;
 /// A dense bristle moves this many pixels before it trades paint again.
 const EXCHANGE_PX: f32 = 0.75;
+
+/// A hair holds liquid enough to bridge to another at this share of a full load.
+const BRIDGE_WET: f32 = 0.02;
+/// Liquid bridges a node holds at most (its nearest).
+const BRIDGES_PER_NODE: u8 = 6;
+/// New bridges are looked for every this many substeps (broken ones every substep).
+const BRIDGE_EVERY: u64 = 4;
+/// The behaviours a stroke can vary along itself (`Bristles::vary`).
+pub const VARY_NAMES: [&str; 5] = ["splay", "splay scatter", "splay fan", "cohesion", "clumping"];
+
+impl Bristles {
+    fn knob(&mut self, which: usize) -> &mut f32 {
+        match which {
+            0 => &mut self.splay,
+            1 => &mut self.splay_scatter,
+            2 => &mut self.splay_fan,
+            3 => &mut self.cohesion,
+            _ => &mut self.clumping,
+        }
+    }
+}
+
+/// Hairs this many root spacings apart buckle about alike in the splay's scatter.
+const SCATTER_SPACINGS: f32 = 4.0;
+/// The splay's scatter drifts over about this long, s.
+const SCATTER_S: f32 = 0.4;
+/// Where a hair touches the paper, a bridge pulls it at this share of its strength in the air.
+const CONTACT_PULL: f32 = 0.15;
+/// Passes of the bridges and the hairs' shape a wet brush settles through in the air at a stroke's
+/// start.
+const SETTLE_PASSES: usize = 120;
+/// The dense bristles are drawn in to their hair's clump over about this long, s.
+const SQUEEZE_S: f32 = 0.03;
+/// Bridges form at most this many root spacings apart.
+const BRIDGE_FORM_MAX: f32 = 6.0;
+/// Bridged hairs are drawn no closer than this share of the root spacing.
+const BRIDGE_CLOSEST: f32 = 0.08;
 
 /// Keratin (hair and hog bristle) bends elastically up to about this strain, then yields.
 const YIELD_STRAIN: f32 = 0.02;
@@ -163,8 +213,34 @@ pub struct Bristles {
     pub plastic: f32,
     /// How fast rest angles recover toward straight, per second.
     pub recover: f32,
-    /// How strongly the liquid in a full brush draws neighbouring tips together, 0..1.
+    /// How strongly the liquid between wet hairs draws them together (1 a full brush's tips drawn to a
+    /// point; more, harder and tighter; negative, nearby hairs pushed apart).
     pub cohesion: f32,
+    /// Which clumping: 0 the neighbouring tips drawn together (as brushes were made before liquid
+    /// bridges), 1 liquid bridges in its place, between a blend of the two (each pulling by its
+    /// share), past 1 the bridges stronger and reaching further, below 0 the reverse (the tip pull
+    /// stronger, the bridges pushing).
+    pub clumping: f32,
+    /// How far a hair pressed into the surface is pushed out from the brush's middle, per mm it
+    /// is pressed in (the tool's `splay`): against the surface's grip, so a brush fans out where
+    /// it is pressed harder than its hairs hold. 0 none.
+    pub splay: f32,
+    /// How irregularly the hairs splay: 0 each straight out from the brush's middle, more each turned
+    /// off that by its own angle (up to a half turn at 1) and pushed by its own amount (from none to
+    /// twice), both drifting slowly through a stroke, the way pressed hairs buckle each their own way.
+    pub splay_scatter: f32,
+    /// How the splay grows across the brush: 0 every pressed hair pushed out alike, 1 each in
+    /// proportion to how far out its root is (the same on average), so that the brush fans open and
+    /// every neighbour moves away from the next, stretching the liquid between them.
+    pub splay_fan: f32,
+    /// The hairs' mean distance from the brush's middle at the root, mm (`spaced`).
+    pub root_mean: f32,
+    /// Values the next stroke takes at each of its samples, eased between them through it: which
+    /// behaviour (`VARY_NAMES`) and its value at every sample. Taken by `stroke`, which puts the
+    /// brush's own values back after.
+    pub vary: Vec<(usize, Vec<f32>)>,
+    /// The stroke's noise identity, for the splay's scatter (`stroke` sets it).
+    pub scatter_seed: u64,
     /// Velocity kept per substep (1: none lost).
     pub damping: f32,
     /// The brush's handle as it was last (None: not yet held over the canvas).
@@ -175,8 +251,14 @@ pub struct Bristles {
     pub belly: Option<WaterBrush>,
     /// Dense bristle → guide hair, and its root's offset from that hair's (mm).
     pub assign: Vec<(usize, [f32; 2])>,
-    /// Pairs of guide hairs near each other at the root (for clumping).
+    /// Pairs of guide hairs near each other at the root (the clumping before liquid bridges; kept so
+    /// that saved brushes read back).
     pub pairs: Vec<(usize, usize, f32)>,
+    /// The liquid bridges standing now: two hairs and the joint they join at. Made and broken as the
+    /// hairs move (`bridge`); a stroke starts with none.
+    pub bridges: Vec<(u32, u32, u8)>,
+    /// The hairs' spacing at the root, mm (`root_spacing`): the scale the bridges work at.
+    pub spacing: f32,
 }
 
 impl Bristles {
@@ -232,13 +314,22 @@ impl Bristles {
             plastic: 0.3,
             recover: if fan { 0.01 } else { 0.02 },
             cohesion: if matches!(tool.kind, Kind::Round | Kind::Rigger) { 0.6 } else { 0.35 },
+            clumping: 0.0,
+            splay: tool.splay,
+            splay_scatter: 0.0,
+            splay_fan: 0.0,
+            root_mean: 0.0,
+            vary: vec![],
+            scatter_seed: 0,
             damping: 0.985,
             pose: None,
             held: None,
             belly: None,
             assign: vec![],
             pairs,
-        }
+            bridges: vec![],
+            spacing: 0.0,
+        }.spaced()
     }
 
     /// Give the brush upstream's dense bristles to carry oil paint, each following its nearest hair.
@@ -261,6 +352,211 @@ impl Bristles {
     pub fn fill(&self) -> f32 {
         if let Some(b) = &self.belly { return b.fill().min(1.0); }
         self.held.as_ref().map(|h| h.fullness().min(1.0)).unwrap_or(0.0)
+    }
+
+    /// How wet each guide hair is, 0..1 (more past a full load), and how thin the paint is, 0..1 (the
+    /// solvent's share of the liquid): oil from the dense bristles that follow each hair, watercolour
+    /// the belly's fill for every hair (and thin).
+    fn wetness(&self) -> (Vec<f32>, f32) {
+        let n = self.hairs.len();
+        if let Some(b) = &self.belly {
+            return (vec![b.fill().max(0.0); n], 1.0);
+        }
+        let Some(held) = &self.held else { return (vec![0.0; n], 0.0) };
+        let full = held.full().max(1e-9);
+        let (mut liq, mut count) = (vec![0.0f32; n], vec![0u32; n]);
+        let (mut paint, mut solvent) = (0.0f32, 0.0f32);
+        for (b, &(g, _)) in held.bristles.iter().zip(&self.assign) {
+            if g < n {
+                liq[g] += b.vol.max(0.0) + b.solvent.max(0.0);
+                count[g] += 1;
+            }
+            paint += b.vol.max(0.0);
+            solvent += b.solvent.max(0.0);
+        }
+        let wet = liq.iter().zip(&count).map(|(l, &c)| if c > 0 { l / (full * c as f32) } else { held.fullness().max(0.0) }).collect();
+        (wet, solvent / (paint + solvent).max(1e-9))
+    }
+
+    /// The brush with its `spacing` measured.
+    fn spaced(mut self) -> Bristles {
+        self.spacing = self.root_spacing();
+        let n = self.hairs.len().max(1) as f32;
+        self.root_mean = self.hairs.iter().map(|h| (h.root[0] * h.root[0] + h.root[1] * h.root[1]).sqrt()).sum::<f32>() / n;
+        self
+    }
+
+    /// The hairs' spacing at the root, mm: the median distance from each to its nearest neighbour.
+    fn root_spacing(&self) -> f32 {
+        let n = self.hairs.len();
+        if n < 2 {
+            return self.width_mm.max(0.1);
+        }
+        let mut nn: Vec<f32> = (0..n).map(|a| {
+            let ra = self.hairs[a].root;
+            (0..n).filter(|&b| b != a).map(|b| {
+                let rb = self.hairs[b].root;
+                ((ra[0] - rb[0]).powi(2) + (ra[1] - rb[1]).powi(2)).sqrt()
+            }).fold(f32::INFINITY, f32::min)
+        }).collect();
+        nn.sort_by(f32::total_cmp);
+        nn[n / 2].max(self.width_mm * 1e-3).max(1e-3)
+    }
+
+    /// Break the liquid bridges stretched past their rupture length (a few times their forming
+    /// distance, more the more liquid they hold), and (`form`) make new ones between wet hairs whose
+    /// nodes at a joint have come within their forming distance: at most `BRIDGES_PER_NODE` a node,
+    /// nearest first.
+    fn bridge(&mut self, wet: &[f32], thin: f32, s0: f32, form: bool) {
+        let segs = self.segs;
+        // how near two hairs' nodes at a joint come before a bridge forms between them, for a bridge
+        // holding `v` (the drier hair's wetness): the root spacing dry or without cohesion, and
+        // further the wetter and the more cohesion, so that clumps go on drawing in their
+        // neighbours (pairs join pairs) until they lie further apart than this; at most
+        // `BRIDGE_FORM_MAX` spacings, where finding who is near would grow costly
+        let cohesion = (self.cohesion * self.clumping).max(0.0);
+        let formed = move |v: f32| s0 * (1.0 + 1.5 * cohesion * v.clamp(0.0, 1.5)).min(BRIDGE_FORM_MAX);
+        let hairs = &self.hairs;
+        let reach = |v: f32| formed(v) * (1.3 + 1.5 * v.max(0.0).cbrt()) * (1.0 + 0.5 * thin);
+        let gone = |a: usize, b: usize, k: usize| {
+            let v = wet[a].min(wet[b]);
+            v < BRIDGE_WET || len(sub(hairs[a].p[k], hairs[b].p[k])) > reach(v)
+        };
+        self.bridges.retain(|&(a, b, k)| !gone(a as usize, b as usize, k as usize));
+        if !form {
+            return;
+        }
+        let n = hairs.len();
+        let have: std::collections::HashSet<(u32, u32, u8)> = self.bridges.iter().copied().collect();
+        let mut held = vec![0u8; n * (segs + 1)];
+        for &(a, b, k) in &self.bridges {
+            held[a as usize * (segs + 1) + k as usize] += 1;
+            held[b as usize * (segs + 1) + k as usize] += 1;
+        }
+        let wmax = wet.iter().cloned().fold(0.0f32, f32::max);
+        let cell = formed(wmax).max(1e-4);
+        let key = |p: [f32; 3]| ((p[0] / cell).floor() as i32, (p[1] / cell).floor() as i32, (p[2] / cell).floor() as i32);
+        let mut grid: std::collections::HashMap<(i32, i32, i32), Vec<u32>> = std::collections::HashMap::new();
+        let mut near: Vec<(f32, u32, u32)> = Vec::new();
+        for k in 2..=segs {
+            grid.clear();
+            for a in 0..n {
+                if wet[a] >= BRIDGE_WET {
+                    grid.entry(key(hairs[a].p[k])).or_default().push(a as u32);
+                }
+            }
+            near.clear();
+            for a in 0..n {
+                if wet[a] < BRIDGE_WET {
+                    continue;
+                }
+                let pa = hairs[a].p[k];
+                let (cx, cy, cz) = key(pa);
+                for dx in -1..=1 {
+                    for dy in -1..=1 {
+                        for dz in -1..=1 {
+                            let Some(cs) = grid.get(&(cx + dx, cy + dy, cz + dz)) else { continue };
+                            for &b in cs {
+                                if b as usize > a {
+                                    let d = len(sub(hairs[b as usize].p[k], pa));
+                                    if d < formed(wet[a].min(wet[b as usize])) {
+                                        near.push((d, a as u32, b));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            near.sort_by(|x, y| x.0.total_cmp(&y.0));
+            for &(_, a, b) in &near {
+                let (ia, ib) = (a as usize * (segs + 1) + k, b as usize * (segs + 1) + k);
+                if held[ia] < BRIDGES_PER_NODE && held[ib] < BRIDGES_PER_NODE && !have.contains(&(a, b, k as u8)) {
+                    self.bridges.push((a, b, k as u8));
+                    held[ia] += 1;
+                    held[ib] += 1;
+                }
+            }
+        }
+    }
+
+    /// One pass of the liquid bridges: each draws its two hairs together toward lying close (a
+    /// wetter bridge, thinner paint and more cohesion closer and harder, toward the tips most);
+    /// negative cohesion pushes them apart to the root spacing. Where either hair touches the paper
+    /// the pull is along the paper and `on_paper` of its strength: the wet paint drags at hairs
+    /// sliding over it. The pull per pass stops short of 0.45, past which the corrections overshoot
+    /// and the hairs ring.
+    fn pull_bridges(&mut self, hair_wet: &[f32], thin: f32, s0: f32, on_paper: f32) {
+        // the bridges pull by cohesion times their share of the clumping (pushing where negative)
+        let c = self.cohesion * self.clumping;
+        let segs = self.segs;
+        for &(a, b, k) in &self.bridges {
+            let (a, b, k) = (a as usize, b as usize, k as usize);
+            let v = hair_wet[a].min(hair_wet[b]).min(1.5);
+            let along = ((k - 1) as f32 / (segs - 1).max(1) as f32).sqrt();
+            let mut pull = (0.2 * c.abs() * v * (1.0 + thin) * along).min(0.45);
+            let (pa, pb) = (self.hairs[a].p[k], self.hairs[b].p[k]);
+            let d = sub(pb, pa);
+            let l = len(d);
+            if l < 1e-6 {
+                continue;
+            }
+            let touching = self.hairs[a].depth[k] > 0.0 || self.hairs[b].depth[k] > 0.0;
+            if touching {
+                pull *= on_paper;
+            }
+            let want = if c > 0.0 { s0 * (1.0 - c * v).max(BRIDGE_CLOSEST) } else { s0 };
+            if (c > 0.0 && l > want) || (c < 0.0 && l < want) {
+                // the pull moves the node and where it was a substep ago alike: bridged hairs slide
+                // together (friction measures slip from the old place, and would otherwise put
+                // them back), and the pull adds no speed
+                let mut corr = mul(d, pull * (l - want) / l * 0.5);
+                // a clump lies on the paper: where either hair touches, the pull is along it
+                if touching {
+                    corr[2] = 0.0;
+                }
+                self.hairs[a].p[k] = add(pa, corr);
+                self.hairs[b].p[k] = sub(pb, corr);
+                self.hairs[a].q[k] = add(self.hairs[a].q[k], corr);
+                self.hairs[b].q[k] = sub(self.hairs[b].q[k], corr);
+            }
+        }
+    }
+
+    /// Let a wet brush's hairs gather into their clumps in the air, as a loaded brush does lifted
+    /// from the paint before it touches: `SETTLE_PASSES` passes of the bridges, each followed by the
+    /// hairs' own bend and stretch, in the frame `f`.
+    fn settle(&mut self, f: &Frame) {
+        if self.cohesion * self.clumping <= 0.0 {
+            return;
+        }
+        let (hair_wet, thin) = self.wetness();
+        let s0 = self.spacing;
+        let segs = self.segs;
+        let kb = ((0.04 + 0.5 * self.stiffness) * (1.0 - 0.35 * self.fill())).clamp(-0.6, 1.3);
+        for pass in 0..SETTLE_PASSES {
+            if pass % BRIDGE_EVERY as usize == 0 {
+                self.bridge(&hair_wet, thin, s0, true);
+            }
+            self.pull_bridges(&hair_wet, thin, s0, 1.0);
+            for hr in &mut self.hairs {
+                let seg = hr.len / segs as f32;
+                for k in 2..=segs {
+                    let dir_prev = norm(sub(hr.p[k - 1], hr.p[k - 2]));
+                    let target = add(hr.p[k - 1], mul(norm(add(dir_prev, f.to_world(hr.rest[k - 1]))), seg));
+                    hr.p[k] = add(hr.p[k], mul(sub(target, hr.p[k]), kb));
+                }
+                for k in 2..=segs {
+                    let d = sub(hr.p[k], hr.p[k - 1]);
+                    let l = len(d).max(1e-9);
+                    let corr = mul(d, (l - seg) / l);
+                    if k == 2 { hr.p[k] = sub(hr.p[k], corr); } else { hr.p[k] = sub(hr.p[k], mul(corr, 0.5)); hr.p[k - 1] = add(hr.p[k - 1], mul(corr, 0.5)); }
+                }
+            }
+        }
+        for hr in &mut self.hairs {
+            hr.q = hr.p.clone();
+        }
     }
 
     /// Where the ferrule's mouth is for a pose, over a surface `z0` mm high: the belly of the brush (60
@@ -291,6 +587,8 @@ impl Bristles {
             h.q = h.p.clone();
             h.depth.iter_mut().for_each(|d| *d = 0.0);
         }
+        self.bridges.clear();
+        self.settle(&f);
         self.pose = Some(*pose);
     }
 
@@ -304,8 +602,26 @@ impl Bristles {
         let fer = self.ferrule(pose, &f, mm_per_unit, z0);
         let segs = self.segs;
         let wet = self.fill();
-        let kb = (0.04 + 0.5 * self.stiffness) * (1.0 - 0.35 * wet);
+        // the liquid bridges: broken where stretched too far every substep, made where hairs meet
+        // every few (finding who is near is the costly part)
+        let (hair_wet, thin) = self.wetness();
+        let s0 = self.spacing;
+        if self.cohesion * self.clumping != 0.0 {
+            let form = self.bridges.is_empty() || (pose.t / SUBSTEP_S).round() as u64 % BRIDGE_EVERY == 0;
+            self.bridge(&hair_wet, thin, s0, form);
+        } else {
+            self.bridges.clear();
+        }
+        // the bend constraint's correction per iteration. Coupled to the stretch and contact
+        // constraints it diverges (the hairs fly apart into NaN) past about 1.4, and below about
+        // -0.7 (measured: 1.33 holds and 1.42 fails painting; dry, -0.6 holds and -0.75 fails), so it
+        // stops just short of those: a dry brush past stiffness 2.5 is as rigid as a hair gets, and
+        // below -1.3 (joints driven away from their rest bend) as wild. Everything between is free.
+        let kb = ((0.04 + 0.5 * self.stiffness) * (1.0 - 0.35 * wet)).clamp(-0.6, 1.3);
         let (mu_s, mu_k) = self.friction;
+        let splay = self.splay;
+        let (scatter, scatter_seed) = (self.splay_scatter, self.scatter_seed);
+        let (fan, root_mean, spacing) = (self.splay_fan, self.root_mean, self.spacing);
         // move: the held nodes with the ferrule, the free ones by their own momentum
         for hr in &mut self.hairs {
             let seg = hr.len / segs as f32;
@@ -322,7 +638,7 @@ impl Bristles {
             hr.depth.iter_mut().for_each(|d| *d = 0.0);
         }
         for _ in 0..ITERATIONS {
-            for hr in &mut self.hairs {
+            for (hair_index, hr) in self.hairs.iter_mut().enumerate() {
                 let seg = hr.len / segs as f32;
                 // bend: each free node toward where its joint's rest angle puts it
                 for k in 2..=segs {
@@ -343,13 +659,47 @@ impl Bristles {
                         hr.p[k - 1] = add(hr.p[k - 1], mul(corr, 0.5));
                     }
                 }
-                // contact and friction
+                // contact and friction; a hair pressed in is pushed out from the brush's middle
+                // (splay), and the grip below resists that as it resists any slip
+                let out = {
+                    let o = f.to_world([hr.root[0], hr.root[1], 0.0]);
+                    let l = (o[0] * o[0] + o[1] * o[1]).sqrt();
+                    if l > 1e-6 { [o[0] / l, o[1] / l] } else { [0.0, 0.0] }
+                };
+                // (scattered: turned and scaled by this hair's own slow noise)
+                // (fanned: in proportion to how far out the root is)
+                let out = if fan != 0.0 {
+                    let r = (hr.root[0] * hr.root[0] + hr.root[1] * hr.root[1]).sqrt() / root_mean.max(1e-6);
+                    let k = 1.0 - fan + fan * r;
+                    [out[0] * k, out[1] * k]
+                } else {
+                    out
+                };
+                let out = if scatter != 0.0 && splay != 0.0 {
+                    let hi = hair_index as i64;
+                    let tu = pose.t / SCATTER_S;
+                    // keyed on where the root is across the brush, at `SCATTER_SPACINGS` root spacings:
+                    // neighbours buckle alike, so the hairs go in bundles, each its own way
+                    let at = (hr.root[0] + 0.71 * hr.root[1]) / (SCATTER_SPACINGS * spacing).max(1e-6);
+                    let turn = scatter * std::f32::consts::PI * (2.0 * crate::surface::vnoise(at, tu, scatter_seed ^ 0x5C47) - 1.0);
+                    let amount = (1.0 + scatter * (2.0 * crate::surface::vnoise(at + 50.0, tu, scatter_seed ^ 0xA770) - 1.0)).max(0.0);
+                    // a hair at the very middle has no outward: it gets its own way out
+                    let base = if out == [0.0, 0.0] { let a = std::f32::consts::TAU * crate::rng::hash2(hi, 3, scatter_seed); [a.cos(), a.sin()] } else { out };
+                    let (sn, cs) = turn.sin_cos();
+                    [(base[0] * cs - base[1] * sn) * amount, (base[0] * sn + base[1] * cs) * amount]
+                } else {
+                    out
+                };
                 for k in 2..=segs {
                     let zs = surface(hr.p[k][0], hr.p[k][1]);
                     let pen = zs - hr.p[k][2];
                     if pen > 0.0 {
                         hr.p[k][2] = zs;
                         hr.depth[k] = hr.depth[k].max(pen);
+                        if splay != 0.0 {
+                            hr.p[k][0] += out[0] * splay * pen;
+                            hr.p[k][1] += out[1] * splay * pen;
+                        }
                         let slip = [hr.p[k][0] - hr.q[k][0], hr.p[k][1] - hr.q[k][1]];
                         let s = (slip[0] * slip[0] + slip[1] * slip[1]).sqrt();
                         if s < mu_s * pen {
@@ -363,20 +713,30 @@ impl Bristles {
                     }
                 }
             }
-            // clumping: a wet brush's neighbouring tips drawn together
-            if wet > 0.05 && self.cohesion > 0.0 {
-                let k = self.cohesion * wet * 0.2;
+            // clumping: a wet brush's neighbouring tips drawn together, by (1 - clumping) of their
+            // pull (at clumping 0 exactly as brushes clumped before liquid bridges; the pull stops
+            // short of 0.45, and the tips are drawn no closer than touching, where a cohesion past 1
+            // would otherwise overshoot)
+            // (past clumping 1 its share is negative: the tips are pushed apart, but only back to
+            // their spacing at the root, past which nothing pushes)
+            let tips = 1.0 - self.clumping;
+            if wet > 0.05 && self.cohesion > 0.0 && tips != 0.0 {
+                let k = (self.cohesion * wet * 0.2 * tips.abs()).min(0.45);
                 for &(a, b, rest) in &self.pairs {
                     let (pa, pb) = (self.hairs[a].p[segs], self.hairs[b].p[segs]);
                     let d = sub(pb, pa);
                     let l = len(d);
-                    let want = rest * (1.0 - self.cohesion * wet);
-                    if l > want && l > 1e-6 {
+                    let want = if tips > 0.0 { (rest * (1.0 - self.cohesion * wet)).max(0.0) } else { rest };
+                    if l > 1e-6 && ((tips > 0.0 && l > want) || (tips < 0.0 && l < want)) {
                         let corr = mul(d, k * (l - want) / l * 0.5);
                         self.hairs[a].p[segs] = add(pa, corr);
                         self.hairs[b].p[segs] = sub(pb, corr);
                     }
                 }
+            }
+            // and the liquid bridges, by clumping's share of theirs
+            if !self.bridges.is_empty() {
+                self.pull_bridges(&hair_wet, thin, s0, CONTACT_PULL);
             }
         }
         // retained deformation: joints bent past yield take some of the bend as their own
@@ -398,6 +758,24 @@ impl Bristles {
             }
         }
         self.pose = Some(*pose);
+    }
+
+    /// How tightly each hair is drawn in to its clump, 0..1: the nearest that a hair bridged to it
+    /// lies, over the root spacing, along the hair's outer half (1 for a hair with no bridge there,
+    /// or one no nearer than the spacing). The dense bristles that follow a hair lie that much closer
+    /// to it, so a clump's bristles bundle as its hairs do.
+    pub fn squeeze(&self) -> Vec<f32> {
+        let mut sq = vec![1.0f32; self.hairs.len()];
+        let s0 = self.spacing.max(1e-6);
+        for &(a, b, k) in &self.bridges {
+            let (a, b, k) = (a as usize, b as usize, k as usize);
+            if 2 * k >= self.segs {
+                let r = (len(sub(self.hairs[a].p[k], self.hairs[b].p[k])) / s0).clamp(BRIDGE_CLOSEST, 1.0);
+                sq[a] = sq[a].min(r);
+                sq[b] = sq[b].min(r);
+            }
+        }
+        sq
     }
 
     /// Each hair's contact with the surface in the last substep: where (mm) and how much of its length
@@ -490,6 +868,33 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
     // a fresh stroke: the brush comes down from where the gesture starts
     br.pose = None;
     let id = c.next_stroke_ids(1);
+    // (the caller's noise identity for this stroke, if it gave one: `Canvas::stroke_noise`)
+    let noise = c.stroke_noise.take();
+    br.scatter_seed = noise.unwrap_or(id) as u64;
+    // (the behaviours this stroke varies along itself, one value a sample; the brush's own after)
+    let vary: Vec<(usize, Vec<f32>)> = std::mem::take(&mut br.vary).into_iter().filter(|(w, v)| *w < VARY_NAMES.len() && v.len() == samples.len()).collect();
+    let own: Vec<(usize, f32)> = vary.iter().map(|(w, _)| (*w, *br.knob(*w))).collect();
+    let window = |t: f32| -> (usize, f32) {
+        if samples.len() < 2 { return (0, 0.0) }
+        let i = samples.windows(2).position(|p| t <= p[1].t).unwrap_or(samples.len() - 2);
+        let span = (samples[i + 1].t - samples[i].t).max(1e-9);
+        (i, ((t - samples[i].t) / span).clamp(0.0, 1.0))
+    };
+    // (and its length in the world, `Canvas::stroke_arc`: the load runs down by it, so a stereo pair's
+    // eyes run out at the same place along a movement they see at different lengths)
+    let warc = c.take_arc_units(samples.len());
+    let travel_at = |t: f32| -> f32 {
+        let Some(w) = &warc else { return 1.0 };
+        let i = samples.windows(2).position(|p| t <= p[1].t).unwrap_or(samples.len().saturating_sub(2));
+        // the nearest sample window that moved, from this one back, then forward
+        let moved = |j: usize| {
+            let (a, b) = (&samples[j], &samples[j + 1]);
+            let d = (b.x - a.x).hypot(b.y - a.y);
+            (d > 1e-6).then(|| ((w[j + 1] - w[j]) / d).max(0.0))
+        };
+        if samples.len() < 2 { return 1.0 }
+        (0..=i).rev().chain(i + 1..samples.len() - 1).find_map(moved).unwrap_or(1.0)
+    };
     let pts: Vec<(f32, f32)> = samples.iter().map(|p| (p.x, p.y)).collect();
     let tool_for_tally = br.held.as_ref().map(|hd| hd.tool.clone()).unwrap_or_else(|| Tool::round_sable((br.width_mm / mmu).max(0.1)));
     c.tally.stroke(&tool_for_tally, &pts, mmu);
@@ -500,6 +905,9 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
     let mut scratch = Vec::new();
     let mut bounds: crate::bristle::Bounds = None;
     let mut last_px: Vec<Option<(f32, f32)>> = br.held.as_ref().map(|hd| vec![None; hd.bristles.len()]).unwrap_or_default();
+    // how tightly each hair's dense bristles are drawn in to it (`Bristles::squeeze`), eased over
+    // `SQUEEZE_S` so that bridges forming and snapping don't jolt the bristles about
+    let mut squeezed = vec![1.0f32; br.hairs.len()];
     let mut water_ids: Vec<usize> = Vec::new();
     let mut water_tau = 0.0f32;
     let mut water_cells: Vec<(usize, f32, f32)> = Vec::new();
@@ -508,6 +916,13 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
     for k in 0..=n {
         let t = t0 + k as f32 * h;
         let pose = pose_at(samples, t);
+        if !vary.is_empty() {
+            let (i, u) = window(t);
+            for (w, v) in &vary {
+                let j = (i + 1).min(v.len() - 1);
+                *br.knob(*w) = v[i] + (v[j] - v[i]) * u;
+            }
+        }
         {
             let surf = surface_of(c);
             br.step(&pose, h, mmu, &surf);
@@ -530,14 +945,24 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
                 }
             }
         }
-        // oil: each dense bristle trades paint where its hair touches
+        // oil: each dense bristle trades paint where its hair touches, drawn in toward it as far as
+        // the hair is drawn in to its clump
+        let before = squeezed.clone();
+        let m = br.clumping;
+        for (now, want) in squeezed.iter_mut().zip(br.squeeze()) {
+            // (by clumping's share: past 1 drawn in further, below 0 spread out)
+            let want = (1.0 - m * (1.0 - want)).clamp(BRIDGE_CLOSEST, 2.0);
+            *now += (want - *now) * (h / SQUEEZE_S).min(1.0);
+        }
         if let Some(held) = br.held.as_mut() {
             let tool = held.tool.clone();
             let full = held.full();
             let rb = (tool.hair_radius() * s).max(if tool.point > 0.0 { 0.02 } else { 0.55 });
             let fr = Frame::of(&pose);
             let lim = (0usize, 0usize, f.full_w, f.full_h);
-            let sf = c.surf();
+            let mut sf = c.surf();
+            sf.noise = noise;
+            sf.travel = travel_at(t);
             for (bi, b) in held.bristles.iter_mut().enumerate() {
                 let (g, off) = br.assign[bi];
                 match cts[g] {
@@ -546,8 +971,15 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
                         last_px[bi] = None;
                     }
                     Some((xy, share)) => {
-                        let o = fr.to_world([off[0], off[1], 0.0]);
+                        let o = fr.to_world([off[0] * squeezed[g], off[1] * squeezed[g], 0.0]);
                         let cur = ((xy[0] + o[0]) / mmu * s, (xy[1] + o[1]) / mmu * s);
+                        // a bristle drawn in toward its hair moves with it, not over the paper: its
+                        // last place moves too, so the gathering isn't travel that lays paint
+                        if let Some(p) = last_px[bi].as_mut() {
+                            let was = fr.to_world([off[0] * before[g], off[1] * before[g], 0.0]);
+                            p.0 += (o[0] - was[0]) / mmu * s;
+                            p.1 += (o[1] - was[1]) / mmu * s;
+                        }
                         let reach = (share * 1.25).min(1.3);
                         match last_px[bi] {
                             Some(prev) if (cur.0 - prev.0).abs() + (cur.1 - prev.1).abs() < EXCHANGE_PX => {}
@@ -639,6 +1071,9 @@ pub fn stroke(c: &mut Canvas, water: Option<&mut Water>, br: &mut Bristles, samp
         c.wet.touch(x0 - f.x0, y0 - f.y0, x1 - f.x0, y1 - f.y0);
     }
     rep.seconds = (t1 - t0) as f64;
+    for (w, v) in own {
+        *br.knob(w) = v;
+    }
     rep
 }
 
@@ -709,6 +1144,242 @@ mod tests {
     }
 
     #[test]
+    fn splay_fans_a_pressed_brush_out_and_none_leaves_it_as_it_was() {
+        let c = Canvas::new(200, 1.0, [1.0; 3]);
+        let surf = |_: f32, _: f32| 0.0f32;
+        let spread = |splay: f32| -> f32 {
+            let mut tool = Tool::hog_flat(40.0);
+            tool.splay = splay;
+            let mut b = Bristles::new(&tool, c.mm_per_unit(), 24, 5, 3);
+            let samples = line(200.0, 800.0, 500.0, 1.0, 1.2, 0.3, 0.0);
+            for k in 0..=1000 {
+                b.step(&pose_at(&samples, k as f32 * 0.001), 0.001, c.mm_per_unit(), &surf);
+            }
+            // the tips' spread across the stroke (y), mm
+            let ys: Vec<f32> = b.hairs.iter().map(|h| h.p[5][1]).collect();
+            ys.iter().cloned().fold(f32::MIN, f32::max) - ys.iter().cloned().fold(f32::MAX, f32::min)
+        };
+        let (none, some, lots) = (spread(0.0), spread(1.0), spread(4.0));
+        assert!(some > none * 1.05 && lots > some, "splay fans the tips out: {none} {some} {lots} mm");
+        // a brush saved before splay was kept reads back with none
+        let mut tool = Tool::hog_flat(40.0);
+        tool.splay = 2.0;
+        let b = Bristles::new(&tool, c.mm_per_unit(), 8, 4, 3);
+        let mut b = b;
+        b.clumping = 0.5;
+        let mut st = b.write_state();
+        assert_eq!(Bristles::read_state(&st).unwrap().splay, 2.0);
+        assert_eq!(Bristles::read_state(&st).unwrap().clumping, 0.5);
+        // one saved before the splay's fan or scatter was kept reads back with none, and one saved
+        // before clumping was kept with the tip-pair clumping (0)
+        st.truncate(st.len() - 4);
+        assert_eq!(Bristles::read_state(&st).unwrap().splay_fan, 0.0);
+        st.truncate(st.len() - 4);
+        assert_eq!(Bristles::read_state(&st).unwrap().splay_scatter, 0.0);
+        assert_eq!(Bristles::read_state(&st).unwrap().clumping, 0.5);
+        st.truncate(st.len() - 4);
+        assert_eq!(Bristles::read_state(&st).unwrap().clumping, 0.0);
+        st.truncate(st.len() - 4);
+        assert_eq!(Bristles::read_state(&st).unwrap().splay, 0.0);
+    }
+
+    /// Clumps among the wet hairs' tips: groups joined by liquid bridges at the last joint.
+    fn tip_clumps(b: &Bristles) -> usize {
+        let n = b.hairs.len();
+        let mut up: Vec<usize> = (0..n).collect();
+        fn root(up: &mut Vec<usize>, mut i: usize) -> usize { while up[i] != i { up[i] = up[up[i]]; i = up[i]; } i }
+        for &(a, c, k) in &b.bridges {
+            if k as usize == b.segs {
+                let (ra, rc) = (root(&mut up, a as usize), root(&mut up, c as usize));
+                up[ra] = rc;
+            }
+        }
+        (0..n).filter(|&i| root(&mut up, i) == i).count()
+    }
+
+    /// A loaded hog flat of 48 hairs, with `splay` and `cohesion`, pressed hard along a stroke for a
+    /// second.
+    fn pressed(splay: f32, cohesion: f32, loaded: bool) -> Bristles {
+        pressed_with(splay, cohesion, 1.0, 0.0, loaded)
+    }
+
+    /// `pressed`, with `clumping` and `scatter` (the splay's scatter) too.
+    fn pressed_with(splay: f32, cohesion: f32, clumping: f32, scatter: f32, loaded: bool) -> Bristles {
+        pressed_fan(splay, cohesion, clumping, scatter, 0.0, loaded)
+    }
+
+    /// `pressed_with`, the splay fanned by `fan`.
+    fn pressed_fan(splay: f32, cohesion: f32, clumping: f32, scatter: f32, fan: f32, loaded: bool) -> Bristles {
+        let c = Canvas::new(200, 1.0, [1.0; 3]);
+        let surf = |_: f32, _: f32| 0.0f32;
+        let mut tool = Tool::hog_flat(40.0);
+        tool.splay = splay;
+        let mut b = Bristles::new(&tool, c.mm_per_unit(), 48, 5, 3);
+        if loaded {
+            let mut held = Held::new(tool.clone(), 5).with_engine(c.engine());
+            held.load(Paint::body([0.1, 0.1, 0.1]), 1.0);
+            b = b.with_held(held);
+        }
+        b.cohesion = cohesion;
+        b.clumping = clumping;
+        b.splay_scatter = scatter;
+        b.splay_fan = fan;
+        let samples = line(200.0, 800.0, 500.0, 1.0, 1.2, 0.3, 0.0);
+        for k in 0..=1000 {
+            b.step(&pose_at(&samples, k as f32 * 0.001), 0.001, c.mm_per_unit(), &surf);
+        }
+        b
+    }
+
+    #[test]
+    fn a_wet_brush_bridges_its_hairs_and_splay_tears_it_into_clumps() {
+        let (dry, none) = (pressed(2.0, 1.0, false), pressed(2.0, 0.0, true));
+        assert!(dry.bridges.is_empty() && none.bridges.is_empty(), "a dry brush, or no cohesion, makes no bridges");
+        let (held, torn) = (pressed(0.0, 1.0, true), pressed(4.0, 1.0, true));
+        let (ch, ct) = (tip_clumps(&held), tip_clumps(&torn));
+        eprintln!("tip clumps of 48 hairs: {ch} unsplayed ({} bridges), {ct} at splay 4 ({} bridges)", held.bridges.len(), torn.bridges.len());
+        assert!(!held.bridges.is_empty(), "a wet brush's hairs are bridged");
+        assert!(ct > ch && ct < 48, "splay tears the tips into clumps: {ch} clumps unsplayed, {ct} splayed");
+    }
+
+    #[test]
+    fn a_scattered_splay_tears_a_wet_brush_into_more_clumps() {
+        // fanned, so that neighbours part everywhere; scattered, so that bundles go each their own way
+        let (straight, scattered) = (pressed_fan(4.0, 4.0, 1.0, 0.0, 1.0, true), pressed_fan(4.0, 4.0, 1.0, 1.0, 1.0, true));
+        let (cs, cx) = (tip_clumps(&straight), tip_clumps(&scattered));
+        eprintln!("tip clumps of 48 hairs at splay 4, cohesion 4, fanned: {cs} straight, {cx} scattered");
+        assert!(cx > cs, "hairs splaying each their own way tear into more clumps: {cs} straight, {cx} scattered");
+    }
+
+    #[test]
+    fn a_stroke_varies_a_behaviour_along_itself_and_the_brush_keeps_its_own() {
+        let paint = |vary: Option<f32>, splay: f32| {
+            let mut c = Canvas::new(200, 1.0, [1.0; 3]);
+            let mut tool = Tool::hog_flat(60.0);
+            tool.splay = splay;
+            let mut held = Held::new(tool, 5).with_engine(c.engine());
+            held.load(Paint::body([0.1, 0.1, 0.1]), 1.0);
+            let mut b = Bristles::new(&held.tool, c.mm_per_unit(), 24, 5, 3).with_held(held);
+            let samples = line(150.0, 850.0, 500.0, 1.0, 1.0, 0.4, 0.0);
+            if let Some(v) = vary {
+                b.vary = vec![(0, vec![v; samples.len()])];
+            }
+            stroke(&mut c, None, &mut b, &samples, None);
+            (c.wet.vol.clone(), b.splay)
+        };
+        // the same value at every sample paints as the brush made with it, and the brush is given back
+        // its own splay after
+        let (varied, kept) = paint(Some(3.0), 0.0);
+        let (made, _) = paint(None, 3.0);
+        assert_eq!(kept, 0.0);
+        assert!(varied == made, "a stroke varying splay to 3 throughout paints as a brush of splay 3");
+        assert!(varied != paint(None, 0.0).0, "and not as the brush's own splay");
+    }
+
+    #[test]
+    fn a_bridge_forms_within_the_spacing_holds_past_it_and_snaps_beyond_its_reach() {
+        let c = Canvas::new(200, 1.0, [1.0; 3]);
+        let mut b = Bristles::new(&Tool::hog_flat(40.0), c.mm_per_unit(), 2, 4, 3);
+        // (no cohesion: bridges form within the root spacing)
+        b.cohesion = 0.0;
+        let s0 = b.spacing;
+        let wet = [1.0, 1.0];
+        let apart = |b: &mut Bristles, d: f32| for k in 0..=b.segs { b.hairs[0].p[k] = [0.0, 0.0, k as f32]; b.hairs[1].p[k] = [d, 0.0, k as f32]; };
+        apart(&mut b, 0.5 * s0);
+        b.bridge(&wet, 0.0, s0, true);
+        assert_eq!(b.bridges.len(), b.segs - 1, "bridged at every free joint");
+        apart(&mut b, 2.0 * s0);
+        b.bridge(&wet, 0.0, s0, true);
+        assert_eq!(b.bridges.len(), b.segs - 1, "stretched to twice the spacing, the bridges hold");
+        apart(&mut b, 3.0 * s0);
+        b.bridge(&wet, 0.0, s0, true);
+        assert!(b.bridges.is_empty(), "past their reach (2.8 spacings, full) they snap");
+        apart(&mut b, 2.0 * s0);
+        b.bridge(&wet, 0.0, s0, true);
+        assert!(b.bridges.is_empty(), "and none forms again until the hairs come within the spacing");
+    }
+
+    /// How unevenly the tips lie across the stroke: the spread of the gaps between neighbours (sorted
+    /// across) over their mean. Even hairs near 0; hairs gathered in clumps, with gaps between, more.
+    fn clumpiness(b: &Bristles) -> f32 {
+        let mut ys: Vec<f32> = b.hairs.iter().map(|h| h.p[b.segs][1]).collect();
+        ys.sort_by(f32::total_cmp);
+        let gaps: Vec<f32> = ys.windows(2).map(|w| w[1] - w[0]).collect();
+        let m = gaps.iter().sum::<f32>() / gaps.len() as f32;
+        (gaps.iter().map(|g| (g - m) * (g - m)).sum::<f32>() / gaps.len() as f32).sqrt() / m.max(1e-6)
+    }
+
+    #[test]
+    #[ignore]
+    fn print_scatter() {
+        for co in [0.35f32, 1.0, 4.0] {
+            let row: Vec<String> = [(0.0f32, 0.0f32), (0.0, 1.0), (0.3, 1.0), (1.0, 1.0)].iter().map(|&(sc, fan)| {
+                let b = pressed_fan(4.0, co, 1.0, sc, fan, true);
+                let ys: Vec<f32> = b.hairs.iter().map(|h| h.p[b.segs][1]).collect();
+                let spread = ys.iter().cloned().fold(f32::MIN, f32::max) - ys.iter().cloned().fold(f32::MAX, f32::min);
+                format!("scatter {sc} fan {fan}: {} clumps, clumpiness {:.2}, spread {:.1} mm, {} bridges", tip_clumps(&b), clumpiness(&b), spread, b.bridges.len())
+            }).collect();
+            eprintln!("cohesion {co} (spacing {:.2} mm): {}", pressed_with(0.0, 0.0, 0.0, 0.0, true).spacing, row.join("; "));
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn print_clumpiness() {
+        for sp in [0.0f32, 2.0] {
+            let row: Vec<String> = [0.0f32, 0.35, 1.0, 4.0, 16.0].iter().map(|&c| { let b = pressed(sp, c, true); format!("c{c}: {:.2} ({} clumps)", clumpiness(&b), tip_clumps(&b)) }).collect();
+            eprintln!("splay {sp}: {}", row.join(", "));
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn print_cohesion_paint() {
+        for co in [0.0f32, 1.0, 4.0, 16.0] {
+            let mut c = Canvas::new(300, 1.0, [1.0; 3]);
+            let mut held = Held::new(Tool::hog_flat(60.0), 5).with_engine(c.engine());
+            held.load(Paint::body([0.1, 0.1, 0.1]), 1.0);
+            let mut b = Bristles::new(&held.tool, c.mm_per_unit(), 48, 6, 3).with_held(held);
+            b.cohesion = co;
+            b.clumping = 1.0;
+            let rep = stroke(&mut c, None, &mut b, &line(150.0, 850.0, 500.0, 2.0, 1.0, 0.5, 0.0), None);
+            let sq = b.squeeze();
+            let w = c.f.w;
+            let bands: Vec<String> = (0..7).map(|k| { let (x0, x1) = (w * (3 + 2 * k) / 20, w * (5 + 2 * k) / 20); format!("{:.0}", c.wet.vol.iter().enumerate().filter(|(i, _)| (i % w) >= x0 && (i % w) < x1).map(|(_, v)| *v).sum::<f32>()) }).collect();
+            eprintln!("  along the stroke: {}", bands.join(" "));
+            let vols: Vec<f32> = c.wet.vol.iter().copied().filter(|&v| v > 0.02).collect();
+            let thick = c.wet.vol.iter().filter(|&&v| v > 1.0).count();
+            eprintln!("  covered px {} (thick>1: {}), mean film {:.2}, max {:.2}", vols.len(), thick, vols.iter().sum::<f32>() / vols.len().max(1) as f32, vols.iter().cloned().fold(0.0, f32::max));
+            eprintln!("cohesion {co}: laid {:.4}, contacts {}, max contact {:.2}, brush left {:.2}, bridges {}, mean squeeze {:.2}, tip clumps {}",
+                c.wet_total(), rep.contacts, rep.max_contact, b.fill(), b.bridges.len(), sq.iter().sum::<f32>() / sq.len() as f32, tip_clumps(&b));
+        }
+    }
+
+    #[test]
+    fn hairs_stay_finite_at_any_cohesion() {
+        for (co, cl) in [-1000.0f32, -10.0, -1.0, 0.0, 1.0, 10.0, 1000.0].into_iter().flat_map(|co| [-10.0f32, -1.0, 0.0, 0.5, 1.0, 2.0, 10.0].map(move |cl| (co, cl))) {
+            let b = pressed_with(2.0, co, cl, 1.0, true);
+            assert!(b.hairs.iter().all(|h| h.p.iter().flatten().all(|v| v.is_finite())), "cohesion {co}, clumping {cl}: the hairs flew apart");
+        }
+    }
+
+    #[test]
+    fn hairs_stay_finite_at_any_stiffness() {
+        let c = Canvas::new(200, 1.0, [1.0; 3]);
+        let surf = |_: f32, _: f32| 0.0f32;
+        for st in [-1000.0f32, -10.0, -1.0, 0.0, 1.0, 2.6, 10.0, 1000.0] {
+            let mut tool = Tool::hog_flat(40.0);
+            tool.stiffness = st;
+            let mut b = Bristles::new(&tool, c.mm_per_unit(), 24, 5, 3);
+            let samples = line(200.0, 800.0, 500.0, 1.0, 1.0, 0.5, 0.0);
+            for k in 0..=1000 {
+                b.step(&pose_at(&samples, k as f32 * 0.001), 0.001, c.mm_per_unit(), &surf);
+            }
+            assert!(b.hairs.iter().all(|h| h.p.iter().flatten().all(|v| v.is_finite())), "stiffness {st}: the hairs flew apart");
+        }
+    }
+
+    #[test]
     fn a_dynamic_oil_stroke_lays_paint_along_its_path() {
         let mut c = Canvas::new(200, 1.0, [1.0; 3]);
         let mut held = Held::new(Tool::filbert(40.0), 5).with_engine(c.engine());
@@ -769,6 +1440,13 @@ impl Bristles {
         let belly = self.belly.as_ref().map(super::watercolor::write_wbrush).unwrap_or_default();
         u(&mut w, belly.len() as u64);
         w.extend_from_slice(&belly);
+        // (added later, last: a state without it is a brush with no splay, as it was made)
+        f(&mut w, self.splay);
+        // (and later still: without it, the tip-pair clumping it was made with; and the splay's
+        // scatter, without it none)
+        f(&mut w, self.clumping);
+        f(&mut w, self.splay_scatter);
+        f(&mut w, self.splay_fan);
         w
     }
 
@@ -818,9 +1496,13 @@ impl Bristles {
         let held = if hl > 0 { Some(Held::read_state(take(hl)?)?) } else { None };
         let bl = u!() as usize;
         let belly = if bl > 0 { Some(super::watercolor::read_wbrush(take(bl)?)?) } else { None };
+        let splay = take(4).map(|x| f32::from_le_bytes(x.try_into().unwrap())).unwrap_or(0.0);
+        let clumping = take(4).map(|x| f32::from_le_bytes(x.try_into().unwrap())).unwrap_or(0.0);
+        let splay_scatter = take(4).map(|x| f32::from_le_bytes(x.try_into().unwrap())).unwrap_or(0.0);
+        let splay_fan = take(4).map(|x| f32::from_le_bytes(x.try_into().unwrap())).unwrap_or(0.0);
         if assign.iter().any(|a| a.0 >= nh) || pairs.iter().any(|p| p.0 >= nh || p.1 >= nh) {
             return Err("a brush state whose bristles name hairs it doesn't have".into());
         }
-        Ok(Bristles { kind, width_mm, length_mm, stiffness, segs, hairs, friction, yield_rad, plastic, recover, cohesion, damping, pose, held, belly, assign, pairs })
+        Ok(Bristles { kind, width_mm, length_mm, stiffness, segs, hairs, friction, yield_rad, plastic, recover, cohesion, clumping, splay, splay_scatter, splay_fan, root_mean: 0.0, vary: vec![], scatter_seed: 0, damping, pose, held, belly, assign, pairs, bridges: vec![], spacing: 0.0 }.spaced())
     }
 }

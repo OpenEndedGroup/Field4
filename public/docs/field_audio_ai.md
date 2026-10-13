@@ -11,7 +11,7 @@ selections, the operations, the candidate sets, the ratings and annotations, the
 arrangement.
 
 The companion service is experimental, and pinned under `services/field-audio-ai` as a Git submodule
-while its architecture moves. The Field-side API is in `afield.stdlib.noir.audioai` and names
+while its architecture moves. In a box its API needs no import; it names
 operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`.
 
 Running any of it needs that submodule initialized, the analysis and AudioCraft packages
@@ -39,8 +39,6 @@ This box takes four and a half seconds of a recording, asks MusicGen-Style for e
 twelve-second variations, one per seed, and shows them as a candidate board when they arrive:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.noir.audioai.*
-
 val client = FieldAudioClient()
 val source = client.assetByFilename("*Nancy*").get()
 val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
@@ -78,7 +76,6 @@ This box asks for thirty seconds through one LoRA checkpoint at strength 0.7, st
 twelve-second window of the source:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -145,7 +142,7 @@ drawing to eight candidates.
 | [Short-time spectral spaces](audio_ai_spectral_embeddings.md) | do the same with no model and no GPU |
 | [MuScriptor transcription](audio_ai_muscriptor.md) | turn a mixed recording into labelled notes and MIDI |
 | [Corpus microscope](audio_ai_corpus_microscope.md) | find the other stretches that sound like this one |
-| [EnCodec microscope](audio_ai_codec.md) | work on the codec tokens themselves |
+| [EnCodec round trip](audio_ai_codec.md) | work on the codec tokens themselves |
 | [Recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation) | put any of it on a shared playhead |
 
 The analysis pages share one contract. The job that measures a

@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lprintln
+import afield.ml.FieldMLExecution
 import afield.macros.PREAMBLE_SELF_SUPPLIER
 import afield.macros.gatherPreambleUpwardsReport
 import afield.macros.preambleSupplierTag
@@ -8,6 +9,7 @@ import afield.stdlib.isTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -201,8 +203,8 @@ object ReactiveRuns {
                 problems += "'${label(s)}' is itself waiting for a value, so running it would be a cycle"
                 continue
             }
-            if (s.ke !is KotlinExecution) {
-                problems += "'${label(s)}' is not a Kotlin box, and only Kotlin boxes can be pulled"
+            if (s.ke !is KotlinExecution && s.ke !is FieldMLExecution) {
+                problems += "'${label(s)}' has no Kotlin or FieldML execution to pull"
                 continue
             }
             // Someone else's pull of this supplier is under way (this read may be running inside its
@@ -219,7 +221,7 @@ object ReactiveRuns {
             val st = runs[reader]
             val readerInRun = st != null && synchronized(st) { st.depth > 0 }
             if (readerInRun) {
-                if (!synchronized(st!!) { st.pulled.add(key) }) {
+                if (!synchronized(st) { st.pulled.add(key) }) {
                     problems += "'${label(s)}' already ran for '$name' during this run"
                     continue
                 }
@@ -297,6 +299,7 @@ object ReactiveRuns {
     }
 
     /** Wait for [done]: on the runloop by pumping it, elsewhere by blocking. Null on timeout. */
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun waitFor(done: CompletableDeferred<Boolean>, reader: Box): Boolean? {
         val deadline = System.currentTimeMillis() + pullTimeoutMs
         if (!Runloop.isMainThread) {
@@ -340,7 +343,7 @@ object ReactiveRuns {
         fun lookup(uid: String): Box? = info.boxes[uid] ?: asking.parents.firstOrNull { it.id == uid }
         val declaration = declarationOf.getOrPut(name) { Regex("""\b(?:val|var)\s+Box\.${Regex.escape(name)}\s+by\b""") }
         val propCall = propCallOf.getOrPut(name) {
-            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*\)""")
+            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*\)|\bsetProp(?:Up|UpDown)\s+"${Regex.escape(name)}"""")
         }
 
         fun declaresInOwnCodeOrPreamble(b: Box): Boolean {

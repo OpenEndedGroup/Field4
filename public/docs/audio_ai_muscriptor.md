@@ -9,9 +9,6 @@ separately from Field.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_muscriptor/piano_roll.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-muscriptor" alt="Real Sonic Pi waveform and MuScriptor instrument-labelled piano roll with polyphony and onset lanes"}
 :::static
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
@@ -33,7 +30,7 @@ Listen to the recording whose notes are shown above.
 The notes above are MuScriptor Small's reading of an eight-second Sonic Pi recording. Instrument
 colours are the model's guesses; they do not establish which instruments produced the sound.
 
-The model-neutral operation is `analysis.transcribe_music`. Its three concrete capabilities are:
+The operation is `analysis.transcribe_music`, served by any of three model sizes:
 
 | Field backend | Upstream scale | Good starting point |
 | --- | ---: | --- |
@@ -73,9 +70,6 @@ Never block Field's runloop with `.get()` while a transcription is running. Comp
 the status card from worker events, and await the durable result:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
-
 val client = FieldAudioClient()
 val sourcePattern = "*sonic-pi-study*" // use audio you have the rights to transcribe
 val sync = "muscriptor-example"

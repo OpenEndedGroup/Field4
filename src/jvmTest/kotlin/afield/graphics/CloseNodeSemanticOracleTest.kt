@@ -168,10 +168,10 @@ class CloseNodeSemanticOracleTest {
                 if (nearEdge) continue
 
                 val theirs = awt.contains(x, y)
-                val ours = line.contains(vec(x.toFloat(), y.toFloat()))
+                val ours = line.contains2D(vec(x.toFloat(), y.toFloat()))
                 compared++
                 if (ours != theirs) {
-                    disagreements += "$name at (%.1f, %.1f): FLine.contains=%s awt=%s"
+                    disagreements += "$name at (%.1f, %.1f): FLine.contains2D=%s awt=%s"
                         .format(x, y, ours, theirs)
                 }
             }
@@ -254,9 +254,9 @@ class CloseNodeSemanticOracleTest {
                 val nearEdge = awt.contains(x - 0.75, y - 0.75, 1.5, 1.5) != awt.intersects(x - 0.75, y - 0.75, 1.5, 1.5)
                 if (nearEdge) continue
                 compared++
-                val ours = line.contains(vec(x.toFloat(), y.toFloat()))
+                val ours = line.contains2D(vec(x.toFloat(), y.toFloat()))
                 if (ours != awt.contains(x, y)) {
-                    disagreements += "$name at (%.1f, %.1f): FLine.contains=%s awt=%s".format(x, y, ours, awt.contains(x, y))
+                    disagreements += "$name at (%.1f, %.1f): FLine.contains2D=%s awt=%s".format(x, y, ours, awt.contains(x, y))
                 }
             }
         }
@@ -284,12 +284,12 @@ class CloseNodeSemanticOracleTest {
         val awt = awtPathOf(ring)
 
         for (p in listOf(vec(0f, 0f), vec(20f, 20f), vec(-30f, 10f))) {
-            assertTrue(!ring.contains(p), "point $p is in the counter and should read as outside")
-            assertEquals(awt.contains(p.x.toDouble(), p.y.toDouble()), ring.contains(p), "at $p")
+            assertTrue(!ring.contains2D(p), "point $p is in the counter and should read as outside")
+            assertEquals(awt.contains(p.x.toDouble(), p.y.toDouble()), ring.contains2D(p), "at $p")
         }
         for (p in listOf(vec(60f, 0f), vec(0f, 60f), vec(-60f, -60f))) {
-            assertTrue(ring.contains(p), "point $p is in the ring body and should read as inside")
-            assertEquals(awt.contains(p.x.toDouble(), p.y.toDouble()), ring.contains(p), "at $p")
+            assertTrue(ring.contains2D(p), "point $p is in the ring body and should read as inside")
+            assertEquals(awt.contains(p.x.toDouble(), p.y.toDouble()), ring.contains2D(p), "at $p")
         }
     }
 
@@ -539,10 +539,10 @@ class CloseNodeSemanticOracleTest {
         appendLine("# contains / windingNumber values the examples compute")
         val square = FLine().moveTo(0f, 0f).lineTo(60f, 0f).lineTo(60f, 60f).lineTo(0f, 60f).lineTo(0f, 0f)
         for (p in listOf(vec(20f, 20f), vec(80f, 20f), vec(25f, 25f))) {
-            appendLine("  square.windingNumber($p) = ${square.windingNumber(p)}")
-            appendLine("  square.contains($p) = ${square.contains(p)}")
+            appendLine("  square.windingNumber2D($p) = ${square.windingNumber2D(p)}")
+            appendLine("  square.contains2D($p) = ${square.contains2D(p)}")
         }
-        appendLine("  square.signedArea2D() = ${"%.4f".format(square.signedArea2D())}")
+        appendLine("  square.area2D() = ${"%.4f".format(square.area2D())}")
         appendLine("  square.centroid2D() = ${square.centroid2D()}")
     }
 

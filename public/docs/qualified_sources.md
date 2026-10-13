@@ -233,7 +233,7 @@ proposed one, in a new revision of the fixtures, and records who approved it, wh
 proposal, candidate and replay it came from. The earlier outcome stays in the fixtures' history.
 
 The candidate was made with the old outcome, so it is now out of date. The agent makes a copy of it
-against the new fixtures, replays that, and applies it:
+against the new fixtures, replays that, and applies it. In box code those three steps are:
 
 ```diffstatic {data-lang=kotlin}
 val third = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
@@ -242,8 +242,8 @@ loot.replays.await(loot.test(third.id).id)
 loot.apply(third.id, third.baseRevision, third.baseSourceHash)
 ```
 
-The agent does the same with `loot.candidate` and its `fromCandidateId`, then `loot.test` and
-`loot.apply`. This is the box after the press:
+The agent makes the same three calls as tools: `loot.candidate` with `fromCandidateId`, then
+`loot.test` and `loot.apply`. This is the box after the press:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="qualified_approval" screenshot="assets/qualified_sources/approved.png" transcript="assets/transcripts/qualified_sources_approval.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="qualified-sources-approved" alt="The loot card now reads Passed, applied as r2, for candidate 'Epic loot from three doors in': crypt, keep and mill all the same, and the control shallow failed, as it must. Below it the approval view marks crypt as approved, with the name of the person and the time, over its row ossuary, recorded rare, proposed epic, and the line All approved."}
 ui.waitForSelector("text=Approve the new outcome of crypt", 120000.0)

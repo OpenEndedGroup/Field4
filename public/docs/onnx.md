@@ -465,7 +465,7 @@ starting point to finish rather than code to paste.
 
 ??? aside "Snippet coverage"
     `StreamingTexture(...)` and `recordUpload(...)` are the only calls on this page that nothing in
-    the repository exercises. `dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the block-by-block census.
+    the repository exercises. [`dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md) has the block-by-block census.
 ## Reference
 
 <div class="field-reference" data-code-lang="kotlin" markdown>

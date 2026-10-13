@@ -139,6 +139,7 @@ metadata_store/*
 !metadata_store/agent_demo/
 !metadata_store/shared_types_demo/
 !metadata_store/provide_delegate_defect/
+!metadata_store/controls_handling/
 # Compiled shared-type generations (see afield.SharedTypes) are build output, per document.
 metadata_store/*/.field-shared-types/
 # Runtime artefacts Field writes into a workspace, and the per-workspace agent guides
@@ -191,6 +192,8 @@ server/venv/
 server/__pycache__/
 *.egg-info/
 .field-backdoor/
+# This checkout's remembered workspace (field.sh / Server.kt); per checkout, never shared.
+.afield-local/
 
 .DS_Store
 
@@ -217,6 +220,7 @@ public/docs/generated/
 public/.field-docs-runner-cache.json
 public/.zensical-generated/
 public/zensical.generated.yml
+public/zensical.generated.build.yml
 public/edn-parser.js
 public/examples-gallery.html
 public/offline-viewer.js

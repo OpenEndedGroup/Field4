@@ -58,7 +58,7 @@ The Python tool suites (`uv run --project . --group backdoor python tools/run_py
 the Gradle `checkPythonTools` task, about 6 minutes) are not run on every landing. The lander
 picks guards by changed path (`guards_for_paths` in `tools/check_staged_generated_artifacts.py`),
 and `checkPythonTools` is selected only by changes under `dev_docs/agents/demos/`. A branch that
-lands green has therefore not run `tools/test_*.py`, which is how `CARRIER_PAGES` in
+lands green has therefore not run `tools/test_*.py`, which is how the (since retired) `CARRIER_PAGES` ledger in
 `tools/check_doc_offline_links.py` stayed stale on `main` after f9f3910c5. If you touch
 `tools/`, `field.sh`, or a page those suites read, run the suite yourself before enqueueing.
 
@@ -215,6 +215,10 @@ Run:
 ```bash
 uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
+
+Before running selected `slug` or `steamaudio` smoke tests, the runner builds their
+native prerequisites with Gradle. A full catalog run builds both through
+`buildSmokeNativePrerequisites`; unrelated targeted tests skip that setup.
 
 `tools/run_field_tests.py` does not accept a top-level `--timeout` flag. Per-test
 timeouts come from each `FIELD_TEST` annotation's `timeoutSec` value, and the
@@ -413,8 +417,10 @@ FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --g
 Zensical currently does not run Python page hooks directly, so the uv command
 enters `tools/build_zensical_docs.py` first. The wrapper preprocesses Markdown
 through `public/docs_hooks.py`, writes generated sources under
-`public/.zensical-generated/`, writes `public/zensical.generated.yml`, and then
-runs `python -m zensical build` using the same interpreter. The docs dependency
+`public/.zensical-generated/`, writes `public/zensical.generated.yml` (and its
+build twin, which renders into `public/.zensical-generated/site/`), and then
+runs `python -m zensical build` using the same interpreter. The finished site
+replaces `public/field4/` whole, and only when its pages are all there. The docs dependency
 group intentionally includes the backdoor dependencies because docs captures
 launch `tools/field_backdoor.py` from that interpreter.
 

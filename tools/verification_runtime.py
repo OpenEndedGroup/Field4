@@ -20,6 +20,35 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Iterator, Mapping, Sequence
 
+def pinned_graalvm_args(repo: Path) -> list[str]:
+    """`-Dorg.gradle.java.installations.paths=<jdk>` for the GraalVM `field.sh` provisions, or `[]`.
+
+    The toolchain spec in build.gradle.kts can only say "GraalVM, Java 25", so a bare `./gradlew`
+    takes whichever GraalVM 25 Gradle already knows — often a stale foojay download in
+    ~/.gradle/jdks. `ensure_graalvm_toolchain` in field.sh pins the exact `graalvmVersion` build
+    under ~/.field4/toolchains by passing this flag; this finds the same JDK, so every Gradle a
+    tool starts runs on it too. Nothing is downloaded here: with no provisioned JDK the build falls
+    back to auto-detection and its own version-mismatch warning says so.
+    """
+    if os.environ.get("AFIELD_SKIP_TOOLCHAIN_PROVISION") == "1":
+        return []
+    try:
+        build = (repo / "build.gradle.kts").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    match = re.search(r'^val graalvmVersion = "([^"]+)"', build, re.MULTILINE)
+    if not match:
+        return []
+    java = "java.exe" if os.name == "nt" else "java"
+    toolchains = Path.home() / ".field4" / "toolchains"
+    for pattern in (f"graalvm-community-*{match.group(1)}*/bin/{java}",
+                    f"graalvm-community-*{match.group(1)}*/Contents/Home/bin/{java}"):
+        for candidate in sorted(toolchains.glob(pattern)):
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return [f"-Dorg.gradle.java.installations.paths={candidate.parent.parent}"]
+    return []
+
+
 #: Backdoor verbs that, since 2026-09-14, grade themselves on the box's own error output
 #: (`grade_execution` in `tools/field_backdoor.py`). Before that they returned `ok: true`
 #: for a box that failed to compile, and the diagnostic reached the caller only as an
@@ -146,6 +175,10 @@ def automation_server_environment(
         # Test clients register throwaway commands (the chord regression's `cmd+k`), and the server
         # appends every command it sees to the keybindings file; keep that off ~/.afield.
         "AFIELD_KEYBINDINGS_FILE": str(repo_root / "build" / "field-automation-keybindings.yaml"),
+        # The documentation notes store is the revision agents' queue and defaults to the user's
+        # ~/.afield/docs-annotations.json. A capture that writes a note through the panel, or reads
+        # /docs-pass.html, must see this checkout's own notebook instead.
+        "AFIELD_DOCS_ANNOTATIONS_STORE": str(repo_root / "build" / "field-automation-docs-annotations.json"),
         # Set over the inherited environment, not under it: an exported path in the agent's shell
         # is usually the one the user's own Field writes to.
         **automation_log_environment(repo_root),
@@ -553,6 +586,18 @@ def verification_lock(
     """
     lock_path = repo_root / ".field-backdoor" / "verification.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    # A verification command can launch a child that runs another supported command
+    # in the same checkout (the docs local-site bootstrap does this). The parent
+    # keeps the lock until that child exits, so acquiring it again would deadlock.
+    inherited_owner = os.environ.get(VERIFICATION_LOCK_OWNER_ENV)
+    if inherited_owner == str(os.getppid()):
+        try:
+            recorded_owner = json.loads(lock_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            recorded_owner = {}
+        if recorded_owner.get("pid") == os.getppid():
+            yield
+            return
     handle = lock_path.open("a+", encoding="utf-8")
     handle.seek(0)
     started = time.monotonic()

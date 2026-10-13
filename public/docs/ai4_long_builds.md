@@ -86,8 +86,8 @@ does: the agent reads it after its current step.
 
 ## No model calls while it waits
 
-Waiting is Field's job, not the model's: it reads the build runner every five seconds and makes no
-request until the builds are done. Compare `WaitStudyBuildRequest`, which an agent can call to
+Field does the waiting. It reads the build runner every five seconds and makes no request until the
+builds are done. Compare `WaitStudyBuildRequest`, which an agent can call to
 watch a job from inside its turn: each call returns after at most fifteen minutes, and every call
 after that is another model request, which sends the whole conversation again.
 

@@ -35,11 +35,13 @@ internal object PatchyWebStorage {
     private fun entry(id: String?): Entry? = entries[id]?.takeIf { runCatching { it.binding.requireLive() }.isSuccess }
     private fun revision(file: File): String = if (!file.isFile) "missing" else
         MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+    private fun patchySameSite(secFetchSite: String?, origin: String?, host: String?): Boolean =
+        isSameSiteRequest(secFetchSite, origin, host)
 
     fun routes(route: Route) = with(route) {
         route("/api/patchy-document/{binding}") {
             get {
-                if (!isSameSiteRequest(call.request.headers[SEC_FETCH_SITE_HEADER], call.request.headers[HttpHeaders.Origin], call.request.headers[HttpHeaders.Host])) {
+                if (!patchySameSite(call.request.headers[SEC_FETCH_SITE_HEADER], call.request.headers[HttpHeaders.Origin], call.request.headers[HttpHeaders.Host])) {
                     call.respond(HttpStatusCode.Forbidden); return@get
                 }
                 val entry = entry(call.parameters["binding"])
@@ -59,7 +61,7 @@ internal object PatchyWebStorage {
                 }
             }
             put {
-                if (!isSameSiteRequest(call.request.headers[SEC_FETCH_SITE_HEADER], call.request.headers[HttpHeaders.Origin], call.request.headers[HttpHeaders.Host])) {
+                if (!patchySameSite(call.request.headers[SEC_FETCH_SITE_HEADER], call.request.headers[HttpHeaders.Origin], call.request.headers[HttpHeaders.Host])) {
                     call.respond(HttpStatusCode.Forbidden); return@put
                 }
                 val entry = entry(call.parameters["binding"])

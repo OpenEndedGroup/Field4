@@ -39,6 +39,7 @@ import json
 import os
 import re
 import sys
+import time
 import traceback
 import urllib.parse
 from datetime import datetime, timezone
@@ -634,6 +635,39 @@ class FieldMcpServer:
             {"type": "image", "data": base64.b64encode(data).decode("ascii"), "mimeType": "image/png"},
         ]
 
+    async def tool_paint_gesture(self, args: dict[str, Any]) -> list[dict[str, Any]]:
+        """Replay a gesture take (or its keyframe lanes) as a brush stroke: GestureReplayMain via run-jvm-main."""
+        if not args.get("samples") and not args.get("lanes"):
+            raise McpToolError("field_paint_gesture needs 'samples' (rows [t,x,y] or [t,x,y,pressure,tiltX,tiltY,twist]) or 'lanes' ({x, y, pressure?, ...} keyframes).")
+        out_dir = Path(__file__).resolve().parent.parent / ".field-backdoor" / "mcp-paint-gesture"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stamp = f"{int(time.time() * 1000)}"
+        request = {k: v for k, v in args.items() if v is not None}
+        request["out"] = str(out_dir / f"replay-{stamp}.png")
+        if request.get("bake") is not None and not request.get("lanesOut"):
+            request["lanesOut"] = str(out_dir / f"lanes-{stamp}.json")
+        request_path = out_dir / f"request-{stamp}.json"
+        request_path.write_text(json.dumps(request))
+        # a fresh canvas in a child JVM: no document needs to be open
+        client = await self._ensure_client()
+        payload = await client.run_jvm_main(
+            "afield.paint.GestureReplayMain", jvm_args=[str(request_path)], timeout=max(self.timeout, 300.0)
+        )
+        stdout = str(payload.get("stdout") or "")
+        try:
+            report = json.loads(stdout[stdout.index("{"):])
+        except ValueError:
+            raise McpToolError(f"GestureReplayMain gave no report (exit {payload.get('exitCode')}): {stdout[-800:]} {payload.get('stderr', '')[-800:]}")
+        if not report.get("ok"):
+            raise McpToolError(f"GestureReplayMain failed: {report.get('error')}")
+        if request.get("lanesOut"):
+            report["lanesOut"] = request["lanesOut"]
+        data = Path(report["out"]).read_bytes()
+        return [
+            {"type": "text", "text": json.dumps(report)},
+            {"type": "image", "data": base64.b64encode(data).decode("ascii"), "mimeType": "image/png"},
+        ]
+
     async def tool_debug_probe(self, args: dict[str, Any]) -> dict[str, Any]:
         symbol = args.get("symbol")
         line = args.get("line")
@@ -945,6 +979,42 @@ class FieldMcpServer:
             },
         },
         {
+            "name": "field_paint_gesture",
+            "description": (
+                "Replay a gesture as a brush stroke on a fresh paint canvas and return the painted PNG. "
+                "Give the take a gesture pad records — 'samples', rows [t, x, y] or with a pen "
+                "[t, x, y, pressure, tiltX, tiltY, twist] (seconds; pad units, y up; PointerEvent ranges) — "
+                "or keyframe 'lanes' {x, y, pressure?, tiltX?, tiltY?, twist?}, lists of "
+                "{time, value, type} as the keyframe editor stores them. With 'samples' and 'bake' (a "
+                "tolerance in pad units) the take is first baked into lanes, written to the returned "
+                "'lanesOut' file: edit those and pass them back as 'lanes' to replay the edit. The same "
+                "operation as PaintCanvas.gesture(pad) in a box (afield/paint/gestureReplay.kt); needs the "
+                "paint wrapper (./gradlew buildPaintNative)."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "samples": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}},
+                    "lanes": {"type": "object", "description": "{x: [...], y: [...], pressure?: [...]} keyframes."},
+                    "bake": {"type": "number", "description": "Bake samples into lanes at this tolerance first."},
+                    "xRange": {"type": "array", "items": {"type": "number"}, "description": "Pad x at its left and right edges (default [-1, 1])."},
+                    "yRange": {"type": "array", "items": {"type": "number"}, "description": "Pad y at its bottom and top edges (default [-1, 1])."},
+                    "into": {"type": "array", "items": {"type": "number"}, "description": "[x, y, w, h] on the 1000-wide canvas the pad maps onto."},
+                    "brush": {"type": "string", "description": "BrushKind name, e.g. Round, Filbert, HogFlat (default Round)."},
+                    "brushWidth": {"type": "number"},
+                    "dynamic": {"type": "boolean", "description": "Simulated hairs (default true) or an ordinary brush."},
+                    "color": {"type": "array", "items": {"type": "number"}, "description": "sRGB 0..1 (default umber)."},
+                    "pressure": {"type": "number", "description": "Press used where the take has no pressure (default 0.6)."},
+                    "pressureScale": {"type": "number", "description": "Pen pressure 0..1 times this (default 1.2)."},
+                    "tilt": {"type": "number", "description": "Handle lean, degrees, where the take has no tilt (default 30)."},
+                    "timeScale": {"type": "number", "description": "Stretch the take's timing (default 1)."},
+                    "widthPx": {"type": "integer"},
+                    "sizeMm": {"type": "number", "description": "Physical canvas width (default 200 mm)."},
+                    "seed": {"type": "integer"},
+                },
+            },
+        },
+        {
             "name": "field_debug_probe",
             "description": (
                 "Ask the running JVM what a variable's value is at runtime, and get the answer. "
@@ -1036,6 +1106,7 @@ class FieldMcpServer:
             "field_transcript_page": self.tool_transcript_page,
             "field_screenshot_box": self.tool_screenshot_box,
             "field_debug_probe": self.tool_debug_probe,
+            "field_paint_gesture": self.tool_paint_gesture,
         }
 
     def _all_tools(self) -> list[dict[str, Any]]:

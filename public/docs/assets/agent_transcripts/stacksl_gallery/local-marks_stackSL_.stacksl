@@ -1,0 +1,5 @@
+uv 8 * =c
+c fbm
+c 0.35 + fbm
+0.5 mix
+palette saturate

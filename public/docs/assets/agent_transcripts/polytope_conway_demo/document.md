@@ -10,12 +10,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="polytope_selective_kis" index="0" -->
 
+### Narrative
+
+From `code`
+
+Topology is the source of truth. Coordinates and the FLine viewer only arrive after
+selection and the abstract Conway operation have decided what the new faces are.
+
 ```edn [field-box id="polytope_selective_kis" role="properties"]
-{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 84 "characters" 2938 "sha256" "75f74230ade0e44969087f322eacc2c5f0116d967b0db05db9c61f62289b9a87"}]}
+{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2906 "sha256" "dd8491c63d5a5575f9f8e0a3fe5d3ecbafe881a55d37cd949b97ac9debb83cf4"}]}
 ```
 
 ```kotlin [field-property box="polytope_selective_kis" name="code" path="polytope_selective_kis_code_.kt"]
-import afield.stdlib.polytope.*
 
 // Topology is the source of truth. Coordinates and the FLine viewer only arrive after
 // selection and the abstract Conway operation have decided what the new faces are.

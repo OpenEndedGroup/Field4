@@ -27,7 +27,7 @@ not.
 | **Linux, x86-64** | A glibc desktop distribution, Git LFS, `curl`, a C/C++ toolchain, Make, CMake, and the desktop libraries listed below. Run from your desktop session. |
 | **Windows, x64** | Git for Windows with Git LFS enabled. Use `field.bat`, or PowerShell as shown below. The launcher provisions its runtimes; a separate C++ compiler is not needed for the default Windows launch. |
 | **Linux, ARM64** | The launcher has an ARM64 provisioning path, but this release has not yet been validated end to end on ARM64. Treat it as experimental. |
-| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.0.2 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
+| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.4 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
 
 </div>
 
@@ -102,7 +102,7 @@ setup can install every missing tool through winget; install the other prerequis
 setup. Features your platform does not support, and NVIDIA-only features without a working
 `nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
 type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
-It shows the exact package-manager commands and requires typing `INSTALL`
+Setup then shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
@@ -286,7 +286,7 @@ _Field·4_ is still beta software. Report reproducible problems through the publ
 
 ## Updating
 
-Update it the same way:
+To update Field, pull the latest source into your checkout:
 
 ```diffstatic {data-lang=bash}
 git pull

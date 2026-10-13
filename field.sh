@@ -16,12 +16,17 @@ cd "$DIR" || exit 1
 # They are handled here as well because three things can only be done out here: resolving a
 # relative path against INVOKED_FROM rather than $DIR; rejecting a typo *before* the
 # minutes of Gradle that run before the backend ever looks at its arguments; and
-# printing which workspace a bare launch is about to open. That last one matters
-# because the choice is remembered once per machine, in ~/.afield/last-workspace.txt
-# — so any other clone or worktree on this machine may have been the one that wrote
-# it, and the workspace you get is not the workspace of the checkout you launched.
+# printing which workspace a bare launch is about to open.
+#
+# The choice is remembered per checkout, in .afield-local/last-workspace.txt beside this
+# script (gitignored), so a sibling clone or worktree no longer decides what this one
+# opens. A checkout that has never recorded one falls back to the machine-wide
+# ~/.afield/last-workspace.txt, which is where every checkout wrote before. The backend
+# writes the file, not this script; AFIELD_WORKSPACE_PREFERENCE_FILE tells it where.
 
+CHECKOUT_WORKSPACE_PREFERENCE_FILE="$DIR/.afield-local/last-workspace.txt"
 WORKSPACE_PREFERENCE_FILE="$HOME/.afield/last-workspace.txt"
+export AFIELD_WORKSPACE_PREFERENCE_FILE="$CHECKOUT_WORKSPACE_PREFERENCE_FILE"
 DEFAULT_WORKSPACE="$HOME/Documents/AFieldWorkspace"
 
 usage() {
@@ -65,11 +70,12 @@ open and the workspace is the folder above it, which is where a document lives.
 A document named here has to exist already: Field creates a document that does
 not, so a typo would otherwise open an empty new one under that name.
 
-With no workspace given, Field reopens the one it last used, recorded once per
-machine in
+With no workspace given, Field reopens the one this checkout last used, recorded in
+  $CHECKOUT_WORKSPACE_PREFERENCE_FILE
+or, if this checkout has never recorded one, the machine-wide
   $WORKSPACE_PREFERENCE_FILE
-so a different clone or worktree of this repository may have been what last
-wrote it. Naming a workspace here makes it the remembered one for next time.
+that every checkout used to share. Naming a workspace here makes it this checkout's
+remembered one for next time.
 
 Any other argument is passed through to the backend unchanged. See also
 AFIELD_SKIP_BUILD=1 to skip the build check, and PORT to move off 9092.
@@ -117,11 +123,18 @@ resolve_workspace_request() {
     fi
 }
 
-persisted_workspace() {
-    [ -f "$WORKSPACE_PREFERENCE_FILE" ] || return 1
-    VALUE="$(tr -d '\r' < "$WORKSPACE_PREFERENCE_FILE" | sed -n '1s/^[[:space:]]*//;1s/[[:space:]]*$//;1p')"
+# Prints the first line of $1, trimmed; fails if the file is missing or that line is blank.
+preference_file_value() {
+    [ -f "$1" ] || return 1
+    VALUE="$(tr -d '\r' < "$1" | sed -n '1s/^[[:space:]]*//;1s/[[:space:]]*$//;1p')"
     [ -n "$VALUE" ] || return 1
     printf '%s' "$VALUE"
+}
+
+# This checkout's remembered workspace, else the machine-wide one.
+persisted_workspace() {
+    preference_file_value "$CHECKOUT_WORKSPACE_PREFERENCE_FILE" ||
+        preference_file_value "$WORKSPACE_PREFERENCE_FILE"
 }
 
 WORKSPACE_REQUESTED=""
@@ -272,7 +285,11 @@ if [ -n "$WORKSPACE_REQUESTED" ]; then
     fi
     set -- "$@" --workspace "$FIELD_WORKSPACE"
 elif FIELD_WORKSPACE="$(persisted_workspace)"; then
-    WORKSPACE_ORIGIN="last used, per $WORKSPACE_PREFERENCE_FILE"
+    if preference_file_value "$CHECKOUT_WORKSPACE_PREFERENCE_FILE" >/dev/null; then
+        WORKSPACE_ORIGIN="last used by this checkout, per $CHECKOUT_WORKSPACE_PREFERENCE_FILE"
+    else
+        WORKSPACE_ORIGIN="last used on this machine, per $WORKSPACE_PREFERENCE_FILE (this checkout has none yet)"
+    fi
 else
     FIELD_WORKSPACE="$DEFAULT_WORKSPACE"
     WORKSPACE_ORIGIN="the default; nothing recorded yet"
@@ -432,7 +449,7 @@ check_platform() {
     case "$FIELD_PLATFORM" in
         Darwin/arm64|Linux/x86_64|Linux/aarch64) ;;
         Darwin/x86_64)
-            echo "field: Intel macOS is not supported by the pinned GraalVM 25.0.2 toolchain; use an Apple silicon Mac, Linux or Windows x64" >&2
+            echo "field: Intel macOS is not supported by the pinned GraalVM toolchain; use an Apple silicon Mac, Linux or Windows x64" >&2
             return 1 ;;
         *) echo "field: unsupported platform $FIELD_PLATFORM (see public/docs/installation.md)" >&2
            return 1 ;;
@@ -567,6 +584,15 @@ ensure_graalvm_toolchain() {
         echo "field: could not read graalvmVersion from build.gradle.kts" >&2
         return 1
     fi
+    # The Innovation releases ship a JDK whose version differs from the Graal one (graal 25.4.4.1.1
+    # carries jdk 25.0.4.1.1, in graalvm-community-jdk-25i4-25.0.4.1.1_*), so the archive's build
+    # name is pinned beside graalvmVersion. It unpacks to graalvm-community-<graal version>+..., so
+    # the probes below still match on GRAAL_VERSION.
+    GRAAL_JDK_BUILD="$(sed -n 's/^val graalvmJdkBuild = "\([^"]*\)".*/\1/p' build.gradle.kts | head -1)"
+    if [ -z "$GRAAL_JDK_BUILD" ]; then
+        echo "field: could not read graalvmJdkBuild from build.gradle.kts" >&2
+        return 1
+    fi
 
     JDKS_DIR="$HOME/.field4/toolchains"
     for probe in "$JDKS_DIR"/graalvm-community-*"$GRAAL_VERSION"*/bin/java \
@@ -590,7 +616,7 @@ ensure_graalvm_toolchain() {
         echo "field: offline but GraalVM $GRAAL_VERSION is not cached; run ./field.sh once online first" >&2
         return 1
     fi
-    GRAAL_URL="https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAAL_VERSION}/graalvm-community-jdk-${GRAAL_VERSION}_${GRAAL_OS}-${GRAAL_ARCH}_bin.tar.gz"
+    GRAAL_URL="https://github.com/graalvm/graalvm-ce-builds/releases/download/graal-${GRAAL_VERSION}/graalvm-community-jdk-${GRAAL_JDK_BUILD}_${GRAAL_OS}-${GRAAL_ARCH}_bin.tar.gz"
 
     echo "field: provisioning the GraalVM $GRAAL_VERSION toolchain (~320MB; this happens once)…" >&2
     mkdir -p "$JDKS_DIR"

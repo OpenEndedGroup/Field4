@@ -504,7 +504,12 @@ class PatSpatialRoom internal constructor(
     val defaultSound: String,
     /** Cycles scanned up front for `spat` tags, so their engines boot before any audio is due. */
     val prescanCycles: Int,
+    // A pose per render frame, or null to follow setListenerPose. See setListenerPoseAt.
+    listenerPoseAt: ((frame: Long) -> HeadPose)? = null,
 ) {
+
+    @Volatile
+    private var listenerPoseAt: ((frame: Long) -> HeadPose)? = listenerPoseAt
 
     private val running = AtomicBoolean(false)
     private var thread: Thread? = null
@@ -638,6 +643,22 @@ class PatSpatialRoom internal constructor(
         listenerRequest.set(pose)
     }
 
+    /**
+     * Give the listener a pose that is a function of the render frame, or null to go back to
+     * [setListenerPose].
+     *
+     * The render thread calls [poseAt] at the top of every block with that block's first frame on
+     * [framesRendered]'s clock, so the head and the audio share one timeline and a render repeats
+     * exactly. A pose offered with [setListenerPose] instead lands on whichever block the render
+     * thread reaches next, which differs from run to run by a block or two. Use this for a scripted
+     * head in an offline render; a real headset reports poses as they happen and goes through
+     * [HeadTrackedListener]. [poseAt] runs on the render thread, so it must be cheap and must not
+     * block.
+     */
+    fun setListenerPoseAt(poseAt: ((frame: Long) -> HeadPose)?) {
+        listenerPoseAt = poseAt
+    }
+
     /** The listener's heading in degrees, as the render thread last applied it. */
     val listenerAzimuthDeg: Double get() = listenerPose.azimuthDeg
 
@@ -724,7 +745,7 @@ class PatSpatialRoom internal constructor(
                     }
 
                     while (running.get()) {
-                        val offered = listenerRequest.get()
+                        val offered = listenerPoseAt?.invoke(frames.get()) ?: listenerRequest.get()
                         if (offered !== listenerPose) applyListenerPose(offered)
 
                         // 1. Query ahead far enough to cover everything the ring will hold.
@@ -1066,6 +1087,9 @@ class PatSpatialLaunch internal constructor(
     /** Move and turn the listener's head. See [PatSpatialRoom.setListenerPose]. */
     fun setListenerPose(pose: HeadPose) = room.setListenerPose(pose)
 
+    /** A pose per render frame, for a scripted head. See [PatSpatialRoom.setListenerPoseAt]. */
+    fun setListenerPoseAt(poseAt: ((frame: Long) -> HeadPose)?) = room.setListenerPoseAt(poseAt)
+
     /**
      * Drive the listener from a tracked head -- an OpenXR headset, or anything else that reports a
      * pose. The returned tracker is started; closing it stops following, and closing this launch
@@ -1107,8 +1131,10 @@ class PatSpatialLaunch internal constructor(
      * The same situation [PatSynthLaunch.advanceOffline] answers: a machine with no output device
      * has no audio thread, so nobody drains the ring and the tap stays empty. The difference is
      * that here the render thread is running regardless, so this does not advance the synthesis --
-     * it only consumes what the render thread has already produced, in real time. Waiting is
-     * therefore part of the contract, and a caller asking for a second of audio waits a second.
+     * it only consumes what the render thread has produced, waiting whenever the ring is short.
+     * That thread is paced by the ring rather than by the clock (it sleeps only at
+     * [PatSpatialRoom.targetFillFrames]), so with nothing else draining the ring a render runs as
+     * fast as the two threads go: `HeadTrackedPatternDemo` measures 7x to 30x realtime.
      */
     fun advanceOffline(frames: Int) {
         require(frames >= 0) { "frames must be >= 0, got $frames" }
@@ -1183,6 +1209,8 @@ class PatSpatialLaunch internal constructor(
  *   scheduler's, and on a machine at three times its core count they ran to 115 ms. Latency here
  *   costs nothing musically -- the pattern is queried ahead, so notes stay in time with each other;
  *   what it delays is only how soon a start or a stop is heard.
+ * @param listenerPoseAt the listener's pose as a function of the render frame, from the first
+ *   block on. See [PatSpatialRoom.setListenerPoseAt].
  */
 fun patSpatial(
     pattern: PatPattern<String>,
@@ -1197,6 +1225,7 @@ fun patSpatial(
     defaultSound: String = "saw",
     prescanCycles: Int = 8,
     wasmPath: Path = Paths.get("./src/jvmMain/resources/dough.wasm"),
+    listenerPoseAt: ((frame: Long) -> HeadPose)? = null,
 ): PatSpatialLaunch {
     require(maxSources in 1..16) { "maxSources must be in 1..16, got $maxSources" }
     val ring = PatSpatialRing(ringFrames)
@@ -1217,6 +1246,7 @@ fun patSpatial(
         hrtfInterpolation = hrtfInterpolation,
         defaultSound = defaultSound,
         prescanCycles = prescanCycles,
+        listenerPoseAt = listenerPoseAt,
     )
     room.start()
     return PatSpatialLaunch(bank, room)

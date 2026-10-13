@@ -167,6 +167,10 @@ class SolidSLPointCloudTest {
                 "parameter below is not actually unobserved and this test proves nothing",
         )
 
+        // Named before any step: a zero-iteration fit reads only the gradient at the seed.
+        val before = template.fitToPointCloud(cropped, seed, SolidFitOptions(iterations = 0))
+        assertEquals(listOf("right"), before.unconstrainedParameters)
+        assertEquals(0, before.run.iterations)
         val fit = template.fitToPointCloud(cropped, seed)
         println(fit.report())
         report(template, fit, truth)

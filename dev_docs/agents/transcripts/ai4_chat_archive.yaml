@@ -1,0 +1,64 @@
+# Generated from demo/metadata.edn by afield.examples.DocumentToTranscript.
+name: ai4_chat_archive
+description: >
+  The four boxes from public/docs/ai4_chat_archive.md: a lens viewer with chat-log tools, the
+  outline of a saved AI4 chat, reading one branch of it, and a storyline lens's statistics. Reads
+  the example chat under public/docs/assets/ai4_chat_archive, so run Field from a checkout.
+  Docs page: public/docs/ai4_chat_archive.md.
+operations:
+  - create:
+      box: "chat-lens-viewer"
+      name: "chat-lens-viewer"
+      frame: { x: 520.0, y: 240.0, w: 420.0, h: 60.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.chatlog.*
+          import java.io.File
+
+          val assets = File("public/docs/assets/ai4_chat_archive")
+          registerChatlogTools(File(assets, "chats"), lensDir = File(assets, "lenses"))
+          showChatLens("harbour", "storyline", height = 600)
+  - create:
+      box: "chat-archive-outline"
+      name: "chat-archive-outline"
+      frame: { x: 40.0, y: 40.0, w: 420.0, h: 60.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.chatlog.*
+          import java.io.File
+
+          val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
+          val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
+          display("outline", "<pre style='margin:8px'>" + ChatLogViews.outline(tree).replace("<", "&lt;") + "</pre>")
+  - create:
+      box: "chat-archive-read"
+      name: "chat-archive-read"
+      frame: { x: 520.0, y: 40.0, w: 420.0, h: 60.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.chatlog.*
+          import java.io.File
+
+          val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
+          val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
+          val page = ChatLogViews.read(tree, "t-23d59848-f38.b3", "t-23d59848-f38.b8", detail = "full")
+          display("night", "<pre style='margin:8px'>" + page.text.replace("<", "&lt;") + "</pre>")
+  - create:
+      box: "chat-archive-lens-stats"
+      name: "chat-archive-lens-stats"
+      frame: { x: 40.0, y: 240.0, w: 420.0, h: 60.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.chatlog.*
+          import java.io.File
+
+          val assets = File("public/docs/assets/ai4_chat_archive")
+          val tree = ChatArchive.tree(ChatArchive.chats(File(assets, "chats/harbour")).single())
+          val lens = File(assets, "lenses/harbour/storyline.md").readText()
+          val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { listOf("none") }
+          val stats = ChatLogViews.lensStats(tree, lens).entries.joinToString("\n") { (k, v) -> "$k: $v" }
+          display("lens", "<pre style='margin:8px'>problems: ${problems.joinToString("; ")}\n$stats</pre>")

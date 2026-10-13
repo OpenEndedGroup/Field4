@@ -20,8 +20,7 @@ start from there.
 
 ## Ending in light
 
-Five of the chains end in the GPU path tracer, and they all start somewhere a renderer would not
-expect.
+These chains end in the GPU path tracer, and each starts somewhere a renderer would not expect.
 
 <div class="grid cards" markdown>
 
@@ -54,9 +53,17 @@ expect.
     squeezes a twisted joint into a candy wrapper. Turn the posed mesh into a solid to measure
     how much of the limb is lost.
 
+-   ![Two cage-like sculptures of thin tubes over a dark floor, one tube in each glowing orange down to a red bead](assets/chain_petri_sculpture/sculpture.png)
+
+    **[A Deadlock, Sculpted and Traced](chain_petri_sculpture.md).** Every marking the dining
+    philosophers' Petri net can reach becomes a glass bead, every firing a tube, and the shortest
+    route to the deadlock glows.
+
 </div>
 
 ## Ending in sound
+
+These chains end in something you can listen to, or start from it.
 
 <div class="grid cards" markdown>
 
@@ -104,6 +111,8 @@ expect.
 
 ## Ending in an object
 
+These chains end in something you could print, mount, hang or light.
+
 <div class="grid cards" markdown>
 
 -   ![Forty-eight extruded layers of canonical gC, coloured by height](assets/chain_ceres_manifold_contours/stack.png)
@@ -120,5 +129,10 @@ expect.
 
     **[A RectSL Scene on a Light Rig](chain_scene_to_light.md).** Send a scene over sACN,
     receive it back, and check that what came back matches the pixels the rig was sent.
+
+-   ![An oil painting of a meadow at evening: a sky of horizontal strokes, low clouds, grass and red poppies](assets/chain_drawn_paint/meadow.png)
+
+    **[Drawn Strokes Become Paint](chain_drawn_paint.md).** Pen strokes on the drawing layer,
+    with their pressure, drag a simulated oil brush across a canvas of wet paint.
 
 </div>

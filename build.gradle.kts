@@ -68,7 +68,11 @@ val luceneVersion = "10.3.2"
 val onnxRuntimeVersion = "1.27.0"
 val djlTokenizersVersion = "0.36.0"
 val javaToolchainVersion = 25
-val graalvmVersion = "25.0.2"
+// The org.graalvm.polyglot:* version, which is also the graalvm-ce-builds release tag
+// (`graal-<this>`). Since the 25 "Innovation" releases the JDK inside carries its own version,
+// pinned separately as the archive's build name: field.sh and field.ps1 read both lines.
+val graalvmVersion = "25.4.4.1.1"
+val graalvmJdkBuild = "25i4-25.0.4.1.1"
 
 // JVM args that unlock CPU vectorization on our GraalVM toolchain.
 //
@@ -657,9 +661,32 @@ java {
 //   "Error: VM option 'EnableJVMCI' is experimental and must be enabled via
 //    -XX:+UnlockExperimentalVMOptions"
 // — so the task dies before main(). Pin the vendor at the launcher too.
+//
+// A spec cannot name the build, though: any GraalVM 25 matches, and a stale foojay download in
+// ~/.gradle/jdks wins whenever the pinned one is not passed with -Dorg.gradle.java.installations.paths
+// (field.sh and the tools' Gradle calls pass it; a bare ./gradlew does not). That still runs, with the
+// polyglot $graalvmVersion jars on another Graal's JDK, so say so rather than fail.
+var warnedGraalvmMismatch = false
+fun warnOnGraalvmMismatch(launcher: JavaLauncher) {
+    if (warnedGraalvmMismatch) return
+    val home = launcher.metadata.installationPath.asFile
+    val found = home.resolve("release").takeIf { it.isFile }?.readLines()
+        ?.firstNotNullOfOrNull { Regex("^GRAALVM_VERSION=\"?([^\"]+)\"?").find(it)?.groupValues?.get(1) }
+    if (found == graalvmVersion) return
+    warnedGraalvmMismatch = true
+    logger.warn(
+        "field: GraalVM toolchain mismatch: build.gradle.kts pins $graalvmVersion but Gradle chose " +
+            "${found ?: "an unversioned GraalVM"} at $home. Run ./field.sh once to provision the pinned JDK, " +
+            "or pass -Dorg.gradle.java.installations.paths=<its home>."
+    )
+}
 fun JavaToolchainService.fieldLauncher(): Provider<JavaLauncher> = launcherFor {
     languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     vendor.set(JvmVendorSpec.GRAAL_VM)
+}.map { launcher -> warnOnGraalvmMismatch(launcher); launcher }
+// Test tasks (jvmTest above all) take the java.toolchain default rather than fieldLauncher().
+tasks.withType<Test>().configureEach {
+    doFirst { warnOnGraalvmMismatch(javaLauncher.get()) }
 }
 
 group = "afield"
@@ -1064,6 +1091,8 @@ kotlin {
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
+                // The pseudo-terminal behind /terminal.html (afield/server/terminal.kt).
+                implementation("org.jetbrains.pty4j:pty4j:0.14.0")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
                 val customKotlinVersion = "2.5.255-SNAPSHOT"
@@ -1698,6 +1727,8 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // site navigation, which is neither Kotlin nor Markdown, so nothing else here invalidates on it.
     inputs.file("public/zensical.yml").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("build.gradle.kts").withPathSensitivity(PathSensitivity.RELATIVE)
+    // AgentDemoRegistrationTest uses Git ignore rules to exclude local scratch directories.
+    inputs.file(".gitignore").withPathSensitivity(PathSensitivity.RELATIVE)
     // The dev_docs pages these guards read, for the same reason as the line above: the citation
     // corpus and the server-surface ledger both live under dev_docs, which is not `public/docs`.
     inputs.files(fileTree("dev_docs") { include("**/*.md") })
@@ -2135,6 +2166,17 @@ tasks.register<JavaExec>("formatBoxCode") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("boxImportCensus") {
+    group = "reporting"
+    description = "Reports what every published box's imports are for, and which packages could join the box intro; changes no box."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxImportCensus")
     workingDir = rootDir
     jvmArgs("-XX:+UnlockExperimentalVMOptions")
     jvmArgs(requiredRunJvmArgs())
@@ -3469,7 +3511,7 @@ tasks.register<JavaExec>("headTrackedDemo") {
     configureSteamAudioDemoTask(
         "afield.examples.steamaudio.HeadTrackedPatternDemoKt",
         "Renders a pattern placed in a room, heard from a head that turns and walks, to " +
-            "build/demo/head-tracked.wav. Realtime, so it takes as long as it lasts. Headphones.",
+            "build/demo/head-tracked.wav, offline and faster than realtime. Headphones.",
     )
 }
 
@@ -3529,6 +3571,21 @@ tasks.register<Exec>("buildLearnedShaders") {
     // Revalidate the submodule/compiler pins on each explicit invocation. Downloads remain cached.
     outputs.upToDateWhen { false }
     commandLine(rootPythonCommand + listOf("tools/lighting/build_learned_shader.py") +
+        if (gradle.startParameter.isOffline) listOf("--offline") else emptyList())
+    if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
+}
+
+// The compiler alone, for live Slang boxes (`vertex_fragment`, `compute_s`, ...): no submodule, no shader
+// builds. First-run setup offers it as its own extra; buildLearnedShaders also records the same pointer.
+tasks.register<Exec>("prepareSlangCompiler") {
+    group = "build"
+    description = "Fetches the pinned Slang compiler and records it in build/lighting/slangc.path for live Slang shaders."
+    inputs.file("tools/lighting/build_learned_shader.py")
+    inputs.file("tools/native_download_cache.py")
+    inputs.file("optional/lighting/toolchains.json")
+    outputs.file(layout.buildDirectory.file("lighting/slangc.path"))
+    outputs.upToDateWhen { false }
+    commandLine(rootPythonCommand + listOf("tools/lighting/build_learned_shader.py", "--compiler-only") +
         if (gradle.startParameter.isOffline) listOf("--offline") else emptyList())
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
@@ -3908,7 +3965,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, "buildLorisNative")
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative")
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

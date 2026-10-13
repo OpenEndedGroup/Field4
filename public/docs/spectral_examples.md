@@ -46,7 +46,7 @@ One `showSignals` call puts all three streams on one axis. Watch the chain order
 
 ![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, a smooth orange trace at about half that height and some fifteen samples behind it, and a green band-pass trace swinging gently around zero at the same slow rate](assets/timeseries_examples/filter_chains.png)
 
-That order is why the band-pass trace is small and slow: the 4.7 Hz content it is tuned for was mostly taken out upstream, so what passes is the leakage of the 1.2 Hz swing through its skirt. The two filters with cutoffs in Hz are told the rate: `BandPassFilter` and `OneEuroFilter` take `sampleRate = 120f`, so those cutoffs mean what they say for stored data pushed through in a loop.
+That order is why the band-pass trace is small and slow: the smoothers upstream removed most of the 4.7 Hz content it is tuned for, so what gets through is a little of the slower 1.2 Hz swing. `BandPassFilter` and `OneEuroFilter` both take `sampleRate = 120f`, so their cutoffs in Hz are right for stored data pushed through in a loop.
 
 ## Distribution-aware event flags
 
@@ -390,16 +390,12 @@ other per-sample filter in the toolkit.
   resonators that lock onto and follow moving partials, with `resonatorAlphaHeuristics(...)` for
   per-frequency time constants.
 
-## Replay the demo
+## Open the examples as a document
 
-The five frequency-domain examples, from [One spectrum](#one-spectrum) on, are also a loadable
-transcript. Replay it into a fresh Field with the agent
-backdoor and each box computes and draws its own figure with no other setup:
-
-```diffstatic {data-lang=bash}
-field_run_transcript dev_docs/agents/transcripts/spectral_examples.yaml
-```
+The five frequency-domain examples, from [One spectrum](#one-spectrum) on, are also a starting
+point: open [`spectral_examples`](agent_transcripts.md#spectral_examples) from the welcome screen
+and each box computes and draws its own figure with no other setup.
 
 Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and re-run a box to
 watch its figure change. The two time-domain examples at the top of the page are not in that
-transcript; paste either fence into a box to run it.
+document; paste either fence into a box to run it.

@@ -126,6 +126,9 @@ internal object PaintNative {
     private val D = JAVA_DOUBLE
     private val canvasNewV2H by fn("field_paint_canvas_new_v2", A, I, F, I, L, F, F, F, F, I)
     private val canvasEngineH by fn("field_paint_canvas_engine", I, A)
+    private val strokeNoiseH by fn("field_paint_stroke_noise", I, A, I)
+    private val strokeArcH by fn("field_paint_stroke_arc", I, A, A, I)
+    private val warpH by fn("field_paint_warp", I, A, I, I, F, A, I)
     private val groundFinishH by fn("field_paint_ground_finish", I, A, F)
     private val brushNewV2H by fn("field_paint_brush_new_v2", A, I, F, L, I, A)
     private val brushConfigH by fn("field_paint_brush_config", I, A, A)
@@ -187,6 +190,8 @@ internal object PaintNative {
     private val dbrushNewH by fn("field_paint_dbrush_new", A, A, I, F, A, I, I, L)
     private val dbrushFreeH by fn("field_paint_dbrush_free", null, A)
     private val dbrushSetH by fn("field_paint_dbrush_set", I, A, F, F, F, F, F, F)
+    private val dbrushParamH by fn("field_paint_dbrush_param", I, A, A, F)
+    private val dbrushVaryH by fn("field_paint_dbrush_vary", I, A, A, A, I)
     private val dbrushInfoH by fn("field_paint_dbrush_info", I, A, A)
     private val dbrushLoadH by fn("field_paint_dbrush_load", I, A, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, L)
     private val dbrushLoadWaterH by fn("field_paint_dbrush_load_water", I, A, A, A, A, A, I, F, F)
@@ -402,19 +407,26 @@ internal object PaintNative {
     fun canvasNewV2(w: Int, aspect: Float, style: Int, seed: Long, r: Float, g: Float, b: Float, sizeMm: Float, engine: Int): MemorySegment =
         nonNull(canvasNewV2H.invokeExact(w, aspect, style, seed, r, g, b, sizeMm, engine) as MemorySegment, "creating a canvas")
 
+    fun strokeNoise(c: MemorySegment, noise: Int) = check(strokeNoiseH.invokeExact(c, noise) as Int, "keying a stroke's noise")
+    fun warp(c: MemorySegment, columns: Int, rows: Int, cell: Float, at: FloatArray?, ground: Boolean) = Arena.ofConfined().use { a ->
+        check(warpH.invokeExact(c, columns, rows, cell, at?.let { a.allocateFrom(F, *it) } ?: MemorySegment.NULL, if (ground) 1 else 0) as Int, "warping the canvas")
+    }
+    fun strokeArc(c: MemorySegment, arcMm: FloatArray) = Arena.ofConfined().use { a ->
+        check(strokeArcH.invokeExact(c, a.allocateFrom(F, *arcMm), arcMm.size) as Int, "giving a stroke its length")
+    }
     fun canvasEngine(c: MemorySegment): Int = (canvasEngineH.invokeExact(c) as Int).also { if (it < 0) error("reading the engine") }
 
     fun groundFinish(c: MemorySegment, absorbent: Float) = check(groundFinishH.invokeExact(c, absorbent) as Int, "finishing the ground")
 
     /** [cfg] is the 11 construction values of `field_paint_brush_new_v2`, NaN for the preset's. */
     fun brushNewV2(kind: Int, width: Float, seed: Long, engine: Int, cfg: FloatArray): MemorySegment = Arena.ofConfined().use { a ->
-        require(cfg.size == 11)
+        require(cfg.size == 12)
         nonNull(brushNewV2H.invokeExact(kind, width, seed, engine, a.allocateFrom(F, *cfg)) as MemorySegment, "creating a brush")
     }
 
-    /** kind, width, bristles, length, stiffness, hair, run, lay, pickup, push, splay, ragged, point. */
+    /** kind, width, bristles, length, stiffness, hair, run, lay, pickup, push, splay, ragged, point, tooth. */
     fun brushConfig(b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
-        val out = a.allocate(F, 13)
+        val out = a.allocate(F, 14)
         check(brushConfigH.invokeExact(b, out) as Int, "reading the brush")
         out.toArray(F)
     }
@@ -468,7 +480,7 @@ internal object PaintNative {
     fun ragWipe(c: MemorySegment, g: MemorySegment, xy: FloatArray, pressure: List<Double>, seed: Long): Double = Arena.ofConfined().use { a ->
         val pr = if (pressure.isEmpty()) MemorySegment.NULL else a.floats(pressure)
         val got = ragWipeH.invokeExact(c, g, a.allocateFrom(F, *xy), xy.size / 2, pr, pressure.size, seed) as Double
-        if (got < 0) error("a wipe") else got
+        if (got.isNaN()) error("a wipe") else got
     }
     /** load, soaked, damp. */
     fun ragState(c: MemorySegment, g: MemorySegment): FloatArray = Arena.ofConfined().use { a ->
@@ -617,10 +629,18 @@ internal object PaintNative {
     // ---- the segmented brush ----
 
     fun dbrushNew(c: MemorySegment, kind: Int, width: Float, cfg: FloatArray, hairs: Int, segs: Int, seed: Long): MemorySegment = Arena.ofConfined().use { a ->
-        require(cfg.size == 11)
+        require(cfg.size == 12)
         nonNull(dbrushNewH.invokeExact(c, kind, width, a.allocateFrom(F, *cfg), hairs, segs, seed) as MemorySegment, "making a segmented brush")
     }
     fun dbrushFree(b: MemorySegment) { dbrushFreeH.invokeExact(b) }
+    fun dbrushVary(b: MemorySegment, name: String, values: FloatArray) = Arena.ofConfined().use { a ->
+        check(dbrushVaryH.invokeExact(b, a.allocateFrom(name), a.allocateFrom(F, *values), values.size) as Int, "varying the brush's $name")
+    }
+
+    fun dbrushParam(b: MemorySegment, name: String, value: Float) = Arena.ofConfined().use { a ->
+        check(dbrushParamH.invokeExact(b, a.allocateFrom(name), value) as Int, "setting the brush's $name")
+    }
+
     fun dbrushSet(b: MemorySegment, muS: Float, muK: Float, yieldRad: Float, plastic: Float, recover: Float, cohesion: Float) =
         check(dbrushSetH.invokeExact(b, muS, muK, yieldRad, plastic, recover, cohesion) as Int, "setting the brush")
     fun dbrushInfo(b: MemorySegment): FloatArray = Arena.ofConfined().use { a ->

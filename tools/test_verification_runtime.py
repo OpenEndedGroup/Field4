@@ -1,10 +1,30 @@
 import os
 import shlex
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from tools.verification_runtime import field_instance_problem, waive_execution_verdict
+from tools.verification_runtime import field_instance_problem, verification_lock, waive_execution_verdict
+
+
+class VerificationLockTests(unittest.TestCase):
+    def test_direct_child_reuses_its_parents_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = (
+                "from pathlib import Path\n"
+                "from tools.verification_runtime import verification_lock\n"
+                f"with verification_lock(Path({str(root)!r}), label='child'):\n"
+                "    pass\n"
+            )
+            with verification_lock(root, label="parent"):
+                child = subprocess.run(
+                    [sys.executable, "-c", script], cwd=Path(__file__).resolve().parent.parent,
+                    env=os.environ.copy(), capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(child.returncode, 0, child.stderr)
 
 
 class FieldInstanceIdentityTests(unittest.TestCase):

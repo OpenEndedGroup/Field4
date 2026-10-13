@@ -55,7 +55,7 @@ val stack  = tone + rising                     // 0..1  ∩  0..3  ==  0..1  (!)
 
 The `rising` term is defined across `0.0..3.0` and the oscillator cuts two-thirds of it off.
 
-An unbounded operand contributes nothing to the intersection, so the expression takes its extent from the finite terms:
+With the default `Domain.ALL`, the oscillator contributes nothing to the intersection, so the expression takes its extent from the finite terms:
 
 ```diffstatic {data-lang=kotlin}
 // New behavior.

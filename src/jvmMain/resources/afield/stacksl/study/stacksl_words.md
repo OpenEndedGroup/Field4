@@ -5,7 +5,7 @@ do not edit here. Stack effects read `a b -- c`, top of stack on the right. Sear
 for a word rather than reading it all. Texture sampling (`sample`, `prev`, feedback) is left out:
 a study renders single-pass programs and refuses those words.
 
-## Mental model
+## How a program runs
 
 The smallest complete program is one word and a clamp:
 
@@ -274,7 +274,7 @@ palette
 
 ## Volumetric noise
 
-`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so a `vec4` carrying a position and a time is flattened into a plane, with z entering at a fourteenth of the weight of x. That is a shear, not a third dimension: on a volume seen down z it reads as one fixed pattern imprinted at every depth. These words read `input.xyz` (and `.xyzw`) properly.
+`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so z barely changes the result: a volume seen along z shows the same pattern at every depth. Use these words when you need noise in three or four dimensions; they read `input.xyz` (or all of `.xyzw`).
 
 | Word | Stack | What it does |
 | --- | --- | --- |
@@ -284,7 +284,7 @@ palette
 | `fbm4` | `coord octaves lacunarity gain -- s` | the same in four dimensions. |
 | `curl3` | `coord epsilon octaves -- vec` | divergence-free curl noise, as `vec4(v.xyz, 0)`. The curl of a three-offset `fbm3` vector potential, so an advected particle swirls instead of piling into a sink. Short form uses epsilon `0.05` and three octaves. |
 | `fbmd3` | `coord epsilon octaves -- vec` | `fbm3` and its gradient at once: `.x` is the value, `.yzw` the gradient, which is the normal of the isosurface through that point. |
-| `warp3` | `coord strength octaves -- s` | domain-warped `fbm3` — `fbm3` sampled at a position displaced by another `fbm3` vector field. Filaments and folds rather than clouds. Still `0..1`. |
+| `warp3` | `coord strength octaves -- s` | domain-warped `fbm3`: `fbm3` sampled at a position displaced by another `fbm3` vector field. Filaments and folds rather than clouds. Still `0..1`. |
 | `worley3`, `voronoi3` | `coord -- vec` | cellular noise, packed: `.x` is F1 (distance to the nearest feature point), `.y` is F2, `.z` is `F2 - F1` (near zero exactly on the cell walls, so it is the crack field), `.w` is a constant per cell for flat shading. `worley3 x` reads like `fbm x`; `worley3 z` draws the cracks. |
 
 ```stacksl
@@ -329,7 +329,7 @@ input 8 * [0,0,0.1,0.3] t * phnoise x 0.5 * 0.5 +
 | `ryb`, `ryb2rgb`, `from-ryb` | convert paint-like RYB color to RGB without clamping. |
 | `ryb.c`, `ryb2rgb.c`, `from-ryb.c` | clamped RYB-to-RGB conversion. |
 
-Good trick: do math in `rgb2oklab`, especially channel offsets and contrast, then return through `oklab`.
+Colour offsets and contrast changes look more even in OKLab: convert with `rgb2oklab`, do the math, then convert back with `oklab`.
 
 ## Definitions
 

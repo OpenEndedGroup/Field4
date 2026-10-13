@@ -89,6 +89,9 @@ ui.waitForSelector("#docs-mobile-controller-group", 8000.0)
 ui.pause(6000)
 ```
 
+The Group tab also carries multisliders, matrices, range sliders and menus, with their playheads.
+Here is a small step sequencer, first in the desktop app beside its code, then on the phone:
+
 ```diffstatic_runner {data-lang=kotlin capture="window" with-editor="true" viewport="1440x900" execution="launch" open-outputs="true" wait-output="true" wait-output-kind="display" screenshot="assets/mobile_controllers/desktop-sequencer.png" alt="The Field desktop app: on the canvas, a box named sequencer with its output panel open, showing a sixteen-bar velocity multislider, a four-row pattern grid with cells in red, green and blue, a band range slider and a wave menu, with an orange playhead on one column; beside it the code editor open on the box's Kotlin, the controlGroup declaring those four controls and the loop that drives the playheads" wait="1.5" timeout="180" w="220" h="80" embed=true hidden=true name="sequencer"}
 var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
 var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }

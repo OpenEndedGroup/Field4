@@ -10,9 +10,6 @@ counts. The examples here query six seconds of Nancy against Final Out at Candle
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_corpus_microscope/neighbours.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-corpus" alt="Real Nancy query and two Candlestick neighbour windows with waveforms, distance bars and splice players" capture-profile="linux-nvidia"}
 :::static
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
@@ -45,7 +42,6 @@ against.
 Segmentation and descriptor extraction are ordinary cached `analysis.*` jobs. This box indexes Nancy and Final Out at Candlestick Park:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.noir.audioai.*
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()
@@ -114,5 +110,5 @@ at zero, so hovering, zooming, clicking and playback stay aligned between the tw
 card also lists the window's timestamps in its source and the ids of the windows before and after
 it. Placing a neighbour on a timeline is not supported.
 
-See also: the [EnCodec reconstruction microscope](audio_ai_codec.md) for the token representation,
+See also: the [EnCodec round trip](audio_ai_codec.md) for the token representation,
 and [Short-time spectral spaces](audio_ai_spectral_embeddings.md).

@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="polytope_manifold_trace" index="1" -->
 
 ```edn [field-box id="polytope_manifold_trace" role="properties"]
-{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 111 "characters" 5369 "sha256" "be4f9fa52d52626721d50282a99768ee7a9d2792333c10f31a2dfb27efc3c071"}]}
+{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 108 "characters" 5238 "sha256" "95072a1bb2771a524107fd5907da019b451674e1c4ddc51e1450dc8c837dd2d6"}]}
 ```
 
 ```kotlin [field-property box="polytope_manifold_trace" name="code" path="polytope_manifold_trace_code_.kt"]
@@ -49,9 +49,6 @@ import afield.stdlib.isWatertight
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.signedVolume
 import afield.stdlib.weld
-import afield.stdlib.polytope.NormalPolicy
-import afield.stdlib.polytope.canonicalConway
-import afield.stdlib.polytope.triangulate
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)

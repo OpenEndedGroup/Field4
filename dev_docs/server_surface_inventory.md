@@ -101,17 +101,20 @@ mutation; it is a different one.
 | `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/handoff` | `docsPass.kt` | loopback + same-site |
+| `GET /api/docs-search` | `Server.kt` | none |
 | `GET /api/docs-source-file` | `docsSourceFile.kt` | loopback + same-site |
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
 | `GET /api/maven-classpath` | `Server.kt` | none |
 | `GET /api/maven-search` | `Server.kt` | none |
+| `GET /api/patchy-document/{binding}` | `PatchyWebStorage.kt` | same-site |
 | `GET /api/python-settings` | `Server.kt` | none |
 | `GET /api/semantic-search/model` | `Server.kt` | none |
 | `GET /api/semantic-search/settings` | `Server.kt` | none |
 | `GET /api/semantic-search/status` | `Server.kt` | none |
 | `GET /api/source` | `Server.kt` | none |
+| `GET /api/terminal` | `terminal.kt` | loopback + same-site |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |

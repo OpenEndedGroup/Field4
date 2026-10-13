@@ -1,0 +1,44 @@
+name: stackauto_numbers_setup
+description: >
+  Setup for the stacksl_examples.md stack.auto captures: the page's fullscreen stack.auto example, its
+  vertex, fragment and code exactly as the page prints them, in one box beneath the docs renderer
+  (agent_graphics_context, launched by graphics-context=true). Running it binds the slot, which draws
+  the box's stack.auto numbers card.
+operations:
+  - create:
+      box: stackauto_numbers
+      name: stack.auto
+      frame: { x: 380, y: 40, w: 520, h: 100 }
+      properties:
+        vertex: |
+          #version 450
+          layout(location = 0) out vec2 fragUV;
+
+          void main() {
+              vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+              gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+              fragUV = pos;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec2 fragUV;
+          layout(location = 0) out vec4 outColor;
+
+          {{ stack.auto.program }}
+
+          void main() {
+              vec4 stackInput = vec4(fragUV, 0.0, 0.0);
+              outColor = vec4(program(stackInput).rgb, 1.0);
+          }
+        code: |
+          val module = moduleHere { }
+          val mesh = Mesh()
+          module += mesh named "fullscreen"
+          mesh.resize(3)   // three vertices and no attributes: the vertex shader makes the triangle
+          renderer += module
+
+          module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
+  - connect: { parent: agent_graphics_context, child: stackauto_numbers }
+  - launch: { box: stackauto_numbers, property: code }
+  - await: { wait: pending }
+  - wait: { frames: 5 }

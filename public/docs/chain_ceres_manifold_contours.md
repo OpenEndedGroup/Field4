@@ -111,7 +111,7 @@ of those tangency points at the origin, and every face planar
 a fixed scale: the mean tangency radius is driven to one. So the canonical form comes out at a
 different size from the raw form, and comparing their slices as they are would mostly compare sizes.
 
-So the box scales each form to enclosed volume exactly 1 and moves it so `z = 0` is its lowest
+The box therefore scales each form to enclosed volume exactly 1 and moves it so `z = 0` is its lowest
 point: the same amount of material, sitting on the print bed.
 
 Orientation matters too. Vertex indexing survives canonicalisation, so the box measures how far each
@@ -122,11 +122,6 @@ cuts both forms comparably.
 :::static
 import afield.manifold.Solid
 import afield.manifold.toSolid
-import afield.stdlib.polytope.NormalPolicy
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.canonicalize
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.triangulate
 import afield.util.PngEncoder
 
 val LAYERS = 48
@@ -324,15 +319,6 @@ solver, `relaxWithCeres`, does reach a canonical form. This box tries both and s
 import afield.manifold.FillRule
 import afield.manifold.Solid
 import afield.manifold.toSolid
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.NormalPolicy
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.canonicalDiagnostics
-import afield.stdlib.polytope.canonicalize
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relaxWithCeres
-import afield.stdlib.polytope.triangulate
 
 // relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
 val seed = conway("kkC").polyhedron

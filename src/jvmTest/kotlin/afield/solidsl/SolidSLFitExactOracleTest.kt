@@ -142,10 +142,10 @@ class SolidSLFitExactOracleTest {
      * is false — which is why [SolidGradientCheck.nonFiniteAnalytic] now exists and is asserted over
      * the whole census.
      *
-     * **Not re-verified:** the Adam-over-LBFGS advice in `SolidFitOptions.method`,
+     * **Re-verified since:** the Adam-over-LBFGS advice in `SolidFitOptions.method`,
      * `SolidSLApproximationTest` and `fitToPointCloud` was written from measurements taken *before*
-     * this fix. Those problems still converge with the method each of them names, but whether LBFGS
-     * would now do better on any of them has not been measured.
+     * this fix. `SolidSLOptimizerComparisonTest` re-measured every one of those problems with both
+     * methods; LBFGS matched or beat Adam on all of them, and the advice has been rewritten from it.
      */
     @Test
     fun `lbfgs recovers the plate too, now that the gradient is finite inside it`() {

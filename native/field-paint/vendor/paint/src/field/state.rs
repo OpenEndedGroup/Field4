@@ -122,6 +122,7 @@ fn read_tool(r: &mut R) -> Result<Tool, String> {
         splay: r.f()?,
         ragged: r.f()?,
         point: r.f()?,
+        tooth: 0.0,
     })
 }
 
@@ -146,6 +147,9 @@ impl Held {
             w.fs(&b.hide);
             w.f(b.cure);
             w.f(b.solvent);
+        }
+        if self.tool.tooth != 0.0 {
+            w.f(self.tool.tooth);
         }
         w.0
     }
@@ -173,6 +177,12 @@ impl Held {
                 *p = some.then_some(xy);
             }
             bristles.push(Bristle { rx, ry, len, thresh, bend, seed, prev, vol: r.f()?, lat: r.lat()?, hide: r.prop()?, cure: r.f()?, solvent: r.f()? });
+        }
+        // (the tool's tooth, written after the bristles where it isn't 0: a brush saved before it
+        // was kept, or without it, has none)
+        let mut tool = tool;
+        if r.1 < r.0.len() {
+            tool.tooth = r.f()?;
         }
         r.end()?;
         tool.validate()?;

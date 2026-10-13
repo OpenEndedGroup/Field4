@@ -45,6 +45,7 @@ internal val extrasCatalog = listOf(
     Extra("guide-services", "Guide chat / template services", "Workers and models", "server/README.md", setOf("python3"), advice = "Separate optional Flask services: install server/requirements.txt in a dedicated environment and follow server/README.md. Review their unauthenticated endpoints and bind settings before starting them; setup does not start or expose these services."),
     Extra("samples", "Pinned Dirt audio samples", "Audio", "public/docs/sound_paths.md", setOf("python3"), "fetchDocsDirtSamples", advice = "Downloads and checksum-verifies Field's small pinned Dirt-Samples subset into the shared per-user cache. This is not the entire sample collection or an audio-AI model."),
     Extra("patchy-web", "Patchy layered painting editor", "Graphics", "public/docs/patchy.md", setOf("git", "python3", "cmake"), "buildPatchyWeb", advice = "Builds pinned Patchy plus Field's bridge patch in ~/.field4/patchy-web. Downloads Qt for WebAssembly and Emscripten (several GB); the Web editor is served automatically on the next Field launch. No Patchy source enters this checkout."),
+    Extra("slang", "Slang shader compiler", "Graphics", "public/docs/afield_four_graphics.md", setOf("uv"), "prepareSlangCompiler", advice = "Fetches Field's pinned, checksummed slangc for live Slang boxes (vertex_fragment and friends). Field prefers it to the Vulkan SDK's and any slangc on PATH. Does not build the learned shaders."),
 )
 
 internal fun platformId(os: String): String = when {
@@ -115,6 +116,7 @@ internal fun artifactCandidates(root: File, id: String, platform: String, enviro
         "libpd" -> "AFIELD_PD_LIBRARY" to listOf("build/field-libpd/build/libs/${library("pd-multi")}", "build/field-libpd/build/libs/Release/${library("pd-multi")}")
         "syphon" -> "AFIELD_SYPHON_LIBRARY" to listOf("build/field-syphon/libfield_syphon.dylib")
         "shaders" -> "" to listOf("build/lighting/learned-shader/learned-scalar.spv")
+        "slang" -> "AFIELD_SLANGC" to listOf("build/lighting/slangc.path")
         else -> return emptyList()
     }
     // libpd's Windows target keeps its lib prefix, unlike the other native wrappers.

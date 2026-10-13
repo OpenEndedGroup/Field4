@@ -191,7 +191,8 @@ notation ends up sorting the rules the same way the usual classification does.
 * [Spatial Artificial Life](alife_examples.md) for the automata: the elementary rules as space-time
   rasters, Life, cyclic multi-state CA, and the independent oracles the same way this page uses them.
 * [Patterns & Rhythm](pattern_language.md) for the event model and the mini-notation, and
-  `dev_docs/PAT_CONDENSE.md` for the condenser.
+  [PAT_CONDENSE.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/PAT_CONDENSE.md)
+  for the condenser.
 * [Sound](sound.md) and [Making a Sound, Every Path There Is](sound_paths.md) for the voice and
   the other ways to make sound.
 * [Boolean Network Music Examples](boolean_network_music_examples.md) is the neighbouring chain: a

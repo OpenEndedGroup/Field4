@@ -1,0 +1,119 @@
+# Generated from dmx_lighting_demo/metadata.edn by afield.examples.DocumentToTranscript.
+name: "dmx_lighting_demo"
+operations:
+  - create:
+      box: "dmx-receiver"
+      name: "1. Art-Net receiver: Field as a node (launch first)"
+      frame: { x: 60.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.dmx.*
+
+          // Field as an Art-Net node: listen on UDP 6454, merge what arrives (HTP), answer ArtPoll.
+          // Launch this first, then launch the sender. Stopping this box closes the socket.
+          val input = artnetIn()
+
+          // Redraw the two received universes as RGB cells whenever new data has arrived.
+          var seen = -1L
+          loop {
+              val v = input.version(1) + input.version(2)
+              if (v != seen && frameNumber % 4 == 0) {
+                  seen = v
+                  showUniverse(input, 1)
+                  showUniverse(input, 2)
+              }
+          }
+  - create:
+      box: "dmx-sender"
+      name: "2. Pixel mapper: 200 px on a curve (launch)"
+      frame: { x: 580.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.dmx.*
+
+          // 200 RGB pixels of LED tape stuck along a curve. 170 fit in universe 1 (510 slots);
+          // the patch rolls the other 30 into universe 2 by itself.
+          val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
+          val patch = Patch(startUniverse = 1)
+          patch.stripAlong(tape, 200)
+
+          // Art-Net to this machine; use a node's IP (or a broadcast address) to drive real lights.
+          val out = artnetOut("127.0.0.1")
+
+          // A colour field over (x, y, t), evaluated on the DMX sender's own 44 Hz clock.
+          patch.animate(out) { t ->
+              map(t) { x, y, time ->
+                  vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
+                      0.5 + 0.5 * sin(x * 0.03 - time * 2.0 + 2.1),
+                      0.5 + 0.5 * sin(y * 0.03 + time))
+              }
+          }
+
+          // Draw the virtual fixtures in their current colours.
+          loop {
+              if (frameNumber % 4 == 0) showPatch(patch)
+          }
+  - create:
+      box: "dmx-artpoll"
+      name: "3. ArtPoll: who is out there (run)"
+      frame: { x: 580.0, y: 520.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.dmx.*
+
+          // Art-Net discovery: send one ArtPoll and list every node that answers within a second.
+          // With the receiver box running, Field itself answers. Try "255.255.255.255" on a real network.
+          artPoll("127.0.0.1").forEach { println(it) }
+  - create:
+      box: "dmx-sacn-matrix"
+      name: "4. sACN: an image on an RGBW matrix (launch)"
+      frame: { x: 1200.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.dmx.*
+
+          // sACN (E1.31) out and back in, in one box: an image shown on a 16 x 8 matrix of RGBW fixtures.
+          // 128 RGBW fixtures x 4 slots fill universe 10 exactly; the matrix is wired serpentine, as most are.
+          val patch = Patch(startUniverse = 10)
+          patch.grid(16, 8, spacing = 10.0, profile = FixtureProfile.RGBW, serpentine = true)
+
+          // Any Img will do (imgFromFile("...") for a file); here a small gradient made in place.
+          val img = Img(64, 32, 3, FloatArray(64 * 32 * 3) { i ->
+              val x = (i / 3) % 64 / 63f
+              val y = (i / 3) / 64 / 31f
+              when (i % 3) {
+                  0 -> x
+                  1 -> y
+                  else -> 1f - x
+              }
+          })
+
+          val out = sacnOut("127.0.0.1")   // host = null sends to multicast 239.255.0.10 instead
+          val node = sacnIn()              // Field as an sACN receiver on UDP 5568
+
+          // On the sender's clock: sample the image, then sweep a wave of brightness across it.
+          patch.animate(out) { t ->
+              mapImage(img)
+              fixtures.forEach { it.dimmer = 0.55 + 0.45 * sin(t * 3.0 - it.position.x * 0.05) }
+          }
+
+          // What we patched, and universe 10 as it came back over the network, decoded as RGBW fixtures in
+          // wire order — every other row runs backwards, because the matrix is wired serpentine.
+          loop {
+              if (frameNumber % 6 == 0) {
+                  showPatch(patch, channel = "matrix", w = 480.0, h = 260.0)
+                  showUniverse(node, 10, profile = FixtureProfile.RGBW, cols = 16, w = 480.0, h = 260.0)
+              }
+          }
+  # Launch the receiver first, then the two senders, as the box names say. The starting point is
+  # materialized from the structural ops above only; these are for a replay and for the hero
+  # capture on dmx_lighting.md.
+  - launch: { box: dmx-receiver, property: code }
+  - wait: { millis: 500 }
+  - launch: { box: dmx-sender, property: code }
+  - launch: { box: dmx-sacn-matrix, property: code }
+  - wait: { millis: 2500 }

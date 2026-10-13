@@ -6,7 +6,7 @@ Launch the **window** box first, then the lesson you want to explore. The bundle
 original stays unchanged, and opening it again makes another fresh copy.
 
 
-For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see the [Direct lighting](direct_lighting.md).
+For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
 
 `afield.four` is Field's direct Vulkan path. A graphics box usually has three parts:
 
@@ -189,11 +189,11 @@ var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
 
-val camera = afield.four.util.Camera()
+val camera = Camera()
 camera.at = vec(-8,2,7)
 
-module.camera.m = camera.m()
-module.camera.p = camera.p()
+module.view.m = camera.m()
+module.view.p = camera.p()
 
 for (n in 1..80) {
     m.set(3 * n, 1 * n) {
@@ -209,7 +209,7 @@ for (n in 1..80) {
 }
 ```
 
-The shader declares a UBO named `camera`:
+The shader declares a UBO named `view`:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -217,7 +217,7 @@ layout (location = 0) in vec3 pos;
 layout (location = 1) in vec4 col;
 layout (location = 0) out vec4 fcol;
 
-layout (set=0, binding = 0) uniform camera {
+layout (set=0, binding = 0) uniform view {
     mat4 p;
     mat4 m;
 } cam;
@@ -229,9 +229,9 @@ void main()
 }
 ```
 
-Because the uniform block is named `camera`, the Kotlin side writes `module.camera.p` and `module.camera.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
+Because the uniform block is named `view`, the Kotlin side writes `module.view.p` and `module.view.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
 
-That same name is also why the Kotlin above says `afield.four.util.Camera()` in full rather than the usual bare `Camera()`. `moduleHere()` generates a Kotlin class per uniform block, capitalising the block's name, so this box's own preamble declares a `Camera`, and a declaration in the box beats any import, including the `afield.four.util.*` that every box already gets. Writing `import afield.four.util.Camera` does *not* help: the generated `Camera` still wins, `camera.at` then fails to resolve, and the example stops compiling. Rename the uniform block and the collision goes away.
+`moduleHere()` generates a Kotlin class per uniform block, named by capitalising the block's name. Name a block after something the box already uses (a block called `camera` would generate a `Camera` class) and that class hides the import: `Camera()` would then build the generated class, and `camera.at` would fail to resolve.
 
 ## Camera as push constants
 
@@ -641,7 +641,7 @@ m.set(4, 2) {
 }
 ```
 
-`prop<Array<ImageView>>(ta)` is the whole difference. Note that `LoadedTexture` is not itself the bindable resource; `bbc.imageView` is, which is why the array is built from image views rather than from the textures. All three entries here point at the same image file, so the array binding is what the example demonstrates, not the three pictures. The figure above is therefore pixel-identical to the texturing one by construction: same quad, same texture. What it proves is that the array *links and draws*, which is exactly what fails when the count is wrong.
+`prop<Array<ImageView>>(ta)` is the whole difference. Note that `LoadedTexture` is not itself the bindable resource; `bbc.imageView` is, which is why the array is built from image views rather than from the textures. All three entries here point at the same image file, so the figure looks exactly like the texturing one: same quad, same texture. Swap in different files to see the array at work.
 
 The fragment shader declares the array and indexes it:
 
@@ -659,7 +659,7 @@ void main()
 }
 ```
 
-The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing. That matters here because it is the state the saved lesson is in: the box in the corpus binds two views against a three-slot declaration, so running it as saved reproduces that error. Fixing it is a one-line choice: supply a third view, as above, or narrow the declaration to `ta[2]`.
+The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing.
 
 ## Loading a glTF model
 
@@ -748,7 +748,7 @@ void main()
 
 It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose. That is the hand-written form of the `model` default `applyToMesh` supplies, and the fix for any loop that assigns `modelView` itself.
 
-Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which is what the saved lessons were written against; in the corpus they are absolute paths into the author's checkout, so expect to repoint them. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
+Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are relative to the directory Field runs from, so clone that collection into your Field checkout or point the paths at your own copy. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
 
 ## Render to texture
 
@@ -1203,13 +1203,13 @@ void main()
 
     localColor = vec4(wrap(gl_VertexIndex,3),wrap(gl_VertexIndex,5),wrap(gl_VertexIndex,11),1.0);
 
-    if (gl_VertexIndex == 10) {
+    if (gl_VertexIndex == 0) {
         debugPrintfEXT("VS: index=%d, pos=(%f,%f)",gl_VertexIndex, pos.x, pos.y);
     }
 }
 ```
 
-Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`); without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. Note the guard in this example (`gl_VertexIndex == 10`) never fires for a three-vertex draw, which is the state the lesson is saved in: the plumbing is there to be switched on by changing the condition.
+Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`); without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. The guard here (`gl_VertexIndex == 0`) prints once per draw, for the first vertex.
 
 ## Debugging: texture probes
 
@@ -1279,7 +1279,7 @@ In the Vulkan window the 100 quads stack along z, so from the camera they land o
 
 ## Streaming a target over the network
 
-`FieldRTTStreamer` turns a render target into an encoded video stream, which is how a Field sketch drives a display it is not attached to. Its largest consumer is the Vision Pro front end; see **[Apple Vision Pro](vision.md)**, which covers the stereo side-by-side layout, the media wire's pose tail, and `tagPosesFrom` for stamping a frame with the head pose it was rendered from:
+`FieldRTTStreamer` turns a render target into an encoded video stream, which is how a Field sketch drives a display it is not attached to. Its largest consumer is the Vision Pro front end; see [Apple Vision Pro](vision.md), which covers the stereo side-by-side layout, the media wire's pose tail, and `tagPosesFrom` for stamping a frame with the head pose it was rendered from:
 
 ```diffstatic {data-lang=kotlin}
 import org.lwjgl.vulkan.VK10.*
@@ -1339,7 +1339,7 @@ sourceBuffer.read_ints {
 
 Two things to take from it. The `buffer { … }` builder spells out usage explicitly: `storage()`, `addressable()` (needed for buffer references), `hosted()` (CPU-visible), `dest()` (a transfer destination). Those flags are what decide whether a given access is legal later. And `renderList.others["sort"] = Target { command, index -> … }` is the general escape hatch: a slot on the frame where you get the command buffer and can record whatever Vulkan work you like. `sorter.sort(command, …)` records into that buffer rather than executing immediately.
 
-Note `hosted()` for readback. For a GPU→CPU read that happens every frame, host-cached memory is the right choice instead; see the readback notes in [Field probes](field_probes.md).
+This example reads back through `hosted()` memory. For a GPU→CPU read that happens every frame, use host-cached memory instead; see the readback notes in [Field probes](field_probes.md).
 
 This box sorts and prints, and draws nothing.
 
@@ -1347,7 +1347,7 @@ This box sorts and prints, and draws nothing.
 
 The same box model accepts [Slang](https://shader-slang.org) instead of GLSL through the `vertex_fragment` property, which holds both stages in one file. The Kotlin side does not change at all: modules, meshes, buffers and reflected accessors work the same way, because reflection reads the compiled shader interface rather than the source language.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/07-slang-triangle.png" alt="a row of about thirty overlapping triangles against black, each shaded from its vertex index by the Slang shader, drawn from vertices the Kotlin loop writes into a buffer each frame" wait="0.5" timeout="20" capture="native-window" native-wait-frames="6" trim-native=true graphics-context=true embed=true name="four-slang-triangle" execution="launch" source-box="assets/canonical_graphics/65bd0587-dbfa-451a-8f6a-e003ff3d1abf" source-box-properties="vertex_fragment" source-box-wait="0.1"}
 var module = moduleHere { primitiveType = triangles }
 
 var m = Mesh()
@@ -1390,7 +1390,7 @@ The corpus box for this lesson (`7. slang — hello triangle`) is also the best-
 
 A second Slang lesson (`7b. slang — Texture`) is the same step again with a texture bound, and it makes the language-independence claim concrete: the Kotlin is the texturing code from earlier, unchanged, `prop<LoadedTexture>` and all, because the resource is matched by reflected name and the name survives the change of shader language.
 
-Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC` or `-Dafield.slangc` override, then `PATH`, then the optional compiler prepared by `./gradlew buildLearnedShaders`. That task uses a pinned shared cache; live compilation itself does not download anything. See the [optional toolchain](learned_shader.md#optional-toolchain). These two historical lesson captures have not yet been regenerated.
+Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC` or `-Dafield.slangc` override, then `PATH`, then the optional compiler prepared by `./gradlew buildLearnedShaders`. That task uses a pinned shared cache; live compilation itself does not download anything. See the [optional toolchain](learned_shader.md#optional-toolchain).
 
 ## Diffusion-limited aggregation
 
@@ -1409,7 +1409,7 @@ var dla = ShaderDlaSystem() {
 dla.installInto()
 ```
 
-`installInto()` is where the page's argument lands. It writes the system's shaders into *this box's* shader properties, so a packaged effect arrives as source you can edit rather than as a closed component. The vertex shader it installs is a million-particle random walk that reads the accumulated image as a texture, steps each walker, sticks it when it touches something solid, and writes the particle state back through a buffer reference: simulation and drawing in a single vertex shader, with no compute pass at all:
+`installInto()` writes the system's shaders into *this box's* shader properties, so a packaged effect arrives as source you can edit rather than as a closed component. The vertex shader it installs is a million-particle random walk that reads the accumulated image as a texture, steps each walker, sticks it when it touches something solid, and writes the particle state back through a buffer reference: simulation and drawing in a single vertex shader, with no compute pass at all:
 
 ```diffstatic {data-lang=glsl}
 void main() {
@@ -1449,14 +1449,14 @@ void main() {
 
 `push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. The reflected-interface contract this page opened with still holds at a million particles: the shader is the thing you edit.
 
-Run this one live, and expect to tune it: aggregation is a race between walker density and canvas area, and the window between the two failure modes is narrow. As written, a million walkers over a 4112×2524 window grow a cluster a few pixels across in eight seconds and 600 frames, which is correct and far too small to see. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on its first step, so the whole field sticks at once and goes uniform magenta. A legible cluster wants a density between those two, and more frames than 600.
+Run this one live, and expect to tune it: the result depends on how densely the walkers cover the canvas, and the useful range is narrow. A million walkers over a 4112×2524 window grow a cluster only a few pixels across in 600 frames (about eight seconds), too small to see. Over a 900×560 canvas every walker touches something solid on its first step, so the whole field sticks at once and turns uniform magenta. A legible cluster needs a density between those two, and more than 600 frames.
 
 ## Stopping the renderer
 
 Stopping the box that owns `renderer` also stops every running box connected beneath it, then
 frees the GPU device. The same happens when you close the Field window. Field waits up to two
 seconds for those boxes to finish; a `loop {}` stops within a frame. So a child box that writes
-buffers every frame no longer outlives the memory it writes into, which used to crash Field.
+buffers every frame does not outlive the memory it writes into.
 To start them again, select the renderer box and run **Relaunch the N box(es) stopping this
 renderer stopped** from the command palette. It launches the renderer box first if its renderer
 is gone, then the boxes it stopped, parents before children.
@@ -1478,17 +1478,10 @@ shader files, records the parent chain each one needs in order to run, and carri
 from Field API name (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to
 the lessons that use it.
 
-These are working notes rather than a polished sample pack: the boxes are a working document, and a
-few of them are mid-thought. Where running a lesson as saved does not do what its name suggests,
-this page says so: the sampler-array count in the multi-texture lesson and the never-firing printf
-guard are both noted above rather than silently corrected.
-
-Every image is a capture: the box is run against a live Vulkan renderer and its native window
-photographed. Sections with no image say why underneath the code, and the reasons are worth
-scanning if you are choosing what to try first — several lessons want two boxes wired together,
-some want a file or a tool the repository does not ship, and a few produce something that is not
-a picture at all. For the two-box shape, the `threebox` and `spin_glass`
-[agent transcripts](agent_transcripts.md) are runnable versions.
+Each image is the lesson's own output, captured from a live Vulkan window. Sections without an
+image say why under the code: the lesson needs two boxes wired together, needs a file or tool the
+repository does not ship, or produces something other than a picture. For the two-box shape, the
+`threebox` and `spin_glass` [agent transcripts](agent_transcripts.md) are runnable versions.
 
 ## Fabricate Renderer
 

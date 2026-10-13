@@ -175,6 +175,7 @@ class ServerSurfaceLedgerTest {
     private val guardAtoms = mapOf(
         "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
         "refuseUnlessLocalDocsClient" to listOf("loopback"),
+        "patchySameSite" to listOf("same-site"),
     )
     private val guardOrder = listOf("loopback", "same-site")
 

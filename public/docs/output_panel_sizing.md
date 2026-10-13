@@ -1,7 +1,8 @@
 # How an output panel decides its size
 
 This page explains how Field sizes the output panels in a box, and what to do when one comes out
-the wrong size. If you are sizing a 3D viewer, see also
+the wrong size. For what panels and channels are, and how to open, close and remove them, start
+with [Box Output](box_output.md). If you are sizing a 3D viewer, see also
 [Field's 3D output](three_output.md#which-renderer-draws-this).
 
 Call `display` in a box and the box grows a grey disclosure to hold the output. That is an output
@@ -277,8 +278,10 @@ has its own copy of the fill-frame test
 None of the above applies to a panel a person has resized. `rememberSize` sets `userSized`
 (`src/commonMain/resources/outputareas2.js:986#st.userSized = true`) the first time a panel's
 measured size differs from its stored size by more than 2px, and every auto-size entry point is
-gated on it. `autosize="fixed"` in the channel spec turns the whole mechanism off up front
-(`src/commonMain/resources/outputareas2.js:940#autoSizeModeForDisclosure(d) !== "fixed"`).
+gated on it. A panel marked `fixed` skips the mechanism from the start
+(`src/commonMain/resources/outputareas2.js:940#autoSizeModeForDisclosure(d) !== "fixed"`). There
+is no channel option for this: Field marks its own fixed-height viewers that way, which are the 3D
+viewer, the 2D lines viewer and embedded property editors.
 
 Because `userSized` sticks, a sizing problem only shows on a panel nobody has resized: a fresh box,
 or a docs capture.
@@ -300,7 +303,7 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
     window cap, a zoomed canvas and a drag, and checks the width and height after each.
     The lazy-output and value-viewer frames are not under any geometry check, and the two
     `isFillWidthIframe` copies are never compared. The full census is in
-    `dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md`.
+    [OUTPUT_PANEL_SIZING_COVERAGE.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md).
 
 ## See also
 

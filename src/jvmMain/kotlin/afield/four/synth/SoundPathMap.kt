@@ -172,7 +172,7 @@ object SoundPathMap {
      *
      * Ordered the way a person reads it: the things that make sound, then the things that carry it
      * away, then the things that feed it. Every `page = null` is a real gap and is named as one on
-     * [PAGE] rather than omitted in silence — the most striking is `audio-patch-seam`, the one
+     * [PAGE] rather than omitted in silence — the most striking is `box-audio`, the one
      * signature the whole realtime stack is built on, which no published page mentions at all.
      */
     val PATHS: List<SoundPath> = listOf(
@@ -274,7 +274,7 @@ object SoundPathMap {
             id = "dough-engine",
             // onSeam was `false` here, and `sound_paths.md` said this path "could be wrapped, and has
             // not been". It is wrapped: `DoughAudioSink : StereoNode()` is in this same file and
-            // `parkDough` registers `audio(sink)` with the engine. Found by the `seam-stereo-node`
+            // `parkDough` registers `audio(sink)` with the engine. Found by the `box-audio-stereo-node`
             // marker on its first run, not by reading — the claim had been false since the day the
             // map was written. `DoughEngine` is still the entry point, because the wasm module is
             // what this path *is*; the wrapper is how it reaches the seam.
@@ -291,14 +291,13 @@ object SoundPathMap {
 
         SoundPath(
             id = "pat-spatial",
-            // The one source in this map that is REALTIME while sitting on the seam, and the reason
-            // is worth keeping next to the flag: the synthesis is a render thread's, and the audio
-            // thread's whole job is a bounded copy out of a ring. `PatSpatialLaunch.advanceOffline`
-            // looks like an offline half and is not one — it consumes what the render thread has
-            // already produced, in real time, so a caller asking for a second of audio waits a
-            // second. That is what keeps this path off the docs `audio=` fence contract; see
-            // `public/docs/pat_spatial.md#why-there-is-no-clip-of-the-output`.
-            role = Role.MAKES, timing = Timing.REALTIME, onSeam = true,
+            // BOTH, with one entry point: the synthesis is a render thread's, and the audio thread's
+            // whole job is a bounded copy out of a ring. That thread is paced by the ring, not by a
+            // clock, so a loop that pulls the bank with no device drains it as fast as it renders —
+            // `HeadTrackedPatternDemo` measures 7x to 30x realtime — and a pose given as a function
+            // of the render frame (`listenerPoseAt`) makes the render repeat exactly.
+            // `PatSpatialHeadTrackedDocs` is that render behind an `audio=` fence.
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
             needs = "the dough WebAssembly build, plus Steam Audio's libphonon, which is not " +
                 "committed — ./gradlew fetchSteamAudioNatives",
             channels = "binaural stereo: one HRTF-placed mono source per `spat` tag, summed",
@@ -326,7 +325,7 @@ object SoundPathMap {
         // ── things that take samples out ───────────────────────────────────────────────────
 
         SoundPath(
-            id = "audio-patch-seam",
+            id = "box-audio",
             role = Role.TAKES_OUT, timing = Timing.REALTIME, onSeam = true,
             needs = "an audio output device",
             channels = "stereo",
@@ -453,12 +452,12 @@ object SoundPathMap {
      *
      * It went from seven to eight on 2026-09-16, and that arrival is the failure this file's
      * markers exist to catch happening a second time and being caught: `PatSpatial.kt` opens no
-     * device and encodes no WAV, exactly like `FaustPoly.kt` before it, and the `seam-stereo-node`
+     * device and encodes no WAV, exactly like `FaustPoly.kt` before it, and the `box-audio-stereo-node`
      * marker reported it — along with `PatSpatialEngineSmoke.kt`'s control node — rather than the
      * count sitting at seven while a whole spatialised pattern voice shipped undeclared.
      *
      * Nine on 2026-09-28: `pure-data`, a libpd instance per launch, reached through `PdNode`. It was
-     * declared in the change that added it, because the `seam-stereo-node` marker would not let the
+     * declared in the change that added it, because the `box-audio-stereo-node` marker would not let the
      * change pass without it.
      * Ten after Csound arrived: its CsoundNode joins the same seam, and its orchestra/score can
      * also render offline. This was caught by the marker before the map declared the route.
@@ -532,7 +531,7 @@ object SoundPathMap {
                 "in one process. Three is already more than anybody expected",
             roots = listOf("src/jvmMain/kotlin"),
             declaredIn = mapOf(
-                "src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt" to "audio-patch-seam",
+                "src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt" to "box-audio",
                 "src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt" to "spatial-openal",
                 "src/jvmMain/kotlin/afield/four/texture/video/AudioPlayer.kt" to "video-audio",
             ),
@@ -555,7 +554,7 @@ object SoundPathMap {
             roots = listOf("src/jvmMain/kotlin"),
             declaredIn = mapOf(
                 "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt" to "pat-stand-in",
-                "src/jvmMain/kotlin/afield/four/synth/PatMiniNotation.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/PatMiniNotation.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/CaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/LambdaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt" to "pat-stand-in",
@@ -569,10 +568,10 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/PetriSparksDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
-                // The only producer here that cannot render the path it belongs to. It publishes
-                // the *mono source* pat-spatial hands Steam Audio, because the spatialisation is
-                // realtime-only and its binary is not committed; see PatSpatialSoundDocs' KDoc.
+                // The *mono source* pat-spatial hands Steam Audio, which needs no uncommitted binary.
                 "src/jvmMain/kotlin/afield/four/synth/PatSpatialSoundDocs.kt" to "pat-spatial",
+                // The binaural output itself; needs libphonon (./gradlew fetchSteamAudioNatives).
+                "src/jvmMain/kotlin/afield/four/synth/PatSpatialHeadTrackedDocs.kt" to "pat-spatial",
             ),
         ),
         Marker(
@@ -592,7 +591,7 @@ object SoundPathMap {
             ),
         ),
         Marker(
-            id = "seam-stereo-node",
+            id = "box-audio-stereo-node",
             literal = "override fun generateStereo(",
             meaning = "a new node on the seam. This is the marker the other four did not have: a " +
                 "sample source that opens no device and encodes no WAV carries none of them, which " +

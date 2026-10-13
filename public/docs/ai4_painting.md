@@ -52,21 +52,21 @@ is identical to the hung dusk painting:
 
 ## Browsing the saved paintings
 
-The Studio's `branchState("canvas", ...)` registration also enables **States** in the
-AI chat. A completed request adds a node and its saved canvas snapshot. While the first
-painting is still being made, the tree is empty: the agent's intermediate looks are
-progress images, not saved conversation branches. The open tree updates when a turn finishes.
+Because the Studio saves its canvas with the conversation (see
+[What the box defines](#what-the-box-defines)), the AI chat's **States** tree works here too. Each
+completed request adds a node with its saved canvas. While the first painting is still being made,
+the tree is empty: the agent's looks along the way are progress images, not saved states. The open
+tree updates when a request finishes.
 
-Select an earlier node to inspect its conversation and snapshot identity. The cyan
-**current** circle stays at the active conversation position; browsing another node
-leaves the easel alone. **Reference in chat** inserts a compact reference so AI4 can
+Select an earlier node to see its conversation and which saved canvas it holds. The cyan
+**current** circle stays where the conversation is; browsing another node leaves the easel alone. **Reference in chat** inserts a compact reference so AI4 can
 retrieve that state's recorded contents when asked. **Keep for comparison**, followed
 by **Discuss differences** on another node, prepares references to both in your draft.
 The inspector shows saved text and ancestry; it does not reconstruct a canvas preview.
 
 For a named alternative, ask AI4 to fork a saved state under a name such as
-*Harbour at dusk*. `StateForkRequest` creates the saved child without activating it.
-`StateReadRequest` can then retrieve it by that exact name. Continue the alternative
+*Harbour at dusk*. The fork is saved without switching the easel to it, and AI4 can read it
+back later by that exact name. Continue the alternative
 with the existing `/branches` and `/branch <number>` commands, which restore the
 Studio's canvas as well as its conversation. [Browsing saved states](aiFeatures.md#browsing-saved-states)
 describes the tools and how other documents expose their own histories.
@@ -234,8 +234,7 @@ has the rest of what `agentExtension` can add.
     on black and adds the captions; it draws nothing on the frames. The docs build cannot remake
     them, since that needs a model. Hanging the canvas after the rewind and after the switch back
     gave PNGs byte-identical to the hung dusk and night paintings, which is how the restores were
-    checked. That run also found three bugs, fixed before these figures were made; they are
-    recorded in `dev_docs/ai/AI4_PI_LESSONS.md`.
+    checked.
 
 ??? aside "How the kept-tools figure was made"
     One live run on 2026-10-08, OpenAI `gpt-6.1-sol`, in a fresh Studio: the three requests were sent

@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="layer_stack_trace" index="1" -->
 
 ```edn [field-box id="layer_stack_trace" role="properties"]
-{"id" "layer_stack_trace" "index" 1 "name" "polytope_layer_stack_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope_layer_stack_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "layer_stack_trace_code_.kt" "lines" 48 "characters" 2234 "sha256" "b87b77eb3a82ecbe1570b9dcbff905a47b8242eaa16b2e01ec05a3f5a922844f"}]}
+{"id" "layer_stack_trace" "index" 1 "name" "polytope_layer_stack_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope_layer_stack_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "layer_stack_trace_code_.kt" "lines" 47 "characters" 2202 "sha256" "a091ed20b489fbfe2a847b5f83e248058fc357c0052ce76d3f1c07b579d7b8e5"}]}
 ```
 
 ```kotlin [field-property box="layer_stack_trace" name="code" path="layer_stack_trace_code_.kt"]
@@ -39,7 +39,6 @@ import afield.four.fabricated.*
 import afield.four.util.Camera
 import afield.manifold.*
 import afield.stdlib.linalg.Vector3f
-import afield.stdlib.polytope.*
 import afield.examples.chain.PhotoToSolidChain
 import java.io.File
 prop<PathTracingRenderer>(tracer)

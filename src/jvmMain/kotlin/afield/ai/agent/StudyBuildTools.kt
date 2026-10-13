@@ -44,8 +44,9 @@ data class WaitStudyBuildRequest(val boxId: String, val name: String, val jobId:
 @JsonClassDescription("Start one derived stage from its current frozen inputs. Returns success, the job handle and, when it waited, the outcome. Use it when a stage is not current and the task needs its result. When called directly, waitSeconds=600 starts and observes completion in one call with streamed progress; zero returns immediately. Inside a tool program, start long work with waitSeconds=0 and return the job handle, then observe it separately: a nested wait cannot extend the program's deadline. Supply the stage fingerprint from the latest inspect. Missing/stale dependency results, closed gates and competing builds are refused. If observation times out, use WaitStudyBuildRequest on the same returned job; do not equate accepted/queued with successful or current. Continue editing while it runs: outdated results cannot become current. e.g. stageId = `bake`, expectedFingerprint from InspectStudyBuildsRequest, waitSeconds = 600.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME, ToolEffect.FILESYSTEM_WRITE])
 data class StartStudyBuildRequest(val boxId: String, val name: String, val stageId: String, val expectedFingerprint: String, val waitSeconds: Double = 0.0,
-    @JsonPropertyDescription("Optional parameters for this one attempt that the stage documents, such as a job to resume, e.g. {\"resume\": \"<jobId>\"}. Recorded in the attempt and part of its fingerprint; a later start does not reuse it, so pass it again when it still applies.")
-    val request: Map<String, String> = emptyMap())
+    // A JSON string rather than a Map: openai-java's strict schema refuses an object with no named properties.
+    @JsonPropertyDescription("Optional parameters for this one attempt that the stage documents, as a JSON object in a string, such as a job to resume, e.g. `{\"resume\": \"<jobId>\"}` or `{\"budgetSeconds\": 60}`. Empty for none. Recorded in the attempt and part of its fingerprint; a later start does not reuse it, so pass it again when it still applies. Anything but a JSON object fails with success=false.")
+    val request: String = "")
 
 @JsonClassDescription("Request cancellation of a specific build. Returns success=true once the request is recorded; an unknown runner or job fails with success=false. Use it when a running build is no longer wanted, e.g. jobId = `job-3` after its inputs changed. Publication is revoked; a running native operation may need time to finish. Poll the same job until terminal instead of treating a cancellation request as proof it stopped. Previous successful results and attempt history are retained.")
 @AgentToolMeta("builds", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.CONTROL_RUNTIME, ToolEffect.FILESYSTEM_WRITE])
@@ -112,7 +113,7 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
         check(!info.readOnly && !ReadOnlyDocuments.global) { "This document is read-only" }
         require(q.waitSeconds.isFinite() && q.waitSeconds in 0.0..900.0) { "waitSeconds must be finite and between 0 and 900" }
         val binding = runner(q.boxId, q.name)
-        val job = binding.builds.start(q.stageId, q.expectedFingerprint, q.request)
+        val job = binding.builds.start(q.stageId, q.expectedFingerprint, decodeBuildRequest(q.request))
         reportBuildProgress(reportProgress, binding.builds.stages().first { it.id == job.stage }.label, job)
         if (q.waitSeconds > 0) wait(WaitStudyBuildRequest(q.boxId, q.name, job.id, q.waitSeconds), reportProgress)
         else StudyBuildToolResult(true, "Build accepted; wait on this job for its final outcome.", jobDetails(binding, job))
@@ -304,6 +305,16 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
         "fingerprint" to stage.fingerprint, "current" to stage.current?.let { jobSummary(it, stage) },
         "latest" to stage.latest?.let { jobSummary(it, stage) }, "reason" to stage.reason, "blockedBy" to stage.blockedBy,
         "inputHelp" to stage.inputHelp, "resultNotes" to stage.resultNotes)
+}
+
+/** [StartStudyBuildRequest.request]: blank is no request, otherwise a JSON object whose values reach the worker as JSON types. */
+internal fun decodeBuildRequest(json: String): Map<String, Any?> {
+    if (json.isBlank()) return emptyMap()
+    val node = try { aiToolMapper.readTree(json) } catch (e: com.fasterxml.jackson.core.JacksonException) {
+        throw IllegalArgumentException("request must be a JSON object, e.g. {\"resume\": \"<jobId>\"}; it did not parse: ${e.originalMessage}")
+    }
+    require(node != null && node.isObject) { "request must be a JSON object, e.g. {\"resume\": \"<jobId>\"}, not ${node?.nodeType?.name?.lowercase() ?: "nothing"}" }
+    return aiToolMapper.convertValue(node)
 }
 
 private val ACTIVE_BUILD = setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING)

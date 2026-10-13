@@ -66,6 +66,65 @@ pub extern "C" fn field_paint_canvas_new_v2(
     })
 }
 
+/// The canvas's stereo warp (`paint::field::warp`): a `gw × gh` grid, nodes `cell` canvas units
+/// apart, of where each node is on the reference canvas (`at`, canvas units, x then y). Null `at`
+/// clears it. With `ground` set, the ground (and a watercolour sheet) is pulled back through it now:
+/// give it to a fresh canvas, before any paint.
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_warp(c: *mut Studio, gw: i32, gh: i32, cell: f32, at: *const f32, ground: i32) -> i32 {
+    guard(-1, || {
+        let st = unsafe { &mut *c };
+        if at.is_null() {
+            st.canvas.set_warp(None);
+            return Ok(0);
+        }
+        if gw < 2 || gh < 2 {
+            return Err(format!("a warp needs a grid of at least 2 × 2 nodes, not {gw} × {gh}"));
+        }
+        let f = st.canvas.frame();
+        let s = f.scale;
+        let v = unsafe { std::slice::from_raw_parts(at, 2 * (gw * gh) as usize) };
+        let nodes: Vec<[f32; 2]> = v.chunks_exact(2).map(|p| [p[0] * s, p[1] * s]).collect();
+        let warp = paint::field::warp::Warp::new(gw as usize, gh as usize, cell * s, nodes)
+            .ok_or("a warp's cell is some length and its places are finite")?;
+        if ground != 0 {
+            if let Some(w) = st.water.as_mut() {
+                w.warp_sheet(&warp, f.x0, f.y0);
+            }
+        }
+        st.canvas.set_warp(Some(warp));
+        if ground != 0 {
+            st.canvas.warp_ground();
+        }
+        Ok(0)
+    })
+}
+
+/// Give the next stroke its world arc, mm, at each of its `n` input points (`Canvas::set_stroke_arc`).
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_stroke_arc(c: *mut Studio, arc: *const f32, n: i32) -> i32 {
+    guard(-1, || {
+        if n < 1 {
+            return Err("a stroke's arc needs a value for each point".into());
+        }
+        let a = unsafe { std::slice::from_raw_parts(arc, n as usize) }.to_vec();
+        if a.iter().any(|v| !v.is_finite()) || a.windows(2).any(|w| w[1] < w[0]) {
+            return Err("a stroke's arc is finite and never goes back".into());
+        }
+        unsafe { &mut *c }.canvas.set_stroke_arc(a);
+        Ok(0)
+    })
+}
+
+/// Key the next stroke's noise on `noise` rather than on its order (`Canvas::set_stroke_noise`).
+#[unsafe(no_mangle)]
+pub extern "C" fn field_paint_stroke_noise(c: *mut Studio, noise: u32) -> i32 {
+    guard(-1, || {
+        unsafe { &mut *c }.canvas.set_stroke_noise(noise);
+        Ok(0)
+    })
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_canvas_engine(c: *const Studio) -> i32 {
     guard(-1, || Ok(unsafe { &*c }.engine() as i32))
@@ -102,8 +161,8 @@ fn tool_of(kind: i32, width: f32) -> Result<Tool, String> {
 
 /// The number of construction values `field_paint_brush_new_v2` reads and `field_paint_brush_config`
 /// writes after kind and width: bristles, length, stiffness, hair, run, lay, pickup, push, splay,
-/// ragged, point.
-pub const BRUSH_CONFIG: usize = 11;
+/// ragged, point, tooth.
+pub const BRUSH_CONFIG: usize = 12;
 
 /// A brush built from preset `kind` (0..5 as `field_paint_brush_new`, 6 the stippler) at `width`,
 /// then any of its construction changed: `cfg` holds `BRUSH_CONFIG` values, NaN keeping the
@@ -143,6 +202,7 @@ pub(crate) fn held_from(kind: i32, width: f32, seed: u64, engine: i32, cfg: *con
     set(v[8], &mut t.splay);
     set(v[9], &mut t.ragged);
     set(v[10], &mut t.point);
+    set(v[11], &mut t.tooth);
     t.validate()?;
     Ok(Held::new(t, seed).with_engine(engine_of(engine)?))
 }
@@ -160,7 +220,7 @@ pub extern "C" fn field_paint_brush_config(h: *const Held, out: *mut f32) -> i32
             paint::Kind::Rigger => 4.0,
             paint::Kind::Blender => 5.0,
         };
-        let v = [kind, t.width, t.bristles as f32, t.length, t.stiffness, t.hair, t.run, t.lay, t.pickup, t.push, t.splay, t.ragged, t.point];
+        let v = [kind, t.width, t.bristles as f32, t.length, t.stiffness, t.hair, t.run, t.lay, t.pickup, t.push, t.splay, t.ragged, t.point, t.tooth];
         unsafe { std::slice::from_raw_parts_mut(out, v.len()) }.copy_from_slice(&v);
         Ok(0)
     })
@@ -190,14 +250,11 @@ fn paint_of(r: f32, g: f32, b: f32, hiding: f32, scatter: f32, stiff: f32, dryin
     let base = if scatter.is_finite() {
         Paint::km([number(r, "red")?, number(g, "green")?, number(b, "blue")?], scatter.max(1e-6), stiff)
     } else {
-        Paint::new([number(r, "red")?, number(g, "green")?, number(b, "blue")?], within(hiding, 1e-4..=1.0, "hiding")?, stiff)
+        Paint::new([number(r, "red")?, number(g, "green")?, number(b, "blue")?], number(hiding, "hiding")?, stiff)
     };
     let oil = if oil.is_finite() { oil } else { 1.0 };
-    if oil < 0.0 {
-        return Err(format!("oil is a richness, 0 or more, not {oil}"));
-    }
     Ok(Paint {
-        solvent: if turps.is_finite() { within(turps, 0.0..=1.0, "turps (a share of the paint's volume)")? } else { 0.0 },
+        solvent: if turps.is_finite() { turps } else { 0.0 },
         oil,
         ..base.with_drying(number(drying, "drying")?.max(1e-4)).with_thinner(if thinner.is_finite() { thinner } else { 0.0 })
     })
@@ -219,7 +276,7 @@ pub extern "C" fn field_paint_brush_load_v2(
         }
         let p = paint_of(r, g, b, hiding, scatter, stiff, drying, thinner, turps, oil)?;
         // more than a full load overloads the brush, as a dip into a deep pile does
-        let amount = number(amount, "amount")?.max(0.0);
+        let amount = number(amount, "amount")?;
         let share = if share.is_finite() { within(share, 0.0..=1.0, "the dipped share of the brush")? } else { 1.0 };
         let side = if side.is_finite() { within(side, -1.0..=1.0, "the dipped side (-1 one edge, 1 the other)")? } else { 0.0 };
         let streak = if streak.is_finite() { within(streak, 0.0..=1.0, "streak")? } else { 0.0 };
@@ -415,10 +472,12 @@ pub extern "C" fn field_paint_rag_refold(c: *mut Studio, g: *mut Rag) -> i32 {
 }
 
 /// Wipe the rag along `n` points at the pressures in `pressure` (spread along the path; none is
-/// 0.5). One point is a blot. Returns the mm³ of paint lifted.
+/// 0.5). One point is a blot. Returns the mm³ of paint lifted: negative where a loaded rag left
+/// more than it took up, smearing paint it carried onto paint that is setting; NaN on failure.
 #[unsafe(no_mangle)]
 pub extern "C" fn field_paint_rag_wipe(c: *mut Studio, g: *mut Rag, xy: *const f32, n: i32, pressure: *const f32, pn: i32, seed: u64) -> f64 {
-    guard(-1.0, || {
+    // (NaN on failure: a loaded rag on setting paint can leave more than it lifts, a negative lift)
+    guard(f64::NAN, || {
         if n < 1 {
             return Err("a wipe needs at least one point".into());
         }

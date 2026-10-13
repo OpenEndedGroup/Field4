@@ -4128,7 +4128,7 @@ with(Functions) {
 
 The grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly: the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error.
 
-The order the accepted mutations arrive in is what each operator is for. The first one accepted is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step — no amount of `jitter` on a cosine's leaves would have got there. From then on `jitter` and `nudge` walk the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit, because the small `complexityWeight` rewards the simpler graph. The search stops improving well inside its 120-iteration bound, and every draw goes through one seeded `Random`, so it reproduces exactly. The iteration-by-iteration trace is in `dev_docs/FUNCTIONS_EVOLVE_MEASUREMENTS.md`.
+The order the accepted mutations arrive in is what each operator is for. The first one accepted is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step — no amount of `jitter` on a cosine's leaves would have got there. From then on `jitter` and `nudge` walk the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit, because the small `complexityWeight` rewards the simpler graph. The search stops improving well inside its 120-iteration bound, and every draw goes through one seeded `Random`, so it reproduces exactly. The iteration-by-iteration trace is in [`FUNCTIONS_EVOLVE_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/FUNCTIONS_EVOLVE_MEASUREMENTS.md).
 
 #### Variety generation: novelty search for a *set* of gestures
 
@@ -4264,8 +4264,7 @@ Finally, rewrite rules run during graph copy, bottom-up through children before 
 - Start with the simplest constructor that expresses the shape you want, then add modulation, windowing, and clipping only as needed.
 - When a stack starts to feel hard to read, draw intermediate stages side by side instead of hiding everything inside the final curve.
 
-## Where the pictures come from
-
-Every figure on this page is executed by the docs build: each is a `diffstatic_runner` fence, so the
-image or video under it is that box's own output, drawn with `lines(...)` like everything else here.
-The convergence video is a launched box whose `loop` runs one truncated `fitGradient` per frame.
+??? aside "Where the pictures come from"
+    Every figure on this page is executed by the docs build: each is a `diffstatic_runner` fence, so the
+    image or video under it is that box's own output, drawn with `lines(...)` like everything else here.
+    The convergence video is a launched box whose `loop` runs one truncated `fitGradient` per frame.

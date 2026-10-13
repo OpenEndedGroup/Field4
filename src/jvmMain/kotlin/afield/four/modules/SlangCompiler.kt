@@ -52,19 +52,31 @@ object SlangCompiler {
                 return listOf(SlangExecutableCandidate(it, "-Dafield.slangc"))
             }
 
+        // Pinned, then the Vulkan SDK's, then PATH: a stray PATH slangc is often an old one
+        // (a 2025 /usr/local/bin/slangc shadowed both the 2026 SDK and the pin on a dev machine).
         return buildList {
-            if (isWindows) add(SlangExecutableCandidate("slangc.exe", "PATH"))
-            add(SlangExecutableCandidate("slangc", "PATH"))
-            // The optional build prepares the compiler in the shared native cache. Its local
-            // pointer avoids duplicating platform/cache/version rules in the live compiler.
-            // Explicit overrides above remain authoritative; an installed PATH compiler wins.
+            // prepareSlangCompiler (first-run setup) or buildLearnedShaders fetches the pinned
+            // compiler into the shared native cache; the local pointer keeps platform/cache/version
+            // rules out of the live compiler.
             val prepared = Path.of("build/lighting/slangc.path")
             if (Files.isRegularFile(prepared)) {
                 prepared.readText(StandardCharsets.UTF_8).trim().takeIf { it.isNotEmpty() }?.let {
-                    add(SlangExecutableCandidate(it, "buildLearnedShaders"))
+                    add(SlangExecutableCandidate(it, "pinned (build/lighting/slangc.path)"))
                 }
             }
+            vulkanSdkSlangc()?.let { add(SlangExecutableCandidate(it, "Vulkan SDK")) }
+            if (isWindows) add(SlangExecutableCandidate("slangc.exe", "PATH"))
+            add(SlangExecutableCandidate("slangc", "PATH"))
         }
+    }
+
+    // The LunarG SDK has shipped slangc in bin/ since 1.3.296. On macOS, use the same SDK Field
+    // loads Vulkan from; elsewhere VULKAN_SDK is the SDK's own convention.
+    private fun vulkanSdkSlangc(): String? {
+        val bin = afield.four.util.Options.macVulkanSdk?.resolve("bin")
+            ?: System.getenv("VULKAN_SDK")?.takeIf { it.isNotBlank() }?.let { java.io.File(it, "bin") }
+            ?: return null
+        return bin.resolve(if (isWindows) "slangc.exe" else "slangc").takeIf { it.canExecute() }?.absolutePath
     }
 
     fun compileToGlsl(source: String, kind: ShaderKind, entryFileName: String): String {
@@ -148,13 +160,21 @@ object SlangCompiler {
         }
     }
 
+    @Volatile
+    private var announced: String? = null
+
     private fun <T> withResolvedExecutable(block: (SlangExecutableCandidate) -> T): T {
         val candidates = executableCandidates()
         var lastMissingExecutable: IOException? = null
 
         for (candidate in candidates) {
             try {
-                return block(candidate)
+                return block(candidate).also {
+                    if (announced != candidate.command) {
+                        announced = candidate.command
+                        lprintln("info,slang", "slangc: ${candidate.command} (${candidate.description})")
+                    }
+                }
             } catch (e: IOException) {
                 if (isExecutableNotFound(e)) {
                     lastMissingExecutable = e
@@ -340,8 +360,8 @@ object SlangCompiler {
             Searched:
             $searched$detail
 
-            Run ./gradlew buildLearnedShaders to prepare Field's optional pinned compiler,
-            install a compiler on PATH,
+            Run ./gradlew prepareSlangCompiler (or pick "Slang shader compiler" in ./field.sh --setup)
+            to fetch Field's pinned compiler, install the Vulkan SDK or a compiler on PATH,
             or set an explicit override with `AFIELD_SLANGC` or `-Dafield.slangc=/full/path/to/slangc`.
         """.trimIndent()
     }

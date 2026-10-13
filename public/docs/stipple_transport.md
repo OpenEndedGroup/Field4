@@ -152,7 +152,7 @@ particles and a coordinate lattice deform. Its code is also in
 ![Actual Field output with a loaded conditioned model, separate transport/movie sliders, integration-step control, and a transported particle sheet and grid](assets/stipple_transport/field-sheet.png)
 
 The [changed-control capture](assets/stipple_transport/field-controls.png) shows the same Field
-example after browser callbacks set `t=.5` and `tau=.75`.
+example with the sliders set to `t=.5` and `tau=.75`.
 
 Neither time is clamped in the query API. Freeze, scrub, reverse and extrapolate by changing these
 arguments; negative times and overshoot are extrapolation experiments. Different geometry can use
@@ -187,8 +187,8 @@ Outputs include reloadable `.pt` checkpoints, portable JSON models, figures, opt
 measurements. Temporal models can also bake velocities onto a spatial/transport/movie lattice in
 NPZ format, ready for a shader to read; nothing in Field reads it on the GPU yet.
 
-Library examples, format layout and the full control reference are in the repository's
-`optional/transport-flow/README.md`, and `run.py --help` lists the command-line controls.
+Library examples, format layout and the full control reference are in
+[optional/transport-flow/README.md](https://github.com/OpenEndedGroup/Field4/blob/main/optional/transport-flow/README.md), and `run.py --help` lists the command-line controls.
 
 ## Blending network weights
 

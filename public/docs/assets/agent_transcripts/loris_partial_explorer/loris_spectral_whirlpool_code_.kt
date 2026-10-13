@@ -1,7 +1,3 @@
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.path
 import kotlin.math.PI
 import kotlin.math.pow

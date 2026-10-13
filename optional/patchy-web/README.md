@@ -8,7 +8,8 @@ Patchy itself. Regenerate it from a Patchy checkout with:
 git diff --binary b81377425c54ff9eca30e180d3cd9e6f11eb17da -- \
   CMakeLists.txt src/app/field_web_bridge.cpp src/app/field_web_bridge.hpp \
   src/app/main.cpp src/ui/dialog_utils.cpp src/ui/main_window_ai_selection.cpp \
-  src/ui/main_window_actions.cpp src/ui/main_window_theme.cpp src/ui/theme_palette.cpp \
+  src/ui/main_window_actions.cpp src/ui/main_window_docks.cpp \
+  src/ui/main_window_sessions.cpp src/ui/main_window_theme.cpp src/ui/theme_palette.cpp \
   > /path/to/Field4/optional/patchy-web/field-bridge.patch
 ```
 

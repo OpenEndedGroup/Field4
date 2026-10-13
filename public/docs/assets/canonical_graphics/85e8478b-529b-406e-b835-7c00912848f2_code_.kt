@@ -10,8 +10,8 @@ camera.at = vec(-10,2,0)
 
 var tick = 0.0
 loop {
-    module.camera.m = camera.m()
-    module.camera.p = camera.p()
+    module.view.m = camera.m()
+    module.view.p = camera.p()
     if (tick<3) {
         camera.at = vec(-10*Math.sin(tick),0,10*Math.cos(tick))
         for(n in 1 .. 100) {

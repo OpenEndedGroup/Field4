@@ -4,8 +4,6 @@
 
 Each editor holds one number over time. A box can have as many as it likes, one per parameter.
 
-If you would rather draw the change in one gesture than place keys, the drawing layer does that too: draw a line, or a hairpin, inside a frame on the canvas, and the box reads it back as a value at each moment by cutting it with `notation.space(...).vertical(t)`. See [Reading by intersection](drawing_and_notation.md#reading-by-intersection), and the [crescendo](drawing_and_notation.md#a-crescendo) drawn there with a pen.
-
 !!! note "Not the Keyframer"
     This page is about a single hand-drawn curve. [Keyframes: capturing, persisting and replaying live state](keyframer_examples.md) is something else: it snapshots a whole set of a box's values and blends between the snapshots.
 
@@ -371,6 +369,8 @@ Beyond those five, every editor has fifty more types, grouped in the key menu:
 - **Spline**: curves that look past the segment to the keys either side. Catmull-Rom passes smoothly through every key; the four TCB (Kochanek–Bartels) variants change its tension, bias and continuity, for a tighter curve, a looser one, one that overshoots, or one with a corner at the key. Monotone (Fritsch–Carlson) and Steffen never overshoot: between two keys the curve stays between their values, which is what you want for anything that must not run past its target.
 - **Shape**: smoothstep, smootherstep, cosine, sigmoid, approach (fast, then easing in), slow middle, a damped spring that settles on the next key, and 4 or 8 steps.
 - **Noise**: gradient noise around the straight line between the keys, pinned to both of them: noise, busy (several octaves), drift (slow), and jitter (a new value sixteen times a segment). The noise is the same every time for the same keys.
+
+The key menu lists them all:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="760x1000" clip-selector=".kfm" hide-toasts=true screenshot="assets/keyframe_editor/library_menu.png" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-library-menu" alt="The key menu, tall: the key's time and value fields; the five built-in types; under EASE a table of ten families, sine, quad, cubic, quart, quint, expo, circ, back, elastic and bounce, each with small icons for in, out and in-out, the elastic and bounce icons visibly wobbling; under SPLINE, Catmull-Rom, TCB tense, TCB loose, TCB overshoot, TCB corner, monotone and Steffen; under SHAPE, smoothstep, smootherstep, cosine, sigmoid, approach, slow middle, spring, 4 steps and 8 steps; under NOISE, noise, busy, drift and jitter; then Copy, Cut, Duplicate, Paste here, Lock, Delete and Frame curve"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
@@ -766,11 +766,18 @@ ui.pause(3200)
 
 ## Start from a working document
 
-Open **keyframe_editor** from Starting points on the welcome screen, or [open it here](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn). It has four boxes from this page: `brightness`, the curve and meter (launch it to play), `shape`, the five key types, `smoothed`, the curve with a smoothed overlay that follows your edits, and `custom types`, an overshoot, a wobble and some chaos written with `interpolant(...)`. Its entry in [Agent transcripts](agent_transcripts.md#keyframe_editor) lists what each box does.
+Open **keyframe_editor** from Starting points on the welcome screen, or [open it here](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn). It has four boxes from this page:
+
+- `brightness`: the curve and meter (launch it to play);
+- `shape`: the five key types;
+- `smoothed`: the curve with a smoothed overlay that follows your edits;
+- `custom types`: an overshoot, a wobble and some chaos written with `interpolant(...)`.
+
+Its entry in [Agent transcripts](agent_transcripts.md#keyframe_editor) lists what each box does.
 
 ## See also
 
 - [Values over time: interpolants & keyframes](interpolants_examples.md): easing a value to a target from code, rather than drawing it.
 - [Visualizers & Controls](visualizers.md): sliders, multisliders and the gesture recorder, for values you set or perform rather than draw.
 - [Keyframes: capturing, persisting and replaying live state](keyframer_examples.md): snapshots of a box's whole state.
-- [Drawing and Notation](drawing_and_notation.md#reading-by-intersection): a value over time drawn freehand on the canvas, and read back by cutting it.
+- [Drawing and Notation](drawing_and_notation.md#reading-by-intersection): to draw the change in one gesture rather than place keys, draw a line or a hairpin inside a frame on the canvas, and the box reads it back as a value at each moment with `notation.space(...).vertical(t)`, as the [crescendo](drawing_and_notation.md#a-crescendo) there does.

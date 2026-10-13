@@ -3,6 +3,8 @@ package afield.paint
 
 import afield.Rect
 import afield.graphics.FLine
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
 import afield.stdlib.Vec4
 import afield.util.PngEncoder
 import java.lang.foreign.MemorySegment
@@ -63,6 +65,25 @@ class PaintCanvas internal constructor(
     private var nextSeed = seed * 7919 + 1
     internal fun seed(): Long = nextSeed++
 
+    /**
+     * The seed for the [i]th native call of one operation: from [seed] when the caller gives one, so
+     * the same seed reaches the same call however many operations came before; otherwise the next of
+     * this canvas's own sequence.
+     */
+    private fun seedFor(seed: Long?, i: Int = 0): Long = if (seed == null) seed() else mix(seed, i)
+
+    /** Key the next native stroke's noise on [seed] (and its piece [i]) when the caller gives one. */
+    private fun keyNoise(seed: Long?, i: Int = 0) {
+        if (seed != null) PaintNative.strokeNoise(handle, (mix(seed, i) xor (mix(seed, i) ushr 32)).toInt())
+    }
+
+    private fun mix(seed: Long, i: Int): Long {
+        var z = seed + 0x9E3779B97F4A7C15uL.toLong() * (i + 1)
+        z = (z xor (z ushr 30)) * -0x40a7b892e31b1a47L
+        z = (z xor (z ushr 27)) * -0x6b2fb644ecceee15L
+        return z xor (z ushr 31)
+    }
+
     /** The engine version this canvas paints with ([PaintCanvas.invoke]'s `engine`). */
     val paintEngine: Int by lazy { PaintNative.canvasEngine(handle) }
 
@@ -72,8 +93,8 @@ class PaintCanvas internal constructor(
      * changes how it is made — how many bristles, how stiff and long, how much it lays and picks
      * up — from the kind's own.
      */
-    fun brush(kind: BrushKind = BrushKind.Round, width: Double = 20.0, point: Double = 0.0, config: BrushConfig? = null): PaintBrush =
-        PaintBrush(kind, width, point, seed(), paintEngine, config)
+    fun brush(kind: BrushKind = BrushKind.Round, width: Double = 20.0, point: Double = 0.0, config: BrushConfig? = null, seed: Long? = null): PaintBrush =
+        PaintBrush(kind, width, point, seedFor(seed), paintEngine, config)
 
     /**
      * A painting knife whose blade is [width] canvas units long (a 4 cm blade is about 60 units on a
@@ -82,7 +103,7 @@ class PaintCanvas internal constructor(
     fun knife(width: Double = 60.0): PaintKnife = PaintKnife(PaintNative.knifeNew(width.toFloat()))
 
     /** A clean cotton rag bunched into a pad [width] canvas units across. */
-    fun rag(width: Double = 50.0): PaintRag = PaintRag(PaintNative.ragNew(width.toFloat(), seed()))
+    fun rag(width: Double = 50.0, seed: Long? = null): PaintRag = PaintRag(PaintNative.ragNew(width.toFloat(), seedFor(seed)))
 
     /**
      * A graphite pencil of [grade] ("2H", "HB", "4B", ...) for [draw], [sketch] and [hatch]. Hard
@@ -117,8 +138,10 @@ class PaintCanvas internal constructor(
         along: Boolean = false,
         swell: List<Double> = emptyList(),
         spacing: Double = 2.0,
+        seed: Long? = null,
     ): PaintCanvas = apply {
-        for (xy in polylines(line, spacing)) {
+        for ((i, xy) in polylines(line, spacing).withIndex()) {
+            keyNoise(seed, i)
             PaintNative.drag(handle, brush.handle, xy, pressure.start.toFloat(), pressure.endInclusive.toFloat(),
                 shake.toFloat(), attack.toFloat(), release.toFloat(), along, swell)
         }
@@ -131,8 +154,9 @@ class PaintCanvas internal constructor(
      */
     fun touch(
         brush: PaintBrush, x: Double, y: Double, pressure: Double = 0.6,
-        drag: Pair<Double, Double> = 0.0 to 0.0, twist: Double = 0.0, angle: Double = 0.0,
+        drag: Pair<Double, Double> = 0.0 to 0.0, twist: Double = 0.0, angle: Double = 0.0, seed: Long? = null,
     ): PaintCanvas = apply {
+        keyNoise(seed)
         val (dx, dy) = drag
         PaintNative.touch(handle, brush.handle, toCanvasX(x).toFloat(), toCanvasY(y).toFloat(), pressure.toFloat(),
             toCanvasDx(dx).toFloat(), toCanvasDy(dy).toFloat(), twist.toFloat(), angle.toFloat())
@@ -260,29 +284,32 @@ class PaintCanvas internal constructor(
      */
     fun knife(
         line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.6..0.6,
-        angle: Double? = null, lay: Boolean = true, lift: Double = 0.3,
+        angle: Double? = null, lay: Boolean = true, lift: Double = 0.3, seed: Long? = null,
     ): PaintCanvas = apply {
-        for (xy in polylines(line, 2.0)) {
+        for ((i, xy) in polylines(line, 2.0).withIndex()) {
+            keyNoise(seed, i)
             PaintNative.knifeDrag(handle, knife.handle, xy, pressure.start.toFloat(), pressure.endInclusive.toFloat(),
                 angle?.toFloat() ?: Float.NaN, lay, lift.toFloat())
         }
     }
 
     /** Scrape wet paint off along [line] with [knife], pressed hard: [knife] with nothing laid. */
-    fun scrape(line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.9..0.9, angle: Double? = null): PaintCanvas =
-        knife(line, knife, pressure, angle, lay = false, lift = 0.0)
+    fun scrape(line: FLine, knife: PaintKnife, pressure: ClosedFloatingPointRange<Double> = 0.9..0.9, angle: Double? = null, seed: Long? = null): PaintCanvas =
+        knife(line, knife, pressure, angle, lay = false, lift = 0.0, seed = seed)
 
     /**
      * Wipe [rag] along every subpath of [line] at [pressure] (one value, or values spread along the
      * path). The pad rests on the tops of the weave and reaches into the hollows as it is pressed,
-     * and the cloth touches in creases, so a wipe lifts in streaks. Returns the mm³ of paint lifted.
+     * and the cloth touches in creases, so a wipe lifts in streaks. Returns the mm³ of paint lifted:
+     * negative where a loaded rag left more than it took up, smearing its paint onto paint that is
+     * setting.
      */
-    fun wipe(line: FLine, rag: PaintRag, pressure: List<Double> = listOf(0.6)): Double =
-        polylines(line, 2.0).sumOf { PaintNative.ragWipe(handle, rag.handle, it, pressure, seed()) }
+    fun wipe(line: FLine, rag: PaintRag, pressure: List<Double> = listOf(0.6), seed: Long? = null): Double =
+        polylines(line, 2.0).withIndex().sumOf { (i, xy) -> PaintNative.ragWipe(handle, rag.handle, xy, pressure, seedFor(seed, i)) }
 
     /** Press [rag] down at ([x], [y]) and lift it off: a crumpled patch. Returns the mm³ lifted. */
-    fun blot(rag: PaintRag, x: Double, y: Double, pressure: Double = 0.6): Double =
-        PaintNative.ragWipe(handle, rag.handle, floatArrayOf(toCanvasX(x).toFloat(), toCanvasY(y).toFloat()), listOf(pressure), seed())
+    fun blot(rag: PaintRag, x: Double, y: Double, pressure: Double = 0.6, seed: Long? = null): Double =
+        PaintNative.ragWipe(handle, rag.handle, floatArrayOf(toCanvasX(x).toFloat(), toCanvasY(y).toFloat()), listOf(pressure), seedFor(seed))
 
     /** Dip [rag]'s face in spirits, [amount] 0..1: damp, it lifts paint nearly to the ground until the spirits evaporate. */
     fun dampen(rag: PaintRag, amount: Double = 0.5): PaintCanvas = apply { PaintNative.ragDip(handle, rag.handle, amount.toFloat()) }
@@ -326,15 +353,30 @@ class PaintCanvas internal constructor(
      * pulled), and a flat's wide axis is held across the path unless [roll] (degrees) fixes it. Where
      * the path doubles back on itself by more than 120°, as in scrubbing, the handle keeps its lean
      * and the brush is pushed back.
+     *
+     * With [facets] the hand moves in straight chords [facets] canvas units long instead of
+     * following the curve: at each corner the handle turns at once, the hairs whip round, and a curve
+     * comes out beaded, a bead a corner. A polyline [line] does this by itself at its own corners.
      */
     fun gesture(
         line: FLine, speed: Double = 80.0, pressure: List<Double> = listOf(0.6), gap: Double = 0.3, spacing: Double = 4.0,
-        tilt: Double = 0.0, lean: Boolean = true, roll: Double? = null,
+        tilt: Double = 0.0, lean: Boolean = true, roll: Double? = null, facets: Double? = null,
     ): TimedGesture {
+        require(facets == null || facets > 0.0) { "facets are chords of some length: above 0 canvas units" }
         require(speed > 0.0) { "a gesture moves: speed must be above 0 mm/s" }
         val out = mutableListOf<TimedGesture.Sample>()
         var t = 0.0
-        for (piece in line.pieces()) {
+        for ((pi, whole) in line.pieces().withIndex()) {
+            val piece = facets?.let { f ->
+                val corners = whole.sampleByDistance(toLineUnits(f).toFloat())
+                if (corners.size < 2) whole else FLine().apply {
+                    moveTo(corners[0].x.toDouble(), corners[0].y.toDouble())
+                    for (c in corners.drop(1)) lineTo(c.x.toDouble(), c.y.toDouble())
+                    // (the samples stop short of the end unless the length divides evenly)
+                    val end = whole.cursor().also { it.setD(it.lengthD()) }.position()
+                    if (Math.hypot((end.x - corners.last().x).toDouble(), (end.y - corners.last().y).toDouble()) > 1e-3 * f) lineTo(end.x.toDouble(), end.y.toDouble())
+                }
+            } ?: whole
             val pts = piece.sampleByDistance(toLineUnits(spacing).toFloat())
             if (pts.isEmpty()) continue
             var arc = 0.0
@@ -356,11 +398,153 @@ class PaintCanvas internal constructor(
                 val heading = hand?.let { prev -> val turn = (raw - prev + 540.0) % 360.0 - 180.0; if (abs(turn) > REVERSAL_DEGREES) prev else prev + turn } ?: raw
                 hand = heading
                 out += TimedGesture.Sample(p.x.toDouble(), p.y.toDouble(), t + arcs[i] * mmPerUnit / speed, profile(pressure, u),
-                    tilt = tilt, azimuth = if (lean) heading else 0.0, roll = roll ?: (heading + 90.0))
+                    tilt = tilt, azimuth = if (lean) heading else 0.0, roll = roll ?: (heading + 90.0), s = arcs[i] * mmPerUnit, piece = pi)
             }
             t += arc * mmPerUnit / speed
         }
         return TimedGesture(out)
+    }
+
+    /**
+     * A [TimedGesture] along a line in three dimensions, as one eye of a stereo pair sees it:
+     * [project] takes a point of [line] (world units, z included) to this canvas's FLine coordinates.
+     * Lengths, speed and the pressure profile are the world's, measured along the line in 3D at
+     * [mmPerWorld] mm to a world unit: each sample carries its world arc ([TimedGesture.Sample.s]),
+     * so the two eyes' gestures press, pause and run out at the same places along the line however
+     * foreshortened each sees it. Each subpath is one movement of the hand ([gap] seconds apart);
+     * straight segments are sampled every [spacing] world units, curves finely enough to follow.
+     * The handle's [tilt], [lean] and [roll] are as in [gesture], its heading taken on this canvas.
+     */
+    fun gesture3d(
+        line: FLine, project: (Vec3) -> Vec2, mmPerWorld: Double = 1.0, speed: Double = 80.0,
+        pressure: List<Double> = listOf(0.6), gap: Double = 0.3, spacing: Double = 2.0,
+        tilt: Double = 0.0, lean: Boolean = true, roll: Double? = null,
+    ): TimedGesture {
+        require(speed > 0.0) { "a gesture moves: speed must be above 0 mm/s" }
+        require(mmPerWorld > 0.0 && spacing > 0.0) { "a world unit and the sampling are some length" }
+        val out = mutableListOf<TimedGesture.Sample>()
+        var t = 0.0
+        for ((pi, pts) in polylines3d(line, spacing).withIndex()) {
+            if (pts.size < 2) continue
+            val arcs = DoubleArray(pts.size)
+            for (i in 1 until pts.size) arcs[i] = arcs[i - 1] + dist3(pts[i], pts[i - 1])
+            val total = arcs.last()
+            val xy = pts.map(project)
+            if (out.isNotEmpty()) t += gap
+            var hand: Double? = null
+            for (i in pts.indices) {
+                val (a, b) = if (i + 1 < xy.size) xy[i] to xy[i + 1] else xy[(i - 1).coerceAtLeast(0)] to xy[i]
+                val raw = Math.toDegrees(Math.atan2(toCanvasDy((b.y - a.y).toDouble()), toCanvasDx((b.x - a.x).toDouble())))
+                val heading = hand?.let { prev -> val turn = (raw - prev + 540.0) % 360.0 - 180.0; if (abs(turn) > REVERSAL_DEGREES) prev else prev + turn } ?: raw
+                hand = heading
+                val sMm = arcs[i] * mmPerWorld
+                out += TimedGesture.Sample(xy[i].x.toDouble(), xy[i].y.toDouble(), t + sMm / speed, profile(pressure, if (total > 0) arcs[i] / total else 0.0),
+                    tilt = tilt, azimuth = if (lean) heading else 0.0, roll = roll ?: (heading + 90.0), s = sMm, piece = pi)
+            }
+            t += total * mmPerWorld / speed
+        }
+        require(out.isNotEmpty()) { "a gesture needs a line of some length" }
+        return TimedGesture(out)
+    }
+
+    /**
+     * Make this canvas one eye of a stereo pair whose other eye (the reference) is painted without a
+     * warp: from now on texture keyed on the canvas's places (a pencil's grain, tacky paint's grab)
+     * is looked up where [warp] says each place is on the reference. With [ground], the ground (its
+     * weave, priming and colour, or a watercolour sheet's relief and fibres) is pulled back through
+     * it too, as if made on the reference, so give the warp to a fresh canvas, before any paint.
+     * [warp]'s canvas units are this canvas's own (1000 across), not its `view`'s.
+     */
+    fun warp(warp: StereoWarp, ground: Boolean = true): PaintCanvas = apply {
+        PaintNative.warp(handle, warp.columns, warp.rows, warp.cell.toFloat(), warp.at, ground)
+    }
+
+    /**
+     * The [StereoWarp] through [pins] (this canvas's FLine coordinates, its `view` if it has one),
+     * solved over this canvas ([StereoWarp.solve]), and given to it ([warp]).
+     */
+    fun warp(pins: List<StereoWarp.Pin>, cell: Double = 10.0, frame: Boolean = true, ground: Boolean = true): StereoWarp {
+        val inUnits = pins.map { p -> StereoWarp.Pin(Vec2(toCanvasX(p.here.x.toDouble()).toFloat(), toCanvasY(p.here.y.toDouble()).toFloat()),
+            Vec2(toCanvasX(p.there.x.toDouble()).toFloat(), toCanvasY(p.there.y.toDouble()).toFloat())) }
+        return StereoWarp.solve(inUnits, aspect, cell, frame).also { warp(it, ground) }
+    }
+
+    /** Hand a movement's world arc (from its start, mm, at each sample) to the next native stroke. */
+    private fun keyArc(piece: List<TimedGesture.Sample>) {
+        if (piece.any { !it.s.isFinite() }) return
+        val s0 = piece.first().s
+        PaintNative.strokeArc(handle, FloatArray(piece.size) { (piece[it].s - s0).toFloat() })
+    }
+
+    private fun canvasXy(piece: List<TimedGesture.Sample>): FloatArray = toCanvas(piece.flatMap { listOf(it.x, it.y) })
+
+    /** A movement's pressure at 16 knots evenly spaced along its world arc. */
+    private fun swellOf(piece: List<TimedGesture.Sample>): List<Double> {
+        val s0 = piece.first().s
+        val len = (piece.last().s - s0).takeIf { it.isFinite() && it > 0 }
+        return List(16) { k ->
+            val u = k / 15.0
+            if (len == null) piece[(u * (piece.size - 1)).toInt()].pressure
+            else {
+                val i = piece.indexOfFirst { (it.s - s0) / len >= u }.let { if (it < 1) maxOf(it, 0) else it }
+                val a = piece[(i - 1).coerceAtLeast(0)]; val b = piece[i]
+                val f = if (b.s > a.s) (((u * len) - (a.s - s0)) / (b.s - a.s)).coerceIn(0.0, 1.0) else 0.0
+                a.pressure + (b.pressure - a.pressure) * f
+            }
+        }
+    }
+
+    /**
+     * Drag [brush] through [gesture] (e.g. from [gesture3d]): each movement of the hand one stroke,
+     * pressed as the gesture presses, and what is laid out along it following its world arc.
+     */
+    fun stroke(gesture: TimedGesture, brush: PaintBrush, shake: Double = 1.0, attack: Double = 0.08, release: Double = 0.15,
+               along: Boolean = false, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyNoise(seed, i); keyArc(piece)
+            PaintNative.drag(handle, brush.handle, canvasXy(piece), 1f, 1f, shake.toFloat(), attack.toFloat(), release.toFloat(), along, swellOf(piece))
+        }
+    }
+
+    /** Pull [knife] through [gesture], as along a line, its tears and pressure following its world arc. */
+    fun knife(gesture: TimedGesture, knife: PaintKnife, angle: Double? = null, lay: Boolean = true, lift: Double = 0.3, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyNoise(seed, i); keyArc(piece)
+            PaintNative.knifeDrag(handle, knife.handle, canvasXy(piece), piece.first().pressure.toFloat(), piece.last().pressure.toFloat(),
+                angle?.toFloat() ?: Float.NaN, lay, lift.toFloat())
+        }
+    }
+
+    /** Wipe [rag] through [gesture], its creases, wander and pressure following its world arc. Returns the mm³ lifted. */
+    fun wipe(gesture: TimedGesture, rag: PaintRag, seed: Long? = null): Double =
+        gesture.pieces.withIndex().filter { it.value.size >= 2 }.sumOf { (i, piece) ->
+            keyArc(piece)
+            PaintNative.ragWipe(handle, rag.handle, canvasXy(piece), swellOf(piece), seedFor(seed, i))
+        }
+
+    /**
+     * Sketch along [gesture] ([sketch]), its searching strokes laid out along its world arc: a
+     * stereo pair's eyes break and wander the strokes at the same places along the line. The
+     * pressure is the gesture's mean.
+     */
+    fun sketch(gesture: TimedGesture, pencil: Pencil, passes: Int = 3, wander: Double = 2.0, tremor: Double = 0.4, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyArc(piece)
+            pencil.worn += PaintNative.sketchLine(handle, pencil, canvasXy(piece), piece.map { it.pressure }.average().toFloat(), passes,
+                toCanvasLength(wander).toFloat(), toCanvasLength(tremor).toFloat(), seedFor(seed, i))
+        }
+    }
+
+    /** Draw [gesture] with [pencil], its tremor and pressure following its world arc. */
+    fun draw(gesture: TimedGesture, pencil: Pencil, tremor: Double = 0.4, ruler: Boolean = false, seed: Long? = null): PaintCanvas = apply {
+        for ((i, piece) in gesture.pieces.withIndex()) {
+            if (piece.size < 2) continue
+            keyArc(piece)
+            pencil.worn += PaintNative.drawLine(handle, pencil, canvasXy(piece), swellOf(piece), toCanvasLength(tremor).toFloat(), !ruler, ruler, seedFor(seed, i))
+        }
     }
 
     private fun profile(p: List<Double>, u: Double): Double = when (p.size) {
@@ -377,16 +561,16 @@ class PaintCanvas internal constructor(
      * Drag a watercolour [brush] along [line] at [speed] mm/s ([gesture]), the water on the sheet
      * flowing, sinking in and evaporating as it goes. What it laid and took up comes back.
      */
-    fun wash(line: FLine, brush: WaterBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0): WashReport =
-        wash(gesture(line, speed, pressure), brush)
+    fun wash(line: FLine, brush: WaterBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0, seed: Long? = null): WashReport =
+        wash(gesture(line, speed, pressure), brush, seed)
 
     /** Drag a watercolour [brush] through a timed [gesture]. */
-    fun wash(gesture: TimedGesture, brush: WaterBrush): WashReport {
+    fun wash(gesture: TimedGesture, brush: WaterBrush, seed: Long? = null): WashReport {
         val xytp = gesture.xytp()
         for (i in xytp.indices step 4) {
             xytp[i] = toCanvasX(xytp[i].toDouble()).toFloat(); xytp[i + 1] = toCanvasY(xytp[i + 1].toDouble()).toFloat()
         }
-        val r = PaintNative.wbrushStroke(handle, brush.handle, xytp, seed())
+        val r = PaintNative.wbrushStroke(handle, brush.handle, xytp, seedFor(seed))
         return WashReport(r[0], r[1], r[2], r[3], r[4])
     }
 
@@ -394,17 +578,33 @@ class PaintCanvas internal constructor(
      * A brush of [kind] whose hairs move ([DynamicBrush]): [hairs] guide hairs of [segments]
      * segments each, made as [config] says (its stiffness, length, point and so on).
      */
-    fun dynamicBrush(kind: BrushKind = BrushKind.Round, width: Double = 30.0, hairs: Int = 32, segments: Int = 5, config: BrushConfig? = null): DynamicBrush =
-        DynamicBrush(PaintNative.dbrushNew(handle, kind.code, width.toFloat(), (config ?: BrushConfig()).values(), hairs, segments, seed()), kind)
+    fun dynamicBrush(kind: BrushKind = BrushKind.Round, width: Double = 30.0, hairs: Int = 32, segments: Int = 5, config: BrushConfig? = null, seed: Long? = null): DynamicBrush =
+        DynamicBrush(PaintNative.dbrushNew(handle, kind.code, width.toFloat(), (config ?: BrushConfig()).values(), hairs, segments, seedFor(seed)), kind)
 
-    /** Drag a [DynamicBrush] through a timed [gesture], in oil or watercolour as it was last loaded. */
-    fun stroke(gesture: TimedGesture, brush: DynamicBrush): DynamicReport {
+    /**
+     * Drag a [DynamicBrush] through a timed [gesture], in oil or watercolour as it was last loaded.
+     *
+     * [splay], [splayFan], [splayScatter], [cohesion] and [clumping] (as in [DynamicBrush.set]), when
+     * given, vary along the stroke: each is asked its value at every sample of the gesture and eased
+     * between them, and the brush has its own values back after. A value keyed on the sample's world
+     * length ([TimedGesture.Sample.s], as [PaintNoise.along] is) lies at the same places along a
+     * movement in both eyes of a stereo pair.
+     */
+    fun stroke(gesture: TimedGesture, brush: DynamicBrush, seed: Long? = null,
+               splay: ((TimedGesture.Sample) -> Double)? = null, splayFan: ((TimedGesture.Sample) -> Double)? = null,
+               splayScatter: ((TimedGesture.Sample) -> Double)? = null, cohesion: ((TimedGesture.Sample) -> Double)? = null,
+               clumping: ((TimedGesture.Sample) -> Double)? = null): DynamicReport {
+        for ((name, f) in listOf("splay" to splay, "splay fan" to splayFan, "splay scatter" to splayScatter, "cohesion" to cohesion, "clumping" to clumping)) {
+            if (f != null) PaintNative.dbrushVary(brush.handle, name, FloatArray(gesture.samples.size) { f(gesture.samples[it]).toFloat() })
+        }
         val v = FloatArray(gesture.samples.size * 7)
         gesture.samples.forEachIndexed { i, s ->
             v[7 * i] = toCanvasX(s.x).toFloat(); v[7 * i + 1] = toCanvasY(s.y).toFloat(); v[7 * i + 2] = s.t.toFloat(); v[7 * i + 3] = s.pressure.toFloat()
             v[7 * i + 4] = Math.toRadians(s.tilt).toFloat(); v[7 * i + 5] = Math.toRadians(s.azimuth).toFloat(); v[7 * i + 6] = Math.toRadians(s.roll).toFloat()
         }
-        val r = PaintNative.dbrushStroke(handle, brush.handle, v, seed())
+        keyNoise(seed)
+        keyArc(gesture.samples)
+        val r = PaintNative.dbrushStroke(handle, brush.handle, v, seedFor(seed))
         return DynamicReport(r[0].toLong(), r[1], r[2].toLong(), r[3], r[4], r[5], r[6], r[7])
     }
 
@@ -412,8 +612,8 @@ class PaintCanvas internal constructor(
      * Drag a [DynamicBrush] along [line] at [speed] mm/s, tilted [tilt] degrees and leaning the way it
      * goes ([gesture] makes the timing and the handle's pose).
      */
-    fun stroke(line: FLine, brush: DynamicBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0, tilt: Double = 30.0): DynamicReport =
-        stroke(gesture(line, speed, pressure, tilt = tilt), brush)
+    fun stroke(line: FLine, brush: DynamicBrush, pressure: List<Double> = listOf(0.6), speed: Double = 80.0, tilt: Double = 30.0, seed: Long? = null): DynamicReport =
+        stroke(gesture(line, speed, pressure, tilt = tilt), brush, seed)
 
     /** Seconds of hair contact per pixel in the last [DynamicBrush] stroke (row major), or `null` before one. */
     fun contactMap(): FloatArray? = PaintNative.contactMap(handle, pixelSize.first * pixelSize.second)
@@ -509,24 +709,24 @@ class PaintCanvas internal constructor(
      *
      * @param ruler a ruled line: straight between the points, no tremor.
      */
-    fun draw(line: FLine, pencil: Pencil, pressure: List<Double> = listOf(0.6), tremor: Double = 0.4, ruler: Boolean = false): PaintCanvas = apply {
-        for (xy in polylines(line, 2.0)) {
-            pencil.worn += PaintNative.drawLine(handle, pencil, xy, pressure, toCanvasLength(tremor).toFloat(), !ruler, ruler, seed())
+    fun draw(line: FLine, pencil: Pencil, pressure: List<Double> = listOf(0.6), tremor: Double = 0.4, ruler: Boolean = false, seed: Long? = null): PaintCanvas = apply {
+        for ((i, xy) in polylines(line, 2.0).withIndex()) {
+            pencil.worn += PaintNative.drawLine(handle, pencil, xy, pressure, toCanvasLength(tremor).toFloat(), !ruler, ruler, seedFor(seed, i))
         }
     }
 
     /** [draw] with one pressure for the whole line. */
-    fun draw(line: FLine, pencil: Pencil, pressure: Double, tremor: Double = 0.4, ruler: Boolean = false): PaintCanvas =
-        draw(line, pencil, listOf(pressure), tremor, ruler)
+    fun draw(line: FLine, pencil: Pencil, pressure: Double, tremor: Double = 0.4, ruler: Boolean = false, seed: Long? = null): PaintCanvas =
+        draw(line, pencil, listOf(pressure), tremor, ruler, seed)
 
     /**
      * Sketch along [line]: [passes] light strokes per subpath, each wandering about [wander]
      * canvas units off the path and broken into pieces, the way a searching line is drawn.
      */
-    fun sketch(line: FLine, pencil: Pencil, pressure: Double = 0.5, passes: Int = 3, wander: Double = 2.0, tremor: Double = 0.4): PaintCanvas = apply {
-        for (xy in polylines(line, 2.0)) {
+    fun sketch(line: FLine, pencil: Pencil, pressure: Double = 0.5, passes: Int = 3, wander: Double = 2.0, tremor: Double = 0.4, seed: Long? = null): PaintCanvas = apply {
+        for ((i, xy) in polylines(line, 2.0).withIndex()) {
             pencil.worn += PaintNative.sketchLine(handle, pencil, xy, pressure.toFloat(), passes,
-                toCanvasLength(wander).toFloat(), toCanvasLength(tremor).toFloat(), seed())
+                toCanvasLength(wander).toFloat(), toCanvasLength(tremor).toFloat(), seedFor(seed, i))
         }
     }
 
@@ -805,4 +1005,40 @@ fun pngRow(canvases: List<PaintCanvas>, gap: Int = 12, background: Int = 0xfffff
         x0 += pw + gap
     }
     return PngEncoder.encode(out, w, h)
+}
+
+internal fun dist3(a: Vec3, b: Vec3): Double = Math.sqrt(((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y) + (a.z - b.z) * (a.z - b.z)).toDouble())
+internal fun lerp3(a: Vec3, b: Vec3, u: Double): Vec3 =
+    Vec3((a.x + (b.x - a.x) * u).toFloat(), (a.y + (b.y - a.y) * u).toFloat(), (a.z + (b.z - a.z) * u).toFloat())
+
+/** Each subpath of [line] as points in 3D: straight segments every [spacing], curves finely. */
+internal fun polylines3d(line: FLine, spacing: Double): List<List<Vec3>> {
+    val out = mutableListOf<MutableList<Vec3>>()
+    var start: Vec3? = null
+    fun begin(p: Vec3) { out += mutableListOf(p); start = p }
+    fun to(p: Vec3) {
+        val from = out.last().last()
+        val n = kotlin.math.ceil(dist3(p, from) / spacing).toInt().coerceAtLeast(1)
+        for (k in 1..n) out.last() += lerp3(from, p, k.toDouble() / n)
+    }
+    for (node in line.nodes) {
+        val p = node.storage[0]
+        when (node) {
+            is FLine.MoveTo -> begin(p)
+            is FLine.LineTo -> if (out.isEmpty()) begin(p) else to(p)
+            is FLine.CubicTo -> {
+                if (out.isEmpty()) { begin(p); continue }
+                val p0 = out.last().last(); val c1 = node.storage[1]; val c2 = node.storage[2]
+                val n = (kotlin.math.ceil((dist3(c1, p0) + dist3(c2, c1) + dist3(p, c2)) / spacing).toInt() * 2).coerceAtLeast(4)
+                for (k in 1..n) {
+                    val u = k.toDouble() / n; val v = 1 - u
+                    val (w0, w1, w2, w3) = listOf(v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u)
+                    out.last() += Vec3((p0.x * w0 + c1.x * w1 + c2.x * w2 + p.x * w3).toFloat(), (p0.y * w0 + c1.y * w1 + c2.y * w2 + p.y * w3).toFloat(),
+                        (p0.z * w0 + c1.z * w1 + c2.z * w2 + p.z * w3).toFloat())
+                }
+            }
+            else -> start?.let { if (out.isNotEmpty()) to(it) }
+        }
+    }
+    return out
 }

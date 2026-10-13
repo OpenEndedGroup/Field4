@@ -80,7 +80,7 @@ SUBJECT_PAGES = {
 }
 
 # A section a reader reaches by asking for it.  `## Which code on this page runs` carries
-# a pinned `{ #which-code-on-this-page-runs }` anchor on both pages that have it, so it is
+# a pinned `{ #which-code-on-this-page-runs }` anchor where it appears (onnx.md), so it is
 # a link target, not something a reader wades through -- the same argument as the
 # provenance table row and the collapsed aside.
 PROVENANCE_HEADINGS = re.compile(
@@ -89,7 +89,7 @@ PROVENANCE_HEADINGS = re.compile(
 
 # Verified false positives, kept live rather than left as noise.  Re-checked every firing.
 KEEPS = {
-    ("puppet_browser.md", 14): "a docs build is one of three example users of the "
+    ("puppet_browser.md", 12): "a docs build is one of three example users of the "
                                "renderer-free control half -- a capability list, and the "
                                "sentence is about what a reader can do with it",
 }

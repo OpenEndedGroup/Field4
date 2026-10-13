@@ -143,10 +143,10 @@ operations:
                   val f = i.toFloat() / steps
                   if (byArcLength) c.setD(total * f) else c.setT(span * f)
                   val p = c.position()
-                  // normal2() is the tangent rotated 90 degrees and is NOT normalised — its
+                  // normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
                   // magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
                   // ticks come out as a fan hundreds of units long.
-                  val n = c.normal2()
+                  val n = c.normal2D()
                   val len = kotlin.math.hypot(n?.x ?: 0f, n?.y ?: 1f).coerceAtLeast(1e-6f)
                   val nx = (n?.x ?: 0f) / len
                   val ny = (n?.y ?: 1f) / len

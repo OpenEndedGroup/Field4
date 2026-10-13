@@ -1,7 +1,10 @@
 package afield.ml
 
 import afield.Box
+import afield.ContextResolution
 import afield.HasOutput
+import afield.PropertyDependencies
+import afield.ReactiveRuns
 import afield.ai.KotlinSourceIndex
 import afield.graphics.FLine
 import afield.graphics.lines
@@ -549,6 +552,24 @@ object FieldMLRuntimePrelude {
             "setProp" to native2("setProp") { name, value ->
                 writeProp(requireBox(box, "setProp"), name.asString("property name"), value)
             },
+            "propUp" to native1("propUp") { name ->
+                readReactiveProp(requireBox(box, "propUp"), name.asString("property name"), pull = true)
+            },
+            "propDown" to native1("propDown") { name ->
+                readReactiveProp(requireBox(box, "propDown"), name.asString("property name"), pull = false)
+            },
+            "propUpDown" to native1("propUpDown") { name ->
+                readReactiveProp(requireBox(box, "propUpDown"), name.asString("property name"), pull = true)
+            },
+            "setPropUp" to native2("setPropUp") { name, value ->
+                writeProp(requireBox(box, "setPropUp"), name.asString("property name"), value)
+            },
+            "setPropDown" to native2("setPropDown") { name, value ->
+                writeProp(requireBox(box, "setPropDown"), name.asString("property name"), value, notifyReaders = true)
+            },
+            "setPropUpDown" to native2("setPropUpDown") { name, value ->
+                writeProp(requireBox(box, "setPropUpDown"), name.asString("property name"), value, notifyReaders = true)
+            },
             // `rootProp` differs from `prop` only in where the slot lives: on the document root, so every
             // box in the document shares the one value wherever it is read from (props.kt:88).
             "rootProp" to native1("rootProp") { name ->
@@ -603,10 +624,27 @@ object FieldMLRuntimePrelude {
      * `doResync = true` is the difference between a slot and a *visible* slot — it is what queues the
      * property for the next UI resync, so the inspector shows what a FieldML box wrote.
      */
-    private fun writeProp(target: Box, name: String, value: FieldMLValue): FieldMLValue {
+    private fun readReactiveProp(target: Box, name: String, pull: Boolean): FieldMLValue {
+        var found = inheritedPropertyRaw(target, name)
+        var detail = ""
+        if (found == null && pull) {
+            val outcome = ReactiveRuns.pull(Box.context.get() ?: target, target, name) {
+                inheritedPropertyRaw(target, name) != null
+            }
+            found = inheritedPropertyRaw(target, name)
+            detail = outcome.describe(name)
+        }
+        return hostToFieldMLValue(found ?: error(missingPropMessage(target, name) + detail))
+    }
+
+    private fun writeProp(target: Box, name: String, value: FieldMLValue, notifyReaders: Boolean = false): FieldMLValue {
         val host = fieldMLValueToHost(value)
             ?: error("setProp cannot store Unit in '$name' — an absent slot is how `prop` and `once` spell 'not set yet'")
-        target.setPropertyRaw(name, narrowToTheWidthAlreadyThere(inheritedPropertyRaw(target, name), host), true)
+        val old = target.getPropertyRaw(name)
+        val stored = narrowToTheWidthAlreadyThere(inheritedPropertyRaw(target, name), host)
+        target.setPropertyRaw(name, stored, true)
+        PropertyDependencies.recordWrite(target, name, ContextResolution.Mechanism.INHERITANCE)
+        if (notifyReaders && old != stored) ReactiveRuns.noteChange(target, name)
         return value
     }
 

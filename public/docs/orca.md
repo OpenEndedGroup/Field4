@@ -64,7 +64,7 @@ ORCA's MIDI output still goes to a MIDI device if the browser has one, as it doe
 
 ## Writing to it
 
-The other direction is just as direct. `write(x, y, text)` puts glyphs on the grid with their top
+`write(x, y, text)` puts glyphs on the grid with their top
 left at `(x, y)`; a newline in `text` starts the next row back at `x`. Setting `grid` replaces the
 whole thing. `command(...)` runs anything ORCA's command line takes, and `play()`, `stop()` and
 `bpm` are there by name. Added to the first example, these three lines speed it up, put a third
@@ -245,9 +245,8 @@ with **Cmd-4**, and ask it to play. This is the request, and the first 45 second
 
 AI4 reads the board, writes a bass line, a `#HATS#` section and an `#ANSWER#` section beside the
 arpeggio, takes a look, checks that all three channels are sending notes, and leaves it playing.
-Every write returns the grid as text, so it sees what it did: in an earlier session it read there
-that a clock it had placed had overwritten its own trigger cell, and moved the clock one column. It
-never touches the box's code; the music does not stop while it works. The second request, *"Now make
+Every write returns the grid as text, so it sees what it did and can correct a cell it overwrote.
+It never touches the box's code, and the music does not stop while it works. The second request, *"Now make
 it more syncopated, push the tempo to 140, and give the answer a few rests"*, it answered with
 ORCA's euclidean operator, `U`, driving the bass and the hats, and rests written into the answer's
 track:

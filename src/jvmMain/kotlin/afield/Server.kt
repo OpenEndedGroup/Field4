@@ -32,6 +32,8 @@ import afield.server.refuseUnlessSameSiteDocsClient
 import afield.server.installFieldAudioProxyRoutes
 import afield.server.installSignalViewerRoutes
 import afield.server.installDocsAnnotationRoutes
+import afield.server.installTerminalRoutes
+import afield.server.docsAccessPolicy
 import afield.server.SEC_FETCH_SITE_HEADER
 import afield.server.DocsAccessPolicy
 import afield.server.docsFlagEnabled
@@ -814,16 +816,31 @@ private fun fieldUserConfigDir(): File {
     }
 }
 
-private fun workspacePreferenceFile(): File =
+/** The machine-wide record every checkout shared before it became per checkout; still read as a fallback. */
+private fun machineWorkspacePreferenceFile(): File =
     File(fieldUserConfigDir(), "last-workspace.txt")
+
+/**
+ * Where this checkout remembers its last workspace: `AFIELD_WORKSPACE_PREFERENCE_FILE` (set by
+ * `field.sh`/`field.ps1` to `.afield-local/last-workspace.txt` beside the script), else that same
+ * file when the server runs from a checkout (`./gradlew runJvm`), else the machine-wide file.
+ */
+private fun workspacePreferenceFile(): File {
+    System.getenv("AFIELD_WORKSPACE_PREFERENCE_FILE")?.trim()?.takeIf { it.isNotEmpty() }?.let { return File(it) }
+    val checkout = File(System.getProperty("user.dir"))
+    if (File(checkout, "field.sh").isFile) return File(checkout, ".afield-local/last-workspace.txt")
+    return machineWorkspacePreferenceFile()
+}
 
 private fun workspaceRestartLogFile(): File =
     File(fieldUserConfigDir(), "workspace-restart.log")
 
 private fun readPersistedWorkspacePath(): String? =
-    runCatching {
-        workspacePreferenceFile().takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.takeIf { it.isNotBlank() }
-    }.getOrNull()
+    listOf(workspacePreferenceFile(), machineWorkspacePreferenceFile()).distinct().firstNotNullOfOrNull { file ->
+        runCatching {
+            file.takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
 
 private fun shouldPersistWorkspacePath(): Boolean {
     val setting = System.getenv("AFIELD_SKIP_WORKSPACE_PERSIST")?.trim()?.lowercase(Locale.US)
@@ -3153,10 +3170,11 @@ class Server {
                 val cmd = Json.decodeFromJsonElement<SlideShowCommand>(message.payload!!)
                 val info = thisSessionInfo.get()
 
-                // Find the box with an active slideshow
-                val slideShowBox = info.boxes.values.firstOrNull { it.getPropertyRaw("slideShow") != null }
-                if (slideShowBox != null) {
-                    val slideShow = slideShowBox.getPropertyRaw("slideShow") as? SlideShowInstance
+                // The slideshow whose step is on screen in this document; before any step has been
+                // shown, fall back to the first box holding one (a document may hold several guides).
+                val slideShow = SlideShowInstance.activeIn(info.root)
+                    ?: info.boxes.values.firstNotNullOfOrNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
+                run {
                     if (slideShow != null) {
                         GlobalScope.launch {
                             when {
@@ -4780,6 +4798,17 @@ class Server {
                             }
                         }
 
+                        // Text search over the documentation Markdown (titles, headings, code
+                        // examples, prose) for Open Anything; see afield.docs.DocsSearch.
+                        get("/api/docs-search") {
+                            val query = call.request.queryParameters["q"].orEmpty()
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 40
+                            val response = withContext(workspaceSearchDispatcher) {
+                                afield.docs.DocsSearch.search(query, limit = limit)
+                            }
+                            call.respond(response)
+                        }
+
                         get("/api/workspace-search") {
                             val query = call.request.queryParameters["q"].orEmpty()
                             val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50
@@ -5042,6 +5071,10 @@ class Server {
                                 exitProcess(0)
                             }
                         }
+
+                        // /terminal.html's pty sessions (terminal.kt); here, beside the other WebSockets, because
+                        // the docs-route test apps install no WebSockets plugin.
+                        installTerminalRoutes(docsAccessPolicy)
 
                         webSocket("/welcome-events") {
                             welcomeEventSessions.add(this)

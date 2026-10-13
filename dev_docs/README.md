@@ -16,6 +16,7 @@ notes. The entries below point to the canonical note for each maintained subsyst
 
 ## Good Entry Points
 
+- [`../public/docs/how_field_is_built.md`](../public/docs/how_field_is_built.md) — the public tour of the same machinery
 - [`BUILD_INFRASTRUCTURE.md`](./BUILD_INFRASTRUCTURE.md) — the whole build, test, landing, docs and improvement machinery on one page, with what runs where
 - [`agents/README.md`](./agents/README.md) — the map of the agent automation path (start here)
 - [`agents/OPERATION_TRANSCRIPT.md`](./agents/OPERATION_TRANSCRIPT.md) — canonical build/edit/launch/save automation format
@@ -49,6 +50,7 @@ notes. The entries below point to the canonical note for each maintained subsyst
 
 ## Feature Notes (post-consolidation survivors)
 
+- [`PATCHY_INTEGRATION.md`](./PATCHY_INTEGRATION.md) — optional embedded Patchy build, Kotlin iframe bridge, PSD sidecar persistence, and desktop connector
 - [`SLIDESHOW_FEATURE.md`](./SLIDESHOW_FEATURE.md) — the slideshow DSL (absorbed the former architecture/quickstart notes); annotations live in [`SLIDESHOW_ANNOTATIONS.md`](./SLIDESHOW_ANNOTATIONS.md), images in [`SLIDESHOW_IMAGES.md`](./SLIDESHOW_IMAGES.md)
 - [`INTERACTIVE_GUIDES.md`](./INTERACTIVE_GUIDES.md) and [`GUIDE_CHAT_QUICKSTART.md`](./GUIDE_CHAT_QUICKSTART.md) — interactive onboarding + optional guide chat
 - [`SNAPPING_SYSTEM.md`](./SNAPPING_SYSTEM.md) — the snapping system (absorbed the former visual guides/examples)

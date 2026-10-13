@@ -41,6 +41,36 @@ class _Logger:
         pass
 
 
+class McpPaintGestureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_a_gesture_is_required(self) -> None:
+        from tools.field_mcp import FieldMcpServer, McpToolError
+
+        server = FieldMcpServer.__new__(FieldMcpServer)
+        with self.assertRaisesRegex(McpToolError, "samples"):
+            await server.tool_paint_gesture({})
+
+    async def test_the_report_and_the_png_come_back(self) -> None:
+        import json as _json
+        import tempfile
+        from tools.field_mcp import FieldMcpServer
+
+        png = Path(tempfile.mkdtemp()) / "out.png"
+        png.write_bytes(b"\x89PNG fake")
+        server = FieldMcpServer.__new__(FieldMcpServer)
+        server.timeout = 5.0
+        client = mock.Mock()
+        client.run_jvm_main = mock.AsyncMock(return_value={"exitCode": 0, "stdout": _json.dumps({"ok": True, "out": str(png)})})
+        server._ensure_client = mock.AsyncMock(return_value=client)  # type: ignore[method-assign]
+        result = await server.tool_paint_gesture({"samples": [[0, 0, 0], [1, 0.5, 0.5]], "bake": 0.01})
+        entry, args = client.run_jvm_main.call_args
+        self.assertEqual(entry[0], "afield.paint.GestureReplayMain")
+        request = _json.loads(Path(args["jvm_args"][0]).read_text())
+        self.assertEqual(request["samples"], [[0, 0, 0], [1, 0.5, 0.5]])
+        self.assertTrue(request["lanesOut"].endswith(".json"))
+        self.assertEqual(result[1]["type"], "image")
+        self.assertIn("lanesOut", _json.loads(result[0]["text"]))
+
+
 class McpOpenDocumentTests(unittest.IsolatedAsyncioTestCase):
     async def open(self, existed: bool | None, **args) -> dict:
         from tools.field_mcp import FieldMcpServer
@@ -580,11 +610,33 @@ class BoxReferenceTests(unittest.TestCase):
             attach_existing=True,
         )
         with (
-            mock.patch("tools.field_backdoor.health_check", return_value=False),
+            mock.patch("tools.field_backdoor.health_check", return_value=False) as health,
+            mock.patch("tools.field_backdoor.port_accepts_connections", return_value=False),
             self.assertRaisesRegex(BackdoorError, "no Field server is listening"),
         ):
             asyncio.run(client.ensure_server())
         self.assertIsNone(client.managed_process)
+        # A closed port is reported at once: no slow retries.
+        self.assertEqual(health.call_count, 1)
+
+    def test_a_slow_health_answer_from_a_listening_port_is_a_busy_server(self) -> None:
+        """2026-10-10: a loaded host answered /health in more than 1.5 s, and attachments called it missing."""
+        client = FieldBackdoor(
+            port=9092,
+            workspace="/tmp/AFieldWorkspace",
+            default_timeout=0.01,
+            logger=_Logger(),
+            attach_existing=True,
+        )
+        instance = {"repoRoot": str(REPO_ROOT), "startedAtEpochMs": 1, "pid": 123, "workspace": "/tmp/AFieldWorkspace"}
+        with (
+            mock.patch("tools.field_backdoor.health_check", side_effect=[False, False, True]) as health,
+            mock.patch("tools.field_backdoor.port_accepts_connections", return_value=True),
+            mock.patch("tools.field_backdoor.field_instance_info", return_value=instance),
+        ):
+            asyncio.run(client.ensure_server())
+        self.assertTrue(client.reused_existing_server)
+        self.assertEqual([c.kwargs.get("timeout") for c in health.call_args_list[1:]], [10.0, 10.0])
 
     def test_unknown_scratch_box_explains_invocation_lifetime(self) -> None:
         with self.assertRaises(BackdoorError) as raised:

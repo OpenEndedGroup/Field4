@@ -1,13 +1,3 @@
-import afield.stdlib.loris.LorisClient
-import afield.stdlib.loris.LorisEnvelope
-import afield.stdlib.loris.LorisOptions
-import afield.stdlib.loris.LorisReference
-import afield.stdlib.loris.LorisViewOptions
-import afield.stdlib.loris.crop
-import afield.stdlib.loris.dropUnlabeled
-import afield.stdlib.loris.labelCounts
-import afield.stdlib.loris.loudestTimeSeconds
-import afield.stdlib.loris.visualizationHtml
 import afield.stdlib.path
 
 val client = LorisClient()

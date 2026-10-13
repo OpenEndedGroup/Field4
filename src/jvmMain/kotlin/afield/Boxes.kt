@@ -842,7 +842,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     if (current == null) {
                         unsupported++
                     } else {
-                        val next = formatCodeProperty(property, current)
+                        val next = if (property == "code") formatBoxKotlin(current) else formatCodeProperty(property, current)
                         if (next == null) {
                             unsupported++
                         } else {
@@ -865,7 +865,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 var formatted = 0
                 boxes.forEach {
                     it.code?.let { source ->
-                        it.code = formatKotlinCode(source)
+                        it.code = formatBoxKotlin(source)
                         formatted++
                     }
                 }
@@ -1637,6 +1637,7 @@ import afield.stdlib.*
 import afield.four.synth.*
 import afield.graphquery.*
 import afield.datalog.*
+import afield.math.gp.*
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
@@ -1659,6 +1660,9 @@ import afield.graphics.*
 import afield.stdlib.linalg.*
 import afield.stdlib.linalg.arena.*
 import afield.stdlib.linalg.storage.*
+import afield.stdlib.polytope.*
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.loris.*
 import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking

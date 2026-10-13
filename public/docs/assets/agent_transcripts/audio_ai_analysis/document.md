@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analysis_guide" index="0" -->
 
 ```edn [field-box id="analysis_guide" role="properties"]
-{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 10 "characters" 1040 "sha256" "dab10c36384979e9e50799a3912b41a878ae7c458d0b604c2b475ac802593938"}]}
+{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 9 "characters" 1004 "sha256" "fecd2d3655e66e40d984c334b2584cfc6e3d6583dab6e2f44df0d0ecd7c9362c"}]}
 ```
 
 ```kotlin [field-property box="analysis_guide" name="code" path="analysis_guide_code_.kt"]
-import afield.stdlib.noir.audioai.*
 
 display("guide", """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
@@ -32,12 +31,11 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analysis_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="analysis_visualizer_gallery" role="properties"]
-{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 54 "characters" 2824 "sha256" "b3dfa73cde5fe498e066d06925a75325b68ab412caa4facaeeef22ce1d055d3e"}]}
+{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 53 "characters" 2788 "sha256" "0d7cc4c6c90d6d879e68f8b1cbc538c5c9fe5393039188e714598f0da6e0af71"}]}
 ```
 
 ```kotlin [field-property box="analysis_visualizer_gallery" name="code" path="analysis_visualizer_gallery_code_.kt"]
 import afield.stdlib.*
-import afield.stdlib.noir.audioai.*
 
 val gallerySync = "analysis-gallery"
 val galleryRate = 8_000
@@ -97,12 +95,11 @@ display("analysis board", analysisPreviewDashboardHtml(
 <!-- field-box id="analyse_nancy" index="2" -->
 
 ```edn [field-box id="analyse_nancy" role="properties"]
-{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 55 "characters" 2494 "sha256" "830593624ed4d0c9c212c71dc1e9b118c9480b74f85df5bc111fd4c2af8e6051"}]}
+{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 54 "characters" 2458 "sha256" "1d6c04fbf99133d1e6292b2ea725775b99d8fce63945252d6ef5bc3c818772a3"}]}
 ```
 
 ```kotlin [field-property box="analyse_nancy" name="code" path="analyse_nancy_code_.kt"]
 import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()

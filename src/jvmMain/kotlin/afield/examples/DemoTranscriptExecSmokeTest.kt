@@ -96,11 +96,22 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
+        "stacksl_fit_demo",
+        // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
+        "ai4_chat_archive",
         "particle_video_reader",
+        // The staged-project starting place: a level edited through guarded tools, three study-build
+        // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
+        // when installed and the blockout says so when it is not.
+        "staged_project",
         // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
         "drawing_notation",
+        // interactive_guides.md's starting point: a four-step slideshow over two CPU boxes. Headless the
+        // notes and selections go to no browser, but every box (the guide included) runs to completion.
+        "slideshow_guide",
         // Five CPU boxes: draw a score on the drawing, read it with notation.space, turn it into notes
         // twice (as drawn, and snapped to a scale), render with patRenderStereo into audio players,
         // and measure onsets and pitches in the renders. No
@@ -151,6 +162,10 @@ object DemoTranscriptExecSmokeTest {
         // plays the pad, its playhead and both lanes, stopped after 90 frames. Pure CPU; what running it
         // buys is bakeGesture, toKeyframes and setTake through the real box path.
         "gesture_to_keyframes",
+        // A pen gesture's take baked into x/y/pressure lanes and painted from them with a brush of
+        // moving hairs, and one take painted four ways to show what the pad keeps and drops. Two
+        // still CPU boxes through afield.paint; without the paint library both say so and stop.
+        "gesture_paint_replay",
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",
@@ -191,6 +206,10 @@ object DemoTranscriptExecSmokeTest {
         "dataframe_typed_columns",
         "spectral_examples",
         "imaging_cv_examples",
+        // Two CPU boxes: one executed stipple(), one launched `loop { }` taking a Lloyd step a frame
+        // for 90 real runloop frames. Both draw through stipplesToImg -> showImg (a PNG into display),
+        // so no Window and no Renderer.
+        "stippling",
         // A photograph to a printable solid, across four families that do not import one another:
         // DepthAnything (ONNX) for monocular depth, the imaging family to normalise it, reliefMesh to
         // close it into something with a volume, and Manifold for the Boolean. EXECUTE rather than
@@ -322,6 +341,17 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_key_discovery",
         "logging_layer",
         "midi_clip",
+        // SMPTE timecode (2026-10-08): drop-frame arithmetic, LTC round trip under gain/noise/speed
+        // ramp, MTC into a TimecodeClock, a clock following LTC. Pure CPU, no audio or MIDI device.
+        "smpte_timecode",
+        // GP instruments (2026-10-10): GpOptimizer tunes a curve to a target, a GpPreference A/B loop
+        // waits on two buttons, and the same loop runs against a simulated judge. Pure CPU, FLines only.
+        "gp_instruments",
+        // GP drawing (2026-10-10): a closed periodic loop through six pins, 1-D conditioning and a
+        // 2-D field, with controls. Pure CPU, FLines and heatmaps only.
+        "gp_drawing",
+        // Inspector embeds (2026-10-12): tree(), column(), a live list and logs(). Pure CPU.
+        "browse_embeds",
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",
@@ -387,6 +417,11 @@ object DemoTranscriptExecSmokeTest {
         // drawn through lines() and controlGroup sliders. CPU only.
         "stipple_sheet",
         "fline_hit_records",
+        // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
+        "fline_measure",
+        // fline_examples.md's exact booleans and offsets: Area vs booleanExact, byOffsetting vs
+        // byOffsettingExact, side by side through lines(). CPU only.
+        "fline_exact_booleans",
         // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
         // into inline players, so no audio device; with no Dirt-Samples on the build machine every
         // token falls back to patVoice, which is box 3's subject anyway.
@@ -690,9 +725,30 @@ object DemoTranscriptExecSmokeTest {
         // checks the bundle opens.
         "mqtt_demo",
         "oscquery_demo",
+        // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
+        // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's
+        // loopback on its own, and its hero capture replays this transcript with the launches.
+        "dmx_lighting_demo",
         // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
         // holds the page's fences to the document.
         "sonicpi_pattern_demo",
+        // rtp_midi.md's demo opens real RTP-MIDI sessions on UDP 5004-5007 and announces over Bonjour.
+        "rtp_midi_demo",
+        // aiFeatures.md's tool demo: its geometry tool renders a mesh for the model to look at.
+        "ai_tool_demo",
+        // fieldml_host_bridge.md's demos. Their boxes are FieldML under a FieldML root, a guest
+        // language this harness cannot run (it does not install the @RunsAt language registry), so
+        // only the Kotlin window-and-renderer boxes of the GPU ones are compiled here;
+        // FieldMLSmokeExamplesTest and FieldMLSourceMacroTest run the FieldML documents themselves.
+        "fieldml_macro_demo",
+        "fieldml_host_bridge_demo",
+        "fieldml_lambda_demo",
+        "fieldml_afield_four_demo",
+        "fieldml_frames_demo",
+        "fieldml_macro_module_demo",
+        "fieldml_mesh_demo",
+        // stacksl_examples.md's gallery draws into a native window.
+        "stacksl_gallery",
     )
 
     /**

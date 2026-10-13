@@ -349,7 +349,7 @@ The compiler is the slow part, and three things soften it:
 ## Nothing to install
 
 Unlike [Sonic Pi](sonic_pi.md), Faust needs nothing installed beside Field. Field ships the Faust
-compiler as WebAssembly in `src/jvmMain/resources/faust/` (5.3MB, LGPL-3.0, unmodified, with its
+compiler as WebAssembly in [`src/jvmMain/resources/faust/`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/resources/faust/) (5.3MB, LGPL-3.0, unmodified, with its
 licence alongside). The same files run on every platform:
 
 | Platform | Needs |

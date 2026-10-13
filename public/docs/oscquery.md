@@ -35,9 +35,9 @@ q.menu("/scene", listOf("dawn", "dusk", "night")) { scene -> markdown("scene: $s
 add an *OSCQuery* COMP; "My piece" appears in its list of servers, with a slider for the cutoff, a
 toggle for `on` and a menu for the scene.
 
-`oscQuery(name, httpPort = 9030)` uses another port (OSC goes to the one above it), and
-`httpPort = 0` picks a free one; `q.httpPort` and `q.oscPort` say which. Every box asking for the
-same port shares one service.
+`oscQuery(name, httpPort = 9030)` uses another port, with OSC on the one above it unless you pass
+`oscPort`. `httpPort = 0` picks a free one; `q.httpPort` and `q.oscPort` say which. Every box asking
+for the same port shares one service, so several boxes can each publish their own parameters to it.
 
 What another program reads is plain JSON. Any HTTP client sees it, including one in a box. This
 one asks for a free port, so it does not collide with a service already on 9020:
@@ -173,10 +173,6 @@ for the OSC port. Pass `advertise = false` to `oscQuery` to stay quiet. You can 
 `host:9020` by hand.
 
 ## Ports and the network
-
-`oscQuery(name, httpPort = 9020)` takes another port for a second service. The OSC port is always
-the next one up unless you pass `oscPort`. All `Box.oscQuery` calls with the same port share one
-service, so several boxes can each publish their own parameters to it.
 
 Like Field's other [OSC](osc.md) inputs, the service listens on every network interface, so
 another machine can browse and set it. That is what OSCQuery is for, but anyone on the network

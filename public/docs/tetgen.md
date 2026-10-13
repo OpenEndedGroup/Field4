@@ -121,37 +121,34 @@ bores would not come through it round.
 `targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
 takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
 
-A coarse request gets you almost exactly what no request gets you, because **the input surface
-sets a floor that `targetEdgeLength` cannot lift**. TetGen conforms to the triangles it is given, and this bracket's
-618 triangles are already about 10 mm across; the quality refinement then subdivides from there. A
-coarse request is silently ignored, and there is no warning, so check `cellCount` rather than
-assuming the number you passed did something.
+The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
+this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that
+changes nothing and gives no warning. Check `cellCount` rather than assuming the size you passed
+took effect.
 
-Finer requests behave: cost grows roughly in proportion to the element count, about 11–14 µs per
-element, so a 36,000-element mesh takes about half a second. That is fast enough to re-mesh on every
-geometry edit, which is what `afield.tetgen` expects; nothing in it updates a mesh in place. The
-measured sweep is under [Measurements](#measurements).
+Finer requests work as expected. Cost grows roughly in proportion to the element count, about
+11–14 µs per element, so a 36,000-element mesh takes about half a second: fast enough to re-mesh on
+every geometry edit. `afield.tetgen` has no way to update a mesh in place, so re-meshing is how you
+follow an edit. The measured sweep is under [Measurements](#measurements).
 
 ## Into Kratos
 
-`structural.bodyFitted` is what this feeds. It runs a small-displacement element on the supplied mesh
-with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is the
-protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat `positions`/`cells`
-layout matches the wire format, so nothing is reshaped in between. The mesh
-picks the element: four nodes per cell gets `SmallDisplacementElement3D4N`, ten gets
-`SmallDisplacementElement3D10N`. There is no parameter, so there is nothing for the two ends to
-disagree about.
+A mesh from here goes to Kratos's `structural.bodyFitted` solve, which runs a small-displacement
+element on it with a clamp region, gravity and a total force spread over a load region. Open it with
+`KratosSession.openMeshAsync` from Kotlin (`createBodyMesh` in the protocol); `TetMesh`'s flat
+`positions`/`cells` arrays are sent as they are. The mesh decides the element type: four nodes per
+cell gives `SmallDisplacementElement3D4N`, ten gives `SmallDisplacementElement3D10N`.
 
-That matters, because the 4-node tetrahedron is a **constant-strain** element. Its four corners
-carry a linear displacement field, so strain is one value for the whole element and cannot vary
-inside it. Bending is precisely the case where strain has to vary across a section: tension on one
-face, compression on the other. An element that cannot represent that resists it instead. It
-**locks**, and is far too stiff, converging on the right answer from below and slowly.
+Use 10-node elements for anything that bends. The 4-node tetrahedron is a constant-strain element:
+its corners carry a linear displacement field, so strain has one value across the whole element.
+Bending needs strain to vary across a section, tension on one face and compression on the other, so
+4-node elements resist it and come out far too stiff (this is called locking). They approach the
+right answer from below, and slowly.
 
-Refining is not a way out of it. On a cantilever under self-weight, the 4-node element reaches 62% of
+Refining does not fix this. On a cantilever under self-weight, the 4-node element reaches 62% of
 the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-node element is within
-5% at *thirty*. So if you are bending anything, pass `order = 2` and mesh coarsely, rather than
-passing `order = 1` and refining. `optional/kratos/VERIFICATION.md` has the per-mesh numbers, the
+5% at thirty. If you are bending anything, pass `order = 2` and mesh coarsely, rather than
+passing `order = 1` and refining. [`optional/kratos/VERIFICATION.md`](https://github.com/OpenEndedGroup/Field4/blob/main/optional/kratos/VERIFICATION.md) has the per-mesh numbers, the
 axial-extension control, and why landing just under 100% is right.
 
 ### Asking for 10-node elements
@@ -181,7 +178,7 @@ read a cell's first four indices and are unaffected.
     pointers before it returns, and `outelements()` then dereferences them. Driven from the command
     line it usually survives; driven through `tetgenio` it does not, because `outelements()`
     allocates the output node array first and the allocator hands back the block just freed — so
-    TetGen reads its own coordinates as pointers. `tools/tetgen_o2_use_after_free.py` pins that
+    TetGen reads its own coordinates as pointers. [`tools/tetgen_o2_use_after_free.py`](https://github.com/OpenEndedGroup/Field4/blob/main/tools/tetgen_o2_use_after_free.py) pins that
     outside the JVM: the same cube built twice from the same TetGen source, SIGSEGV as shipped and
     229 nodes with that one `delete[]` commented out.
 
@@ -295,7 +292,8 @@ shape for Delaunay refinement, so judge a mesh by its tail rather than by its me
 
 ### Input surfaces
 
-Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
+What `Tetgen.tetrahedralize` does with common malformed surfaces, next to a closed cube for
+comparison:
 
 <div class="field-data-table" markdown>
 
@@ -332,7 +330,7 @@ against `Solid.volume` before you trust a result.
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
     normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
     wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
-    `field_tetgen.cpp` catches it: letting a C++ exception unwind through FFM's downcall frames
+    [`field_tetgen.cpp`](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-tetgen/src/field_tetgen.cpp) catches it: letting a C++ exception unwind through FFM's downcall frames
     aborts the VM. `TetgenTest.anOpenSurfaceIsRefusedWithoutTakingTheProcessDown` guards that the
     process survives — though note that on this build the five-faced cube it uses comes back through
     the *empty mesh* path rather than the throw, so the two inputs that genuinely exercise the catch
@@ -381,17 +379,17 @@ it. Field is AGPL-3, so the first applies and nothing further is needed. Kratos 
 behind `USE_TETGEN_NONFREE_TPL` because *Kratos* is BSD, and its published wheels contain MMG and no
 TetGen.
 
-Two things in the build are required and neither is negotiable:
+??? aside "Two build settings the wrapper depends on"
+    - **`predicates.cxx` is compiled at `-O0`.** Upstream's own makefile says so. Shewchuk's exact
+      predicates depend on their arithmetic not being reassociated or kept at extended precision in
+      a register; built optimised they return wrong signs on nearly-degenerate input. That does not
+      crash — it silently produces an invalid tetrahedralization.
+    - **`TETLIBRARY` is defined**, which is what turns `exit()` into a throwable. See "The fatal
+      path" above.
 
-- **`predicates.cxx` is compiled at `-O0`.** Upstream's own makefile says so. Shewchuk's exact
-  predicates depend on their arithmetic not being reassociated or kept at extended precision in a
-  register; built optimised they return wrong signs on nearly-degenerate input. That does not crash
-  — it silently produces an invalid tetrahedralization.
-- **`TETLIBRARY` is defined**, which is what turns `exit()` into a throwable. See the warning above.
-
-The C ABI passes results through out-parameters rather than a struct, so the Kotlin side never has
-to reproduce this compiler's field offsets and tail padding. Getting that wrong reads plausible
-garbage rather than failing, which is the same class of mistake as everything else on this page.
+    The C ABI passes results through out-parameters rather than a struct, so the Kotlin side never
+    has to reproduce this compiler's field offsets and tail padding. Getting that wrong reads
+    plausible garbage rather than failing.
 
 ## Measurements
 
@@ -401,7 +399,7 @@ a section says otherwise.
 ??? aside "Where the numbers on this page come from"
     They were produced in this repository on an Apple M-series laptop, natively, with no container,
     except the beam deflections under [Into Kratos](#into-kratos), which come from the solver
-    container. `dev_docs/TETGEN.md` has the mesher comparison that chose TetGen, including a sweep of
+    container. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the mesher comparison that chose TetGen, including a sweep of
     `StructuralMechanicsApplication` for an immersed element.
 
 ### The `quality` bound
@@ -431,7 +429,7 @@ What tightening does buy is the *bulk* of the tail. The first percentile improve
 `1.414` and makes the tail worse again.
 
 ??? aside "This disagrees with `dev_docs/TETGEN.md`, on a different body"
-    That page records that `1.2` removed the last poor element "for no measurable cost", measured on
+    [That page](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) records that `1.2` removed the last poor element "for no measurable cost", measured on
     a slab welded to a ball. On this bracket it removes nothing and costs 20%. The difference is
     the geometry: the default is a starting point, so sweep it on your own part.
 
@@ -672,7 +670,7 @@ TetGen's worst node lies `0.0` outside the true box, exactly, because it never r
 surface: Manifold's triangulation goes in as a piecewise-linear complex whose facet edges are
 constraints, and TetGen's output honours them. So this is the one choice on the page that is not a
 trade-off — if your part has a sharp edge and you care what happens there, the level-set route cannot
-get you closer by refining. `dev_docs/TETGEN.md` has the per-resolution errors, and the same
+get you closer by refining. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the per-resolution errors, and the same
 comparison run against MMG rather than marching cubes.
 
 ### Where precision is lost: `TriMesh` stores float32

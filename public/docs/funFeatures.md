@@ -198,7 +198,8 @@ You can remove output areas you no longer want to see by `option-click`ing their
 
 ![](assets/screenshot_38.png)
 
-Programmatic control over output areas is through these functions:
+Programmatic control over output areas is through these functions (see
+[Box Output](box_output.md) for what each one does, and for the other mouse gestures):
 
 ```diffstatic {data-lang=kotlin}
 displayOpen("foo")

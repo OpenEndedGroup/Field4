@@ -990,6 +990,9 @@ internal class ToolRegistry {
     /** The names of the registered (non-dynamic) tools. */
     fun handlerNames(): Set<String> = handlers.keys.toSet()
 
+    /** The request class of every registered (non-dynamic) tool, by name, whatever its gate: what AgentToolSchemaTest checks. */
+    internal fun handlerClasses(): Map<String, Class<*>> = handlers.mapValues { it.value.cls }.toSortedMap()
+
     /**
      * The subset of [handlers] that arrived through [AgentToolExtensions] rather than from core.
      *
@@ -1334,6 +1337,23 @@ internal fun openAiTool(cls: Class<Any>): FunctionTool {
     val params = FunctionTool.Parameters.builder()
     schema.properties().forEach { (key, value) -> params.putAdditionalProperty(key, JsonValue.fromJsonNode(value)) }
     return sdk.toBuilder().parameters(params.build()).build()
+}
+
+/**
+ * Refuse a request class whose schema openai-java would refuse. That check runs when a turn adds its tools,
+ * and one refused class fails the whole turn, so an extension finds out here, where its author can see it.
+ */
+internal fun requireOpenAiSchema(cls: Class<*>) {
+    try {
+        @Suppress("UNCHECKED_CAST")
+        openAiTool(cls as Class<Any>)
+    } catch (e: Exception) {
+        throw IllegalArgumentException(
+            "Cannot register an AI tool named '${cls.simpleName}': OpenAI refuses its argument schema, so every " +
+                "OpenAI or OpenRouter turn that offered it would fail before sending. A Map field is the usual cause; " +
+                "take a JSON object in a String, or a List of a small data class, instead. ${e.message}", e
+        )
+    }
 }
 
 /** Shared Jackson mapper for the provider-neutral tool face (Kotlin data classes). */

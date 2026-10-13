@@ -9,9 +9,6 @@ lays the frames out as a map you can play through.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_spectral_embeddings/spectral_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-spectral" alt="Three real Field t-SNE projections of librosa mel, log-mel and MFCC frames"}
 :::static
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
@@ -65,8 +62,6 @@ the first ten seconds. Every panel shares the source player's cursor in both dir
 
 ```diffstatic {data-lang=kotlin}
 import afield.Box
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture

@@ -10,7 +10,7 @@ AI4 tools. This page is the layer underneath them: the ten verbs every study sha
 document's own box becomes a study with the same tools.
 
 Everything here is `afield.stdlib`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
-`SourceFramesStudy` in `SourceFramesStudy.kt`. Every picture on the page is a box's real output.
+`SourceFramesStudy` in `SourceFramesStudy.kt`.
 
 ## The ten verbs
 
@@ -275,14 +275,17 @@ showStudyBuilds("reports")
 ```
 
 The card lives in this box's output. It shows progress, elapsed time, cancellation and selectable
-error text. Progress reflects the worker's completed work; it is not a time estimate.
+error text. Progress reflects the worker's completed work; it is not a time estimate. While a build
+is queued or running the card updates twice a second. Otherwise it updates as soon as any build of
+this runner, or of a runner it depends on, starts or ends, and within about five seconds of an edit
+to the design.
 An agent's [geometry findings](geometry_review.md#let-the-agent-point-something-out)
 join this card when their `runId` matches the build's job ID. Each link opens the
 existing review thread in its Field output, with evidence and replies. Open errors
 are red, open warnings amber and decisions cyan; closed discussions are grey and say
 **resolved**. Closing a discussion never changes the build verdict.
-Unlaunched review sources retain their historical findings and explain that the
-source must run before its viewer can open.
+Findings whose review source has not been launched are still listed, with a note that the source
+must run before its viewer can open.
 
 When an edit changes a stage's inputs, its latest attempt describes an earlier design. Its
 findings collapse to one grey line, such as "2 findings from an attempt with earlier inputs;
@@ -293,15 +296,14 @@ the inputs again, so its findings and failure come back.
 
 AI4 can discover the same runner with `ListStudyBuildsRequest`, inspect it with
 `InspectStudyBuildsRequest`, and start it with `StartStudyBuildRequest`, quoting the stage's current
-`fingerprint`. Starting returns a job ID immediately. `WaitStudyBuildRequest` observes that same
-job for up to 900 seconds and streams progress into chat during the wait. Agents can use
-`waitSeconds=600` for long work, leaving `afterUpdated` empty, so progress does not require
-repeated model turns. Completion returns early; `afterUpdated` can instead request an early
-return on a progress change. A wait timeout leaves the build running;
-wait again using the same job ID. Optionally supply `afterUpdated` from a previous response to
-return when progress changes. After completion, inspect the stage to check that its result is
-still current. **Queued** does not mean **built**, and an earlier successful build may no longer
-be current. Stopping an observation does not cancel the build. AI4 sees what the card shows:
+`fingerprint`. Starting returns a job ID immediately. `WaitStudyBuildRequest` follows that job for
+up to 900 seconds and streams its progress into the chat. For long work an agent can pass
+`waitSeconds=600` and leave `afterUpdated` empty: the wait returns when the build completes, so
+progress costs no extra model turns. To return at the next progress change instead, pass the
+`afterUpdated` value from a previous response. A wait that times out leaves the build running;
+wait again with the same job ID. Stopping a wait does not cancel the build. After completion,
+inspect the stage to check that its result is still current: **Queued** does not mean **built**,
+and an earlier successful build may no longer be current. AI4 sees what the card shows:
 an attempt against earlier inputs is marked `fromEarlierInputs`, and its findings are left out of
 `openFindings`, so the agent does not report them as current errors. The geometry notes behind
 those findings carry the same mark when the agent reads them with `ReadGeometryReviewsRequest`.
@@ -343,15 +345,18 @@ Warnings show **Current · Needs review**; `StudyBuildNoticeKind.ERROR` shows
 implying a problem. The same notes appear in native agent inspection and the completion stream.
 The adapter must be fast and pure: read the supplied record's retained facts, never the live
 design, and perform no build work. It also works over existing attempt history. A formatter
-failure exposes a review notice while preserving the result. These are explanations, not gates:
-they do not change fingerprints, acceptance, or dependency availability. Keep actual qualification
-requirements in build/input contracts. Stale results lose their current-result notices; their
-individual attempt inspections retain them.
+failure shows a review notice and keeps the result. Notes only explain: they do not change
+fingerprints, acceptance, or whether downstream stages can use the result. A requirement a result
+must meet belongs in the recipe or in a [gate](#wait-until-a-measurement-passes). A stale result
+drops its notes from the current-result view; inspecting that attempt still shows them.
 
 An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
 It cannot become the current result. Changing a dependency result or `recipeVersion` also
 invalidates downstream results. Use `builds.currentFile(stage, path)` when a viewer or export
-needs a current result; it refuses stale, missing or changed artifacts.
+needs a current result; it refuses stale, missing or changed artifacts. A result file is checked
+against the SHA-256 recorded when it was built. Field reads the whole file again only when its size,
+timestamps or inode have changed since the last check, so a card over gigabytes of
+results costs almost nothing while it sits idle.
 
 Throw `StudyBuildFailure(StudyBuildProblem(...))` for an actionable failure with a code, message,
 suggestions and structured details.
@@ -425,7 +430,7 @@ val builds = studyBuilds("loot", listOf(
         StudyBuildProduct(listOf("placed.txt"))
     }), gates = listOf(reachable)) { mapOf("loot" to thisBox.getPropertyRaw("loot", "").toString()) }
 
-builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!)
+builds.await(builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!).id)
 showStudyBuilds("loot")
 ```
 
@@ -477,7 +482,8 @@ fingerprint, so a stage that uses this result records which request produced it.
 current like any other, because the stage's own fingerprint covers only the design. A later start,
 including the card's **Rebuild**, has no request unless it is given one again, so a request is never
 left behind for the next build to pick up. Values must survive a JSON round trip. An agent passes a
-request as `request` in `StartStudyBuildRequest`, with string values.
+request as `request` in `StartStudyBuildRequest`, a string holding a JSON object such as
+`{"budgetSeconds": 60}`. The worker reads its values as JSON types, so this stage sees a number.
 
 ### Depend on another runner's stage
 
@@ -514,7 +520,7 @@ val loot = studyBuilds("loot", listOf(
         StudyBuildProduct(listOf("loot.txt"))
     })) { emptyMap() }
 
-level.start("blockout", level.stages().single().fingerprint!!)
+level.await(level.start("blockout", level.stages().single().fingerprint!!).id)
 showStudyBuilds("loot")
 ```
 
@@ -567,7 +573,9 @@ match its recorded hash, and the attempt records what it copied with the hashes
 (`StudyBuildRecord.resumedFrom`); the card names it. A path can be a directory, which copies
 everything under it. By default the earlier attempt must have built the same inputs and dependency
 results with the same recipe, so an agent cannot continue from a checkpoint of a design it has since
-replaced. Pass `sameDesign = false` when an earlier design is a deliberate starting point.
+replaced. Pass `sameDesign = false` when an earlier design is a deliberate starting point. An agent
+names the attempt the same way, with `request` set to `{"resume": "<jobId>"}` in
+`StartStudyBuildRequest`.
 
 `builds.await(jobId)` blocks until an attempt finishes, which suits a box that runs stages in order
 like this one. For a long build, let the card or AI4 follow it instead.
@@ -587,7 +595,10 @@ id: docs.studies.process
 runner: backdoor-box
 tags: [docs, study, builds]
 timeoutSec: 90
-waitSec: 5.0
+waitOutput:
+  contains: "pass 2 of 4"
+  channel: builds
+  kind: display
 expect:
   outputContains:
     - "pass 2 of 4"
@@ -707,7 +718,8 @@ on the welcome screen's starting points) is this page as a document: `rings` def
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
 in order.
 
-`study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
-drives all ten verbs on a document's study through the same tool registry an agent calls, with no
-model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one registrar
-for the standard verbs".
+??? aside "Tests and design notes"
+    `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
+    drives all ten verbs on a document's study through the same tool registry an agent calls, with
+    no model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one
+    registrar for the standard verbs".

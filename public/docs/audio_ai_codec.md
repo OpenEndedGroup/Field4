@@ -1,4 +1,4 @@
-# EnCodec reconstruction microscope
+# EnCodec round trip
 
 *To run the examples on this page, open the [audio_ai_codec](agent_transcripts.md#audio_ai_codec) starting point.*
 
@@ -10,9 +10,6 @@ Faust example.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_codec/reconstruction_microscope.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-codec" alt="Real EnCodec input and reconstruction waveforms, spectra, measured errors and four codebook streams"}
 :::static
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
 import afield.four.audio.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path

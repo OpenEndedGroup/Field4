@@ -173,7 +173,7 @@ Draw two hairpins, or a diminuendo after the crescendo, and the same reading cod
 
 ## The starting point
 
-Open **drawing_notation** from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
+Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
 
 ## Reference
 

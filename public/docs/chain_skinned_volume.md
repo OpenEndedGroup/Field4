@@ -25,7 +25,9 @@ Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 
 `RiggedFixture`, the rig the skinning tests use, is an open tube with no caps, so it encloses no
 volume and Manifold will not take it as a solid. `CappedTwistFixture` is the same two-bone rig with
-both ends closed. Like `RiggedFixture`, it is written out by Kotlin source rather than downloaded:
+both ends closed. Like `RiggedFixture`, it is written out by Kotlin source
+([`CappedTwistFixture.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/modules/CappedTwistFixture.kt)) rather
+than downloaded:
 
 * 12 sides, radius 0.5, height 4, with rings every 0.25 along the bone and a centre vertex on each
   cap. That makes 206 vertices and 408 triangles, and every edge is shared by exactly two of them.
@@ -160,7 +162,7 @@ the tube happens to be triangulated.
 | triangles to a scene | [`importTriMesh`](reference/renderers.md#pathtracetrimesh-kt-functions) | positions, normals, one material, a transform | zero-area triangles, which are counted and skipped |
 
 Linear blending and dual quaternions are the same call with a different `SkinningOptions`, so the
-comparison above runs both from one palette on one file. The only difference between the two
+comparison above runs both on one file. The only difference between the two
 tubes in the render is that `method` argument.
 
 ## Where each piece is documented

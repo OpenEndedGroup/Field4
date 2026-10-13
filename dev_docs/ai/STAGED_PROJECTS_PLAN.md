@@ -87,7 +87,9 @@ the wording above:
   value hashes that evidence. "Re-checks when it starts" is a re-evaluation against the current design when a queued
   attempt starts: a closed gate fails it with `gate-closed` before the recipe runs.
 - A request is folded into the attempt's `fingerprint`, but currency still compares the stage's design fingerprint
-  (`ranAgainst`), so a requested result is current. `StartStudyBuildRequest.request` has string values.
+  (`ranAgainst`), so a requested result is current. `StartStudyBuildRequest.request` is a JSON object in a string
+  (it was a `Map<String, String>` until 2026-10-10, which openai-java's strict schema validation refused, failing every
+  turn that loaded the builds tools; `AgentToolSchemaTest` now checks every tool's schema).
 - `resumeFrom(jobId, paths, sameDesign = true)` refuses an attempt that built other inputs, dependency results or
   recipe; that is the guard the house-machine-8 bug needed. Copies are hashed and recorded in `resumedFrom`.
 - Added `StudyBuilds.await(jobId)`, which the docs examples and a model-free corpus need to run stages in order.
@@ -235,6 +237,34 @@ Public docs: `public/docs/staged_projects.md` ("Start a staged project"), the en
 explains the strategy, opens the starting point, walks one edit through every stage, shows a gate holding and
 clearing, runs the corpus, and links the long-builds, studies, qualified-sources and kits pages.
 
+**Status (2026-10-10): done, in one landing** (`staged-project`). The page is `public/docs/staged_projects.md`, in the
+nav before Studies, with five runner captures (`capture="ui"`): the document as it opens, the plan, the gate holding,
+the state after one `level.edit`, and the corpus after that edit. Where it differs from the wording above:
+
+- The starting point is an agent transcript, `dev_docs/agents/transcripts/staged_project.yaml`, materialized into the
+  Welcome starting points (`public/docs/assets/agent_transcripts/staged_project/`), not a hand-saved
+  `templates/staged-project/`. One YAML is then the document, the CI replay (`DemoTranscriptExecSmokeTest`'s EXECUTE
+  bucket runs all five boxes headless) and the page's capture setup, and the materializer's drift guard keeps the
+  three in step. It is listed in `agent_transcripts.md`.
+- Five boxes: Start here, Level, Loot rule, Builds, Corpus. They share values through box properties read when they
+  are needed (`drawLevel`, `editLevel` and `levelPlan` on Level; `levelStages` and `levelGates` on Builds; the `level`
+  and `lootRule` properties), because autorun starts a document's boxes in no fixed order. The corpus builds each
+  variant with Builds' own stage objects and gate, in runners of its own.
+- `level.edit(expectedRevision, operations, description)`; the operations are room, door and loot (add or replace)
+  and their removals, and spawn. The Level box's `problems` refuses overlapping rooms, a door not between two rooms,
+  and the spawn or loot outside a room.
+- Blockout builds its meshes from `boxMesh` and joins them into a `Solid` only when Manifold is installed, so the
+  starting point runs without it. Traversal is a grid walk pulled tight by line of sight; its notes compare each
+  relaxed path's length and turning with its rough walk (the route-shape measure, written again for a grid), and
+  count doors and sightlines (how many other points see each loot point; zero everywhere in the starting level).
+- The gate's demonstration is a room with no door: L2 has no path until the edit adds door d5.
+- The loot rule's three fixtures are recorded in the box; `retain` keeps a real placement attempt
+  (`rule-input.txt` and its placements). Placement compiles each rule text once, so the corpus stays quick.
+- The corpus runs when the Corpus box runs (it is not autorun). On the page's capture, seed 3 fails the rule's own
+  "every level has an epic point" check, which the page shows as the reason to run it.
+- The brief is written to `guides/start-here.md` (a document guide every agent can read) on the first run, and shown
+  by the Start here box.
+
 ## Order and landing
 
 1. 3b StudyBuilds additions with the `studies.md` section; one branch per two or three features.
@@ -247,3 +277,68 @@ clearing, runs the corpus, and links the long-builds, studies, qualified-sources
 Every page follows `dev_docs/agents/DOCS_WRITING_RULES.md`: written for the user, the common case first, code
 introduced before it is shown, real captures only. Every API lands with tests. Captures come from the docs runner,
 never hand-made.
+
+## Step 5: the house machine adopts the core versions
+
+Agreed with Marc on 2026-10-10, once steps 3 and 4 had landed. The private house machine (`~/house-machine`) still
+runs its own copies of everything above, on a host pinned to a Field from 2026-10-05. Step 5 moves it onto the core
+versions. It also takes in plan steps 1 and 2, which were never done. The aim is a private repository that holds
+mostly house content: the domain providers, the Python solvers, the corpus houses and the gallery.
+
+Order, one session for each or for two of them together:
+
+1. **Hosts to main.** Move the house, gallery and corpus hosts to current main. This re-pins
+   `backend/backend-identity.json` once, which makes every house's builds stale, so do it with the houses idle and
+   rebuild them without the model. Retire the workarounds that main fixed:
+   - the driver's rewind-and-resend for the round cap (2988e8fcf, 553ecf50e);
+   - `capture_watchdog.sh` (02dc672e0);
+   - the box-recreate step in `src/new_document.py` (08b5fe784).
+
+   **Done 2026-10-10.** The house and gallery hosts run 57c11d404, and the corpus host runs from the house host's
+   checkout. The re-pin changed only `SolidInspectionKt` (private kit 16da1210), and all three workarounds are
+   retired. Every live house was migrated and rebuilt without the model. -9, -11, -13 and -14 cut as before, and -10
+   holds as before. -8 lost its cut to an approved kit rule (socket faces from the rough path; 2 contacts left).
+   -12 is held by its own publication gate after the migration changed its providers. On the way, migration learned
+   to rebase what a house extended instead of refusing it (below). Two Field bugs were found:
+   - the backdoor's 1.5 s `/health` reads a busy host as gone; fixed in 3f23fd175;
+   - `StartStudyBuildRequest.request` (a `Map`) derives a schema openai-java rejects, so OpenAI turns that load the
+     builds tools fail before they run; a task is filed.
+
+   The private repo's log for the day is `docs/OVERNIGHT_2026-10-06.md`.
+2. **Kits and identity.** Replace `kit/manifest.json` and its scripts with `kit.json` and `tools/field_kit.py`. The
+   scripts are `rehash_kit.py`, `stage_kit_manifest.py`, `migrate_document.py`, `activate_document.py`,
+   `publish_kit_template.py` and `template_payload.py`. Replace `backend-identity.json` with `RuntimeIdentity`, and
+   the `house.kit` tool with `InspectKitRequest` / `showKit()`. Every later migration rides on this step.
+   The core kit must keep what the private migration gained on 2026-10-10. Marc: "I don't mind agents extending their
+   own kit, I do mind not being able to pull other upgrades into agents that have extended their own kit."
+   - A file the document changed is rebased three ways: its recorded release's version, the document's, the new
+     release's.
+   - A conflict leaves a package for the document's agent to resolve, which the next migration installs.
+   - Provider copies follow their provider.
+   - A document's own provider boxes are relaunched after the kit's.
+
+   The private `src/migrate_document.py` and `src/activate_document.py` hold the working version.
+3. **StudyBuilds patterns:**
+
+   | Private pattern | Core version |
+   | --- | --- |
+   | fabrication's hand-rolled gates ("cleared route contacts", "loop-free routes") | `StudyBuildGate` |
+   | `houseCoordinationRequest` / `houseRouteBuildRequest` box properties | per-attempt requests |
+   | `freezeCoordinationResume` | `resumeFrom(…, sameDesign = true)` |
+   | the external worker loop, written five times | `runProcess` |
+   | job-id dependencies between runners | `dependsOn` |
+   | whole-provider fingerprints | code identity |
+   | `prune_studies.py` | `PruneStudyBuildsRequest` |
+
+4. **Qualified sources.** Move the recipe, routing and coordination candidate loops to `QualifiedSource`. Every
+   existing fixture must replay with its recorded outcome unchanged. Any change goes to Marc as a rebaseline
+   proposal, never approved by an agent.
+5. **Turns that wait.** Briefs use `AwaitStudyBuildsRequest`. The driver keeps only rate-limit retries, host
+   restarts and the corpus lanes. The corpus runner and `rebuild_house.py` use `StudyBuilds.await`.
+6. **Chat archive and rubric.** Use `chatlog.*` in place of the driver's history parsing. Bring the kit's 106 box
+   tools up to `dev_docs/ai/AI4_TOOL_DESCRIPTIONS.md`, with an `agent-eval` before and after.
+7. **Verification.** Run the corpus base set and rebuild one house on the new machine. Both must reach the same
+   verdicts as before (`docs/EXPERIMENT_FACTS.md` in the private repo records them).
+
+Every house migrates once to the core-based kit. A migration refuses a house with local edits, so house-machine-12
+(off-kit since 2026-10-07) needs Marc's decision.

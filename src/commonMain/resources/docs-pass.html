@@ -69,6 +69,7 @@
         #dialog textarea, #dialog input { width: 100%; font: inherit; font-size: 12px; color: var(--field-cyan); background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(72, 201, 255, 0.35); border-radius: 7px; padding: 7px 10px; }
         #dialog textarea { min-height: 70px; resize: vertical; }
         #dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
+        .sentence textarea { flex: 1; min-width: 0; font: inherit; font-size: 12px; color: var(--field-cyan); background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(72, 201, 255, 0.35); border-radius: 7px; padding: 7px 10px; resize: vertical; }
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
     </style>
@@ -141,7 +142,7 @@
 
     <section>
         <h2>3 · Handoffs <span class="count" id="handoff-count"></span></h2>
-        <p class="muted">Work an agent judged too big for a page, worked through in batches, in order: decisions first, because they change what the navigation work is; navigation next, because it moves the pages captures and code land on. <em>Start session</em> makes a worktree for one batch with a brief listing its handoffs, and gives you the <code>claude</code> command to run there. A blocking handoff holds its page's notes until it is closed.</p>
+        <p class="muted">Work an agent judged too big for a page, worked through in batches, in order: decisions first, because they change what the navigation work is; navigation next, because it moves the pages captures and code land on. <em>Start session</em> makes a worktree for one batch with a brief listing its handoffs, and gives you the <code>claude</code> command to run there. Or say in a sentence what the batch should do and press <em>Run in Claude</em>: an interactive <code>claude</code> works through the batch in that worktree, in a terminal page you answer it in. A blocking handoff holds its page's notes until it is closed.</p>
         <div class="row"><button id="group-handoffs" type="button">Group handoffs into batches</button><span class="muted" id="group-hint"></span></div>
         <div id="handoffs"></div>
     </section>
@@ -177,7 +178,8 @@
 (() => {
     const $ = id => document.getElementById(id);
     const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-    const view = { status: null, job: null, openDiffs: new Map(), openHandoffs: new Map() };
+    const view = { status: null, job: null, openDiffs: new Map(), openHandoffs: new Map(), sentences: new Map(), pending: new Map(), terminals: [] };
+    let launchPending = () => {};
 
     // No window.prompt/confirm/alert anywhere on this page: Field's Electron window does not
     // implement prompt(), which returned nothing and made every action silently do nothing.
@@ -309,7 +311,29 @@
             + (open ? `<div class="expand"><pre>${esc(open.text)}</pre><p class="muted">${esc(open.file)}</p>${renderThread(h.thread)}</div>` : "") + `</td>`
             + `<td class="num"><select data-act="batch" title="move to another batch">${options}</select> <button data-act="read">${open ? "hide" : "read"}</button> <button data-act="taken">taken</button> <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button></td></tr>`;
     };
+    // The sentence box under a batch's action: what this batch should do, run by claude in its session.
+    const renderSentence = (batch, openRows) => {
+        const ready = openRows.filter(h => !batch.notLanded.includes(h.id));
+        if (!batch.session && !ready.length) return "";
+        const running = (view.terminals || []).filter(t => t.running && t.batch === batch.key)
+            .map(t => `<a href="/terminal.html?id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">${esc(t.title)}</a>`).join(" · ");
+        const waiting = view.pending.has(batch.key);
+        return `<div class="row sentence"><textarea data-sentence="${esc(batch.key)}" rows="2" placeholder="What should this batch do? e.g. yes to every merge the handoffs propose; keep the old URLs as redirects.">${esc(view.sentences.get(batch.key) || "")}</textarea>`
+            + `<button data-act="claude" data-batch="${esc(batch.key)}" class="primary"${waiting ? " disabled" : ""}>${waiting ? "Starting session…" : batch.session ? "Run in Claude" : "Start session in Claude"}</button>`
+            + (running ? ` <span class="muted">running: ${running}</span>` : "") + `</div>`;
+    };
     const renderHandoffs = (status) => {
+        // Re-rendering replaces the textareas: keep the one being typed in focused, with its caret.
+        const active = document.activeElement?.dataset?.sentence;
+        const caret = active ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+        renderHandoffBatches(status);
+        if (active) {
+            const box = document.querySelector(`#handoffs textarea[data-sentence="${CSS.escape(active)}"]`);
+            if (box) { box.focus(); box.setSelectionRange(caret[0], caret[1]); }
+        }
+        launchPending(status);
+    };
+    const renderHandoffBatches = (status) => {
         const items = (status.handoffs || []).filter(h => h.state === "open" || h.state === "taken" || view.openHandoffs.has(h.id));
         const byId = new Map(items.map(h => [h.id, h]));
         $("handoff-count").textContent = items.length ? `${items.length} open` : "";
@@ -342,7 +366,7 @@
             }
             const asking = rows.filter(h => h.question).length;
             return `<div class="batch"><h3>${batch.order} · ${esc(batch.title)} <span class="count">${rows.length}</span>${asking ? ` <span class="badge asks">${asking} asking you</span>` : ""}</h3><p class="muted">${esc(batch.how)}</p>`
-                + `<div class="row">${action}</div>` + (rows.length ? `<table>${rows.map(renderHandoffRow).join("")}</table>` : "") + `</div>`;
+                + `<div class="row">${action}</div>` + renderSentence(batch, openRows) + (rows.length ? `<table>${rows.map(renderHandoffRow).join("")}</table>` : "") + `</div>`;
         }).join("");
     };
 
@@ -512,6 +536,22 @@
             if (await confirmed(`Start a ${batch.title} session: a worktree off main with a brief listing its ${starting} handoff(s), which are marked taken.${later}${warning}`)) await act("start-session", { batch: batch.key });
             return;
         }
+        if (kind === "claude") {
+            const text = (view.sentences.get(batch.key) || "").trim();
+            if (batch.session) {
+                const running = [batch.session.driver, ...(batch.session.occupants || [])].filter(Boolean);
+                if (running.length && !await confirmed(`This session is already being run by ${running.join(", ")}. A second agent in the same worktree edits under the first one's feet. Start another anyway?`, true)) return;
+                await launchBatch(batch.key, text);
+                return;
+            }
+            const later = (batch.notLandedDetail || []).length ? `\n\nLeft for a later session, because its document is not on main yet: ${batch.notLandedDetail.map(d => d.title).join("; ")}.` : "";
+            const warning = batch.earlierOpen.length ? `\n\nStill open in earlier batches: ${batch.earlierOpen.join(", ")}.` : "";
+            if (!await confirmed(`Start a ${batch.title} session (a worktree off main, its handoffs marked taken) and run claude there${text ? " with your sentence" : ""}?${later}${warning}`)) return;
+            view.pending.set(batch.key, { text, at: Date.now() });
+            renderHandoffs(view.status);
+            await act("start-session", { batch: batch.key });
+            return;
+        }
         if (kind === "copy") {
             const text = batch.session.command;
             const running = [batch.session.driver, ...(batch.session.occupants || [])].filter(Boolean);
@@ -532,6 +572,35 @@
         }
         await closeHandoff(id, kind);
     });
+
+    // A batch's sentence: an interactive claude in that batch's session worktree, in a pty
+    // (afield/server/terminal.kt), shown by /terminal.html. With no session yet, the session is
+    // started first and claude follows once the status shows its worktree.
+    const openTerminal = id => window.open(`/terminal.html?id=${encodeURIComponent(id)}`, `field-terminal-${id}`, "noopener");
+    const refreshTerminals = async () => {
+        try { view.terminals = await (await fetch("/api/terminal", { cache: "no-store" })).json(); } catch (_) {}
+    };
+    const launchBatch = async (key, text) => {
+        const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "handoff-batch", batch: key, text }) });
+        if (!response.ok) { await tell(await response.text()); return; }
+        view.sentences.delete(key);
+        openTerminal((await response.json()).id);
+        await refreshTerminals();
+        if (view.status) { renderHandoffs(view.status); setButtons(); }
+    };
+    launchPending = status => {
+        for (const [key, { text, at }] of [...view.pending]) {
+            const batch = (status.batches || []).find(b => b.key === key);
+            if (batch?.session) { view.pending.delete(key); launchBatch(key, text); }
+            else if (view.job && view.job.name === "start-session" && view.job.startedAtEpochMs >= at - 5000 && !view.job.running && view.job.exitCode !== 0) view.pending.delete(key);
+        }
+    };
+    $("handoffs").addEventListener("input", event => {
+        const key = event.target.dataset?.sentence;
+        if (key) view.sentences.set(key, event.target.value);
+    });
+    refreshTerminals();
+    setInterval(() => { if (!document.hidden) refreshTerminals(); }, 5000);
 
     refresh();
     setInterval(() => { if (!document.hidden) refresh(); }, 2500);

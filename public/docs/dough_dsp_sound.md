@@ -9,7 +9,7 @@ Each section below builds one primitive, plays a signal through it, plots the re
 [`showSignals`](reference/visualization.md#plotly-kt-functions), and lets you hear it. The clips are
 rendered offline by the same code the audio engine runs.
 
-In each example the code that builds the primitive is shown, and the rendering and plotting is
+In each example the code that builds the primitive is shown, and the rendering and plotting are
 folded behind a `+ …` pill you can click to open. The `dough*` helpers it calls (`doughRenderMono`,
 `doughPluckEnv`, `doughAbsEnvelope` and the rest) are available in every box and
 [listed in the reference](reference/synthesis.md#doughdspsounddocs-kt-functions).

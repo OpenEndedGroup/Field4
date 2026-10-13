@@ -2954,6 +2954,10 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
         )
     }
 
+    if (req.showEditor && !isOverlayVisible(visibleMonacoContainer()?.querySelector(".monaco-editor"))) {
+        return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
+    }
+
     if (req.showEditor && box != null && !editorHasRenderableContentFor(box, req.property)) {
         return WindowScreenshotResponse(
             uid = req.uid,
@@ -7499,7 +7503,11 @@ suspend fun main() {
             x,
             y,
             w,
-            h
+            h,
+            resizeLeft = event.edges.left == true,
+            resizeRight = event.edges.right == true,
+            resizeTop = event.edges.top == true,
+            resizeBottom = event.edges.bottom == true
         )
 
         target.data_x = snappedRect.x

@@ -139,5 +139,5 @@ it into the activation lane on a private scale.
 - Type sizes (5da6efc2f): ticks and axis titles 9 px, lane labels 8 px, panel titles 11 px,
   chips, legend and footer 9 px; stacked lanes are 16 px apart. The 101 Fn.plot figures, the
   recorded-audio figure and the one-viewer demo were captured before this change and are owed a
-  recapture. synchronized_analysis.png is current.
+  recapture. synchronized_analysis.png was removed on 2026-10-10: it drew made-up data.
 

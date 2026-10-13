@@ -3,7 +3,7 @@ package afield.stdlib
 import afield.Rect
 import afield.graphics.FLineSamplers
 import afield.graphics.sampleSeries
-import afield.graphics.signedArea2D
+import afield.graphics.area2D
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -146,7 +146,7 @@ class TypographyTest {
             val pieces = g.outline.pieces()
             assertEquals(g.contours.size, pieces.size, "'$c': ${pieces.size} subpaths for ${g.contours.size} rings")
             g.contours.forEachIndexed { i, ring ->
-                val area = pieces[i].signedArea2D().toDouble()
+                val area = pieces[i].area2D().toDouble()
                 assertTrue(
                     (area > 0) == (ring.signedArea > 0),
                     "'$c' ring $i: polygon area ${ring.signedArea} but outline subpath area $area"

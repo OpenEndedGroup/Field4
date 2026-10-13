@@ -84,12 +84,19 @@ data class BrushConfig(
     val ragged: Double? = null,
     /** 0 a blunt tuft .. 1 a fine point (the `point` argument of [PaintCanvas.brush], when given here instead). */
     val point: Double? = null,
+    /**
+     * How far a bristle's dryness keeps it on the canvas's tooth: 0 (as made), pressure pushes it
+     * into the weave's hollows however dry it is; 1, a bristle running dry rides only the peaks,
+     * however hard it is pressed, and breaks into dry-brush skips on a ground with grain (on a smooth
+     * one, none: it thins evenly). Past 1 drier still; below 0 the reverse.
+     */
+    val tooth: Double? = null,
 ) {
     internal fun values(): FloatArray = floatArrayOf(
         bristles?.toFloat() ?: Float.NaN, length?.toFloat() ?: Float.NaN, stiffness?.toFloat() ?: Float.NaN,
         hair?.toFloat() ?: Float.NaN, run?.toFloat() ?: Float.NaN, lay?.toFloat() ?: Float.NaN,
         pickup?.toFloat() ?: Float.NaN, push?.toFloat() ?: Float.NaN, splay?.toFloat() ?: Float.NaN,
-        ragged?.toFloat() ?: Float.NaN, point?.toFloat() ?: Float.NaN)
+        ragged?.toFloat() ?: Float.NaN, point?.toFloat() ?: Float.NaN, tooth?.toFloat() ?: Float.NaN)
 }
 
 /**
@@ -103,6 +110,11 @@ data class LoadPart(
     val share: Double = 1.0,
     /** 0 every bristle in reach takes it up alike; 1 in streaks, as from an unevenly knifed pile. */
     val streak: Double = 0.0,
+    /**
+     * Where the streaks fall. By default they follow from the brush as it is (how full it is), so a
+     * restored brush dips alike; give a seed to fix them, as two eyes of a stereo pair must.
+     */
+    val seed: Long? = null,
 )
 
 /**
@@ -225,7 +237,7 @@ class PaintBrush internal constructor(internal val handle: MemorySegment, val ki
     /** How the brush is made: every construction value as it is, none left to the preset. */
     val config: BrushConfig get() = PaintNative.brushConfig(handle).let { v ->
         BrushConfig(v[2].toInt(), v[3].toDouble(), v[4].toDouble(), v[5].toDouble(), v[6].toDouble(), v[7].toDouble(),
-            v[8].toDouble(), v[9].toDouble(), v[10].toDouble(), v[11].toDouble(), v[12].toDouble())
+            v[8].toDouble(), v[9].toDouble(), v[10].toDouble(), v[11].toDouble(), v[12].toDouble(), v[13].toDouble())
     }
 
     /**
@@ -285,7 +297,7 @@ class PaintBrush internal constructor(internal val handle: MemorySegment, val ki
         PaintNative.brushLoadV2(handle, r, g, b, hiding, scatter, stiff, drying, amount.toFloat(), wipe.toFloat(),
             thinner.toFloat(), turps.toFloat(), oil.toFloat(), p.side.toFloat(), p.share.toFloat(), p.streak.toFloat(),
             // a streaked dip's streaks follow from the brush as it is, so a restored brush dips alike
-            PaintNative.brushFullness(handle).toBits().toLong() * 31 + p.hashCode())
+            p.seed ?: (PaintNative.brushFullness(handle).toBits().toLong() * 31 + p.hashCode()))
     }
 
     /** Wipe [fraction] of the paint out of the brush on a rag, without loading any. */
@@ -445,13 +457,34 @@ class DynamicBrush internal constructor(internal val handle: MemorySegment, val 
     /**
      * How the hairs behave; `null` keeps a value. [friction] is static to kinetic against the surface;
      * a joint bent more than [yieldDegrees] from its rest angle keeps some of the bend, at [plasticity]
-     * per second; rest bends straighten again at [recovery] per second; [cohesion] (0..1) is how
-     * strongly the liquid in a full brush draws neighbouring tips together.
+     * per second; rest bends straighten again at [recovery] per second; [cohesion] is how strongly
+     * the liquid in a wet brush draws its hairs together: 1 draws a full brush's tips to a point, more
+     * pulls harder and closer, 0 none, and below 0 pushes nearby hairs apart.
+     *
+     * [clumping] is which way the liquid does it. 0 (as a brush is made) draws the tips of hairs that
+     * are neighbours at the root together. 1 joins any two wet hairs that come within about their
+     * spacing at the root by a liquid bridge, which pulls them together and snaps when they are pulled
+     * a few spacings apart (further the more liquid it holds), so that the hairs gather into clumps
+     * that splay can tear apart, and the bristles they carry gather with them. Between 0 and 1 the two
+     * pull together, each by its share; past 1 the bridges pull harder and reach further; below 0 the
+     * tip pull is stronger and the bridges push.
+     *
+     * [splay] is how far a pressed hair is pushed out from the brush's middle, per mm pressed in (the
+     * brush's `BrushConfig.splay` until set). [splayFan] is how that grows across the brush: 0 every
+     * hair pushed alike (each half of a flat moves as one), 1 in proportion to how far out its root
+     * is, so that the brush fans open and neighbours part everywhere. [splayScatter] turns each hair's
+     * push off the outward by its own slowly drifting angle and amount (0 none, 1 up to half a turn and
+     * twice as far), the way pressed hairs buckle each their own way.
      */
-    fun set(friction: Pair<Double, Double>? = null, yieldDegrees: Double? = null, plasticity: Double? = null, recovery: Double? = null, cohesion: Double? = null): DynamicBrush = apply {
+    fun set(friction: Pair<Double, Double>? = null, yieldDegrees: Double? = null, plasticity: Double? = null, recovery: Double? = null, cohesion: Double? = null,
+            clumping: Double? = null, splay: Double? = null, splayFan: Double? = null, splayScatter: Double? = null): DynamicBrush = apply {
         val nan = Float.NaN
         PaintNative.dbrushSet(handle, friction?.first?.toFloat() ?: nan, friction?.second?.toFloat() ?: nan,
             yieldDegrees?.let { Math.toRadians(it).toFloat() } ?: nan, plasticity?.toFloat() ?: nan, recovery?.toFloat() ?: nan, cohesion?.toFloat() ?: nan)
+        clumping?.let { PaintNative.dbrushParam(handle, "clumping", it.toFloat()) }
+        splay?.let { PaintNative.dbrushParam(handle, "splay", it.toFloat()) }
+        splayFan?.let { PaintNative.dbrushParam(handle, "splay fan", it.toFloat()) }
+        splayScatter?.let { PaintNative.dbrushParam(handle, "splay scatter", it.toFloat()) }
     }
 
     /** Load it with oil paint, as [PaintBrush.load]. */

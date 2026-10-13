@@ -1,6 +1,5 @@
 import afield.RunScope
 import afield.ReleasePolicy
-import afield.four.Renderer
 import afield.four.modules.*
 import afield.graphics.FLine
 import afield.graphics.slug.*
@@ -10,7 +9,6 @@ import afield.stdlib.file
 
 name = "5e. Slug filled paths"
 // Build the optional helper once: bash native/field-slug/build.sh
-val renderer: Renderer = fromContext()
 val path = FLine().moveTo(-1, -1).lineTo(1, -1)
     .cubicTo(vec(1.4, 0, 0), vec(0.8, 1.3, 0), vec(0, 1, 0))
     .lineTo(-1, 1).close()

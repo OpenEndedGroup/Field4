@@ -80,6 +80,9 @@ fn transpose(src: &[f32], w: usize, h: usize) -> Vec<f32> {
 /// How far into the tooth's range the paint a fully loaded hair carries
 /// reaches ahead of the hair (see `exchange`).
 const WET_REACH: f32 = 0.5;
+/// (Field) The contact threshold a bristle run dry is drawn up to by `Tool::tooth`: a little above
+/// the ground's local median height (0.5 in `Canvas::surf`'s base).
+const DRY_TH: f32 = 0.55;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Kind {
@@ -126,6 +129,12 @@ pub struct Tool {
     /// down from the belly to the tip as the tip lays it, and a tip run dry
     /// loses its point and splits.
     pub point: f32,
+    /// (Field) How far a bristle's dryness keeps it on the tooth: 0 (every preset), pressure reaches
+    /// into the weave's hollows however dry the bristle; 1, the pressure's reach falls with the
+    /// bristle's load, so a dry bristle rides the peaks however hard it is pressed (only its paint,
+    /// and a soft hair's give, reach lower) and breaks into dry-brush skips on a ground with tooth
+    /// (none on a smooth one). Past 1 drier still; below 0, the reverse.
+    pub tooth: f32,
 }
 
 impl Tool {
@@ -144,6 +153,7 @@ impl Tool {
             splay: 0.3,
             ragged: 0.25,
             point: 0.0,
+            tooth: 0.0,
         }
     }
 
@@ -255,19 +265,12 @@ impl Tool {
         if let Some((k, v)) = finite.iter().find(|(_, v)| !v.is_finite()) {
             return Err(format!("tool {k} = {v} is not finite"));
         }
+        // (Field: the ranges a tool's values are meant for are not refused, only what would break the
+        // simulation: a brush needs some width and at least one bristle. Every other value is free,
+        // and guarded where it is used. `VENDORED.md`, "dials past their range".)
         let checks = [
             ("width > 0", self.width > 0.0),
             ("bristles >= 1", self.bristles >= 1),
-            ("length >= 0", self.length >= 0.0),
-            ("stiffness in 0..=1", (0.0..=1.0).contains(&self.stiffness)),
-            ("hair > 0", self.hair > 0.0),
-            ("run > 0", self.run > 0.0),
-            ("lay >= 0", self.lay >= 0.0),
-            ("pickup in 0..=1", (0.0..=1.0).contains(&self.pickup)),
-            ("push in 0..=1", (0.0..=1.0).contains(&self.push)),
-            ("splay >= 0", self.splay >= 0.0),
-            ("ragged >= 0", self.ragged >= 0.0),
-            ("point in 0..=1", (0.0..=1.0).contains(&self.point)),
         ];
         match checks.iter().find(|(_, ok)| !ok) {
             Some((rule, _)) => Err(format!("invalid tool: want {rule} ({self:?})")),
@@ -757,6 +760,19 @@ pub(crate) struct Surf {
     solv: *mut f32,
     laid: *mut f32,
     laid_id: *mut u32,
+    /// (Field) The noise identity of the stroke this surface is painted with (`Canvas::stroke_noise`);
+    /// None: the stroke's id.
+    pub(crate) noise: Option<u32>,
+    /// (Field) The stroke's world arc at each of its input points, pixels (null: none; then the
+    /// canvas arc is used), and how many there are.
+    pub(crate) arc: *const f32,
+    pub(crate) arc_n: usize,
+    /// (Field) World distance per canvas distance where the bristle is now: what `exchange` scales a
+    /// step's travel by, so a load runs down over the same world length in either eye. 1: none.
+    pub(crate) travel: f32,
+    /// (Field) The canvas's stereo warp (`field::warp`), or null: tacky paint's grab is keyed on
+    /// the place on the reference canvas.
+    pub(crate) warp: *const crate::field::warp::Warp,
 }
 // SAFETY: callers only run brushes concurrently on pixel sets that cannot
 // overlap (tiles separated by more than the largest stroke extent).
@@ -896,6 +912,11 @@ impl Canvas {
             solv: if self.wet.solv.len() == n { self.wet.solv.as_mut_ptr() } else { std::ptr::null_mut() },
             laid: if self.wet.laid.len() == n { self.wet.laid.as_mut_ptr() } else { std::ptr::null_mut() },
             laid_id: if self.wet.laid_id.len() == n { self.wet.laid_id.as_mut_ptr() } else { std::ptr::null_mut() },
+            noise: None,
+            arc: std::ptr::null(),
+            arc_n: 0,
+            travel: 1.0,
+            warp: self.warp.as_deref().map_or(std::ptr::null(), |w| w as *const _),
         }
     }
 
@@ -932,9 +953,14 @@ impl Canvas {
         }
         self.tally.stroke(&held.tool, &g.pts, self.mm_per_unit);
         let id = self.next_stroke_ids(1);
-        let surf = self.surf();
+        let arc = self.take_arc_px(g.pts.len());
+        let mut surf = self.surf();
+        surf.noise = self.stroke_noise.take();
+        if let Some(a) = &arc {
+            (surf.arc, surf.arc_n) = (a.as_ptr(), a.len());
+        }
         let mut scratch = Vec::new();
-        // SAFETY: exclusive &mut self, single brush.
+        // SAFETY: exclusive &mut self, single brush; `arc` outlives the call.
         let b = unsafe { drag_on(surf, held, g, clip.map(Clip::Mask), id, &mut scratch) };
         if let Some((x0, y0, x1, y1)) = b {
             self.wet.touch(x0, y0, x1, y1);
@@ -1134,6 +1160,23 @@ pub(crate) unsafe fn drag_on(
         arc[i] = arc[i - 1] + (dx * dx + dy * dy).sqrt();
     }
     let total = arc[arc.len() - 1];
+    // (Field) the stroke's world arc at each point of the path, pixels: the caller's, carried along
+    // the canvas path in proportion; without one, the canvas arc itself
+    let mut sf = sf;
+    let world: Vec<f32> = if !sf.arc.is_null() && sf.arc_n == g.pts.len() && pts.len() >= 2 {
+        // SAFETY: `drag` points `arc` at a live slice of `arc_n` values for the call
+        let w_in = unsafe { std::slice::from_raw_parts(sf.arc, sf.arc_n) };
+        let mut a_in = vec![0.0f32; pts.len()];
+        for i in 1..pts.len() {
+            a_in[i] = a_in[i - 1] + ((pts[i].0 - pts[i - 1].0).powi(2) + (pts[i].1 - pts[i - 1].1).powi(2)).sqrt();
+        }
+        let a_tot = a_in[a_in.len() - 1].max(1e-6);
+        let w0 = w_in[0];
+        arc.iter().map(|&a| crate::field::interp(&a_in, w_in, a / total.max(1e-6) * a_tot) - w0).collect()
+    } else {
+        arc.clone()
+    };
+    let total_w = world[world.len() - 1];
     let tool = held.tool.clone();
     // a pointed tool's hairs are drawn at their true size, however far
     // below a pixel (see `strip_cover`)
@@ -1172,6 +1215,9 @@ pub(crate) unsafe fn drag_on(
         }
         let seg_len = (arc[seg + 1] - arc[seg]).max(1e-6);
         let f = ((d - arc[seg]) / seg_len).clamp(0.0, 1.0);
+        // (Field) the world arc here, and world length per canvas length along this segment
+        let dw = world[seg] + (world[seg + 1] - world[seg]) * f;
+        sf.travel = if seg_len > 1e-3 { ((world[seg + 1] - world[seg]) / seg_len).max(0.0) } else { 1.0 };
         let (ax, ay) = path[seg];
         let (bx, by) = path[seg + 1];
         let hx = ax + (bx - ax) * f;
@@ -1181,11 +1227,11 @@ pub(crate) unsafe fn drag_on(
         // the hand is never exact: the path drifts sideways a little and the
         // pressure breathes, both slowly along the stroke
         let lw = (tool.width * 2.5 + 6.0) * s;
-        let hs = id as u64 * 7919;
-        let off = g.shake * (0.05 * tool.width + 0.12) * s * (wander(d / lw, hs + 1) + 0.5 * wander(d / (lw * 0.37), hs + 2));
+        let hs = sf.noise.unwrap_or(id) as u64 * 7919;
+        let off = g.shake * (0.05 * tool.width + 0.12) * s * (wander(dw / lw, hs + 1) + 0.5 * wander(dw / (lw * 0.37), hs + 2));
         let (hx, hy) = (hx - dir.1 * off, hy + dir.0 * off);
-        let u = if total > 0.0 { d / total } else { 0.5 };
-        let p = (g.pressure_at(u) * (1.0 + g.shake * 0.14 * wander(d / (lw * 0.8), hs + 3))).clamp(0.0, 1.0);
+        let u = if total_w > 0.0 { dw / total_w } else { 0.5 };
+        let p = (g.pressure_at(u) * (1.0 + g.shake * 0.14 * wander(dw / (lw * 0.8), hs + 3))).clamp(0.0, 1.0);
         let theta = match g.orient {
             Orient::Across => dir.1.atan2(dir.0) + std::f32::consts::FRAC_PI_2,
             Orient::Along => dir.1.atan2(dir.0),
@@ -1207,7 +1253,7 @@ pub(crate) unsafe fn drag_on(
                 continue;
             }
             // bristles wander a little across the stroke
-            let wv = wander(d / s / tool.width.max(2.0) * 1.3, b.seed) * tool.ragged;
+            let wv = wander(dw / s / tool.width.max(2.0) * 1.3, b.seed) * tool.ragged;
             let (ox, oy) = ((b.rx + wv * 0.12) * half, (b.ry + wv * 0.05) * half);
             let root = (hx + ox * ct - oy * st, hy + ox * st + oy * ct);
             // tips trail behind the motion and splay outward under pressure
@@ -1424,7 +1470,7 @@ pub(crate) unsafe fn exchange(
             // outside the window the canvas isn't there to feel: assume the
             // bristle touched and laid paint as usual (so it arrives in the
             // window about as spent as in a whole render), lifting none
-            let travel = (seg / s).max(rb / s * 0.5);
+            let travel = (seg / s).max(rb / s * 0.5) * sf.travel;
             if br.solvent > 0.0 {
                 // (a thinned load: its liquid runs down the same way, paint
                 // and solvent alike)
@@ -1484,7 +1530,18 @@ pub(crate) unsafe fn exchange(
         let cap = if capped { crate::thinner::stroke_limit_um(phi) / COAT_UM } else { f32::INFINITY };
         let wet = smoothstep(0.1, 0.8, liquid / full);
         let wick = if tool.point > 0.0 { tool.point * smoothstep(0.02, 0.25, liquid / full) } else { 0.0 }.max(WET_REACH * wet);
-        let th = 1.0 - reach.max(wick) * 1.6;
+        // (Field) `Tool::tooth`: as the bristle dries, the height it reaches down to by pressure is
+        // drawn up toward `DRY_TH`, just above the ground's local median, by `tooth` times its
+        // dryness: on a ground with grain only the peaks clear it (dry-brush skips), on a smooth one
+        // every place sits at the median and the bristle touches all of it, lightly. Its paint
+        // (`wick`) reaches as it did. At tooth 0, exactly as before
+        let th = if tool.tooth != 0.0 {
+            let by_press = 1.0 - reach * 1.6;
+            let by_press = if by_press < DRY_TH || tool.tooth < 0.0 { by_press + (DRY_TH - by_press) * tool.tooth * (1.0 - wet) } else { by_press };
+            by_press.min(1.0 - wick * 1.6)
+        } else {
+            1.0 - reach.max(wick) * 1.6
+        };
 
         // pass 1: contact weights
         let bw = x1 - x0;
@@ -1550,7 +1607,7 @@ pub(crate) unsafe fn exchange(
         let tack = sum_tack / sum_w;
 
         // deposit: a share of the load, proportional to distance traveled
-        let travel = (seg / s).max(rb / s * 0.5);
+        let travel = (seg / s).max(rb / s * 0.5) * sf.travel;
         // (the exchange experiment: a thinned hair lets go more slowly)
         let travel = if exch { travel * (1.0 - phi).powf(crate::thinner::exchange_kj().0) } else { travel };
         // only the part of the footprint actually in contact takes paint: a
@@ -1562,7 +1619,11 @@ pub(crate) unsafe fn exchange(
         };
         let dep_total = if matches!(clip, Some(Clip::Fence { .. })) { dep_total * (sum_k / sum_w).min(1.0) } else { dep_total };
         let dep_total = if tack > 0.0 {
-            let g = crate::drying::grab(tack) * crate::drying::stick(b.0, b.1, rb, br.seed, tack);
+            let g = crate::drying::grab(tack) * {
+                // (the warp is the canvas's, alive for the stroke: we are inside `exchange`'s unsafe)
+                let (wx, wy) = if sf.warp.is_null() { b } else { (*sf.warp).map(b.0, b.1) };
+                crate::drying::stick(wx, wy, rb, br.seed, tack)
+            };
             let d = match dep {
                 None => liquid * (1.0 - (-travel * g / tool.run).exp()) * touch,
                 Some(_) => dep_total * g,
@@ -1577,25 +1638,39 @@ pub(crate) unsafe fn exchange(
         // along its length (the variation averages out across the brush).
         // A pointed tip's few hairs lie together already.
         // (the paint as it is on the brush: solvent makes it flow)
-        let ps = (br.hide[1] * (1.0 - br.hide[3]).powi(2)).clamp(0.0, 1.0);
+        // (Field: no upper limit, so paint stiffer than tube paint holds the hairs in fewer, wider
+        // clumps; `VENDORED.md`, "dials past their range")
+        let ps = (br.hide[1] * (1.0 - br.hide[3]).powi(2)).max(0.0);
         // how far the paint is stiff enough to hold hairs together: none in
         // fluid paint, rising steeply in stiff
-        let stiffen = ((ps - 0.4) / 0.6).clamp(0.0, 1.0);
+        let stiffen = ((ps - 0.4) / 0.6).max(0.0);
         let dep_total = if sf.clump && dep.is_none() && !fine && stiffen > 0.0 {
             let clump_u = tool.hair_radius() * (1.0 + 4.0 * stiffen * stiffen);
             let bands = (tool.width / (2.0 * clump_u)).clamp(2.0, 48.0);
             let u = (br.rx.clamp(-1.0, 1.0) + 1.0) * 0.5 * bands;
             let (b0, f) = (u.floor(), u - u.floor());
-            let h0 = crate::rng::hash2(b0 as i64, id as i64, 0x51C0);
-            let h1 = crate::rng::hash2(b0 as i64 + 1, id as i64, 0x51C0);
+            let nk = sf.noise.unwrap_or(id) as i64;
+            let h0 = crate::rng::hash2(b0 as i64, nk, 0x51C0);
+            let h1 = crate::rng::hash2(b0 as i64 + 1, nk, 0x51C0);
             let band = h0 + (h1 - h0) * crate::smoothstep(0.0, 1.0, f);
-            (dep_total * (1.0 + 0.6 * stiffen * (2.0 * band - 1.0))).min(liquid * 0.95)
+            // the ridges' contrast: 0.6 at tube paint's stiffness, as before; past it (Field) rising
+            // smoothly toward full (bare furrows between ridges) rather than past it, which would
+            // lay nothing at all
+            let contrast = if stiffen <= 1.0 { 0.6 * stiffen } else { 1.0 - 0.4 * (-1.5 * (stiffen - 1.0)).exp() };
+            // and a paste stiffer than tube paint is harder to push off the hair (Field): what it
+            // gives falls off slowly, with the log of how far past tube paint it is
+            let give = if stiffen <= 1.0 { 1.0 } else { 1.0 / (1.0 + 0.3 * stiffen.ln()) };
+            (dep_total * give * (1.0 + contrast * (2.0 * band - 1.0))).min(liquid * 0.95)
         } else {
             dep_total
         };
         // a capsule cut by the window edge lays only the window's share there
         let share = if windowed { sum_cov / capsule_cover(a, b, rb, fine, (cx0, cy0, cx1, cy1)).max(1e-6) } else { 1.0 };
-        let dep_per_w = dep_total * share.min(1.0) / sum_w / px_area;
+        // (Field) with a world arc (`Surf::travel`), the hair loses its load by world travel but
+        // lays it per canvas length: one stroke seen by two eyes runs out at the same place along
+        // it and lies as thick at matching places in both, however long each sees it
+        let laid_total = if sf.travel != 1.0 { (dep_total / sf.travel.max(1e-3)).min(liquid * 0.95) } else { dep_total };
+        let dep_per_w = laid_total * share.min(1.0) / sum_w / px_area;
         // film splitting: a bristle in wet paint always lifts some of it, even
         // when loaded; a spent bristle drinks more
         let hunger = 0.35 + 0.65 * (1.0 - liquid / full).clamp(0.0, 1.0).powf(1.5);
@@ -1613,6 +1688,10 @@ pub(crate) unsafe fn exchange(
         // (see `touch_rb`): its contact is its track.
         let hair = if fine || dep.is_some() { rb } else { (tool.hair_radius() * s).min(rb) };
         let push_k = tool.push * (seg / (2.0 * hair)).clamp(0.0, 1.0) * (hair / rb);
+        // (Field) `Tool::tooth`: a bristle ploughs with the bead of paint it carries; run dry it skates
+        // over the peaks it rides, pushing less (by tooth times its dryness), so the paint it lays
+        // there stays on them
+        let push_k = if tool.tooth != 0.0 { push_k * (1.0 - tool.tooth * (1.0 - wet)).max(0.0) } else { push_k };
         // (engine 4: each hair still moves only its own share of paint, but a
         // clump of hairs in stiff paint throws it aside the clump's width,
         // up to a few pixels: walls along the stroke's edges, a bead ahead)
@@ -1718,7 +1797,9 @@ pub(crate) unsafe fn exchange(
                 // plough: move paint outward from the bristle's path, and ahead
                 if push_k > 0.0 {
                     let v = *sf.vol.add(i);
-                    let m = v * push_k * wt * fl;
+                    // (Field: never more than is there, so a push past 1 ploughs aside all of it rather
+                    // than leaving negative paint behind; `VENDORED.md`, "dials past their range")
+                    let m = (v * push_k * wt * fl).min(v.max(0.0));
                     if m > 1e-6 {
                         let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
                         let side = if (px - a.0) * nx + (py - a.1) * ny >= 0.0 { 1.0 } else { -1.0 };
@@ -1801,7 +1882,7 @@ pub(crate) unsafe fn exchange(
         if phi > 0.0 {
             // the hair loses what it laid (and in a crop, the share laid
             // outside the window), paint and solvent in its proportions
-            let gone = (laid_liq + dep_total * (1.0 - share.min(1.0))).min(liquid);
+            let gone = (laid_liq * sf.travel + dep_total * (1.0 - share.min(1.0))).min(liquid);
             br.vol = (br.vol - gone * (1.0 - phi)).max(0.0);
             br.solvent = (br.solvent - gone * phi).max(0.0);
         } else {
@@ -1945,7 +2026,8 @@ impl Canvas {
         }
         self.tally.touch();
         let id = self.next_stroke_ids(1);
-        let surf = self.surf();
+        let mut surf = self.surf();
+        surf.noise = self.stroke_noise.take();
         let mut scratch = Vec::new();
         // SAFETY: exclusive &mut self, single brush.
         let b = unsafe { touch_on(surf, held, t, clip.map(Clip::Mask), id, &mut scratch) };
@@ -3049,7 +3131,9 @@ impl Canvas {
         let tears = self.engine >= 5;
         // (the paint the tears held back under the blade: back on it at the end)
         let (mut held, mut held_solvent) = (0.0f32, 0.0f32);
-        let tseed = (id as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0x7EA2;
+        let tseed = (self.stroke_noise.take().unwrap_or(id) as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0x7EA2;
+        // (Field) the pull's world arc at each input point, if the caller gave one
+        let warc = self.take_arc_px(pts.len());
         let height: *const f32 = self.height.as_ptr();
         let sf = self.surf();
         let s = sf.scale;
@@ -3061,6 +3145,20 @@ impl Canvas {
             arc[i] = arc[i - 1] + ((path[i].0 - path[i - 1].0).powi(2) + (path[i].1 - path[i - 1].1).powi(2)).sqrt();
         }
         let total = arc[arc.len() - 1].max(1e-6);
+        // (Field) the world arc at each point of the path, pixels (the canvas arc without one): the
+        // pressure profile, the tears and the leading edge follow it
+        let world: Vec<f32> = match &warc {
+            Some(w_in) if p.len() >= 2 => {
+                let mut a_in = vec![0.0f32; p.len()];
+                for i in 1..p.len() {
+                    a_in[i] = a_in[i - 1] + ((p[i].0 - p[i - 1].0).powi(2) + (p[i].1 - p[i - 1].1).powi(2)).sqrt();
+                }
+                let a_tot = a_in[a_in.len() - 1].max(1e-6);
+                arc.iter().map(|&a| crate::field::interp(&a_in, w_in, a / total * a_tot) - w_in[0]).collect()
+            }
+            _ => arc.clone(),
+        };
+        let total_w = world[world.len() - 1].max(1e-6);
         let half = k.width * s * 0.5;
         // mm per pixel
         let s_mm = self.px_mm();
@@ -3091,6 +3189,8 @@ impl Canvas {
             let seg = (arc[(j + 1).min(path.len() - 1)] - arc[j]).max(1e-6);
             let f = ((d - arc[j]) / seg).clamp(0.0, 1.0);
             let c = (a.0 + (b.0 - a.0) * f, a.1 + (b.1 - a.1) * f);
+            let jn = (j + 1).min(path.len() - 1);
+            let dw = world[j] + (world[jn] - world[j]) * f;
             let dir = {
                 let (dx, dy) = (b.0 - a.0, b.1 - a.1);
                 let m = (dx * dx + dy * dy).sqrt();
@@ -3101,7 +3201,7 @@ impl Canvas {
                 Some(a) => (a.cos(), a.sin()),
                 None => (-dir.1, dir.0),
             };
-            let pr = pressure.0 + (pressure.1 - pressure.0) * (d / total);
+            let pr = pressure.0 + (pressure.1 - pressure.0) * (dw / total_w);
             // the gap between blade and the dry surface's peaks, µm
             let gap = 300.0 * (1.0 - pr.clamp(0.0, 1.0)).powf(1.5);
             // the blade's pixels, and the highest dry point under it
@@ -3131,7 +3231,7 @@ impl Canvas {
                 // pixels, so a small canvas (a sketch, a preview) tears too,
                 // more coarsely, where a pixel is wider than a tear
                 let tn = if tears {
-                    crate::surface::vnoise(u * tear_u.0 + 7.0, d * tear_d.0, tseed) * 0.7 + crate::surface::vnoise(u * tear_u.1, d * tear_d.1, tseed ^ 0x51) * 0.3
+                    crate::surface::vnoise(u * tear_u.0 + 7.0, dw * tear_d.0, tseed) * 0.7 + crate::surface::vnoise(u * tear_u.1, dw * tear_d.1, tseed ^ 0x51) * 0.3
                 } else {
                     0.5
                 };
@@ -3173,7 +3273,7 @@ impl Canvas {
                         && top < plane
                         && tears
                         && plane - top <= 2.0 * gap + PRESS_IN_UM
-                        && (plane - top > (2.0 * gap + PRESS_IN_UM) * (0.45 + 1.1 * tn) || u.abs() > 0.72 && tn < (u.abs() - 0.72) / 0.28 * 1.1 || d < (1.0 + 7.0 * tn) / s_mm)
+                        && (plane - top > (2.0 * gap + PRESS_IN_UM) * (0.45 + 1.1 * tn) || u.abs() > 0.72 && tn < (u.abs() - 0.72) / 0.28 * 1.1 || dw < (1.0 + 7.0 * tn) / s_mm)
                     {
                         // a tear: the paint a whole slab would have left here
                         // parts with the blade and stays under it, out of the

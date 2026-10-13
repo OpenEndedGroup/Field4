@@ -63,37 +63,33 @@ fun FLine.bySmileGaussianProcessInterpolating(
     if (obs.size < 2) return this.copy()
 
     val (tObs, pObs) = prepareArcLengthTrainingData(obs) ?: return this.copy()
-    return try {
-        val options = SmileGpOptions(
-            lengthScale = lengthScale.toDouble(),
-            noise = noise.toDouble(),
-            normalize = normalize,
-            tol = tol.toDouble(),
-            maxIter = maxIter
+    val options = SmileGpOptions(
+        lengthScale = lengthScale.toDouble(),
+        noise = noise.toDouble(),
+        normalize = normalize,
+        tol = tol.toDouble(),
+        maxIter = maxIter
+    )
+
+    val xModel = smileGaussianProcess(tObs, DoubleArray(pObs.size) { i -> pObs[i].x.toDouble() }, options)
+    val yModel = smileGaussianProcess(tObs, DoubleArray(pObs.size) { i -> pObs[i].y.toDouble() }, options)
+    val zModel = smileGaussianProcess(tObs, DoubleArray(pObs.size) { i -> pObs[i].z.toDouble() }, options)
+
+    val outCount = samples.coerceAtLeast(1)
+    val base = this.samplePoints(outCount, sampler = outputSampler)
+    if (base.isEmpty()) return this.copy()
+    val tQuery = normalizedArcLengthParamsSmile(base)
+    val predicted = ArrayList<Vec3>(base.size)
+    for (i in base.indices) {
+        val t = tQuery[i]
+        predicted += vec(
+            xModel.predict(t).toFloat(),
+            yModel.predict(t).toFloat(),
+            zModel.predict(t).toFloat()
         )
-
-        val xModel = smileGaussianProcess(tObs, DoubleArray(pObs.size) { i -> pObs[i].x.toDouble() }, options)
-        val yModel = smileGaussianProcess(tObs, DoubleArray(pObs.size) { i -> pObs[i].y.toDouble() }, options)
-        val zModel = smileGaussianProcess(tObs, DoubleArray(pObs.size) { i -> pObs[i].z.toDouble() }, options)
-
-        val outCount = samples.coerceAtLeast(1)
-        val base = this.samplePoints(outCount, sampler = outputSampler)
-        if (base.isEmpty()) return this.copy()
-        val tQuery = normalizedArcLengthParamsSmile(base)
-        val predicted = ArrayList<Vec3>(base.size)
-        for (i in base.indices) {
-            val t = tQuery[i]
-            predicted += vec(
-                xModel.predict(t).toFloat(),
-                yModel.predict(t).toFloat(),
-                zModel.predict(t).toFloat()
-            )
-        }
-
-        mixSamplesSmile(base, predicted, dryWet, wetModulator).toFLineSmile()
-    } catch (_: Throwable) {
-        this.copy()
     }
+
+    return mixSamplesSmile(base, predicted, dryWet, wetModulator).toFLineSmile()
 }
 
 /**
@@ -291,3 +287,4 @@ private fun List<Vec3>.toFLineSmile(): FLine {
     }
     return out
 }
+

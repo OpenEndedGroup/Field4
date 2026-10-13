@@ -7,18 +7,18 @@ libraries you load can make their own network requests.
 ## What stays on your machine
 
 Your documents and their backups live in your workspace. Field also keeps local settings, caches
-and diagnostic logs. **Local code-use history** (called "code-use telemetry" in some tools) is an
+and diagnostic logs. **Local code-use history** (called "code-use telemetry" in some status messages) is an
 on-by-default SQLite history of compiled and executed code: full source snapshots, document and
-box names, compile diagnostics, exceptions, timings and launch events. It supports finding related
-code and investigating failures. It is not an upload to OpenEndedGroup or an audience analytics feed.
+box names, compile diagnostics, exceptions, timings and launch events. Field and its AI tools use it to
+find related code and to look into failures. It is not an upload to OpenEndedGroup or an audience analytics feed.
 
 The database normally lives at `~/.afield/code-use/field-code-use.sqlite`. The **AI → Local code-use
 history → Open browser** control on Welcome shows it. `AFIELD_CODE_USE_PATH` changes its location.
 Stop Field before deleting that database and its `-wal` and `-shm` companions; Field can create a new
 history when restarted. Deleting it does not delete document files or other logs.
 
-The normal semantic-analysis sidecar runs locally. If you deliberately set
-`AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL` to another server, code sent for analysis goes there.
+Field analyses that history in a helper process on your machine. If you set
+`AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL` to another server, the code it analyses is sent there instead.
 **Quiet mode pauses background semantic analysis; it does not stop recording local code history.**
 Source and diagnostics can contain private information, so review them before attaching logs to an issue.
 
@@ -35,7 +35,8 @@ Providers and model/account settings appear in **Welcome → AI**. Requests use 
 configured agent account and can incur that provider's charges. Provider retention and data handling
 are governed by that provider's settings and terms. Field does not supply a shared API subscription.
 Background documentation or tool-review tasks also use the configured agent when you start them.
-Avoid configuring AI if you want the initial tour to stay independent of external models.
+If you want to try Field without any external model, leave AI unconfigured; nothing in
+[your first five minutes](first_steps.md) needs it.
 
 Saved provider keys are stored under `~/.afield/`, outside your documents. Conversation and tool
 logs may also remain locally. Do not attach keys, private documents or unreviewed logs to a public bug report.
@@ -46,10 +47,11 @@ the resulting prompt to an AI assistant follows the same rules above.
 
 First installation downloads runtimes and dependencies. Optional model services can download models
 or call their own services; each has separate requirements. Remote JS, URLs in your documents and
-third-party libraries are outside the local-history service's behavior.
+third-party libraries make their own requests, which nothing on this page covers.
 
-Field's server defaults to loopback with browser-origin protection. Explicit LAN binding exposes
-an unauthenticated code-execution environment: read [server access](server_surface.md) before enabling it.
+By default Field's server only accepts connections from your own machine, and refuses requests made
+by other websites open in your browser. If you open it to your local network, anyone who can reach it can run code on your machine
+without logging in: read [server access](server_surface.md) before enabling it.
 
 ## License
 

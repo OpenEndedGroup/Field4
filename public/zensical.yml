@@ -105,6 +105,9 @@ nav:
   # NOT here: see the comment on it under Internals, which places it beside server_surface.md as a
   # measurement contract rather than beside three_output.md as a knob.
   - Seeing Values:
+    # First in the section: where print and display go, channels, and how panels open, close and
+    # are removed. Everything else in Seeing Values is something you put in one of those panels.
+    - Box Output: box_output.md
     - Visualizers & Controls: visualizers.md
     - Klecks Painting in a Box: klecks.md
     - Patchy from Kotlin: patchy.md
@@ -122,6 +125,8 @@ nav:
     - Functions & Derivatives:
       - Functions Examples: functions_examples.md
       - Functions Domains: functions_domains.md
+      - Gaussian Processes: gaussian_processes.md
+      - "GP Optimisation and Preference": gaussian_process_optimization.md
       - Differentiating Functions: autodiff_examples.md
       - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
@@ -163,6 +168,7 @@ nav:
       - Paint and Pencil from FLines: paint_canvas.md
       - Watercolour and Ink: watercolor.md
       - Brushes with Moving Hairs: paint_gestures.md
+      - Paint Settings, Swept: paint_sweeps.md
       - Imaging & Computer Vision: imaging_examples.md
       - Depth & CLIP (ONNX): onnx.md
     - Geometry & Solids:
@@ -200,6 +206,8 @@ nav:
       - "MQTT: sensors, devices and brokers": mqtt.md
       - "OSCQuery: controls other tools can find": oscquery.md
       - "Network MIDI: RTP-MIDI sessions": rtp_midi.md
+      # Next to the other show-control protocols: the clock desks, video servers and DAWs share.
+      - "SMPTE Timecode: LTC and MTC": smpte_timecode.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md
@@ -210,8 +218,8 @@ nav:
       - Multi-Instrument Transcription: audio_ai_muscriptor.md
       - Corpus Microscope: audio_ai_corpus_microscope.md
       - Render Field Music, Then Analyse It: audio_render_analysis.md
-      - Experiment in Terror with an Underfit LoRA: audio_ai_underfit_mancini.md
-      - EnCodec Reconstruction Microscope: audio_ai_codec.md
+      - Generating with a LoRA: audio_ai_underfit_mancini.md
+      - EnCodec round trip: audio_ai_codec.md
   - Networks & Dynamics:
     - Sorting Networks Examples: sorting_networks_examples.md
     - Interaction Nets Examples: interaction_nets_examples.md
@@ -250,14 +258,19 @@ nav:
     - Clojure in a Box: clojure.md
     - Lua in a Box: lua.md
     - Nano Examples: nano_examples.md
-    # The tail of this section is the three "make your own" pages, in ascending order of how much
-    # machinery they ask for, after the gallery that already uses them: MorphoHDL is a language
-    # brought in from outside, `rewrite { … }` is a syntax of your own with no language at all
-    # behind it — a preprocessor in a box — and Language Extensions is how any of them earns
-    # highlighting, diagnostics and a context lens in the editor. The last two arrived here from a
-    # "Writing Code in a Box" section that no longer exists: they read as advanced Kotlin-editor
-    # topics and are in fact the two pages this gallery is the evidence for.
-    - Bridging Another Language (MorphoHDL): morpho_examples.md
+    # MorphoHDL is a language brought in from outside (upstream's own compiler on GraalJS). Its
+    # page is a user page since 2026-10-11; the circuit-search study that used to fill its second
+    # half is the page after it, and the how-to for hosting a foreign runtime moved to
+    # dev_docs/MORPHO_LANGUAGE_BRIDGE.md.
+    - MorphoHDL in Field: morpho_examples.md
+    - Searching for MorphoHDL Circuits: morpho_search.md
+    # The tail of this section is the two "make your own" pages, in ascending order of how much
+    # machinery they ask for, after the gallery that already uses them: `rewrite { … }` is a
+    # syntax of your own with no language at all behind it — a preprocessor in a box — and
+    # Language Extensions is how any language earns highlighting, diagnostics and a context lens
+    # in the editor. Both arrived here from a "Writing Code in a Box" section that no longer
+    # exists: they read as advanced Kotlin-editor topics and are in fact the two pages this
+    # gallery is the evidence for.
     - Rewriting Your Own Syntax: pattern_rewrite.md
     - Language Extensions: language_extensions.md
   # Three pages here carry an in-page warning rather than a section-level one: vision.md opens
@@ -346,6 +359,8 @@ nav:
     - AI4 Paints: ai4_painting.md
     # After the four conversations rather than before them: those pages show a study being worked on,
     # and this one is the layer they share, which reads best once you have seen one.
+    # The entry page for the studies, long-builds, qualified-sources and kits pages that follow it.
+    - Start a Staged Project: staged_projects.md
     - Studies: studies.md
     # Right after Studies: it is about waiting for a study's builds, and reads best once builds are met.
     - Let AI4 Wait for Long Builds: ai4_long_builds.md
@@ -430,6 +445,10 @@ nav:
     # process's output goes, this one says how much of it a picture can hold, and both are things
     # you look up after something has already surprised you rather than while composing.
     - What a Capture Can and Cannot Show: capture_limits.md
+    # The tour before the two how-to pages it links to: what the build, test, landing and
+    # revision machinery does and why it is unusual, for a reader deciding whether to read on.
+    # The commands themselves stay on building_and_testing.md and landing_queue.md.
+    - How Field Is Built: how_field_is_built.md
     - Building & Testing: building_and_testing.md
     - Landing on main: landing_queue.md
 
@@ -495,3 +514,4 @@ extra_javascript:
 site_url: http://openendedgroup.com/Field4/
 site_dir: field4
   
+

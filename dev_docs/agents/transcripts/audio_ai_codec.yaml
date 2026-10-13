@@ -10,7 +10,6 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.noir.audioai.*
           import afield.stdlib.AudioVisualizer
           import afield.stdlib.AudioVisualizerOptions
           import afield.four.audio.WavFloatArrayLoader

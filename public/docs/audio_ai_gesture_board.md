@@ -24,8 +24,6 @@ woodwinds entering around five seconds, a dark accent at 13.1 s, and four curves
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_gesture_board/gesture_board.png" wait="3" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.stdlib.noir.audioai.*
-
 val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film texture") {
     prompt(0.0, 5.0, "almost motionless low strings")
     prompt(5.0, 8.0, "woodwind fragments begin to circle")
@@ -86,5 +84,5 @@ client.submit(operation)
 GPU time. Re-evaluating an unchanged operation reuses the same content-addressed candidate family
 and its stored gesture measurements.
 
-See also the [EnCodec reconstruction microscope](audio_ai_codec.md) for token-level material, and
+See also the [EnCodec round trip](audio_ai_codec.md) for token-level material, and
 [beat and pitch analysis](audio_ai_analysis.md).

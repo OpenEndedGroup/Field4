@@ -5,7 +5,7 @@ paper, and water laid on it moves by itself. It flows downhill and into the holl
 sinks in, wicks along the fibres and evaporates. The pigment it carries settles, stains or dries
 in place. A wash dries with a darker edge and the paper's grain in it, clean water dropped into a
 damp wash pushes its colour out into a backrun, and a nearly dry brush skips over rough
-paper, because the water and the pigment do those things, not because a rule paints them in.
+paper. No rule paints these effects in; they come from what the water and the pigment do.
 
 The oil paint, brushes and canvas underneath are alice's
 [claude-paint](https://github.com/aliceisjustplaying/claude-paint) (see
@@ -357,7 +357,7 @@ markdown("""
 - `saveState(path)`, `PaintCanvas.load(path)` and `copy()` keep the water and every pigment in it
   exactly, wet or dry, and the copy carries on as the original would have.
 
-## How it works, and what is approximated
+## How the water model works
 
 The water model keeps, for every pixel, the water standing on the sheet and the water in its pores,
 and for each pigment its mass in each of the five states of the books above. On every step:

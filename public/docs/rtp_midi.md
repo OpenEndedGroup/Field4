@@ -6,8 +6,7 @@ MIDI Studio → Network*. A box can open a session of its own, so a DAW on anoth
 iPad app on the same Wi-Fi can play into Field, and Field can play back out, with no cable and no
 driver.
 
-[Open the RTP-MIDI demo ↗](offline.html?file=assets/rtp_midi_demo/metadata.edn) to read it, or
-open `public/docs/assets/rtp_midi_demo/` as a document in Field to run it. A second session in
+The demo is the [rtp_midi_demo](agent_transcripts.md#rtp_midi_demo) starting point. A second session in
 the same Field joins the first, so it works with nothing else on the network.
 
 ## Receiving notes and controllers
@@ -42,8 +41,9 @@ val cutoff = 200.0 + 8000.0 * midi.knob(74)      // 0..1, 0 until the knob first
 val held = midi.held.keys.map { (_, pitch) -> pitch }
 ```
 
-`onMessage { message, peer -> }` receives everything, as a `javax.sound.midi.MidiMessage` — the
-same type `MidiDevices.openInput` gives you for a MIDI port on this machine — along with the peer that sent it.
+`onMessage { message, peer -> }` receives everything, as a `javax.sound.midi.MidiMessage`, along
+with the peer that sent it. It is the same type `MidiDevices.openInput` gives you for a MIDI port
+on this machine.
 
 ## Sending
 

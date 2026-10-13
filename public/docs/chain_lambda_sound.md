@@ -1,8 +1,9 @@
 # A λ-term you can hear
 
 This page reduces a λ-term step by step and turns the reduction into a rhythm you can listen to.
-`lambdaterms.kt` parses the term and compiles it to an interaction net, and the `Reducer` in
-`interactionnets.kt` fires one reaction at a time, reporting each as a `ReductionStep`.
+[`lambdaterms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt) parses the term and
+compiles it to an interaction net, and the `Reducer` in
+[`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/interactionnets.kt) fires one reaction at a time, reporting each as a `ReductionStep`.
 [`LambdaSoundDocs`](reference/patterns.md#lambdasounddocs-kt-lambdasounddocs) records those steps
 as a time series. `patCondense`, which runs the mini-notation parser backwards, finds the shortest
 notation that plays the resulting step mask, and `patRenderStereo` plays it.

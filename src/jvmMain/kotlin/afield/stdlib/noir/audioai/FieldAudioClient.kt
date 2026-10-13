@@ -489,11 +489,13 @@ class FieldAudioClient(
      * A handshake that never lands — the service is not running, or the job is unknown to it — fails
      * the returned future with [FieldAudioTransportException]. [onError] is left alone: an error on
      * an established socket is the caller's to interpret.
+     *
+     * [onEvent] is last so that `watch(jobId) { event -> … }` passes the trailing lambda to it.
      */
     fun watch(
         jobId: String,
-        onEvent: (ProgressEvent) -> Unit,
         onError: (Throwable) -> Unit = {},
+        onEvent: (ProgressEvent) -> Unit,
     ): CompletableFuture<WebSocket> {
         val websocketUri = URI.create(
             baseUri.toString().replaceFirst("http://", "ws://").replaceFirst("https://", "wss://") +

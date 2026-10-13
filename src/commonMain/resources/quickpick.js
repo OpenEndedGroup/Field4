@@ -494,6 +494,104 @@ function bootstrapAnywhereProviders() {
                         return []
                 })
         })
+
+        // Documentation text (/api/docs-search): page titles, headings, code examples and prose,
+        // matched literally so an identifier from an example (`once.renderer`) finds its page.
+        const docsCategories = {
+                page: "Docs Pages",
+                section: "Docs Sections",
+                code: "Docs Code Examples",
+                text: "Docs Text",
+        }
+        const docsScores = { page: 28, section: 26, code: 24, text: 18 }
+        registerAnywhereProvider("docs", (query) => {
+                const q = String(query || "").trim()
+                if (q.length < 2) return []
+                return fetch(`/api/docs-search?${new URLSearchParams({ q, limit: "40" })}`, { cache: "no-store" })
+                        .then((response) => response.ok ? response.json() : { hits: [] })
+                        .then((payload) => (payload.hits || []).map((hit, index) => ({
+                                id: `docs-${hit.kind}-${hit.page}-${hit.line}`,
+                                category: docsCategories[hit.kind] || "Docs",
+                                label: hit.kind === "page" ? hit.pageTitle
+                                        : hit.kind === "section" ? hit.heading
+                                        : hit.snippet,
+                                description: hit.kind === "page" ? hit.page
+                                        : [hit.pageTitle, hit.heading].filter(Boolean).join(" › "),
+                                icon: hit.kind === "code" ? "{}" : "doc",
+                                path: `${hit.page}:${hit.line}`,
+                                language: hit.language || "",
+                                docsHit: hit,
+                                serverRanked: true,
+                                score: (docsScores[hit.kind] || 12) - index * 0.01,
+                                run: () => {
+                                        if (typeof window.switchToDocsIframe === "function") window.switchToDocsIframe(hit.url)
+                                        else window.open(hit.url, "_blank")
+                                },
+                        })))
+                        .catch((error) => {
+                                console.warn("docs palette search failed", error)
+                                return []
+                        })
+        })
+
+        // Other documents: the /welcome workspace search, which also returns the bundled starting
+        // points and templates. Those open as an editable copy, exactly as /welcome opens them.
+        const openWorkspaceDocument = (filename) => {
+                window.location.href = `/index.html?${new URLSearchParams({ file: filename })}`
+        }
+        const openBundledDocument = async (name) => {
+                try {
+                        const response = await fetch(`/api/starting-points/open?${new URLSearchParams({ name })}`, {
+                                method: "POST",
+                                cache: "no-store",
+                        })
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+                        const payload = await response.json()
+                        if (payload && payload.filename) openWorkspaceDocument(payload.filename)
+                } catch (error) {
+                        const message = `Could not open ${name}: ${error.message}`
+                        if (typeof window.notify === "function") window.notify(message, "error")
+                        else console.warn(message)
+                }
+        }
+        const workspaceCategories = {
+                "starting-point": "Starting Points",
+                "template": "Templates",
+        }
+        registerAnywhereProvider("workspace", (query) => {
+                const q = String(query || "").trim()
+                if (q.length < 2) return []
+                const params = new URLSearchParams({ q, maxDocuments: "12", maxMatchesPerDocument: "3", maxScanMillis: "1500" })
+                const current = currentDocumentNameForSemantic()
+                return fetch(`/api/workspace-search?${params}`, { cache: "no-store" })
+                        .then((response) => response.ok ? response.json() : { documents: [] })
+                        .then((payload) => (payload.documents || [])
+                                .filter((doc) => doc.kind !== "project" && !((doc.kind || "document") === "document" && doc.filename === current))
+                                .map((doc, index) => {
+                                        const kind = doc.kind || ""
+                                        const bundled = kind === "starting-point" || kind === "template"
+                                        const match = (doc.matches || [])[0] || {}
+                                        const exact = doc.filename.toLowerCase() === q.toLowerCase()
+                                        return {
+                                                id: `workspace-${kind}-${doc.filename}`,
+                                                category: workspaceCategories[kind] || "Workspace Documents",
+                                                label: doc.filename,
+                                                description: match.snippet
+                                                        ? `${match.boxName} / ${match.property}: ${match.snippet}`
+                                                        : `${doc.numBoxes} boxes`,
+                                                icon: bundled ? "sp" : "fd",
+                                                workspaceDoc: doc,
+                                                serverRanked: true,
+                                                exactMatch: exact && bundled,
+                                                score: (kind === "starting-point" ? 20 : bundled ? 14 : 12) + (exact ? 8 : 0) - index * 0.01,
+                                                run: () => bundled ? openBundledDocument(doc.filename) : openWorkspaceDocument(doc.filename),
+                                        }
+                                }))
+                        .catch((error) => {
+                                console.warn("workspace palette search failed", error)
+                                return []
+                        })
+        })
 }
 window.bootstrapAnywhereProviders = bootstrapAnywhereProviders
 bootstrapAnywhereProviders()
@@ -601,6 +699,8 @@ const paletteProviderTitle = (provider) => {
                 "editor": "Editor",
                 "macro": "Macros",
                 "guide": "Document Guides",
+                "docs": "Docs",
+                "workspace": "Workspace Documents",
                 "option": "Options",
         }
         return titles[provider] || String(provider || "Other").replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
@@ -1245,6 +1345,32 @@ const palettePreviewForAnywhere = (item) => {
         if (item.provider === "semantic" || item.provider === "semantic-current" || item.semanticHit) {
                 return paletteSemanticPreview(item)
         }
+        if (item.docsHit) {
+                const hit = item.docsHit
+                const bits = [
+                        `<div class="afield-palette-doc-title">${paletteEscapeHtml(hit.pageTitle)}</div>`,
+                        `<div class="afield-palette-doc-meta">${paletteEscapeHtml([hit.heading, `${hit.page}:${hit.line}`].filter(Boolean).join(" · "))}</div>`,
+                ]
+                bits.push(`<div class="afield-palette-docs-frame-wrap"><iframe class="afield-palette-docs-frame" tabindex="-1" title="${paletteEscapeHtml(hit.pageTitle)}"></iframe></div>`)
+                bits.push(`<p class="afield-palette-doc-muted">Press Enter to open this in the documentation panel.</p>`)
+                return bits.join("")
+        }
+        if (item.workspaceDoc) {
+                const doc = item.workspaceDoc
+                const kind = doc.kind || "document"
+                const bundled = kind === "starting-point" || kind === "template"
+                const bits = [
+                        `<div class="afield-palette-doc-title">${paletteEscapeHtml(doc.filename)}</div>`,
+                        `<div class="afield-palette-doc-meta">${paletteEscapeHtml(bundled ? (kind === "template" ? "Template" : "Starting point") : "Workspace document")} · ${paletteEscapeHtml(doc.numBoxes)} boxes</div>`,
+                ]
+                ;(doc.matches || []).forEach((m) => {
+                        bits.push(`<p><b>${paletteEscapeHtml(m.boxName)}</b> / ${paletteEscapeHtml(m.property)}${m.line ? `:${paletteEscapeHtml(m.line)}` : ""}<br><code>${paletteEscapeHtml(m.snippet)}</code></p>`)
+                })
+                bits.push(`<p class="afield-palette-doc-muted">${bundled
+                        ? "Press Enter to open an editable copy in your workspace."
+                        : "Press Enter to open this document."}</p>`)
+                return bits.join("")
+        }
         if (item.provider === "macro") {
                 const bits = [
                         `<div class="afield-palette-doc-title">${paletteEscapeHtml(item.macroName || item.label || "")}</div>`,
@@ -1268,6 +1394,49 @@ const palettePreviewForAnywhere = (item) => {
                 if (item.detail) bits.push(`<p class="afield-palette-doc-muted">${paletteEscapeHtml(item.detail)}</p>`)
         }
         return bits.join("")
+}
+
+// The rendered docs page, live in the preview pane. Loading waits for the selection to rest, so
+// arrowing through a list of hits does not load every page on the way; the matching block is then
+// scrolled to and outlined, since a heading anchor only gets near a code example.
+let paletteDocsFrameTimer = null
+const paletteMountDocsFrame = (docEl, hit, query) => {
+        clearTimeout(paletteDocsFrameTimer)
+        const frame = docEl && docEl.querySelector(".afield-palette-docs-frame")
+        if (!frame) return
+        paletteDocsFrameTimer = setTimeout(() => {
+                if (!frame.isConnected) return
+                frame.addEventListener("load", () => paletteMarkDocsHit(frame, hit, query), { once: true })
+                frame.src = hit.url
+        }, 160)
+}
+
+const paletteMarkDocsHit = (frame, hit, query) => {
+        let doc
+        try { doc = frame.contentDocument } catch (_) { return }
+        if (!doc || !doc.body) return
+        const style = doc.createElement("style")
+        // The embedded page is a reference card: drop the site chrome and keep the article.
+        style.textContent = `
+                .md-header, .md-tabs, .md-sidebar, .md-footer, .md-top { display: none !important; }
+                .md-main__inner { margin-top: 0 !important; }
+                .md-content { max-width: none !important; margin: 0 !important; }
+                .afield-palette-docs-mark { outline: 2px solid #f55 !important; outline-offset: 3px; border-radius: 3px; }
+        `
+        doc.head && doc.head.appendChild(style)
+        const needles = [hit.snippet, query].map((t) => String(t || "").replace(/…/g, "").trim().toLowerCase()).filter(Boolean)
+        const selector = hit.kind === "code" ? "pre"
+                : hit.kind === "text" ? "p, li, td, dd, blockquote"
+                : "h1, h2, h3, h4, h5, h6"
+        const candidates = Array.from(doc.querySelectorAll(selector))
+        let target = null
+        for (const needle of needles) {
+                target = candidates.find((el) => String(el.textContent || "").toLowerCase().includes(needle))
+                if (target) break
+        }
+        if (!target) return
+        target.classList.add("afield-palette-docs-mark")
+        target.scrollIntoView({ block: "center" })
 }
 
 const paletteEvaluateDocJs = (item) => {
@@ -1523,7 +1692,10 @@ class FieldPaletteController {
                 return items
                         .map((item, index) => {
                                 const haystack = [item.label, item.description, item.detail, item.id, item.category].filter(Boolean).join(" ")
-                                const fuzzy = this.options.matchMode === "substring"
+                                // Server-ranked results (docs, workspace search) already matched the query, often
+                                // in text the row does not show; keep their order rather than re-score them.
+                                const fuzzy = item.serverRanked ? 60
+                                        : this.options.matchMode === "substring"
                                         ? substringMatch(haystack)
                                         : paletteFuzzyScore(q, haystack)
                                 const score = (item.score || 0) + fuzzy - index * 0.001
@@ -1619,6 +1791,7 @@ class FieldPaletteController {
                 if (typeof item.previewHtml === "function") this.doc().innerHTML = item.previewHtml(item)
                 else if (item.previewHtml) this.doc().innerHTML = item.previewHtml
                 else this.doc().innerHTML = palettePreviewForAction(item)
+                if (item.docsHit) paletteMountDocsFrame(this.doc(), item.docsHit, this.input().value || "")
                 if (typeof this.options.onActive === "function") this.options.onActive(item)
                 if (window.hljs && typeof window.hljs.highlightElement === "function") {
                         this.doc().querySelectorAll("pre code").forEach((block) => {
@@ -1725,7 +1898,7 @@ function openAnywherePalette() {
         ensureEditor()
         fieldPalette().open({
                 title: "Open Anything",
-                placeholder: "Search boxes, properties, guides, macros, or text...",
+                placeholder: "Search boxes, properties, docs, starting points, macros, or text...",
                 getItems: async (value) => {
                         const query = (value || "").trim()
                         qpLog("[anywhere] query", query, "providers", anywhereProviders.length)
@@ -1755,6 +1928,9 @@ function openAnywherePalette() {
                                                         operationCount: it.operationCount || 0,
                                                         score: it.score || 0,
                                                         exactMatch: !!it.exactMatch,
+                                                        docsHit: it.docsHit || null,
+                                                        serverRanked: !!it.serverRanked,
+                                                        workspaceDoc: it.workspaceDoc || null,
                                                         runSource: it.run,
                                                 }))
                                         }))

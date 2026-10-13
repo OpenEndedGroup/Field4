@@ -321,9 +321,11 @@ family.
 What is genuinely left is five macros whose effect needs Kotlin source rather than an ordinary
 host call — `sourceBlock` (a lambda whose body is the original Kotlin), `jsonParser` (a generated class),
 `graphLens` (a `::` reference synthesised from a path), `ai`, and `interpolant` (a saved Kotlin
-segment lambda). `hostMacroExpand` runs their expansions and hands the generated source back as
+segment lambda). The reactive property macros use FieldML's `propUp`/`propDown`/`propUpDown`
+reads and `setPropUp`/`setPropDown`/`setPropUpDown` writes, which share `ReactiveRuns` with Kotlin
+boxes. `hostMacroExpand` runs the remaining expansions and hands the generated source back as
 **text**, which is inspectable and occasionally
-useful, and is honestly as far as an interpreter goes. 15 of 20 reachable, and the five are pinned as
+useful, and is honestly as far as an interpreter goes. 18 of 23 reachable, and the five are pinned as
 a set rather than as a count, because a set says which.
 
 ## `afield.four`: what blocks it, with citations

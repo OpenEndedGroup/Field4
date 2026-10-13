@@ -32,57 +32,6 @@ Hover, zoom and pan one panel and the others follow. A live board can join the s
 same shared timeline: playback drives every analysis cursor, hovering either surface highlights the
 other, and clicking an analysis plot seeks the recording.
 
-The figure below shows the three views on made-up data, so it draws without the analysis worker;
-the next section runs the real jobs.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_analysis/synchronized_analysis.png" wait="2" capture="box" open-outputs="true" padding="18"}
-:::static
-import afield.stdlib.*
-import afield.stdlib.noir.audioai.*
-
-val demoSync = "analysis-doc-demo"
-val demoRate = 8_000
-val demoAudio = FloatArray(demoRate * 12) { i ->
-    val time = i / demoRate.toDouble()
-    val pulse = .32 * kotlin.math.exp(-18.0 * (time % .5))
-    (.38 * kotlin.math.sin(2.0 * Math.PI * (174.0 + 22.0 * kotlin.math.sin(time * .34)) * time) + pulse).toFloat()
-}
-display("source", AudioVisualizer.renderSamplesHtml(
-    demoAudio, demoRate,
-    AudioVisualizerOptions(width = 1100, waveformHeight = 95, syncGroup = demoSync),
-    label = "model-free synchronized source",
-))
-
-val t = (0..120).map { it / 10.0 }
-fun s(name: String, label: String, values: List<Double>, unit: String? = null) =
-    AnalysisSeries(name, label, unit, t.map { it as Double? }, values.map { it as Double? })
-
-val beats = AnalysisPreview("analysis.beats", 12.0, listOf(
-    s("onset_strength", "onset strength", t.map { .08 + .8 * Math.pow(kotlin.math.max(0.0, kotlin.math.sin(it * 2.5)), 8.0) }),
-    s("tempo_0_bpm", "tempo · 2 s", t.map { 116.0 + 14.0 * kotlin.math.sin(it * .7) }, "bpm"),
-    s("tempo_1_bpm", "tempo · 8 s", t.map { 112.0 + 5.0 * kotlin.math.sin(it * .22) }, "bpm"),
-    s("tempo_0_confidence", "confidence · 2 s", t.map { .52 + .34 * kotlin.math.sin(it * .4) }),
-    s("tempo_1_confidence", "confidence · 8 s", t.map { .72 + .15 * kotlin.math.sin(it * .18) }),
-), beatTimesSeconds = (1..23).map { it * .5 })
-val mono = AnalysisPreview("analysis.pitch_mono", 12.0, listOf(
-    s("frequency_hz", "pYIN F0", t.map { 174.0 * Math.pow(2.0, 7.0 * kotlin.math.sin(it * .34) / 12.0) }, "Hz"),
-    s("voiced_probability", "voiced probability", t.map { .55 + .42 * kotlin.math.sin(it * .57) }),
-))
-val poly = AnalysisPreview("analysis.pitch_poly", 12.0, listOf(
-    s("maximum_note_activation", "maximum note activation", t.map { .38 + .5 * kotlin.math.abs(kotlin.math.sin(it * 1.7)) }),
-    s("active_pitch_count", "active pitch count", t.map { 1.0 + kotlin.math.floor(4.0 * kotlin.math.abs(kotlin.math.sin(it * .52))) }),
-), notes = (0 until 19).map { i ->
-    val start = i * .62
-    AnalysisNote(start, start + .38 + (i % 4) * .11, 48 + (i * 5) % 25, .45 + (i % 5) * .1)
-})
-
-display("main", analysisPreviewDashboardHtml(
-    listOf(beats, mono, poly), width = 1100, panelHeight = 220, syncGroup = demoSync,
-))
-```
-
-![Three stacked analysis panels over a twelve-second timeline, above the source waveform and its transport: beats, with onset, local tempo and tempo confidence lanes; pitch mono, with a pYIN curve against a C3 to C4 grid and a voicing track; pitch poly, with a Basic Pitch piano roll over activation and active-pitch curves](assets/audio_ai_analysis/synchronized_analysis.png)
-
 ## Running all three from one box
 
 The source waveform appears immediately. The persistent monitor and three replace-in-place status
@@ -90,8 +39,6 @@ cards report each job while the worker runs, and a job becomes a panel on the an
 once it has finished successfully.
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()

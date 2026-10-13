@@ -1,5 +1,6 @@
 package afield.graphics
 
+import afield.math.gp.*
 import afield.stdlib.*
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.CubicSegment3
@@ -502,7 +503,7 @@ fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine {
         cursor.setT(t * (this.nodes.size - 1))
 
         val pos = cursor.position()
-        val normal = cursor.normal2()
+        val normal = cursor.normal2D()
 
         if (normal != null) {
             val offsetPos = vec(
@@ -652,46 +653,6 @@ private fun perpendicularDistance(point: Vec3, lineStart: Vec3, lineEnd: Vec3): 
     return point.distance(projection)
 }
 
-// ==================== INTERSECTIONS ====================
-
-/**
- * Find all self-intersections in a curve.
- * @param tolerance intersection detection tolerance
- * @return list of intersection points
- */
-fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3> {
-    val intersections = mutableListOf<Vec3>()
-
-    for (i in 1 until this.nodes.size) {
-        for (j in i + 2 until this.nodes.size) {
-            val ni = this.nodes[i]
-            val nj = this.nodes[j]
-
-            if (ni is FLine.CubicTo && nj is FLine.CubicTo) {
-                // endPointOf, not `.to`: the node a cubic starts from can be a Close — `close()`
-                // leaves the pen at the start of the subpath it closed, and drawing on from there
-                // is legal — and a Close stores no point, so `.to` throws.
-                val ci = CubicSegment3(endPointOf(i - 1), ni.c1, ni.c2, ni.to)
-                val cj = CubicSegment3(endPointOf(j - 1), nj.c1, nj.c2, nj.to)
-
-                val found = ci.intersection(cj, tolerance)
-                found.forEach { pair ->
-                    intersections.add(Vec3(pair.first.a).add(pair.first.d).mul(0.5f))
-                }
-            }
-        }
-    }
-
-    return intersections
-}
-
-/**
- * Find intersections between two curves.
- */
-fun FLine.findIntersectionsWith(other: FLine, tolerance: Float = 1f): List<Vec3> {
-    return FLinesAndJavaShapes.intersect(this, other)
-}
-
 // ==================== CURVATURE ANALYSIS ====================
 
 /**
@@ -709,15 +670,12 @@ fun FLine.curvatureAnalysis(samples: Int = 100): List<Pair<Vec3, Float>> {
 
         val pos = cursor.position()
         val tangent = cursor.tangent()
-        val acceleration = cursor.acceleration()
+        val smooth = cursor.curvature()
 
         if (tangent != null) {
-            if (acceleration != null && acceleration.lengthSquared() > 1e-12) {
-                // Smooth curvature
-                val cross = tangent.cross(acceleration, Vec3())
-                val tanLen = tangent.length()
-                val curvature = if (tanLen > 1e-6) cross.length() / tanLen.pow(3) else 0f
-                result.add(Pair(pos, curvature))
+            if (smooth > 0f) {
+                // on a curved segment the cursor knows the curvature exactly
+                result.add(Pair(pos, smooth))
             } else {
                 // Discrete curvature for polylines
                 if (i < samples - 1) {
@@ -927,7 +885,7 @@ fun FLine.byCreatingNormalLines(samples: Int = 20, length: Float = 10f): List<FL
         cursor.setT(t)
 
         val pos = cursor.position()
-        val normal = cursor.normal2()
+        val normal = cursor.normal2D()
 
         if (normal != null) {
             val normalized = Vec2(normal).normalize()
@@ -978,12 +936,10 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
                 val B = T.cross(N, Vec3()).normalize()  // unit binormal
 
                 val circle = FLine()
-                println("$N $B T = $T")
                 for (j in 0..circleSegments) {
                     val angle = j.toFloat() / circleSegments * 2 * PI.toFloat()
                     val offset = cos(angle) * N + sin(angle) * T
                     val point = center + radius * offset
-                    println(point)
                     if (j == 0) {
                         circle.moveTo(point)
                     } else {
@@ -1002,8 +958,13 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
 
 /**
  * Union of two curves (using Java2D Area).
+ *
+ * With `exact = true` the four boolean ops go through [booleanExact] instead: the result keeps the
+ * operands' cubic pieces, cut exactly at the crossings, and falls back to this Area path only when
+ * the exact engine cannot verify its answer.
  */
-fun FLine.byUnionWith(other: FLine): FLine {
+fun FLine.byUnionWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Union).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)
@@ -1015,7 +976,8 @@ fun FLine.byUnionWith(other: FLine): FLine {
 /**
  * Difference of two curves (line1 - line2).
  */
-fun FLine.byDifferenceWith(other: FLine): FLine {
+fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Subtract).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)
@@ -1027,7 +989,8 @@ fun FLine.byDifferenceWith(other: FLine): FLine {
 /**
  * Intersection of two curves.
  */
-fun FLine.byIntersectionWith(other: FLine): FLine {
+fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Intersect).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)
@@ -1039,7 +1002,8 @@ fun FLine.byIntersectionWith(other: FLine): FLine {
 /**
  * XOR (exclusive or) of two curves.
  */
-fun FLine.byExclusiveOrWith(other: FLine): FLine {
+fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false): FLine {
+    if (exact) return booleanExact(other, FLineBooleanOp.Xor).line
     val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
     val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
     val area1 = Area(shape1)
@@ -1051,108 +1015,10 @@ fun FLine.byExclusiveOrWith(other: FLine): FLine {
 // ==================== GEOMETRIC QUERIES ====================
 
 /**
- * Find the closest point on the curve to a given point.
- * @return Pair of (closest point, t parameter)
+ * The chord-polygon area [centroid2D] pairs with its chord-polygon moments (the public, curve-exact
+ * area is [area2D]). Positive counter-clockwise with y up.
  */
-fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float> {
-    val t = FLinesAndJavaShapes.closestT(this, point)
-    val cursor = this.cursor()
-    cursor.setT(t)
-    return Pair(cursor.position(), t)
-}
-
-/**
- * Calculate winding number (for point-in-polygon test).
- * Winding number != 0 means the point is inside the curve.
- *
- * Every subpath is treated as closed, whether or not it ends in an explicit [FLine.Close] — a
- * winding number is only defined for closed contours, so an open subpath is closed back to its
- * `moveTo` for the purposes of the count. Conversely, the jump *between* two subpaths is not a
- * segment and contributes nothing, which is what makes this right on a glyph with a counter: the
- * outer contour and the inner one wind in opposite directions and cancel inside the hole.
- *
- * Curves are counted by their end points, so a cubic contributes its chord. Sample first (see
- * [byArcLengthParameterizing]) if you need the curve itself.
- *
- * @return winding number
- */
-fun FLine.windingNumber(point: Vec2): Int {
-    var winding = 0
-    var prevPoint: Vec2? = null
-    var subpathStart: Vec2? = null
-
-    fun cross(previous: Vec2, currentPoint: Vec2) {
-        if (previous.y <= point.y) {
-            if (currentPoint.y > point.y) {
-                if (isLeft(previous, currentPoint, point) > 0) {
-                    winding++
-                }
-            }
-        } else {
-            if (currentPoint.y <= point.y) {
-                if (isLeft(previous, currentPoint, point) < 0) {
-                    winding--
-                }
-            }
-        }
-    }
-
-    /** the segment back to the `moveTo`, which a winding number always has whether it is drawn or not. */
-    fun closeSubpath() {
-        val previous = prevPoint
-        val start = subpathStart
-        if (previous != null && start != null) cross(previous, start)
-    }
-
-    this.nodes.forEachIndexed { i, node ->
-        // endPointOf, not `.to`: a Close stores no point, and its end point — the start of the
-        // subpath it closes — is precisely where the closing segment lands.
-        val end = endPointOf(i)
-        val currentPoint = Vec2(end.x, end.y)
-
-        when (node) {
-            is FLine.MoveTo -> {
-                // a `moveTo` lifts the pen: the jump is not a segment, and whatever subpath it
-                // interrupted is closed off first.
-                closeSubpath()
-                subpathStart = currentPoint
-            }
-
-            is FLine.Close -> {
-                prevPoint?.let { cross(it, currentPoint) }
-                // an explicit Close has now done the job closeSubpath() would have
-                subpathStart = currentPoint
-            }
-
-            else -> {
-                if (subpathStart == null) subpathStart = currentPoint
-                else prevPoint?.let { cross(it, currentPoint) }
-            }
-        }
-
-        prevPoint = currentPoint
-    }
-    closeSubpath()
-
-    return winding
-}
-
-private fun isLeft(p0: Vec2, p1: Vec2, p2: Vec2): Float {
-    return ((p1.x - p0.x) * (p2.y - p0.y) - (p2.x - p0.x) * (p1.y - p0.y))
-}
-
-/**
- * Test if a point is inside a closed curve.
- */
-fun FLine.contains(point: Vec2): Boolean {
-    return windingNumber(point) != 0
-}
-
-/**
- * Calculate the signed area of a 2D closed curve.
- * Positive = counter-clockwise, negative = clockwise.
- */
-fun FLine.signedArea2D(): Float {
+private fun FLine.chordArea2D(): Float {
     var area = 0f
     var prevPoint: Vec2? = null
     var firstPoint: Vec2? = null
@@ -1187,10 +1053,10 @@ fun FLine.signedArea2D(): Float {
  * Calculate the centroid of a 2D closed curve.
  */
 fun FLine.centroid2D(): Vec2 {
-    val area = signedArea2D()
+    val area = chordArea2D()
     if (abs(area) < 1e-6f) {
         // Degenerate case: return average of points. Skipping a Close, exactly as the main loop
-        // below already did (:1208) and as signedArea2D does (:1160) — a Close carries no point of
+        // below already does and as chordArea2D does — a Close carries no point of
         // its own, so averaging it in would double-count the subpath's start, and reading `.to` on
         // one throws outright. This branch was the one place the guard was missing.
         var sum = Vec2()
@@ -2241,7 +2107,7 @@ fun FLine.byWaving(amplitude: Float, frequency: Float, samples: Int = 100): FLin
         cursor.setT(t)
 
         val pos = cursor.position()
-        val normal = cursor.normal2()
+        val normal = cursor.normal2D()
 
         if (normal != null) {
             val offset = amplitude * sin(t * frequency * 2 * PI.toFloat())
@@ -2274,7 +2140,7 @@ fun FLine.byZigzagging(amplitude: Float, segments: Int = 20): FLine {
         cursor.setT(t)
 
         val pos = cursor.position()
-        val normal = cursor.normal2()
+        val normal = cursor.normal2D()
 
         if (normal != null) {
             val offset = amplitude * if (i % 2 == 0) 1f else -1f
@@ -3310,7 +3176,7 @@ fun FLine.byOrientedGaussianNoising(
 
         val pos = cursor.position()
         val tangent = cursor.tangent()
-        val normal = cursor.normal2()
+        val normal = cursor.normal2D()
 
         // Generate Gaussian noise
         val u1 = random.nextFloat()
@@ -3367,7 +3233,7 @@ fun FLine.byPerlinNoising(
         cursor.setT(t)
 
         val pos = cursor.position()
-        val normal = cursor.normal2()
+        val normal = cursor.normal2D()
 
         // Generate Perlin noise at this position
         val noiseX = perlin.octaveNoise(pos.x * frequency, pos.y * frequency, 0.1f, octaves)
@@ -3553,7 +3419,7 @@ fun FLine.byProjectingOnto(
 
     val result = FLine()
     points1.forEachIndexed { i, point ->
-        val (closest, _) = other.closestPoint( point)
+        val closest = other.cursor().setNearest(point).position()
 
         if (i == 0) {
             result.moveTo(closest)
@@ -3726,12 +3592,8 @@ class CurvatureParameter(
 
     override fun evaluate(t: Float, position: Vec3): Float {
         cursor.setT(t * (line.nodes.size - 1))
-        val tangent = cursor.tangent()
-        val acceleration = cursor.acceleration()
-
-        if (tangent != null && acceleration != null) {
-            val cross = tangent.cross(acceleration, Vec3())
-            val curvature = cross.length() / tangent.length().pow(3)
+        if (cursor.tangent() != null) {
+            val curvature = cursor.curvature()
             val normalized = (curvature / maxCurvature).coerceIn(0f, 1f)
             return minValue + (maxValue - minValue) * normalized
         }
@@ -3770,23 +3632,6 @@ class SineParameter(
 }
 
 /**
- * Returns the unit-length 2D normal at the cursor's current position, or null when the
- * normal is undefined there. `normal2()` returns the raw perpendicular of the tangent, whose
- * magnitude tracks the local tangent length (which for a cubic varies wildly and at a
- * segment join / endpoint / cusp can collapse to ~zero or be non-finite). Offsetting a point
- * by that raw vector lets a long or steep segment fling the sample far from the curve, or to
- * NaN/Inf, which is what produces the degenerate "star" under fitToSize. Normalising here
- * keeps offsets in world units and lets callers reject degenerate samples cleanly.
- */
-private fun FLinesAndJavaShapes.Cursor.unitNormal2(): Vec2? {
-    val n = normal2() ?: return null
-    if (!n.x.isFinite() || !n.y.isFinite()) return null
-    val len = n.length()
-    if (!len.isFinite() || len < 1e-6f) return null
-    return Vec2(n.x / len, n.y / len)
-}
-
-/**
  * Apply a parameterized offset to a curve.
  * The offset distance varies along the curve according to the parameter function.
  */
@@ -3802,7 +3647,7 @@ fun FLine.byOffsettingParameterized(
         cursor.setT(t * (this.nodes.size - 1))
 
         val pos = cursor.position()
-        val normal = cursor.unitNormal2()
+        val normal = cursor.normal2D()
         val distance = distanceFunc.evaluate(t, pos)
 
         // Skip samples with a degenerate normal or a non-finite distance so we never emit a
@@ -3845,7 +3690,7 @@ fun FLine.byNoisingParameterized(
         cursor.setT(t * (this.nodes.size - 1))
 
         val pos = cursor.position()
-        val normal = cursor.unitNormal2()
+        val normal = cursor.normal2D()
         val amplitude = amplitudeFunc.evaluate(t, pos)
 
         // Generate Gaussian noise (Box-Muller). random.nextFloat() can return exactly 0,
@@ -4403,59 +4248,13 @@ fun FLine.byCurvatureFlow(
 
 // ---------- Gaussian Process interpolation ----------
 
-private fun cholesky(matrix: Array<DoubleArray>): Array<DoubleArray>? {
-    val n = matrix.size
-    val L = Array(n) { DoubleArray(n) }
-    for (i in 0 until n) {
-        for (j in 0..i) {
-            var sum = matrix[i][j]
-            for (k in 0 until j) sum -= L[i][k] * L[j][k]
-            if (i == j) {
-                if (sum <= 0.0 || sum.isNaN()) return null
-                L[i][j] = sqrt(sum)
-            } else {
-                L[i][j] = sum / L[j][j]
-            }
-        }
-    }
-    return L
-}
-
-private fun solveWithCholesky(L: Array<DoubleArray>, b: DoubleArray): DoubleArray {
-    val n = L.size
-    val y = DoubleArray(n)
-    for (i in 0 until n) {
-        var sum = b[i]
-        for (k in 0 until i) sum -= L[i][k] * y[k]
-        y[i] = sum / L[i][i]
-    }
-    val x = DoubleArray(n)
-    for (i in n - 1 downTo 0) {
-        var sum = y[i]
-        for (k in i + 1 until n) sum -= L[k][i] * x[k]
-        x[i] = sum / L[i][i]
-    }
-    return x
-}
-
-private fun solveLower(L: Array<DoubleArray>, b: DoubleArray): DoubleArray {
-    val n = L.size
-    val y = DoubleArray(n)
-    for (i in 0 until n) {
-        var sum = b[i]
-        for (k in 0 until i) sum -= L[i][k] * y[k]
-        y[i] = sum / L[i][i]
-    }
-    return y
-}
-
 /**
  * RBF-kernel Gaussian Process interpolation along arc length, applied independently to XYZ.
  * @param trainingSamples how many points to use from the source curve as observations
  * @param samples how many points to output
  * @param lengthScale kernel length scale (in normalized arc-length units)
  * @param variance kernel variance
- * @param noise observation noise added to the diagonal
+ * @param noise observation standard deviation; its square is added to the training diagonal
  * @param drawSamples if true, draw a single sample from the posterior instead of using the mean
  */
 fun FLine.byGaussianProcessInterpolating(
@@ -4471,60 +4270,19 @@ fun FLine.byGaussianProcessInterpolating(
     trainingSampler: FLineSampler? = null,
     outputSampler: FLineSampler? = null
 ): FLine {
+    require(trainingSamples >= 2 && samples >= 1)
+    require(lengthScale.isFinite() && lengthScale > 0 && variance.isFinite() && variance > 0)
+    require(noise.isFinite() && noise >= 0)
     val obs = this.samplePoints(trainingSamples, sampler = trainingSampler)
-    if (obs.isEmpty()) return this.copy()
-
-    val tObs = normalizedArcLengthParams(obs)
-    val n = obs.size
-    val ls2 = (lengthScale.toDouble()).pow(2.0).coerceAtLeast(1e-8)
-    val varScale = variance.toDouble()
-    val noiseVar = noise.toDouble().pow(2.0)
-
-    fun k(a: Double, b: Double): Double {
-        val d2 = (a - b) * (a - b)
-        return varScale * kotlin.math.exp(-0.5 * d2 / ls2)
-    }
-
-    val K = Array(n) { DoubleArray(n) }
-    for (i in 0 until n) {
-        for (j in 0 until n) {
-            K[i][j] = k(tObs[i], tObs[j])
-        }
-        K[i][i] += noiseVar
-    }
-
-    val jittered = K.map { it.copyOf() }.toTypedArray()
-    for (i in 0 until n) jittered[i][i] += 1e-8
-    val L = cholesky(jittered) ?: return this.copy()
-
-    val alphaX = solveWithCholesky(L, DoubleArray(n) { obs[it].x.toDouble() })
-    val alphaY = solveWithCholesky(L, DoubleArray(n) { obs[it].y.toDouble() })
-    val alphaZ = solveWithCholesky(L, DoubleArray(n) { obs[it].z.toDouble() })
-
-    val rng = if (drawSamples) java.util.Random(seed ?: System.nanoTime()) else null
-
+    if (obs.size < 2) return this.copy()
+    val model = gpCurve(normalizedArcLengthParams(obs), obs,
+        kernel = GpKernels.rbf(lengthScale.toDouble(), variance.toDouble()),
+        noiseStd = DoubleArray(obs.size) { noise.toDouble() }, mean = vec(0, 0, 0))
     val base = this.samplePoints(samples, sampler = outputSampler)
     if (base.isEmpty()) return this.copy()
-    val tQuery = normalizedArcLengthParams(base)
-    val query = ArrayList<Vec3>(base.size)
-    for (i in tQuery.indices) {
-        val t = tQuery[i]
-        val kStar = DoubleArray(n) { idx -> k(t, tObs[idx]) }
-        val meanX = kStar.indices.sumOf { idx -> kStar[idx] * alphaX[idx] }
-        val meanY = kStar.indices.sumOf { idx -> kStar[idx] * alphaY[idx] }
-        val meanZ = kStar.indices.sumOf { idx -> kStar[idx] * alphaZ[idx] }
-
-        var varStar = varScale
-        val v = solveLower(L, kStar)
-        for (vComp in v) varStar -= vComp * vComp
-        val std = sqrt(varStar.coerceAtLeast(0.0))
-        val jitter = if (drawSamples && rng != null) std * rng.nextGaussian() else 0.0
-
-        query.add(vec(meanX.toFloat() + jitter.toFloat(), meanY.toFloat() + jitter.toFloat(), meanZ.toFloat() + jitter.toFloat()))
-    }
-
-    val blended = mixSamples(base, query, dryWet, wetModulator)
-    return blended.toFLine()
+    val joint = model.posterior(normalizedArcLengthParams(base))
+    val query = if (drawSamples) joint.samplePoints(seed ?: System.nanoTime()) else joint.meanPoints
+    return mixSamples(base, query, dryWet, wetModulator).toFLine()
 }
 
 // ---------- Filtered geometry (EMA, One Euro, alpha-beta / 1$) ----------
@@ -4882,3 +4640,4 @@ fun FLine.byOneDollarFiltering(
     val blended = mixSamples(points, normed, dryWet, wetModulator)
     return blended.toFLine()
 }
+

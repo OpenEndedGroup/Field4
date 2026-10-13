@@ -1586,6 +1586,11 @@ object HistoryManager {
         return matches
     }
 
+    /**
+     * The versions that changed the line at [lineNumber] of [propertyText] (the editor's text for
+     * [uid].[property]), oldest first, following the line back through edits above it. A version is
+     * listed when it touched the line; the trace stops at the version that inserted it.
+     */
     fun blameLineHistory(
         documentPath: String,
         uid: String,
@@ -1593,9 +1598,26 @@ object HistoryManager {
         lineNumber: Int,
         lineText: String = "",
         propertyText: String = ""
-    ): List<Int> {
+    ): List<Int> = blameLineTrace(documentPath, uid, property, lineNumber, lineText, propertyText).changes
+
+    /**
+     * [changes] as [blameLineHistory] returns them; [original] is the version just before the oldest
+     * change when the line already existed there — the line's value before anything listed in
+     * [changes], which no listed version holds. Null when the oldest change inserted the line.
+     */
+    internal data class LineBlame(val changes: List<Int>, val original: Int?)
+
+    internal fun blameLineTrace(
+        documentPath: String,
+        uid: String,
+        property: String,
+        lineNumber: Int,
+        lineText: String = "",
+        propertyText: String = ""
+    ): LineBlame {
+        val none = LineBlame(emptyList(), null)
         val versions = listVersions(documentPath)
-        if (versions.size < 2 || uid.isBlank() || property.isBlank()) return emptyList()
+        if (versions.size < 2 || uid.isBlank() || property.isBlank()) return none
 
         val textsByVersion = versions.associate { version ->
             version.index to loadBoxPropertyText(version, documentPath, uid, property)
@@ -1618,20 +1640,22 @@ object HistoryManager {
         if (startingText != latestText) {
             trackedLine = traceLineBack(latestText, startingText, trackedLine)
                 .previousLine
-                ?: return emptyList()
+                ?: return none
         }
 
         val matches = mutableListOf<Int>()
+        var original: Int? = null
         for (i in versions.lastIndex downTo 1) {
             val currentText = textsByVersion[versions[i].index] ?: ""
             val previousText = textsByVersion[versions[i - 1].index] ?: ""
             val trace = traceLineBack(previousText, currentText, trackedLine)
             if (trace.touched) {
                 matches += versions[i].index
+                original = if (trace.previousLine != null) versions[i - 1].index else null
             }
             trackedLine = trace.previousLine ?: break
         }
-        return matches.asReversed()
+        return LineBlame(matches.asReversed(), original)
     }
 
     fun selectionChangeVersions(
@@ -1690,7 +1714,7 @@ object HistoryManager {
         val last = (maxOf(startLine, endLine) - 1).coerceAtLeast(first)
         if (lines.isNotEmpty()) {
             for (lineIndex in first..minOf(last, lines.lastIndex)) {
-                matches += blameLineHistory(
+                val trace = blameLineTrace(
                     documentPath = documentPath,
                     uid = uid,
                     property = property,
@@ -1698,6 +1722,10 @@ object HistoryManager {
                     lineText = lines.getOrNull(lineIndex) ?: "",
                     propertyText = propertyText
                 )
+                matches += trace.changes
+                // The lens lists values, not changes: without the version before the oldest change,
+                // a line's first saved value could be neither seen nor rolled back to.
+                trace.original?.let { matches += it }
             }
         }
 
@@ -2362,13 +2390,21 @@ private fun historyVersionDtos(documentPath: String, indexes: Set<Int>? = null):
     return HistoryManager.listVersions(documentPath)
         .filter { indexes == null || it.index in indexes }
         .map { v ->
+            // A version list read from disk leaves box ids to be filled in lazily, by the history
+            // page's stats stream. The History Lens asks for a few versions by index and never
+            // runs that stream, so without this its header read "0 boxes" for every version.
+            val boxIds = if (indexes != null && v.boxIds.isEmpty()) {
+                runCatching { HistoryManager.loadVersionDiffSummary(documentPath, v).boxIds }.getOrDefault(v.boxIds)
+            } else {
+                v.boxIds
+            }
             HistoryVersion(
                 index = v.index,
                 filename = v.file.name,
                 timestamp = v.timestamp,
-                boxCount = v.boxCount,
+                boxCount = boxIds.size,
                 byteSize = v.byteSize,
-                boxIds = v.boxIds.toList().sorted(),
+                boxIds = boxIds.toList().sorted(),
                 message = names[v.index] ?: if (v.file.name == "metadata.edn") "Current" else "",
                 diffStats = null,
                 activityStats = activityByVersion[v.index]

@@ -127,9 +127,17 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
 - `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
   IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
+- `stippling.yaml`: two pure-CPU boxes for `stippling.kt`. `stipple_hello` turns a shaded-sphere
+  `Img` into 6000 evenly spaced dots in two statements; `stipple_relaxing` is a launched `loop { }`
+  that shows the weighted random start beside one Lloyd step a frame, with `showSignals` plotting how
+  far the dots moved.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
+- `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
+  grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
+  gate, the loot rule as a qualified source, and a corpus box that builds seeded variants with the same stages.
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
 - `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
+- `gesture_paint_replay.yaml` — a pen gesture pad's take (pressure and tilt kept) baked into x/y/pressure lanes and painted from them with `PaintCanvas.gesture(x, y, pressureLane = ...)`; a second box paints one take four ways to show what the recording drops.
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
   `inertial_vs_restarting` adds a `startAt` per frame, so the restarted arm and the re-solving one
@@ -141,6 +149,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   in `afield/stdlib/interpolants.kt`.
 - `studies_rings.yaml`: a study defined by one box and driven by two children: `rings` makes a `SourceFramesStudy` of its `rings` property and calls `registerStudyTools("Rings", …)`; `change it` publishes a SetNumbers revision per run (warmth flips) and shows it over its parent; `try things` sweeps the ring count and holds two variants unpublished. Pure CPU. Companion to `public/docs/studies.md`.
 - `two_box_context.yaml`: creates two boxes, connects them, and runs child code that depends on graph context.
+- `gp_instruments.yaml`: **Gaussian processes as tuning instruments** — a `GpOptimizer` fitting a curve's three dials to a target in thirty tries, a `GpPreference` A/B loop over a rosette driven by two buttons, and the same loop against a simulated judge whose favourite walks to its hidden ideal.
+- `gp_drawing.yaml`: **Drawing with Gaussian processes**, to play with — a closed loop through six draggable pins (periodic kernel, no seam), four 1-D measurements with length-scale and noise sliders, and a 2-D field's mean, draws and standard deviation. Companion to `public/docs/gaussian_processes.md`.
 - `graphics_renderer_launch.yaml`: creates the reusable `agent_graphics_context` renderer box, launches it with `start(renderer::run)`, prints `agent graphics renderer ready`, and waits three Runloop frames. Run this before child `afield.four` graphics transcripts.
 - `field_ui_browser_texture.yaml`: self-contained recursive graphics proof and puppet-browser starting point. A hidden Electron window opens the same Field document, transfers accelerated offscreen IOSurfaces into the JVM, and a Vulkan mesh samples the stable resident texture. The native window's mouse and keyboard control Chromium, `browserControl` publishes the full navigation/input/JavaScript/CDP interface for experimentation, and the launch performs a page-to-Field-to-JavaScript promise round trip. Start Field normally, then run the renderer box before the connected panel box.
 - `youtube_mouse_keyboard_browser.yaml`: the direct desktop-input puppet-browser starting point. It opens a full YouTube watch page into a matching 1280×720 native window and routes that window's mouse motion/buttons/wheel plus physical keyboard, modifiers, and text input straight into Chromium. There is no OpenXR or controller stand-in: click the EU consent controls, use the search field, and operate the player as an ordinary browser. Electron keeps page audio live.
@@ -231,6 +241,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
   sizes are the word's own partial sums, and a `.wav` player pinned to the canvas through
   `customization`. Sample-backed through `showDirtAudio`; falls back to `patVoice` with no library.
+- `browse_embeds.yaml`: **the three inspector embeds**, one box each — `tree(...)` over a data class,
+  a `DoubleArray`, a 5000-item list paged 200 rows at a time, object keys and a two-node loop;
+  `column(...)`; a **launched** box whose list grows without a re-run; and `logs(...)` filtered to one
+  channel. Pure CPU. See `dev_docs/INSPECTOR_EMBEDS.md`.
 - `pattern_condense.yaml`: **the shortest way to write a rhythm down** — `patCondense` accepts a
   candidate only by re-parsing and playing it, which is why box 1 draws pairs rather than printing
   strings. Includes the loop closed from audio: samples in, `60(3,8)` out.
@@ -249,10 +263,13 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   hard `Union` is dead, because a pointwise `min` hands the whole derivative to whichever child is
   nearest.
 - `solidsl_gallery.yaml`, `mesh_repair_demo.yaml`, `mqtt_demo.yaml`, `oscquery_demo.yaml`,
-  `sonicpi_pattern_demo.yaml`: generated by `DocumentToTranscript` from the demo documents of the same
-  name under `public/docs/assets/`, so each page's demo is a starting point. The documents stay
-  where they are, because their bundle and drift tests read them there; regenerate the yaml after
-  editing one.
+  `sonicpi_pattern_demo.yaml`, `dmx_lighting_demo.yaml`, the seven `fieldml_*_demo.yaml`,
+  `stacksl_gallery.yaml`, `stacksl_fit_demo.yaml`: generated by `DocumentToTranscript` from the demo
+  documents of the same name under `public/docs/assets/`, so each page's demo is a starting point.
+  The documents stay where they are, because their bundle and drift tests read them there;
+  regenerate the yaml after editing one, then re-add the replay's `launch`/`await` ops.
+  `fieldml_afield_four_demo.yaml` also carries a `fieldml-four-renderer` box its document lacks (the
+  document expects a renderer from the session), copied from `fieldml_frames_demo`; keep it.
 - `sorting_networks.yaml`: the four runner fences of `public/docs/sorting_networks_examples.md`,
   fold markers removed, one box each. Regenerate it when those fences change.
 - `interaction_nets_lambda.yaml`: **λ-calculus on interaction nets**, three pure-CPU boxes. A term is

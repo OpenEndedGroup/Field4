@@ -20,25 +20,13 @@ expect:
 */
 
 /**
- * The published clips on `pat_spatial.md`: the **mono source**, which is as far as a figure reaches.
+ * Two of the published clips on `pat_spatial.md`: the **mono source**, before Steam Audio places it.
  *
- * [patSpatial]'s output cannot be published, and the reason is structural. Three separate things
- * have to be true for a clip to appear behind an `audio=` fence, and this path fails two of them:
- *
- *  * **The docs runner renders offline**, through `renderWav(name, path)` over the backdoor. There
- *    is no offline half of [patSpatial] to call: [PatSpatialLaunch.advanceOffline] consumes what
- *    [PatSpatialRoom]'s render thread has already produced, in real time, so asking it for four
- *    seconds of audio takes four seconds and no flag makes it faster.
- *  * **[DocsAudioProvenance] re-renders every fence on every build** and fails when a render
- *    fails. The HRTF needs Steam Audio's `libphonon`, which is *not committed*;
- *    `./gradlew fetchSteamAudioNatives` downloads it. So on a clean clone, on CI, and in `check`
- *    that render does not merely differ, it cannot start.
- *
- * So what is published here is the half of the chain that *is* offline and *is* committed: the
- * pattern through one [DoughEngine], taken as mono. That is not a stand-in for the spatialised
- * output and is not labelled as one. It is the exact buffer [PatSpatialRoom] copies into
- * `source.mono` and hands to [afield.four.audio.steamaudio.BinauralEffect]: the input to the part
- * that has no figure.
+ * This is the half of the chain that needs nothing uncommitted: the pattern through one
+ * [DoughEngine], taken as mono. It is the exact buffer [PatSpatialRoom] copies into `source.mono`
+ * and hands to [afield.four.audio.steamaudio.BinauralEffect]. The placed, binaural output is
+ * [PatSpatialHeadTrackedDocs], which needs Steam Audio's `libphonon`
+ * (`./gradlew fetchSteamAudioNatives`).
  *
  * ## What the two clips are for
  *
@@ -62,9 +50,8 @@ expect:
  *  2. **The six spatial tags never reach Dough.** Asserted on the event maps, not on the audio:
  *     `spat`, `az`, `elev`, `dist`, `occl` and `air` are consumed by this path and `lpf` is not.
  *  3. **`az` is not in the signal.** The same pattern rendered with `az = 0` and with
- *     `az = -70` produces a **bit-identical** mono source. That is the cleanest statement of why
- *     there is no figure of the spatialisation: the direction lives entirely in the effect, and the
- *     effect is the part that needs the uncommitted binary.
+ *     `az = -70` produces a **bit-identical** mono source. The direction lives entirely in the
+ *     effect, which is the part that needs the uncommitted binary.
  *
  * The third says something about [DoughEngine] as well, and it is what makes these two clips
  * publishable at all: two engines, separately booted and separately fed, agree to the bit. That is

@@ -128,7 +128,8 @@ object AgentToolExtensions {
      * tool name a model sends back — keys on the simple name, so the model was shown the tool twice and
      * the older handler is the one that ran.
      *
-     * @throws IllegalArgumentException if a core built-in already owns this tool name in a live agent.
+     * @throws IllegalArgumentException if a core built-in already owns this tool name in a live agent, or if
+     *   OpenAI would refuse [toolClass]'s argument schema (see [requireOpenAiSchema]).
      */
     fun <T : Any> register(
         toolClass: Class<T>,
@@ -146,6 +147,7 @@ object AgentToolExtensions {
                     "model sees, so it has to be unique across every tool in the conversation."
             )
         }
+        requireOpenAiSchema(toolClass)
         registrations.removeAll { it.toolClass.simpleName == name && it.scope == scope }
         val registration = Registration(toolClass, available, handler, scope, meta)
         registrations.add(registration)

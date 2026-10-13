@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="underfit_mancini_generate" index="0" -->
 
 ```edn [field-box id="underfit_mancini_generate" role="properties"]
-{"id" "underfit_mancini_generate" "index" 0 "name" "2 · generate and audition" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and audition" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_generate_code_.kt" "lines" 32 "characters" 1312 "sha256" "c4074f716656a0d8ad34be514ec933c68757904e86b1a74113bd25f3e5f7c1ce"}]}
+{"id" "underfit_mancini_generate" "index" 0 "name" "2 · generate and audition" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and audition" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_generate_code_.kt" "lines" 31 "characters" 1276 "sha256" "d1c13a51436617c579f039752c094a05e55917af680766da6b2595c859272509"}]}
 ```
 
 ```kotlin [field-property box="underfit_mancini_generate" name="code" path="underfit_mancini_generate_code_.kt"]
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -54,11 +53,10 @@ client.submit(underfitCandidates(
 <!-- field-box id="underfit_mancini_guide" index="1" -->
 
 ```edn [field-box id="underfit_mancini_guide" role="properties"]
-{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 9 "characters" 957 "sha256" "6ea7e8e1eb59aba9aaf96224d333104d16b21a11aaa6346fbf2d98c7a64fc096"}]}
+{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 8 "characters" 921 "sha256" "81ab0374fbc1bb8d8f704b8e76d87e9415fde6ba1902cfd7326c76428d388492"}]}
 ```
 
 ```kotlin [field-property box="underfit_mancini_guide" name="code" path="underfit_mancini_guide_code_.kt"]
-import afield.stdlib.noir.audioai.*
 
 display("guide", """
   <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
