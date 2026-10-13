@@ -397,7 +397,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
     box_sidecars = set()
     if 'boxImports' in recipe:
         for rel in paths:
-            if Path(rel).name != 'metadata.edn':
+            if Path(rel).suffix != '.edn':
                 continue
             try:
                 target = confined(root, rel)
@@ -415,7 +415,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
     def rewrite_unit(unit, rel):
         if not unit.identity.startswith('prose:'):
             host = box_recipe if 'boxImports' in recipe and unit.script and (
-                Path(rel).name == 'metadata.edn' or rel in box_sidecars) else recipe
+                Path(rel).suffix == '.edn' or rel in box_sidecars) else recipe
             return engine.rewrite(unit.code, unit.script, host)
         after = rewrite_qualified_text(unit.code, recipe)
         pending = [issue('prose-reference', 'Unmapped qualified name in prose requires contextual review')] if pattern.search(after) else []
@@ -496,7 +496,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
             outputs[rel] = text
 
     for rel, extraction in extracted.items():
-        if Path(rel).name != 'metadata.edn':
+        if Path(rel).suffix != '.edn':
             continue
         edits = []
         for reference in extraction.references:
