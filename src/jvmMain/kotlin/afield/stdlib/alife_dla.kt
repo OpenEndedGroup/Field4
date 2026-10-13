@@ -423,7 +423,17 @@ class ShaderDlaSystem(
             sourceRect = sourceRect,
             blend = blend,
             additive = additive
-        )
+        ).also { keepSoleRenderer(target, "$name-source") }
+    }
+
+    // The ping-pong's own blitToScreen registers the ping-pong as a pre-target of `target`. After
+    // installInto that made it render twice a frame, stepping every walker and decaying the
+    // cluster twice. Only this system may render it.
+    private fun keepSoleRenderer(target: RenderTarget, sourceKey: String) {
+        if (target.preTargets[sourceKey] === simulation) {
+            if (target.preTargets.values.any { it === this }) target.preTargets.remove(sourceKey)
+            else target.preTargets[sourceKey] = this
+        }
     }
 
     private fun sourceTextureResolver(): (afield.four.modules.Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>? = { tex ->

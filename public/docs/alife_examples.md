@@ -78,7 +78,9 @@ Limits:
 
 - **CPU only.** These are reference implementations you can read. The GPU story is
   [`afield.four`](reference/graphics.md), [StackSL](stacksl_examples.md) and
-  [RectSL](rectsl_examples.md).
+  [RectSL](rectsl_examples.md). Two systems from this family's neighbourhood do run on the GPU, as
+  shaders you can edit: [diffusion-limited aggregation](afield_four_graphics.md#diffusion-limited-aggregation)
+  and [Biham–Middleton–Levine traffic](afield_four_graphics.md#bml-traffic).
 - **No named Lenia lifeform.** Reproducing Orbium needs its exact published initial array, which this
   family does not ship. What it does instead is [prove the discrete limit](#5-lenia) and report a
   measured phase trichotomy.

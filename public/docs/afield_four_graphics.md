@@ -1451,6 +1451,65 @@ void main() {
 
 Run this one live, and expect to tune it: the result depends on how densely the walkers cover the canvas, and the useful range is narrow. A million walkers over a 4112×2524 window grow a cluster only a few pixels across in 600 frames (about eight seconds), too small to see. Over a 900×560 canvas every walker touches something solid on its first step, so the whole field sticks at once and turns uniform magenta. A legible cluster needs a density between those two, and more than 600 frames.
 
+## Traffic: the Biham–Middleton–Levine model { #bml-traffic }
+
+The same packaging carries a cellular automaton, where the GPU's natural shape (one fragment per cell, all at once) is exactly the model's. In the Biham–Middleton–Levine model every cell of a torus is empty or holds one car. Red cars only move right and blue cars only move down, and they take turns: on even steps every red car with an empty cell ahead moves into it, on odd steps the blue cars do the same. The only parameter is how many cars there are.
+
+```diffstatic {data-lang=kotlin}
+import afield.stdlib.*
+
+var bml = ShaderBmlSystem() {
+    width = 512
+    height = 512
+    density = 0.32f
+}
+
+bml.installInto()
+```
+
+At 0.32, on this 512 × 512 torus, the cars start as noise, organise into diagonal bands within a few hundred steps, and then slowly lose them: the fraction of cars moving falls from 0.92 to 0.44 over 2000 steps. That density is close to the transition, which is where the model is most interesting to watch. Set `density` to 0.20 and call `bml.reset()` and the bands win: the moving fraction climbs to 0.998. At 0.45 a jam spanning the whole grid forms, and by step 1750 nothing moves at all. Those three figures were read with the probe in the next section.
+
+The state is the texture: red at 1 is a red car, blue at 1 a blue one. Each frame is one half-step, a single full-screen pass that reads the previous frame and writes this one. Every cell decides from three texels: it empties if it holds a car of the moving colour and the cell ahead is empty, fills if it is empty and the cell behind holds one, and otherwise stays as it was. Because every cell gathers rather than any car pushing, no two cars can claim the same cell and the car count is conserved exactly. That fragment shader is what `ShaderBmlSystem` installs in the box's `fragment` tab:
+
+```diffstatic {data-lang=glsl}
+int mover = push.mode == 0 ? 1 : 2;
+ivec2 ahead = push.mode == 0 ? ivec2(1, 0) : ivec2(0, 1);
+
+int next = here;
+if (here == mover && cellAt(p + ahead, dims) == 0) next = 0;
+else if (here == 0 && cellAt(p - ahead, dims) == mover) next = mover;
+
+outColor = colourOf(next);
+```
+
+`settings.running = false` holds the grid; `bml.step / 2` is how many full steps have run since the last reset. `blitToScreen(viewport = ..., sourceRect = ...)` with a small `sourceRect` is how to see individual cars.
+
+### Probing the cars that move
+
+Nothing above reads the grid back, so the picture cannot tell you how much of the traffic is actually moving. A [field probe](field_probes.md) can. The branch where a car leaves its cell runs exactly once per moving car per half-step, so a `fieldProbe(...)` call there samples the moving cars and nothing else. `STEP_FRAGMENT` is public, so the box can install an instrumented copy of the rule as its `fragment` before the system is built; a box that already has a `fragment` keeps it:
+
+```diffstatic {data-lang=kotlin}
+fragment = ShaderBmlSystem.STEP_FRAGMENT
+    .replace("layout(location = 0) out vec4 outColor;",
+        "{% include \"fieldProbe\" %}\nlayout(location = 0) out vec4 outColor;")
+    .replace("// a car moves out of this cell this half-step",
+        "fieldProbe(float(p.x + p.y));\n// a car moves out of this cell this half-step")
+
+var bml = ShaderBmlSystem() {
+    width = 512
+    height = 512
+    density = 0.32f
+}
+bml.installInto()
+
+fieldProbeHere(samples = 4096).display("probe")
+displayOpen("probe")
+```
+
+Editing the `fragment` tab by hand does the same thing: add the include near the top and the `fieldProbe` line in the `next = 0` branch.
+
+The card shows two things. Its `calls` count is exactly how many cars moved this half-step, and divided by the cars of one colour (`density × width × height / 2` at the default even split) that is the model's mean velocity, the usual measure of the jamming transition: near 1 in free flow, 0 in a jam. The histogram is the distribution of `x + y` over those moving cars. Cars scattered uniformly would give a triangle peaking at the middle of the range; the diagonal bands the traffic organises into show up as departures from that triangle while they form.
+
 ## Stopping the renderer
 
 Stopping the box that owns `renderer` also stops every running box connected beneath it, then
