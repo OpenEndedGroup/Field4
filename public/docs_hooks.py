@@ -879,6 +879,7 @@ class RunnerOptions:
 CAPTURE_PROFILE_PLATFORMS = {
     "linux-nvidia": "linux",
     "macos-electron": "darwin",
+    "patchy-web": "",  # optional WebAssembly site; available on any host when explicitly selected
 }
 
 

@@ -60,6 +60,14 @@ class HardwareDocsGatingTest(unittest.TestCase):
         with patch.object(docs_hooks.sys,'platform','darwin'),patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':''}):
             self.assertFalse(docs_hooks.capture_profile_enabled('macos-electron'))
 
+    def test_optional_patchy_capture_needs_request_on_every_host(self):
+        for host in ('darwin', 'linux', 'win32'):
+            with self.subTest(host=host), patch.object(docs_hooks.sys, 'platform', host):
+                with patch.dict(os.environ, {'FIELD_DOCS_CAPTURE_PROFILES': ''}):
+                    self.assertFalse(docs_hooks.capture_profile_enabled('patchy-web'))
+                with patch.dict(os.environ, {'FIELD_DOCS_CAPTURE_PROFILES': 'patchy-web'}):
+                    self.assertTrue(docs_hooks.capture_profile_enabled('patchy-web'))
+
     def test_missing_protected_asset_fails_without_attempting_replacement(self):
         with tempfile.TemporaryDirectory() as temporary:
             docs=Path(temporary);page=docs/'test.md';state=self.state(docs)

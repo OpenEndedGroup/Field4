@@ -57,6 +57,24 @@ regeneration commands.
 The Field-specific Qt theme applies only inside the same-origin Field iframe. It uses flat dark
 controls, compact Iosevka UI text, and Noto fallback. Standalone Patchy retains its own theme.
 
+## Documentation capture
+
+`public/docs/patchy.md` captures the embedded editor with a `diffstatic_runner` fence.
+The box prints `Patchy painting ready` only after its `go { }` block has created the layer
+and painted through Patchy's live RPC. The runner waits for that inline output, then captures
+the real iframe in the box output. The committed PNG is retained during ordinary docs builds;
+the optional site is not a prerequisite for publishing the documentation.
+
+To recapture after changing Patchy or its Field theme, build the optional site and run:
+
+```sh
+AFIELD_PATCHY_WEB_ROOT="$HOME/.field4/patchy-web/site" \
+FIELD_DOCS_CAPTURE_PROFILES=patchy-web FIELD_DOCS_RUNNER_MODE=always \
+uv run --project . --group docs python tools/build_zensical_docs.py --page patchy.md
+```
+
+Inspect the generated `public/docs/assets/patchy/embedded-painting.png` before committing it.
+
 ## Desktop connector
 
 `Patchy.connect()` in the Kotlin backend starts `patchy-mcp` and attaches to a native Patchy

@@ -24,8 +24,8 @@ before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`
 
 In a Kotlin box, keep the layered painting in the Field document's `files/` directory:
 
-```diffstatic {data-lang=kotlin}
-val p = patchyWeb(documentFile = "patchy.psd".file, autosave = true)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/patchy/embedded-painting.png" capture="box" open-outputs=true wait-output=true wait-output-kind="inline" wait-output-contains="Patchy painting ready" wait="2" timeout="240" w="1040" h="800" padding="12" embed=true capture-profile="patchy-web" name="patchy-embedded-painting" alt="Patchy's dark embedded editor in a Field output, showing a new layered painting with a dark rectangular mark made by the Kotlin box"}
+val p = patchyWeb(width = 900, height = 650, documentFile = "patchy.psd".file, autosave = true)
 go {
     // A saved PSD is restored first. On a new document, make the first painting:
     if (p.state()["documents"].toString() == "[]") {
@@ -33,7 +33,7 @@ go {
         val layer = p.addLayer(doc, "Kotlin ink")
         p.fillRect(doc, layer, 30, 30, 150, 80, "#202020")
     }
-    println(p.state())
+    println("Patchy painting ready: ${p.state()}")
 }
 ```
 
