@@ -3,11 +3,44 @@ const labels = {open:'Open', patch:'Patch proposed', preserve:'Preserve', adapte
 let current = null, selected = null, requestVersion = 0, busy = false;
 const text = (tag, value, className) => { const node = document.createElement(tag); node.textContent = value; if(className) node.className = className; return node; };
 function error(value='') { $('error').textContent = value; $('error').hidden = !value; }
+let displayedJob = {}, startingAction = null;
+function renderJob(job = {}) {
+    displayedJob = job;
+    busy = !!job.running;
+    $('job-panel').className = `job-panel ${busy ? 'running' : job.name ? job.exitCode === 0 ? 'ok' : 'failed' : 'idle'}`;
+    $('job-title').textContent = job.name ? `${job.name} · ${job.starting ? 'starting…' : busy ? 'running' : job.exitCode === 0 ? 'finished' : 'failed'}` : 'No operation yet';
+    const lines = (job.logTail || '').trimEnd().split(/[\r\n]+/);
+    // CLI status JSON belongs in the log, not the compact progress line.
+    $('job-last').textContent = lines.filter(line => line && line.length < 500 && !line.startsWith('{')).at(-1) || (job.name && !busy ? job.exitCode === 0 ? 'Operation completed.' : 'See the log for details.' : '');
+    $('job-file').textContent = job.logFile || '';
+    const log = $('job-log'), atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+    log.textContent = job.logTail || 'No output yet.';
+    if(atEnd) log.scrollTop = log.scrollHeight;
+    $('cancel-job').hidden = !busy || !!job.starting;
+    for(const id of ['import-button','start-button','resume-button','replan','rehearse','run-agent','session-agent','close-session','prepare','restore','continue-review','validate','land','publish','save-checks']) $(id).disabled = busy;
+    if(current) renderDelivery(current, false);
+    renderJobTime();
+}
+function renderJobTime() {
+    const j = displayedJob;
+    const end = j.running ? Date.now() : j.finishedAtEpochMs || j.startedAtEpochMs;
+    const seconds = Math.max(0, Math.floor((end - j.startedAtEpochMs) / 1000));
+    $('job-run').textContent = j.startedAtEpochMs ? `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s` : '';
+}
 async function api(path, body) {
-    const response = await fetch(path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
-    const raw = await response.text();
-    if(!response.ok) throw new Error(raw || `Request failed (${response.status})`);
-    return JSON.parse(raw);
+    const operation = path === '/api/refactor-pass' && body && !['configure','decide','cancel'].includes(body.action);
+    if(operation) { startingAction = body.action; renderJob({name:body.action,running:true,starting:true,startedAtEpochMs:Date.now()}); }
+    try {
+        const response = await fetch(path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
+        const raw = await response.text();
+        if(!response.ok) throw new Error(raw || `Request failed (${response.status})`);
+        const result = JSON.parse(raw);
+        if(operation || (path === '/api/refactor-pass' && body?.action === 'cancel')) renderJob(result);
+        return result;
+    } catch(e) {
+        if(operation) renderJob({name:body.action,running:false,exitCode:1,logTail:e.message});
+        throw e;
+    } finally { if(operation) startingAction = null; }
 }
 function renderDiff(node, patch) {
     node.classList.add('patch');
@@ -72,13 +105,8 @@ function options(node, values) {
     if([...node.options].some(o=>o.value===value)) node.value=value;
 }
 function renderStatus(data, job) {
-    busy = !!job.running;
-    $('cancel-job').hidden=!busy;
-    $('job-state').textContent = job.running ? `${job.name} is running…` : job.name ? `${job.name}: ${job.exitCode===0?'finished':'failed — see operation log'}` : '';
-    $('job-state').classList.toggle('busy', busy);
-    $('log').textContent = job.logTail || 'No operation yet.';
-    $('import-progress').textContent=job.running ? `${job.name} is running. ${job.logTail.slice(-600)}` : job.exitCode ? job.logTail.slice(-1000) : '';
-    for(const id of ['import-button','start-button','resume-button','replan','rehearse','run-agent','session-agent','close-session','prepare','restore','continue-review','validate','land','publish','save-checks']) $(id).disabled = busy;
+    if(!startingAction) renderJob(job);
+    $('import-progress').textContent = '';
     const exists=!!data?.pass;
     $('import-panel').hidden=exists;
     for(const id of ['scope-panel','actions-panel','review-panel','review-body','delivery']) $(id).hidden=!exists;
@@ -156,13 +184,17 @@ async function showItem(id) {
     else $('detail').append(text('p','Review decisions are frozen during delivery. Use the session terminal for fixes, then rerun verification.','muted'));
 }
 async function refresh() {
-    const result=await api('/api/refactor-pass');if(result.error) throw new Error(result.error);renderStatus(result.data,result.job);
+    const result=await api('/api/refactor-pass');
+    if(!startingAction) renderJob(result.job);
+    if(result.error) { if(result.job?.running) return; throw new Error(result.error); }
+    renderStatus(result.data,result.job);
     const terminals=await api('/api/terminal');$('sessions').replaceChildren();
     for(const session of terminals.filter(t=>t.kind==='refactor-batch'&&t.running)) {const b=text('button',`Attach: ${session.batch}`);b.onclick=()=>openTerminal(session.id);$('sessions').append(b);}
 }
 function openTerminal(id) {const url=`/terminal.html?id=${encodeURIComponent(id)}`;$('terminal-link').href=url;$('terminal-pane').hidden=false;window.open(url,`field-terminal-${id}`,'noopener');}
 $('import-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/api/refactor-pass',{action:'create',plan:$('plan-path').value.trim()});await refresh();});};
 for(const action of ['replan','rehearse']) $(action).onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action});await refresh();});
+$('toggle-log').onclick=()=>{const d=$('job-detail');d.hidden=!d.hidden;$('toggle-log').textContent=d.hidden?'Log':'Hide log';$('toggle-log').setAttribute('aria-expanded',String(!d.hidden));};
 $('cancel-job').onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action:'cancel'});await refresh();});
 $('refresh').onclick=()=>guarded(refresh);
 $('mechanical').addEventListener('toggle',()=>{if($('mechanical').open) guarded(async()=>{const result=await api('/api/refactor-pass?changes=1');if(result.error) throw new Error(result.error);options($('change-list'),[['','Choose a file'],...result.data.map(c=>[c.id,`${c.held?'HELD':'READY'} · root ${c.root} · ${c.path}`])]);});});
@@ -224,4 +256,6 @@ $('publish-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/
 
 $('plan-path').value=new URLSearchParams(location.search).get('plan')||'';
 await guarded(refresh);
-setInterval(()=>guarded(refresh),8000);
+let polling = false;
+setInterval(async()=>{if(polling || startingAction) return;polling=true;try{await guarded(refresh);}finally{polling=false;}},3000);
+setInterval(renderJobTime,1000);
