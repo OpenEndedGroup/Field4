@@ -348,8 +348,82 @@ index c591222..c877be8 100644
  
  // Decimal megabytes, as download sizes are usually given.
  int megabytes(qint64 bytes) {
+diff --git a/src/ui/main_window_docks.cpp b/src/ui/main_window_docks.cpp
+index 500d179..99b6a7d 100644
+--- a/src/ui/main_window_docks.cpp
++++ b/src/ui/main_window_docks.cpp
+@@ -10,6 +10,7 @@
+ #include "ui/main_window_shared.hpp"
+ #include "ui/modifier_names.hpp"
+ #include "ui/paths_panel.hpp"
++#include "app/field_web_bridge.hpp"
+ 
+ #include "core/blend_math.hpp"
+ #include "core/layer_metadata.hpp"
+@@ -379,6 +380,20 @@ void install_collapsible_dock_title(QDockWidget* dock,
+   }
+   layout->addWidget(label, 1);
+ 
++#ifdef Q_OS_WASM
++  // Field embeds the top three panels as a tab group. Their tab already names
++  // the active panel, so the second collapsible title wastes an entire row.
++  // Keep the dock and its resize handle; only remove this duplicate chrome.
++  if (patchy::field_web_bridge_available() &&
++      (object_prefix == QStringLiteral("layers") || object_prefix == QStringLiteral("channels") ||
++       object_prefix == QStringLiteral("paths"))) {
++    toggle->hide();
++    label->hide();
++    layout->setContentsMargins(0, 0, 0, 0);
++    title->setFixedHeight(0);
++  }
++#endif
++
+   const auto expanded_boost_height = std::max(expanded_minimum_height, expanded_preferred_height);
+   const auto apply_expanded_state = [dock, content, toggle, expanded_boost_height,
+                                      expanded_maximum_height,
+diff --git a/src/ui/main_window_sessions.cpp b/src/ui/main_window_sessions.cpp
+index 291a644..6ab1fb1 100644
+--- a/src/ui/main_window_sessions.cpp
++++ b/src/ui/main_window_sessions.cpp
+@@ -7,6 +7,8 @@
+ #include "ui/main_window.hpp"
+ #include "ui/main_window_shared.hpp"
+ #include "ui/custom_shape_library.hpp"
++#include "ui/action_icons.hpp"
++#include "app/field_web_bridge.hpp"
+ 
+ #include "core/blend_math.hpp"
+ #include "core/layer_metadata.hpp"
+@@ -394,6 +396,27 @@ void MainWindow::add_document_session(Document document, QString title, QString
+         bind_tooltip(button, QT_TR_NOOP("Close Tab"));
+       }
+     }
++#ifdef Q_OS_WASM
++    if (patchy::field_web_bridge_available()) {
++      auto* close = new QToolButton(document_tabs_->tabBar());
++      close->setObjectName(QStringLiteral("fieldDocumentTabClose"));
++      close->setAutoRaise(true);
++      close->setIcon(window_chrome_icon(QStringLiteral("close")));
++      close->setIconSize(QSize(14, 14));
++      close->setFixedSize(26, 18);
++      bind_tooltip(close, QT_TR_NOOP("Close Tab"));
++      document_tabs_->tabBar()->setTabButton(tab_index, QTabBar::RightSide, close);
++      connect(close, &QToolButton::clicked, this, [this, close] {
++        auto* bar = document_tabs_->tabBar();
++        for (int index = 0; index < bar->count(); ++index) {
++          if (bar->tabButton(index, QTabBar::RightSide) == close) {
++            close_document_tab(index);
++            return;
++          }
++        }
++      });
++    }
++#endif
+     if (!background) {
+       document_tabs_->setCurrentIndex(tab_index);
+     }
 diff --git a/src/ui/main_window_theme.cpp b/src/ui/main_window_theme.cpp
-index 1ee74fb..ed10b7c 100644
+index 1ee74fb..cf443d8 100644
 --- a/src/ui/main_window_theme.cpp
 +++ b/src/ui/main_window_theme.cpp
 @@ -6,6 +6,9 @@
@@ -362,7 +436,7 @@ index 1ee74fb..ed10b7c 100644
  
  #include "core/blend_math.hpp"
  #include "core/layer_metadata.hpp"
-@@ -1179,6 +1182,29 @@ QString photoshop_style() {
+@@ -1179,6 +1182,42 @@ QString photoshop_style() {
    const auto generation = theme_generation();
    if (generation != cached_generation) {
      cached = apply_theme_tokens(photoshop_style_template());
@@ -375,12 +449,25 @@ index 1ee74fb..ed10b7c 100644
 +        QMenu { border: 0; }
 +        QMenu::item { padding: 5px 24px 5px 14px; }
 +        QToolBar { border: 0; padding: 2px; }
++        QToolBar#Options QLabel[optionLabel="true"] { padding: 0 2px 0 4px; }
++        QToolBar#Options QSpinBox, QToolBar#Options QDoubleSpinBox,
++        QToolBar#Options QComboBox, QToolBar#Options QFontComboBox,
++        QToolBar#Options QPushButton { border: 0; }
++        QToolBar#Options QSpinBox, QToolBar#Options QDoubleSpinBox,
++        QToolBar#Options QComboBox, QToolBar#Options QFontComboBox {
++          padding-left: 5px;
++        }
 +        QToolButton, QPushButton, QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox,
 +        QTextEdit, QPlainTextEdit, QTabBar::tab, QGroupBox { border: 0; border-radius: 0; }
 +        QToolButton:hover, QPushButton:hover { background: @button_hover_bg; border: 0; }
 +        QToolButton:checked, QPushButton:checked { border: 0; }
 +        QPushButton:default, QTabBar::tab:selected { border: 0; }
 +        QPushButton { padding: 3px 6px; }
++        QComboBox#layerBlendModeCombo { padding-left: 8px; }
++        QToolButton#fieldDocumentTabClose { border: 0; background: transparent; }
++        QToolButton#fieldDocumentTabClose:hover { background: @button_hover_bg; }
++        QWidget#layersDockTitle, QWidget#channelsDockTitle, QWidget#pathsDockTitle { border: 0; }
++        QTabWidget::pane { border: 0; }
 +        QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: @field_bg; }
 +        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
 +          background: @button_hover_bg;
