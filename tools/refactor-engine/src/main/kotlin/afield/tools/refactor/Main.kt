@@ -38,8 +38,8 @@ data class Recipe(
         val owner = knownPackages.filter { prefix(path, it) }.maxByOrNull(String::length)
         return if (owner != null) owner in splitPackages else splitPackages.any { prefix(path, it) }
     }
-    fun affectedText(text: String) = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*")
-        .findAll(text).any { affected(it.value) }
+    fun affectedText(text: String, includePaths: Boolean = true) = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*")
+        .findAll(text).any { (includePaths || text.getOrNull(it.range.last + 1) != '/') && affected(it.value) }
 
     fun moved(path: String): String? {
         if (retained(path)) return null
@@ -234,7 +234,7 @@ class Engine : AutoCloseable {
                 findings += Finding("comment-reference", line(comment.textOffset), "KDoc, example or historical reference; review without changing prose blindly")
         }
         for (literal in PsiTreeUtil.findChildrenOfType(file, KtStringTemplateExpression::class.java)) {
-            if (recipe.affectedText(literal.text))
+            if (recipe.affectedText(literal.text, includePaths = false))
                 findings += Finding("string-reference", line(literal.textOffset), "Potential embedded code or dynamic name; requires a typed adapter")
         }
         var after = code

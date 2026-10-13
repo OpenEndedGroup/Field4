@@ -26,6 +26,7 @@ class EngineTest {
         val after = engine.rewrite(source, false, r)
         assertEquals(source.replace("import afield.Color4", "import afield.graphics.color.Color4"), after.code)
         assertTrue(after.findings.isEmpty())
+        assertTrue(engine.rewrite("val path = \"src/afield/foo.kt\"", true, r).findings.isEmpty())
         assertTrue(engine.rewrite("import afield.Unknown", true, r).findings.any { it.kind == "unmapped-import" })
         assertTrue(engine.rewrite("import afield.*", true, r).findings.any { it.kind == "split-star" })
     }
