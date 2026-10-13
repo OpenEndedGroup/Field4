@@ -36,6 +36,11 @@ batch scripts and tests. Close that session when finished; closing an attached s
 closes the user's Patchy window. `displayPatchy(p.preview(doc))` shows a snapshot in Field's box
 output; call it again to refresh after edits.
 
-Patchy runs separately from Field. This integration uses the desktop connector, not an iframe,
-and keeps PSD as Patchy's editable source. The connector and Kotlin bridge are optional: Field
-does not bundle Patchy.
+Patchy also has a [browser edition](https://rtsoft.com/patchy/), but it is a separate workspace
+from the desktop app. The browser build does not include `patchy-mcp`, so embedding that page
+would not connect it to this Kotlin session or its live desktop document. It also requires a
+cross-origin-isolated parent page for its WebAssembly threads. Embedding the hosted page in
+Field's current page produces Patchy's cross-origin-isolation startup error. A genuine in-box
+editor with Kotlin control would need both the isolation headers and a browser-side bridge into
+Patchy's scripting engine. This integration uses the desktop connector and keeps PSD as Patchy's
+editable source. Field does not bundle Patchy.
