@@ -176,6 +176,25 @@ class PlanTests(unittest.TestCase):
     def make(self, recipe=None):
         return make_plan([(self.root, False)], recipe or copy.deepcopy(RECIPE), self.plan, ImportFixture())
 
+    def test_unrelated_incomplete_snippet_does_not_hold_an_import_edit(self):
+        class ParsingFixture(ImportFixture):
+            def rewrite(self, code, script, recipe):
+                if '...' in code:
+                    return {'code': code, 'findings': [{'kind': 'parse-error', 'detail': 'Incomplete example'}]}
+                return super().rewrite(code, script, recipe)
+
+        for relevant in (False, True):
+            with self.subTest(relevant=relevant):
+                incomplete = ('import old.pkg.Other\n' if relevant else '') + 'val example = ...\n'
+                self.write('notes.md', '```kotlin\n' + SOURCE + '```\n```kotlin\n' + incomplete + '```\n')
+                out = self.base / ('relevant' if relevant else 'unrelated')
+                plan = make_plan([(self.root, False)], copy.deepcopy(RECIPE), out, ParsingFixture())
+                root = plan['roots'][0]
+                self.assertEqual(1, len(root['changes']))
+                self.assertEqual(relevant, root['changes'][0]['held'])
+                diagnostic = next(f for f in root['findings'] if f['kind'] == 'parse-error')
+                self.assertEqual(not relevant, bool(diagnostic.get('retained')))
+
     def test_document_pair_apply_verify_undo_exact_bytes(self):
         sidecar = self.write('doc/box_code_.kt', SOURCE)
         doc = self.write('doc/metadata.edn', metadata(sidecar='box_code_.kt'))
