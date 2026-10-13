@@ -9,6 +9,18 @@ async function api(path, body) {
     if(!response.ok) throw new Error(raw || `Request failed (${response.status})`);
     return JSON.parse(raw);
 }
+function renderDiff(node, patch) {
+    node.classList.add('patch');
+    const lines = patch.split('\n');
+    node.replaceChildren(...lines.map((line, index) => {
+        const kind = /^(---|\+\+\+|diff |index )/.test(line) ? 'meta'
+            : line.startsWith('@@') ? 'hunk'
+            : line.startsWith('+') ? 'add'
+            : line.startsWith('-') ? 'del' : 'context';
+        return text('span', line + (index < lines.length - 1 ? '\n' : ''), kind);
+    }));
+    return node;
+}
 async function guarded(fn) { try {error(); await fn();} catch(e) {error(e.message);} }
 function options(node, values) {
     const value = node.value; node.replaceChildren();
@@ -65,7 +77,7 @@ async function showItem(id) {
         $('detail').append(node);
     });
     const diff=document.createElement('details');diff.className='finding';diff.append(text('summary',`Proposed changes (${item.changes.length} files)`));
-    for(const c of item.changes) diff.append(text('h3',c.destination===c.path?c.path:`${c.path} → ${c.destination}`),text('pre',c.diff||'Directory move only.'));
+    for(const c of item.changes) diff.append(text('h3',c.destination===c.path?c.path:`${c.path} → ${c.destination}`),renderDiff(document.createElement('pre'),c.diff||'Directory move only.'));
     if(!item.changes.length) diff.append(text('p','Reference-only finding: the mechanical pass proposed no edit.','muted'));
     $('detail').append(diff);
     const form=document.createElement('form');form.className='decision';
@@ -88,7 +100,7 @@ $('import-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/a
 for(const action of ['replan','rehearse']) $(action).onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action});await refresh();});
 $('refresh').onclick=()=>guarded(refresh);
 $('mechanical').addEventListener('toggle',()=>{if($('mechanical').open) guarded(async()=>{const result=await api('/api/refactor-pass?changes=1');if(result.error) throw new Error(result.error);options($('change-list'),[['','Choose a file'],...result.data.map(c=>[c.id,`${c.held?'HELD':'READY'} · root ${c.root} · ${c.path}`])]);});});
-$('change-list').onchange=()=>guarded(async()=>{if(!$('change-list').value)return;const result=await api(`/api/refactor-pass?change=${$('change-list').value}`);if(result.error)throw new Error(result.error);$('change-diff').textContent=result.data.diff||`${result.data.path} → ${result.data.destination}`;});
+$('change-list').onchange=()=>guarded(async()=>{if(!$('change-list').value)return;const result=await api(`/api/refactor-pass?change=${$('change-list').value}`);if(result.error)throw new Error(result.error);renderDiff($('change-diff'),result.data.diff||`${result.data.path} → ${result.data.destination}`);});
 for(const id of ['batch','root','decision-filter','search']) $(id).addEventListener(id==='search'?'input':'change',renderItems);
 $('run-agent').onclick=()=>guarded(async()=>{const session=await api('/api/terminal',{kind:'refactor-batch',batch:$('batch').value,text:$('direction').value});openTerminal(session.id);await refresh();});
 $('plan-path').value=new URLSearchParams(location.search).get('plan')||'';
