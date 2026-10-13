@@ -10,14 +10,17 @@ required by Patchy's WebAssembly threads for this Field instance.
 AFIELD_PATCHY_WEB_ROOT=/absolute/path/to/Patchy/build/wasm-release ./field.sh
 ```
 
-In a Kotlin box:
+In a Kotlin box, keep the layered painting in the Field document's `files/` directory:
 
 ```diffstatic {data-lang=kotlin}
-val p = patchyWeb(width = 1200, height = 800)
+val p = patchyWeb(documentFile = "patchy.psd".file, autosave = true)
 go {
-    val doc = p.script("patchy.setResult(app.newDocument(640, 480).id);")!!
-    val layer = p.script("patchy.setResult(app.getDocument($doc).addLayer('Kotlin ink').id);")!!
-    p.script("app.getDocument($doc).getLayer($layer).fillRect(30, 30, 150, 80, '#202020');")
+    // A saved PSD is restored first. On a new document, make the first painting:
+    if (p.state()["documents"].toString() == "[]") {
+        val doc = p.newDocument(640, 480)
+        val layer = p.addLayer(doc, "Kotlin ink")
+        p.fillRect(doc, layer, 30, 30, 150, 80, "#202020")
+    }
     println(p.state())
 }
 ```
@@ -26,8 +29,12 @@ The output is Patchy's editable canvas. Kotlin scripts change that same canvas, 
 are reflected in `p.state()`. `p.script(...)` obtains Patchy's current edit token immediately
 before each edit; a manual change during the request is rejected. Call `p.undo(documentId)` or
 `p.redo(documentId)` in `go { ... }` to change its history. The panel is an active browser
-session. Patchy's web Save still downloads a file; the Field document does not yet store the
-layered painting, so save before reloading.
+session. With `documentFile` and `autosave = true`, Field restores the PSD before releasing
+queued Kotlin edits and writes changed paintings after a short idle period. The file stays
+separate from `metadata.edn`; `"patchy.psd".file` resolves to `<document>/files/patchy.psd`.
+The status line shows transfer errors or a conflict if the PSD changed on disk. Patchy's
+ordinary Save/Save As remains a browser download; a `patchyWeb()` without `documentFile`
+still has no document persistence.
 
 ## Desktop connector
 

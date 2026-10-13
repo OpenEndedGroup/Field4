@@ -5,18 +5,25 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /** Show the Field build of Patchy, with its visible canvas controlled by this box's Kotlin. */
-fun Box.patchyWeb(channel: String = "patchy", width: Int = 1200, height: Int = 800): PatchyWebSession {
+fun Box.patchyWeb(
+    channel: String = "patchy", width: Int = 1200, height: Int = 800,
+    documentFile: File? = null, autosave: Boolean = documentFile != null,
+): PatchyWebSession {
     require(channel.matches(Regex("[A-Za-z0-9_-]{1,40}")))
     require(width in 400..2400 && height in 300..1800)
+    require(!autosave || documentFile != null) { "autosave needs a documentFile" }
     val session = PatchyWebSession()
     val binding = outputRequests("patchy-web-$channel") { session.receive(it) }
-    registerStopHook(Runnable { session.close() })
-    display(channel, """<iframe title="Patchy editor" src="/patchy-field.html?binding=${binding.id}" style="border:0;display:block;background:#111;width:${width}px;height:${height}px"></iframe>""")
+    if (documentFile != null) PatchyWebStorage.register(binding, File(inside.filename), documentFile)
+    registerStopHook(Runnable { session.close(); PatchyWebStorage.unregister(binding.id) })
+    val storage = if (documentFile == null) "" else "&stored=1&autosave=${if (autosave) 1 else 0}"
+    display(channel, """<iframe title="Patchy editor" src="/patchy-field.html?binding=${binding.id}$storage" style="border:0;display:block;background:#111;width:${width}px;height:${height}px"></iframe>""")
     displayOpen(channel)
     return session
 }

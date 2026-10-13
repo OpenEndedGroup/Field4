@@ -3796,6 +3796,7 @@ class Server {
                     install(AutoHeadResponse)
 
                     routing {
+                        PatchyWebStorage.routes(this)
                         get("/health") {
                             call.respondText("ok", ContentType.Text.Plain)
                         }

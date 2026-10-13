@@ -206,6 +206,7 @@ class FieldApiCorsExposureTest {
         val guardAtoms = mapOf(
             "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
             "refuseUnlessLocalDocsClient" to listOf("loopback"),
+            "isSameSiteRequest" to listOf("same-site"),
             // agentRouteAccess.kt. Its own policy, so the docs-annotation opt-ins cannot loosen it;
             // the Host allowlist is the DNS-rebinding check the docs guards do not make.
             "agentRouteRefusal" to listOf("loopback", "localhost-host", "same-site"),
@@ -564,6 +565,7 @@ class FieldApiCorsExposureTest {
             "POST /three-review-note" to "loopback + same-site",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
+            "PUT /api/patchy-document/{binding}" to "same-site",
             "PUT /field-audio/{...}" to "none",
         )
 
