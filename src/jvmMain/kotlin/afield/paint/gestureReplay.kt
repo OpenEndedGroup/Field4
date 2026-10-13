@@ -99,8 +99,9 @@ fun PaintCanvas.gesture(
  * Keyframe lanes [x] and [y] — a take baked with `bakeGesture` and edited in the keyframe editor —
  * as a [TimedGesture] on this canvas, sampled [samplesPerSecond] times a second and at every key.
  * [pressureLane] (pen pressure, 0 to 1, as `GestureHandle.penLane("pressure")` bakes it) presses
- * the brush where it is given; otherwise [pressure] does, throughout. The rest is as in the
- * `List<PenSample>` overload.
+ * the brush where it is given; otherwise [pressure] does, throughout. [tiltXLane], [tiltYLane] and
+ * [twistLane] (degrees, `penLane("tiltX")` and so on) hold the handle as the pen was held. The rest
+ * is as in the `List<PenSample>` overload.
  */
 fun PaintCanvas.gesture(
     x: KeyframeEvaluator,
@@ -109,6 +110,9 @@ fun PaintCanvas.gesture(
     yRange: Pair<Double, Double> = -1.0 to 1.0,
     into: Rect? = null,
     pressureLane: KeyframeEvaluator? = null,
+    tiltXLane: KeyframeEvaluator? = null,
+    tiltYLane: KeyframeEvaluator? = null,
+    twistLane: KeyframeEvaluator? = null,
     pressure: Double = 0.6,
     pressureScale: Double = 1.2,
     tilt: Double = 30.0,
@@ -119,9 +123,9 @@ fun PaintCanvas.gesture(
     val start = (x.getKeyframeTimes() + y.getKeyframeTimes()).minOrNull()
         ?: throw IllegalArgumentException("the lanes have no keys: bake a take into them first")
     val take = lanesToTake(x, y, samplesPerSecond)
+    fun KeyframeEvaluator?.at(t: Double, otherwise: Double) = this?.takeIf { it.getKeyframeCount() > 0 }?.evaluateValueAt(t + start) ?: otherwise
     val samples = take.map { (t, v) ->
-        PenSample(t, v.x.toDouble(), v.y.toDouble(),
-            pressure = pressureLane?.takeIf { it.getKeyframeCount() > 0 }?.evaluateValueAt(t + start) ?: Double.NaN)
+        PenSample(t, v.x.toDouble(), v.y.toDouble(), pressureLane.at(t, Double.NaN), tiltXLane.at(t, 0.0), tiltYLane.at(t, 0.0), twistLane.at(t, 0.0))
     }
     return gesture(samples, xRange, yRange, into, pressure, pressureScale, tilt, lean, timeScale)
 }

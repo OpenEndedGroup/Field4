@@ -54,17 +54,19 @@ object GestureReplayMain {
         if (lanes == null && req.bake != null) {
             val take = req.samples.flatMap { it.take(3) }.toDoubleArray()
             val baked = takeToLanes(take, req.bake)
-            val pressure = req.samples.takeIf { s -> s.all { it.size >= 4 } }?.let { s ->
-                val flat = s.flatMap { listOf(it[0], it[3], it[3]) }.toDoubleArray()
-                reduceTakeIndices(flat, req.bake).map { Keyframe(flat[it * 3], flat[it * 3 + 1], "linear") }
+            // a pen's dimensions baked as x and y are: pressure to the tolerance, degrees to 100 times it
+            fun penLane(field: Int, tolerance: Double) = req.samples.takeIf { s -> s.all { it.size >= 7 } }?.let { s ->
+                val flat = s.flatMap { listOf(it[0], it[field], it[field]) }.toDoubleArray()
+                reduceTakeIndices(flat, tolerance).map { Keyframe(flat[it * 3], flat[it * 3 + 1], "linear") }
             }
-            lanes = GestureReplayLanes(baked.x, baked.y, pressure)
+            lanes = GestureReplayLanes(baked.x, baked.y, penLane(3, req.bake), penLane(4, 100 * req.bake), penLane(5, 100 * req.bake), penLane(6, 100 * req.bake))
             fit = measureGestureFit(take, lane(baked.x), lane(baked.y)).toString()
             req.lanesOut?.let { File(it).apply { parentFile?.mkdirs() }.writeText(json.encodeToString(lanes)) }
         }
         PaintCanvas(req.widthPx, aspect = req.aspect, groundColor = Vec4(0.97f, 0.96f, 0.92f, 1f), sizeMm = req.sizeMm, seed = req.seed).use { c ->
             val g = if (lanes != null) {
-                c.gesture(lane(lanes.x), lane(lanes.y), xr, yr, into, lanes.pressure?.let(::lane), req.pressure, req.pressureScale, req.tilt, timeScale = req.timeScale)
+                c.gesture(lane(lanes.x), lane(lanes.y), xr, yr, into, lanes.pressure?.let(::lane), lanes.tiltX?.let(::lane),
+                    lanes.tiltY?.let(::lane), lanes.twist?.let(::lane), req.pressure, req.pressureScale, req.tilt, timeScale = req.timeScale)
             } else {
                 require(req.samples.isNotEmpty()) { "give samples or lanes" }
                 c.gesture(req.samples.map { r ->
@@ -118,7 +120,10 @@ data class GestureReplayRequest(
 
 /** Keyframe lanes as the keyframe editor stores them. */
 @Serializable
-data class GestureReplayLanes(val x: List<Keyframe>, val y: List<Keyframe>, val pressure: List<Keyframe>? = null)
+data class GestureReplayLanes(
+    val x: List<Keyframe>, val y: List<Keyframe>,
+    val pressure: List<Keyframe>? = null, val tiltX: List<Keyframe>? = null, val tiltY: List<Keyframe>? = null, val twist: List<Keyframe>? = null,
+)
 
 /** What [GestureReplayMain] prints. */
 @Serializable
