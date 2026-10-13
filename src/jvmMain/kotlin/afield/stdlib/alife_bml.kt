@@ -87,7 +87,15 @@ data class ShaderBmlSettings(
     /** `false` holds the grid as it is; `true` advances it one half-step per frame. */
     var running: Boolean = true,
     /** Seed for the scatter; [ShaderBmlSystem.reset] can override it. */
-    var randomSeed: Int = 1
+    var randomSeed: Int = 1,
+    /**
+     * A GLSL expression to hand to `fieldProbe(...)` once per moving car per half-step, for example
+     * `"float(p.x + p.y)"`; `p` is the cell the car is leaving. `null` (the default) leaves the rule
+     * uninstrumented. Setting it adds the include and the call to the rule and writes the result into
+     * the box's `fragment` tab, replacing what was there; turn the probe on with `fieldProbeHere()`.
+     * Read once, in the constructor.
+     */
+    var probe: String? = null
 )
 
 /**
@@ -133,6 +141,12 @@ class ShaderBmlSystem(
 
     private val sourceSampler = TextureSampler(renderer, 1, false)
 
+    private val stepFragmentSource: String = settings.probe?.let { expression ->
+        STEP_FRAGMENT
+            .replace(OUTPUT_DECLARATION, "{% include \"fieldProbe\" %}\n\n$OUTPUT_DECLARATION")
+            .replace(MOVE_MARKER, "fieldProbe($expression);\n        $MOVE_MARKER")
+    } ?: STEP_FRAGMENT
+
     init {
         require(settings.width > 0) { "width must be positive" }
         require(settings.height > 0) { "height must be positive" }
@@ -144,7 +158,7 @@ class ShaderBmlSystem(
                 depthTest = false
                 blend = false
                 vertex = FULLSCREEN_TRIANGLE_VERTEX
-                fragment = STEP_FRAGMENT
+                fragment = stepFragmentSource
                 textureResolver = { tex ->
                     if (tex.name == "sourceTex") {
                         object : HasImageViewArray {
@@ -168,7 +182,7 @@ class ShaderBmlSystem(
         }
         simulation += "step" to stepModule
 
-        Box.context.get()?.attachShader(stepModule)
+        Box.context.get()?.attachShader(stepModule, overwriteProperties = settings.probe != null)
     }
 
     /** The grid as a texture: red is an eastbound car, blue a southbound one. */
@@ -249,6 +263,9 @@ class ShaderBmlSystem(
     ).also { keepSoleRenderer(target, "$name-source") }
 
     companion object {
+        private const val OUTPUT_DECLARATION = "layout(location = 0) out vec4 outColor;"
+        private const val MOVE_MARKER = "// a car moves out of this cell this half-step"
+
         private val FULLSCREEN_TRIANGLE_VERTEX = """
             #version 450
 

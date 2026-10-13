@@ -49,6 +49,8 @@ Boxes here are read-only reference. To *run* one, copy its Kotlin and shader pro
 | 7. slang — hello triangle | `window` | `65bd0587-dbfa-451a-8f6a-e003ff3d1abf_code_.kt` | `65bd0587-dbfa-451a-8f6a-e003ff3d1abf_vertex_.glsl`<br>`65bd0587-dbfa-451a-8f6a-e003ff3d1abf_fragment_.glsl`<br>`65bd0587-dbfa-451a-8f6a-e003ff3d1abf_vertex_fragment_.slang`<br>`65bd0587-dbfa-451a-8f6a-e003ff3d1abf_fragment_s_.slang` |
 | 7b. slang — Texture | `window` | `92e4a943-1cc2-433c-9953-18e0107f3854_code_.kt` | `92e4a943-1cc2-433c-9953-18e0107f3854_vertex_.glsl`<br>`92e4a943-1cc2-433c-9953-18e0107f3854_fragment_.glsl`<br>`92e4a943-1cc2-433c-9953-18e0107f3854_vertex_fragment_.slang` |
 | 8. dla | `window` | `e39270ec-8faf-4d26-8f4e-ce4d23ec4af1_code_.kt` | `e39270ec-8faf-4d26-8f4e-ce4d23ec4af1_vertex_.glsl`<br>`e39270ec-8faf-4d26-8f4e-ce4d23ec4af1_fragment_.glsl` |
+| 9. bml traffic | `window` | `1b0f6eb5-b860-401d-913a-6469b4285774_code_.kt` | `1b0f6eb5-b860-401d-913a-6469b4285774_vertex_.glsl`<br>`1b0f6eb5-b860-401d-913a-6469b4285774_fragment_.glsl` |
+| 9b. bml probe | `window` | `176b09bd-6e1c-4cb4-9c8a-b046d54c6dde_code_.kt` | `176b09bd-6e1c-4cb4-9c8a-b046d54c6dde_vertex_.glsl`<br>`176b09bd-6e1c-4cb4-9c8a-b046d54c6dde_fragment_.glsl` |
 
 ## What each lesson uses
 
@@ -77,12 +79,13 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `moduleHere` — 0. traditional triangle, 1. hello triangle, 1b. hello triangle (UBO), 2. hello camera, 2. hello keyboard camera, 3b. draw particles, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. kernel, 5. lygia, 5b. some templating, 5c. some more templating, 5d. GPU schema, 5e. Slug filled paths, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture
 - `MyPC` — 5c. some more templating
 - `PingPongRenderToTexture` — 5. PingPongTT
-- `push_constant` — 0. traditional triangle, 1. hello triangle, 2. hello camera, 2. hello keyboard camera, 3b. compute particles, 3b. draw particles, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. kernel, 5. lygia, 5. vertex_included, 5b. some templating, 5c. some more templating, 5d. GPU schema, 5e. Slug filled paths, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture, 8. dla
+- `push_constant` — 0. traditional triangle, 1. hello triangle, 2. hello camera, 2. hello keyboard camera, 3b. compute particles, 3b. draw particles, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. kernel, 5. lygia, 5. vertex_included, 5b. some templating, 5c. some more templating, 5d. GPU schema, 5e. Slug filled paths, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture, 8. dla, 9. bml traffic, 9b. bml probe
 - `PushConstants` — 5c. some more templating
 - `QuantileWarpConfig` — 6b. debugging / mapping - Texture probe example
 - `registerLygiaIncludeRoot` — 5. lygia
 - `RenderToTexture` — 5. Bluring, 5. RTT, 5. draw blur, 5. draw rtt, 5. kernel, 6. RTT- draw rtt
 - `Resolver` — 5b. some templating, 5c. some more templating
+- `ShaderBmlSystem` — 9. bml traffic, 9b. bml probe
 - `ShaderDlaSystem` — 8. dla
 - `ShaderProbeQuantileWarpConfig` — 6b. debugging / mapping - Texture probe example
 - `SlugBuffer` — 5e. Slug filled paths

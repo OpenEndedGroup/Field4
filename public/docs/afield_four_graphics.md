@@ -1453,52 +1453,46 @@ Run this one live, and expect to tune it: the result depends on how densely the 
 
 ## Traffic: the Biham–Middleton–Levine model { #bml-traffic }
 
-The same packaging carries a cellular automaton, where the GPU's natural shape (one fragment per cell, all at once) is exactly the model's. In the Biham–Middleton–Levine model every cell of a torus is empty or holds one car. Red cars only move right and blue cars only move down, and they take turns: on even steps every red car with an empty cell ahead moves into it, on odd steps the blue cars do the same. The only parameter is how many cars there are.
+In the Biham–Middleton–Levine model every cell of a torus is empty or holds one car. Red cars only move right, blue cars only move down, and they take turns: on even steps every red car with an empty cell ahead moves into it, on odd steps the blue cars do the same. The only parameter is how many cars there are. Run this in a box beneath the renderer box:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.*
-
 var bml = ShaderBmlSystem() {
     width = 512
     height = 512
     density = 0.32f
 }
-
 bml.installInto()
 ```
 
-At 0.32, on this 512 × 512 torus, the cars start as noise, organise into diagonal bands within a few hundred steps, and then slowly lose them: the fraction of cars moving falls from 0.92 to 0.44 over 2000 steps. That density is close to the transition, which is where the model is most interesting to watch. Set `density` to 0.20 and call `bml.reset()` and the bands win: the moving fraction climbs to 0.998. At 0.45 a jam spanning the whole grid forms, and by step 1750 nothing moves at all. Those three figures were read with the probe in the next section.
+The grid appears in the renderer's window. This box, and the probed one below, are the `9. bml traffic` and `9b. bml probe` lessons of `canonical_graphics`. The cars start as noise and organise into diagonal bands within a few hundred steps. At 0.32 the bands then slowly lose: the fraction of cars moving falls from 0.92 to 0.44 over 2000 steps, because that density is close to the transition. At 0.20 the bands win and the moving fraction climbs to 0.998; at 0.45 a jam spanning the whole grid forms, and by step 1750 nothing moves. Change `density` and re-run, or call `bml.reset()` to scatter a new grid with the current settings. `bml.settings.running = false` pauses it.
 
-The state is the texture: red at 1 is a red car, blue at 1 a blue one. Each frame is one half-step, a single full-screen pass that reads the previous frame and writes this one. Every cell decides from three texels: it empties if it holds a car of the moving colour and the cell ahead is empty, fills if it is empty and the cell behind holds one, and otherwise stays as it was. Because every cell gathers rather than any car pushing, no two cars can claim the same cell and the car count is conserved exactly. That fragment shader is what `ShaderBmlSystem` installs in the box's `fragment` tab:
+The state is the texture, red at 1 for a red car and blue at 1 for a blue one, and each frame is one half-step: a full-screen pass that reads the previous frame and writes this one. Every cell decides from three texels. It empties if it holds a car of the moving colour and the cell ahead is empty, fills if it is empty and the cell behind holds one, and otherwise stays as it was. Because every cell gathers rather than any car pushing, no two cars can claim the same cell and the car count is conserved exactly. That rule is what the box's `fragment` tab holds, and editing it re-runs the model:
 
 ```diffstatic {data-lang=glsl}
 int mover = push.mode == 0 ? 1 : 2;
 ivec2 ahead = push.mode == 0 ? ivec2(1, 0) : ivec2(0, 1);
 
 int next = here;
-if (here == mover && cellAt(p + ahead, dims) == 0) next = 0;
-else if (here == 0 && cellAt(p - ahead, dims) == mover) next = mover;
+if (here == mover && cellAt(p + ahead, dims) == 0) {
+    next = 0;
+    // a car moves out of this cell this half-step ...
+} else if (here == 0 && cellAt(p - ahead, dims) == mover) {
+    next = mover;
+}
 
 outColor = colourOf(next);
 ```
 
-`settings.running = false` holds the grid; `bml.step / 2` is how many full steps have run since the last reset. `blitToScreen(viewport = ..., sourceRect = ...)` with a small `sourceRect` is how to see individual cars.
-
 ### Probing the cars that move
 
-Nothing above reads the grid back, so the picture cannot tell you how much of the traffic is actually moving. A [field probe](field_probes.md) can. The branch where a car leaves its cell runs exactly once per moving car per half-step, so a `fieldProbe(...)` call there samples the moving cars and nothing else. `STEP_FRAGMENT` is public, so the box can install an instrumented copy of the rule as its `fragment` before the system is built; a box that already has a `fragment` keeps it:
+The window shows the pattern but not how much of the traffic is moving. A [field probe](field_probes.md) can tell you. Set `probe` to a GLSL expression and the system calls `fieldProbe(...)` with it at the commented line above, which runs exactly once for each car that moves. Here it records `x + y` of the cell the car is leaving:
 
 ```diffstatic {data-lang=kotlin}
-fragment = ShaderBmlSystem.STEP_FRAGMENT
-    .replace("layout(location = 0) out vec4 outColor;",
-        "{% include \"fieldProbe\" %}\nlayout(location = 0) out vec4 outColor;")
-    .replace("// a car moves out of this cell this half-step",
-        "fieldProbe(float(p.x + p.y));\n// a car moves out of this cell this half-step")
-
 var bml = ShaderBmlSystem() {
     width = 512
     height = 512
     density = 0.32f
+    probe = "float(p.x + p.y)"
 }
 bml.installInto()
 
@@ -1506,9 +1500,90 @@ fieldProbeHere(samples = 4096).display("probe")
 displayOpen("probe")
 ```
 
-Editing the `fragment` tab by hand does the same thing: add the include near the top and the `fieldProbe` line in the `next = 0` branch.
+The card on the box's `probe` channel shows two things. Its `calls` count is exactly how many cars moved this half-step. Divide it by the number of cars of one colour (`density × width × height / 2` at the default even split) and you have the model's mean velocity, the usual measure of the jamming transition: near 1 in free flow, 0 in a jam. The histogram is the distribution of `x + y` over the moving cars. Cars scattered uniformly would give a triangle peaking in the middle of the range, and the diagonal bands show up as departures from that triangle while they form.
 
-The card shows two things. Its `calls` count is exactly how many cars moved this half-step, and divided by the cars of one colour (`density × width × height / 2` at the default even split) that is the model's mean velocity, the usual measure of the jamming transition: near 1 in free flow, 0 in a jam. The histogram is the distribution of `x + y` over those moving cars. Cars scattered uniformly would give a triangle peaking at the middle of the range; the diagonal bands the traffic organises into show up as departures from that triangle while they form.
+`probe` writes the instrumented rule into the `fragment` tab, replacing what was there, so to probe something else you can edit the call in place. The tab then reads:
+
+```diffstatic {data-lang=glsl}
+#version 450
+
+layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+
+layout(push_constant) uniform Push {
+    int mode;
+    float density;
+    float eastboundFraction;
+    int seed;
+} push;
+
+{% include "fieldProbe" %}
+
+layout(location = 0) out vec4 outColor;
+
+const vec4 EMPTY = vec4(0.0, 0.0, 0.0, 1.0);
+const vec4 EAST = vec4(1.0, 0.0, 0.0, 1.0);
+const vec4 SOUTH = vec4(0.0, 0.0, 1.0, 1.0);
+
+uint hash(uint x) {
+    x ^= x >> 16u; x *= 0x7feb352du;
+    x ^= x >> 15u; x *= 0x846ca68bu;
+    x ^= x >> 16u;
+    return x;
+}
+
+float random01(uvec2 p, uint salt) {
+    return float(hash(p.x ^ hash(p.y ^ hash(uint(push.seed) ^ salt)))) / 4294967295.0;
+}
+
+// 0 empty, 1 eastbound, 2 southbound
+int cellAt(ivec2 p, ivec2 dims) {
+    vec4 c = texelFetch(sourceTex, (p + dims) % dims, 0);
+    if (c.r > 0.5) return 1;
+    if (c.b > 0.5) return 2;
+    return 0;
+}
+
+vec4 colourOf(int cell) {
+    return cell == 1 ? EAST : (cell == 2 ? SOUTH : EMPTY);
+}
+
+void main() {
+    ivec2 dims = textureSize(sourceTex, 0);
+    ivec2 p = ivec2(gl_FragCoord.xy);
+
+    if (push.mode == 3) {
+        uvec2 u = uvec2(p);
+        if (random01(u, 1u) < push.density) {
+            outColor = random01(u, 2u) < push.eastboundFraction ? EAST : SOUTH;
+        } else {
+            outColor = EMPTY;
+        }
+        return;
+    }
+
+    int here = cellAt(p, dims);
+    if (push.mode == 2) {
+        outColor = colourOf(here);
+        return;
+    }
+
+    // even half-steps move eastbound cars +x, odd ones move southbound cars +y
+    int mover = push.mode == 0 ? 1 : 2;
+    ivec2 ahead = push.mode == 0 ? ivec2(1, 0) : ivec2(0, 1);
+
+    int next = here;
+    if (here == mover && cellAt(p + ahead, dims) == 0) {
+        next = 0;
+        fieldProbe(float(p.x + p.y));
+        // a car moves out of this cell this half-step: one invocation per moving car,
+        // which is where to tap it (fieldProbe, fieldStats) without counting it twice
+    } else if (here == 0 && cellAt(p - ahead, dims) == mover) {
+        next = mover;
+    }
+
+    outColor = colourOf(next);
+}
+```
 
 ## Stopping the renderer
 
