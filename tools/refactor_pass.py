@@ -317,21 +317,47 @@ def changes(repo, change_id=None):
 
 
 def decide(repo, item_id, disposition, reason):
-    if disposition not in DECISIONS or not reason.strip() or len(reason) > 8000:
-        raise RefactorError('Choose a valid disposition and supply a reason (up to 8000 characters)')
-    directory, state = load(repo)
+    return decide_many(repo, [{'item': item_id, 'state': disposition, 'reason': reason}])[0]
+
+
+def decide_many(repo, decisions):
+    """Validate and save review records together, without rendering source or diffs."""
+    if not isinstance(decisions, list) or not decisions:
+        raise RefactorError('Supply a nonempty list of decisions')
+    seen = set()
+    for decision in decisions:
+        if (not isinstance(decision, dict) or set(decision) != {'item', 'state', 'reason'} or
+                not isinstance(decision['item'], str) or not isinstance(decision['state'], str) or
+                decision['state'] not in DECISIONS or not isinstance(decision['reason'], str) or
+                not decision['reason'].strip() or len(decision['reason']) > 8000):
+            raise RefactorError('Each decision needs an item, valid state and reason (up to 8000 characters)')
+        if decision['item'] in seen:
+            raise RefactorError('Duplicate review item: ' + decision['item'])
+        seen.add(decision['item'])
+    directory, _ = load(repo)
     with lock(directory):
         directory, state = load(repo)
         session.require_review(state)
-        item = detail(repo, item_id)
-        if item['stale'] and disposition not in {'patch', 'question', 'open'}:
-            raise RefactorError('Source changed since planning. Replan before preserving or classifying this item.')
-        record = {'state': disposition, 'reason': reason.strip(), 'fingerprint': item['fingerprint'],
-                  'at': time.time(), 'sourceChanged': item['stale']}
-        state['decisions'][item_id] = record
-        state['history'].append({'item': item_id, **record})
+        items = {i['id']: i for i in json.loads((Path(state['plan']) / 'review-index.json').read_text())}
+        roots = {r['id']: Path(r['path']) for r in state['roots']}
+        records = []
+        for decision in decisions:
+            item_id, disposition, reason = decision['item'], decision['state'], decision['reason']
+            item = items.get(item_id)
+            if item is None:
+                raise RefactorError('Unknown review item: ' + item_id)
+            stale = current_hashes(roots[item['root']], item['snapshots']) != item['snapshots']
+            if stale and disposition not in {'patch', 'question', 'open'}:
+                raise RefactorError('Source changed since planning. Replan before preserving or classifying this item: ' + item_id)
+            record = {'state': disposition, 'reason': reason.strip(), 'fingerprint': item['fingerprint'],
+                      'at': time.time(), 'sourceChanged': stale}
+            records.append(record)
+        # All requests must validate before any of them are recorded.
+        for decision, record in zip(decisions, records):
+            state['decisions'][decision['item']] = record
+            state['history'].append({'item': decision['item'], **record})
         save_json(directory / 'state.json', state)
-    return record
+    return records
 
 
 def replan(repo, engine_path):
@@ -428,6 +454,10 @@ session holds its writer lease. Do not run a build concurrently with another ver
 
 Decision CLI (arguments must be shell-quoted when needed):
 {command} decide --item ITEM_ID --state STATE --reason REASON
+For multiple items, write a JSON array of {{"item":"ITEM_ID","state":"STATE","reason":"REASON"}}
+records and use this once (all records are validated before saving):
+{command} decide-many --file /absolute/path/to/decisions.json
+Do not launch a separate CLI process for every item in a large batch.
 
 Work through the batch. Ask the human in the terminal when a decision is needed; record that question.
 Stop after recording outcomes. The pass owner handles combined verification and delivery.
@@ -471,6 +501,7 @@ def main():
     q = sub.add_parser('changes'); q.add_argument('--change')
     q = sub.add_parser('item'); q.add_argument('--item', required=True)
     q = sub.add_parser('decide'); q.add_argument('--item', required=True); q.add_argument('--state', required=True); q.add_argument('--reason', required=True)
+    q = sub.add_parser('decide-many'); q.add_argument('--file', type=Path, required=True)
     for name in ('brief', 'agent'):
         q = sub.add_parser(name); q.add_argument('--batch', required=True); q.add_argument('--direction', default='')
     q = sub.add_parser('replan'); q.add_argument('--engine', type=Path, default=REPO / 'tools/refactor-engine/build/install/field-refactor-engine/bin/field-refactor-engine')
@@ -496,6 +527,7 @@ def main():
         elif args.action == 'changes': result = changes(repo, args.change)
         elif args.action == 'item': result = detail(repo, args.item)
         elif args.action == 'decide': result = decide(repo, args.item, args.state, args.reason)
+        elif args.action == 'decide-many': result = {'recorded': len(decide_many(repo, json.loads(args.file.read_text())))}
         elif args.action == 'brief': result = brief(repo, args.batch, args.direction)
         elif args.action == 'agent': return agent(repo, args.batch, args.direction)
         elif args.action == 'replan': result = replan(repo, args.engine.resolve())

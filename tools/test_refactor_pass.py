@@ -114,6 +114,36 @@ class RefactorPassTest(unittest.TestCase):
         self.assertEqual(before, (Path(self.state['plan']) / 'plan.json').read_bytes())
         self.assertTrue(passes.detail(self.repo, self.item)['changes'][0]['held'])
 
+    def test_bulk_decisions_save_once_without_rendering_and_keep_each_history_record(self):
+        items = json.loads((Path(self.state['plan']) / 'review-index.json').read_text())
+        decisions = [{'item': i['id'], 'state': 'preserve', 'reason': 'Intentional historical reference'} for i in items]
+        with patch.object(passes, 'detail', side_effect=AssertionError('No rendering')), \
+             patch.object(passes, 'load_plan', side_effect=AssertionError('No full plan required for review records')), \
+             patch.object(passes, 'save_json', wraps=passes.save_json) as save:
+            records = passes.decide_many(self.repo, decisions)
+        self.assertEqual(1, save.call_count)
+        self.assertEqual(len(decisions), len(records))
+        _, state = passes.load(self.repo)
+        self.assertEqual(len(decisions), len(state['decisions']))
+        self.assertEqual(len(decisions), len(state['history']))
+        for item, record in zip(items, records):
+            self.assertEqual(item['fingerprint'], record['fingerprint'])
+            self.assertFalse(record['sourceChanged'])
+
+    def test_bulk_decision_validation_is_atomic(self):
+        before = (self.directory / 'state.json').read_bytes()
+        valid = {'item': self.item, 'state': 'patch', 'reason': 'Edited source'}
+        for invalid in [dict(valid), dict(valid, item='missing'), dict(valid, state='invalid'),
+                        dict(valid, reason=''), dict(valid, extra=True)]:
+            with self.subTest(invalid=invalid), self.assertRaises(RefactorError):
+                passes.decide_many(self.repo, [valid, invalid])
+            self.assertEqual(before, (self.directory / 'state.json').read_bytes())
+        items = json.loads((Path(self.state['plan']) / 'review-index.json').read_text())
+        (Path(self.state['worktree']) / 'source.kt').write_text('changed')
+        with self.assertRaisesRegex(RefactorError, 'Source changed'):
+            passes.decide_many(self.repo, [{'item': i['id'], 'state': 'preserve', 'reason': 'Keep'} for i in items])
+        self.assertEqual(before, (self.directory / 'state.json').read_bytes())
+
     def test_changed_source_reopens_decision_and_refuses_preserve(self):
         passes.decide(self.repo, self.item, 'preserve', 'Historical label')
         (Path(self.state['worktree']) / 'source.kt').write_text(self.source + '// later edit\n')

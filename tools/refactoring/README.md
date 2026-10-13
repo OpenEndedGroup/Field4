@@ -311,6 +311,12 @@ ignored pointer. Keep the host server in that checkout while working in the sess
    so it releases the writer lease, then replan. Decisions remain review records; they never alter
    the immutable plan. Preserve permits an intentional unchanged reference at delivery only if
    that group has no proposed edits. Held edits must be resolved in source or by an adapter.
+   Large agent batches should write dispositions as a JSON array of
+   `{"item":"ITEM_ID","state":"patch","reason":"What changed"}` records, then run
+   `tools/refactor_pass.py decide-many --file /absolute/path/to/decisions.json` once.
+   The command checks every item and its current source hashes under the session state lock,
+   then saves all records together. An invalid or stale preservation record rejects the whole
+   submission without partial writes. These records do not clear migration holds.
 3. **Rehearse:** apply ready groups in the copies, verify their bytes, undo, and verify restoration.
    Rehearsals use fresh journals and can be repeated. This is not build or runtime verification.
 4. **Prepare:** once the relevant findings are resolved, apply the complete plan and leave it
