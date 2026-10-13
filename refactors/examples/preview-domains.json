@@ -59,6 +59,7 @@
   "rewriteComments": true,
   "markdownProse": [
     "public/docs/*.md",
-    "dev_docs/*.md"
+    "dev_docs/*.md",
+    "native/*.md"
   ]
 }
