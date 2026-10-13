@@ -205,28 +205,32 @@ def destination_reference(path: str, recipe: dict, destinations: set[str]) -> bo
 
 
 def affected_pattern(recipe: dict):
-    def prefix(path, parent):
-        return path == parent or path.startswith(parent + '.')
-
     destinations = destination_packages(recipe)
-    names = sorted(set(recipe['packages']) | set(recipe['symbols']) | set(recipe['splitPackages']) | set(recipe.get('splitSymbols', {})), key=len, reverse=True)
-    candidates = re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in names) + r')(?![\w/])') if names else re.compile(r'(?!)')
-    qualified = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*')
+    rules = set(recipe['packages']) | set(recipe['symbols']) | set(recipe.get('splitSymbols', {}))
+    splits = set(recipe['splitPackages'])
+    known = set(recipe.get('knownPackages', []))
+    retained = set(recipe.get('retainedSymbols', []))
+    roots = sorted({n.split('.')[0] for n in rules | splits})
+    # Match a root once, then use component-prefix lookups. A thousands-way alternation
+    # repeats the same namespace prefix at every possible position in every document.
+    candidates = re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in roots) +
+                            r')(?:\.[A-Za-z_]\w*)*(?![\w])') if roots else re.compile(r'(?!)')
     class References:
         def search(self, text):
-            for candidate in candidates.finditer(text):
-                match = qualified.match(text, candidate.start())
+            for match in candidates.finditer(text):
                 path = match.group()
                 if destination_reference(path, recipe, destinations):
                     continue
                 if text[match.end():match.end() + 1] == '/':
                     continue
-                if any(prefix(path, v) for v in recipe.get('retainedSymbols', [])):
+                parts = path.split('.')
+                prefixes = ['.'.join(parts[:n]) for n in range(len(parts), 0, -1)]
+                if retained.intersection(prefixes):
                     continue
-                if any(prefix(path, v) for v in recipe['packages'] | recipe['symbols'] | recipe.get('splitSymbols', {})):
+                if rules.intersection(prefixes):
                     return match
-                owner = max((v for v in recipe.get('knownPackages', []) if prefix(path, v)), key=len, default=None)
-                if (owner in recipe['splitPackages'] if owner else any(prefix(path, v) for v in recipe['splitPackages'])):
+                owner = next((p for p in prefixes if p in known), None)
+                if (owner in splits if owner else splits.intersection(prefixes)):
                     return match
             return None
     return References()
@@ -242,8 +246,10 @@ def rewrite_qualified_text(text: str, recipe: dict) -> str:
             return name
         if any(name == v or name.startswith(v + '.') for v in recipe.get('retainedSymbols', [])):
             return name
+        parts = name.split('.')
+        prefixes = ['.'.join(parts[:n]) for n in range(len(parts), 0, -1)]
         for rules in (recipe['symbols'], recipe['packages']):
-            old = max((p for p in rules if name == p or name.startswith(p + '.')), key=len, default=None)
+            old = next((p for p in prefixes if p in rules), None)
             if old:
                 return rules[old] + name[len(old):]
         return name
