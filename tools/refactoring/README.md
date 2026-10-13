@@ -126,14 +126,15 @@ that every script receives Field's default imports.
 `"rewriteComments": true` enables exact qualified-name replacement in Kotlin comments and KDoc.
 `"markdownProse": ["public/docs/*.md"]` enables the same operation in selected Markdown prose;
 patterns match paths relative to each root (`*` can span directories). Kotlin fences still use
-the parser, and other fenced languages are excluded from prose rewriting. Both options default
-off. Matches use whole name components; slash paths and similar-but-unrelated package names are
+the parser, and other fenced languages are excluded from prose rewriting.
+`"workspaceMarkdownProse": ["*.md"]` adds all Markdown, including root-level and nested files,
+only for workspace roots; it does not widen repository scope. These options default off. Matches use whole name components; slash paths and similar-but-unrelated package names are
 preserved. Strings in Kotlin remain findings even when the comment pass is enabled.
 
 Use narrow paths for current documentation. Historical discussions, mixed-language examples and
 embedded commands need context: an old name may be intentionally explaining the migration. The
-broad rehearsal recipe selects public docs and all Markdown under `dev_docs`, including nested
-notes and handoffs. This produces reviewable proposals for internal prose too; inspect historical
+broad rehearsal recipe selects public docs, all Markdown under `dev_docs` and `native`, and
+all workspace Markdown, including nested notes and handoffs. This produces reviewable proposals for internal prose too; inspect historical
 references before a real cutover. Non-Kotlin fences still require their own adapters.
 `review.md` and `review-groups.json` collect affected groups rather than treating every pre-existing
 parse error as a migration blocker. They are inputs for contextual review, including `codex exec`;

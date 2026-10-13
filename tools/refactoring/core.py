@@ -91,15 +91,16 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
         raise RefactorError(f'unknown recipe fields: {sorted(set(recipe) - allowed)}')
     if not isinstance(recipe.get('rewriteComments', False), bool):
         raise RefactorError('rewriteComments must be a boolean')
-    if not isinstance(recipe.get('markdownProse', []), list) or any(not isinstance(g, str) or not g.endswith('.md') for g in recipe.get('markdownProse', [])):
-        raise RefactorError('markdownProse must list Markdown path patterns')
+    for key in ('markdownProse', 'workspaceMarkdownProse'):
+        if not isinstance(recipe.get(key, []), list) or any(not isinstance(g, str) or not g.endswith('.md') for g in recipe.get(key, [])):
+            raise RefactorError(f'{key} must list Markdown path patterns')
     name = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\Z')
     for key in ('packages', 'symbols'):
         values = recipe.setdefault(key, {})
@@ -249,6 +250,11 @@ def group_for(rel: str, documents: set[str]) -> str:
         parent = parent.parent
 
 
+def markdown_prose_enabled(recipe: dict, rel: str, repo: bool) -> bool:
+    patterns = recipe.get('markdownProse', []) + (recipe.get('workspaceMarkdownProse', []) if not repo else [])
+    return any(__import__('fnmatch').fnmatch(rel, pattern) for pattern in patterns)
+
+
 def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progress=None) -> dict:
     paths, findings = discover(root, repo)
     owned = repo_owned_outputs(root, paths) if repo else {}
@@ -272,7 +278,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
     def extract_file(rel, text):
         keys = {key for glob, names in recipe.get('qualifiedNameProperties', {}).items()
                 if Path(rel).match(glob) or __import__('fnmatch').fnmatch(rel, glob) for key in names}
-        prose = any(__import__('fnmatch').fnmatch(rel, glob) for glob in recipe.get('markdownProse', []))
+        prose = markdown_prose_enabled(recipe, rel, repo)
         return extract(rel, text, properties, workspace=not repo, qualified_names=keys, markdown_prose=prose)
 
     def rewrite_unit(unit):
