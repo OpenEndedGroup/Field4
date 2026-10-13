@@ -59,6 +59,6 @@
   "rewriteComments": true,
   "markdownProse": [
     "public/docs/*.md",
-    "dev_docs/agents/demos/*/document.md"
+    "dev_docs/*.md"
   ]
 }

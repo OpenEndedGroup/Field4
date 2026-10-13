@@ -260,7 +260,18 @@ def detail(repo, item_id):
         diffs.append({'path': change['path'], 'destination': change.get('destination', change['path']),
                       'diff': unified_text(before, after, change['path'], change.get('destination', change['path'])),
                       'compactChanges': compact_changes(before, after), 'held': change['held']})
-    return item | {'snippets': snippets, 'changes': diffs, 'stale': stale, 'state': item_state(state, item, stale),
+    no_proposal = None
+    if not diffs:
+        outside_prose_scope = any(f['kind'] == 'unregistered-reference' and f['path'].endswith('.md') and
+                                 not any(fnmatch.fnmatch(f['path'], pattern) for pattern in plan['recipe'].get('markdownProse', []))
+                                 for f in item['findings'])
+        no_proposal = ('This Markdown file is outside the recipe’s automatic prose-edit paths. '
+                       'Review whether to update its references or preserve them as historical text.' if outside_prose_scope else
+                       'The scanner found references or diagnostics, but no supported automatic edit was produced. '
+                       'Review the findings to decide on a patch, preservation, or an adapter.')
+    reference_map = dict.fromkeys(plan['recipe'].get('splitPackages', [])) | plan['recipe']['packages'] | plan['recipe']['symbols']
+    return item | {'snippets': snippets, 'changes': diffs, 'referenceMap': reference_map, 'noProposalReason': no_proposal,
+                   'stale': stale, 'state': item_state(state, item, stale),
                    'decision': state['decisions'].get(item_id), 'workingRoot': working['path']}
 
 

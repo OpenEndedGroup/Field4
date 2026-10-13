@@ -36,6 +36,35 @@ function renderChange(node, change) {
     } else node.append(renderDiff(document.createElement('pre'), change.diff || `${change.path} → ${change.destination}`));
     return node;
 }
+function renderExcerpt(node, source, replacements) {
+    const names = Object.keys(replacements).sort((a,b) => b.length-a.length);
+    const pre = text('pre', '');
+    if(!names.length) { pre.textContent=source; node.append(pre); return; }
+    const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`(?<![\\w$.])(?:${names.map(escape).join('|')})(?![\\w$])`, 'g');
+    const counts = new Map();
+    let cursor = 0;
+    for(const match of source.matchAll(pattern)) {
+        pre.append(document.createTextNode(source.slice(cursor,match.index)));
+        const mark = text('mark',match[0],'old-reference');
+        mark.title=replacements[match[0]] ? `Recipe proposes ${replacements[match[0]]}` : 'Split package: choose the appropriate destination';
+        pre.append(mark);
+        counts.set(match[0],(counts.get(match[0])||0)+1);
+        cursor=match.index+match[0].length;
+    }
+    pre.append(document.createTextNode(source.slice(cursor)));
+    if(counts.size) {
+        const legend=text('div','','reference-legend');
+        legend.append(text('strong','Highlighted references · migration mapping, not an applied edit:'));
+        for(const [name,count] of counts) {
+            const row=text('div','');
+            row.append(text('code',name,'old-name'),document.createTextNode(' → '),text('code',replacements[name]||'choose a destination'),text('small',` · ${count} shown`));
+            legend.append(row);
+        }
+        node.append(legend);
+    }
+    node.append(pre);
+}
 async function guarded(fn) { try {error(); await fn();} catch(e) {error(e.message);} }
 function options(node, values) {
     const value = node.value; node.replaceChildren();
@@ -53,6 +82,13 @@ function renderStatus(data, job) {
     $('import-panel').hidden=exists;
     for(const id of ['scope-panel','actions-panel','review-panel','review-body','delivery']) $(id).hidden=!exists;
     if(!exists) return;
+    if(current && current.pass.plan!==data.pass.plan) {
+        selected=null; ++requestVersion;
+        $('detail').replaceChildren(text('p','The plan has changed. Choose a remaining review group, or inspect proposed changes above for files that are now ready.','empty'));
+        $('mechanical').open=false;
+        $('change-list').replaceChildren();
+        $('change-diff').replaceChildren(text('p','Open this section to load the proposed files.','muted'));
+    }
     current=data;
     $('revision').textContent=`Plan ${data.pass.revision} · ${data.pass.id}`;
     $('scope').replaceChildren(...data.roots.map(r=>{
@@ -85,16 +121,21 @@ async function showItem(id) {
     if(result.error) throw new Error(result.error);
     const item=result.data;
     $('detail').replaceChildren(text('h2',item.group.replace(/^(file|document):/,'')),text('p',`${item.findings.length} findings · ${item.candidateFiles.length} proposed file edits`,'muted'),text('p',item.workingRoot,'path'));
+    if(!item.changes.length) {
+        const explanation=text('div','','reference-legend');
+        explanation.append(text('strong','Review only — no file edit proposed'),text('p',item.noProposalReason));
+        $('detail').append(explanation);
+    }
     if(item.stale) $('detail').append(text('p','Source has changed since this plan. These are the planned excerpts; replan before recording a preservation decision.','notice'));
     item.snippets.forEach((s,index)=>{
         const node=document.createElement('details');node.className='finding';node.open=index<3;
-        node.append(text('summary',`${s.kind} · ${s.path}`),text('p',s.detail),text('small',s.location),text('pre',s.excerpt ?? 'The planned source is no longer available. Replan to capture current source.'));
+        node.append(text('summary',`${s.kind} · ${s.path}`),text('p',s.detail),text('small',s.location));
+        renderExcerpt(node,s.excerpt ?? 'The planned source is no longer available. Replan to capture current source.',item.referenceMap);
         $('detail').append(node);
     });
     const diff=document.createElement('details');diff.className='finding';diff.append(text('summary',`Proposed changes (${item.changes.length} files)`));
     for(const c of item.changes) diff.append(text('h3',c.destination===c.path?c.path:`${c.path} → ${c.destination}`),renderChange(document.createElement('div'),c));
-    if(!item.changes.length) diff.append(text('p','Reference-only finding: the mechanical pass proposed no edit.','muted'));
-    $('detail').append(diff);
+    if(item.changes.length) $('detail').append(diff);
     const form=document.createElement('form');form.className='decision';
     const select=document.createElement('select');select.id='item-disposition';select.setAttribute('aria-label','Decision for this group');
     options(select,Object.entries(labels).filter(([key])=>key!=='stale'));select.value=item.decision?.state||'open';

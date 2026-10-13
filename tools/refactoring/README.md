@@ -132,7 +132,9 @@ preserved. Strings in Kotlin remain findings even when the comment pass is enabl
 
 Use narrow paths for current documentation. Historical discussions, mixed-language examples and
 embedded commands need context: an old name may be intentionally explaining the migration. The
-broad recipe selects current public docs and demo documents, leaving other Markdown for review.
+broad rehearsal recipe selects public docs and all Markdown under `dev_docs`, including nested
+notes and handoffs. This produces reviewable proposals for internal prose too; inspect historical
+references before a real cutover. Non-Kotlin fences still require their own adapters.
 `review.md` and `review-groups.json` collect affected groups rather than treating every pre-existing
 parse error as a migration blocker. They are inputs for contextual review, including `codex exec`;
 the tool does not itself launch a reviewer. Keep private workspace reports outside the public repo.
