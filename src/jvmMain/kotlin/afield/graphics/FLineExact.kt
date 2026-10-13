@@ -199,32 +199,38 @@ internal object FLineExact {
 
     class Hit(val ia: Int, val ta: Double, val ib: Int, val tb: Double, val x: Double, val y: Double)
 
+    /** parameter of the point of [b] nearest (x, y): coarse samples, golden section about the best, guarded Newton polish. */
     fun nearestT(b: XBez, x: Double, y: Double): Double {
-        var best = 0.0; var bd = Double.MAX_VALUE
-        val n = if (b.straight) 4 else 24
-        for (k in 0..n) {
-            val t = k.toDouble() / n
-            val d = hypot(b.x(t) - x, b.y(t) - y)
-            if (d < bd) { bd = d; best = t }
-        }
-        var t = best
         if (b.straight) {
             val ex = b.x3 - b.x0; val ey = b.y3 - b.y0; val l2 = ex * ex + ey * ey
             return if (l2 == 0.0) 0.0 else (((x - b.x0) * ex + (y - b.y0) * ey) / l2).coerceIn(0.0, 1.0)
         }
-        for (it in 0 until 30) {
-            val fx = b.x(t) - x; val fy = b.y(t) - y
-            val dx = b.dx(t); val dy = b.dy(t)
-            // second derivative by central difference on the derivative
+        fun d2(t: Double): Double { val dx = b.x(t) - x; val dy = b.y(t) - y; return dx * dx + dy * dy }
+        val n = 32
+        var best = 0.0; var bd = Double.MAX_VALUE
+        for (k in 0..n) { val t = k.toDouble() / n; val d = d2(t); if (d < bd) { bd = d; best = t } }
+        var lo = max(0.0, best - 1.0 / n); var hi = min(1.0, best + 1.0 / n)
+        val g = (sqrt(5.0) - 1) / 2
+        var c = hi - g * (hi - lo); var d = lo + g * (hi - lo)
+        var fc = d2(c); var fd = d2(d)
+        for (it in 0 until 60) {
+            if (fc < fd) { hi = d; d = c; fd = fc; c = hi - g * (hi - lo); fc = d2(c) }
+            else { lo = c; c = d; fc = fd; d = lo + g * (hi - lo); fd = d2(d) }
+            if (hi - lo < 1e-15) break
+        }
+        var t = 0.5 * (lo + hi); var ft = d2(t)
+        if (bd < ft) { t = best; ft = bd }
+        for (it in 0 until 4) { // Newton polish, kept only when it helps
+            val fx = b.x(t) - x; val fy = b.y(t) - y; val dx = b.dx(t); val dy = b.dy(t)
             val h = 1e-6
             val ddx = (b.dx(min(1.0, t + h)) - b.dx(max(0.0, t - h))) / (min(1.0, t + h) - max(0.0, t - h))
             val ddy = (b.dy(min(1.0, t + h)) - b.dy(max(0.0, t - h))) / (min(1.0, t + h) - max(0.0, t - h))
-            val g = fx * dx + fy * dy
             val gp = dx * dx + dy * dy + fx * ddx + fy * ddy
-            if (abs(gp) < 1e-300) break
-            val nt = (t - g / gp).coerceIn(0.0, 1.0)
-            if (abs(nt - t) < 1e-14) { t = nt; break }
-            t = nt
+            if (gp <= 0) break
+            val nt = (t - (fx * dx + fy * dy) / gp).coerceIn(0.0, 1.0)
+            val fn = d2(nt)
+            if (fn >= ft) break
+            t = nt; ft = fn
         }
         return t
     }
@@ -687,21 +693,76 @@ internal object FLineExact {
         }
     }
 
-    fun offsetContour(c: List<XBez>, d: Double, tol: Double, kind: FLineStrokeJoin, miterLimit: Double, closed: Boolean): List<XBez> {
-        val out = ArrayList<XBez>()
-        for ((i, s) in c.withIndex()) {
-            if (i > 0) {
-                val p = c[i - 1]
-                val ti = p.tangent(1.0); val to = s.tangent(0.0)
-                if (abs(ti[0] * to[1] - ti[1] * to[0]) > 1e-6 || ti[0] * to[0] + ti[1] * to[1] < 0) join(s.x0, s.y0, ti, to, d, kind, miterLimit, out)
+    /**
+     * At an inner corner of an open run, cut the end of [before] and the start of [after] where they
+     * cross (searching the last and first few pieces); false when they do not cross.
+     */
+    private fun trimInner(before: MutableList<XBez>, after: MutableList<XBez>): Boolean {
+        if (before.isEmpty() || after.isEmpty()) return false
+        val eps = 1e-9 * (1 + before.last().scale())
+        for (bi in before.size - 1 downTo max(0, before.size - 6)) for (ai in 0 until min(after.size, 6)) {
+            val a = before[bi]; val b = after[ai]
+            val hits = intersect(a, b, eps).filter { !(it[0] > 1 - 1e-9 && it[1] < 1e-9) }
+            if (hits.isEmpty()) continue
+            val h = hits.minBy { (1 - it[0]) + it[1] }
+            before[bi] = a.sub(0.0, h[0]).also { it.p[6] = h[2]; it.p[7] = h[3] }
+            while (before.size > bi + 1) before.removeAt(before.size - 1)
+            after[ai] = b.sub(h[1], 1.0).also { it.p[0] = h[2]; it.p[1] = h[3] }
+            repeat(ai) { after.removeAt(0) }
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Remove the inverted loops of an open offset run: wherever the run crosses itself and the part
+     * between the crossing lies nearer the original than |d|, that part is cut out.
+     */
+    fun removeInvertedLoops(run: List<XBez>, original: List<XBez>, d: Double, tol: Double): List<XBez> {
+        var cur = run
+        var guard = 0
+        outer@ while (guard++ < 64) {
+            val eps = 1e-9 * (1 + cur.maxOfOrNull { it.scale() }!!)
+            for (i in cur.indices) for (j in i + 1 until cur.size) {
+                val a = cur[i]; val b = cur[j]
+                if (a.maxX() < b.minX() || b.maxX() < a.minX() || a.maxY() < b.minY() || b.maxY() < a.minY()) continue
+                for (h in intersect(a, b, eps)) {
+                    if (j == i + 1 && h[0] > 1 - 1e-7 && h[1] < 1e-7) continue
+                    // the middle of what lies between the crossing
+                    val mid = if (j == i + 1) doubleArrayOf(a.x((h[0] + 1) / 2), a.y((h[0] + 1) / 2))
+                    else cur[(i + j) / 2].let { doubleArrayOf(it.x(0.5), it.y(0.5)) }
+                    var best = Double.MAX_VALUE
+                    for (o in original) { val u = nearestT(o, mid[0], mid[1]); best = min(best, hypot(o.x(u) - mid[0], o.y(u) - mid[1])) }
+                    if (best >= abs(d) - tol) continue
+                    val na = ArrayList<XBez>()
+                    for (k in 0 until i) na.add(cur[k])
+                    na.add(a.sub(0.0, h[0]).also { it.p[6] = h[2]; it.p[7] = h[3] })
+                    na.add(b.sub(h[1], 1.0).also { it.p[0] = h[2]; it.p[1] = h[3] })
+                    for (k in j + 1 until cur.size) na.add(cur[k])
+                    cur = na.filter { max(it.maxX() - it.minX(), it.maxY() - it.minY()) > eps }
+                    continue@outer
+                }
             }
-            offsetSegment(s, d, tol, 0, out)
+            break
         }
-        if (closed && c.isNotEmpty()) {
-            val p = c.last(); val s = c.first()
+        return cur
+    }
+
+    fun offsetContour(c: List<XBez>, d: Double, tol: Double, kind: FLineStrokeJoin, miterLimit: Double, closed: Boolean): List<XBez> {
+        val pieces = c.map { s -> ArrayList<XBez>().also { offsetSegment(s, d, tol, 0, it) } }
+        val out = ArrayList<XBez>()
+        fun corner(p: XBez, s: XBez, before: MutableList<XBez>, after: MutableList<XBez>, into: MutableList<XBez>) {
             val ti = p.tangent(1.0); val to = s.tangent(0.0)
-            if (abs(ti[0] * to[1] - ti[1] * to[0]) > 1e-6 || ti[0] * to[0] + ti[1] * to[1] < 0) join(s.x0, s.y0, ti, to, d, kind, miterLimit, out)
+            if (abs(ti[0] * to[1] - ti[1] * to[0]) <= 1e-6 && ti[0] * to[0] + ti[1] * to[1] >= 0) return
+            val inner = (ti[0] * to[1] - ti[1] * to[0]) * d < 0
+            if (inner && !closed && trimInner(before, after)) return
+            join(s.x0, s.y0, ti, to, d, kind, miterLimit, into)
         }
+        for (i in c.indices) {
+            if (i > 0) corner(c[i - 1], c[i], out, pieces[i], out)
+            out.addAll(pieces[i])
+        }
+        if (closed && c.isNotEmpty()) corner(c.last(), c.first(), out, out, out)
         // make the chain exactly continuous (smooth joins leave float-level gaps)
         for (i in 1 until out.size) {
             val a = out[i - 1]; val b = out[i]
@@ -726,7 +787,7 @@ internal object FLineExact {
 fun FLine.booleanExact(other: FLine, op: FLineBooleanOp): FLineBooleanResult = FLineExact.boolean(this, other, op)
 
 /** the open xy subpaths of a line as cubic chains (not closed). */
-private fun FLine.exactOpenChains(): List<Pair<List<XBez>, Boolean>> {
+internal fun FLine.exactOpenChains(): List<Pair<List<XBez>, Boolean>> {
     val out = ArrayList<Pair<List<XBez>, Boolean>>()
     var cur = ArrayList<XBez>()
     fun flush(closed: Boolean) { if (cur.isNotEmpty()) out.add(cur to closed); cur = ArrayList() }
@@ -765,8 +826,10 @@ fun FLine.byOffsettingExact(
         if (o.isEmpty()) continue
         if (closed) closedOffsets.add(o)
         else {
-            result.moveTo(o[0].x0, o[0].y0)
-            for (b in o) if (b.straight) result.lineTo(b.x3, b.y3) else result.cubicTo(b.p[2], b.p[3], b.p[4], b.p[5], b.p[6], b.p[7])
+            val run = FLineExact.removeInvertedLoops(o, c, d, tol)
+            if (run.isEmpty()) continue
+            result.moveTo(run[0].x0, run[0].y0)
+            for (b in run) if (b.straight) result.lineTo(b.x3, b.y3) else result.cubicTo(b.p[2], b.p[3], b.p[4], b.p[5], b.p[6], b.p[7])
         }
     }
     if (closedOffsets.isNotEmpty()) {
