@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 const labels = {open:'Open', patch:'Patch proposed', preserve:'Preserve', adapter:'Adapter needed', question:'Question', stale:'Changed since decision'};
 let current = null, selected = null, requestVersion = 0, busy = false;
+let heldRoot = null, changesVersion = 0, changeVersion = 0;
 let reviewQueue = null, reviewIndex = 0, loadedItem = null, savingDecision = false, decisionVersion = 0;
 const resolved = item => item.state === 'preserve' && !item.candidateFiles.length;
 
@@ -127,6 +128,7 @@ function renderStatus(data, job) {
         endQuickReview(); selected=null; loadedItem=null; ++requestVersion;
         $('detail').replaceChildren(text('p','The plan has changed. Choose a remaining review group, or inspect proposed changes above for files that are now ready.','empty'));
         $('mechanical').open=false;
+        heldRoot=null; ++changesVersion; ++changeVersion; $('held-files').replaceChildren();
         $('change-list').replaceChildren();
         $('change-diff').replaceChildren(text('p','Open this section to load the proposed files.','muted'));
     }
@@ -135,7 +137,16 @@ function renderStatus(data, job) {
     $('revision').textContent=`Plan ${data.pass.revision} · ${data.pass.id}`;
     $('scope').replaceChildren(...data.roots.map(r=>{
         const metrics=text('div',`${r.ready} ready · `,'metrics');
-        metrics.append(attentionCount(r.held),document.createTextNode(' held candidates'));
+        if(r.held) {
+            const held=text('button',`${r.held} held files`, 'held-link attention');
+            held.setAttribute('aria-label',`Show ${r.held} held files in ${r.kind==='repo'?'Repository':`Workspace copy ${r.id}`}`);
+            held.onclick=()=>guarded(async()=>{
+                heldRoot=r.id;
+                if($('mechanical').open) await loadChanges(); else $('mechanical').open=true;
+                $('mechanical').scrollIntoView({block:'start'});
+            });
+            metrics.append(held);
+        } else metrics.append(attentionCount(0),document.createTextNode(' held files'));
         const box=document.createElement('div');box.append(text('h3',r.kind==='repo'?'Repository worktree':`Workspace copy ${r.id}`),metrics,text('p',`${r.files.toLocaleString()} files scanned`,'muted'),text('p',r.path,'path'));return box;
     }));
     $('recipe').textContent=JSON.stringify(data.recipe,null,2);
@@ -293,8 +304,53 @@ for(const action of ['replan','rehearse']) $(action).onclick=()=>guarded(async()
 $('toggle-log').onclick=()=>{const d=$('job-detail');d.hidden=!d.hidden;$('toggle-log').textContent=d.hidden?'Log':'Hide log';$('toggle-log').setAttribute('aria-expanded',String(!d.hidden));};
 $('cancel-job').onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action:'cancel'});await refresh();});
 $('refresh').onclick=()=>guarded(refresh);
-$('mechanical').addEventListener('toggle',()=>{if($('mechanical').open) guarded(async()=>{const result=await api('/api/refactor-pass?changes=1');if(result.error) throw new Error(result.error);options($('change-list'),[['','Choose a file'],...result.data.map(c=>[c.id,`${c.held?'HELD':'READY'} · root ${c.root} · ${c.path}`])]);});});
-$('change-list').onchange=()=>guarded(async()=>{if(!$('change-list').value)return;const result=await api(`/api/refactor-pass?change=${$('change-list').value}`);if(result.error)throw new Error(result.error);renderChange($('change-diff'),result.data);});
+async function loadChanges() {
+    const version=++changesVersion, plan=current?.pass.plan;
+    ++changeVersion;
+    $('change-diff').replaceChildren();
+    $('held-files').replaceChildren(text('p','Loading proposed files…','muted'));
+    const result=await api('/api/refactor-pass?changes=1');
+    if(version!==changesVersion || plan!==current?.pass.plan) return;
+    if(result.error) throw new Error(result.error);
+    const rows=result.data.filter(c=>heldRoot===null || (c.held && c.root===heldRoot));
+    options($('change-list'),[['','Choose a file'],...rows.map(c=>[c.id,`${c.held?'HELD':'READY'} · ${c.root==='0'?'Repository':`Workspace ${c.root}`} · ${c.path}`])]);
+    const held=rows.filter(c=>c.held);
+    $('held-files').replaceChildren(text('p',`${held.length} held files${heldRoot===null?'':` in ${heldRoot==='0'?'Repository':`Workspace ${heldRoot}`}`}. These proposed edits have not been applied. Findings in the same document or file group are blocking them.`, 'muted'));
+    if(heldRoot!==null) {
+        const all=text('button','Show all proposed files');
+        all.onclick=()=>guarded(async()=>{heldRoot=null; await loadChanges();});
+        $('held-files').append(all);
+    }
+    for(const c of held) {
+        const button=text('button',c.path,'item');
+        button.onclick=()=>guarded(async()=>{$('change-list').value=c.id; await showChange(c.id);});
+        $('held-files').append(button);
+    }
+    $('change-diff').replaceChildren(text('p','Choose a file to see its proposed edit and blocking review group.','muted'));
+}
+async function showChange(id) {
+    const version=++changeVersion, plan=current?.pass.plan;
+    $('change-diff').replaceChildren(text('p','Loading proposed edit…','muted'));
+    const result=await api(`/api/refactor-pass?change=${encodeURIComponent(id)}`);
+    if(version!==changeVersion || plan!==current?.pass.plan) return;
+    if(result.error) throw new Error(result.error);
+    const c=result.data, node=$('change-diff');
+    node.replaceChildren(text('h3',c.path),text('p',c.held?'Held — this edit has not been applied.':'Ready in this plan. Application and verification are tracked in delivery below.',c.held?'attention':'muted'));
+    const item=current.items.find(i=>i.root===c.root && i.candidateFiles.includes(c.path));
+    if(c.held && item) {
+        node.append(text('p',`Blocked by ${item.findingCount} findings in ${item.group.replace(/^(file|document):/,'')}. A finding elsewhere in that group can hold this file.`, 'muted'));
+        const review=text('button','Show blocking findings');
+        review.onclick=()=>guarded(async()=>{
+            if(savingDecision) return;
+            endQuickReview(); $('batch').value='*'; $('root').value=item.root; $('decision-filter').value=''; $('search').value='';
+            await showItem(item.id); $('review-panel').scrollIntoView({block:'start'});
+        });
+        node.append(review);
+    }
+    node.append(renderChange(document.createElement('div'),c));
+}
+$('mechanical').addEventListener('toggle',()=>{if($('mechanical').open) guarded(loadChanges);});
+$('change-list').onchange=()=>guarded(async()=>{if($('change-list').value) await showChange($('change-list').value);});
 for(const id of ['batch','root','decision-filter','search']) $(id).addEventListener(id==='search'?'input':'change',()=>{renderItems();if(current)renderDelivery(current,false);});
 $('run-agent').onclick=()=>guarded(async()=>{const session=await api('/api/terminal',{kind:'refactor-batch',batch:$('batch').value,text:$('direction').value});openTerminal(session.id);await refresh();});
 
