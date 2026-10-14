@@ -124,6 +124,14 @@ that every script receives Field's default imports.
 ### Comments, Markdown and contextual review
 
 `"rewriteComments": true` enables exact qualified-name replacement in Kotlin comments and KDoc.
+`retainedFindings` records narrowly reviewed historical exceptions. Each entry has an exact
+root-relative `path`, extracted `unit`, `kind`, `detail`, SHA-256 `codeSha256` of the decoded
+UTF-8 unit, and a human-readable `reason`. Only unmapped imports and prose/comment/string
+references qualify. The exception releases that finding only while the entire unit remains
+unchanged and the engine proposes no rewrite to it. New occurrences, changed units, and
+structural errors still require review. Retained findings remain in the audit report; other
+edits in the document can proceed. This does not assert that historical code compiles.
+
 Set `parseErrorPolicy: "retain"` when existing incomplete or invalid Kotlin units should
 remain diagnostic evidence rather than block this migration. The default is `"hold"`.
 Only `parse-error` findings from unchanged units are retained; the parser does not rewrite
