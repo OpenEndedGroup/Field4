@@ -233,6 +233,10 @@ unassigned list as proof of equivalent JVM names, overload resolution or script 
 
 ## Containers and document boundaries
 
+- `dependencies.edn`: Field dependency telemetry version 1 is a separate container from box
+  metadata. `FROM_CONTEXT` edge names are mapped when they contain literal qualified class names.
+  Property names, box IDs, counts, timestamps and other edge fields are preserved.
+  Unsupported versions, nested-class binary names and array descriptors remain review findings.
 - Kotlin source and scripts: PSI edits preserve import aliases, comments, LF/CRLF and Unicode offsets.
 - Markdown: fenced Kotlin, including attributed, nested and tilde fences. Selected prose can use
   explicit qualified-name replacement; other prose references are findings. Field's `diffstatic`,

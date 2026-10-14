@@ -470,7 +470,10 @@ Plan: {state['plan']}
 Only edit files belonging to the listed review groups, or the recipe when the direction requires it.
 Keep document sidecars, metadata and exported examples consistent. Do not edit the immutable plan.
 Do not edit original workspaces, rename sidecar extensions, commit, enqueue, merge or push.
-When a reusable adapter is needed, record the need; leave its implementation to the tool-maintenance pass.
+There is no automatic tool-maintenance pass. If an adapter is genuinely missing, record the exact
+unsupported format, current finding and required tool change as an unresolved implementation task.
+Check existing recipe options and the current plan first; an older adapter note may already be obsolete.
+Do not describe the batch as complete while approved changes remain unimplemented.
 Record a disposition for each item with the CLI below: patch, preserve, adapter, question, or open.
 A patch record means proposed work; it does not claim that the remaining findings or build passed.
 A preserve record requires an explanation; it does not override the migrator's held groups.
