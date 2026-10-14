@@ -95,7 +95,7 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports', 'proseReplacements', 'parseErrorPolicy'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports', 'proseReplacements', 'parseErrorPolicy', 'retainedFindings'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -104,7 +104,20 @@ def load_recipe(path: Path) -> dict:
         raise RefactorError('rewriteComments must be a boolean')
     if recipe.get('parseErrorPolicy', 'hold') not in ('hold', 'retain'):
         raise RefactorError('parseErrorPolicy must be hold or retain')
+    exceptions = recipe.get('retainedFindings', [])
+    fields = {'path', 'unit', 'kind', 'detail', 'codeSha256', 'reason'}
+    if not isinstance(exceptions, list):
+        raise RefactorError('retainedFindings must list exact reviewed findings')
+    for rule in exceptions:
+        if (not isinstance(rule, dict) or set(rule) != fields or
+                any(not isinstance(v, str) or not v.strip() for v in rule.values()) or
+                rule['kind'] not in {'unmapped-import', 'comment-reference', 'string-reference', 'prose-reference'} or
+                not re.fullmatch(r'[0-9a-f]{64}', rule['codeSha256']) or
+                PurePosixPath(rule['path']).is_absolute() or '..' in PurePosixPath(rule['path']).parts or
+                any(c in rule['path'] for c in '*?[]\\')):
+            raise RefactorError('retainedFindings needs an exact relative path, unit, review kind, detail, code hash and reason')
     for key in ('markdownProse', 'workspaceMarkdownProse'):
+
         if not isinstance(recipe.get(key, []), list) or any(not isinstance(g, str) or not g.endswith('.md') for g in recipe.get(key, [])):
             raise RefactorError(f'{key} must list Markdown path patterns')
     name = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\Z')
@@ -121,7 +134,10 @@ def load_recipe(path: Path) -> dict:
         if not isinstance(values, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not name.fullmatch(k) or not name.fullmatch(v) or k == v for k, v in values.items()):
             raise RefactorError(f'{key} must map distinct qualified names')
         if len(set(values.values())) != len(values):
-            raise RefactorError(f'{key} has destination collisions')
+            collisions = {target: [old for old, new in values.items() if new == target]
+                          for target, count in Counter(values.values()).items() if count > 1}
+            raise RefactorError(f'{key} has destination collisions: ' + '; '.join(
+                ', '.join(sources) + ' -> ' + target for target, sources in sorted(collisions.items())))
     all_rules = recipe['packages'] | recipe['symbols']
     if set(recipe['packages']) & set(recipe['symbols']):
         raise RefactorError('a name cannot be both a package and a symbol rule')
@@ -516,8 +532,13 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                     reason = ('Existing parse error retained by the migration recipe; source unit left unchanged'
                               if recipe.get('parseErrorPolicy') == 'retain'
                               else 'Unchanged unit has no names affected by this migration')
-                    finding(rel, dict(value, unit=unit.identity, **(
-                        {'retained': True, 'retentionReason': reason} if retain_syntax else {})))
+                    reviewed = next((r for r in recipe.get('retainedFindings', [])
+                        if r['path'] == rel and r['unit'] == unit.identity and
+                        r['kind'] == value['kind'] and r['detail'] == value.get('detail') and
+                        r['codeSha256'] == digest(unit.code.encode('utf-8')) and response['code'] == unit.code), None)
+                    retention = ({'retained': True, 'retentionReason': reviewed['reason'], 'reviewedException': True}
+                                 if reviewed else {'retained': True, 'retentionReason': reason} if retain_syntax else {})
+                    finding(rel, dict(value, unit=unit.identity, **retention))
                 records.append({'path': rel, 'unit': unit.identity, 'imports': response.get('imports', []),
                                 'package': response.get('package', ''),
                                 'evidence': response.get('evidence', 'syntax')})

@@ -494,6 +494,43 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_reviewed_import_exception_releases_only_unchanged_exact_unit(self):
+        from tools import refactor_pass as passes
+        code = 'import old.split.mistake\n'
+        yaml = '- execute:\n    property: code\n    code: |\n      import old.split.mistake\n'
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; doc = root / 'doc'; doc.mkdir(parents=True)
+            (doc / 'metadata.edn').write_text(metadata(code='val n = 1'))
+            (doc / 'operations.yaml').write_text(yaml)
+            (doc / 'AGENTS.md').write_text('Use `old.pkg.Thing`.\n')
+            recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old.split'], workspaceMarkdownProse=['**/*.md'])
+            strict = make_plan([(root, False)], recipe, base / 'strict', engine)
+            self.assertTrue(strict['roots'][0]['changes'][0]['held'])
+            finding = next(f for f in strict['roots'][0]['findings'] if f['kind'] == 'unmapped-import')
+            rule = {k: finding[k] for k in ('path', 'unit', 'kind', 'detail')}
+            rule.update(codeSha256=digest(code.encode()), reason='Recorded failed experiment; retain history')
+            recipe['retainedFindings'] = [rule]
+            save_json(base / 'recipe.json', recipe)
+            recipe = load_recipe(base / 'recipe.json')
+            plan = make_plan([(root, False)], recipe, base / 'accepted', engine)
+            self.assertFalse(plan['roots'][0]['changes'][0]['held'])
+            self.assertEqual([], passes.build_index(base, base / 'accepted'))
+            apply_plan(base / 'accepted', offline=True); verify(base / 'accepted', '0')
+            self.assertEqual(yaml, (doc / 'operations.yaml').read_text())
+            self.assertEqual('Use `new.pkg.Thing`.\n', (doc / 'AGENTS.md').read_text())
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], passes.build_index(base, base / 'again'))
+            undo(base / 'accepted', '0')
+            for label, content in [('changed', yaml + '      val n = 2\n'), ('additional', yaml + yaml)]:
+                (doc / 'operations.yaml').write_text(content)
+                changed = make_plan([(root, False)], recipe, base / label, engine)
+                self.assertTrue(changed['roots'][0]['changes'][0]['held'])
+            for key, value in [('kind', 'roundtrip-error'), ('path', '**/operations.yaml'), ('codeSha256', '')]:
+                bad = copy.deepcopy(recipe); bad['retainedFindings'][0][key] = value
+                save_json(base / 'recipe.json', bad)
+                with self.assertRaises(RefactorError):
+                    load_recipe(base / 'recipe.json')
+
     def test_dependency_edn_and_custom_transcript_properties_migrate_and_roundtrip(self):
         from tools import refactor_pass as passes
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
