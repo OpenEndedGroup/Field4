@@ -270,6 +270,14 @@ class KotlinInterface2(
     var compileCount = 0
         private set
 
+    /** Total wall time of those compiles, in nanoseconds. */
+    @Volatile
+    var compileNanos = 0L
+        private set
+
+    /** Reruns served by [rerunCache] instead of a compile. */
+    val rerunCacheHits: Int get() = rerunCache.hits
+
     /**
      * [compile], except that an exact rerun of a source this engine already compiled — same
      * expanded text, source property and implicit receivers, nothing it binds to redeclared since —
@@ -436,6 +444,7 @@ class KotlinInterface2(
                 r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
             }
         }
+        compileNanos += ns
         lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
         if (r is ResultWithDiagnostics.Failure) {
             context.debugScripts.discard(snapshot)
