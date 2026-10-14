@@ -321,6 +321,8 @@ This is the commonest graphics mistake: a freshly created box whose only parent 
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
 
+A child sees a changed value the next time it runs. To have Field rerun the readers when the value changes, or run the supplier when a read finds nothing, declare it with `propDown`, `propUp` or `propUpDown`: [Properties that re-run boxes](reactive_properties.md).
+
 The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments, so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
 
 ---

@@ -1000,6 +1000,8 @@ val gain = getPropertyRaw("gain") as Double
 
 `syncToProperty` starts from the property's current value when it has one, so re-running the box keeps whatever you last dialled in, and the property is saved with the document.
 
+Declare the property with `propDown<Double>(gain)` and moving the slider also reruns every box that reads `gain`; see [Properties that re-run boxes](reactive_properties.md#a-control-reruns-the-boxes-that-read-it).
+
 ### Build one surface with mixed control types
 
 `controlGroup(...)` is the easiest way to build a compact surface for one box. Pair it with a normal display channel when the controls need a readable status or preview panel.
