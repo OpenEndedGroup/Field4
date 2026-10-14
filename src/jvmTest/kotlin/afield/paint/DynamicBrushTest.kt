@@ -17,10 +17,6 @@ import kotlin.test.assertTrue
  */
 class DynamicBrushTest {
 
-    private fun available(): Boolean {
-        if (!PaintLibrary.isAvailable) println("SKIPPED dynamic brush tests: ${PaintLibrary.describe()}")
-        return PaintLibrary.isAvailable
-    }
 
     private val umber = Vec4(0.25f, 0.15f, 0.1f, 1f)
     private fun line(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().moveTo(x0, y0).lineTo(x1, y1)
@@ -29,7 +25,7 @@ class DynamicBrushTest {
     private fun canvas(seed: Long = 2) = PaintCanvas(200, aspect = 1.5, groundColor = Vec4(0.97f, 0.96f, 0.92f, 1f), sizeMm = 60.0, seed = seed)
 
     @Test fun theHairsTouchWhereTheGestureWentAndNowhereElse() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             assertNull(c.contactMap())
             val b = c.dynamicBrush(BrushKind.Round, 60.0, hairs = 24).load(umber)
@@ -53,7 +49,7 @@ class DynamicBrushTest {
     }
 
     @Test fun aTiltedBrushLaysMoreOfItsHairsOnThePaper() {
-        if (!available()) return
+        requirePaintLibrary()
         // lightly pressed: upright only the tips touch, laid over the hairs' bellies lie along the paper
         fun lying(tilt: Double) = canvas().use { c ->
             c.stroke(c.gesture(line(150.0, 300.0, 850.0, 300.0), speed = 60.0, pressure = listOf(0.15), tilt = tilt), c.dynamicBrush(BrushKind.Filbert, 60.0).load(umber)).maxContact
@@ -63,7 +59,7 @@ class DynamicBrushTest {
     }
 
     @Test fun hardScrubbingLeavesTheHairsSetInABend() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             val b = c.dynamicBrush(BrushKind.HogFlat, 60.0, hairs = 24).load(umber, stiff = 0.6)
             assertEquals(0.0, b.retainedBend, 1e-9, "a new brush is straight")
@@ -82,7 +78,7 @@ class DynamicBrushTest {
     }
 
     @Test fun aBrushKeptInAToolboxComesBackExactly() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             val box = PaintToolbox()
             box["rigger"] = c.dynamicBrush(BrushKind.Round, 40.0, hairs = 16).load(umber)
@@ -110,7 +106,7 @@ class DynamicBrushTest {
     }
 
     @Test fun movingHairsPaintWatercolourAndTheBooksBalance() {
-        if (!available()) return
+        requirePaintLibrary()
         // the share of the stroke's middle left as gaps: under a quarter of the pigment the stroke lays at its 90th
         // percentile (the paper shows through it)
         fun stroke(paper: Paper, fill: Double): Pair<Double, PaintCanvas> {
@@ -140,7 +136,7 @@ class DynamicBrushTest {
     }
 
     @Test fun gesturesKeepTheHandlesHeadingContinuous() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             // right to left: the heading is 180°, and must not jump to -180° partway
             val g = c.gesture(FLine().moveTo(900, 300).lineTo(500, 301).lineTo(100, 299), tilt = 30.0)
@@ -158,7 +154,7 @@ class DynamicBrushTest {
     }
 
     @Test fun facetsTurnACurveIntoChordsWithCornersAtTheirEnds() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             val circle = FLine().moveTo(700, 500).cubicTo(700, 610, 610, 700, 500, 700).cubicTo(390, 700, 300, 610, 300, 500)
             val smooth = c.gesture(circle, spacing = 2.0)
@@ -177,7 +173,7 @@ class DynamicBrushTest {
     }
 
     @Test fun nonsenseIsRefused() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             assertFailsWith<IllegalStateException> { c.dynamicBrush(hairs = 0) }
             assertFailsWith<IllegalStateException> { c.dynamicBrush(segments = 1) }

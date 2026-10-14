@@ -18,10 +18,6 @@ import kotlin.test.assertTrue
  */
 class PaintToolsTest {
 
-    private fun available(): Boolean {
-        if (!PaintLibrary.isAvailable) println("SKIPPED paint tools tests: ${PaintLibrary.describe()}")
-        return PaintLibrary.isAvailable
-    }
 
     private val white = Vec4(1f, 1f, 1f, 1f)
     private val red = Vec4(1f, 0f, 0f, 1f)
@@ -41,7 +37,7 @@ class PaintToolsTest {
     // The hashes are of the same calls painted by the wrapper over claude-paint 8e78df0 (engine 2), the
     // version Field shipped before engine 5: pinning engine 2 has to reproduce those pictures exactly.
     @Test fun engineTwoPaintsWhatFieldPaintedBefore() {
-        if (!available()) return
+        requirePaintLibrary()
         assertEquals("5bf9227c061f9a5d6f8d223c0d95e84f3bbde911d9765ca983937601d8b798bd", sha(stripe(PaintGround.Bare, 1, 2)))
         assertEquals("0f190a28b1d861b518be8b7a620c4297bd1d899fbbbe227971361aba6492a289", sha(stripe(PaintGround.Oil, 7, 2)))
         PaintCanvas(64, engine = 2).use { assertEquals(2, it.paintEngine) }
@@ -52,7 +48,7 @@ class PaintToolsTest {
 
     // A state saved by that same wrapper (format PAINTCK8, engine 2) still opens, as engine 2, to the picture it held.
     @Test fun aCanvasSavedBeforeEngineFiveStillOpens() {
-        if (!available()) return
+        requirePaintLibrary()
         val f = kotlin.io.path.createTempFile("engine2", ".state").toFile()
         try {
             f.writeBytes(javaClass.getResourceAsStream("/afield/paint/engine2_oil_64.state")!!.readBytes())
@@ -64,7 +60,7 @@ class PaintToolsTest {
     }
 
     @Test fun spatterThrowsTheLoosePaintOfEachHair() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(300, aspect = 1.5, groundColor = white).use { c ->
             val blue = Vec4(0f, 0f, 1f, 1f)
             // double-loaded: one side of the brush dipped in each colour (a dip of the whole brush would mix them)
@@ -85,7 +81,7 @@ class PaintToolsTest {
     }
 
     @Test fun aScrapingKnifeKeepsWhatItTakes() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(300, aspect = 1.5, ground = PaintGround.Oil, seed = 5).use { c ->
             val k = c.knife(70.0).load(Vec4(0.8f, 0.7f, 0.3f, 1f), amount = 0.9)
             c.knife(line(100.0, 300.0, 600.0, 320.0), k, pressure = 0.5..0.6)
@@ -101,7 +97,7 @@ class PaintToolsTest {
     }
 
     @Test fun aRagLiftsExactlyWhatItReports() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(300, aspect = 1.5, ground = PaintGround.Oil, seed = 6).use { c ->
             c.work(line(100.0, 100.0, 900.0, 100.0, 900.0, 500.0, 100.0, 500.0, 100.0, 100.0), Vec4(0.3f, 0.2f, 0.1f, 1f),
                 handling = Handling.Broad, hiding = 0.6, stiff = 0.3)
@@ -118,7 +114,7 @@ class PaintToolsTest {
     }
 
     @Test fun aBrushIsMadeAsConfigured() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(200).use { c ->
             val preset = c.brush(BrushKind.HogFlat, 40.0).config
             val made = c.brush(BrushKind.HogFlat, 40.0, config = BrushConfig(bristles = 12, stiffness = 0.1, lay = 0.5)).config
@@ -131,7 +127,7 @@ class PaintToolsTest {
     }
 
     @Test fun toolsRestoredFromTheirStateCarryOnExactly() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(240, aspect = 1.5, ground = PaintGround.Oil, seed = 3).use { c ->
             val brush = c.brush(BrushKind.Filbert, 30.0).load(Vec4(0.2f, 0.4f, 0.7f, 1f))
             c.stroke(line(100.0, 200.0, 900.0, 260.0), brush)
@@ -160,7 +156,7 @@ class PaintToolsTest {
     }
 
     @Test fun aToolboxKeepsEveryToolExactly() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(200, ground = PaintGround.Oil, seed = 4).use { c ->
             val box = PaintToolbox()
             box["sky"] = c.brush(BrushKind.HogFlat, 40.0, config = BrushConfig(bristles = 30)).load(Vec4(0.5f, 0.6f, 0.8f, 1f))
@@ -192,7 +188,7 @@ class PaintToolsTest {
     }
 
     @Test fun rawClothAndAbsorbentGrounds() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(200, ground = PaintGround.RawCotton).use { c ->
             val px = c.render()
             assertTrue(px.distinct().size > 10, "the bare cloth shows its weave")
@@ -212,7 +208,7 @@ class PaintToolsTest {
     }
 
     @Test fun aRakingLightShadowsTheRelief() {
-        if (!available()) return
+        requirePaintLibrary()
         // a 120 mm sheet: a slab's 0.3 mm edge has to be steep over a pixel to shade
         PaintCanvas(240, aspect = 1.5, groundColor = white, sizeMm = 120.0).use { c ->
             c.knife(line(200.0, 300.0, 800.0, 320.0), c.knife(80.0).load(white, amount = 1.0))

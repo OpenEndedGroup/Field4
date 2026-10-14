@@ -195,6 +195,8 @@ A template value can come from `this.properties[...]`, from a Kotlin variable th
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
 
+A value that comes from a box property or a script variable is inserted as text: `<`, `>`, `&` and quotes are escaped, so a property holding `<b>hi</b>` shows those characters rather than bold text. Put markup in the note itself, not in the value.
+
 ## Annotations and code callouts
 
 Annotations let a note point at an exact target.
