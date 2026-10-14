@@ -25,7 +25,7 @@ Since running code is very important, we actually have a few more ways of doing 
  * `Command/ctrl-alt-k` and `Command/ctrl-alt-j` increments and decrements the number under the cursor and then acts like you pressed alt-enter.
  * `alt-double-clicking` `true` or `false` or `disable`(`d`) or `enable`(`d`) in the editor flips it to the opposite and then `alt-enter`s
  *  `alt-double-clicking` the name of a function in scope that has signature `foo()` just runs the function.
- *  `alt-1` — launches just the current block that the cursor is in.
+ *  `alt-1` — relaunches just the selection, or the line or enclosing block under the cursor (the same code `alt-enter` would run), without running the top of the box again. See [Running code in a box](running_code.md#running-code-around-the-cursor).
  *  Writing code that launches other boxes. For example `root.named("progress").begin()` launches a box called "progress". 
 
 What's the difference between 'running' and 'launching'? Boxes have the opportunity to end with an object that could 'keep on going by itself'. These objects, on launching, get threaded into the animation loop. Every launched box gets one 'go' at computing per animation cycle in a consistent order.  
