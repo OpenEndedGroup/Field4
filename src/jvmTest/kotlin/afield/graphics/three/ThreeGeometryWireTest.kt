@@ -107,13 +107,17 @@ class ThreeGeometryWireTest {
         assertEquals(setOf("tri"), parse(sent.last())["parts"]!!.jsonObject.keys, "a merge sends what changed")
 
         // New geometry carries the stored styles itself, so a viewer attaching after it needs nothing more,
-        // and the old generation's buffers are gone.
+        // and recent generations remain available for in-flight fetches.
         view.update(view.sourcePayload!!)
         assertEquals(encodes + 1, view.geometryEncodes)
         val fresh = parse(view.replayMessages().single())
         assertEquals(setOf("sphere", "tri"), fresh["partAppearance"]!!.jsonObject.keys)
-        assertNull(view.buffers(generation(parse(geometry))), "a superseded generation is still served")
+        assertSame(buffers, view.buffers(generation(parse(geometry))), "an in-flight fetch lost its buffers")
         assertNotNull(view.buffers(generation(fresh)))
+        view.update(view.sourcePayload!!)
+        assertSame(buffers, view.buffers(generation(parse(geometry))), "the second recent generation was evicted early")
+        view.update(view.sourcePayload!!)
+        assertNull(view.buffers(generation(parse(geometry))), "a generation beyond the two-update grace period is still served")
     }
 
     @Test

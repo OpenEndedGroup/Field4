@@ -1002,7 +1002,7 @@ object FieldMLCompletionEngine {
 
     private fun buildIndexedKotlinClassNames(): List<String> {
         val root = Paths.get(System.getProperty("user.dir")).normalize()
-        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return emptyList()
+        val index = fieldMLSourceIndex(root) ?: return emptyList()
         val packages = mutableMapOf<String, String>()
         return index.definitions
             .asSequence()
@@ -1105,7 +1105,7 @@ object FieldMLCompletionEngine {
 
     private fun indexedKotlinFunctions(): List<IndexedFunction> {
         val root = Paths.get(System.getProperty("user.dir")).normalize()
-        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
+        val index = fieldMLSourceIndex(root)
         val fromIndex = index?.definitions
             ?.asSequence()
             ?.filter { it.kind == "fun" }

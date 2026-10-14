@@ -19,6 +19,11 @@ import kotlin.test.assertTrue
 
 class FieldMLInteropTest {
     @Test
+    fun hostTapExecutionRecoversFromAnIndexWithMovedSourceFiles() = withStaleFieldMLSourceIndex {
+        hostTapBuildsJvmInteropWrappersFromIndexedSourceMetadata()
+    }
+
+    @Test
     fun inlineResultIsPlainTextForMonacoDecorations() {
         assertEquals("42 : Int", renderInlineResult("42", "Int"))
         assertEquals("42", renderInlineResult("42", ""))

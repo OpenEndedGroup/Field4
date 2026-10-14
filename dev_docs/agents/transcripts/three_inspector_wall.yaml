@@ -59,12 +59,12 @@ operations:
           }
 
           // x is the depth through the wall, in millimetres. 152 mm of build-up.
-          val wall = listOf(
+          val wall = [
               skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.5)),
               skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.28)),
               skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.28)),
               skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.4))
-          )
+          ]
 
           val conduits = (0 until 5).map { i ->
               fline {
@@ -87,7 +87,7 @@ operations:
               height = 560,
               units = "mm",
               explode = ThreeExplode(mode = "axis", axis = floatArrayOf(1f, 0f, 0f), sliderMax = 1400.0),
-              measurements = listOf(
+              measurements = [
                   // the build-up: 152 by construction, and the figure now says so
                   ThreeMeasurement(
                       ThreeMeasureElement.face(wall[0]),
@@ -101,7 +101,7 @@ operations:
                       ThreeMeasureElement.face(wall[3]),
                       "clear "
                   )
-              )
+              ]
           )
 
           // And because the explosion is a PARAMETER rather than a literal you retype, the

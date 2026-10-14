@@ -11,6 +11,12 @@ import kotlin.test.assertTrue
 
 class FieldMLCompletionEngineTest {
     @Test
+    fun hostTapCompletionRecoversFromAnIndexWithMovedSourceFiles() = withStaleFieldMLSourceIndex {
+        completesHostTapTargetsFromKotlinSource()
+        completesHostTapNamedArguments()
+    }
+
+    @Test
     fun completesPreludeAndSnippetsAtEmptyCursor() {
         val completion = complete("")
         assertHas(completion, "fline")

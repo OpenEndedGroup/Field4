@@ -975,7 +975,7 @@ object FieldMLRuntimePrelude {
         val simpleName = target.substringAfterLast('.')
         val requestedPackage = target.substringBeforeLast('.', missingDelimiterValue = "")
         val root = Paths.get(System.getProperty("user.dir")).normalize()
-        val indexedFiles = (KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex())
+        val indexedFiles = fieldMLSourceIndex(root)
             ?.definitions
             ?.filter { it.kind == "fun" && it.name.substringAfterLast('.') == simpleName }
             ?.map { root.resolve(it.filePath).normalize() }
