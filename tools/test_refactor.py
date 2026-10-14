@@ -287,6 +287,34 @@ class PlanTests(unittest.TestCase):
                 diagnostic = next(f for f in root['findings'] if f['kind'] == 'parse-error')
                 self.assertEqual(not relevant, bool(diagnostic.get('retained')))
 
+    def test_parse_error_policy_never_releases_other_errors_or_changed_invalid_units(self):
+        for kind, changed in [('rewrite-parse-error', False), ('parse-error', True), ('container-error', False)]:
+            with self.subTest(kind=kind, changed=changed):
+                class ErrorFixture(ImportFixture):
+                    def rewrite(self, code, script, recipe):
+                        return {'code': code + ('\n' if changed else ''),
+                                'findings': [{'kind': kind, 'detail': 'Must still block'}]}
+                self.write('doc/metadata.edn', metadata(code='val x = 1'))
+                self.write('doc/broken_code_.kt', SOURCE)
+                self.write('doc/AGENTS.md', 'Use `old.pkg.Thing`.\n')
+                recipe = dict(copy.deepcopy(RECIPE), parseErrorPolicy='retain', workspaceMarkdownProse=['**/*.md'])
+                out = self.base / (kind + str(changed))
+                plan = make_plan([(self.root, False)], recipe, out, ErrorFixture())
+                root = plan['roots'][0]
+                self.assertTrue(root['changes'])
+                self.assertTrue(all(c['held'] for c in root['changes']))
+                self.assertTrue(any(f['kind'] == kind and not f.get('retained') for f in root['findings']))
+
+    def test_parse_error_policy_validation(self):
+        path = self.base / 'recipe.json'
+        for policy in ['hold', 'retain', 'ignore-everything', True, None]:
+            save_json(path, dict(copy.deepcopy(RECIPE), parseErrorPolicy=policy))
+            if policy in ('hold', 'retain'):
+                self.assertEqual(policy, load_recipe(path)['parseErrorPolicy'])
+            else:
+                with self.assertRaises(RefactorError):
+                    load_recipe(path)
+
     def test_document_pair_apply_verify_undo_exact_bytes(self):
         sidecar = self.write('doc/box_code_.kt', SOURCE)
         doc = self.write('doc/metadata.edn', metadata(sidecar='box_code_.kt'))
@@ -449,6 +477,32 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_retained_parse_error_releases_independent_document_edit(self):
+        from tools import refactor_pass as passes
+        broken = 'import old.pkg.Thing\nfun incomplete() {\n'
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; doc = root / 'doc'; doc.mkdir(parents=True)
+            (doc / 'metadata.edn').write_text(metadata(code=broken, sidecar='broken_code_.kt'))
+            (doc / 'broken_code_.kt').write_text(broken)
+            (doc / 'AGENTS.md').write_text('Use `old.pkg.Thing`.\n')
+            recipe = dict(copy.deepcopy(RECIPE), workspaceMarkdownProse=['**/*.md'])
+            strict = make_plan([(root, False)], recipe, base / 'strict', engine)
+            self.assertTrue(strict['roots'][0]['changes'][0]['held'])
+            recipe['parseErrorPolicy'] = 'retain'
+            plan = make_plan([(root, False)], recipe, base / 'retain', engine)
+            spec = plan['roots'][0]
+            self.assertEqual(['doc/AGENTS.md'], [c['path'] for c in spec['changes']])
+            self.assertFalse(spec['changes'][0]['held'])
+            errors = [f for f in spec['findings'] if f['kind'] == 'parse-error']
+            self.assertTrue(errors)
+            self.assertTrue(all(f.get('retained') and f.get('retentionReason') for f in errors))
+            self.assertEqual([], passes.build_index(base, base / 'retain'))
+            self.assertIn('Retained parse errors (non-blocking', (base / 'retain/report.md').read_text())
+            apply_plan(base / 'retain', offline=True)
+            verify(base / 'retain', '0')
+            self.assertEqual('Use `new.pkg.Thing`.\n', (doc / 'AGENTS.md').read_text())
+            self.assertEqual(broken, (doc / 'broken_code_.kt').read_text())
+
     def test_exported_preamble_uses_box_split_import_rules_and_roundtrips(self):
         source = ('```text [field-property box="b" name="preamble"]\n'
                   'import old.split.*\nval n = 1\n```\n')
