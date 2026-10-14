@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidcraft_compare" index="0" -->
 
 ```edn [field-box id="solidcraft_compare" role="properties"]
-{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1915 "sha256" "10b333a33e78501030f6ba7bb0b80e3ba28e1340d7541795371257d38194bc80"}]}
+{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1915 "sha256" "1cf43dc58f9ccee2ed937bbce258d9fb5e25e4ac7a953f5b1b4ec560f6467f31"}]}
 ```
 
 ```kotlin [field-property box="solidcraft_compare" name="code" path="solidcraft_compare_code_.kt"]
@@ -53,7 +53,7 @@ run {
             columns = 2,
             cellWidth = 380,
             // Look from the cut's side of the XY plane so the blind hole stays visible.
-            view = MeshView(yawDegrees = 145.0, pitchDegrees = 32.0, wireframe = false),
+            view = MeshView(yawDegrees = 165.0, pitchDegrees = 14.0, wireframe = false),
             renderer = MeshRenderer.CPU,
         )
     }

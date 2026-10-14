@@ -1464,7 +1464,7 @@ second; the box also prints B-rep volumes and STEP/STL export sizes. This uses t
 SolidCraft Rust bridge (`./gradlew buildSolidCraftNative`). Without it, the box gives that command
 instead of failing.
 
-![The SolidCraft starting point showing the 40 mm through-cut part beside the 50 mm blind-cut part](assets/solidcraft/compare.png)
+![The SolidCraft starting point showing the 40 mm through-cut part beside the 50 mm blind-cut part almost front-on](assets/solidcraft/compare-near-front.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
 

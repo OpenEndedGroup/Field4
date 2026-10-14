@@ -12,7 +12,7 @@ fillet, and a circular cut that stays 20 mm deep. At `width = 40 mm` the cut goe
 `width = 50 mm` the part becomes 25 mm deep, so the same cut is blind. Change `width` in the box
 and run it again.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/compare.png" capture="box" capture-box="solidcraft_compare" macro-file="../../dev_docs/agents/transcripts/solidcraft_intro.yaml" requires="solidcraft" open-outputs="true" padding="16" wait="1" timeout="180" embed=true hidden=true name="solidcraft-compare" alt="Two views of the same grey CAD part in Field on a dark background. At left, width 40 mm gives a through hole in a 20 mm deep block. At right, width 50 mm makes the block 25 mm deep and the fixed 20 mm cut becomes blind. Both panels report watertight triangle meshes below the picture."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/compare-near-front.png" capture="box" capture-box="solidcraft_compare" macro-file="../../dev_docs/agents/transcripts/solidcraft_intro.yaml" requires="solidcraft" open-outputs="true" padding="16" wait="1" timeout="180" embed=true hidden=true name="solidcraft-compare" alt="Two nearly front-on views of the same grey CAD part in Field, each showing a little of its side. At left, width 40 mm gives a through hole in a 20 mm deep block. At right, width 50 mm makes the block 25 mm deep and the fixed 20 mm cut becomes blind. Both panels report watertight triangle meshes below the picture."}
 // The transcript opens the bundled design and runs the real Rust evaluator.
 ```
 
