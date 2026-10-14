@@ -128,6 +128,7 @@ fun Box.macro_reactive_prop(contents: List<String>, mode: Reactive, macroName: S
         throw MacroRegistry.MacroExpansionProblem("$macroName should be called like $macroName<Int>(foo)")
 
     val name = contents[1].trim().removeSurrounding("(", ")")
+    if (mode.down) ReactiveRuns.declaredDown(this, name)
     return Insert(
         here = "$name", standaloneHere = "Unit",
         preamble = propTypeImports(contents[0]), preambleAfterImports = """

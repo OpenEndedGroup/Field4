@@ -392,6 +392,24 @@ object ReactiveRuns {
     /** [writer]'s code changed [name] on [holder]; [seq] orders it against reads. */
     class Change(val holder: Box, val name: String, val seq: Long, val writer: Box?)
 
+    private val downDeclared: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    private fun downKey(box: Box, name: String) = box.id + "\u0000" + name
+
+    /** [box]'s code declared [name] with `propDown` / `propUpDown`; recorded when the macro expands. */
+    fun declaredDown(box: Box, name: String) {
+        downDeclared.add(downKey(box, name))
+    }
+
+    /**
+     * A write that did not go through the `propDown` delegate (a control bound with
+     * `syncToProperty`, which calls `setPropertyRaw`): if [holder] declared [name] Down and the
+     * value changed, its readers rerun as they would after `holder.name = v`.
+     */
+    fun noteRawWrite(holder: Box, name: String, old: Any?, new: Any?) {
+        if (old != new && downDeclared.contains(downKey(holder, name))) noteChange(holder, name)
+    }
+
     /** A `propDown` value changed: hold it to the end of the writer's run, or send it on now. */
     fun noteChange(holder: Box, name: String) {
         if (!enabled) return

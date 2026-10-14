@@ -1,0 +1,33 @@
+name: reactive_props_down
+description: |
+  Setup for `public/docs/reactive_properties.md`, "A change reruns the boxes that read it".
+  "Tempo" declares `propDown<Int>(bpm)` and sets 120; "Beat", connected under Tempo, reads `bpm`
+  and shows it with a count of its own runs. Both run once; then Tempo's code is edited to 90 and
+  only Tempo is run. Beat's second run is the cascade, so its output reads 90 and "run 2".
+operations:
+  - create:
+      box: rp_tempo
+      name: Tempo
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          propDown<Int>(bpm)
+          bpm = 120
+  - create:
+      box: rp_beat
+      name: Beat
+      frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          val runs = ((getPropertyRaw("runs") as? Int) ?: 0) + 1
+          setPropertyRaw("runs", runs)
+          display("main", "<p>bpm $bpm: a beat every ${60000 / bpm} ms (run $runs)</p>")
+  - connect: { parent: rp_tempo, child: rp_beat }
+  - execute: { box: rp_tempo, property: code }
+  - execute: { box: rp_beat, property: code }
+  - await: {}
+  - edit: { box: rp_tempo, property: code, from: "bpm = 120", to: "bpm = 90" }
+  - execute: { box: rp_tempo, property: code }
+  - await: {}
+  - wait: { millis: 1500 }
+  - await: {}
