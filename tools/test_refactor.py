@@ -37,6 +37,23 @@ def metadata(code=SOURCE, sidecar=None):
 
 
 class ContainerTests(unittest.TestCase):
+    def test_dependency_records_are_distinct_from_box_metadata(self):
+        source = ('; keep layout\n{"version" 1 "edges" [\n'
+                  '{"name" "old.pkg.Thing" "mechanism" "FROM_CONTEXT" "count" 7 "matchedName" "renderer"}\n'
+                  '{"name" "old.pkg.Thing" "mechanism" "INHERITANCE" "count" 9}]}\n')
+        result = extract('doc/dependencies.edn', source, PROPS)
+        self.assertEqual(1, len(result.units))
+        unit = result.units[0]
+        self.assertEqual('import old.pkg.Thing\n', unit.code)
+        edited = patch(source, [(unit.start, unit.end, unit.encode('import new.pkg.Thing\n'))])
+        self.assertEqual(source.replace('"old.pkg.Thing"', '"new.pkg.Thing"', 1), edited)
+        with self.assertRaises(ContainerError):
+            extract('doc/dependencies.edn', source.replace('"version" 1', '"version" 2'), PROPS)
+        with self.assertRaises(ContainerError):
+            unit.encode('import new.pkg.*\n')
+        unsupported = extract('dependencies.edn', source.replace('old.pkg.Thing', '[Lold.pkg.Thing;'), PROPS)
+        self.assertEqual('unsupported-dependency-type', unsupported.findings[0]['kind'])
+
     def test_qualified_name_configuration_preserves_layout_and_unrelated_values(self):
         source = '# Names\r\n linalg.package = old.pkg  \r\nurl=https://example.test\r\n'
         result = qualified_name_properties(source, {'linalg.package'})
@@ -477,6 +494,28 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_dependency_edn_and_custom_transcript_properties_migrate_and_roundtrip(self):
+        from tools import refactor_pass as passes
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; root.mkdir()
+            deps = '{"version" 1 "edges" [{"name" "old.pkg.Thing" "mechanism" "FROM_CONTEXT" "count" 3 "reader" "r" "supplier" "s"}]}'
+            yaml = '- edit:\n    property: cameraCheck\n    from: ""\n    to: |\n      import old.pkg.Thing\n      val x = Thing()\n'
+            (root / 'dependencies.edn').write_text(deps)
+            (root / 'operations.yaml').write_text(yaml)
+            recipe = dict(copy.deepcopy(RECIPE), kotlinProperties=['cameraCheck'])
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            self.assertEqual(2, len(plan['roots'][0]['changes']))
+            self.assertFalse(any(c['held'] for c in plan['roots'][0]['changes']))
+            self.assertEqual([], passes.build_index(base, base / 'plan'))
+            apply_plan(base / 'plan', offline=True); verify(base / 'plan', '0')
+            self.assertEqual(deps.replace('old.pkg.Thing', 'new.pkg.Thing'), (root / 'dependencies.edn').read_text())
+            self.assertEqual(yaml.replace('old.pkg.Thing', 'new.pkg.Thing'), (root / 'operations.yaml').read_text())
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], again['roots'][0]['changes'])
+            undo(base / 'plan', '0')
+            self.assertEqual(deps, (root / 'dependencies.edn').read_text())
+            self.assertEqual(yaml, (root / 'operations.yaml').read_text())
+
     def test_retained_parse_error_releases_independent_document_edit(self):
         from tools import refactor_pass as passes
         broken = 'import old.pkg.Thing\nfun incomplete() {\n'

@@ -223,6 +223,37 @@ def edn(text: str, properties: set[str]) -> Extraction:
     return result
 
 
+def dependency_edn(text: str) -> Extraction:
+    """Field PropertyDependencies v1: only FROM_CONTEXT name fields are JVM type names."""
+    result = Extraction()
+    tree = EdnSpans(text).document()
+    fields = tree.mapping()
+    version, edges = fields.get('version'), fields.get('edges')
+    if not version or version.kind != 'atom' or version.value != '1' or not edges or edges.kind != 'seq':
+        raise ContainerError('unsupported Field dependency record schema (expected version 1 and edges)')
+    for index, edge in enumerate(edges.children):
+        values = edge.mapping()
+        mechanism, name = values.get('mechanism'), values.get('name')
+        if not mechanism or mechanism.kind != 'string' or not name or name.kind != 'string':
+            raise ContainerError(f'malformed dependency edge {index}')
+        if mechanism.value != 'FROM_CONTEXT':
+            continue
+        # Only a literal qualified class name is supported. JVM array descriptors and
+        # nested-class binary names need their own mapping rather than being guessed.
+        qualified = name.value
+        if not re.fullmatch(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', qualified):
+            result.findings.append(issue('unsupported-dependency-type', f'edge {index}: {qualified}'))
+            continue
+        def encode(code):
+            if not re.fullmatch(r'import [A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+\n', code):
+                raise ContainerError('dependency type mapping must produce exactly one qualified name')
+            mapped = code.removeprefix('import ').removesuffix('\n')
+            return quoted(mapped)
+        result.units.append(Unit(f'dependency:{index}/name', f'import {qualified}\n',
+                                 name.start, name.end, encode, script=False))
+    return result
+
+
 def _doc_marker(line: str) -> bool:
     # Same wrapper grammar as public/docs_hooks.py:is_marker_line. These are not Kotlin.
     value = line.strip()
@@ -425,6 +456,8 @@ def extract(path: str, text: str, properties: set[str], *, workspace=False, qual
         # Compiled source sets live under src/ (including standalone tools' src/main/kotlin).
         script = workspace or p.suffix == '.kts' or p.name.endswith('_.kt') or 'src' not in p.parts
         return Extraction([Unit('source', text, 0, len(text), script=script)])
+    if p.name == 'dependencies.edn':
+        return dependency_edn(text)
     if p.suffix == '.edn':
         return edn(text, properties)
     if p.suffix in ('.yaml', '.yml'):
