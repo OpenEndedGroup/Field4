@@ -63,6 +63,32 @@ class EngineTest {
         assertEquals(result.code, engine.rewrite(result.code, true, recipe.copy(rewriteComments = true)).code)
     }
 
+    @Test fun hyphenatedNamespaceLabelsStayInCommentsAndStrings() = Engine().use { engine ->
+        val r = Recipe(emptyMap(), mapOf("afield.Thing" to "moved.Thing"), setOf("afield"), rewriteComments = true)
+        val source = "// afield-token-* and afield-\nval css = \"afield-stacksl-token-comment\"\n"
+        val result = engine.rewrite(source, true, r)
+        assertEquals(source, result.code)
+        assertTrue(result.findings.isEmpty())
+        assertTrue(r.affectedText("afield.Unknown"))
+        assertTrue(r.affectedText("package afield"))
+        assertTrue(r.affectedText("afield.Thing-other"))
+        assertEquals("moved.Thing-other", r.rewriteText("afield.Thing-other"))
+        assertTrue(engine.rewrite("import afield.Unknown", true, r).findings.any { it.kind == "unmapped-import" })
+    }
+
+    @Test fun javascriptBundleFilenamesStayInCommentsAndStrings() = Engine().use { engine ->
+        val r = Recipe(mapOf("afield" to "moved"), emptyMap(), emptySet(), rewriteComments = true)
+        val source = "// afield.mjs and afield.mjs.map\nval bundle = \"./afield.mjs?v=2\"\n"
+        val result = engine.rewrite(source, true, r)
+        assertEquals(source, result.code)
+        assertTrue(result.findings.isEmpty())
+        assertTrue(r.affectedText("afield.mjsHelper"))
+        assertTrue(r.affectedText("afield.mjs.Factory"))
+        assertEquals("moved.Server", r.rewriteText("afield.Server"))
+        // The exception applies to text, not actual Kotlin imports/types.
+        assertEquals("import moved.mjs.Factory", engine.rewrite("import afield.mjs.Factory", true, r).code)
+    }
+
     @Test fun unmappedAndPathLikeCommentsStayReviewFindings() = Engine().use { engine ->
         val source = "// afield.mixed.Other and afield.old.Thing/file\nval x = 1"
         val result = engine.rewrite(source, true, recipe.copy(rewriteComments = true))

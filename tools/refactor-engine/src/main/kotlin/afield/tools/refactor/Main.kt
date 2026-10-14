@@ -18,6 +18,9 @@ import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.*
 import kotlinx.serialization.json.*
 
+// Generated Kotlin/JS filenames are not qualified Kotlin names in text.
+private val RESOURCE_REFERENCES = setOf("afield.mjs", "afield.mjs.map")
+
 /** Syntax evidence only. Unresolved qualified uses and package splits stay review findings. */
 data class Recipe(
     val packages: Map<String, String>,
@@ -55,7 +58,8 @@ data class Recipe(
         return if (owner != null) owner in splitPackages else splitPackages.any { prefix(path, it) }
     }
     fun affectedText(text: String, includePaths: Boolean = true) = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*")
-        .findAll(text).any { (includePaths || text.getOrNull(it.range.last + 1) != '/') && affected(it.value) }
+        .findAll(text).any { it.value !in RESOURCE_REFERENCES &&
+            !(it.value in roots && text.getOrNull(it.range.last + 1) == '-') && (includePaths || text.getOrNull(it.range.last + 1) != '/') && affected(it.value) }
 
     fun moved(path: String): String? {
         if (retained(path) || destinationReference(path)) return null
@@ -76,7 +80,7 @@ data class Recipe(
         else moved(path) // A class-member wildcard follows its class, including nested classes.
 
     fun rewriteText(text: String): String = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+")
-        .replace(text) { match -> if (text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else moved(match.value) ?: match.value }
+        .replace(text) { match -> if (match.value in RESOURCE_REFERENCES || text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else moved(match.value) ?: match.value }
 }
 
 data class Edit(val start: Int, val end: Int, val replacement: String)

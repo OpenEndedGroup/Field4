@@ -24,6 +24,8 @@ HISTORY = {'transcript.edn', 'history_metrics.edn'}
 TEXT = {'.kt', '.kts', '.java', '.md', '.yaml', '.yml', '.edn', '.json', '.py', '.js', '.sh', '.html', '.xml', '.toml', '.properties'}
 PROPERTIES = {'code', 'preamble', 'sharedTypes'}
 MAX_BYTES = 16 * 1024 * 1024
+# Generated Kotlin/JS resources retain their filenames when Kotlin packages move.
+RESOURCE_REFERENCES = {'afield.mjs', 'afield.mjs.map'}
 
 
 class RefactorError(ValueError):
@@ -219,7 +221,10 @@ def affected_pattern(recipe: dict):
         def finditer(self, text):
             for match in candidates.finditer(text):
                 path = match.group()
-                if destination_reference(path, recipe, destinations):
+                # A bare namespace followed by '-' is a resource/CSS name, not a package.
+                if path in roots and text[match.end():match.end() + 1] == '-':
+                    continue
+                if path in RESOURCE_REFERENCES or destination_reference(path, recipe, destinations):
                     continue
                 if text[match.end():match.end() + 1] == '/':
                     continue
@@ -243,7 +248,7 @@ def rewrite_qualified_text(text: str, recipe: dict) -> str:
     destinations = destination_packages(recipe)
     def replace(match):
         name = match.group()
-        if name in destinations or destination_reference(name, recipe, destinations):
+        if name in RESOURCE_REFERENCES or name in destinations or destination_reference(name, recipe, destinations):
             return name
         if text[match.end():match.end() + 1] == '/':
             return name

@@ -124,6 +124,8 @@ that every script receives Field's default imports.
 ### Comments, Markdown and contextual review
 
 `"rewriteComments": true` enables exact qualified-name replacement in Kotlin comments and KDoc.
+Generated bundle filenames `afield.mjs` and `afield.mjs.map` are preserved in text and do not produce package-reference findings.
+Hyphenated root labels such as `afield-stacksl-token-comment` are also preserved; they are resource names, not Kotlin packages.
 `"markdownProse": ["public/docs/*.md"]` enables the same operation in selected Markdown prose;
 patterns match paths relative to each root (`*` can span directories). Kotlin fences still use
 the parser, and other fenced languages are excluded from prose rewriting.
