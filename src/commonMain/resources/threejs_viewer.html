@@ -5886,8 +5886,8 @@ function wireFailed(error) {
 }
 
 function wireReceive(message) {
-    // A newer geometry message makes the fetch in flight moot.
-    if (message.type === 'three/geometry' && wireInbox.fetching) wireInbox.fetching.abort();
+    // A fetch in flight is not aborted for a newer message: under continuous updates every fetch would be
+    // aborted and nothing drawn. Queued messages it supersedes are compacted away instead.
     wireInbox.queue.push(message);
     wirePump();
 }

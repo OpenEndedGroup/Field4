@@ -3,8 +3,10 @@ import afield.stdlib.*
 import kotlin.math.sin
 val initial = fline { moveTo(-1,0,0); lineTo(1,0,0) }
 val view = threeLines(listOf(initial), name="idle-animation", channel="main", height=360)
+// Streams a new triangle every frame for a bounded run, then goes quiet so the viewer must sleep again.
 var count=0
 loop {
+    if (count >= 300) return@loop
     val x=sin(count*0.12).toFloat()
     val shape=ThreeGeometryData(mapOf(
         "position" to ThreeAttribute(3,floatArrayOf(-.8f+x,-.7f,0f,.8f+x,-.7f,0f,x,.8f,0f)),
