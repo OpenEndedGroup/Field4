@@ -200,7 +200,7 @@ Reach for `capture="editor"` when the subject is the Monaco pane itself: inline 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/editor-inline-histogram.png" wait="1.0" capture="editor" outputs="inline"}
 :::static
 val hist = __m("docs-hist")
-listOf(0.14, 0.36, 0.49, 0.81, 0.63, 0.52, 0.27, 0.71, 0.58).forEach { value ->
+[0.14, 0.36, 0.49, 0.81, 0.63, 0.52, 0.27, 0.71, 0.58].forEach { value ->
     hist.histogram(value, dur = 24)
 }
 println("inline histogram ready")

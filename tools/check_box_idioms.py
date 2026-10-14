@@ -22,7 +22,7 @@ This is the check that retires the prose. The rules:
 - ``spaced-fragment-marker``: ``// %-``. The splitter accepts it (``isFragmentBreak``), but until
   2026-10-05 it matched ``//%-`` exactly, so older Field ran a spaced marker as one fragment;
   published code uses the one documented spelling.
-- ``list-literal``: ``listOf(a, b, c)``. Field compiles with collection literals
+- ``list-literal`` (hand-written ``public/docs`` pages only, until the transcript refactor lands): ``listOf(a, b, c)``. Field compiles with collection literals
   (``-Xcollection-literals``), so a list is written ``[a, b, c]``; with a declared type the same
   brackets build a ``Set``, ``MutableList`` or array. A call on one line is rewritten. One spanning
   lines is a note, since a literal takes no spread and this line-by-line check cannot see one on a
@@ -92,6 +92,17 @@ LOOKUP_ALIAS = re.compile(
 )
 BOX_ALIAS = re.compile(r"^\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*thisBox\s*(?://.*)?$")
 SPACED_MARKER = re.compile(r"^(?P<indent>\s*)//\s+%-(?P<rest>.*)$")
+# Where `list-literal` applies: the hand-written docs pages. Transcripts, demos, templates and the lesson
+# and demo sidecars under public/docs/assets still use listOf and are about to be refactored; the
+# reference pages are generated from KDoc. Widen this once the refactor lands.
+LIST_LITERAL_ROOT = "public/docs"
+LIST_LITERAL_EXCLUDED = ("public/docs/assets", "public/docs/reference")
+
+
+def lists_as_literals(path: str) -> bool:
+    return (_under(path, LIST_LITERAL_ROOT) and path.endswith(".md")
+            and not any(_under(path, root) for root in LIST_LITERAL_EXCLUDED))
+
 LIST_OF = re.compile(r"(?<![\w.])listOf\(")
 UNUSED_IMPORTS = {
     "import afield.four.Renderer": re.compile(r"\bRenderer\b"),
@@ -238,7 +249,7 @@ def list_literals(line: str) -> tuple[str, bool] | None:
     return "".join(out), complete
 
 
-def check_block(lines: list[str], start: int, end: int) -> list[tuple[int, str, str, bool]]:
+def check_block(lines: list[str], start: int, end: int, literals: bool = False) -> list[tuple[int, str, str, bool]]:
     """(line index, rule, message, fixable) for one Kotlin block."""
     text = "\n".join(lines[start:end])
     starts_coroutines = bool(COROUTINE_START.search(text))
@@ -270,7 +281,7 @@ def check_block(lines: list[str], start: int, end: int) -> list[tuple[int, str, 
         elif SPACED_MARKER.match(line):
             out.append((i, "spaced-fragment-marker",
                         "write `//%-`, the documented spelling of a fragment break", True))
-        if lit := list_literals(line):
+        if literals and (lit := list_literals(line)):
             out.append((i, "list-literal",
                         "write the list as a collection literal, `[a, b, c]`" if lit[1] else
                         "if no argument is a spread (`*xs`), write the list as a collection literal: change "
@@ -278,7 +289,7 @@ def check_block(lines: list[str], start: int, end: int) -> list[tuple[int, str, 
     return out
 
 
-def fix_block(lines: list[str], start: int, end: int) -> list[str]:
+def fix_block(lines: list[str], start: int, end: int, literals: bool = False) -> list[str]:
     """The block's lines with every fixable finding rewritten, and imports it orphaned removed."""
     block = lines[start:end]
     text = "\n".join(block)
@@ -301,7 +312,7 @@ def fix_block(lines: list[str], start: int, end: int) -> list[str]:
         if BOX_CONTEXT.search(line):
             out.append(BOX_CONTEXT.sub("thisBox", line))
             continue
-        if (lit := list_literals(line)) and lit[1]:
+        if literals and (lit := list_literals(line)) and lit[1]:
             line = lit[0]
         out.append(line)
     if removed_renderer:
@@ -330,14 +341,15 @@ def process(path: str, root: Path, fix: bool) -> list[Finding]:
         return []
     lines = original.split("\n")
     blocks = kotlin_blocks(path, lines)
+    literals = lists_as_literals(path)
     findings = [
         Finding(path, i + 1, rule, message, fixable, blocking=fixable or rule not in NOTE_RULES)
         for start, end in blocks
-        for i, rule, message, fixable in check_block(lines, start, end)
+        for i, rule, message, fixable in check_block(lines, start, end, literals)
     ]
     if fix and any(f.fixable for f in findings):
         for start, end in reversed(blocks):
-            lines[start:end] = fix_block(lines, start, end)
+            lines[start:end] = fix_block(lines, start, end, literals)
         file.write_text("\n".join(lines), encoding="utf-8")
     return findings
 
