@@ -12,10 +12,6 @@ import kotlin.test.assertTrue
 
 class PaintCanvasTest {
 
-    private fun available(): Boolean {
-        if (!PaintLibrary.isAvailable) println("SKIPPED paint tests: ${PaintLibrary.describe()}")
-        return PaintLibrary.isAvailable
-    }
 
     private val white = Vec4(1f, 1f, 1f, 1f)
     private val red = Vec4(0.8f, 0.1f, 0.05f, 1f)
@@ -40,7 +36,7 @@ class PaintCanvasTest {
     }
 
     @Test fun aBareCanvasRendersItsGroundColour() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(64, aspect = 2.0, ground = PaintGround.Bare, groundColor = Vec4(0.5f, 0.25f, 1f, 1f)).use { c ->
             assertEquals(64 to 32, c.pixelSize)
             val px = c.render()
@@ -51,7 +47,7 @@ class PaintCanvasTest {
     }
 
     @Test fun aStrokeLaysPaintWhereTheLineIsAndNowhereElse() {
-        if (!available()) return
+        requirePaintLibrary()
         val p = paintedStripe()
         fun at(x: Int, y: Int) = p[y * 400 + x]
         // On the line, mid-stroke (500, 250 units = 200, 100 px): red paint over white.
@@ -64,7 +60,7 @@ class PaintCanvasTest {
     }
 
     @Test fun viewMapsLineCoordinatesOntoTheWholeCanvas() {
-        if (!available()) return
+        requirePaintLibrary()
         // The same stroke drawn at twice the scale (a 2000 x 1000 view) lands exactly where the
         // canvas-unit one does. A power-of-two scale keeps every mapped coordinate exact, so the
         // pictures are compared bit for bit rather than to a tolerance.
@@ -74,7 +70,7 @@ class PaintCanvasTest {
     }
 
     @Test fun theSameSeedPaintsTheSamePicture() {
-        if (!available()) return
+        requirePaintLibrary()
         fun once() = PaintCanvas(200, ground = PaintGround.Oil, seed = 7).use { c ->
             c.brush(BrushKind.Round, 25.0).use { b ->
                 b.load(red)
@@ -88,7 +84,7 @@ class PaintCanvasTest {
     }
 
     @Test fun renderingLeavesTheCanvasWet() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(200, ground = PaintGround.Bare, groundColor = white).use { c ->
             val b = c.brush(BrushKind.HogFlat, 60.0).load(red)
             c.stroke(FLine().moveTo(100, 500).lineTo(900, 500), b, shake = 0.0)
@@ -112,12 +108,12 @@ class PaintCanvasTest {
     }
 
     @Test fun theDefaultGroundIsBareWhite() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(64).use { c -> assertTrue(c.render().all { it == 0xffffffff.toInt() }) }
     }
 
     @Test fun badArgumentsAreErrorsNotCrashes() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(64).use { c ->
             val e = assertFailsWith<IllegalStateException> { c.brush(width = 0.0) }
             assertTrue(e.message!!.contains("brush width"), e.message)
@@ -128,10 +124,6 @@ class PaintCanvasTest {
 
 class PaintMediaTest {
 
-    private fun available(): Boolean {
-        if (!PaintLibrary.isAvailable) println("SKIPPED paint media tests: ${PaintLibrary.describe()}")
-        return PaintLibrary.isAvailable
-    }
 
     private val white = Vec4(1f, 1f, 1f, 1f)
     private fun lum(p: Int) = ((p shr 16) and 0xff) + ((p shr 8) and 0xff) + (p and 0xff)
@@ -154,7 +146,7 @@ class PaintMediaTest {
         FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
 
     @Test fun aPencilLineIsGreyWhereItIsDrawnAndThePencilWears() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             val p = c.pencil("4B")
             c.draw(FLine().moveTo(100, 500).lineTo(900, 500), p, pressure = 0.9, tremor = 0.0)
@@ -167,7 +159,7 @@ class PaintMediaTest {
     }
 
     @Test fun softerPencilsDrawDarkerLines() {
-        if (!available()) return
+        requirePaintLibrary()
         fun darkness(grade: String) = canvas().use { c ->
             c.draw(FLine().moveTo(100, 500).lineTo(900, 500), c.pencil(grade), pressure = 0.8, tremor = 0.0)
             765 - c.render().meanLum(100, 196, 300, 204)
@@ -177,7 +169,7 @@ class PaintMediaTest {
     }
 
     @Test fun hatchingAndStipplingStayInsideTheirRegion() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             c.hatch(square(100.0, 100.0, 450.0, 450.0), c.chalk(), spacing = 8.0, length = 80.0, pressure = 0.9)
             c.stipple(square(550.0, 550.0, 900.0, 900.0), Vec4(0.1f, 0.2f, 0.6f, 1f), size = 6.0, coverage = 1.5, hiding = 0.9)
@@ -193,7 +185,7 @@ class PaintMediaTest {
     }
 
     @Test fun anEraserLiftsLooseGraphiteButNotFixedGraphite() {
-        if (!available()) return
+        requirePaintLibrary()
         fun after(fix: Boolean) = canvas().use { c ->
             c.hatch(square(100.0, 100.0, 900.0, 900.0), c.pencil("4B"), spacing = 5.0, pressure = 0.9)
             val before = c.render().meanLum(100, 100, 300, 300)
@@ -206,7 +198,7 @@ class PaintMediaTest {
     }
 
     @Test fun anOutlineComesBackAsStrokesAndIsPainted() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             val rough = FLine().moveTo(200, 200).lineTo(800, 220).lineTo(780, 800).lineTo(220, 780).lineTo(200, 200)
             val strokes = c.outline(rough, c.brush(BrushKind.Round, 8.0).load(Vec4(0f, 0f, 0f, 1f)), OutlineCharacter.Searching)
@@ -218,7 +210,7 @@ class PaintMediaTest {
     }
 
     @Test fun workCoversTheRegionWithStrokes() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             c.work(square(250.0, 250.0, 750.0, 750.0), Vec4(0.8f, 0.2f, 0.1f, 1f), Handling.Body, clip = true)
             val px = c.render()
@@ -230,7 +222,7 @@ class PaintMediaTest {
     }
 
     @Test fun touchesGlazesAndPriming() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             c.touch(c.brush(BrushKind.Round, 30.0).load(Vec4(0f, 0f, 0f, 1f)), 500.0, 500.0, pressure = 0.9)
             assertTrue(c.render().meanLum(196, 196, 204, 204) < 400, "a dab at the centre")
@@ -244,7 +236,7 @@ class PaintMediaTest {
     }
 
     @Test fun tubesMixLikePaint() {
-        if (!available()) return
+        requirePaintLibrary()
         assertTrue(Tubes.names.size > 10, "a real catalogue: ${Tubes.names}")
         val white = Tubes.names.first { it.contains("white") }
         val blue = Tubes.names.first { it.contains("blue") || it.contains("ultramarine") || it.contains("smalt") }
@@ -262,7 +254,7 @@ class PaintMediaTest {
     }
 
     @Test fun copiesStateAndTheWetView() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             c.stroke(FLine().moveTo(100, 500).lineTo(900, 500), c.brush(BrushKind.HogFlat, 60.0).load(Vec4(0.1f, 0.3f, 0.8f, 1f)), shake = 0.0)
             assertTrue(c.stats.open > 0.0, "fresh paint is open")
@@ -290,7 +282,7 @@ class PaintMediaTest {
     }
 
     @Test fun craquelureMarksAnOilCanvas() {
-        if (!available()) return
+        requirePaintLibrary()
         // a 120 mm panel, so cracks a few dozen µm wide land on whole pixels
         PaintCanvas(400, ground = PaintGround.Oil, seed = 2, sizeMm = 120.0).use { c ->
             val before = c.render()

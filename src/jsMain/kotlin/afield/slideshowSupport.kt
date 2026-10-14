@@ -384,8 +384,11 @@ internal fun redrawSlideAnnotations() {
     svg.innerHTML = ""
 
     val noteRect = noteOverlay.getBoundingClientRect()
-    val ox = mainTranslation[0]
-    val oy = mainTranslation[1]
+    // The annotation layer is a viewport-fixed SVG with no viewBox, so every rect is drawn in the
+    // client coordinates getBoundingClientRect returns. Subtracting mainTranslation here shifted
+    // each annotation by the canvas pan (about two editor lines at the default translation).
+    val ox = 0.0
+    val oy = 0.0
 
     annotations.forEach { annotation ->
         val targetBox = findBoxByUid(annotation.targetUid)
@@ -502,10 +505,4 @@ private fun slideAnnotationGroup(): SVGElement {
     g.setAttribute("data-name", name)
     svg.appendChild(g)
     return g
-}
-
-private fun syncAnnotationViewBoxToTranslation() {
-    val svg = ensureAnnotationLayer()
-    val rect = svg.getBoundingClientRect()
-    svg.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} ${rect.width} ${rect.height}")
 }

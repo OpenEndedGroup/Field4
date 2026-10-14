@@ -16,10 +16,6 @@ import kotlin.test.assertTrue
  */
 class WaterMediaTest {
 
-    private fun available(): Boolean {
-        if (!PaintLibrary.isAvailable) println("SKIPPED water media tests: ${PaintLibrary.describe()}")
-        return PaintLibrary.isAvailable
-    }
 
     private fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
         FLine().moveTo(x0, y0).lineTo(x1, y0).lineTo(x1, y1).lineTo(x0, y1).lineTo(x0, y0)
@@ -34,7 +30,7 @@ class WaterMediaTest {
     }
 
     @Test fun aCanvasHasNoWaterUntilWaterTouchesIt() {
-        if (!available()) return
+        requirePaintLibrary()
         PaintCanvas(100).use { c ->
             assertNull(c.water)
             assertNull(c.paper)
@@ -49,7 +45,7 @@ class WaterMediaTest {
     }
 
     @Test fun everyDropIsAccountedForAsItFlowsSinksInAndDries() {
-        if (!available()) return
+        requirePaintLibrary()
         for (paper in listOf(Paper.ColdPress, Paper.Xuan)) sheet(paper).use { c ->
             c.drop(500.0, 330.0, Watercolors.sumi * 2.0, volumeMm3 = 10.0)
             c.wet(rect(100.0, 100.0, 300.0, 300.0), microns = 80.0, paint = Watercolors.ultramarine * 2.0)
@@ -70,7 +66,7 @@ class WaterMediaTest {
     }
 
     @Test fun coarsePigmentGranulatesAndFineStains() {
-        if (!available()) return
+        requirePaintLibrary()
         sheet().use { c ->
             c.wet(rect(100.0, 100.0, 900.0, 560.0), microns = 120.0, paint = Watercolors.ultramarine * 2.0 + Watercolors.phthaloBlue * 0.7)
             c.dry()
@@ -82,7 +78,7 @@ class WaterMediaTest {
     }
 
     @Test fun aTiltedSheetShedsItsWaterDownhill() {
-        if (!available()) return
+        requirePaintLibrary()
         sheet(Paper.HotPress).use { c ->
             c.tilt(40.0, 90.0)
             c.wet(rect(200.0, 300.0, 800.0, 500.0), microns = 250.0, paint = Watercolors.quinacridoneRose * 1.0)
@@ -97,7 +93,7 @@ class WaterMediaTest {
     }
 
     @Test fun aBrushLaysLessTheFasterItGoesAndDryBrushSkipsTheTooth() {
-        if (!available()) return
+        requirePaintLibrary()
         fun laid(speed: Double) = sheet().use { c ->
             val b = c.waterBrush(60.0).load(Watercolors.burntSienna * 3.0)
             c.wash(FLine().moveTo(100, 300).lineTo(900, 300), b, speed = speed).waterLaid
@@ -115,7 +111,7 @@ class WaterMediaTest {
     }
 
     @Test fun aWetCanvasSavesAndLoadsExactlyAndCarriesOnTheSame() {
-        if (!available()) return
+        requirePaintLibrary()
         sheet(Paper.Xuan).use { c ->
             c.drop(400.0, 300.0, Watercolors.sumi * 2.0, volumeMm3 = 8.0)
             c.waitSeconds(1.0)
@@ -137,7 +133,7 @@ class WaterMediaTest {
     }
 
     @Test fun aKeptWatercolourBrushKeepsItsWaterAndPigment() {
-        if (!available()) return
+        requirePaintLibrary()
         sheet().use { c ->
             val box = PaintToolbox()
             box["wash"] = c.waterBrush(50.0).load(Watercolors.viridian * 2.5, fill = 0.8)
@@ -158,7 +154,7 @@ class WaterMediaTest {
     }
 
     @Test fun timedGestures() {
-        if (!available()) return
+        requirePaintLibrary()
         sheet().use { c ->
             val g = c.gesture(FLine().moveTo(0, 0).lineTo(500, 0).moveTo(0, 100).lineTo(500, 100), speed = 50.0, pressure = listOf(0.2, 1.0), gap = 0.5)
             // 500 units on a 60 mm sheet is 30 mm: 0.6 s at 50 mm/s, twice, half a second apart
@@ -175,7 +171,7 @@ class WaterMediaTest {
     }
 
     @Test fun paintOverWatercolourSealsItIntoThePicture() {
-        if (!available()) return
+        requirePaintLibrary()
         sheet().use { c ->
             c.wet(rect(100.0, 100.0, 900.0, 560.0), microns = 100.0, paint = Watercolors.ultramarine * 2.0)
             c.dry()
@@ -191,7 +187,7 @@ class WaterMediaTest {
     }
 
     @Test fun pigmentsAndPaints() {
-        if (!available()) return
+        requirePaintLibrary()
         assertTrue(Watercolors.names.size >= 7)
         assertTrue(Watercolors.ultramarine.diameterUm > Watercolors.phthaloBlue.diameterUm)
         val custom = WaterPigment.of("indigo", afield.stdlib.Vec4(0.15f, 0.18f, 0.3f, 1f), strength = 2.0, diameterUm = 0.2, stain = 0.1)
