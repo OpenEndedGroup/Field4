@@ -133,6 +133,18 @@ class PlanTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(expected, pattern.search(text).group())
 
+    def test_javascript_bundle_filenames_are_not_package_references(self):
+        recipe = dict(copy.deepcopy(RECIPE), packages={'afield': 'moved'}, symbols={}, splitPackages=[])
+        pattern = affected_pattern(recipe)
+        for text in ('afield.mjs', '`afield.mjs`', './afield.mjs', '/afield.mjs?v=2',
+                     'afield.mjs.map', 'import { send } from "./afield.mjs";'):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+                self.assertEqual(text, rewrite_qualified_text(text, recipe))
+        for text in ('afield.mjsHelper', 'afield.mjs.Factory', 'afield.Server'):
+            self.assertEqual(text, pattern.search(text).group())
+            self.assertEqual(text.replace('afield', 'moved'), rewrite_qualified_text(text, recipe))
+
     def test_source_roots_and_paths_are_not_package_references(self):
         recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'])
         pattern = affected_pattern(recipe)
