@@ -10,7 +10,10 @@
         html, body { margin: 0; height: 100%; background: #000; color: #ddd; font: 12px "Iosevka Web", monospace; }
         body { display: flex; flex-direction: column; }
         header { display: flex; gap: 12px; align-items: center; padding: 6px 12px; border-bottom: 1px solid #222; }
-        header .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* The title truncates in the middle: the head shrinks to an ellipsis, the tail (the end of the path) stays. */
+        header .title { flex: 1; min-width: 0; display: flex; white-space: nowrap; }
+        header .title .head { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        header .title .tail { flex: 0 0 auto; }
         header .state { color: #48c9ff; } header .state.exited { color: #e5a00d; } header .state.lost { color: #ff5a5a; }
         header button { font: inherit; color: #ddd; background: #111; border: 1px solid #333; border-radius: 5px; padding: 3px 10px; cursor: pointer; }
         #terminal { flex: 1; min-height: 0; padding: 4px 0 0 6px; }
@@ -18,7 +21,7 @@
 </head>
 <body>
 <header>
-    <span class="title" id="title">terminal</span>
+    <span class="title" id="title"><span class="head">terminal</span><span class="tail"></span></span>
     <span class="state" id="state">connecting</span>
     <button id="kill" type="button" title="end the process; closing this page only detaches">Kill</button>
 </header>
@@ -47,7 +50,15 @@ const setState = (text, cls = "") => { $("state").textContent = text; $("state")
 
 fetch("/api/terminal").then(r => r.json()).then(list => {
     const info = list.find(t => t.id === id);
-    if (info) { $("title").textContent = `${info.title} — ${info.directory}`; document.title = info.title; }
+    if (!info) return;
+    const full = `${info.title} — ${info.directory}`;
+    // Keep the last two path segments whole; everything before them may be elided.
+    const cut = info.directory.split("/").slice(0, -2).join("/").length;
+    const split = cut > 0 ? full.length - (info.directory.length - cut) : full.length;
+    $("title").querySelector(".head").textContent = full.slice(0, split);
+    $("title").querySelector(".tail").textContent = full.slice(split);
+    $("title").title = full;
+    document.title = info.title;
 }).catch(() => {});
 
 const encoder = new TextEncoder();

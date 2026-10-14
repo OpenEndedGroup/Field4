@@ -68,7 +68,7 @@ class FieldTerminal internal constructor(val id: String, startAt: Long = 0) {
      *
      * ```kotlin
      * go {
-     *     val py = terminal("py", listOf("python3", "-q"))
+     *     val py = terminal("py", ["python3", "-q"])
      *     py.awaitOutput(">>> ")
      *     val answer = py.sendAndAwait("6 * 7", Regex("""\d+"""))
      *     print(answer.value)  // 42
@@ -140,7 +140,7 @@ private val boxTerminals = ConcurrentHashMap<String, String>()
  * val t = terminal()                         // a shell in the document's directory
  * t.send("ls -la")
  *
- * terminal("top", command = listOf("top"))   // or any program
+ * terminal("top", command = ["top"])   // or any program
  * ```
  *
  * @param channel output-area channel, and its disclosure title

@@ -19,17 +19,22 @@ header ends it.
 Pass `command` to run something other than your shell. The first word is found on your `PATH` and
 in the usual install places (`~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`), so it works
 in a Field started from the Dock as well. Give each terminal its own channel name and a box can
-show several:
+show several. This one runs `top`:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/terminal/top.png" capture="box" wait="4" padding="16" timeout="180" embed=true name="terminal-top" w="560" h="200" alt="A Field box with an open output panel titled 'top' holding a black terminal running top: the summary lines of processes, load and memory at the top, then a table of processes sorted by CPU use."}
+terminal("top", command = ["top", "-o", "cpu"], height = 360)
+```
+
+A second call with another channel name gives the box a second terminal:
 
 ```diffstatic {data-lang=kotlin}
-terminal("top", command = listOf("top", "-o", "cpu"))
-terminal("logs", command = listOf("tail", "-f", "/var/log/system.log"))
+terminal("logs", command = ["tail", "-f", "/var/log/system.log"])
 ```
 
 A single command line runs through your shell, with its pipes and globs:
 
-```diffstatic {data-lang=kotlin}
-terminal("build", "./gradlew build | tail -20")
+```diffstatic_runner {data-lang=kotlin screenshot="assets/terminal/command_line.png" capture="box" wait="4" padding="16" timeout="180" embed=true name="terminal-command-line" w="560" h="200" alt="A Field box with an open output panel titled 'disk' holding a black terminal. It shows the output of df -h piped through head: a header row (Filesystem, Size, Used, Avail, Capacity, inode counts, Mounted on) and four volumes, then the line '[process exited with code 0]'. The header reads 'exited 0'."}
+terminal("disk", "df -h | head -5", height = 200)
 ```
 
 `directory` sets where it starts; without it, that is the document's directory, or your home if
@@ -66,7 +71,7 @@ This box drives a Python session, waiting for its prompt and then for the answer
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/terminal/python_session.png" capture="box" wait="6" padding="16" timeout="180" embed=true name="terminal-python-session" w="560" h="200" alt="A Field box with an open output panel titled 'py' holding a black terminal. Its header reads python3, the directory and 'running'. In the terminal, Python's prompt shows '6 * 7' typed at it, then 42 on the next line, then a fresh prompt."}
 go {
-    val py = terminal("py", command = listOf("python3", "-q"), height = 160)
+    val py = terminal("py", command = ["python3", "-q"], height = 160)
     py.awaitOutput(">>> ")
     val answer = py.sendAndAwait("6 * 7", Regex("""\d+"""))
     print("the answer is ${answer.value}")
