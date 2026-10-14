@@ -197,6 +197,15 @@ fun Box.go(block: suspend CoroutineScope.() -> Unit) {
     }
 }
 
+/**
+ * Wait [ms] milliseconds inside `go { }` (or any coroutine) without holding the runloop.
+ *
+ * Box code does not import `kotlinx.coroutines.delay`, so without this a bare `delay(500)` in a
+ * `go` block found some other `delay` — once the synth effect now called [afield.four.synth.delayEffect],
+ * which returned at once and let a `while (true)` around it hold the runloop.
+ */
+suspend fun delay(ms: Number) = kotlinx.coroutines.delay(ms.toLong())
+
 // -- public API: send and await handler completion ----------------------------
 
 sealed class SendResult<out T> {
