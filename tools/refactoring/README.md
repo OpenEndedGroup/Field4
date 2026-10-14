@@ -342,6 +342,14 @@ ignored pointer. Keep the host server in that checkout while working in the sess
    so it releases the writer lease, then replan. Decisions remain review records; they never alter
    the immutable plan. Preserve permits an intentional unchanged reference at delivery only if
    that group has no proposed edits. Held edits must be resolved in source or by an adapter.
+   **Review all unresolved** opens a keyboard review round across batches, with the previous
+   decision and its reason above the source. **P** preserves the remaining references, **E**
+   records a Needs edit instruction (a `question` for the batch agent), **N** skips, and **B**
+   goes back. An optional note replaces the standard reason. Save success advances immediately;
+   a failed save stays on the current group. Shortcuts are inactive while typing. Preservation
+   is unavailable for stale source or groups with proposed edits. Needs edit and skipped groups
+   remain unresolved: run the relevant batch agent, then replan. The default list hides resolved
+   Preserve groups; choose All decisions to inspect them. Quick review does not apply patches.
    Large agent batches should write dispositions as a JSON array of
    `{"item":"ITEM_ID","state":"patch","reason":"What changed"}` records, then run
    `tools/refactor_pass.py decide-many --file /absolute/path/to/decisions.json` once.
