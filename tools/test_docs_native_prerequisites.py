@@ -22,6 +22,7 @@ from build_zensical_docs import (  # noqa: E402
     jep_python_candidates,
     resolve_jep_python,
     loris_executable_path,
+    solidcraft_library_path,
 )
 
 FENCE = (
@@ -179,6 +180,18 @@ class TetgenLibraryPathTests(unittest.TestCase):
         resolve, how_to_build = NATIVE_PREREQUISITES["tetgen"]
         self.assertIs(resolve, tetgen_library_path)
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
+
+
+class SolidCraftLibraryPathTests(unittest.TestCase):
+    def test_capture_uses_the_optional_build_artifact_or_override(self):
+        os.environ.pop("AFIELD_SOLIDCRAFT_LIBRARY", None)
+        resolved = solidcraft_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/native/solidcraft"))
+        self.assertIn("field_solidcraft_jvm", resolved.name)
+        os.environ["AFIELD_SOLIDCRAFT_LIBRARY"] = "/custom/solidcraft.so"
+        self.addCleanup(os.environ.pop, "AFIELD_SOLIDCRAFT_LIBRARY", None)
+        self.assertEqual(solidcraft_library_path(Path("/repo")), Path("/custom/solidcraft.so"))
+        self.assertEqual(NATIVE_PREREQUISITES["solidcraft"][1], "./gradlew buildSolidCraftNative")
 
 
 class PaintLibraryPathTests(unittest.TestCase):

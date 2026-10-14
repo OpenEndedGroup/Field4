@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 class FeatureSelectorTest {
     private fun options(platform: String = "linux", tools: (String) -> Boolean = { true }, nvidia: Boolean = true,
                         rustErrors: List<String> = emptyList(), rustup: Boolean = true) =
-        featureOptions(platform, tools, nvidia, rustErrors, rustup)
+        featureOptions(platform, tools, nvidia, rustErrors, rustup, solidcraftErrors = emptyList())
 
     @Test fun missingToolsDisableFeaturesAndCannotBeSelectedEvenFromSavedPreferences() {
         val choices = options(tools = { it != "cargo" && it != "uv" }, rustup = false)
@@ -53,6 +53,17 @@ class FeatureSelectorTest {
         val state = FeatureSelection(choices)
         state.move(-100); assertEquals(0, state.cursor)
         state.move(100); assertEquals(choices.lastIndex, state.cursor)
+    }
+
+    @Test fun solidcraftNeedsModernRustAndHasAnOptInBuild() {
+        val old = featureOptions("mac", { true }, rustErrors = emptyList(), solidcraftErrors = listOf("rustc must be at least 1.95"))
+        assertFalse(old.first { it.extra.id == "solidcraft" }.enabled)
+        for (platform in listOf("mac", "linux", "windows")) {
+            val choice = options(platform).first { it.extra.id == "solidcraft" }
+            assertEquals("buildSolidCraftNative", choice.extra.task)
+            assertTrue(choice.prerequisites.containsAll(setOf("git", "cargo", "rustc")))
+            assertTrue("buildSolidCraftNative" in preparationCommands(setOf("solidcraft"), platform).single())
+        }
     }
 
     @Test fun rowsFitNarrowTerminalsAndRightAlignPrerequisitesWithoutZeroPrefixes() {

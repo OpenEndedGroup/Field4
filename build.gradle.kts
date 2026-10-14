@@ -4142,6 +4142,26 @@ tasks.register<JavaExec>("smokeManifold") {
     jvmArgs(requiredRunJvmArgs())
 }
 
+// SolidCraft is an opt-in native CAD dependency. Neither compilation nor `check` fetches Rust
+// sources or builds the bridge. The smoke is the explicit entry point for a first installation.
+val buildSolidCraftNative = tasks.register<Exec>("buildSolidCraftNative") {
+    group = "build"
+    description = "Builds the optional SolidCraft Rust/FFM bridge from pinned source."
+    workingDir = projectDir
+    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3", "tools/build_solidcraft_native.py")
+}
+
+tasks.register<JavaExec>("smokeSolidCraft") {
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    group = "verification"
+    description = "Builds the optional SolidCraft bridge and checks parameter editing, mesh and STEP export."
+    dependsOn(buildSolidCraftNative)
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.solidcraft.SolidCraftSmokeTest")
+    workingDir = projectDir
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<JavaExec>("runfilestore") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"

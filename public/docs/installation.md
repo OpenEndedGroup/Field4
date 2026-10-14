@@ -111,7 +111,7 @@ Python prerequisites do not include a configured JEP runtime: complete that in t
 and agent tooling have their own guides and prerequisites.
 
 The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
-Ceres, TetGen, Manifold, paint and the [Patchy layered editor](patchy.md); Pure Data, Csound and LuaJIT; and optional
+Ceres, TetGen, Manifold, [SolidCraft](solidcraft.md), paint and the [Patchy layered editor](patchy.md); Pure Data, Csound and LuaJIT; and optional
 physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
 Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
 
