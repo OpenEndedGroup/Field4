@@ -130,6 +130,32 @@ class ContainerTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
+    def test_field_urls_are_opaque_but_adjacent_names_still_migrate(self):
+        recipe = dict(copy.deepcopy(RECIPE), packages={'afield.old': 'afield.newplace'},
+                      symbols={}, splitPackages=['afield'])
+        pattern = affected_pattern(recipe)
+        for url in ('afield:/document/box/code', 'afield://document/box/code',
+                    'afield://document/afield.old.Thing?type=afield.old.Other',
+                    'AFIELD:/document/afield.old.Thing'):
+            text = f'fileKey={url} next'
+            with self.subTest(url=url):
+                self.assertIsNone(pattern.search(text))
+                self.assertEqual(text, rewrite_qualified_text(text, recipe))
+        text = '`afield:/document/afield.old.Thing` then afield.old.Thing'
+        self.assertEqual(['afield.old.Thing'], [m.group() for m in pattern.finditer(text)])
+        self.assertEqual('`afield:/document/afield.old.Thing` then afield.newplace.Thing',
+                         rewrite_qualified_text(text, recipe))
+        self.assertEqual('afield', pattern.search('afield: Value').group())
+        self.assertEqual('afield', pattern.search('package afield').group())
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'workspace'; root.mkdir()
+            (root / 'conversation.json').write_text(json.dumps({
+                'log': ['fileKey=afield://function_conversation/function_source/code',
+                        'primary=afield:/document/afield.old.Thing']}))
+            plan = make_plan([(root, False)], recipe, Path(tmp) / 'plan', ImportFixture())
+            self.assertFalse(plan['roots'][0]['findings'])
+            self.assertFalse(plan['roots'][0]['changes'])
+
     def test_affected_references_respect_namespace_and_path_boundaries(self):
         recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'],
                       knownPackages=['old', 'old.stays'], retainedSymbols=['old.Keep'])

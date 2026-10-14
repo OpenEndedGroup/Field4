@@ -26,6 +26,8 @@ PROPERTIES = {'code', 'preamble', 'sharedTypes'}
 MAX_BYTES = 16 * 1024 * 1024
 # Generated Kotlin/JS resources retain their filenames when Kotlin packages move.
 RESOURCE_REFERENCES = {'afield.mjs', 'afield.mjs.map'}
+# Field document/property URLs are identifiers, including any package-looking path text.
+FIELD_URL = re.compile(r'''(?<![\w.+-])afield:/[^\s"'`<>]*''', re.IGNORECASE)
 
 
 class RefactorError(ValueError):
@@ -227,7 +229,10 @@ def affected_pattern(recipe: dict):
                             r')(?:\.[A-Za-z_]\w*)*(?![\w])') if roots else re.compile(r'(?!)')
     class References:
         def finditer(self, text):
+            urls = [m.span() for m in FIELD_URL.finditer(text)]
             for match in candidates.finditer(text):
+                if any(start <= match.start() < end for start, end in urls):
+                    continue
                 path = match.group()
                 # A bare namespace followed by '-' is a resource/CSS name, not a package.
                 if path in roots and text[match.end():match.end() + 1] == '-':
@@ -254,8 +259,11 @@ def affected_pattern(recipe: dict):
 
 def rewrite_qualified_text(text: str, recipe: dict) -> str:
     destinations = destination_packages(recipe)
+    urls = [m.span() for m in FIELD_URL.finditer(text)]
     def replace(match):
         name = match.group()
+        if any(start <= match.start() < end for start, end in urls):
+            return name
         if name in recipe.get('proseReplacements', {}) and text[match.end():match.end()+2] != '.*' and text[match.end():match.end()+1] != '/':
             return recipe['proseReplacements'][name]
         if name in RESOURCE_REFERENCES or name in destinations or destination_reference(name, recipe, destinations):
