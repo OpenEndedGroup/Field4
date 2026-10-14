@@ -29,6 +29,23 @@ class EngineTest {
     private val recipe = Recipe(mapOf("afield.old" to "afield.newplace"),
         mapOf("afield.mixed.Thing" to "afield.model.Thing"), setOf("afield.mixed"))
 
+    @Test fun fieldUrlsStayOpaqueInCommentsAndStrings() = Engine().use { engine ->
+        val r = recipe.copy(splitPackages = setOf("afield"), rewriteComments = true)
+        val urls = listOf("afield:/document/box/code", "afield://document/box/code",
+            "afield://document/afield.old.Thing?type=afield.old.Other", "AFIELD:/document/afield.old.Thing")
+        for (url in urls) {
+            val source = "// `$url`\nval key = \"$url\""
+            val result = engine.rewrite(source, true, r)
+            assertEquals(source, result.code)
+            assertTrue(result.findings.isEmpty(), result.findings.toString())
+        }
+        val mixed = "// `afield:/document/afield.old.Thing` then afield.old.Thing\nval x = 1"
+        assertEquals(mixed.replace(" then afield.old.Thing", " then afield.newplace.Thing"),
+            engine.rewrite(mixed, true, r).code)
+        assertTrue(r.affectedText("afield: Value"))
+        assertTrue(r.affectedText("package afield"))
+    }
+
     @Test fun declarationInventoryKeepsOverloadsButNotMembersOrLocals() = Engine().use { engine ->
         val result = engine.declarations("package sample\r\nclass Thing { fun member() {} }\r\n" +
             "fun String.convert(x: Int) { fun local() {} }\r\nfun convert(x: Double) = x\r\nprivate val hidden = 2")
