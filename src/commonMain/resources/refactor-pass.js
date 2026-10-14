@@ -2,6 +2,7 @@ const $ = id => document.getElementById(id);
 const labels = {open:'Open', patch:'Patch proposed', preserve:'Preserve', adapter:'Adapter needed', question:'Question', stale:'Changed since decision'};
 let current = null, selected = null, requestVersion = 0, busy = false;
 const text = (tag, value, className) => { const node = document.createElement(tag); node.textContent = value; if(className) node.className = className; return node; };
+const attentionCount = value => text('span', value, value > 0 ? 'attention' : '');
 function error(value='') { $('error').textContent = value; $('error').hidden = !value; }
 let displayedJob = {}, startingAction = null;
 function renderJob(job = {}) {
@@ -91,7 +92,7 @@ function renderExcerpt(node, source, references = []) {
         legend.append(text('strong','Highlighted references · migration mapping, not an applied edit:'));
         for(const [name, {destination, count}] of counts) {
             const row=text('div','');
-            row.append(text('code',name,'old-name'),document.createTextNode(' → '),text('code',destination||'choose a destination'),text('small',` · ${count} shown`));
+            row.append(text('code',name,'old-name'),document.createTextNode(' → '),text('code',destination||'choose a destination',destination?'':'attention'),text('small',` · ${count} shown`));
             legend.append(row);
         }
         node.append(legend);
@@ -129,14 +130,16 @@ function renderStatus(data, job) {
     current=data;
     $('revision').textContent=`Plan ${data.pass.revision} · ${data.pass.id}`;
     $('scope').replaceChildren(...data.roots.map(r=>{
-        const box=document.createElement('div');box.append(text('h3',r.kind==='repo'?'Repository worktree':`Workspace copy ${r.id}`),text('div',`${r.ready} ready · ${r.held} held candidates`,'metrics'),text('p',`${r.files.toLocaleString()} files scanned`,'muted'),text('p',r.path,'path'));return box;
+        const metrics=text('div',`${r.ready} ready · `,'metrics');
+        metrics.append(attentionCount(r.held),document.createTextNode(' held candidates'));
+        const box=document.createElement('div');box.append(text('h3',r.kind==='repo'?'Repository worktree':`Workspace copy ${r.id}`),metrics,text('p',`${r.files.toLocaleString()} files scanned`,'muted'),text('p',r.path,'path'));return box;
     }));
     $('recipe').textContent=JSON.stringify(data.recipe,null,2);
     $('branch').textContent=`Session worktree: ${data.pass.worktree} · delivery branch: ${data.pass.branch}`;
     renderDelivery(data, changedSession);
     options($('batch'),Object.entries(data.batches));
     options($('root'),[['','All roots'],...data.roots.map(r=>[r.id,r.kind==='repo'?'Repository':`Workspace copy ${r.id}`])]);
-    $('counts').textContent=`${data.items.length} review groups · ${data.counts.question||0} questions`;
+    $('counts').replaceChildren(attentionCount(data.items.length),document.createTextNode(` review groups · ${data.counts.question||0} questions`));
     const v=data.pass.verification;
     $('verification').replaceChildren(text('p', v ? `Rehearsal recorded ${new Date(v.at * 1000).toLocaleString()} for this plan: ${Object.values(v.results).reduce((n,r)=>n+r.restored.changedFiles,0)} changed files; all scanned text verified after restoration at that time. Compilation and binding equivalence have not been checked.` : 'No completed rehearsal for this plan. Imported plans must be replanned against the pass copies first.', 'muted check'));
     renderItems();
