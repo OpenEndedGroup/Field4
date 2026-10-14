@@ -4059,13 +4059,18 @@ body::-webkit-scrollbar {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgb(150, 255, 208);
     font-family: var(--field-font);
     font-weight: 700;
     font-size: 12px;
     pointer-events: none;
     z-index: 2;
     animation: running-stripe-drift 100s linear infinite;
+}
+
+/* The count inverts the stripe under it. */
+.box > .go-jobs-badge > span {
+    color: white;
+    mix-blend-mode: difference;
 }
 
 .box > .selection-order-badge {

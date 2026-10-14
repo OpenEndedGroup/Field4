@@ -7834,7 +7834,7 @@ private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
         return
     }
     if (existing != null) {
-        existing.textContent = count.toString()
+        (existing.firstElementChild as? HTMLElement)?.textContent = count.toString()
         return
     }
     if (state.goJobsBadgePending == true) return
@@ -7845,7 +7845,9 @@ private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
         if (now > 0 && box.querySelector(":scope > .go-jobs-badge") == null) {
             val badge = document.createElement("div") as HTMLElement
             badge.classList.add("go-jobs-badge")
-            badge.textContent = now.toString()
+            val number = document.createElement("span") as HTMLElement
+            number.textContent = now.toString()
+            badge.appendChild(number)
             box.appendChild(badge)
         }
     }, GO_JOBS_BADGE_DELAY_MS)
