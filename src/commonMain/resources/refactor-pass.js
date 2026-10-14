@@ -2,7 +2,7 @@ const $ = id => document.getElementById(id);
 const labels = {open:'Open', patch:'Patch proposed', preserve:'Preserve', adapter:'Adapter needed', question:'Question', stale:'Changed since decision'};
 let current = null, selected = null, requestVersion = 0, busy = false;
 const text = (tag, value, className) => { const node = document.createElement(tag); node.textContent = value; if(className) node.className = className; return node; };
-const attentionCount = value => text('span', value, value > 0 ? 'attention' : '');
+const attentionCount = value => text('span', value, value > 0 ? 'attention' : 'clear-count');
 function error(value='') { $('error').textContent = value; $('error').hidden = !value; }
 let displayedJob = {}, startingAction = null;
 function renderJob(job = {}) {
