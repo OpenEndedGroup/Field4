@@ -1620,11 +1620,30 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
                 content.querySelector("svg") != null -> 260.0
                 else -> 120.0
             }
-            val targetHeight = max(minimumHeight, naturalHeight + 36.0)
+            // Iframes that state a pixel height (`terminal`, `keyframeBrowser`) are the size they asked
+            // for in the live panel. The floor and slack below would stretch them, since a panel's
+            // iframe is `height:100%`, and the figure would show a panel nobody sees.
+            val declaredIframeHeight = declaredIframeHeightOrNull(content)
+            val targetHeight = if (declaredIframeHeight != null) {
+                val style = window.getComputedStyle(content)
+                declaredIframeHeight + parsePixelsOrZero(style.paddingTop) + parsePixelsOrZero(style.paddingBottom)
+            } else max(minimumHeight, naturalHeight + 36.0)
                 .coerceAtMost(maxDisclosureHeight)
             content.style.height = "${targetHeight}px"
         }
 }
+
+/** The tallest declared pixel height, when every element in [content] is an iframe that declares one. */
+private fun declaredIframeHeightOrNull(content: HTMLElement): Double? {
+    val children = content.children.asList().mapNotNull { it as? HTMLElement }
+    if (children.isEmpty() || children.any { it.tagName.uppercase() != "IFRAME" }) return null
+    val heights = children.map { child ->
+        child.style.height.trim().takeIf { it.endsWith("px") }?.removeSuffix("px")?.toDoubleOrNull() ?: return null
+    }
+    return heights.maxOrNull()?.takeIf { it > 0.0 }
+}
+
+private fun parsePixelsOrZero(value: String): Double = value.trim().removeSuffix("px").toDoubleOrNull() ?: 0.0
 
 // A `data-afield-autosize="off"` frame that declares no width of its own has no width to report and
 // none to contribute here. `outputareas2.js` (`fillWidthForDisclosure`) deliberately gives such a

@@ -71,7 +71,7 @@ This box drives a Python session, waiting for its prompt and then for the answer
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/terminal/python_session.png" capture="box" wait="6" padding="16" timeout="180" embed=true name="terminal-python-session" w="560" h="200" alt="A Field box with an open output panel titled 'py' holding a black terminal. Its header reads python3, the directory and 'running'. In the terminal, Python's prompt shows '6 * 7' typed at it, then 42 on the next line, then a fresh prompt."}
 go {
-    val py = terminal("py", command = ["python3", "-q"], height = 160)
+    val py = terminal("py", command = ["python3", "-q"], height = 110)
     py.awaitOutput(">>> ")
     val answer = py.sendAndAwait("6 * 7", Regex("""\d+"""))
     print("the answer is ${answer.value}")
