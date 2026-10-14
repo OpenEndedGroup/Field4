@@ -4046,6 +4046,27 @@ body::-webkit-scrollbar {
     display: flex;
 }
 
+/* A box with `go { }` blocks still running: the launch stripe, inset 3px inside the upper-right
+   quadrant, holding the count (setGoJobsBadge in Main.kt). */
+.box > .go-jobs-badge {
+    position: absolute !important;
+    top: 3px;
+    right: 3px;
+    width: calc(50% - 6px);
+    height: calc(50% - 6px);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgb(150, 255, 208);
+    font-family: var(--field-font);
+    font-weight: 700;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 2;
+    animation: running-stripe-drift 100s linear infinite;
+}
+
 .box > .selection-order-badge {
     position: absolute !important;
 }
@@ -4126,6 +4147,7 @@ body::-webkit-scrollbar {
 .running-launching,
 .running-continued,
 .running-ending,
+.go-jobs-badge,
 .markingHover {
     background-color: rgb(var(--field-black-rgb));
     background-repeat: repeat;
@@ -4133,6 +4155,7 @@ body::-webkit-scrollbar {
 }
 
 .running,
+.go-jobs-badge,
 .markingHover {
     background-position: 0 0;
     background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'17'%20height%3D'17'%20viewBox%3D'0%200%2017%2017'%3E%3Crect%20width%3D'17'%20height%3D'17'%20fill%3D'black'%2F%3E%3Cpath%20d%3D'M7%200H17L0%2017V7ZM17%207V17H7Z'%20fill%3D'rgb(150%2C255%2C208)'%20fill-opacity%3D'.3'%2F%3E%3C%2Fsvg%3E");

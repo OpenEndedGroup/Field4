@@ -5903,6 +5903,11 @@ suspend fun main() {
 
         Handled.yes
     }
+    handlers.put("go-jobs") { message, _ ->
+        val goJobs = Json.decodeFromJsonElement<GoJobs>(message.payload!!)
+        setGoJobsBadge(goJobs.uid, goJobs.count)
+        Handled.yes
+    }
     handlers.put("output") { message, _ ->
         val output = Json.decodeFromJsonElement<Output>(message.payload!!)
         routeMonacoOutput(output)
@@ -7798,3 +7803,38 @@ private fun resizeStartBoxTarget(it: dynamic): HTMLElement? {
 
 
 fun <E> MutableSet<E>.copy() = HashSet<E>(this)
+
+/** A `go { }` that finishes this quickly never shows the badge, so ordinary runs do not flicker. */
+private const val GO_JOBS_BADGE_DELAY_MS = 250
+
+/**
+ * The "semi-launched" badge: a striped inset over the box's upper-right quadrant, holding the number
+ * of its `go { }` blocks still running ([GoJobs]). Stopping the box cancels them.
+ */
+private fun setGoJobsBadge(uid: String, count: Int) {
+    val box = document.body!!.getElementsByClassName("box").asList()
+        .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement ?: return
+    val state = box.asDynamic()
+    state.goJobCount = count
+    val existing = box.querySelector(":scope > .go-jobs-badge") as? HTMLElement
+    if (count <= 0) {
+        existing?.remove()
+        return
+    }
+    if (existing != null) {
+        existing.textContent = count.toString()
+        return
+    }
+    if (state.goJobsBadgePending == true) return
+    state.goJobsBadgePending = true
+    window.setTimeout({
+        state.goJobsBadgePending = false
+        val now = (state.goJobCount as? Int) ?: 0
+        if (now > 0 && box.querySelector(":scope > .go-jobs-badge") == null) {
+            val badge = document.createElement("div") as HTMLElement
+            badge.classList.add("go-jobs-badge")
+            badge.textContent = now.toString()
+            box.appendChild(badge)
+        }
+    }, GO_JOBS_BADGE_DELAY_MS)
+}

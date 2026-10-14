@@ -384,6 +384,12 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             field = BoxJobList(this).also { it.addAll(value) }
         }
     val cachedLaunchReturns: MutableMap<String, CachedLaunchReturn> = ConcurrentHashMap()
+    /**
+     * The `go { }` jobs among [jobs], each with the strand of the run that started it. They are kept
+     * out of the `__jobs__` running state (which draws the box as launched) and drawn as the inset
+     * go badge instead; see [publishGoJobs].
+     */
+    internal val goJobs: MutableMap<Job, String> = ConcurrentHashMap()
     val currentRunningStates: MutableMap<String, RunningState> = ConcurrentHashMap()
     internal val launchEpoch = AtomicInteger(0)
 
@@ -1390,7 +1396,7 @@ private class BoxJobList(private val box: Box) : AbstractMutableList<Job>() {
 }
 
 private fun Box.syncJobRunningState() {
-    val hasActiveJobs = jobs.any { it.isActive && !it.isCancelled }
+    val hasActiveJobs = jobs.any { it.isActive && !it.isCancelled && it !in goJobs }
     val state = currentRunningStates[JOBS_RUNNING_STRAND]
     if (hasActiveJobs && state == null) {
         val generation = (runGeneration[JOBS_RUNNING_STRAND] ?: -1) + 1
@@ -1405,6 +1411,13 @@ private fun Box.syncJobRunningState() {
             send(Message("is-running").payload(IsRunning(id, false, state.watermark, JOBS_RUNNING_STRAND, JOBS_RUNNING_MODE)))
         }
     }
+}
+
+/** Tell the canvas how many `go { }` blocks of this box are still running ([GoJobs]). */
+internal fun Box.publishGoJobs() {
+    if (!isInsideInitialized()) return
+    val live = goJobs.filterKeys { it.isActive }
+    send(Message("go-jobs").payload(GoJobs(id, live.size, live.values.distinct())))
 }
 
 internal fun Box.clearRunningStates() {
