@@ -58,7 +58,8 @@ data class Recipe(
         return if (owner != null) owner in splitPackages else splitPackages.any { prefix(path, it) }
     }
     fun affectedText(text: String, includePaths: Boolean = true) = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*")
-        .findAll(text).any { it.value !in RESOURCE_REFERENCES && (includePaths || text.getOrNull(it.range.last + 1) != '/') && affected(it.value) }
+        .findAll(text).any { it.value !in RESOURCE_REFERENCES &&
+            !(it.value in roots && text.getOrNull(it.range.last + 1) == '-') && (includePaths || text.getOrNull(it.range.last + 1) != '/') && affected(it.value) }
 
     fun moved(path: String): String? {
         if (retained(path) || destinationReference(path)) return null

@@ -133,6 +133,23 @@ class PlanTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(expected, pattern.search(text).group())
 
+    def test_hyphenated_namespace_labels_are_not_packages(self):
+        recipe = dict(copy.deepcopy(RECIPE), packages={}, symbols={'afield.Thing': 'moved.Thing'},
+                      splitPackages=['afield'])
+        pattern = affected_pattern(recipe)
+        for text in ('afield-stacksl-token-comment', 'afield-stacksl-token-*', 'afield-',
+                     'class="afield-panel"', 'data-afield-token'):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+                self.assertEqual(text, rewrite_qualified_text(text, recipe))
+        # Do not hide qualified references next to arithmetic or punctuation.
+        for text, expected in (('afield.Thing-other', 'afield.Thing'),
+                               ('afield.Unknown', 'afield.Unknown'), ('package afield', 'afield')):
+            self.assertEqual(expected, pattern.search(text).group())
+        self.assertEqual('moved.Thing-other', rewrite_qualified_text('afield.Thing-other', recipe))
+        self.assertEqual(['afield.Thing'], [m.group() for m in pattern.finditer(
+            'afield-token followed by afield.Thing')])
+
     def test_javascript_bundle_filenames_are_not_package_references(self):
         recipe = dict(copy.deepcopy(RECIPE), packages={'afield': 'moved'}, symbols={}, splitPackages=[])
         pattern = affected_pattern(recipe)

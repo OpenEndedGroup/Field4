@@ -221,6 +221,9 @@ def affected_pattern(recipe: dict):
         def finditer(self, text):
             for match in candidates.finditer(text):
                 path = match.group()
+                # A bare namespace followed by '-' is a resource/CSS name, not a package.
+                if path in roots and text[match.end():match.end() + 1] == '-':
+                    continue
                 if path in RESOURCE_REFERENCES or destination_reference(path, recipe, destinations):
                     continue
                 if text[match.end():match.end() + 1] == '/':
