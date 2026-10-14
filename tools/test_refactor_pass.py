@@ -59,12 +59,12 @@ class ReviewDiffTest(unittest.TestCase):
         self.assertLess(len(edits[0]['after']), 200)
 
     def test_compact_single_line_metadata_shows_each_replacement_with_context(self):
-        before = ' '.join(f'"box{i}" "' + ('surrounding code ' * 20) + 'import afield.lang.solidsl.*"' for i in range(4))
-        after = before.replace('afield.lang.solidsl', 'afield.lang.solidsl')
+        before = ' '.join(f'"box{i}" "' + ('surrounding code ' * 20) + 'import afield.solidsl.*"' for i in range(4))
+        after = before.replace('afield.solidsl', 'afield.lang.solidsl')
         edits = compact_changes(before, after)
         self.assertEqual(4, len(edits))
         for edit in edits:
-            self.assertIn('afield.lang.solidsl', edit['before'])
+            self.assertIn('afield.solidsl', edit['before'])
             self.assertIn('afield.lang.solidsl', edit['after'])
             self.assertLess(len(edit['before']), 180)
         self.assertIsNone(compact_changes('old\n', 'new\n'))
