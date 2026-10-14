@@ -140,13 +140,26 @@ class RuleTests(unittest.TestCase):
 
 
 class ListLiteralTests(unittest.TestCase):
-    PATH = "dev_docs/agents/demos/d/x_code_.kt"
+    PATH = "public/docs/page.md"
 
     def fixed(self, code: str) -> str:
-        f = Fixture({self.PATH: code})
+        f = Fixture({self.PATH: f"```kotlin\n{code}```\n"})
         try:
             f.run("--fix")
-            return f.read(self.PATH)
+            return f.read(self.PATH).removeprefix("```kotlin\n").removesuffix("```\n")
+        finally:
+            f.close()
+
+    def test_only_hand_written_docs_pages_are_checked_yet(self):
+        fence = "```kotlin\nval xs = listOf(1, 2)\n```\n"
+        files = {"dev_docs/agents/demos/d/x_code_.kt": "val xs = listOf(1, 2)\n",
+                 "public/docs/assets/lesson/x_code_.kt": "val xs = listOf(1, 2)\n",
+                 "public/docs/reference/math.md": fence,
+                 "public/docs/page.md": fence}
+        f = Fixture(files)
+        try:
+            self.assertEqual({p: [x.rule for x in idioms.process(p, f.root, fix=False)] for p in files},
+                             {**{p: [] for p in files}, "public/docs/page.md": ["list-literal"]})
         finally:
             f.close()
 
@@ -160,11 +173,11 @@ class ListLiteralTests(unittest.TestCase):
         self.assertEqual(self.fixed("val p = listOf(a * b, c)\n"), "val p = [a * b, c]\n")
 
     def test_a_call_spanning_lines_is_a_note_not_a_rewrite(self):
-        code = "val xs = listOf(\n    1,\n    2,\n)\n"
+        code = "```kotlin\nval xs = listOf(\n    1,\n    2,\n)\n```\n"
         f = Fixture({self.PATH: code})
         try:
             findings = idioms.process(self.PATH, f.root, fix=False)
-            self.assertEqual([(x.line, x.rule, x.fixable, x.blocking) for x in findings], [(1, "list-literal", False, False)])
+            self.assertEqual([(x.line, x.rule, x.fixable, x.blocking) for x in findings], [(2, "list-literal", False, False)])
             f.run("--fix")
             self.assertEqual(f.read(self.PATH), code)
         finally:
