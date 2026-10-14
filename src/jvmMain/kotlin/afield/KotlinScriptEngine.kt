@@ -727,6 +727,13 @@ internal fun kotlinInfoTypeName(value: Any?): String {
  * Can also be set programmatically before any KotlinScriptEngine is created.
  */
 object KotlinEngineConfig {
+    /**
+     * Re-evaluate, rather than recompile, an exact rerun of a snippet the engine already compiled
+     * ([RerunCompileCache]). On by default; `-Dafield.kotlin.rerunCompileCache=false` turns it off.
+     */
+    @Volatile
+    var rerunCompileCache: Boolean = System.getProperty("afield.kotlin.rerunCompileCache", "true").toBoolean()
+
     enum class Backend { K1, K2 }
 
     var activeBackend: Backend = when (System.getProperty("afield.kotlin.engine", "k2").lowercase()) {
