@@ -4054,6 +4054,7 @@ body::-webkit-scrollbar {
     right: 3px;
     width: calc(25% - 3px);
     height: calc(25% - 3px);
+    border-top-right-radius: 6px;
     box-sizing: border-box;
     display: flex;
     align-items: center;
