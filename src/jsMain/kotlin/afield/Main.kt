@@ -5905,7 +5905,7 @@ suspend fun main() {
     }
     handlers.put("go-jobs") { message, _ ->
         val goJobs = Json.decodeFromJsonElement<GoJobs>(message.payload!!)
-        setGoJobsBadge(goJobs.uid, goJobs.count)
+        setGoJobsBadge(goJobs.uid, goJobs.count, goJobs.strands)
         Handled.yes
     }
     handlers.put("output") { message, _ ->
@@ -7811,10 +7811,22 @@ private const val GO_JOBS_BADGE_DELAY_MS = 250
  * The "semi-launched" badge: a striped inset over the box's upper-right quadrant, holding the number
  * of its `go { }` blocks still running ([GoJobs]). Stopping the box cancels them.
  */
-private fun setGoJobsBadge(uid: String, count: Int) {
+private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
     val box = document.body!!.getElementsByClassName("box").asList()
         .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement ?: return
     val state = box.asDynamic()
+    // The strands that still have go jobs keep their launch's margin marker on (bootstrapMonaco.js
+    // setBoxRunning); one whose last job just ended is turned off here.
+    val previous = (state.goJobStrandList as? Set<String>) ?: emptySet()
+    val now = strands.toSet()
+    state.goJobStrands = js("new Set()")
+    now.forEach { state.goJobStrands.add(it) }
+    val setMarker = window.asDynamic().setStatusForExecutionMarker
+    if (setMarker != null) {
+        now.forEach { setMarker(it, true, "go") }
+        (previous - now).forEach { setMarker(it, false, "go") }
+    }
+    state.goJobStrandList = now
     state.goJobCount = count
     val existing = box.querySelector(":scope > .go-jobs-badge") as? HTMLElement
     if (count <= 0) {

@@ -4047,13 +4047,13 @@ body::-webkit-scrollbar {
 }
 
 /* A box with `go { }` blocks still running: the launch stripe, inset 3px inside the upper-right
-   quadrant, holding the count (setGoJobsBadge in Main.kt). */
+   quadrant at half its size, holding the count (setGoJobsBadge in Main.kt). */
 .box > .go-jobs-badge {
     position: absolute !important;
     top: 3px;
     right: 3px;
-    width: calc(50% - 6px);
-    height: calc(50% - 6px);
+    width: calc(25% - 3px);
+    height: calc(25% - 3px);
     box-sizing: border-box;
     display: flex;
     align-items: center;
