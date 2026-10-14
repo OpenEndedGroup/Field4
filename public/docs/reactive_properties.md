@@ -129,6 +129,27 @@ blocks everything for as long as it blocks.
 `propUpDown` is both: a missing value runs its supplier, and a changed one reruns its readers.
 `rootProp` has no reactive variant yet.
 
+## Seeing who reads what
+
+The palette's **Toggle Dependency Layer** draws, over the canvas, one arrow from each box that
+supplied a value to each box that read it, labelled with the names that flowed. Here Tempo supplies
+`bpm` and `key`; Beat and Harmony, beneath it, read one each; Accent, beneath Beat, reads both:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="720x480" screenshot="assets/reactive_properties/layer.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_layer.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="reactive-props-layer" alt="Four boxes on the canvas: Tempo at the top, Beat and Harmony beneath it, Accent beneath Beat. The dependency layer draws blue arrows from Tempo to Beat labelled bpm and from Tempo to Harmony labelled key, and an amber one, the most recent read, from Tempo past Beat to Accent labelled bpm, key. The grey connection lines of the box graph run beneath them."}
+ui.eval("window.toggleDependencyLayer(); localStorage.setItem('afield.dependencyLayer', '0'); return true")
+for (i in 0 until 40) {
+    ui.pause(250)
+    if ((ui.eval("return window.dependencyLayerState().drawnPaths").toString().toDoubleOrNull() ?: 0.0) >= 3.0) break
+}
+ui.pause(500)
+```
+
+Accent's arrow starts at Tempo, not at Beat: an inherited value comes from the box that holds it,
+however many levels up. An arrow is bright (amber, as Accent's is here) for a couple of seconds after a read, solid for a read
+seen since Field started, and faint and dashed for one only remembered from an earlier session. A
+read that found nothing puts a red `? name` tag on the reader. **Clear Dependency Record** forgets
+what the document has recorded.
+
 ## Seeing what ran
 
 `ReactiveRuns.recentEvents()` lists every start, end, pull and cascade, in order. Print it from any
