@@ -19,7 +19,7 @@ import tempfile
 from .containers import ContainerError, extract, issue, patch
 
 VERSION = 1
-EXCLUDED = {'.git', '.gradle', '.kotlin', '.venv', 'node_modules', 'build', 'backups', 'backup', '.backups', 'thumbnails', '.field-backdoor'}
+EXCLUDED = {'.git', '.gradle', '.kotlin', '.venv', 'node_modules', 'build', 'backups', 'backup', '.backups', 'thumbnails', '.field-backdoor', '.agent-scratch'}
 HISTORY = {'transcript.edn', 'history_metrics.edn'}
 TEXT = {'.kt', '.kts', '.java', '.md', '.yaml', '.yml', '.edn', '.json', '.py', '.js', '.sh', '.html', '.xml', '.toml', '.properties'}
 PROPERTIES = {'code', 'preamble', 'sharedTypes'}
