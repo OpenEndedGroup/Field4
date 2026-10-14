@@ -60,5 +60,6 @@ construction, GPU upload, or a live Field UI. It is a first vertical slice throu
 L0–L3, with a small handwritten ABI; generating headers/bindings can follow if the slice proves
 useful.
 
-The smoke fixture is copied from SolidCraft's
-`apps/solidcraft-cli/tests/corpus/m0-box-fillet-hole.solidcraft` at the pinned revision.
+The example design in `src/jvmMain/resources/afield/solidcraft/` is copied from SolidCraft's
+`apps/solidcraft-cli/tests/corpus/m0-box-fillet-hole.solidcraft` at the pinned revision. It is
+bundled with Field so the `solidcraft_intro` starting point needs no path into the checkout.

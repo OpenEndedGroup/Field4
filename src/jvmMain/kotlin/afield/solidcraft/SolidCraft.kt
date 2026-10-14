@@ -153,6 +153,14 @@ class SolidCraftDesign private constructor(private var handle: MemorySegment) : 
     }
 
     companion object {
+        /** The small box, fillet and hole design shipped with Field's SolidCraft starting point. */
+        fun openBundledExample(): SolidCraftDesign {
+            val path = "/afield/solidcraft/m0-box-fillet-hole.solidcraft"
+            val stream = SolidCraftDesign::class.java.getResourceAsStream(path)
+                ?: throw IllegalStateException("Missing bundled SolidCraft example: $path")
+            return stream.use { open(it.readBytes()) }
+        }
+
         fun open(bytes: ByteArray): SolidCraftDesign {
             require(bytes.isNotEmpty()) { "empty SolidCraft design" }
             Arena.ofConfined().use { arena ->

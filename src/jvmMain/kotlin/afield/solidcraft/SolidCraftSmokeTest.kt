@@ -1,14 +1,12 @@
 package afield.solidcraft
 
-import java.nio.file.Path
 import kotlin.math.abs
 
 /** Run with ./gradlew smokeSolidCraft after opting into the native build. */
 object SolidCraftSmokeTest {
     @JvmStatic fun main(args: Array<String>) {
         check(SolidCraftLibrary.isAvailable) { SolidCraftLibrary.describe() }
-        val fixture = Path.of("native/field-solidcraft/fixtures/m0-box-fillet-hole.solidcraft")
-        SolidCraftDesign.open(fixture).use { design ->
+        SolidCraftDesign.openBundledExample().use { design ->
             val before = design.summary()
             val bodies = before.getJSONArray("bodies")
             check(bodies.length() == 1) { "expected one evaluated body: $before" }

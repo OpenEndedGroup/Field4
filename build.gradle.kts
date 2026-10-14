@@ -4148,7 +4148,7 @@ val buildSolidCraftNative = tasks.register<Exec>("buildSolidCraftNative") {
     group = "build"
     description = "Builds the optional SolidCraft Rust/FFM bridge from pinned source."
     workingDir = projectDir
-    commandLine("python3", "tools/build_solidcraft_native.py")
+    commandLine(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3", "tools/build_solidcraft_native.py")
 }
 
 tasks.register<JavaExec>("smokeSolidCraft") {

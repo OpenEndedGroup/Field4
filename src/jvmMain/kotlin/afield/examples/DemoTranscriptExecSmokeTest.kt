@@ -439,6 +439,9 @@ object DemoTranscriptExecSmokeTest {
         // — and the first one draws the same shape through Field's own marchingCubes instead, with the
         // difference named, rather than failing.
         "manifold_solids",
+        // The optional Rust bridge opens a bundled design and renders both parameter values through
+        // Field's CPU mesh preview. With no native artifact the box explains the build command.
+        "solidcraft_intro",
         // Three pure-CPU boxes that paint and draw FLines through afield.paint (FFM into the optional
         // Rust wrapper over claude-paint's `paint` crate) and display a PNG, so no Window and no
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
