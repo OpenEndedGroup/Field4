@@ -5742,7 +5742,14 @@
     "afield.timingInfo": "afield.app.diagnostics.timingInfo",
     "afield.windowedAppendAndPrint": "afield.app.diagnostics.windowedAppendAndPrint",
     "afield.FieldTerminal": "afield.ui.output.FieldTerminal",
-    "afield.terminal": "afield.ui.output.terminal"
+    "afield.terminal": "afield.ui.output.terminal",
+    "afield.RerunCompileCache": "afield.runtime.kotlin.RerunCompileCache",
+    "afield.ReplRerunCompileCacheSmokeTest": "afield.runtime.kotlin.ReplRerunCompileCacheSmokeTest",
+    "afield.GoJobs": "afield.app.protocol.GoJobs",
+    "afield.stdlib.delay": "afield.runtime.execution.delay",
+    "afield.stdlib.propNameAndDefault": "afield.document.properties.propNameAndDefault",
+    "afield.slideTemplateValues": "afield.ui.slides.slideTemplateValues",
+    "afield.publishGoJobs": "afield.document.graph.publishGoJobs"
   },
   "splitPackages": [
     "afield",
