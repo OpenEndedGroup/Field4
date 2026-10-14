@@ -95,13 +95,15 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports', 'proseReplacements'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports', 'proseReplacements', 'parseErrorPolicy'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
         raise RefactorError(f'unknown recipe fields: {sorted(set(recipe) - allowed)}')
     if not isinstance(recipe.get('rewriteComments', False), bool):
         raise RefactorError('rewriteComments must be a boolean')
+    if recipe.get('parseErrorPolicy', 'hold') not in ('hold', 'retain'):
+        raise RefactorError('parseErrorPolicy must be hold or retain')
     for key in ('markdownProse', 'workspaceMarkdownProse'):
         if not isinstance(recipe.get(key, []), list) or any(not isinstance(g, str) or not g.endswith('.md') for g in recipe.get(key, [])):
             raise RefactorError(f'{key} must list Markdown path patterns')
@@ -506,13 +508,16 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                             else:
                                 destinations[rel] = destination
                 for value in response['findings']:
-                    # A refactor is not a syntax sweep of every historical snippet. Keep evidence
-                    # about untouched, unrelated fragments without making them migration blockers.
-                    unrelated_syntax = (value['kind'] == 'parse-error' and
-                                        response['code'] == unit.code and not pattern.search(unit.code))
+                    # Only pre-existing errors in unchanged units can be retained. Failed
+                    # rewrites and container/round-trip errors must still hold the group.
+                    unchanged_parse_error = value['kind'] == 'parse-error' and response['code'] == unit.code
+                    retain_syntax = unchanged_parse_error and (
+                        recipe.get('parseErrorPolicy') == 'retain' or not pattern.search(unit.code))
+                    reason = ('Existing parse error retained by the migration recipe; source unit left unchanged'
+                              if recipe.get('parseErrorPolicy') == 'retain'
+                              else 'Unchanged unit has no names affected by this migration')
                     finding(rel, dict(value, unit=unit.identity, **(
-                        {'retained': True, 'retentionReason': 'Unchanged unit has no names affected by this migration'}
-                        if unrelated_syntax else {})))
+                        {'retained': True, 'retentionReason': reason} if retain_syntax else {})))
                 records.append({'path': rel, 'unit': unit.identity, 'imports': response.get('imports', []),
                                 'package': response.get('package', ''),
                                 'evidence': response.get('evidence', 'syntax')})
@@ -692,6 +697,9 @@ def write_report(plan: dict, directory: Path):
             lines.append(f'- {kind}: {count}')
         lines.extend(['', f'Migration-relevant review: {len(grouped)} groups, {len(blockers)} findings; '
                       f'{len(pending) - len(blockers)} other inventory findings. See `review.md` and `review-groups.json`.'])
+        retained_errors = sum(f['kind'] == 'parse-error' and f.get('retained', False) for f in root['findings'])
+        if retained_errors:
+            lines.append(f'- Retained parse errors (non-blocking, source not repaired): {retained_errors}')
         lines.extend(['', 'Exact locations and retained/skipped categories are in `findings.json`.', ''])
         review_lines.extend([f'## Root {root["id"]}: {root["path"]}', '',
                              f'{len(grouped)} groups. Generated outputs are listed with their regeneration instructions.', ''])

@@ -124,6 +124,13 @@ that every script receives Field's default imports.
 ### Comments, Markdown and contextual review
 
 `"rewriteComments": true` enables exact qualified-name replacement in Kotlin comments and KDoc.
+Set `parseErrorPolicy: "retain"` when existing incomplete or invalid Kotlin units should
+remain diagnostic evidence rather than block this migration. The default is `"hold"`.
+Only `parse-error` findings from unchanged units are retained; the parser does not rewrite
+those units. Independent edits in the same document can proceed. Rewrite parse failures,
+container errors, sidecar drift and all other findings still block. Retained errors remain
+in `findings.json` and are counted in `report.md`; this policy does not waive delivery checks.
+
 Generated bundle filenames `afield.mjs` and `afield.mjs.map` are preserved in text and do not produce package-reference findings.
 Field URLs (`afield:/...` and `afield://...`) are likewise opaque identifiers: the scheme,
 path and query are preserved and excluded from package-reference findings in logs, prose,
