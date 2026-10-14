@@ -109,6 +109,7 @@ nav:
     # are removed. Everything else in Seeing Values is something you put in one of those panels.
     - Box Output: box_output.md
     - Visualizers & Controls: visualizers.md
+    - A Terminal in a Box: terminal.md
     - Klecks Painting in a Box: klecks.md
     - Patchy from Kotlin: patchy.md
     - Field's 3D Output: three_output.md
