@@ -69,35 +69,36 @@ function renderChange(node, change) {
     } else node.append(renderDiff(document.createElement('pre'), change.diff || `${change.path} → ${change.destination}`));
     return node;
 }
-function renderExcerpt(node, source, replacements) {
-    const names = Object.keys(replacements).sort((a,b) => b.length-a.length);
+function renderExcerpt(node, source, references = []) {
     const pre = text('pre', '');
-    if(!names.length) { pre.textContent=source; node.append(pre); return; }
-    const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`(?<![\\w$.])(?:${names.map(escape).join('|')})(?![\\w$])`, 'g');
     const counts = new Map();
     let cursor = 0;
-    for(const match of source.matchAll(pattern)) {
-        pre.append(document.createTextNode(source.slice(cursor,match.index)));
-        const mark = text('mark',match[0],'old-reference');
-        mark.title=replacements[match[0]] ? `Recipe proposes ${replacements[match[0]]}` : 'Split package: choose the appropriate destination';
+    for(const reference of references) {
+        const {start, end, name, destination} = reference;
+        if(start < cursor || end <= start || source.slice(start, end) !== name) continue;
+        pre.append(document.createTextNode(source.slice(cursor, start)));
+        const mark = text('mark', name, 'old-reference');
+        mark.title = destination ? `Recipe proposes ${destination}` : 'Unmapped reference: review its destination';
         pre.append(mark);
-        counts.set(match[0],(counts.get(match[0])||0)+1);
-        cursor=match.index+match[0].length;
+        const entry = counts.get(name) || {destination, count: 0};
+        entry.count++;
+        counts.set(name, entry);
+        cursor = end;
     }
     pre.append(document.createTextNode(source.slice(cursor)));
     if(counts.size) {
         const legend=text('div','','reference-legend');
         legend.append(text('strong','Highlighted references · migration mapping, not an applied edit:'));
-        for(const [name,count] of counts) {
+        for(const [name, {destination, count}] of counts) {
             const row=text('div','');
-            row.append(text('code',name,'old-name'),document.createTextNode(' → '),text('code',replacements[name]||'choose a destination'),text('small',` · ${count} shown`));
+            row.append(text('code',name,'old-name'),document.createTextNode(' → '),text('code',destination||'choose a destination'),text('small',` · ${count} shown`));
             legend.append(row);
         }
         node.append(legend);
     }
     node.append(pre);
 }
+
 async function guarded(fn) { try {error(); await fn();} catch(e) {error(e.message);} }
 function options(node, values) {
     const value = node.value; node.replaceChildren();
@@ -167,7 +168,7 @@ async function showItem(id) {
     item.snippets.forEach((s,index)=>{
         const node=document.createElement('details');node.className='finding';node.open=index<3;
         node.append(text('summary',`${s.kind} · ${s.path}`),text('p',s.detail),text('small',s.location));
-        renderExcerpt(node,s.excerpt ?? 'The planned source is no longer available. Replan to capture current source.',item.referenceMap);
+        renderExcerpt(node,s.excerpt ?? 'The planned source is no longer available. Replan to capture current source.',s.references);
         $('detail').append(node);
     });
     const diff=document.createElement('details');diff.className='finding';diff.append(text('summary',`Proposed changes (${item.changes.length} files)`));

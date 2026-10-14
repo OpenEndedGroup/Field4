@@ -11,7 +11,7 @@ from unittest.mock import patch as mock_patch
 
 from tools.refactoring.containers import ContainerError, EdnSpans, edn, extract, markdown, patch, qualified_name_properties, yaml_units
 from tools.refactoring.core import (KotlinEngine, RefactorError, apply_plan, canonical, digest,
-    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern)
+    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern, rewrite_qualified_text)
 
 RECIPE = {'schema': 1, 'id': 'test-move', 'packages': {'old.pkg': 'new.pkg'},
           'symbols': {}, 'splitPackages': [], 'generated': []}
@@ -132,6 +132,21 @@ class PlanTests(unittest.TestCase):
                                ('old.pkg.Type/path then old.Other', 'old.Other')):
             with self.subTest(text=text):
                 self.assertEqual(expected, pattern.search(text).group())
+
+    def test_source_roots_and_paths_are_not_package_references(self):
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'])
+        pattern = affected_pattern(recipe)
+        paths = ['src/jvmMain/kotlin/old', 'src/commonMain/kotlin/old',
+                 'src/jsMain/kotlin/old', 'src/jvmTest/kotlin/old',
+                 'src/jvmMain/kotlin/old/pkg/Thing.kt', '/tmp/old.pkg',
+                 r'src\jvmMain\kotlin\old', r'C:\src\old.pkg']
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertIsNone(pattern.search(f'`{path}`'))
+                self.assertEqual(path, rewrite_qualified_text(path, recipe))
+        text = 'See src/jvmMain/kotlin/old; run old.pkg.Thing then old.Unknown'
+        self.assertEqual(['old.pkg.Thing', 'old.Unknown'], [m.group() for m in pattern.finditer(text)])
+        self.assertEqual('old', pattern.search('package old').group())
 
     def test_workspace_markdown_scope_is_recursive_and_does_not_expand_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
