@@ -49,7 +49,7 @@ operations:
                       columns = 2,
                       cellWidth = 380,
                       // Look from the cut's side of the XY plane so the blind hole stays visible.
-                      view = MeshView(yawDegrees = 145.0, pitchDegrees = 32.0, wireframe = false),
+                      view = MeshView(yawDegrees = 165.0, pitchDegrees = 14.0, wireframe = false),
                       renderer = MeshRenderer.CPU,
                   )
               }
