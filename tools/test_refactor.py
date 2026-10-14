@@ -227,13 +227,18 @@ class PlanTests(unittest.TestCase):
         source = self.write('a.kt', SOURCE)
         self.write('backups/old.kt', SOURCE)
         self.write('thumbnails/test.png', 'irrelevant')
-        self.make()
+        scratch = self.write('.agent-scratch/session/metadata.edn', metadata())
+        plan = self.make()
+        self.assertTrue(any(f['kind'] == 'excluded-directory' and f['detail'] == '.agent-scratch'
+                            and f['retained'] for f in plan['roots'][0]['findings']))
         destination = self.base / 'migrated'
         apply_plan(self.plan, copy_to=destination)
         self.assertEqual(SOURCE, source.read_text())
         self.assertIn('new.pkg', (destination / 'a.kt').read_text())
         self.assertFalse((destination / 'backups').exists())
         self.assertFalse((destination / 'thumbnails').exists())
+        self.assertFalse((destination / '.agent-scratch').exists())
+        self.assertEqual(metadata(), scratch.read_text())
         self.assertEqual(str(destination), verify(self.plan)['root'])
 
     def test_stale_unedited_input_rejects_before_any_write(self):
