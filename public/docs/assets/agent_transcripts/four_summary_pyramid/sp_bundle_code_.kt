@@ -1,4 +1,4 @@
-// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+// Import the fabricated scene helpers explicitly; they are not part of a box's automatic imports.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
 import afield.math.linalg.Vector3f

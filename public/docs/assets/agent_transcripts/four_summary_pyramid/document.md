@@ -36,14 +36,14 @@ start(renderer::run)
 
 From `code`
 
-`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+Import the fabricated scene helpers explicitly; they are not part of a box's automatic imports.
 
 ```edn [field-box id="sp_bundle" role="properties"]
-{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 28 "characters" 1041 "sha256" "e10a94bd4ec76a27cd42dd1cff394855129e3df2f126f9f24cd4525b77a7cb4a"}]}
+{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 28 "characters" 1040 "sha256" "9e318a89c3a247e802a39045e1d54008b6205ecc4e4259b082997174bce493c0"}]}
 ```
 
 ```kotlin [field-property box="sp_bundle" name="code" path="sp_bundle_code_.kt"]
-// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+// Import the fabricated scene helpers explicitly; they are not part of a box's automatic imports.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
 import afield.math.linalg.Vector3f
