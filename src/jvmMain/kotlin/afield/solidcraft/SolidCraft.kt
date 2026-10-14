@@ -108,7 +108,8 @@ class SolidCraftDesign private constructor(private var handle: MemorySegment) : 
     @Synchronized fun summary(): JSONObject = JSONObject(String(Native.bytes(Native.summary.invokeWithArguments(current()) as MemorySegment), Charsets.UTF_8))
 
     /** An invalid expression or failed feature leaves the previous design and mesh intact. */
-    @Synchronized fun setParameter(name: String, expression: String) {
+    @Synchronized
+    fun setParameter(name: String, expression: String) {
         Arena.ofConfined().use { arena ->
             val ok = Native.setParameter.invokeWithArguments(current(), arena.allocateFrom(name), arena.allocateFrom(expression)) as Int
             if (ok != 1) Native.failure()
