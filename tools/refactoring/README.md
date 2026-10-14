@@ -454,3 +454,16 @@ declarations and changed signatures need refreshed assignments.
 ### Screenshot for public documentation
 
 Marc selected [this refactor review screenshot](../../public/docs/assets/refactoring/refactor-pass-review.png) on 2026-10-14 for the future public documentation. It is the original, unmodified capture of the live review UI (Plan 23), including the session copies, replan controls, review batches, and red/green attention indicators. Use it when documenting this workflow; the counts describe that session, not a completed or verified migration.
+
+### Recorded prose rules and exported preambles
+
+`proseReplacements` records exact qualified-name replacements in selected Markdown prose
+and Kotlin comments (with `rewriteComments` enabled), for example
+`"proseReplacements": {"afield.four": "Field 4"}`. It does not rename executable
+imports, qualified descendants, wildcard package references, or string values. Rules must
+be idempotent. Kotlin comments inside typed EDN/YAML/document units use the same rule.
+
+Field's exported `text [field-property box="…" name="preamble"]` fences are recognized
+as Kotlin box preambles, with the recipe's box imports and split-package rules. Ordinary
+text fences and other non-Kotlin properties remain untouched. The exported fence and
+its attributes are preserved.

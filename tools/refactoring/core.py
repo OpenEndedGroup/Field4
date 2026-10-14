@@ -93,7 +93,7 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports', 'proseReplacements'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -104,6 +104,14 @@ def load_recipe(path: Path) -> dict:
         if not isinstance(recipe.get(key, []), list) or any(not isinstance(g, str) or not g.endswith('.md') for g in recipe.get(key, [])):
             raise RefactorError(f'{key} must list Markdown path patterns')
     name = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\Z')
+    prose_rules = recipe.get('proseReplacements', {})
+    if not isinstance(prose_rules, dict) or any(not isinstance(k, str) or not name.fullmatch(k) or
+            not isinstance(v, str) or not v.strip() or len(v) > 200 or '\n' in v or '\r' in v
+            for k, v in prose_rules.items()):
+        raise RefactorError('proseReplacements must map qualified names to short single-line text')
+    if any(re.search(r'(?<![\w.])' + re.escape(k) + r'(?![\w.])', v)
+           for k in prose_rules for v in prose_rules.values()):
+        raise RefactorError('proseReplacements must be idempotent')
     for key in ('packages', 'symbols'):
         values = recipe.setdefault(key, {})
         if not isinstance(values, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not name.fullmatch(k) or not name.fullmatch(v) or k == v for k, v in values.items()):
@@ -248,6 +256,8 @@ def rewrite_qualified_text(text: str, recipe: dict) -> str:
     destinations = destination_packages(recipe)
     def replace(match):
         name = match.group()
+        if name in recipe.get('proseReplacements', {}) and text[match.end():match.end()+2] != '.*' and text[match.end():match.end()+1] != '/':
+            return recipe['proseReplacements'][name]
         if name in RESOURCE_REFERENCES or name in destinations or destination_reference(name, recipe, destinations):
             return name
         if text[match.end():match.end() + 1] == '/':
@@ -423,7 +433,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
     def rewrite_unit(unit, rel):
         if not unit.identity.startswith('prose:'):
             host = box_recipe if 'boxImports' in recipe and unit.script and (
-                Path(rel).suffix == '.edn' or rel in box_sidecars) else recipe
+                unit.box_context or Path(rel).suffix == '.edn' or rel in box_sidecars) else recipe
             return engine.rewrite(unit.code, unit.script, host)
         after = rewrite_qualified_text(unit.code, recipe)
         pending = [issue('prose-reference', 'Unmapped qualified name in prose requires contextual review')] if pattern.search(after) else []
