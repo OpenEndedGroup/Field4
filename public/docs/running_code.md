@@ -369,6 +369,13 @@ Two things have to be true for a child to use a parent's value:
 
 2. **The value is fetched at read time** by the `Inheritance` delegate's walk up `parents`. The preamble only carries the *accessor*; the *value* stays on whichever box set it.
 
+The dependency layer (palette: **Toggle Dependency Layer**) draws those reads on the canvas. Below,
+Tempo holds `bpm` and `key`, and Accent, two levels down, reads both straight from it:
+
+![Four boxes: Tempo at the top, Beat and Harmony beneath it, Accent beneath Beat. Arrows run from Tempo to Beat labelled bpm, to Harmony labelled key, and past Beat to Accent labelled with both names.](assets/reactive_properties/layer.png)
+
+[Reactive properties](reactive_properties.md#seeing-who-reads-what) has the layer in more detail.
+
 ### Which box is whose parent decides what is visible
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
@@ -376,6 +383,8 @@ Both the preamble gather and the value walk follow `parents`. Connecting a child
 This is the commonest graphics mistake: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
+
+A child sees a changed value the next time it runs. To have Field rerun the readers when the value changes, or run the supplier when a read finds nothing, declare it with `propDown`, `propUp` or `propUpDown`: [Properties that re-run boxes](reactive_properties.md).
 
 The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments, so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
 

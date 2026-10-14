@@ -68,15 +68,27 @@ fun Box.macro_prop(contents: List<String>): Insert? {
     if (contents.size != 2)
         throw MacroRegistry.MacroExpansionProblem("prop should be called like prop<Int>(foo)")
 
-    val name = contents[1].trim().removeSurrounding("(", ")")
+    val (name, default) = propNameAndDefault(contents[1])
     return Insert(
         here = "$name", standaloneHere = "Unit",
         preamble = propTypeImports(contents[0]), preambleAfterImports = """
-        var Box.${name} by Inheritance${contents[0]}() /**/
+        var Box.${name} by Inheritance${contents[0]}(${default ?: ""}) /**/
         val Once.${name} by Onceing${contents[0]}() /**/
         val Why.${name} by Whying() /**/
     """.trimIndent()
     )
+}
+
+/**
+ * Splits a `prop` macro's parenthesised argument into the property name and an optional default:
+ * `(runs)` is `runs` with none, `(runs, 0)` is `runs` read as `0` while nothing up the graph has a value.
+ * The default is copied into the preamble as written, so it may be any expression, commas included.
+ */
+internal fun propNameAndDefault(argument: String): Pair<String, String?> {
+    val inner = argument.trim().removeSurrounding("(", ")")
+    val comma = inner.indexOf(',')
+    if (comma < 0) return inner.trim() to null
+    return inner.substring(0, comma).trim() to inner.substring(comma + 1).trim().ifEmpty { null }
 }
 
 /**
@@ -89,11 +101,11 @@ fun Box.macro_root_prop(contents: List<String>): Insert? {
     if (contents.size != 2)
         throw MacroRegistry.MacroExpansionProblem("rootProp should be called like rootProp<Int>(foo)")
 
-    val name = contents[1].trim().removeSurrounding("(", ")")
+    val (name, default) = propNameAndDefault(contents[1])
     return Insert(
         here = "root.$name", standaloneHere = "Unit",
         preamble = propTypeImports(contents[0]), preambleAfterImports = """
-        var Box.${name} by Inheritance${contents[0]}() /**/
+        var Box.${name} by Inheritance${contents[0]}(${default ?: ""}) /**/
         val Once.${name} by Onceing${contents[0]}() /**/
         val Why.${name} by Whying() /**/
     """.trimIndent(), target = this.root
