@@ -415,6 +415,7 @@ expect:
 :::static
 import com.illposed.osc.OSCBundle
 import com.illposed.osc.OSCMessage
+import com.illposed.osc.OSCPacket
 import com.illposed.osc.argument.OSCTimeTag64
 import com.illposed.osc.transport.OSCPortOutBuilder
 import java.net.InetSocketAddress
@@ -436,8 +437,8 @@ fun timetagIn(ms: Long): OSCTimeTag64 {
 }
 
 val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57306)).build()
-out.send(OSCBundle([OSCMessage("/when", ["stamped 500 ms ahead"])], timetagIn(500)))
-out.send(OSCBundle([OSCMessage("/when", ["stamped immediate"])], OSCTimeTag64.IMMEDIATE))
+out.send(OSCBundle(listOf<OSCPacket>(OSCMessage("/when", ["stamped 500 ms ahead"])), timetagIn(500)))
+out.send(OSCBundle(listOf<OSCPacket>(OSCMessage("/when", ["stamped immediate"])), OSCTimeTag64.IMMEDIATE))
 Thread.sleep(900)
 out.close()
 
