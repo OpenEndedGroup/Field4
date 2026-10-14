@@ -87,7 +87,7 @@ reply while the rest of Field keeps running. From ordinary box code, put these c
 
 ```diffstatic {data-lang=kotlin}
 go {
-    kotlinx.coroutines.delay(100)
+    delay(100)
     println("done")
 }
 ```
