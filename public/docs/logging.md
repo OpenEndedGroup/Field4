@@ -73,8 +73,8 @@ LogDispatcher.withSink(probe) {
     lprintln("error,mypage,disk", "three tags, and no hierarchy among them")
 }
 
-display("main", Table(listOf("channel", "tags", "message"), title = "what one sink saw")
-    .rows(seen.map { listOf(it.channel, it.channel.split(",").size, it.message) })
+display("main", Table(["channel", "tags", "message"], title = "what one sink saw")
+    .rows(seen.map { [it.channel, it.channel.split(",").size, it.message] })
     .role("channel", CellRole.ACCENT)
     .expect("tags", because = "a channel is a flat tag list, so every line has at least one") { (it as Int) >= 1 })
 ```
@@ -122,14 +122,14 @@ expect:
 import afield.ai.core.ConsoleMute
 
 // isMuted compares the WHOLE channel string against the mute set. Nothing is split.
-val spellings = listOf("info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "boxes")
+val spellings = ["info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "boxes"]
 
 display("main", Table(
-    listOf("channel string", "isMuted"),
+    ["channel string", "isMuted"],
     title = "ConsoleMute compares the whole channel string",
     note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", ")
 )
-    .rows(spellings.map { listOf(it, ConsoleMute.isMuted(it)) })
+    .rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
     .role("channel string", CellRole.ACCENT)
     .roleBy("isMuted") { if (it == true) CellRole.WARN else CellRole.OK }
     .expect("isMuted", because = "only the exact spelling in the set is muted") { it is Boolean })
@@ -174,14 +174,14 @@ val pushed = mutableListOf<String>()
 LogStream.addSubscription(
     "logdoc-substring",
     LogStream.Filter(
-        channels = listOf("kotlin"),
+        channels = ["kotlin"],
         sinceEpochMs = System.currentTimeMillis(),
         limit = 50,
         tail = true
     )
 ) { json -> pushed += json }
 
-val emitted = listOf("info,kotlin", "info,kotlinjs", "info,graphics")
+val emitted = ["info,kotlin", "info,kotlinjs", "info,graphics"]
 try {
     emitted.forEach { lprintln(it, "«logdoc» a line on $it") }
 } finally {
@@ -193,12 +193,12 @@ val matched = pushed.filter { "«logdoc»" in it }
     .toSet()
 
 display("main", Table(
-    listOf("channel emitted", "pushed to the subscriber"),
+    ["channel emitted", "pushed to the subscriber"],
     title = "a LogStream filter of [\"kotlin\"] against three channels",
     note = "${matched.size} of ${emitted.size} matched: kotlin is a tag in the first and only a " +
         "substring in the second. The pinned console splits on commas, so it would take only the first."
 )
-    .rows(emitted.map { listOf(it, it in matched) })
+    .rows(emitted.map { [it, it in matched] })
     .role("channel emitted", CellRole.ACCENT)
     .roleBy("pushed to the subscriber") { if (it == true) CellRole.OK else CellRole.DIM })
 ```
@@ -239,18 +239,18 @@ import afield.logger.lprintln
 val arrived = mutableSetOf<String>()
 val probe = LogSink { e -> if ("«logdoc»" in e.message) arrived += e.channel }
 
-val channels = listOf("info,boxes", "info,mypage") // the first is muted by default
+val channels = ["info,boxes", "info,mypage"] // the first is muted by default
 LogDispatcher.withSink(probe) {
     channels.forEach { lprintln(it, "«logdoc» a line on $it") }
 }
 
 display("main", Table(
-    listOf("channel", "muted on the console", "reached my sink"),
+    ["channel", "muted on the console", "reached my sink"],
     title = "muting keeps a line off the console, not out of the layer",
     note = "${arrived.size} of ${channels.size} arrived. Mute is for a channel too chatty " +
         "for a terminal, not for one you want gone."
 )
-    .rows(channels.map { listOf(it, ConsoleMute.isMuted(it), it in arrived) })
+    .rows(channels.map { [it, ConsoleMute.isMuted(it), it in arrived] })
     .role("channel", CellRole.ACCENT)
     .roleBy("muted on the console") { if (it == true) CellRole.WARN else CellRole.DIM }
     .roleBy("reached my sink") { if (it == true) CellRole.OK else CellRole.BAD }
@@ -305,19 +305,19 @@ val mine = all.filter { "«logdoc»" in it.message || it.blockId in mineIds }
 val deepest = mine.filter { it.boundary == null }.maxByOrNull { it.indent.length }
 
 display("main", Table(
-    listOf("depth", "boundary", "block", "message"),
+    ["depth", "boundary", "block", "message"],
     title = "two nested lblocks, as the dispatcher saw them",
     note = "the deepest line's raw indent: '" +
         (deepest?.indent?.replace("\t", "\\t") ?: "") +
         "' — block ids and tabs, not spaces"
 )
     .rows(mine.map { e ->
-        listOf(
+        [
             e.indent.split("\t").count { it.isNotEmpty() },
             e.boundary?.name ?: "—",
             e.blockId?.take(8) ?: "—",
             e.message.substringBefore(" - '")
-        )
+        ]
     })
     .role("message", CellRole.ACCENT)
     .expect("depth", because = "two nested blocks cannot nest deeper than two") { (it as Int) <= 2 })
@@ -363,13 +363,13 @@ expect:
 import afield.logger.StatsHeatmap
 import afield.logger.formatMillis
 
-val durations = listOf(120_000L, 3_400_000L, 47_000_000L, 250_000_000L, 1_630_000_000L, 12_400_000_000L)
+val durations = [120_000L, 3_400_000L, 47_000_000L, 250_000_000L, 1_630_000_000L, 12_400_000_000L]
 val ladder = Table(
-    listOf("nanoseconds", "formatted"),
+    ["nanoseconds", "formatted"],
     title = "formatMillis keeps digits where they matter",
     note = "more digits below a millisecond, plain integers past 100ms, decimal seconds past a second"
 )
-    .rows(durations.map { listOf(it, formatMillis(it)) })
+    .rows(durations.map { [it, formatMillis(it)] })
     .role("formatted", CellRole.ACCENT)
     .expect("formatted", because = "the unit is part of the returned string") {
         (it as String).endsWith("ms") || it.endsWith("s")
@@ -377,13 +377,13 @@ val ladder = Table(
 
 val line = "fps=61.2 upload=3.4MB net:102% dropped=0"
 val torn = Table(
-    listOf("fragment", "treated as"),
+    ["fragment", "treated as"],
     title = "how a stats line is torn into colourable tokens",
     note = "history is kept per channel and per key, so two unrelated metrics sharing one " +
         "channel do not colour each other"
 )
     .rows(StatsHeatmap.fragments("logdoc-demo", line).map {
-        listOf("'${it.text}'", if (it.style == null) "plain text" else "number")
+        ["'${it.text}'", if (it.style == null) "plain text" else "number"]
     })
     .roleBy("treated as") { if (it == "number") CellRole.ACCENT else CellRole.DIM }
 

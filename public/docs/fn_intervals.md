@@ -26,7 +26,7 @@ val range = f.certifiedRange(0.0, 6.0)
 // A yes/no question with the same guarantee.
 val claim = f.certifiedNeverExceeds(0.42, 0.0, 6.0)
 
-display("answers", Table(listOf("question", "answer"), title = "saw + a 0.5 ms bump on [0, 6]")
+display("answers", Table(["question", "answer"], title = "saw + a 0.5 ms bump on [0, 6]")
     .row("largest of 1200 samples", sampled)
     .row("f.enclose(0, 6)", "[${once.lo}, ${once.hi}]")
     .row("certifiedRange: max reached", "${range.max!!.value} at x = ${range.max!!.witness}")
@@ -76,7 +76,7 @@ The triangle needs one more step. Its shape is `if (t < 0.5) 2t else 2 - 2t`. Wh
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/oscillators.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-oscillators"}
 :::static
 val cases = with(Functions) {
-    listOf(
+    [
         "saw(0.5)" to saw(0.5),
         "triangle(0.5)" to triangle(0.5),
         "square(0.5, duty = 0.3)" to square(0.5, duty = 0.3),
@@ -86,9 +86,9 @@ val cases = with(Functions) {
         "saw, eased BOUNCE_OUT" to saw(1.0, amplitude = 0.5, offset = 0.5).ease(Functions.Easing.BOUNCE_OUT),
         "valueNoise(1, 3)" to valueNoise(1L, 3.0),
         "fn { x -> x * x }" to fn(0.0..100.0, "lambda") { x -> x * x },
-    )
+    ]
 }
-val table = Table(listOf("function", "one enclosure on [-17.3, 83.9]", "refused because"),
+val table = Table(["function", "one enclosure on [-17.3, 83.9]", "refused because"],
     title = "One-shot bounds across about two hundred periods")
 for ((name, f) in cases) {
     val e = f.enclose(-17.3, 83.9)

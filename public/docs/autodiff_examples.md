@@ -269,11 +269,11 @@ fun pose(line: FLine, r: Double, g: Double, b: Double) = line.apply {
 val cross = marker(target, 26.0)
 showPlaneGrid(
     "start pose\nall four joint angles zero" to
-        listOf(pose(chain.toFLine(DoubleArray(chain.linkCount)), 0.45, 0.55, 0.72), cross),
+        [pose(chain.toFLine(DoubleArray(chain.linkCount)), 0.45, 0.55, 0.72), cross],
     "solved\nreach error " + solved.reachError + " units, " + solved.run.iterations + " L-BFGS iterations" to
-        listOf(pose(chain.toFLine(solved.angles), 0.42, 0.86, 0.58), cross),
+        [pose(chain.toFLine(solved.angles), 0.42, 0.86, 0.58), cross],
     "smoothness = 2.0\nstraighter, and it costs " + smoothed.reachError + " units of reach" to
-        listOf(pose(chain.toFLine(smoothed.angles), 0.98, 0.86, 0.32), cross),
+        [pose(chain.toFLine(smoothed.angles), 0.98, 0.86, 0.32), cross],
     columns = 3, cellWidth = 280, window = Rect(40.0, 60.0, 400.0, 320.0)
 )
 :::endfold

@@ -123,7 +123,7 @@ fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
 }
 :::endfold
 // Four splits of one product. 60 x 16 is what the starting point ships.
-val splits = listOf(60f to 16, 120f to 8, 240f to 4, 960f to 1)
+val splits = [60f to 16, 120f to 8, 240f to 4, 960f to 1]
 val cloths = splits.map { (k, _) -> sheet(k) }
 
 repeat(200) {
@@ -187,7 +187,7 @@ fun apart(a: Cloth, b: Cloth): Double {
     return worst
 }
 :::endfold
-val splits = listOf(60f to 16, 120f to 8, 240f to 4, 960f to 1)
+val splits = [60f to 16, 120f to 8, 240f to 4, 960f to 1]
 val cloths = splits.map { (k, _) -> sheet(k) }
 val traces = splits.dropLast(1).map { mutableListOf<Number>() }
 
@@ -298,7 +298,7 @@ fun runLadder(stiffness: Float, iterations: Int, curvature: Float = 0f): Triple<
 
 // Each rung twice: springs alone, and again with the curvature force the starting place ships,
 // because that is the difference between this ladder and the one in dev_docs.
-val ladder = listOf(0.8f to 8, 8f to 8, 20f to 16, 60f to 16).map { (k, i) ->
+val ladder = [0.8f to 8, 8f to 8, 20f to 16, 60f to 16].map { (k, i) ->
     Triple(k to i, runLadder(k, i), runLadder(k, i, curvature = 100f))
 }
 :::fold draw the ladder on one shared window, so the rungs are comparable
@@ -384,7 +384,7 @@ fun strain(cloth: Cloth): Double {
 :::endfold
 // The rung that settles, and the next one up, traced frame by frame. Once a trace stops being
 // finite it stops: there is nothing after that to plot.
-val watched = listOf(60f to 16, 100f to 16, 150f to 16)
+val watched = [60f to 16, 100f to 16, 150f to 16]
 val traces = watched.map { (k, iterations) ->
     val cloth = sheet(k)
     val trace = mutableListOf<Number>()
@@ -491,7 +491,7 @@ fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
 :::endfold
 // Off, the library default, and two settings picked to be on the same scale as stiffness x
 // iterations = 960. Everything else is identical.
-val strengths = listOf(0f, 0.05f, 20f, 100f)
+val strengths = [0f, 0.05f, 20f, 100f]
 val cloths = strengths.map { sheet(it) }
 
 repeat(300) { cloths.forEach { it.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16) } }
@@ -625,7 +625,7 @@ repeat(200) {
 
 val divergence = apart(good, bad)
 :::fold four panels: the wireframe of each, then the solver's own view of each
-val window = fit(listOf(good, bad))
+val window = fit([good, bad])
 val pale = vec(0.74, 0.82, 0.94, 0.8)
 fun wire(c: Cloth) = c.lines().onEach { it.color = pale; it.thickness = 1.2 }
 

@@ -86,7 +86,7 @@ The highlighted colors are showing you the 'unusually' low and high values at a 
 We can also 'print' to the canvas using `display`. For example:
 
 ```diffstatic {data-lang=kotlin}
-var l = listOf(1,2,3,4, 8, 7.2)
+var l = [1,2,3,4, 8, 7.2]
 var m = mapOf("a" to "b", "c" to l)
 display("m is equal to ", m.h)
 ```
@@ -100,7 +100,7 @@ Subsequent calls to `display` overwrites the previous one, giving you a way of '
 While the `.h` and `.h2` visualizers try hard to make things pretty, all they are really doing is making some complex HTML in response to what they are trying to visualize. You can make your own as well:
 
 ```diffstatic {data-lang=kotlin}
-var l = listOf(1,2,3,4, 8, 7.2)
+var l = [1,2,3,4, 8, 7.2]
 var m = mapOf("a" to "b", "c" to l)
 
 display("m is equal to ", m.h)
@@ -117,7 +117,7 @@ That's also how a lot of this documentation gets made: the docs build runs the e
 There are a few more elaborate visualizers for more tangled structures. The "column" visualizer is loosely modelled after Smalltalk's browser:
 
 ```diffstatic {data-lang=kotlin}
-var l = listOf(1,2,3,4, 8, 7.2)
+var l = [1,2,3,4, 8, 7.2]
 var m2 = mapOf("foo" to "bar", "gux" to l)
 var m = mapOf("a" to "b", "c" to l, "m" to m2)
 
@@ -163,7 +163,7 @@ val stem = fline {
     color = vec(0.45, 0.95, 0.62, 1.0)
 }
 
-lines(listOf(petal, stem), w = 420.0, h = 420.0, fitToSize = true, editable = true)
+lines([petal, stem], w = 420.0, h = 420.0, fitToSize = true, editable = true)
 ```
 
 It's important to note that you're not just editing a *copy* of the FLine. This editor mutates the actual `FLine` object that you passed in — so this is a way of interacting with code, not just witnessing its effects.
@@ -405,7 +405,7 @@ fun boxAt(name: String): List<Double> = ui.eval("""
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { listOf(it[0].toDouble(), it[1].toDouble()) }
+""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
 fun boxUid(name: String): String = ui.eval("""
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     return b ? b.uid : null
@@ -572,7 +572,7 @@ To help you find that snippet of code.
 One of the reason that Field even has a 2D infinite canvas for code is so that the space of the boxes can become meaningful. Traditionally, in 'time-goes-from-left-to-right' apps (Premier, AfterEffects, Davinci, Motion, etc) somewhere there's an idea of directly editing a function over time with the mouse. Field has a really _very_ fully featured keyframe editor available for boxes to use:
 
 ```diffstatic {data-lang=kotlin}
-keyframes(channel="k", name="keyframe", defaults=listOf(vec(0.2, 0.5), vec(0.5, 2.0)))
+keyframes(channel="k", name="keyframe", defaults=[vec(0.2, 0.5), vec(0.5, 2.0)])
 ```
 
 Gets you started. With some mouse clicks you can get to here:
@@ -584,8 +584,8 @@ Scroll with `scroll` gestures, zoom with `ctrl-scroll`, `double click` to add a 
 These boxes are _input_ and _output_, so this code here, which converts a keyframe set into a Field `Fn` (see [Functions](functions_examples.md)) is:
 
 ```diffstatic {data-lang=kotlin}
-val k = keyframes(channel = "k", name = "bob", listOf(0.0, 1.0))
-val k2 = keyframes(channel = "k", name = "bob2", listOf(0.0, 1.0))
+val k = keyframes(channel = "k", name = "bob", [0.0, 1.0])
+val k2 = keyframes(channel = "k", name = "bob2", [0.0, 1.0])
 
 k.onChange = {
     with(Functions) {
@@ -605,7 +605,7 @@ Gets you a smoothed curve that's still editable, by editing the underlying keyfr
 Once you have a keyframe, you can do a few things with it:
 
 ```diffstatic {data-lang=kotlin}
-val k = keyframes(channel = "k", name = "bob", listOf(0.0, 1.0))
+val k = keyframes(channel = "k", name = "bob", [0.0, 1.0])
 
 k.setTime(0.5) // move the orange playhead
 val v : Double = k.evaluateValueAt(0.5)  
@@ -773,7 +773,7 @@ fun boxAt(name: String): List<Double> = ui.eval("""
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { listOf(it[0].toDouble(), it[1].toDouble()) }
+""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
 fun boxUid(name: String): String = ui.eval("""
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     return b ? b.uid : null
@@ -851,7 +851,7 @@ fun boxAt(name: String): List<Double> = ui.eval("""
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { listOf(it[0].toDouble(), it[1].toDouble()) }
+""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
 fun boxUid(name: String): String = ui.eval("""
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     return b ? b.uid : null

@@ -261,7 +261,7 @@ Felzenszwalb–Huttenlocher two-pass algorithm, not a chamfer approximation).
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/morphology.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // Three disjoint discs of known radius, then noise on top of them.
-val discs = listOf(Triple(55.0, 60.0, 28.0), Triple(150.0, 55.0, 20.0), Triple(110.0, 135.0, 14.0))
+val discs = [Triple(55.0, 60.0, 28.0), Triple(150.0, 55.0, 20.0), Triple(110.0, 135.0, 14.0)]
 val clean = Img.generate(220, 180) { x, y ->
     if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
 }

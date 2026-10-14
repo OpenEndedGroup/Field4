@@ -19,18 +19,18 @@ fabrication pattern.
 ```diffstatic {data-lang=kotlin}
 import afield.four.physics.pressure.*
 
-val points = listOf(
+val points = [
     P3(1.0, 0.0, 0.0), P3(-1.0, 0.0, 0.0),
     P3(0.0, 1.0, 0.0), P3(0.0, -1.0, 0.0),
     P3(0.0, 0.0, 1.0), P3(0.0, 0.0, -1.0)
-)
+]
 // Explicit illustrative material; not a product specification.
 val film = Film(young = 1e6, poisson = .3, thickness = .1, density = 100.0)
-val triangles = listOf(0, 1).flatMap { a ->
-    listOf(2, 3).flatMap { b ->
-        listOf(4, 5).map { c ->
+val triangles = [0, 1].flatMap { a ->
+    [2, 3].flatMap { b ->
+        [4, 5].map { c ->
             val ids = if ((points[b]-points[a]).cross(points[c]-points[a]).dot(points[a]) > 0)
-                listOf(a,b,c) else listOf(a,c,b)
+                [a,b,c] else [a,c,b]
             val e = points[ids[1]]-points[ids[0]]
             val q = points[ids[2]]-points[ids[0]]
             PanelTriangle(ids[0], ids[1], ids[2], "skin",

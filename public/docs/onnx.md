@@ -40,7 +40,7 @@ depth.infer(rgbaBytes, photo.width, photo.height)
 depth.depthFp16                       // ready to upload as VK_FORMAT_R16_SFLOAT
 
 // What is this a picture of? — no training, no labels, just prompts.
-val prompts = ClipText.encodeAll(listOf("an empty room", "a person at a desk"))
+val prompts = ClipText.encodeAll(["an empty room", "a person at a desk"])
 val best = ClipImage().encode(rgbaBytes, photo.width, photo.height).best(prompts)!!   // the better-matching label, and its share
 :::fold show both answers
 val depthMap = Img(depth.width, depth.height, 1, FloatArray(depth.width * depth.height) { depth.depthRaw.get(it) })
@@ -266,7 +266,7 @@ val car = imgFromFile("public/docs/assets/fabricate-toy-car-donmccurdy-reference
 
 // Encode the prompts ONCE, into a val. That is the whole discipline: the text tower is then simply
 // not in the per-frame path, and there is nothing cleverer to do about it than this.
-val prompts = listOf("an empty living room", "a shelf of books", "a car", "red cloth", "a bowl of soup")
+val prompts = ["an empty living room", "a shelf of books", "a car", "red cloth", "a bowl of soup"]
 val text: Map<String, ClipVector> = ClipText.encodeAll(prompts)
 
 val encoder = ClipImage()

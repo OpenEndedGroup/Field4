@@ -481,9 +481,9 @@ val withHitch = CPUSpan.snapshot().first { it.label == label }
 repeat(500) { CPUSpan.time(label) { Thread.sleep(0, 200_000) } }
 val after = CPUSpan.snapshot().first { it.label == label }
 
-val rows = listOf("just after the hitch (600 spans in)" to withHitch, "500 spans later" to after)
+val rows = ["just after the hitch (600 spans in)" to withHitch, "500 spans later" to after]
 display("main", Table(
-    listOf("when", "n", "p50 ms", "p99 ms", "max ms"),
+    ["when", "n", "p50 ms", "p99 ms", "max ms"],
     title = "one deliberate hitch, seen through a 500-sample window",
     note = "across those 500 spans p99 moved by " +
         "%.2f".format(after.p99Ms - withHitch.p99Ms) + "ms while max fell by " +
@@ -492,8 +492,8 @@ display("main", Table(
         (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
         ". A single stutter is visible in max, for eight seconds, and nowhere else."
 )
-    .rows(rows.map { (when_, s) -> listOf(when_, s.n,
-        "%.2f".format(s.p50Ms), "%.2f".format(s.p99Ms), "%.2f".format(s.maxMs)) })
+    .rows(rows.map { (when_, s) -> [when_, s.n,
+        "%.2f".format(s.p50Ms), "%.2f".format(s.p99Ms), "%.2f".format(s.maxMs)] })
     .role("when", CellRole.ACCENT)
     .roleBy("max ms") { if ((it as String).toDouble() > 10) CellRole.WARN else CellRole.OK }
     .expect("n", because = "the window is 500, so 600 and 1100 spans both report 500") { it == 500 })

@@ -665,22 +665,22 @@ fun trace(pumps: Int, build: (() -> Unit) -> Frames): Pair<List<Int>, Int> {
 }
 
 val pumps = 8
-val builders = listOf(
+val builders = [
     "frames { while (frame()) … }" to trace(pumps) { body -> frames { while (frame()) body() } },
     "eachFrame { } — and so animate { }" to trace(pumps) { body -> eachFrame { body() } },
     "loop { }" to trace(pumps) { body -> loop { body() } },
     "forever { … ; true }" to trace(pumps) { body -> forever { body(); true } },
-)
+]
 
 // The claim this figure makes is `expect`, not the footnote: a frameNumber that broke it would
 // colour itself and the footnote would count it, rather than waiting for a reader to check the
 // arithmetic by eye.
 val figure = showTable(
     Table(
-        listOf("after pump #") + (1..pumps).map { "$it" } + "frameNumber",
+        ["after pump #"] + (1..pumps).map { "$it" } + "frameNumber",
         note = "cells are cumulative body calls",
     )
-        .rows(builders.map { (label, r) -> listOf(label) + r.first + r.second })
+        .rows(builders.map { (label, r) -> [label] + r.first + r.second })
         .accent("frameNumber")
         .expect("frameNumber", because = "one frame per pump") { it == pumps - 1 },
     channel = "main",
@@ -813,7 +813,7 @@ fun probe(
     return Result(how, calls - atRequest, cleaned, note)
 }
 
-val results = listOf(
+val results = [
     probe("shouldend flips — what re-running does", "the generation fence is read at the top of frame()",
         { c -> eachFrame { c() } }, { f, _ -> f.shouldend = { true } }),
     probe("the Job is cancelled directly", "the pending yield() throws immediately",
@@ -826,13 +826,13 @@ val results = listOf(
         { c -> eachFrame { c(); throw IllegalStateException("boom") } }, { _, _ -> }),
     probe("the body returns normally", "there is no cancellation to catch",
         { c -> frames { repeat(2) { c(); frame() } } }, { _, _ -> }),
-)
+]
 
 // `roleBy` rather than a hex literal: OK/BAD are the same `--field-*` tokens `markdown()`'s
 // `{ok:…}` spans use, so this column agrees with every other "ran / did not run" in the docs.
 showTable(
-    Table(listOf("how the Frames stopped", "further body calls", ".end { } ran", "why"))
-        .rows(results.map { listOf(it.how, it.extraBodyCalls, it.endBlockRan, it.note) })
+    Table(["how the Frames stopped", "further body calls", ".end { } ran", "why"])
+        .rows(results.map { [it.how, it.extraBodyCalls, it.endBlockRan, it.note] })
         .accent("further body calls")
         .color("why", TABLE_MUTED)
         // WARN, not BAD: two of these rows are correct completion behaviour, not errors — the

@@ -32,12 +32,12 @@ import afield.morpho.*
 // Each panel gets its OWN window: these are four different circuits at four different sizes, and a
 // shared frame would shrink the shifter to a speck to fit the multiplier. Where a shared frame IS
 // required -- the two adders below, the three projections further down -- it is used and said so.
-val designs = listOf(
+val designs = [
     Triple("ripple_adder", intArrayOf(16, 16, 1), "carry chain"),
     Triple("brent_kung_adder", intArrayOf(16, 16, 1), "prefix tree"),
     Triple("right_shifter", intArrayOf(32, 5, 1), "mux cascade"),
     Triple("wallace_multiplier", intArrayOf(8, 8), "compression tree")
-)
+]
 
 val panels = designs.map { (design, sig, kind) ->
     val c = morphoCircuit(design, *sig)
@@ -231,9 +231,9 @@ import afield.morpho.*
 // shape of the gradient, not its absolute value, which the depth numbers in the titles carry.
 val ripple = morphoCircuit("ripple_adder", 32, 32, 1)
 val bk = morphoCircuit("brent_kung_adder", 32, 32, 1)
-listOf(ripple, bk).forEach { it.growFully(relaxSteps = 260) }
+[ripple, bk].forEach { it.growFully(relaxSteps = 260) }
 
-listOf("ripple_adder" to ripple, "brent_kung_adder" to bk).forEach { (name, c) ->
+["ripple_adder" to ripple, "brent_kung_adder" to bk].forEach { (name, c) ->
     println("%-18s %3d gates  depth %2d  %d nets".format(
         name, c.netlist.gateCount, c.depth.toInt(), c.netlist.nNets))
 }

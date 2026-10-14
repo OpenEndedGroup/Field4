@@ -113,7 +113,7 @@ To sample several lights, add this before the frame loop:
 import afield.four.fabricated.rtxdiSettings
 
 val settings = study.bundle.rtxdiSettings()
-settings.commitLights(listOf(IdentifiedAreaLight(42, study.lighting.emitter)))
+settings.commitLights([IdentifiedAreaLight(42, study.lighting.emitter)])
 study.lighting.enableRtxdi(RtxdiProgram.load(), settings).getOrThrow()
 study.lighting.mode = DirectLighting.Mode.RTXDI
 study.lighting.samples = 16

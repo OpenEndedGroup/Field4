@@ -54,7 +54,7 @@ data class Camera(
     val layers: List<String>
 )
 
-val cam = Camera(Vector3f(0f, 1.5f, -4f), 55.0, true, listOf("dots", "lines", "labels"))
+val cam = Camera(Vector3f(0f, 1.5f, -4f), 55.0, true, ["dots", "lines", "labels"])
 cam.h
 ```
 
@@ -92,7 +92,7 @@ its class internals:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-listOf(vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)).h
+[vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)].h
 ```
 
 ![vec2, vec3 and vec4 rendered as compact tokens](assets/value_visualizers/vectors.png){ width="324" }
@@ -362,12 +362,12 @@ val gray = scene.luma()
 
 // Four stages of one pipeline, four different value types, one `.h` each. showRow keeps
 // them in a single output channel instead of four tall ones.
-val panels = listOf(
+val panels = [
     scene.h,                                                // direct mode, 3 channels
     gray.sobel().dx.h,                                      // signed -> coolwarm diverging
     gray.gaussianPyramid(4).h,                              // rungs at true relative scale
     gray.harrisCorners(minDistance = 6, maxCount = 20).h    // scatter, strength-coded
-)
+]
 showRow("panels", panels)
 
 println("imaging visualizers ready")
@@ -551,7 +551,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-pianoroll.mp4" wait="2.0" capture="editor" outputs="inline" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-pianoroll"}
 :::static
 val arp = noteProcess {
-    val chord = listOf(48, 55, 60, 64)
+    val chord = [48, 55, 60, 64]
     var step = 0
     while (true) {
         note(
@@ -616,7 +616,7 @@ val tiny = linkedMapOf(
     "tempo" to 122,
     "mode" to "mixolydian",
     "active" to true,
-    "notes" to listOf("C", "E", "G", "Bb")
+    "notes" to ["C", "E", "G", "Bb"]
 )
 
 val big = (0 until 18).associate { row ->
@@ -743,18 +743,18 @@ val scene = linkedMapOf(
         "zoom" to 1.5,
         "active" to true
     ),
-    "layers" to listOf(
+    "layers" to [
         linkedMapOf(
             "name" to "dots",
             "visible" to true,
-            "points" to listOf(2, 4, 8, 16)
+            "points" to [2, 4, 8, 16]
         ),
         linkedMapOf(
             "name" to "lines",
             "visible" to false,
             "style" to linkedMapOf("width" to 2, "color" to "#f2aa4c")
         )
-    ),
+    ],
     "palette" to linkedMapOf(
         "background" to "#101820",
         "accent" to "#f2aa4c"
@@ -1115,7 +1115,7 @@ controlGroup("sequencer") {
         band = it
         print(it.h)
     }
-    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+    menu("wave", ["sine", "saw", "square", "noise"], initialIndex = 1) { _, name ->
         wave = name
     }
 }
@@ -1377,7 +1377,7 @@ display("source", representation.audioVisualizerHtml(
 
 // Analysis-local 0 s corresponds to source 18 s.
 display("analysis", analysisDashboardHtml(
-    listOf(beats, mono, poly),
+    [beats, mono, poly],
     syncGroup = group,
     timeOffsetSeconds = 18.0,
 ))
@@ -1431,7 +1431,7 @@ displayAudioSamples(FloatArray(2 * rate) { ping(it / rate.toDouble()).toFloat() 
     channel = "audio", label = "the ping, as audio", options = AudioVisualizerOptions(width = 760, syncGroup = sync))
 
 // 3. displaySignal: the same ping evaluated per visible window on the server.
-displaySignal(SignalViewer(listOf(SignalChannel("ping", ping, -1.0, 1.0)), 0.0, 2.0, sampleStep = 1.0 / rate),
+displaySignal(SignalViewer([SignalChannel("ping", ping, -1.0, 1.0)], 0.0, 2.0, sampleStep = 1.0 / rate),
     "signal", SignalViewerOptions(width = 760, label = "the ping, evaluated per window", syncGroup = sync, viewKey = "one-viewer:signal"))
 ```
 
@@ -1460,7 +1460,7 @@ all three jobs on a recording and draws the board.
 val client = FieldAudioClient()
 client.assetByFilename("*Nancy*").thenCompose { asset ->
     val region = AssetRegion(asset.id, startSeconds = 0.0, durationSeconds = 30.0)
-    client.submit(multiScaleBeatAnalysis(region, scalesSeconds = listOf(2.0, 4.0, 8.0, 16.0)))
+    client.submit(multiScaleBeatAnalysis(region, scalesSeconds = [2.0, 4.0, 8.0, 16.0]))
 }.thenCompose(client::awaitAnalysis).thenAccept { result ->
     display("analysis", analysisVisualizationHtml(result))
 }
@@ -1553,11 +1553,11 @@ client.analysisPreview(result.id).thenCombineAsync(
         result, durationSeconds = 10.0, poolMillis = 200.0, hopMillis = 40.0,
     )
 ) { preview, frames ->
-    listOf(
+    [
         SpectralEmbeddingDistance.MEL_WASSERSTEIN,
         SpectralEmbeddingDistance.LOG_MEL_COSINE,
         SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-    ).map { distance ->
+    ].map { distance ->
         preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
     }
 }.thenAccept { previews ->

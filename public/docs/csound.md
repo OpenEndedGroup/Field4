@@ -187,7 +187,7 @@ pluck.setChannel("cutoff", 900)                 // chnget "cutoff" sees it on th
 pluck.setStringChannel("voice", "from Kotlin")  // an S channel
 println(pluck.channel("level"))                 // what chnset last wrote
 
-listOf(57, 60, 64, 69).forEachIndexed { k, note ->
+[57, 60, 64, 69].forEachIndexed { k, note ->
     pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12")   // p-fields from Kotlin values
 }
 
