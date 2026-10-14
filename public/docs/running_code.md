@@ -99,6 +99,34 @@ context, so Field's usual box-scoped values and output work there. Stopping the 
 running `go` block at its next suspension. Use `go { }` when a box needs to start a suspend
 operation; an `aiTool { action { ... } }` can call suspend functions directly.
 
+While a `go` block is still running, the box shows it: a striped square in its top-right corner
+holds the number of `go` blocks that have not finished, and the box is not drawn as launched. If
+you started the block with Alt+1, its margin marker stays on until the block ends too. Stopping the
+box (Alt+Down) cancels them and clears both. Inside `go { }`, `delay(ms)` waits without holding up
+the rest of Field:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x420" clip="40,40,940,330" screenshot="assets/running_code/go-jobs-badge.png" transcript="../../dev_docs/agents/transcripts/docs_capture/go_jobs_badge.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-go-jobs-badge" alt="A box named counting with a small striped square holding the number 1 in its top-right corner. Beside it, Field's editor shows the box's go block with the cursor inside it after Alt+1: a striped bar in the margin spans the go block, and the count printed beside print(ticks) reads 3."}
+ui.openEditor("go_jobs_badge")
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    Object.assign(c.style, {width:"560px", height:"280px", top:"45px", right:"60px", left:"auto", bottom:"auto", transform:"none"})
+    window.globalEditor.layout()
+    window.globalEditor.setPosition({lineNumber: 4, column: 9})
+    window.globalEditor.focus()
+    return true
+""".trimIndent())
+ui.press("Alt+1")
+ui.pause(1800)
+ui.eval("""
+    const box = [...document.querySelectorAll(".box")].find(b => b.uid === "go_jobs_badge")
+    const badge = box && box.querySelector(":scope > .go-jobs-badge")
+    if (!badge || badge.textContent.trim() !== "1") throw new Error("go badge missing or wrong: " + (badge && badge.textContent))
+    if (box.classList.contains("running")) throw new Error("the box is drawn as launched")
+    if (!document.querySelector(".monaco-editor .margin [class*='execution-marker-']")) throw new Error("no margin marker")
+    return true
+""".trimIndent())
+```
+
 ---
 
 ## The pipeline, in five steps
