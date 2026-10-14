@@ -156,7 +156,7 @@ markdown("dips", "lowest note, matched: %.2f  \nlowest note, by list index: %.2f
 ## Drawing your own
 
 Open drawn_morph from the welcome screen's starting points and run `shapes`, then `paired`,
-`morph` and `play`. To morph your own shapes, press `alt-d` and draw two closed strokes with the
+`morph` and `play`. To morph your own shapes, press `alt/option-d` and draw two closed strokes with the
 pen (`p`), then replace `morphShapes()` in `shapes` with a line that names the two strokes you drew
 last:
 

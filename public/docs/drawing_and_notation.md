@@ -1,6 +1,6 @@
 # Drawing and Notation
 
-Press `Alt+D` and the canvas becomes a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-made style, laid over your boxes. Press it again and you are back with the boxes. What you drew stays where you put it, pans and zooms with the canvas, and is saved with the document.
+Press `alt/option-D` and the canvas becomes a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-made style, laid over your boxes. Press it again and you are back with the boxes. What you drew stays where you put it, pans and zooms with the canvas, and is saved with the document.
 
 On its own that is a whiteboard. What makes it Field's is that your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 
@@ -8,7 +8,7 @@ On its own that is a whiteboard. What makes it Field's is that your code can rea
 
 ## Drawing
 
-`Alt+D` switches the mouse and keyboard to the drawing; `Alt+D` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
+`alt/option-D` switches the mouse and keyboard to the drawing; `alt/option-D` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
 
 When the drawing is off it is still visible, but it lets clicks through to the boxes. Two things tie it to them:
 

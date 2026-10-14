@@ -239,7 +239,7 @@ renderer.renderList.preTargets["editable learned material"] = learned
 renderer.renderList.modules["editable learned material"] = material
 ```
 
-This is that box's actual **fragment** property. Edit `.65`, change the channel order, or change the stripes while it runs, then use **Reload Shader (Alt-R)**:
+This is that box's actual **fragment** property. Edit `.65`, change the channel order, or change the stripes while it runs, then use **Reload Shader (alt/option-R)**:
 
 ```diffstatic {data-lang=glsl}
 #version 460

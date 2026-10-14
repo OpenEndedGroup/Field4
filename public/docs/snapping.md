@@ -79,7 +79,7 @@ ui.pause(800)
 ## Turn snapping on
 
 Snapping is active while Caps Lock is on, or after you run **Toggle Box Snapping** from the
-command palette (`F1` over the canvas), which stays on until you run it again.
+command palette (`ctrl/command-shift-P` over the canvas), which stays on until you run it again.
 
 1. Press `Caps Lock`.
 2. Drag a box near another box.

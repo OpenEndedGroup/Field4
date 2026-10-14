@@ -36,7 +36,7 @@ not cut off.
 - **Release with Shift held** to put the transcript in the chat input without sending it, so you
   can edit it first.
 - **A quick tap** (under a quarter of a second) is ignored, and so is any take where you press
-  another key while holding the push-to-talk key. Option-letter and Ctrl-C keep working.
+  another key while holding the push-to-talk key. alt/option-letter and Ctrl-C keep working.
 - Each chat also has a **microphone button** beside its input. Hold it to talk into that chat
   specifically.
 

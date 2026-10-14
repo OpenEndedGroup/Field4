@@ -391,7 +391,7 @@ notation.clear()
 
 Open the [drawn_paint](agent_transcripts.md#drawn_paint) starting point and run its boxes in order: `strokes`,
 `paint`, `crossings`, `drying`, `meadow` and `pencil`. Each reads the strokes in one region of the
-drawing. To paint your own, press `alt-d`, choose the pen (`p`) and draw in a region, then run the
+drawing. To paint your own, press `alt/option-d`, choose the pen (`p`) and draw in a region, then run the
 box that reads it. A tablet pen records pressure; a mouse does not, and for a mouse stroke
 `pressuresAlong` is empty, so the brush paints at its base pressure. To make a canvas that fits
 whatever you drew:

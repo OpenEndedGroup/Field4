@@ -17,7 +17,7 @@ In any document, select a box (press **n** to make one) and choose **Make a
 Function Study** from the command palette. An empty box is given the starter's
 source, below, which is checked in as the first revision and drawn in the box's
 signal viewer; a box whose Kotlin already returns a `StudyComposition` keeps it.
-Select the box and press **command/ctrl-4** to open AI4 chat. Configure an AI
+Select the box and press **ctrl/command-4** to open AI4 chat. Configure an AI
 provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md).
 
@@ -108,7 +108,7 @@ entirely. Zoom in before you judge a detail.
 to open **function_conversation_example**. It contains the finished source, all
 nine saved revisions, and the recorded conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
-here (AI4)** and press **command/ctrl-4**.
+here (AI4)** and press **ctrl/command-4**.
 The seven recorded turns are already in that box's chat, with their original
 prompts, replies, tool traces and plot images. Scroll back to watch the function
 grow, or send a new message to continue from the finished example. Simply opening

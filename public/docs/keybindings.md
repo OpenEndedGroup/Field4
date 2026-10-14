@@ -56,7 +56,7 @@ bindings:
 
 Two things are *not* in the file:
 
-- **Gestures.** Alt-click to launch a box, Alt-drag to "strum" several, Opt+drag, and the
+- **Gestures.** alt/option-click to launch a box, alt/option-drag to "strum" several, and the
   multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
   `Shift Shift` to open anything from the canvas, `Cmd Cmd`-and-hold for
   [stepping between boxes](moving_around_the_canvas.md#stepping-between-boxes). These are not single chords, so there is
@@ -72,7 +72,7 @@ your file is one you wrote.
 
 You already have one; Field writes it on first run. Two ways to get to it:
 
-- Run **Open Keybindings** from the command palette (`Cmd+Shift+P`, or `F1`). Field opens
+- Run **Open Keybindings** from the command palette (`ctrl/command-shift-P`). Field opens
   the file as a box on the canvas, so you can edit your shortcuts in Field, with Field.
 - Or open `~/.afield/keybindings.yaml` in any editor you like.
 

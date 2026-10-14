@@ -33,7 +33,7 @@ Time is whatever unit your loop counts in; the editor labels it in seconds. Valu
 
 ## Editing the curve
 
-Double-click empty graph to add a key. Drag a key to move it in time and value at once. Right-click a key for its menu: its exact time and value, its type, copy and paste, lock and delete. Double-click a key to type its value. A bezier key has handles that bend the curve on either side, and Cmd-Z (Ctrl-Z) undoes any of it:
+Double-click empty graph to add a key. Drag a key to move it in time and value at once. Right-click a key for its menu: its exact time and value, its type, copy and paste, lock and delete. Double-click a key to type its value. A bezier key has handles that bend the curve on either side, and ctrl/command-Z undoes any of it:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x470" clip="0,0,700,470" hide-toasts=true video="assets/keyframe_editor/editing.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml" fps="12" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-editing" alt="The brightness editor while the playhead plays and the meter follows. A double-click adds a key near time 3, which is then dragged down and to the right. A right-click on the peak at time 1 opens a menu of key types, and choosing Bezier (Continuous) rounds the peak and shows its handles; dragging the right-hand handle up reshapes the curve on both sides. A drag across empty graph from time 2 to 3.7 selects the two keys in that band, and dragging one of them moves both"}
 // Wait for the editor and its keys, then find things in its iframe, in page coordinates, as "x,y".
@@ -169,14 +169,14 @@ ui.pause(450)
 | add a key | double-click empty graph, or right-click it for the curve's menu |
 | move keys | drag a key; every selected key moves with it |
 | select | click a key; shift-click to select a range; drag across empty graph to select every key in that time band |
-| select a box of keys | Alt-drag across empty graph |
-| select a moment in every linked lane | Cmd-drag (Ctrl-drag) across empty graph; then drag, nudge or delete them together |
+| select a box of keys | alt/option-drag across empty graph |
+| select a moment in every linked lane | ctrl/command-drag across empty graph; then drag, nudge or delete them together |
 | type a key's time or value | double-click the key, or right-click it; Enter applies |
 | change a key's type, lock or delete it | right-click the key; with several selected, the menu acts on all of them |
 | delete keys | Delete or Backspace removes the selection |
 | nudge keys | the arrow keys move the selection a tenth of a grid step; Shift-arrow a whole step |
-| undo, redo | Cmd-Z, Shift-Cmd-Z (Ctrl-Z, Ctrl-Y elsewhere) |
-| copy, cut, paste, duplicate | Cmd-C, Cmd-X, Cmd-V, Cmd-D; select all with Cmd-A |
+| undo, redo | ctrl/command-Z, shift-ctrl/command-Z (ctrl-Y also redoes elsewhere) |
+| copy, cut, paste, duplicate | ctrl/command-C, ctrl/command-X, ctrl/command-V, ctrl/command-D; select all with ctrl/command-A |
 | bend a bezier key | drag one of its handles |
 | move without snapping | hold Alt while dragging |
 | pan | scroll, or drag with the right or middle button on empty graph |
@@ -681,7 +681,7 @@ println(pad.fit(x, y))                            // GestureFit(keys=28 of 240 s
 pad.setTake(x, y)                                 // later: the edited lanes, replayed through the pad
 ```
 
-A recorded take has hundreds of samples, far too many keys to edit. `bakeGesture` keeps only the samples it needs so that neither lane is ever more than `tolerance` (in pad units) from what you performed, at any moment. The keys are `linear`, and both lanes have keys at the same times, so Cmd-dragging across a moment selects it in both. The lanes run from 0 to the end of the take, so they loop as the take did. Baking replaces whatever keys the lanes held. The lanes are `x` and `y` unless you name them with `xName` and `yName`, and `channel` groups them as it does for `keyframes(...)`.
+A recorded take has hundreds of samples, far too many keys to edit. `bakeGesture` keeps only the samples it needs so that neither lane is ever more than `tolerance` (in pad units) from what you performed, at any moment. The keys are `linear`, and both lanes have keys at the same times, so ctrl/command-dragging across a moment selects it in both. The lanes run from 0 to the end of the take, so they loop as the take did. Baking replaces whatever keys the lanes held. The lanes are `x` and `y` unless you name them with `xName` and `yName`, and `channel` groups them as it does for `keyframes(...)`.
 
 For a two-second figure eight drawn by hand, 240 samples:
 

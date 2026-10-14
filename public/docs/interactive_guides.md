@@ -16,7 +16,7 @@ A guide is a `slideShow { ... }` block. Each `step("...")` is one stage of the g
 
 A guide's notes and callout lines come and go with its steps. For marks that stay on the canvas,
 such as a hand-drawn diagram beside the boxes it explains or arrows a box draws for itself, see
-[Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (`alt-d`) that is saved with
+[Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (`alt/option-d`) that is saved with
 the document.
 
 ## A three-step guide
