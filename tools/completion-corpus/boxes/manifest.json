@@ -583,6 +583,7 @@
   {"doc": "smpte_timecode", "box": "tc_follow_ltc", "codeSha256": "3da2e93c8bb6a2f7", "codeLines": 12, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "smpte_timecode", "box": "tc_ltc_roundtrip", "codeSha256": "06c323fb120d287e", "codeLines": 37, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "smpte_timecode", "box": "tc_mtc", "codeSha256": "9ead103d2f20659e", "codeLines": 15, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "solidcraft_intro", "box": "solidcraft_compare", "codeSha256": "92505eb28e599cb0", "codeLines": 43, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "solidsl_gallery", "box": "cross_check", "codeSha256": "d06a5875c3bb3768", "codeLines": 121, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "solidsl_gallery", "box": "glsl_backend", "codeSha256": "172ba85180f50d57", "codeLines": 54, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "solidsl_gallery", "box": "refusals", "codeSha256": "2497521bf80ad589", "codeLines": 96, "receivers": ["afield.Box"], "preamble": ""},
