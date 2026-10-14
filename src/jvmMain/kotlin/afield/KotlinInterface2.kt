@@ -262,7 +262,55 @@ class KotlinInterface2(
 
     var id = 0
 
-    var cache = mutableMapOf<String, ResultWithDiagnostics<LinkedSnippet<CompiledScript>>?>()
+    /** Compile once, re-evaluate on rerun; see [RerunCompileCache] for what it refuses and why. */
+    internal val rerunCache = RerunCompileCache()
+
+    /** Snippets this engine has really compiled — each one grows the compiler's REPL history. */
+    @Volatile
+    var compileCount = 0
+        private set
+
+    /** Total wall time of those compiles, in nanoseconds. */
+    @Volatile
+    var compileNanos = 0L
+        private set
+
+    /** Reruns served by [rerunCache] instead of a compile. */
+    val rerunCacheHits: Int get() = rerunCache.hits
+
+    /**
+     * [compile], except that an exact rerun of a source this engine already compiled — same
+     * expanded text, source property and implicit receivers, nothing it binds to redeclared since —
+     * returns the snippet it already has. Only [execInternal] uses this: [compile] itself, and
+     * [compileSnippet]'s prepared snippets, always compile.
+     */
+    private suspend fun compileOrReuse(s: String, implicits: List<Any>): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        if (!KotlinEngineConfig.rerunCompileCache || !rerunCache.cacheable(s)) return compile(s)
+        val key = sourceProperty + "\u0000" + implicits.joinToString(",") { it.javaClass.name } + "\u0000" + s
+        return compileMutex.withLock {
+            usingCompilationState(onDisposed = { compileAfterDisposal(s) }) {
+                var reuse = rerunCache.lookup(key)
+                if (reuse != null && evaluator.lastEvaluatedSnippet?.get()?.compiledSnippet === reuse.snippet.get()) {
+                    // Measured: re-evaluating the snippet evaluated last reuses its loaded class, and the body does not run.
+                    rerunCache.refuse(key, "it is the snippet evaluated last")
+                    reuse = null
+                }
+                if (reuse != null) {
+                    lprintln(
+                        "info,kotlin,perf",
+                        "\t\t compile cache hit engine=KotlinInterface2 filePrefix=$filePrefix property=$sourceProperty hits=${rerunCache.hits} misses=${rerunCache.misses} compiles=$compileCount preview=${compileSnippetPreview(s)}"
+                    )
+                    ResultWithDiagnostics.Success(reuse.snippet)
+                } else {
+                    lprintln(
+                        "info,kotlin,perf",
+                        "\t\t compile cache miss reason=${rerunCache.lastMissReason} filePrefix=$filePrefix property=$sourceProperty"
+                    )
+                    compileLocked(s, cacheKey = key)
+                }
+            }
+        }
+    }
 
     private fun compileSnippetKind(s: String): String {
         return when {
@@ -355,7 +403,8 @@ class KotlinInterface2(
     }
 
     // Caller holds [compileMutex] and a [usingCompilationState] lease.
-    private suspend fun compileLocked(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+    private suspend fun compileLocked(s: String, cacheKey: String? = null): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        compileCount++
         val code = SourceCodeImpl(id++, s)
         val snippetId = CodeUseTelemetryService.newSnippetKey()
         val snippetKind = compileSnippetKind(s)
@@ -395,6 +444,7 @@ class KotlinInterface2(
                 r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
             }
         }
+        compileNanos += ns
         lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
         if (r is ResultWithDiagnostics.Failure) {
             context.debugScripts.discard(snapshot)
@@ -402,6 +452,12 @@ class KotlinInterface2(
         val result = r!!
         if (result is ResultWithDiagnostics.Success) {
             codeUseSnippetIds[result.value] = snippetId
+            // Every successful compile is registered, cached or not: its declarations may shadow a cached entry's.
+            try {
+                rerunCache.recordCompile(cacheKey, s, result.value)
+            } catch (t: Throwable) {
+                lprintln("warning,kotlin", "rerun compile cache could not index snippet: $t")
+            }
         }
         CodeUseTelemetryService.recordCompileResult(
             snippetId = snippetId,
@@ -2832,7 +2888,7 @@ class KotlinInterface2(
         implicits: List<Any>,
     ): ResultValue? {
 
-        return when (val r = compile(s)) {
+        return when (val r = compileOrReuse(s, implicits)) {
             is ResultWithDiagnostics.Success -> {
                 when (val r2 = evaluateInternal(r.value, updateContext = true, implicits = implicits)) {
                     is ResultWithDiagnostics.Success -> {
