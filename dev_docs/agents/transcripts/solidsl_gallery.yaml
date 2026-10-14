@@ -160,7 +160,7 @@ operations:
               println("Only one of the two evaluations is available, so there is nothing to cross-check.")
               showMesh(
                   part.marchedMesh(SolidQuality(edgeLengthFraction = 1.0 / 110.0)),
-                  title = "afield.solidsl through marching cubes",
+                  title = "afield.lang.solidsl through marching cubes",
                   caption = "Install Manifold (brew install manifold) and re-run to get the exact CSG " +
                       "evaluation of the same expression beside it, and the agreement between them.",
                   view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 720, height = 460),

@@ -9,7 +9,7 @@ pictures. The four conversation pages ([a function](function_conversation.md),
 AI4 tools. This page is the layer underneath them: the ten verbs every study shares, and how a
 document's own box becomes a study with the same tools.
 
-Everything here is `afield.stdlib`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
+Everything here is in `afield.study.source`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
 `SourceFramesStudy` in `SourceFramesStudy.kt`.
 
 ## The ten verbs

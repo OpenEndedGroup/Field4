@@ -118,7 +118,7 @@ this box's include resolvers, source names and shader-error reporting attached.
 Mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md. There is no hostAs anywhere here.
 
 ```edn [field-box id="fieldml-macromod-scene" role="properties"]
-{"id" "fieldml-macromod-scene" "index" 3 "name" "moduleHere, from FieldML" "parents" ["root" "fieldml-macromod-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-macromod-root"} "name" "moduleHere, from FieldML" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-macromod-scene_code_.kt" "lines" 62 "characters" 3489 "sha256" "9fd0b576e90ea605533d3b3e515f837212696265e9615fac5c181c5e7d63eb5a"}]}
+{"id" "fieldml-macromod-scene" "index" 3 "name" "moduleHere, from FieldML" "parents" ["root" "fieldml-macromod-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-macromod-root"} "name" "moduleHere, from FieldML" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-macromod-scene_code_.kt" "lines" 62 "characters" 3493 "sha256" "3618ea7e5308982ca26e279ab7be270eab12a96c5716f2ef7781bb01ff89ff2d"}]}
 ```
 
 ```kotlin [field-property box="fieldml-macromod-scene" name="code" path="fieldml-macromod-scene_code_.kt"]
@@ -132,7 +132,7 @@ Mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md. There is no hostAs anywhere here
 // this box's include resolvers, source names and shader-error reporting attached.
 //
 // Mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md. There is no hostAs anywhere here.
-let ModuleKt = hostClass "afield.four.modules.ModuleKt"
+let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
 let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
@@ -155,13 +155,13 @@ let params = hostStaticCall "parameters" (renderer, fun p -> p |> hostSet "name"
 let pointer = hostMacro "moduleHere" "(params)" (params)
 
 let module = pointer |> hostGet "current"
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("tri", mesh) Pair)
 let _ = mesh |> hostCall "resize" (3, 0, pointer)
 let target = renderer |> hostCall1 "renderTargetFor" 0
 let _ = target |> hostCall1 "plusAssign_mp" pointer
 
-let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.stdlib.linalg.Vector4f")
+let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.math.linalg.Vector4f")
 let _ = mesh |> hostGet "push" |> hostCall "set" ("spin", spin)
 
 let animation =

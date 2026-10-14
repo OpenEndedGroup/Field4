@@ -160,7 +160,7 @@ a row not to get *worse* rather than pretending it improved. Regenerate with
 
 ```bash
 AFIELD_POLYTOPE_PROOF_DIR=$PWD/dev_docs/assets ./gradlew jvmTest \
-    --tests 'afield.stdlib.polytope.PolytopeCanonicalRenderProofTest'
+    --tests 'afield.geometry.polytope.PolytopeCanonicalRenderProofTest'
 ```
 
 The same result through the real Field/browser path, captured from
@@ -331,7 +331,7 @@ the direction a face points, so the two panels are directly comparable. Regenera
 
 ```bash
 AFIELD_POLYTOPE_PROOF_DIR=$PWD/dev_docs/assets ./gradlew jvmTest \
-    --tests 'afield.stdlib.polytope.PolytopeFaceHolesRenderProofTest'
+    --tests 'afield.geometry.polytope.PolytopeFaceHolesRenderProofTest'
 ```
 
 The one thing a picture cannot show is covered separately: because a hole ring is wound *against* its

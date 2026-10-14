@@ -1,6 +1,6 @@
 # Imaging and computer vision
 
-`afield.stdlib` can look at a picture as well as make one. Its CPU imaging and computer-vision
+`afield.media.image` can look at a picture as well as make one. Its CPU imaging and computer-vision
 family has a single value type, `Img`, and around it a set of operations that turn a raster into
 structure, from convolution and gradients up through edges, corners, lines, blobs, pyramids, warps
 and motion. It is the raster counterpart to the time-domain

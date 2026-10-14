@@ -20,11 +20,11 @@ python3 tools/run_field_tests.py --id synth.pat.gallery --id synth.pat.sound \
 
 # regenerate the committed captures:
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
-  afield.four.synth.PatPianoRollGallery --arg "$PWD/dev_docs/assets/pat_gallery"
+  afield.audio.synth.PatPianoRollGallery --arg "$PWD/dev_docs/assets/pat_gallery"
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
-  afield.four.synth.PatSoundDocs --arg "$PWD/dev_docs/assets/pat_sound"
+  afield.audio.synth.PatSoundDocs --arg "$PWD/dev_docs/assets/pat_sound"
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
-  afield.four.synth.PatTranscriptionGallery --arg "$PWD/dev_docs/assets/pat_transcription"
+  afield.audio.synth.PatTranscriptionGallery --arg "$PWD/dev_docs/assets/pat_transcription"
 ```
 (`PAT_ROLL_DIR` / `PAT_SOUND_DIR` do the same thing, but the backdoor's JVM does not inherit your
 shell environment, so pass `--arg`.)
@@ -38,7 +38,7 @@ capture rather than a backdoor call:
 FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=<free> \
   uv run --project . --group docs python tools/build_zensical_docs.py --page pattern_language.md
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
-  afield.four.synth.PatMiniNotation --arg "$PWD/public/docs/assets/pattern_language/mini"
+  afield.audio.synth.PatMiniNotation --arg "$PWD/public/docs/assets/pattern_language/mini"
 ```
 
 The second command is the one that rewrites the rolls; the first rewrites the audio. Passing

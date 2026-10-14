@@ -3,7 +3,7 @@ description: >
   Loadable demo of afield.stdlib/keyframeCodeBlend.kt — blending two *code* keyframes by aligning
   them and interpolating the numbers they differ in. Five pure-compute boxes, no Window and no
   Renderer: the StackSL programs are compiled by the same StackSLCompiler the live `stack.auto`
-  setter uses and then run through afield.stacksl.cpu, which interprets the emitted GLSL on the CPU
+  setter uses and then run through afield.lang.stacksl.cpu, which interprets the emitted GLSL on the CPU
   — including its push constants, which is what lets the convention be demonstrated rather than
   described.
     1. kfb_breakdown — the alignment, and what it refuses. Two looks for one patch, same words and
@@ -29,7 +29,7 @@ description: >
                     than `3.0`: a site is atomic, and an untouched number keeps its spelling.
     4. kfb_kotlin   — the other language. Two `sourceBlock { }` expressions differing in two of
                     their three literals; the blend rewrites each moving literal as
-                    `afield.stdlib.kfMix(left, right, afield.stdlib.keyframeBlendAmount(id, 0))`,
+                    `afield.animation.keyframes.kfMix(left, right, afield.animation.keyframes.keyframeBlendAmount(id, 0))`,
                     fully qualified so it resolves in a box that imported nothing. Prints the plan
                     and the one expression a runtime blend evaluates, and stops there — see box 5
                     for why the invocation is not here.
@@ -50,8 +50,8 @@ description: >
   on screen, then change a number in one of the two looks, change a *word* in one of them, or add a
   fourth literal to the Kotlin pair and re-run the box to watch the breakdown change. Each `execute`
   op omits inline code, so it runs the box's stored `code` property. Companion page:
-  public/docs/keyframer_examples.md. Companion tests: afield.stdlib.KeyframeCodeBlendTest,
-  afield.server.KeyframeBrowserProtocolTest.
+  public/docs/keyframer_examples.md. Companion tests: afield.animation.keyframes.KeyframeCodeBlendTest,
+  afield.app.server.KeyframeBrowserProtocolTest.
 operations:
   - create:
       box: kfb_breakdown

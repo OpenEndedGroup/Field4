@@ -10,7 +10,7 @@ description: >
   /sample-assets/ToyCar.glb (Server.kt), so this file needs nothing you do not already have. That
   model carries three meshes, three PBR materials and eight textures and *no* animation clips, so
   `play()` here is a no-op and says so — point it at a model with clips to see the mixer move.
-  Every name is bound by afield.graphics.RemoteArKotlinJs and grounded against
+  Every name is bound by afield.lang.remotejs.RemoteArKotlinJs and grounded against
   extensions/remote_ar/*. Replay compiles the box Kotlin -> JS through the real KotlinToJsCompiler
   (examples.demo-transcript.exec).
 operations:

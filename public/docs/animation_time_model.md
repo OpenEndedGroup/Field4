@@ -995,9 +995,8 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt) |
 | the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt) |
 
-`Phased.kt` is not part of the [codebase reference](reference/index.md): that is generated from
-`afield.stdlib`, `afield.visualization` and `afield.audio.synth`, and `Phased.kt` sits in `afield`
-itself, one layer below. This page is its reference instead.
+The [codebase reference](reference/index.md) lists every declaration in `Phased.kt` under
+[Workspace](reference/workspace.md#phased-kt); this page explains how they fit together.
 
 To see it running, open the [`frames_lifecycle`](agent_transcripts.md#frames_lifecycle) starting
 point from the welcome screen. Its four boxes start, stop, re-run and clean up a frame loop.

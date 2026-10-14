@@ -171,21 +171,21 @@ ESCAPES = (
     # System properties, forwarded to the check by the Gradle task. `build.gradle.kts` already
     # forwards every `-Dafield.*` to `Test` tasks, so these are reachable from the command line.
     Escape(
-        "afield.rectsl.headingfigure", "flag", value="write", source="prop",
+        "afield.lang.rectsl.headingfigure", "flag", value="write", source="prop",
         paths=("public/docs/assets/rectsl/rectsl-heading-lowering.png",),
         note="rewrites the heading-lowering figure",
     ),
     Escape(
-        "afield.rectsl.fitfigure", "flag", value="write", source="prop",
+        "afield.lang.rectsl.fitfigure", "flag", value="write", source="prop",
         paths=("public/docs/assets/rectsl/rectsl-inverse-animation.png",),
         note="rewrites the inverse-animation figure",
     ),
     Escape(
-        "afield.rectsl.characterization", "flag", value="write", source="prop",
+        "afield.lang.rectsl.characterization", "flag", value="write", source="prop",
         paths=("src/jvmTest/resources/rectsl/track_characterization.txt",),
         note="rewrites the track-sampling golden",
     ),
-    Escape("afield.rectsl.softRasterOut", "dir", source="prop",
+    Escape("afield.lang.rectsl.softRasterOut", "dir", source="prop",
            note="soft-raster figure destination, resolved against the repo root"),
     Escape("afield.tessellation.render.out", "dir", source="prop",
            note="tessellation render destination"),

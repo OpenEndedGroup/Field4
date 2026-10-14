@@ -92,7 +92,7 @@ class TranscriptStackAutoCompileTest {
 
         /**
          * `{{ stack.auto.NAME[:entrypoint][@sampler] }}`, the grammar
-         * `afield.stdlib.parseStackAutoShaderTarget` accepts. The whole payload is captured and
+         * `afield.graphics.shader.parseStackAutoShaderTarget` accepts. The whole payload is captured and
          * split here the same way it splits it.
          */
         val MARKER = Regex("""\{\{\s*stack\.auto\.([^}]+?)\s*}}""")

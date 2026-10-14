@@ -1709,7 +1709,7 @@ wants an audio device.
 
 ### alife_script
 
-**Giving one agent a program.** `afield.stdlib.alife_script` adds a per-agent behaviour layer to ALife:
+**Giving one agent a program.** `afield.simulation.agents`' `alife_script.kt` adds a per-agent behaviour layer to ALife:
 the nine `alife_*.kt` files already there advance a whole population with one `step(params)` call, and
 this lets an *individual* agent sequence behaviours, wait on simulation time, hold named phases, run
 bounded concurrent sub-behaviours, and compose steering drives from whichever of them are active right

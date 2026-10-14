@@ -216,7 +216,7 @@ From `code`
 Draws two triangles per particle at the positions the compute box wrote.
 
 ```edn [field-box id="pp_draw" role="properties"]
-{"id" "pp_draw" "index" 3 "name" "draw" "parents" ["root" "pp_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pp_compute"} "name" "draw" "_tombstone" false "frame" #afield/rect [260.0 200.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "pp_draw_vertex_.glsl" "lines" 31 "characters" 839 "sha256" "52679ce317cf4a862f056885473ac55b4cbcac8b22beb20c9ea97f7678f42e19"} {"name" "fragment" "language" "glsl" "path" "pp_draw_fragment_.glsl" "lines" 23 "characters" 745 "sha256" "4c3d6654cc44472eab70f04ce271bdffba4f134edefa2eaa361a3dddaabb5164"} {"name" "code" "language" "kotlin" "path" "pp_draw_code_.kt" "lines" 21 "characters" 626 "sha256" "c039be694d7a30bb063d9614f02dd339d8c138002e4e40e1217a223f65bf7331"}]}
+{"id" "pp_draw" "index" 3 "name" "draw" "parents" ["root" "pp_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pp_compute"} "name" "draw" "_tombstone" false "frame" #afield/rect [260.0 200.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "pp_draw_vertex_.glsl" "lines" 31 "characters" 839 "sha256" "52679ce317cf4a862f056885473ac55b4cbcac8b22beb20c9ea97f7678f42e19"} {"name" "fragment" "language" "glsl" "path" "pp_draw_fragment_.glsl" "lines" 23 "characters" 748 "sha256" "fad891554f44d699b95ca65aa7bb5d4e24c06bfcf4521013f38449246d2b6e0e"} {"name" "code" "language" "kotlin" "path" "pp_draw_code_.kt" "lines" 21 "characters" 626 "sha256" "c039be694d7a30bb063d9614f02dd339d8c138002e4e40e1217a223f65bf7331"}]}
 ```
 
 ```glsl [field-property box="pp_draw" name="vertex" path="pp_draw_vertex_.glsl"]
@@ -259,7 +259,7 @@ layout(location = 0) out vec4 uFragColor;
 layout(location = 0) in vec2 tc;
 layout(location = 1) in float ring;
 
-// One colour per ring, and these four are `afield.visualization.signalPalette` in its own
+// One colour per ring, and these four are `afield.ui.visualization.signalPalette` in its own
 // order, so a ring here and a trace on a showSignals plot of the same band are the same
 // colour. #7ad9ff #ff9e4a #8fff9a #ffe066.
 const vec3[4] tint = {

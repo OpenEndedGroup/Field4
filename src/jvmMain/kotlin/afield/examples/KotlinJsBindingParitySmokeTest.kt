@@ -17,7 +17,7 @@ expect:
 
 /**
  * Guards the invariants that motivated generating both façades from one binding model
- * ([afield.graphics.KotlinJsBinding]): the compiler declarations and the completion mirror must agree.
+ * ([afield.lang.remotejs.KotlinJsBinding]): the compiler declarations and the completion mirror must agree.
  * These are exactly the two discrepancies that hand-maintenance had produced.
  */
 object KotlinJsBindingParitySmokeTest {

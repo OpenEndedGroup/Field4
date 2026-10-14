@@ -8,7 +8,7 @@
 // this box's include resolvers, source names and shader-error reporting attached.
 //
 // Mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md. There is no hostAs anywhere here.
-let ModuleKt = hostClass "afield.four.modules.ModuleKt"
+let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
 let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
@@ -31,13 +31,13 @@ let params = hostStaticCall "parameters" (renderer, fun p -> p |> hostSet "name"
 let pointer = hostMacro "moduleHere" "(params)" (params)
 
 let module = pointer |> hostGet "current"
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("tri", mesh) Pair)
 let _ = mesh |> hostCall "resize" (3, 0, pointer)
 let target = renderer |> hostCall1 "renderTargetFor" 0
 let _ = target |> hostCall1 "plusAssign_mp" pointer
 
-let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.stdlib.linalg.Vector4f")
+let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.math.linalg.Vector4f")
 let _ = mesh |> hostGet "push" |> hostCall "set" ("spin", spin)
 
 let animation =

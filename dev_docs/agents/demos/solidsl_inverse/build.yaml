@@ -1,6 +1,6 @@
 name: solidsl_inverse
 description: >
-  `afield.solidsl`'s third reading — a Solid you can differentiate, and therefore solve. Three
+  `afield.lang.solidsl`'s third reading — a Solid you can differentiate, and therefore solve. Three
   boxes: the gradient itself checked against central differences on the spot, an inverse fit that
   recovers three named parameters from a sampled target and renders all three shapes, and the
   refusals plus the one failure mode of inverse design (a parameter whose gradient is exactly zero,

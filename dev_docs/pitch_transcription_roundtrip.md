@@ -356,14 +356,14 @@ supposed to be about.
 
 ```bash
 # the floors (25 tests, ~75 s of CPU)
-./gradlew jvmTest --tests 'afield.four.synth.PatPitchTranscriptionTest'
+./gradlew jvmTest --tests 'afield.audio.synth.PatPitchTranscriptionTest'
 
 # the figures, as a pass/fail smoke
 python3 tools/run_field_tests.py --id synth.pat.transcription --port 9631
 
 # regenerate the committed figures under dev_docs/assets/pat_transcription/
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
-  afield.four.synth.PatTranscriptionGallery --arg "$PWD/dev_docs/assets/pat_transcription"
+  afield.audio.synth.PatTranscriptionGallery --arg "$PWD/dev_docs/assets/pat_transcription"
 ```
 
 Note that `field_backdoor.py` refuses to reuse a server whose sources changed after it started, and

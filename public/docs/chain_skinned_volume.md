@@ -5,7 +5,7 @@ animators call a candy wrapper. Field already measures that as a length:
 `DualQuaternionSkinning.candyWrapperRadius` reports the narrowest ring. A length does not say how
 much of the limb has gone. This page measures the volume instead. It poses one rigged glTF, turns
 the posed mesh into a Manifold solid, weighs it, and hands the same solid to the path tracer.
-`afield.four.modules` skins the file on the CPU, `afield.geometry.solid.manifold` turns the triangles into a solid
+`afield.graphics.scene` skins the file on the CPU, `afield.geometry.solid.manifold` turns the triangles into a solid
 and measures it, and `afield.graphics.scene.fabricated` traces the result.
 
 The render below shows the same limb skinned both ways.

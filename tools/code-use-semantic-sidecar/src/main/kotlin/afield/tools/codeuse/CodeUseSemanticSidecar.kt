@@ -755,7 +755,7 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
     /**
      * The scope a request is analysed under when it carries no [CompletionRequest.replImports], and what
      * the ASM index is seeded with at session build. NOT the source of truth for Field's REPL imports —
-     * that is `afield.Boxes.intro`, which the live client sends per request. See [CompletionImports].
+     * that is `afield.document.graph.intro`, which the live client sends per request. See [CompletionImports].
      */
     private val defaultImports = CompletionImports.default
 

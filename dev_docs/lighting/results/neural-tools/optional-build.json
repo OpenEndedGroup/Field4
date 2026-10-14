@@ -13,7 +13,7 @@
     "passed": 6
   },
   "runtime": {
-    "entrypoint": "afield.four.neural.LearnedShaderSmoke",
+    "entrypoint": "afield.graphics.shader.learning.LearnedShaderSmoke",
     "exitCode": 0,
     "completionMarker": "LEARNED SHADER CHECK DONE",
     "durationMs": 33356,

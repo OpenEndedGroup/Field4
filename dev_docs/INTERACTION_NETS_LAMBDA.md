@@ -1,6 +1,6 @@
 # λ-calculus on interaction nets
 
-What `afield.stdlib.interactionnets` and `afield.stdlib.lambdaterms` do as of 2026-09-18, what is verified and by what, and what is not.
+What `interactionnets.kt` (`afield.data.graph`) and `lambdaterms.kt` (`afield.lang.lambda`) do as of 2026-09-18, what is verified and by what, and what is not.
 
 Before this, `interactionnets.kt` had a `Lambda` vocabulary (`APP`, `LAM`, `DUP`, `ERASE`, `VAR`, `ROOT`, `CONST`), a rule book of 13 rules, a scheduler and a layout — enough to watch one β-reduction happen. It had no way to say `λx. x x`, no fan/fan rule, and a substrate bug that made duplicating the identity throw. It now reduces closed λ-terms and reads the answer back, and there is an oracle that says when it does not.
 

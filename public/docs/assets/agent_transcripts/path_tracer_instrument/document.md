@@ -215,7 +215,7 @@ PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca
 and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
 data class and had no value printer registered, so `ValueVisualizer` fell all the way through
 to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
-`afield.four` types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
+Field 4 types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
 `RenderToTexture`, `VulkanBuffer` -- has had a printer since it was written.
 
 Re-run this box at any time; it reads the live tracer.
@@ -228,7 +228,7 @@ no property tree could have shown it to them: the value is a local inside a priv
 The row only appears when the two disagree.
 
 ```edn [field-box id="pt_instrument" role="properties"]
-{"id" "pt_instrument" "index" 5 "name" "The instrument, in one line" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "The instrument, in one line" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_instrument_code_.kt" "lines" 22 "characters" 1332 "sha256" "31fc58d0342007b91192e213e485e338d688230db1b66654bdb47ae6287529a0"}]}
+{"id" "pt_instrument" "index" 5 "name" "The instrument, in one line" "parents" ["root" "pt_tracer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_tracer"} "name" "The instrument, in one line" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_instrument_code_.kt" "lines" 22 "characters" 1326 "sha256" "136a3faaaded31f9baf608cff10aa053897a51e73978a92dd1a90c0da856de78"}]}
 ```
 
 ```kotlin [field-property box="pt_instrument" name="code" path="pt_instrument_code_.kt"]
@@ -239,7 +239,7 @@ The row only appears when the two disagree.
 // and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
 // data class and had no value printer registered, so `ValueVisualizer` fell all the way through
 // to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
-// `afield.four` types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
+// Field 4 types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
 // `RenderToTexture`, `VulkanBuffer` -- has had a printer since it was written.
 //
 // Re-run this box at any time; it reads the live tracer.

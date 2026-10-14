@@ -456,7 +456,7 @@ object DoughDspPlotGallery {
 
         g.font = Font(Font.SANS_SERIF, Font.PLAIN, 11)
         g.stroke = BasicStroke(1f)
-        // Linear tick selection and labelling come from `afield.charts`. The *audio* halves stay
+        // Linear tick selection and labelling come from `charts.kt` (`afield.ui.visualization`). The *audio* halves stay
         // local on purpose: [LOG_TICKS] is the 20 Hz-20 kHz decade ladder a frequency response is
         // read against, not a general log axis, and [fmtHz] spells 2000 as "2k".
         val yTicks = niceTicks(ymin, ymax, 6)

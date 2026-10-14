@@ -22,7 +22,7 @@ tool calls/results, repair attempts and wall-clock timings are retained.
 | `Fn.plotHtml` and `Fn.plot` | Existing interactive single-function plot API remains available. Added aligned PNG min/max plots because uniform overview line plots conceal sub-second pulses over an hour. Both PNGs and measurements evaluate the actual Fn. |
 | Box/Monaco + source sidecars | One authoritative editable Kotlin box. Field continues to own editing, file watching, source persistence and document history. The experiment stores immutable checked source revisions alongside it. |
 | `KotlinScriptEngine` | Fresh existing Field compiler engine per candidate, disposed after evaluation. Candidate returns StudyComposition; validation precedes publication. No fake compiler or parser. |
-| `AgentToolExtensions`, `CarriesToolImages` | Request classes and handlers were defined in the document's tools box when these turns were recorded; since 2026-09-26 they are library code (`afield.stdlib.FunctionStudyTools`), registered once and offered to the chat focused on a function study box, with the document able to add its own tools scoped to it. Pixels take the existing model image-input path. |
+| `AgentToolExtensions`, `CarriesToolImages` | Request classes and handlers were defined in the document's tools box when these turns were recorded; since 2026-09-26 they are library code (`afield.math.functions.FunctionStudyTools`), registered once and offered to the chat focused on a function study box, with the document able to add its own tools scoped to it. Pixels take the existing model image-input path. |
 | `LlmBridge`, `Ai4Installer`, provider credentials | Unmodified provider selection, model configuration, tool execution and streaming. Driver sends `ai-assist` with `kind=general`, as the UI does. No credential copying or new service. |
 
 `FunctionStudy.kt` is the small experimental host: revision snapshots, guarded
@@ -52,7 +52,7 @@ uv run --project . --group backdoor python tools/field_session.py call \
 Open `http://localhost:19788/index.html?file=function_conversation_example`. Select
 **The function — talk here (AI4)** and open AI4 general chat. The box shows the
 overview and preservation checks; the study tools ship with Field
-(`afield.stdlib.FunctionStudyTools`, offered to a chat on a box whose `aiStudy` is
+(`afield.math.functions.FunctionStudyTools`, offered to a chat on a box whose `aiStudy` is
 `function`), and `FunctionStudyGuide` explains the exact source contract, timing
 policies and limits.
 

@@ -372,7 +372,7 @@ internal fun Route.installTerminalRoutes(policy: DocsAccessPolicy) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Terminals that box code starts (`Box.terminal(...)` in afield/terminalOutput.kt). Box code
+// Terminals that box code starts (`Box.terminal(...)` in afield/ui/output/terminalOutput.kt). Box code
 // already runs anything it likes on this machine, so here, unlike the HTTP launch route above, the
 // caller names the argv and the directory. The browser half is the same /terminal.html and /pty/<id>.
 // ─────────────────────────────────────────────────────────────────────────────

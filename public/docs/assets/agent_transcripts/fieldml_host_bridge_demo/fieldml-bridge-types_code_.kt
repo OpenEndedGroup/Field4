@@ -1,4 +1,4 @@
-let Img = hostClass "afield.stdlib.Img"
+let Img = hostClass "afield.media.image.Img"
 let img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img
 
 // Try it: put the caret after the quote in hostGet "" and ask for

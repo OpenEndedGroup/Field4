@@ -285,7 +285,7 @@ This means, in effect, that you can live code things like OpenCV and Torch with 
 
 ```diffstatic {data-lang=python}
 :::static
-from afield.python import PythonInterface
+from afield.lang.python import PythonInterface
 
 box = PythonInterface.thisBox
 box.setName("property access from boxes")

@@ -1,6 +1,6 @@
 name: solidsl_notation
 description: >
-  Two editable boxes for `afield.solidsl`, the notation in which a solid is a value rather than a
+  Two editable boxes for `afield.lang.solidsl`, the notation in which a solid is a value rather than a
   closure. The first builds a small part — a bored plate with a blended boss — and asks the
   expression about itself before anything is meshed: how many nodes it has, what the simplifier can
   remove from symbolic bounds alone, and which subtrees have no exact CSG form and why. Then it

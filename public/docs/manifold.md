@@ -145,7 +145,7 @@ mesh: 8 vertices, 10 triangles, chi=1, 1 component(s)
      fix: TriMesh.fillHoles() — flat holes fill cleanly; a non-planar loop gets a flat cap over a wavy rim.
 ```
 
-Two calls, both in `afield.stdlib`, both documented at length under
+Two calls, both in `afield.geometry.mesh`, both documented at length under
 [geometry from disk](geometry_from_disk.md):
 
 <div class="field-data-table" markdown>

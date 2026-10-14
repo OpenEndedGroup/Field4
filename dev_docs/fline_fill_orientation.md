@@ -105,7 +105,7 @@ the last of them is not what the rest of this section is about:
 
 | | |
 |---|---|
-| `graphics/render/FLineUpload.kt:192#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
+| `graphics/render/FLineUpload.kt:192#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into a Field 4 vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
 | `ThreeJsViewer.kt:1255#f.tessellate(samplesPerCubic)` | **geometry.** Inside `appendFilledMesh` (`ThreeJsViewer.kt:1244#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:690#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
 | `ThreeJsViewer.kt:1051#line.tessellate(samples)` | **a count, not geometry.** Inside `buildThreeGeometryPayload` (`ThreeJsViewer.kt:844#internal fun buildThreeGeometryPayload`), in the `editable` branch, where the client re-triangulates and this side only wants the number for `meta.triangles`: the callback is `_, indices` and keeps `indices.size / 3`. The vertices are discarded, so no triangle it makes reaches anything that could draw it the wrong way round. |
 

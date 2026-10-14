@@ -88,7 +88,7 @@ expect:
 */
 
 /**
- * Headless **capture gallery** for the `afield.stdlib` imaging / computer-vision family — the
+ * Headless **capture gallery** for the `afield.media.image` imaging / computer-vision family — the
  * honest visual proof that the pixels come out right, in the pattern
  * [afield.examples.functions.FunctionsPlotGallery] and
  * [afield.examples.rectsl.RectSLDataVizProof] established.

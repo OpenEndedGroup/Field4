@@ -38,7 +38,7 @@ import kotlin.math.abs
  * This is the largest file in the package and the one to read first, because the objects it returns
  * are what almost everything else here consumes. `StandardRenderer.build(...)` builds the five
  * passes — g-buffer, shadow map, ambient occlusion, lighting composite, transparent composite —
- * and hands back a `Bundle` holding each as an ordinary `afield.four` `Target`, along with the
+ * and hands back a `Bundle` holding each as an ordinary Field 4 `Target`, along with the
  * scene defaults, the scene graph and the post stack. Nothing is hidden
  * behind that: `FabricateFrameGraph` wraps the same targets to give them names and an order,
  * `FabricatePostStack` appends to them, and a box that wants to reach past all of it and

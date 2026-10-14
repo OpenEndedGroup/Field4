@@ -1,6 +1,6 @@
 name: smpte_timecode
 description: >
-  SMPTE timecode in Field (`afield.timecode`): drop-frame arithmetic, LTC rendered to audio,
+  SMPTE timecode in Field (`afield.io.timecode`): drop-frame arithmetic, LTC rendered to audio,
   degraded (gain, DC offset, noise, a 0.9x-to-1.1x speed ramp) and decoded back with a plot of
   decoded frame and measured speed against playback time, MIDI Time Code (a full-frame locate
   then running quarter frames) into a `TimecodeClock`, and a clock following LTC fed in

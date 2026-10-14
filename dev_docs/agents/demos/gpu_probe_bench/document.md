@@ -42,8 +42,8 @@ start(renderer::run)
 ```
 
 ```text [field-property box="probe_renderer" name="preamble"]
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/

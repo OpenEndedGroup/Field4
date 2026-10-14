@@ -288,7 +288,7 @@ Two harnesses, deliberately split: `ChartTest` owns the arithmetic, `ChartGaller
 
 ```bash
 # 24 assertions: ticks, mapping, log refusals, loudness, expectations, clipping, wrapping
-./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
+./gradlew jvmTest --no-daemon --tests 'afield.ui.visualization.ChartTest'
 
 # six figures plus two grids rendered to real PNGs, with ink floors and two counterfactuals
 CHART_GALLERY_DIR=/tmp/chart-gallery-out \

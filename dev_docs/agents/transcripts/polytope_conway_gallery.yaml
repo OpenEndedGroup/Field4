@@ -1,6 +1,6 @@
 name: polytope_conway_gallery
 description: >
-  Four small boxes, one question each, for the afield.stdlib.polytope Conway algebra — the demo set
+  Four small boxes, one question each, for the afield.geometry.polytope Conway algebra — the demo set
   the architecture note asks for. Box 1 is an editable Conway-expression gallery: retype the list of
   notation strings and the whole contact sheet rebuilds. Box 2 shows a topology-only dual honestly,
   with its lack of coordinates demonstrated by two real caught exceptions, before a realization

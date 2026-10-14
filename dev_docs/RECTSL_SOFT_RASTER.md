@@ -225,7 +225,7 @@ counted in the row.
 ## Regenerating
 
 ```
-./gradlew jvmTest --tests 'afield.rectsl.RectSLSoftRasterTest'          # the ratchet
+./gradlew jvmTest --tests 'afield.lang.rectsl.RectSLSoftRasterTest'          # the ratchet
 ./gradlew jvmMeasurements --tests '*RectSLSoftRasterMeasurements*' \
     -Dafield.rectsl.softRasterOut=dev_docs/assets/rectsl_soft_raster    # the survey + figures
 ```

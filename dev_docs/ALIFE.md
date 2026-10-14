@@ -1,6 +1,6 @@
 # Spatial artificial life — developer guide
 
-`afield.stdlib`'s `alife*.kt` family: grid cellular automata, reaction–diffusion, Lenia, agent
+The `alife*.kt` family in `afield.simulation.agents`: grid cellular automata, reaction–diffusion, Lenia, agent
 populations and L-systems. Public worked example: [`public/docs/alife_examples.md`](../public/docs/alife_examples.md).
 Verification harness: `afield.examples.stdlib.AlifeGallery`, in two tiers — FIELD_TEST
 `stdlib.alife.gallery` (`--tier fast`, 11 figures, ~6 s, tagged `smoke`, and therefore what a routine

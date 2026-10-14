@@ -27,7 +27,7 @@ description: >
 
        The middle one is the contrast worth seeing: a cancellation is the only route into
        `atEnd`, so `.end { }` means "cancelled", not "finished". `finally` runs either way.
-       (`afield.FramesSemanticsTest.boxStopStillRunsTheEndBlock`,
+       (`afield.runtime.lifecycle.FramesSemanticsTest.boxStopStillRunsTheEndBlock`,
        `theRealLaunchPathRunsAMultiFrameEndBlockOnStop` and `reRunningTheBoxStillRunsTheEndBlock`
        pin all three rows.)
 

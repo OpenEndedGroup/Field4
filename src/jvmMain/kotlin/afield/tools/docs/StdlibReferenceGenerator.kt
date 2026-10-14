@@ -98,7 +98,7 @@ object StdlibReferenceGenerator {
 
     /**
      * Source roots to document, relative to the repo. `afield.stdlib` is the live-coding standard
-     * library; `afield.visualization` is the value-visualizer/plot surface a box reaches for next;
+     * library; `afield.ui.visualization` is the value-visualizer/plot surface a box reaches for next;
      * `afield.audio.synth` is the audio stack — the second-largest body of box-facing API in the
      * tree, and the one a box reaches for when it wants to make a sound rather than a picture.
      *

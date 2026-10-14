@@ -237,8 +237,8 @@ identity reprojection and no error anywhere.
 ```bash
 tools/run_field_tests.py --id four.reprojection.smoke        # 23 PNGs in build/reprojection/
 tools/run_field_tests.py --id four.reprojection.smoke --args=--keep
-./gradlew jvmTest --tests 'afield.four.targets.FrameHistoryTest'
-./gradlew jvmTest --tests 'afield.four.fabricated.FabricatePassChainTest'
+./gradlew jvmTest --tests 'afield.graphics.vulkan.targets.FrameHistoryTest'
+./gradlew jvmTest --tests 'afield.graphics.scene.fabricated.FabricatePassChainTest'
 ```
 
 The loadable demo is `dev_docs/agents/demos/frame_history_reprojection/` — see its `README.md`.

@@ -31,7 +31,7 @@ description: >
                     pattern `*/key.json` and tonight's output is tomorrow's input.
   Companion page: public/docs/keyframe_autosweep.md. The same layer driven headlessly, with
   assertions on the pixels, is `tools/run_field_tests.py --id keyframe.sweep.smoke`; the CPU half is
-  `afield.stdlib.KeyframeSweepTest`.
+  `afield.animation.keyframes.KeyframeSweepTest`.
 operations:
   - create:
       box: ks_renderer

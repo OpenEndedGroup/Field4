@@ -36,7 +36,7 @@ hand-written adapter would have *replaced* something that worked.
 `.h` showed nothing. 376 bytes, of which ~330 is the `value-viz` wrapper `<div>`. The payload:
 
 ```
-PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3
 ```
 
 `PathTracingRenderer` is not a data class, so `ValueVisualizer.visualizeBuiltIn` fell to

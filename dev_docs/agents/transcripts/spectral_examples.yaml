@@ -10,7 +10,7 @@ description: >
     3. mel spectrogram — two crossing chirps (one rising, one falling) collapsed per frame with
        Mel.filterBank(...), drawn with showHeatmap(...) as a cyan->orange heatmap tracing an X.
     4. resonator bank — the chirp + tones run through a log-spaced complex resonator filterbank
-       (afield.four.audio.resonate) instead of an FFT, drawn with showHeatmap(...) as a cyan->orange heatmap.
+       (afield.audio.engine.resonate) instead of an FFT, drawn with showHeatmap(...) as a cyan->orange heatmap.
     5. streaming features — SpectralCentroidFilter / SpectralFluxFilter / RmsFilter in a `then`
        chain over a synthesised chirp+onset stream, the three (normalized) traces via showSignals(...).
   No Window or Renderer: every box executes headless and paints into its own output display via

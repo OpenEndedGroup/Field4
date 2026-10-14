@@ -174,7 +174,7 @@ preamble re-entry point, not just a text split.**
 
 ## 4. `DataFrameVisualizer`
 
-`src/jvmMain/kotlin/afield/ui/visualization/DataFrameVisualizer.kt`, 148 lines, `package afield`.
+`src/jvmMain/kotlin/afield/ui/visualization/DataFrameVisualizer.kt`, 148 lines, `package afield.ui.visualization`.
 
 `DataFrame` is a third-party interface and cannot implement `ToHTML` the way `Table` and `Img` do,
 which is what `ValuePrinterRegistry` (compact `.h`) and `H2ValueRegistry` (`.h2`) exist for:

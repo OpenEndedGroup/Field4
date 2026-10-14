@@ -19,7 +19,7 @@ let inherited name box =
 
 let renderer = thisBox |> inherited "renderer"
 
-let ModuleKt = hostClass "afield.four.modules.ModuleKt"
+let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
 let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
@@ -36,9 +36,9 @@ let params =
     p |> hostSet "name" "fieldmlRing"
   ) ModuleKt
 
-let module = hostNew (params) (hostClass "afield.four.modules.Module")
+let module = hostNew (params) (hostClass "afield.graphics.render.Module")
 let pointer = module |> hostExt ModuleKt "pointer" Unit
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("ring", mesh) Pair)
 
 let blades = 16

@@ -461,7 +461,7 @@ under `~/.afield/logs/` when their environment variables are set, and are wired 
 
 ## Reference
 
-The generic core is `afield.ai.core.Logging`: `LogEvent`, `LogSink`, `LogDispatcher`,
+The generic core is `afield.ai.diagnostics.Logging`: `LogEvent`, `LogSink`, `LogDispatcher`,
 `ConsoleMute`, `StdoutLog`. The entry points and the terminal live in `afield.app.diagnostics.logging`:
 `lprintln`, `lprint`, `lblock`, `indent`, `formatMillis`, `PinnedConsole`, `StatsHeatmap`,
 `SessionErrorLog`, `SaveReloadLog`. The web sink is `afield.app.server.LogStream`, which serves

@@ -1,7 +1,7 @@
 name: drawn_paint
 description: >
   Drawn strokes become paint: six boxes that draw pen strokes with pressure on the document's
-  drawing, read them back with notation, and paint them with afield.paint.PaintCanvas.
+  drawing, read them back with notation, and paint them with afield.graphics.paint.PaintCanvas.
 
   `strokes` draws three strokes (a wave pressed hardest in the middle, a sweep that lifts off, a
   loop that bears down at its end) and plots the pen pressure along each. `paint` paints every

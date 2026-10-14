@@ -3471,13 +3471,13 @@ function buildPointsGeometry(points, color, alpha, size) {
 //
 // Everything between this sentinel and its END is lifted verbatim, as text, and executed on GraalJS
 // by `src/jvmTest/kotlin/afield/graphics/three/ViewerJavaScript.kt`, then compared ring-set by ring-set
-// against `afield.graphics.PlanarTessellation` — the Kotlin it is a transliteration of — by
+// against `afield.geometry.path.PlanarTessellation` — the Kotlin it is a transliteration of — by
 // `ThreeJsViewerTessellationParityTest`. The extractor fails loudly if either sentinel goes missing,
 // so the seam cannot be quietly deleted. Two rules keep the region liftable, and both are asserted
 // by `ViewerJavaScriptRegionTest`: no DOM, and no `THREE` beyond `Vector2` and
 // `ShapeUtils.triangulateShape`.
 //
-// --- planar tessellation, ported from afield.graphics.PlanarTessellation --------------------
+// --- planar tessellation, ported from afield.geometry.path.PlanarTessellation --------------------
 //
 // Editable mode re-triangulates client-side, because the user drags points and the fill has to
 // follow between server round-trips. It used to do that with a naive fan over each subpath's

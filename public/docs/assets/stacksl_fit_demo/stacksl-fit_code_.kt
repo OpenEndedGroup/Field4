@@ -11,7 +11,7 @@
 // pixel depends on a parameter through coverage.
 //
 // The gradient flows through the emitted GLSL itself, interpreted node by node on
-// `afield.stdlib`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
+// `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
 import afield.lang.stacksl.cpu.CpuRaster
 import afield.lang.stacksl.cpu.StackSLCpu

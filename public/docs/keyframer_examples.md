@@ -3,7 +3,7 @@
 *Every `keyframer.kt` declaration used below is listed, with its KDoc, in the codebase reference:
 [`keyframer.kt`](reference/graphics.md#keyframer-kt). The two supporting types the examples lean on,
 `afield.graphics.vulkan.buffers.Structure` and `afield.graphics.vulkan.util.CameraPose`, are not: they live in
-`afield.four`, which the [reference](reference/index.md) leaves to
+Field 4, which the [reference](reference/index.md) leaves to
 [Field 4 Graphics](afield_four_graphics.md).*
 
 Live coding has a specific kind of loss built into it. You push sliders around for twenty minutes,
@@ -982,7 +982,7 @@ value, so a moving literal becomes a call that reads the parameter out of a regi
 by an integer written into the text:
 
 ```diffstatic {data-lang=text}
-gain * afield.stdlib.kfMix(0.5f, 1.5f, afield.stdlib.keyframeBlendAmount(7, 0))
+gain * afield.animation.keyframes.kfMix(0.5f, 1.5f, afield.animation.keyframes.keyframeBlendAmount(7, 0))
 ```
 
 Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. One

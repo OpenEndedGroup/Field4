@@ -65,7 +65,7 @@ here and written straight into the mesh's vertex buffers.
 Run the `window and renderer` box above first; this one walks up to find it.
 
 ```edn [field-box id="fieldml-mesh-live" role="properties"]
-{"id" "fieldml-mesh-live" "index" 2 "name" "Sixteen triangles, recomputed per frame" "parents" ["root" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-root"} "name" "Sixteen triangles, recomputed per frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-live_code_.kt" "lines" 106 "characters" 5147 "sha256" "0ac8237ee9e830bcacddab88aef88c18c1fa558bb7096ffd2a6c6d14211296a5"}]}
+{"id" "fieldml-mesh-live" "index" 2 "name" "Sixteen triangles, recomputed per frame" "parents" ["root" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-root"} "name" "Sixteen triangles, recomputed per frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-live_code_.kt" "lines" 106 "characters" 5156 "sha256" "cd463f4edc26b440615a475e0b11c157420e8df73817c658e13d9b5d3e42ae7e"}]}
 ```
 
 ```kotlin [field-property box="fieldml-mesh-live" name="code" path="fieldml-mesh-live_code_.kt"]
@@ -90,7 +90,7 @@ let inherited name box =
 
 let renderer = thisBox |> inherited "renderer"
 
-let ModuleKt = hostClass "afield.four.modules.ModuleKt"
+let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
 let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
@@ -107,9 +107,9 @@ let params =
     p |> hostSet "name" "fieldmlRing"
   ) ModuleKt
 
-let module = hostNew (params) (hostClass "afield.four.modules.Module")
+let module = hostNew (params) (hostClass "afield.graphics.render.Module")
 let pointer = module |> hostExt ModuleKt "pointer" Unit
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("ring", mesh) Pair)
 
 let blades = 16

@@ -17,12 +17,12 @@ From `code`
 This root stays Kotlin; its `mainLanguage` makes the three boxes under it Pd.
 
 ```edn [field-box id="pd_root" role="properties"]
-{"id" "pd_root" "index" 0 "name" "status — children of this box are Pure Data" "parents" ["root"] "children" ["pd_drone" "pd_roundtrip" "pd_typo"] "properties" {"children" #{#afield/box "pd_drone" #afield/box "pd_roundtrip" #afield/box "pd_typo"} "parents" #{#afield/box "root"} "name" "status — children of this box are Pure Data" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "pd"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_root_code_.kt" "lines" 2 "characters" 121 "sha256" "225cb8d070cdaaecc976f8980c972eae66cae6eb7985e2de238b00eb77b9ded9"}]}
+{"id" "pd_root" "index" 0 "name" "status — children of this box are Pure Data" "parents" ["root"] "children" ["pd_drone" "pd_roundtrip" "pd_typo"] "properties" {"children" #{#afield/box "pd_drone" #afield/box "pd_roundtrip" #afield/box "pd_typo"} "parents" #{#afield/box "root"} "name" "status — children of this box are Pure Data" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "pd"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_root_code_.kt" "lines" 2 "characters" 127 "sha256" "d20588955f5ee5de822f2f54c329da2f0f0776febbd749ed498826f615458de2"}]}
 ```
 
 ```kotlin [field-property box="pd_root" name="code" path="pd_root_code_.kt"]
 // This root stays Kotlin; its `mainLanguage` makes the three boxes under it Pd.
-println(afield.pd.PdLibrary.describe())
+println(afield.audio.pd.PdLibrary.describe())
 ```
 
 ## 2. typo

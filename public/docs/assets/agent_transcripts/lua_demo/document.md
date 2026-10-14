@@ -17,12 +17,12 @@ From `code`
 This root stays Kotlin; its `mainLanguage` makes the boxes under it Lua.
 
 ```edn [field-box id="lua_root" role="properties"]
-{"id" "lua_root" "index" 0 "name" "status — children of this box are Lua" "parents" ["root"] "children" ["lua_hello" "lua_thisbox" "lua_drawing" "lua_wave" "lua_spawned" "lua_error" "lua_runaway" "lua_jit" "lua_accumulate" "lua_controls" "lua_sequencer"] "properties" {"children" #{#afield/box "lua_hello" #afield/box "lua_thisbox" #afield/box "lua_drawing" #afield/box "lua_wave" #afield/box "lua_spawned" #afield/box "lua_error" #afield/box "lua_runaway" #afield/box "lua_jit" #afield/box "lua_accumulate" #afield/box "lua_controls" #afield/box "lua_sequencer"} "parents" #{#afield/box "root"} "name" "status — children of this box are Lua" "_tombstone" false "frame" #afield/rect [40.0 40.0 460.0 80.0] "mainLanguage" "lua"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lua_root_code_.kt" "lines" 2 "characters" 118 "sha256" "5bec5fe8a374e800d37268672fb11d4ae7c40b36aa34cc9e76e03a825de20d34"}]}
+{"id" "lua_root" "index" 0 "name" "status — children of this box are Lua" "parents" ["root"] "children" ["lua_hello" "lua_thisbox" "lua_drawing" "lua_wave" "lua_spawned" "lua_error" "lua_runaway" "lua_jit" "lua_accumulate" "lua_controls" "lua_sequencer"] "properties" {"children" #{#afield/box "lua_hello" #afield/box "lua_thisbox" #afield/box "lua_drawing" #afield/box "lua_wave" #afield/box "lua_spawned" #afield/box "lua_error" #afield/box "lua_runaway" #afield/box "lua_jit" #afield/box "lua_accumulate" #afield/box "lua_controls" #afield/box "lua_sequencer"} "parents" #{#afield/box "root"} "name" "status — children of this box are Lua" "_tombstone" false "frame" #afield/rect [40.0 40.0 460.0 80.0] "mainLanguage" "lua"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lua_root_code_.kt" "lines" 2 "characters" 123 "sha256" "0c5c3b05d0033b63699db8214037fa6effb0f36d7367653fff0b359394b927ab"}]}
 ```
 
 ```kotlin [field-property box="lua_root" name="code" path="lua_root_code_.kt"]
 // This root stays Kotlin; its `mainLanguage` makes the boxes under it Lua.
-println(afield.lua.LuaLibrary.describe())
+println(afield.lang.lua.LuaLibrary.describe())
 ```
 
 ## 2. hello

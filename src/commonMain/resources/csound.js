@@ -1,7 +1,7 @@
 define("bithero/csound", ["require", "vs/editor/editor.api"], function (require, monacoModule) {
     "use strict";
 
-    // Csound, as a Csound box (afield.csound.CsoundExecution) holds it: a .csd -- <CsOptions>,
+    // Csound, as a Csound box (afield.audio.csound.CsoundExecution) holds it: a .csd -- <CsOptions>,
     // <CsInstruments>, <CsScore> -- or a bare orchestra.
     //
     // The orchestra colours opcodes, the instr/endin/opcode/endop structure, variables by their rate

@@ -84,7 +84,7 @@ expect:
 */
 
 /**
- * Headless **capture gallery** for the `afield.stdlib` triangle-mesh family — the honest visual proof
+ * Headless **capture gallery** for the `afield.geometry.mesh` triangle-mesh family — the honest visual proof
  * that the geometry comes out right, in the pattern
  * [afield.examples.imaging.ImagingGallery] and [afield.examples.VisionGeometryPreviewGallery]
  * established.

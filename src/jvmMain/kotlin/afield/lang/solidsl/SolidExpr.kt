@@ -15,7 +15,7 @@ import kotlin.math.sin
 
 /**
  * A 3D solid written down as a **value** instead of as a closure — the symbolic notation that
- * `afield.stdlib`'s signed-distance family and `afield.geometry.solid.manifold`'s exact CSG kernel can *both*
+ * `afield.geometry.mesh`'s signed-distance family and `afield.geometry.solid.manifold`'s exact CSG kernel can *both*
  * evaluate.
  *
  * ```kotlin

@@ -80,7 +80,7 @@ import afield.runtime.execution.start
  *     run.steps     // how many reactions it took
  *
  * Two public names sit behind that. [Term] is the syntax tree, with `Var`, `Lam` and `App` nested inside it so that
- * `Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names leaks into `afield.stdlib`.
+ * `Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names leaks into `afield.lang.lambda`.
  * [LambdaTerms] is everything done to one: parsing, printing, compilation to the [Lambda] agent vocabulary, readback,
  * and the reference evaluator the net's answer is checked against.
  *
@@ -96,7 +96,7 @@ import afield.runtime.execution.start
  * A λ-term: a variable, an abstraction, or an application.
  *
  * Three nested classes, so `Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names
- * leaks into `afield.stdlib` on its own. [LambdaTerms.parse] builds one from text and [toString] prints it back.
+ * leaks into `afield.lang.lambda` on its own. [LambdaTerms.parse] builds one from text and [toString] prints it back.
  *
  * Structural `equals`, since these are data classes — but **compare terms with [LambdaTerms.alphaEquivalent]**,
  * because `λx. x` and `λy. y` are not `==` and a readback invents its own binder names.

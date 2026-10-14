@@ -8,7 +8,7 @@
 ## The notes that led here
 
 - `1ae7ae30` (public/docs/keyframer_examples.md:3): do we not have a picture of the wonderful keyframe panel?
-  > Every keyframer.kt declaration used below is listed, with its KDoc, in the codebase reference: keyframer.kt. The two supporting types the examples lean on, afield.graphics.vulkan.buffers.Structure and afield.graphics.vulkan.util.CameraPose, are not: they live in afield.four, which the reference leaves to Field 4 Graphics.
+  > Every keyframer.kt declaration used below is listed, with its KDoc, in the codebase reference: keyframer.kt. The two supporting types the examples lean on, afield.graphics.vulkan.buffers.Structure and afield.graphics.vulkan.util.CameraPose, are not: they live in Field 4, which the reference leaves to Field 4 Graphics.
 
 ## What was asked
 

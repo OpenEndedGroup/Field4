@@ -73,7 +73,7 @@ import kotlin.math.sqrt
  * [TriMesh] — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that
  * makes one and the whole-mesh transforms that move one around.
  *
- * A [TriMesh] is *not* a renderer buffer (that is `afield.four`'s
+ * A [TriMesh] is *not* a renderer buffer (that is Field 4's
  * [afield.graphics.render.Mesh]) and *not* a graph of vertex objects. It is flat
  * `FloatArray` attribute storage plus an `IntArray` of triangle indices: the layout every algorithm
  * in this family wants, the layout a GPU upload wants, and cheap to copy. Positions are required;

@@ -12,7 +12,7 @@ of rules that became code live in
 **Field·4** is a Kotlin live-coding environment for graphics and exploratory data visualization:
 
 - **Backend (JVM/Kotlin)**: a Ktor HTTPS + WebSocket server (`afield.app.server.Server`) that manages
-  documents, runs user code, and optionally drives Vulkan/OpenXR rendering via `afield.four`.
+  documents, runs user code, and optionally drives Vulkan/OpenXR rendering via Field 4.
 - **Frontend (Kotlin/JS)**: a browser UI (canvas + Monaco editor) talking to the server over a
   small JSON RPC protocol defined in `src/commonMain`.
 - **Persistence (.edn)**: documents live on disk as `metadata.edn` plus sidecar files for large
@@ -265,17 +265,19 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 - `src/commonMain` — shared RPC and dispatch. `Messages.kt` is the tiny message bus (`handlers`,
   `sendWithReply`, `handle`, `expect fun _send`); `rpc.kt` holds the `@Serializable` payload
   types. If a type crosses the wire, define it here.
-- `src/jvmMain` — backend. `afield/Server.kt` (Ktor server, `/ws`, session/document state,
-  handlers), `afield/Boxes.kt` (the `Box` model and property conventions), `afield/execution.kt`
-  and `afield/KotlinInterface.kt` (compile/run live Kotlin, route output to the UI). Subsystems:
-  persistence (`saving.kt`, `edn.kt`, `FileWatchManager.kt`), history (`history.kt`, UI in
-  `src/commonMain/resources/history.html`), the live-coding stdlib (`afield/stdlib/`),
-  Vulkan/VR (`afield/four/`), extra runtimes (`afield/python/`, `afield/clojure/`,
-  `afield/remotejs/`), server features (`afield/server/`), and grouped helpers in
-  `afield/{docs,internal,math,ui,visualization,workspace}/` (still package `afield`).
-- `src/jsMain` — frontend. `afield/Main.kt` (canvas, selection, editor, commands),
-  `afield/Message.kt` (WebSocket client on `ws(s)://<host>/ws` + JSON decode + dispatch), `afield/Messages_helpers.kt`
-  (`@JsExport` wrappers). Static assets loaded by `src/commonMain/resources/index.html`: Monaco
+- `src/jvmMain` — backend; each folder is its package. `afield/app/server/Server.kt` (Ktor server,
+  `/ws`, session/document state, handlers), `afield/document/graph/Boxes.kt` (the `Box` model and
+  property conventions), `afield/runtime/execution/execution.kt` and
+  `afield/runtime/kotlin/KotlinInterface.kt` (compile/run live Kotlin, route output to the UI).
+  Subsystems: persistence (`afield/document/persistence/`: `saving.kt`, `edn.kt`,
+  `FileWatchManager.kt`), history (`afield/document/history/history.kt`, UI in
+  `src/commonMain/resources/history.html`), the live-coding library split by domain
+  (`afield/{math,geometry,graphics,audio,media,simulation,data,ui,...}/`), Vulkan/VR
+  (`afield/graphics/vulkan/`), extra runtimes (`afield/lang/{python,clojure,remotejs,...}/`) and
+  server features (`afield/app/server/`).
+- `src/jsMain` — frontend. `afield/app/client/Main.kt` (canvas, selection, editor, commands),
+  `afield/app/client/Message.kt` (WebSocket client on `ws(s)://<host>/ws` + JSON decode + dispatch),
+  `afield/app/client/Messages_helpers.kt` (`@JsExport` wrappers). Static assets loaded by `src/commonMain/resources/index.html`: Monaco
   under `src/jsMain/resources/monaco/`, fonts and helpers under `src/jsMain/resources/`.
 - There is no separate chat bundle (no `src/jsChatMain`): guide/shared chat is mounted from the main frontend and
   proxied by `afield/server/chat.kt` when the optional Flask chat server runs.
@@ -310,7 +312,7 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   It is not the audio callback, not sample-accurate, and must not advance oscillator phase,
   filter state, delay lines, envelopes, or other DSP state because UI or helper code wants a
   "current value".
-- `FieldAudioEngine` (`src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt`) owns a separate
+- `FieldAudioEngine` (`src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt`) owns a separate
   daemon audio thread: it calls `Signal.render(...)` / `generate(...)` on the real synth graph with
   its `SynthContext`, owns DSP state progression, and mixes the fixed-size PCM buffers OpenAL
   queues.
@@ -336,7 +338,7 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   (`afield/stdlib/props.kt`) generate new inherited properties. Shader properties (`fragment`,
   `vertex`, `compute`, `task`, `mesh`) are built this way (`afield/stdlib/shaders.kt`), which is
   why shader graphs compose through box connections.
-- `fromContext<T>()` (in `afield.four.modules`, `src/jvmMain/kotlin/afield/four/modules/Mesh.kt`)
+- `fromContext<T>()` (in `afield.document.context`, `src/jvmMain/kotlin/afield/document/context/Mesh_context.kt`)
   finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, its
   script variables (`box.ki.context.vars`), then each parent in turn. Use
   `fromContextWithNameOrNull<T>("name")` for a specific named value. A missing `Renderer` is
@@ -420,7 +422,7 @@ geometry in `FLineGeometry.kt` (sampling, offsets, boolean ops, smoothing) and
 
 ---
 
-## 6. Vulkan graphics (`afield.four`)
+## 6. Vulkan graphics (Field 4)
 
 The Vulkan stack under `src/jvmMain/kotlin/afield/four/` is built on LWJGL (Vulkan, VMA,
 shaderc, SPIRV-Cross via the `spvc` bindings) with optional OpenXR targets for VR.

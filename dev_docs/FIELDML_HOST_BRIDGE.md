@@ -201,7 +201,7 @@ is that line as a test, and it is a test of a *refusal* on purpose: the day some
 callable from FieldML, this argument stops holding and that test is where they will find out.
 
 The measurement is `everySuspendCallbackSlotOnFieldsPerFrameSurfaceReportsTheWrittenArity` in the same
-file: 16 suspend-typed callback slots across `PhasedKt`, `StdlibKt` and `Frames`, all 16 reporting the
+file: 16 suspend-typed callback slots across `PhasedKt`, `Stdlib_executionKt` and `Frames`, all 16 reporting the
 written arity through the production `FieldMLHostTypes.parameterSlot` + `samParameterTypes` pair, and
 the floor is all of them rather than a percentage. The surface is small enough to enumerate, so a
 partial answer would not be a partial capability — it would be one signature where the type checker
@@ -222,7 +222,7 @@ defaults reachable, because a positional call has no way to say which parameter 
 The spelling is a **record** where a tuple would go:
 
 ```
-hostNew {mainWindow = w} (hostClass "afield.four.Renderer")
+hostNew {mainWindow = w} (hostClass "afield.graphics.vulkan.Renderer")
 img |> hostCall "index" {x = 1, y = 0}
 ```
 
@@ -605,7 +605,7 @@ error rather than a first-run one. Asserted in
 | `FieldMLHostBridgeTest` | One capability per test — arity, SAM, overloads, widening, `hostNull`, varargs, arrays, statics, inferred types, type errors, the dynamic escape, nullable returns. A failure here is a capability regression. |
 | `FieldMLHostSurfaceCoverageTest` | The measurement. Every method is called twice — through the bridge and through plain `Method.invoke` — and the results compared, so the headline number is *agreement*, not reachability. `disagreed.isEmpty()` is asserted outright, because a disagreement is a bug. It also computes the "before" number in the same run. Raise the floors when the bridge learns something. |
 | `FieldMLHostAgreementTest` | The semantically interesting calls, written beside the Kotlin they should equal. Covers what a synthesised constant-returning lambda cannot: arguments travelling *into* a FieldML function the JVM calls back, and bit-exact narrowing. |
-| `FieldMLAfieldFourReachTest` | The `threebox-2` survey above, plus the `afield.four` calls that run headlessly — including, since D closed, the `Frames` builders, because `Frames` is a plain object with no Vulkan in it. Also pins what is left of `start(renderer::run)`: an overload tie, not a coroutine problem. |
+| `FieldMLAfieldFourReachTest` | The `threebox-2` survey above, plus the Field 4 calls that run headlessly — including, since D closed, the `Frames` builders, because `Frames` is a plain object with no Vulkan in it. Also pins what is left of `start(renderer::run)`: an overload tie, not a coroutine problem. |
 | `FieldMLSourceMacroTest` | Mechanism A. Asserts its own premise off the live `MacroRegistry` maps first, because everything else here is a statement about "the source macros" and a JVM where `runAll(macroRegistration)` did not fire would see twelve instead of nineteen. Then a **bidirectional** ledger (missing, stale, set equality), reflective resolution of every call-shaped route, `println` driven end to end into `Box._printlnHere`, `prop` compared against the generated `Inheritance<T>` delegate on one box graph, and the demo's two captures held to the claim they support. |
 | `FieldMLSuspendCallbackTest` | Mechanism D. Every test here is "the closure **ran**, this many times" rather than "a proxy was constructed" — a proxy was constructible before this work too. Plus the 16-slot surface measurement, and the refusal that marks the bound. |
 | `FieldMLHostDynamicBoundaryTest` | Both sides of the `Host` boundary: what must be refused, and what must still compile. |

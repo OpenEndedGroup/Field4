@@ -668,7 +668,7 @@ The 3D version is the same idea, just with ray-picking instead of SVG hit testin
 
 ```diffstatic {data-lang=kotlin}
 :::static
-// from afield.stdlib.StandardDrawing
+// from afield.graphics.render.StandardDrawing
 var FLine.color: Vec4
 var FLine.thickness: Double
 var FLine.filled: Boolean

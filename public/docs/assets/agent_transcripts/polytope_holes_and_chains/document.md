@@ -67,7 +67,7 @@ viz("chain", long.summary())
 <!-- field-box id="polytope_plate_with_and_without" index="1" -->
 
 ```edn [field-box id="polytope_plate_with_and_without" role="properties"]
-{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 65 "characters" 3368 "sha256" "a326f315b30121c8f18b8d78b8efef9b2ae673c2b4df32863731cc0dbdf2a809"}]}
+{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 65 "characters" 3373 "sha256" "b9591a1fe1b5b681231de5c73b857349e2c716a504268f6bc99d1b266cbaecf3"}]}
 ```
 
 ```kotlin [field-property box="polytope_plate_with_and_without" name="code" path="polytope_plate_with_and_without_code_.kt"]
@@ -87,7 +87,7 @@ fun plate(withRing: Boolean): PolyhedralObject {
     val inner = listOf(
         Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
     )
-    // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+    // buildList, not `outer + inner`: a box has afield.geometry.path in scope, where
     // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points,
     // not eight.
     val points = buildList { addAll(outer); if (withRing) addAll(inner) }

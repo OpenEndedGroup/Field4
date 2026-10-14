@@ -229,7 +229,7 @@ object FunctionsPlotGallery {
         // Gridlines + tick labels.
         g.font = Font(Font.SANS_SERIF, Font.PLAIN, 11)
         g.stroke = BasicStroke(1f)
-        // Tick selection and labelling come from `afield.charts` rather than from a private copy
+        // Tick selection and labelling come from `charts.kt` (`afield.ui.visualization`) rather than from a private copy
         // here. There were five of those copies in the repo; this one also did not snap its values,
         // so `k * step` drift was only invisible because the old `fmt` rounded to two decimals — a
         // finer axis would have printed 0.30000000000000004. `tickLabels` also gives the whole axis

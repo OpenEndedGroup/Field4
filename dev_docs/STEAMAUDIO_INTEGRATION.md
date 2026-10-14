@@ -271,7 +271,7 @@ heap.
 
 ```bash
 ./gradlew fetchSteamAudioNatives      # unpack + verify this host's libphonon; needed once
-./gradlew jvmTest --tests 'afield.four.audio.steamaudio.*'
+./gradlew jvmTest --tests 'afield.audio.engine.steamaudio.*'
 ./gradlew caveDemo                    # reverberant space, dynamic planes, live reflections
 ./gradlew pathingDemo                 # sound routing around a corner through a doorway
 ./gradlew orbitDemo                   # a source flying around the head

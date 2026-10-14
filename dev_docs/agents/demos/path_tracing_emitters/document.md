@@ -40,8 +40,8 @@ import afield.graphics.scene.fabricated.PathTraceMaterial
 import afield.graphics.scene.fabricated.PathTraceScene
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import afield.graphics.vulkan.util.Camera
-import afield.math.linalg.Vector3f
-import afield.math.linalg.Vector4f
+
+
 
 prop<PathTracingRenderer>(tracer)
 

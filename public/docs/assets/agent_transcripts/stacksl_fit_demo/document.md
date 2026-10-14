@@ -27,10 +27,10 @@ characterise — which is exactly why the same idea was correctly abandoned for 
 pixel depends on a parameter through coverage.
 
 The gradient flows through the emitted GLSL itself, interpreted node by node on
-`afield.stdlib`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
+`afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
 ```edn [field-box id="stacksl-fit" role="properties"]
-{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 112 "characters" 4551 "sha256" "b1894f60de8bca5a82be49b2f493e4e3679dd1b47d73631500f679c89975f3fd"}]}
+{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 112 "characters" 4558 "sha256" "dcc2fa2d255833376db5aa4e15c434148a7505068ab15bbe6a03f8f5e400a7a7"}]}
 ```
 
 ```kotlin [field-property box="stacksl-fit" name="code" path="stacksl-fit_code_.kt"]
@@ -47,7 +47,7 @@ The gradient flows through the emitted GLSL itself, interpreted node by node on
 // pixel depends on a parameter through coverage.
 //
 // The gradient flows through the emitted GLSL itself, interpreted node by node on
-// `afield.stdlib`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
+// `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
 import afield.lang.stacksl.cpu.CpuRaster
 import afield.lang.stacksl.cpu.StackSLCpu

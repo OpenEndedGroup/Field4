@@ -82,12 +82,12 @@ From `code`
 This root stays Kotlin; its `mainLanguage` makes the boxes under it Csound.
 
 ```edn [field-box id="cs_root" role="properties"]
-{"id" "cs_root" "index" 2 "name" "csound — children of this box are Csound" "parents" ["root"] "children" ["cs_pluck" "cs_fx" "cs_typo"] "properties" {"children" #{#afield/box "cs_pluck" #afield/box "cs_fx" #afield/box "cs_typo"} "parents" #{#afield/box "root"} "name" "csound — children of this box are Csound" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "csound"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_root_code_.kt" "lines" 2 "characters" 127 "sha256" "bc49fa7e257e5b0dab9722bbfe117f0d9ed5142e79e6211faa333a9118d40b48"}]}
+{"id" "cs_root" "index" 2 "name" "csound — children of this box are Csound" "parents" ["root"] "children" ["cs_pluck" "cs_fx" "cs_typo"] "properties" {"children" #{#afield/box "cs_pluck" #afield/box "cs_fx" #afield/box "cs_typo"} "parents" #{#afield/box "root"} "name" "csound — children of this box are Csound" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "csound"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_root_code_.kt" "lines" 2 "characters" 133 "sha256" "2365f045bf96048b336546cc928ba5df1f40cc1bf89c8345a1aa0f2db26b197c"}]}
 ```
 
 ```kotlin [field-property box="cs_root" name="code" path="cs_root_code_.kt"]
 // This root stays Kotlin; its `mainLanguage` makes the boxes under it Csound.
-println(afield.csound.CsoundLibrary.describe())
+println(afield.audio.csound.CsoundLibrary.describe())
 ```
 
 ## 4. typo

@@ -8,7 +8,7 @@ import kotlin.math.pow
 
 /**
  * A RectSL scene as a sequence of [Img]s: the bridge from the rectangle language to everything in
- * Field that reads an image — `afield.stdlib` filters, `showImg`, and `Patch.mapImage`, which puts
+ * Field that reads an image — `afield.media.image` filters, `showImg`, and `Patch.mapImage`, which puts
  * a scene on a light rig.
  *
  * Frames come from the CPU reference rasterizer the RectSL study tools use

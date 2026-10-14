@@ -1,7 +1,7 @@
 name: audio_ai_codec
 description: >
   Loadable executable companion to public/docs/audio_ai_codec.md. It exercises the real
-  afield.stdlib.noir.audioai.CodecVisualization renderer with committed real music, EnCodec tokens, reconstruction and measured errors.
+  afield.audio.ai.CodecVisualization renderer with committed real music, EnCodec tokens, reconstruction and measured errors.
   The files are exported from the isolated GPU service by tools/capture_elsewhere_audio.py.
 operations:
   - create:

@@ -626,7 +626,7 @@ negative volume. `fixWinding()` is the fix.
 ??? aside "Forcing these captures to re-run"
     A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
     machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
-    `afield.four`, not `afield.stdlib`, so editing *it* does not invalidate these captures on its own.
+    `afield.graphics.scene`, not `afield.geometry.mesh`, so editing *it* does not invalidate these captures on its own.
     Force them with `FIELD_DOCS_RUNNER_MODE=always` after changing the bridges.
     [`mesh_examples.md`](mesh_examples.md) carries the same caveat.
 
@@ -644,8 +644,8 @@ Four separate pieces of code read geometry off disk:
 
 | loader | source | reads | produces |
 |---|---|---|---|
-| stdlib mesh I/O | `afield/stdlib/mesh_io.kt` | OBJ, STL | `TriMesh` |
-| PLY | `afield/four/modules/simplePLYSupport.kt` | PLY, meshes and point clouds | packed 10-float GPU buffer |
+| stdlib mesh I/O | `afield/geometry/mesh/mesh_io.kt` | OBJ, STL | `TriMesh` |
+| PLY | `afield/graphics/scene/simplePLYSupport.kt` | PLY, meshes and point clouds | packed 10-float GPU buffer |
 | Assimp / glTF | `afield/four/modules/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
 | Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
 

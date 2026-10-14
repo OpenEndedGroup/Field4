@@ -1,6 +1,6 @@
 name: typography_worked_example
 description: >
-  Text as geometry — the afield.stdlib typography family (typography.kt for the values,
+  Text as geometry — the afield.graphics.text typography family (typography.kt for the values,
   typography_field.kt for the bridges) as eight pure-compute boxes. Nothing here opens a Window or a
   Renderer: the letters are FILLED FROM THEIR OWN CONTOURS by the family's scanline filler and shown
   with showImgGrid (Img -> PngEncoder -> display), or drawn as FLines with showText / showPlaneGrid

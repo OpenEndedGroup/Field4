@@ -53,8 +53,8 @@ and registered textured g-buffer variants. Reloading goes through
 
 ```bash
 ./gradlew compileKotlinJvm
-uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.four.fabricated.FabricateSceneTestMain'
-uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.four.fabricated.FabricateRenderPlanTestMain'
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.graphics.scene.fabricated.FabricateSceneTestMain'
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.graphics.scene.fabricated.FabricateRenderPlanTestMain'
 ```
 
 Rendered behavior is exercised by the `FIELD_TEST` examples in

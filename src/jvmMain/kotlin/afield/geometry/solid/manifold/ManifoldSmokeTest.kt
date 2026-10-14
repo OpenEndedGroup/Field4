@@ -49,7 +49,7 @@ expect:
  *     parallel path is not racing, and runs one that throws to prove the exception comes back out as
  *     an exception rather than taking the VM down.
  *  3. **Disagreement with Field's own geometry.** Volume, genus and watertightness are computed
- *     independently by `afield.stdlib`'s mesh family on the [TriMesh] that comes back, so the bridge
+ *     independently by `afield.geometry.mesh`'s mesh family on the [TriMesh] that comes back, so the bridge
  *     is checked by two implementations that share no code.
  *
  * Manifold is optional, so a machine without it gets a clear skip and exit code 0 rather than a
@@ -105,7 +105,7 @@ object ManifoldSmokeTest {
             exact("cube 2x3x4 volume", box.volume, 24.0)
             exact("cube 2x3x4 area", box.surfaceArea, 52.0)
             // 12 and not 24: Manifold's cube is the minimal closed mesh, which is a stronger claim
-            // than "it renders" and the same one afield.stdlib's boxMesh makes.
+            // than "it renders" and the same one afield.geometry.mesh's boxMesh makes.
             equal("cube triangle count", box.triangleCount, 12L)
             equal("cube vertex count", box.vertexCount, 8L)
             equal("cube edge count", box.edgeCount, 18L)

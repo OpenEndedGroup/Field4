@@ -1,4 +1,4 @@
-// Monaco language for MorphoHDL boxes (afield.morpho.MorphoExecution).
+// Monaco language for MorphoHDL boxes (afield.lang.morpho.MorphoExecution).
 //
 // MorphoHDL is Python-shaped but it is not Python, and reusing Monaco's Python grammar would be
 // actively misleading: `@morpho` is the only decorator there is, `SPLIT`/`CAT`/`LSLICE` are
@@ -12,7 +12,7 @@
 // the reader. It is tokenised as a keyword rather than a comment.
 //
 // Loaded via "bithero/morpho" in bootstrapMonaco.js. The language id has to be the box's
-// code_language — "MorphoHDL", set by afield.morpho.morphoTopologyNeedsUpdating — lower-cased,
+// code_language — "MorphoHDL", set by afield.lang.morpho.morphoTopologyNeedsUpdating — lower-cased,
 // because that is the string the editor hands to monaco.editor.setModelLanguage (Main.kt and
 // BootstrapMonacoRuntime.kt both call it as `code_language.lowercase()`). An alias will not do:
 // setModelLanguage resolves mime types and then ids, never aliases, and silently falls back to

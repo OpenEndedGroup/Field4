@@ -250,7 +250,7 @@ object CompletionAaE2EProbe {
         val repl = "val s: Structure = TODO()\ns.proxy"
         check("intro import afield.graphics.vulkan.buffers", repl, repl.length, "proxying", "AA+intro")
 
-        // A package path inside a TYPE, edited in place: `prop<afield.‸stdlib.Vec4>(x)`. A qualified type
+        // A package path inside a TYPE, edited in place: `prop<afield.‸math.linalg.Vec4>(x)`. A qualified type
         // is a KtUserType, not a qualified expression, and the dot path answered "no qualified expr"
         // (55 misses per editing bucket of completion.lowering-invariant.probe, 2026-10-04). It only ever
         // worked while typing, because `prop<afield.` with nothing after it parses as a comparison. The
@@ -258,14 +258,14 @@ object CompletionAaE2EProbe {
         // expression is the call, so falling through would answer with List's members.
         println("── a package path inside a type ──")
         val fcwn = "val v = fromContextWithNameOrNull<afield.math.linalg.Vec4>(\"v\")"
-        check("type argument → sub-package", fcwn, fcwn.indexOf("stdlib"), "stdlib", "AA")
+        check("type argument → sub-package", fcwn, fcwn.indexOf("math"), "math", "AA")
         val jdk = "var f: java.util.concurrent.Future<Int>? = null"
         check("property type → JDK sub-package", jdk, jdk.indexOf("concurrent"), "concurrent", "AA")
         val nested = "val h = mutableListOf<afield.graphics.scene.fabricated.StandardRenderer.Bundle>()"
         check("type argument → nested class", nested, nested.indexOf("Bundle"), "Bundle", "AA")
         val inCall = "val m = listOf(1).map<Int, afield.math.linalg.Vec4> { TODO() }"
-        check("type argument of a qualified call", inCall, inCall.indexOf("stdlib"), "stdlib", "AA")
-        absent("…not the call's receiver", inCall, inCall.indexOf("stdlib"), "size")
+        check("type argument of a qualified call", inCall, inCall.indexOf("math"), "math", "AA")
+        absent("…not the call's receiver", inCall, inCall.indexOf("math"), "size")
 
         // A package path to a package NOBODY IMPORTED. Writing the path out is the reason to have one, and
         // the sidecar indexed only imported packages' contents, so `afield.audio.pd.‸` listed sub-packages and

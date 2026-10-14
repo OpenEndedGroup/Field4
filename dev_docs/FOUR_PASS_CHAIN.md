@@ -841,8 +841,8 @@ point rather than brevity:
 
 Both cost real time when the demo was first written, and neither is specific to this layer.
 
-- **`afield.graphics.scene.fabricated` is not among a box's automatic imports.** `afield.four`,
-  `afield.four.modules`, `afield.graphics.vulkan.targets`, `afield.graphics.vulkan.buffers` and `afield.graphics.texture` all
+- **`afield.graphics.scene.fabricated` is not among a box's automatic imports.** `afield.graphics.vulkan`,
+  `afield.graphics.render`, `afield.graphics.scene`, `afield.graphics.vulkan.targets`, `afield.graphics.vulkan.buffers` and `afield.graphics.texture` all
   are (see `intro` in `src/jvmMain/kotlin/afield/document/graph/Boxes.kt`), but the fabricated renderer is not — so
   `StandardRenderer.build(renderer)`, which several published pages show being typed straight into a
   box, needs an explicit import first.

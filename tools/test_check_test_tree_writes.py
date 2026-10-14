@@ -178,7 +178,7 @@ class EscapeTest(unittest.TestCase):
 
     def test_a_system_property_escape_is_recognized_and_labelled_as_one(self) -> None:
         """`-Dafield.*` reaches the test JVM but not this process, so Gradle forwards it."""
-        allowed = self.properties(**{"afield.rectsl.headingfigure": "write"})
+        allowed = self.properties(**{"afield.lang.rectsl.headingfigure": "write"})
         self.assertEqual(
             {"-Dafield.rectsl.headingfigure":
                 ("public/docs/assets/rectsl/rectsl-heading-lowering.png",)},
@@ -186,7 +186,7 @@ class EscapeTest(unittest.TestCase):
 
     def test_a_system_property_is_not_read_from_the_environment(self) -> None:
         """Otherwise an unrelated exported variable could authorize a write."""
-        self.assertEqual({}, self.prefixes(**{"afield.rectsl.headingfigure": "write"}))
+        self.assertEqual({}, self.prefixes(**{"afield.lang.rectsl.headingfigure": "write"}))
 
     def test_the_general_escape_still_has_to_name_its_paths(self) -> None:
         self.assertEqual(

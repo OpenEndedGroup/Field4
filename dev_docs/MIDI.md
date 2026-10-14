@@ -41,15 +41,15 @@ Zero new dependencies. `javax.sound.midi` is in the JDK.
 
 ```bash
 # the official pass/fail
-./gradlew jvmTest --tests 'afield.four.synth.MidiRoundTripTest'
-./gradlew jvmTest --tests 'afield.four.synth.AbletonMidiReadCharacterizationTest'
+./gradlew jvmTest --tests 'afield.audio.synth.MidiRoundTripTest'
+./gradlew jvmTest --tests 'afield.audio.synth.AbletonMidiReadCharacterizationTest'
 uv run --project . --group backdoor python tools/run_field_tests.py --id synth.midi-file.smoke
 # the production consumer of the lifted code, which must stay green
 uv run --project . --group backdoor python tools/run_field_tests.py --id examples.ableton-set.smoke
 
 # regenerate the figure's HTML (the smoke test writes it only when given an output directory)
 uv run --project . --group backdoor python tools/field_backdoor.py --json \
-  --command 'run-jvm-main afield.four.synth.MidiSmokeTest --arg /tmp/midi-figure'
+  --command 'run-jvm-main afield.audio.synth.MidiSmokeTest --arg /tmp/midi-figure'
 ```
 
 ## The lift, and why it was fenced first

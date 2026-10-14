@@ -203,7 +203,7 @@ trade worth thinking about.
 
 ```bash
 ./gradlew buildTetgenNative
-./gradlew jvmTest --tests 'afield.tetgen.TetgenTest'
+./gradlew jvmTest --tests 'afield.geometry.mesh.tetgen.TetgenTest'
 ```
 
 ```bash

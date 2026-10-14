@@ -201,7 +201,7 @@ letters.
     refusals and expectations:
 
     ```diffstatic {data-lang=bash}
-    ./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
+    ./gradlew jvmTest --no-daemon --tests 'afield.ui.visualization.ChartTest'
     ```
 
 ## Reference

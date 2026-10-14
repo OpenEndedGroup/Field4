@@ -143,7 +143,7 @@ From `code`
 
 A tool that hands the model a PICTURE.
 
-GeometryAgentTools (afield.four.modules) is a real, public tool set built on the same
+GeometryAgentTools (afield.graphics.render) is a real, public tool set built on the same
 AgentToolExtensions seam as the box to the left, over the loaders in
 public/docs/geometry_from_disk.md. It does the thing that makes a geometry tool worth
 having: the model can LOOK at what it just asked about, because the result implements
@@ -153,13 +153,13 @@ This box builds a mesh, writes it somewhere the tools are allowed to read, and t
 them exactly as a model would. No API key, no model.
 
 ```edn [field-box id="ai-tool-demo-geometry" role="properties"]
-{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 80 "characters" 4061 "sha256" "349ec123edfa19054fb59bae4aa9824e74a62fb94a79253ab82dee942935c889"}]}
+{"id" "ai-tool-demo-geometry" "index" 1 "name" "A tool that hands the model a picture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A tool that hands the model a picture" "_tombstone" false "frame" #afield/rect [720.0 60.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai-tool-demo-geometry_code_.kt" "lines" 80 "characters" 4064 "sha256" "dea62917c012313c75840feedcf3654d785b49d22d3536b583adb0c1c4bc634d"}]}
 ```
 
 ```kotlin [field-property box="ai-tool-demo-geometry" name="code" path="ai-tool-demo-geometry_code_.kt"]
 // A tool that hands the model a PICTURE.
 //
-// GeometryAgentTools (afield.four.modules) is a real, public tool set built on the same
+// GeometryAgentTools (afield.graphics.render) is a real, public tool set built on the same
 // AgentToolExtensions seam as the box to the left, over the loaders in
 // public/docs/geometry_from_disk.md. It does the thing that makes a geometry tool worth
 // having: the model can LOOK at what it just asked about, because the result implements

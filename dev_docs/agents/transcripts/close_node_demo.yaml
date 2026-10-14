@@ -17,7 +17,7 @@ description: >
 
   WHERE IT COMES FROM, which is the part worth seeing. Not from glyphs: AWT's `javaShapeToFLine`
   turns SEG_CLOSE into a `lineTo` back to the last moveTo, so a glyph outline has no Close at all.
-  It comes from `afield.stdlib.arrow(startHead = true, endHead = true)` — a shipped drawing
+  It comes from `afield.graphics.render.arrow(startHead = true, endHead = true)` — a shipped drawing
   primitive whose two arrowheads each end in `close()`, so a double-headed arrow has an interior
   Close in it and no user cleverness was required to build one.
 

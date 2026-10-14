@@ -18,7 +18,7 @@ let inherited name box =
 
 let renderer = thisBox |> inherited "renderer"
 
-let ModuleKt = hostClass "afield.four.modules.ModuleKt"
+let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
 let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 let Pair = hostClass "kotlin.Pair"
 
@@ -38,9 +38,9 @@ let params =
     p |> hostSet "name" "fieldmlSpin"
   ) ModuleKt
 
-let module = hostNew (params) (hostClass "afield.four.modules.Module")
+let module = hostNew (params) (hostClass "afield.graphics.render.Module")
 let pointer = module |> hostExt ModuleKt "pointer" Unit
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("tri", mesh) Pair)
 let _ = mesh |> hostCall "resize" (3, 0, pointer)
 let target = renderer |> hostCall1 "renderTargetFor" 0
@@ -52,7 +52,7 @@ let _ = target |> hostCall1 "plusAssign_module" (hostNew ("fieldmlSpin", module)
 // setter is the way across: `Vector4f.set(float, float, float, float)` really declares
 // floats, so the bridge's numeric ladder narrows for us. The same object stays in the
 // structure and is re-serialised on every draw, so mutating it is what moves the triangle.
-let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.stdlib.linalg.Vector4f")
+let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.math.linalg.Vector4f")
 let _ = mesh |> hostGet "push" |> hostCall "set" ("spin", spin)
 
 // Mechanism D. `f` is typed `Frames` off the JVM signature, so `f.frameNumber` is checked

@@ -8,7 +8,7 @@ original stays unchanged, and opening it again makes another fresh copy.
 
 For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
 
-`afield.four` is Field's direct Vulkan path. A graphics box usually has three parts:
+`Field 4` is Field's direct Vulkan path. A graphics box usually has three parts:
 
 - Kotlin code that creates modules, meshes, buffers, cameras, textures, and renderer connections.
 - Shader properties such as `vertex`, `fragment`, `compute`, or `vertex_fragment`.
@@ -836,7 +836,7 @@ void main()
 }
 ```
 
-Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `afield.four` composes.
+Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `Field 4` composes.
 
 The graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
 

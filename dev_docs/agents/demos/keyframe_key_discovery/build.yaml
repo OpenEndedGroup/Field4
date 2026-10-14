@@ -28,8 +28,8 @@ description: >
                    watching nothing both leave `scopeSlots` empty and must not read the same.
 
   This transcript is what built `dev_docs/agents/demos/keyframe_key_discovery/metadata.edn`;
-  re-running it rebuilds that document. Companion tests: afield.stdlib.KeyframeBrowserTest and
-  afield.server.KeyframeBrowserProtocolTest.
+  re-running it rebuilds that document. Companion tests: afield.animation.keyframes.KeyframeBrowserTest and
+  afield.app.server.KeyframeBrowserProtocolTest.
 operations:
   - create:
       box: kf_before_after

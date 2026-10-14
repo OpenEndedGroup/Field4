@@ -515,7 +515,7 @@ internal object KotlinCompletionSupport {
      *
      * This is the fix for section headers that described the receiver instead of the row: the fallback
      * inference blends `receiverQualifiedName` into the text it matches on, so on a `ComputeMesh.` panel
-     * the receiver's own package (`afield.four`) matched first and `let`, `also`, `apply` and `equals` were
+     * the receiver's own package (`afield.graphics.render`) matched first and `let`, `also`, `apply` and `equals` were
      * all announced as GRAPHICS. Every row claiming to be graphics is no grouping at all.
      */
     private fun declarationCategory(extraInfo: Map<String, Any?>): String? {
@@ -583,11 +583,11 @@ internal object KotlinCompletionSupport {
         }
         value.contains("synth") || value.contains("afield.audio") -> "Audio"
         value.contains("afield.math") -> "Math"
-        value.contains("afield.visualization") || value.contains("plotly") || value.contains("visualizer") -> "Visualization"
-        value.contains("afield.graphics") || value.contains("afield.four") || value.contains("fline") ||
+        value.contains("afield.ui.visualization") || value.contains("plotly") || value.contains("visualizer") -> "Visualization"
+        value.contains("afield.graphics") || value.contains("fline") ||
             value.contains("shader") || value.contains("stacksl") || value.contains("color") -> "Graphics"
-        value.contains("afield.internal") || value.contains("afield.app.server") || value.contains("afield.ai") -> "Internal"
-        value.contains("afield.workspace") || value.contains("document") -> "Workspace"
+        value.contains("afield.app.") || value.contains("afield.tools.") || value.contains("afield.ai") -> "Internal"
+        value.contains("afield.document.") || value.contains("document") -> "Workspace"
         value.containsAny(" sin ", " cos ", " tan ", " sqrt ", " pow ", " abs ", " floor ", " ceil ", " lerp ", " clamp ") -> "Math"
         else -> null
     }

@@ -1618,7 +1618,7 @@ data class Vec2Update(val controlId: String, val x: Double, val y: Double)
 @Serializable
 data class CheckboxUpdate(val controlId: String, val value: Boolean)
 
-/** The whole value of a multislider, matrix, range slider or menu. See `afield/visualizers.kt`. */
+/** The whole value of a multislider, matrix, range slider or menu. See `afield/ui/visualization/visualizers.kt`. */
 @Serializable
 data class ArrayControlUpdate(val controlId: String, val values: List<Double>)
 
@@ -1697,7 +1697,7 @@ data class ControllerControl(
      */
     val significantDigits: Int = 0,
     /**
-     * The shape of a multislider, matrix, range slider or menu (`afield/visualizers.kt`), so a
+     * The shape of a multislider, matrix, range slider or menu (`afield/ui/visualization/visualizers.kt`), so a
      * surface that only sees this record — the phone — can draw it: [columns] is a multislider's bar
      * count or a matrix's column count, [rows] and [states] are a matrix's, [options] a menu's.
      * Their value travels in [text] as comma-separated numbers, and a playhead in [value].

@@ -77,7 +77,7 @@ chat helper paths, and the backdoor's saved/live distinction.
 Verified in a provisioned Field checkout after merging current `main`:
 
 ```sh
-./gradlew jvmTest --tests 'afield.ai.core.WorkspaceSearchTest' --tests 'afield.ai.core.WorkspaceSearchIntegrationTest'
+./gradlew jvmTest --tests 'afield.ai.tools.WorkspaceSearchTest' --tests 'afield.ai.tools.WorkspaceSearchIntegrationTest'
 ./gradlew compileKotlinJvm
 ```
 

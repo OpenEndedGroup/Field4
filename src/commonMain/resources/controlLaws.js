@@ -1,4 +1,4 @@
-// How a Field control's travel maps onto its value — the browser half of `afield.ControlLaw`.
+// How a Field control's travel maps onto its value — the browser half of `afield.ui.controls.ControlLaw`.
 //
 // One module, loaded by BOTH control surfaces: `index.html` (before `sliders.js`, which draws the
 // output-area controls) and `controllers.html` (before `controllers.js`, which draws the remote tablet

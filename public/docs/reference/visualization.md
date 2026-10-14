@@ -845,7 +845,7 @@ The shortest useful thing is `LambdaTerms.normalise`, which runs parse, compile,
     run.steps     // how many reactions it took
 
 Two public names sit behind that. [`Term`](visualization.md#lambdaterms-kt-term) is the syntax tree, with `Var`, `Lam` and `App` nested inside it so that
-`Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names leaks into `afield.stdlib`.
+`Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names leaks into `afield.lang.lambda`.
 [`LambdaTerms`](visualization.md#lambdaterms-kt-lambdaterms) is everything done to one: parsing, printing, compilation to the [`Lambda`](visualization.md#interactionnets-kt-lambda) agent vocabulary, readback,
 and the reference evaluator the net's answer is checked against.
 

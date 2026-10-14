@@ -74,7 +74,7 @@ variance in Smile's normalized units. New APIs consistently use noiseStd.
 In a full Field checkout (2026-10-09), after merging main:
 
 ```bash
-./gradlew jvmTest --tests 'afield.math.gp.*' --tests afield.graphics.FLineGaussianProcessTest --tests afield.graphics.FLineGpGeometryTest
+./gradlew jvmTest --tests 'afield.math.gp.*' --tests afield.geometry.path.FLineGaussianProcessTest --tests afield.geometry.path.FLineGpGeometryTest
 ```
 
 48 tests pass: the PR's 24 core, 4 Smile, 1 figure-data and 6 FLine integration tests (the last

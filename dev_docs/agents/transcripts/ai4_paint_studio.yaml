@@ -1,6 +1,6 @@
 name: ai4_paint_studio
 description: >
-  A studio for AI4 over the paint simulator (afield.paint). One box registers an agentExtension:
+  A studio for AI4 over the paint simulator (afield.graphics.paint). One box registers an agentExtension:
   twenty paint tools the chat agent can call (stroke, dab, work a region, glaze, draw, hatch,
   stipple, wait, a fresh canvas or sheet of paper, hang, a deferred crack; the kept tools: make one,
   load it, a painting knife, a rag and spatter; and watercolour and ink: wash, drop, wet a region,

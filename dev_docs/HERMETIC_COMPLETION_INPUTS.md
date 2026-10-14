@@ -16,7 +16,7 @@ line:
 
 ```
 DRIFT spin_glass/sg_draw: harvested preamble differs from the fixture
-    + import afield.four.util.Window
+    + import afield.graphics.vulkan.util.Window
 ```
 
 The line was removed in `559348acc`, restored in `10f3fbaf5`, removed again in `389e1d8ff`, and was
@@ -45,7 +45,7 @@ with one probe `Window` compiled into the personal layer to stand in for `rectga
 
 ```
 warning,import  multiple classes called Window =
-    [afield.four.util.Window, java.awt.Window, nightlyprobe.Window, org.sqlite.Function$Window]
+    [afield.graphics.vulkan.util.Window, java.awt.Window, nightlyprobe.Window, org.sqlite.Function$Window]
 ```
 
 — two importable candidates after filtering (`java.awt.Window` is removed by the `*awt*` blacklist
@@ -175,8 +175,8 @@ After the fix, both states above are green, and the second one additionally prin
 ```
 imports   hermetic (personal layer: present but EXCLUDED (afield-personal.jar); …)
   import resolution: 1 of 6 prop<T> types resolve differently on this machine. …
-    Window: clean=import afield.four.util.Window | here=no import (ambiguous)
-      candidates on this classpath: afield.four.util.Window, java.awt.Window, probe.Window, org.sqlite.Function$Window
+    Window: clean=import afield.graphics.vulkan.util.Window | here=no import (ambiguous)
+      candidates on this classpath: afield.graphics.vulkan.util.Window, java.awt.Window, probe.Window, org.sqlite.Function$Window
 ```
 
 ### The check that can say which side was wrong

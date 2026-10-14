@@ -3,7 +3,7 @@ description: >
   Loadable demo of the exhaustive Petri analysis in PetriStateSpace.kt — the classical questions,
   answered exactly, with counterexamples. Six pure-compute boxes; no Window, no Renderer, no GPU,
   no audio device.
-  The companion to petri_sound, which is the *musical* half of afield.petri. This is the half that
+  The companion to petri_sound, which is the *musical* half of afield.simulation.petri. This is the half that
   treats a net as a concurrency model: an exhaustive reachability graph over every interleaving, a
   Karp-Miller coverability graph with omega-markings, and — the point — the shortest firing
   sequence that breaks whatever you asked about, drawn over the state graph so you can see it.

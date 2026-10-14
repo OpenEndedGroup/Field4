@@ -15,7 +15,7 @@ real client. `RenderedAudioSeamTest` uses it to exercise the real `FieldAudioCli
 `analyzeRenderedAudio`, unmodified, over a real socket.
 
 ```
-./gradlew jvmTest --tests 'afield.stdlib.noir.audioai.*'
+./gradlew jvmTest --tests 'afield.audio.ai.*'
 ```
 
 ## Why a server and not a fake client

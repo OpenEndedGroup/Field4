@@ -1318,7 +1318,7 @@ fun plate(withRing: Boolean): PolyhedralObject {
     val inner = listOf(
         Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
     )
-    // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+    // buildList, not `outer + inner`: a box has afield.geometry.path in scope, where
     // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points.
     val points = buildList { addAll(outer); if (withRing) addAll(inner) }
     val rings = if (withRing) listOf(listOf(0, 1, 2, 3), listOf(4, 5, 6, 7)) else listOf(listOf(0, 1, 2, 3))

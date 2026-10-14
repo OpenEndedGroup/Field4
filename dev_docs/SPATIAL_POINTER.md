@@ -282,7 +282,7 @@ run `./gradlew materializeAgentTranscripts`.
 
 ## Deliberately not done
 
-- **Picking FLines in 3D.** Nothing in `afield.four` draws an FLine into a 3D scene: `grep -rln FLine
+- **Picking FLines in 3D.** Nothing in Field 4 draws an FLine into a 3D scene: `grep -rln FLine
   src/jvmMain/kotlin/afield/four` returns 11 files and all of them *produce* FLines for the 2D/browser
   output. There is no 3D FLine path to pick *in*, so the JVM does not fill `FLineIntersection`-shaped
   records for 3D geometry. `clickableProjection` is the 2D bridge instead.

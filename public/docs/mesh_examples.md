@@ -6,7 +6,7 @@ with a surface** is another. Ask a mesh whether it is closed, subdivide it, smoo
 deflating it, decimate it to a budget, measure its volume, shoot a ray at it, write it out for
 another program to read.
 
-`afield.stdlib` carries a CPU triangle-mesh family for that, built around a single value type,
+`afield.geometry.mesh` carries a CPU triangle-mesh family for that, built around a single value type,
 `TriMesh`. It generates primitives, marches an SDF into a surface, works out a mesh's topology,
 subdivides it (Loop), smooths it (Laplacian and Taubin), decimates it (QEM), welds it, measures its
 curvature, raycasts it through a BVH, reads and writes OBJ and STL, and takes a convex hull. All of

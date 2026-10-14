@@ -2,7 +2,7 @@ name: pat_fn_graph_fit
 description: >
   A rhythm as a graph you can fit. `patFn(...)` turns a pattern of kernel atoms into a
   Functions.Fn, and that Fn carries a real graph node (op = "pat") whose leaves are the numbers
-  written in the pattern text — so afield.stdlib.fitGradient tunes a *rhythm*. Three boxes.
+  written in the pattern text — so afield.math.functions.fitGradient tunes a *rhythm*. Three boxes.
   "inspect" prints the node: its op, its role-tagged knobs (atom0.sigma, atom1.attack, cps) and
   their values, next to the graph text. "fit" takes a two-bump target and a seed with the right
   structure and the wrong numbers, plots target against fitted (they should land on top of each

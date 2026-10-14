@@ -1,7 +1,7 @@
 name: syphon_bridge
 description: >
   Three boxes that move frames over Syphon, the macOS standard for sharing video between
-  applications, through afield.syphon (an Objective-C shim over the Syphon framework). The first
+  applications, through afield.io.syphon (an Objective-C shim over the Syphon framework). The first
   lists the Syphon servers on this machine. The second publishes an animated picture as the server
   "Field pattern", visible to Resolume, TouchDesigner, MadMapper, OBS or any other Syphon client.
   The third connects to a server as a client and shows its latest frame — by default Field's own

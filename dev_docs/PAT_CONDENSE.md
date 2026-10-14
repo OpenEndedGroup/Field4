@@ -193,12 +193,12 @@ measured above it is false.
 
 ```bash
 # the tests
-./gradlew jvmTest --tests 'afield.four.synth.PatCondenseTest'
+./gradlew jvmTest --tests 'afield.audio.synth.PatCondenseTest'
 
 # the figure (roll 11 of the piano-roll gallery)
 python3 tools/run_field_tests.py --id synth.pat.gallery --port <p>
 python3 tools/field_backdoor.py --port <p> run-jvm-main \
-    afield.four.synth.PatPianoRollGallery --arg "$PWD/dev_docs/assets/pat_gallery"
+    afield.audio.synth.PatPianoRollGallery --arg "$PWD/dev_docs/assets/pat_gallery"
 
 # the demo
 ./field.sh dev_docs/agents/demos/pattern_condense --read-only

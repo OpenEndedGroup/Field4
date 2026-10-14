@@ -94,7 +94,7 @@ the cylinder is too well behaved to test three real things — see *What the sec
 ## The numbers, with their populations
 
 All from `./gradlew --no-daemon runSkinningEvidence` and
-`./gradlew --no-daemon jvmTest --tests 'afield.graphics.scene.CpuSkinnerTest' --tests 'afield.four.GltfSkinning*'`
+`./gradlew --no-daemon jvmTest --tests 'afield.graphics.scene.CpuSkinnerTest' --tests 'afield.graphics.scene.GltfSkinning*'`
 (22 tests, all passing), on macOS / aarch64, GraalVM 25.
 
 The whole suite was run once as well, because `PathTraceGltf.importGltf` is the only route into the

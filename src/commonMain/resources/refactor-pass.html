@@ -101,7 +101,7 @@ details.logs pre { max-height: 180px; }
 <div id="error" role="alert" hidden></div>
 <section id="import-panel"><h2>New refactor session</h2><p class="muted">Creates a worktree from this checkout’s current commit (HEAD) and copies the chosen workspaces. Uncommitted repository edits are not included. Backups and thumbnails are excluded.</p>
 <form id="start-form"><label>What is this refactor for?<input id="purpose" required placeholder="Organize packages for the public preview"></label>
-<label>Package moves · optional, one old → new pair per line<textarea id="mappings" placeholder="afield.stdlib.linalg → afield.math.linalg"></textarea></label>
+<label>Package moves · optional, one old → new pair per line<textarea id="mappings" placeholder="afield.math.linalg → afield.math.linalg"></textarea></label>
 <label>Workspace directories · one absolute path per line<textarea id="workspace-paths" placeholder="/Users/you/Documents/AFieldWorkspace"></textarea></label>
 <label>Repository Markdown paths · comma separated<input id="markdown-paths" value="public/docs/*.md, dev_docs/*.md, native/*.md"></label>
 <label><span><input id="workspace-markdown" type="checkbox" checked> Include Markdown throughout workspace copies</span></label>

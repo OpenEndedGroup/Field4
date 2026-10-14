@@ -120,7 +120,7 @@ operations:
         "code": |
           // A tool that hands the model a PICTURE.
           //
-          // GeometryAgentTools (afield.four.modules) is a real, public tool set built on the same
+          // GeometryAgentTools (afield.graphics.render) is a real, public tool set built on the same
           // AgentToolExtensions seam as the box to the left, over the loaders in
           // public/docs/geometry_from_disk.md. It does the thing that makes a geometry tool worth
           // having: the model can LOOK at what it just asked about, because the result implements

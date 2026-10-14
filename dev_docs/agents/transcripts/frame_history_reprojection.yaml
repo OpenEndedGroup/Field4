@@ -49,7 +49,7 @@ operations:
       frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
           import afield.graphics.scene.fabricated.StandardRenderer
           import afield.graphics.scene.fabricated.applyScenePlan
           import afield.math.linalg.Matrix4f

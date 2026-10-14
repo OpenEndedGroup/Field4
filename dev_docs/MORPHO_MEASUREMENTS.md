@@ -10,7 +10,7 @@ but the cell, net, expansion and timing columns do not, and the timings are one 
 Regenerate with:
 
 ```bash
-./gradlew jvmMeasurements --tests "afield.morpho.MorphoMeasurements" --rerun -i
+./gradlew jvmMeasurements --tests "afield.lang.morpho.MorphoMeasurements" --rerun -i
 ```
 
 `jvmMeasurements`, not `jvmTest`: `build.gradle.kts` registers it precisely to hold `**/*Measurements`

@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
  * Does the CPU backend compile a `{{ stack.auto.<slot> }}` slot the way production does?
  *
  * [StackSLCpu.stackAutoOptions] is a hand copy of the option set in
- * `afield.stdlib.shaders.compileStackAutoShaderFunctionReporting`, which is the real expansion path
+ * `afield.graphics.shader.compileStackAutoShaderFunctionReporting`, which is the real expansion path
  * a live shader goes through. The two cannot *share* the constant: `shaders.kt` imports
  * `afield.graphics.vulkan.Renderer` and most of the graphics stack, and a backend whose whole purpose is to
  * need no graphics context cannot depend on it. Inverting the dependency — moving the option set

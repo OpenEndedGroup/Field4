@@ -1,6 +1,6 @@
 name: fn_differentiable_fit_demo
 description: >
-  Self-contained demo of the differentiable fitter (afield.stdlib.fitBest / fitGradient) — the
+  Self-contained demo of the differentiable fitter (afield.math.functions.fitBest / fitGradient) — the
   gradient-descent counterpart to the genetic evolve(). The target is a *product* of two
   oscillators, cos(2)*sin(1.5, ...), and the seed has deliberately-wrong frequencies
   (cos(3.4)*sin(1.0, ...)). A single fitGradient stalls in a frequency local-minimum (RMSE ~0.19),

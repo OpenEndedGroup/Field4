@@ -1,6 +1,6 @@
 name: polytope_holes_and_chains
 description: >
-  Three small boxes for the two things afield.stdlib.polytope gained on 2026-08-05: a face may have
+  Three small boxes for the two things afield.geometry.polytope gained on 2026-08-05: a face may have
   holes, and the whole Conway vocabulary chains. Box 1 takes the cubeWithWindow seed end to end —
   boundary rings, the two Euler characteristics, the triangles the window is cut out of, the four
   operations that refuse a holed face by name, and the polygonal FLines in the on-canvas viewer, where
@@ -109,7 +109,7 @@ operations:
               val inner = listOf(
                   Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
               )
-              // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+              // buildList, not `outer + inner`: a box has afield.geometry.path in scope, where
               // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points,
               // not eight.
               val points = buildList { addAll(outer); if (withRing) addAll(inner) }

@@ -125,7 +125,7 @@ var FLine.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
 
 /**
  * Per-node colour override in `0..1`, which is how one FLine carries a gradient: the GPU
- * point/triangle writers in `afield.graphics.StandardDrawing` use a node's own colour where it has
+ * point/triangle writers in `afield.graphics.render.StandardDrawing` use a node's own colour where it has
  * one and the whole line's [color] where it does not.
  *
  * Those writers read the node's raw property, so the default-on-read behaviour of [color] bites

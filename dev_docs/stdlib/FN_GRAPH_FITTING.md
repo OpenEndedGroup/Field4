@@ -34,5 +34,5 @@ The live transcript example is
 `dev_docs/agents/transcripts/fn_differentiable_fit_demo.yaml`.
 
 ```bash
-./gradlew jvmTest --tests afield.stdlib.FunctionFitTest
+./gradlew jvmTest --tests afield.math.functions.FunctionFitTest
 ```

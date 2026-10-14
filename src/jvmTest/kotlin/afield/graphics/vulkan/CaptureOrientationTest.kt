@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
  *   layer goes red rather than quietly turning the other two into tautologies.
  * - **Layer B, declaration matches code.** Every [CapturePathSpec] must find its symbol in its
  *   file, carrying exactly the flip its declared [CapturePathSpec.sourceRowOrder] implies.
- * - **Layer C, completeness.** Scan the `afield.four` tree for flip-bearing encode calls and fail on any
+ * - **Layer C, completeness.** Scan the Vulkan stack ([CaptureOrientation.scannedRoots]) for flip-bearing encode calls and fail on any
  *   that [CaptureOrientation] does not declare, so a path added without declaring its row order
  *   cannot land.
  *
@@ -356,7 +356,7 @@ class CaptureOrientationTest {
     @Test
     fun scannerReportsAnUndeclaredSite() {
         val synthetic = """
-            package afield.four
+            package afield.graphics.vulkan
             object Sneaky {
                 fun captureSomethingNew(buffer: ByteBuffer, w: Int, h: Int) {
                     val png = PngEncoder.encodeFromBuffer(buffer, w, h, flipY = true)
@@ -364,7 +364,7 @@ class CaptureOrientationTest {
             }
         """.trimIndent()
 
-        val sites = scanForFlipSites("src/jvmMain/kotlin/afield/four/Sneaky.kt", synthetic)
+        val sites = scanForFlipSites("src/jvmMain/kotlin/afield/graphics/vulkan/Sneaky.kt", synthetic)
         assertEquals(1, sites.size, "scanner missed a new flip site: $sites")
         assertEquals("captureSomethingNew", sites[0].symbol)
         assertEquals("flipY = true", sites[0].token)
@@ -380,7 +380,7 @@ class CaptureOrientationTest {
     fun scannerReportsAMismatchedToken() {
         // The historical bug, planted: a top-down source packed bottom-up.
         val synthetic = """
-            package afield.four
+            package afield.graphics.vulkan
             object Regressed {
                 fun writeJpeg(path: String, rgba: ByteArray, w: Int, h: Int, q: Int) {
                     writeJpegRgb(path, packRgbaToRgbBottomUp(rgba, w, h), w, h, q)
@@ -403,7 +403,7 @@ class CaptureOrientationTest {
     @Test
     fun scannerIgnoresCommentaryAndDeclarations() {
         val synthetic = """
-            package afield.four
+            package afield.graphics.vulkan
             /**
              * Prose mentioning flipY = true and [packRgbaToRgbBottomUp] must not register.
              */
@@ -415,7 +415,7 @@ class CaptureOrientationTest {
 
         assertEquals(
             emptyList(),
-            scanForFlipSites("src/jvmMain/kotlin/afield/four/Doc.kt", synthetic),
+            scanForFlipSites("src/jvmMain/kotlin/afield/graphics/vulkan/Doc.kt", synthetic),
             "the scanner registered commentary or a declaration as a call site"
         )
     }
@@ -542,7 +542,7 @@ class CaptureOrientationTest {
     fun viewportScannerSpotsAPositiveHeightViewport() {
         // Negative control: the exact thing that would silently falsify the table.
         val synthetic = """
-            package afield.four
+            package afield.graphics.vulkan
             object NewPath {
                 fun setViewportYDown(stack: MemoryStack, w: Int, h: Int) {
                     val viewport = VkViewport.calloc(1, stack)
@@ -554,7 +554,7 @@ class CaptureOrientationTest {
             }
         """.trimIndent()
 
-        val found = scanForViewportSites("src/jvmMain/kotlin/afield/four/NewPath.kt", synthetic)
+        val found = scanForViewportSites("src/jvmMain/kotlin/afield/graphics/vulkan/NewPath.kt", synthetic)
         assertEquals(1, found.size, "scanner missed a viewport setup: $found")
         assertEquals("setViewportYDown", found[0].symbol)
         assertTrue(!found[0].flipsY, "a positive-height viewport must not read as flipping Y")
@@ -564,7 +564,7 @@ class CaptureOrientationTest {
     fun viewportScannerIsNotFooledByAPositiveScissorHeight() {
         // The real shape of the in-tree code: a flipped viewport next to an upright scissor.
         val synthetic = """
-            package afield.four
+            package afield.graphics.vulkan
             object RealShape {
                 fun setViewportAndScissor(stack: MemoryStack, rect: Rect) {
                     val viewport = VkViewport.calloc(1, stack)
@@ -576,7 +576,7 @@ class CaptureOrientationTest {
             }
         """.trimIndent()
 
-        val found = scanForViewportSites("src/jvmMain/kotlin/afield/four/RealShape.kt", synthetic)
+        val found = scanForViewportSites("src/jvmMain/kotlin/afield/graphics/vulkan/RealShape.kt", synthetic)
         assertEquals(1, found.size)
         assertTrue(found[0].flipsY, "the positive scissor height must not mask the flipped viewport")
     }

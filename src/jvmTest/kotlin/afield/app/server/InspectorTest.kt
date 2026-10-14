@@ -20,7 +20,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * The server-side model behind `tree(...)` and `column(...)` (`afield/server/browsing.kt`): what a
+ * The server-side model behind `tree(...)` and `column(...)` (`afield/app/server/browsing.kt`): what a
  * value turns into on the `__browsing__` wire, one request at a time, without a browser.
  */
 class InspectorTest {

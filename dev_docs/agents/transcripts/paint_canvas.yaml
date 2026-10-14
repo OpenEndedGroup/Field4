@@ -1,6 +1,6 @@
 name: paint_canvas
 description: >
-  Three boxes that paint and draw FLines through afield.paint.PaintCanvas (the `paint` crate from
+  Three boxes that paint and draw FLines through afield.graphics.paint.PaintCanvas (the `paint` crate from
   claude-paint, behind a small Rust library). The first is a canvas, a brush and three strokes, the
   last one running the brush dry. The second paints a few hundred strokes along a flow field,
   reloading the brush between strokes without wiping it clean so neighbouring colours blend. The

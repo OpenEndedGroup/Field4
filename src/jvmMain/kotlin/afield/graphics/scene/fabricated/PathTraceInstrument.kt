@@ -36,7 +36,7 @@ import kotlin.math.min
  * serves the two panels unevenly. `H2Reflect` reflects any type, so `.h2` reaches every public
  * tuning property without help; `.h` with no printer falls through to `ValueVisualizer`'s
  * `formatFallbackObject`, which prints the class name and an identity hash and nothing else — while
- * the `afield.four` types the tracer is *built out of* (`Renderer`, `Camera`,
+ * the Field 4 types the tracer is *built out of* (`Renderer`, `Camera`,
  * `ComputeModulePointer`, `RenderToTexture`, `VulkanBuffer`, …) all have printers in
  * `FourVisualizers.kt`.
  *

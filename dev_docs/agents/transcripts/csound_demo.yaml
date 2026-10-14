@@ -33,7 +33,7 @@ operations:
         isCsoundRoot: true
         code: |
           // This root stays Kotlin; its `mainLanguage` makes the boxes under it Csound.
-          println(afield.csound.CsoundLibrary.describe())
+          println(afield.audio.csound.CsoundLibrary.describe())
   - create:
       box: cs_pluck
       name: "pluck"

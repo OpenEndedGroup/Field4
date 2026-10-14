@@ -6,7 +6,7 @@
 Given a set of points, much of what you might do with them comes down to one question: which part
 of the plane belongs to which point, and where are the boundaries between them?
 
-Field has four ways to answer it, all in `afield.stdlib`, and this page works through each:
+Field has four ways to answer it, all in Field's standard library, and this page works through each:
 
 - **Delaunay triangulation and its Voronoi dual**: the classical answer, exact, built on JTS.
 - **Apollonius (multiplicatively weighted Voronoi)**: the same question with the points given

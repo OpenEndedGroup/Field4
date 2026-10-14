@@ -28,8 +28,8 @@ description: >
                    watching nothing both leave `scopeSlots` empty and must not read the same.
 
   The saved document at `dev_docs/agents/demos/keyframe_key_discovery/` is this same scene.
-  Companion tests: afield.stdlib.KeyframeBrowserTest and
-  afield.server.KeyframeBrowserProtocolTest.
+  Companion tests: afield.animation.keyframes.KeyframeBrowserTest and
+  afield.app.server.KeyframeBrowserProtocolTest.
 operations:
   - create:
       box: kf_before_after

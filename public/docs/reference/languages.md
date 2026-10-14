@@ -4446,8 +4446,8 @@ String  --tokenize-->  List<Token>  --eval-->  SceneProgram  --sample(t)-->  Sam
    of rather than only play. `sample(t)` walks it and returns a [`SampledScene`](languages.md#rectsl-kt-sampledscene), a flat
    z-ordered list of [`SampledRect`](languages.md#rectsl-kt-sampledrect)s with no tracks left in it.
  - `lowerSampledScene` turns that into a [`RectMesh`](languages.md#rectsl-kt-rectmesh): four [`RectVertex`](languages.md#rectsl-kt-rectvertex)es and six indices per
-   rect, with colour, material index and per-object shader data interleaved, ready for an
-   `afield.four` buffer.
+   rect, with colour, material index and per-object shader data interleaved, ready for a
+   Vulkan buffer.
 
 [`RectAnimationOracle`](languages.md#rectsl-kt-rectanimationoracle) is the one object that names all five steps, and
 `compileRectSL` is the same compile with host-built curves bound in by name — the
@@ -6174,7 +6174,7 @@ What `RectSLGlsl.emitSdf` produced, and anything it could not carry across.
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">RectSLImager</span><span class="p">(</span><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLImg/#L38)
 
-A RectSL scene as a sequence of [`Img`](imaging.md#imaging-kt-img)s: the bridge from the rectangle language to everything in Field that reads an image — `afield.stdlib` filters, `showImg`, and `Patch.mapImage`, which puts a scene on a light rig.
+A RectSL scene as a sequence of [`Img`](imaging.md#imaging-kt-img)s: the bridge from the rectangle language to everything in Field that reads an image — `afield.media.image` filters, `showImg`, and `Patch.mapImage`, which puts a scene on a light rig.
 
 | Declaration | Summary |
 | --- | --- |

@@ -74,7 +74,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Holds `afield.stdlib` to the claims its own KDoc makes.
+ * Holds the library that was `afield.stdlib` to the claims its own KDoc makes.
  *
  * Every case here started life as a *documented* promise that the code did not keep — found by
  * reading the 1550 KDoc blocks the 2026-07-27 coverage campaign added and checking each against the

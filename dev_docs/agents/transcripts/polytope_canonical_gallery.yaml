@@ -1,6 +1,6 @@
 name: polytope_canonical_gallery
 description: >
-  One editable Field box for canonical realization in afield.stdlib.polytope. Change the single
+  One editable Field box for canonical realization in afield.geometry.polytope. Change the single
   Conway expression string at the top and the box re-evaluates the notation, canonicalizes the
   result, and draws both side by side in the on-canvas Three.js viewer: on the left the raw
   per-operator realization, on the right the canonical form in which every edge is tangent to one

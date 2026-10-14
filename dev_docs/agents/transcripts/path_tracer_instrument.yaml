@@ -7,12 +7,12 @@ description: |
   The subject is one line — `display("output", tracer)` — and what it used to produce:
 
   ```
-  PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+  PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3
   ```
 
   376 bytes, roughly 330 of them the wrapper `<div>`. `PathTracingRenderer` is not a data class and
   had no `registerValuePrinter` entry, so `ValueVisualizer` fell all the way to
-  `formatFallbackObject`. Every `afield.four` type the tracer is built out of was in the same
+  `formatFallbackObject`. Every Field 4 type the tracer is built out of was in the same
   position: the object with the most to say about itself in a running renderer was the one that said
   the least. What it shows now is the instrument — sample count, the integrator in use, the
   convergence curve — and boxes 4 and 5 swap the integrator underneath it and put it back, which is
@@ -79,7 +79,7 @@ operations:
           // and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
           // data class and had no value printer registered, so `ValueVisualizer` fell all the way through
           // to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
-          // `afield.four` types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
+          // Field 4 types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
           // `RenderToTexture`, `VulkanBuffer` -- has had a printer since it was written.
           //
           // Re-run this box at any time; it reads the live tracer.

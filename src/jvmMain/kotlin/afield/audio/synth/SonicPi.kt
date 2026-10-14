@@ -248,7 +248,7 @@ class SonicPi private constructor(
             })
             // Deliberately no connect() here. A receive-only OSCPortIn has no remote address, so
             // connecting throws "Can't connect to port 0"; startListening() is what binds the local
-            // port. OscServer in afield.stdlib does call connect(), but inside a
+            // port. OscServer in afield.io.osc does call connect(), but inside a
             // `catch (_: Throwable) {}` that hides this exact exception.
             listening.startListening()
 

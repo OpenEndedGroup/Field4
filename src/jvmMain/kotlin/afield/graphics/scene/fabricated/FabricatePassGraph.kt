@@ -13,7 +13,7 @@ package afield.graphics.scene.fabricated
  *
  * Two collections here are this map with a type argument and a vocabulary on top.
  * [FabricatePostStack] holds [FabricatePostEffect]s, which is what lets a feature insert a post
- * pass beside one it did not add; [FabricateFrameGraph] holds `afield.four` targets, which is what
+ * pass beside one it did not add; [FabricateFrameGraph] holds Field 4 targets, which is what
  * gives the renderer's off-screen passes names and an order before any of them reach a
  * `RenderTarget`. Nothing in this file imports anything, so the ordering rules can be exercised on
  * plain strings, which is what `FabricatePassGraphTestMain.kt` does.

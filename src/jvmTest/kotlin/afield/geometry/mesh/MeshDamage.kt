@@ -39,7 +39,7 @@ import kotlin.random.Random
 /**
  * Deterministic, *named* ways to break a known-good mesh.
  *
- * Every entry here damages a mesh from [afield.stdlib] `mesh_generate.kt` in one specific way, so a
+ * Every entry here damages a mesh from [afield.geometry.mesh] `mesh_generate.kt` in one specific way, so a
  * test can say "this mesh has exactly a hole in it" rather than "this mesh is bad somehow". That
  * precision is the whole point: a repair pipeline tested against meshes whose defects are only
  * approximately known can only be tested for "did it get better", and "did it get better" is how a

@@ -19,11 +19,11 @@ The measured outcome and validation artifacts are recorded in
 The Kotlin client lives in `src/jvmMain/kotlin/afield/kratos`, following the existing
 JVM package layout. It adds no imports or startup hooks to Field core and no
 Gradle dependency. The existing `org.msgpack:msgpack-core` dependency is reused.
-`afield.manifold.Solid` supplies native CSG, explicit closing and the existing
+`afield.geometry.solid.manifold.Solid` supplies native CSG, explicit closing and the existing
 flat-array `TriMesh` conversion; `mesh_measure.kt` supplies the BVH evaluator.
 `showMeshGrid` supplies the existing Three.js rendering path.
 
-Field already runs CPython **in this process**, through JEP: `afield.python.PythonInterface`, one
+Field already runs CPython **in this process**, through JEP: `afield.lang.python.PythonInterface`, one
 interpreter and one namespace per Field process. So importing Kratos in-process was available
 rather than impossible, and is still the wrong choice — it would put a solver with no wheel for
 this platform into the same interpreter every Python box in the document shares, where a solver
@@ -130,7 +130,7 @@ LinearSolversApplication**: the first low-resolution profile uses core Skyline L
 uv sync --project optional/kratos --frozen
 export AFIELD_KRATOS_PYTHON="$PWD/optional/kratos/.venv/bin/python"
 OMP_NUM_THREADS=2 uv run --project optional/kratos python -m unittest discover -s optional/kratos/tests -v
-./gradlew jvmTest --tests 'afield.kratos.KratosTest'
+./gradlew jvmTest --tests 'afield.simulation.kratos.KratosTest'
 uv run --project . --group backdoor python tools/run_field_tests.py --id kratos.embedded.thermal --port 9677
 ```
 
@@ -310,7 +310,7 @@ outside the verified reference profile.
 ## Parameter studies: many solves, one question
 
 Everything above answers one question at a time — this geometry, these coefficients, what is the
-field? `afield.kratos.KratosStudy` is the layer that varies the question and compares the answers.
+field? `afield.simulation.kratos.KratosStudy` is the layer that varies the question and compares the answers.
 
 ```kotlin
 data class Design(val armEnd: Double, val conductivity: Double)

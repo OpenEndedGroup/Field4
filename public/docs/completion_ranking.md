@@ -269,7 +269,7 @@ If you write a class in a Field box, or anywhere on Field's classpath, you can g
 first page yourself.
 
 ```diffstatic {data-lang=kotlin}
-import afield.CommonMembers
+import afield.runtime.completion.CommonMembers
 
 @CommonMembers("advance", "reset", "value")
 class Ramp {

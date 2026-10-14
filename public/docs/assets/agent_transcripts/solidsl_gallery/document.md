@@ -118,7 +118,7 @@ build.close()
 <!-- field-box id="cross_check" index="1" -->
 
 ```edn [field-box id="cross_check" role="properties"]
-{"id" "cross_check" "index" 1 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 121 "characters" 6400 "sha256" "aae21b2ccec8f4c53b086e327124270563f9f65119c958daa072ea815c125b37"}]}
+{"id" "cross_check" "index" 1 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 121 "characters" 6405 "sha256" "eececf96c2093d90b33de3084c4cf2beaaee0ae1ced0b1d4238a7d9524edb526"}]}
 ```
 
 ```kotlin [field-property box="cross_check" name="code" path="cross_check_code_.kt"]
@@ -171,7 +171,7 @@ if (!ManifoldLibrary.isAvailable) {
     println("Only one of the two evaluations is available, so there is nothing to cross-check.")
     showMesh(
         part.marchedMesh(SolidQuality(edgeLengthFraction = 1.0 / 110.0)),
-        title = "afield.solidsl through marching cubes",
+        title = "afield.lang.solidsl through marching cubes",
         caption = "Install Manifold (brew install manifold) and re-run to get the exact CSG " +
             "evaluation of the same expression beside it, and the agreement between them.",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 720, height = 460),

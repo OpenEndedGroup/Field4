@@ -118,7 +118,7 @@ real but modest at this brush size. Pressure and tilt change more than timing do
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
-  --command 'run-jvm-main afield.paint.GestureReplayMain --arg /abs/request.json'
+  --command 'run-jvm-main afield.graphics.paint.GestureReplayMain --arg /abs/request.json'
 ```
 
 The request is a `GestureReplayRequest` (JSON) with these fields:

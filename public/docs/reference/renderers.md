@@ -420,7 +420,7 @@ entry anywhere but last.
 
 Two collections here are this map with a type argument and a vocabulary on top.
 [`FabricatePostStack`](renderers.md#fabricatepoststack-kt-fabricatepoststack) holds [`FabricatePostEffect`](renderers.md#fabricatepoststack-kt-fabricateposteffect)s, which is what lets a feature insert a post
-pass beside one it did not add; [`FabricateFrameGraph`](renderers.md#fabricateframegraph-kt-fabricateframegraph) holds `afield.four` targets, which is what
+pass beside one it did not add; [`FabricateFrameGraph`](renderers.md#fabricateframegraph-kt-fabricateframegraph) holds Field 4 targets, which is what
 gives the renderer's off-screen passes names and an order before any of them reach a
 `RenderTarget`. Nothing in this file imports anything, so the ordering rules can be exercised on
 plain strings, which is what `FabricatePassGraphTestMain.kt` does.
@@ -1267,7 +1267,7 @@ and an `afield.ui.visualization.registerH2Value` entry, because the class is not
 serves the two panels unevenly. `H2Reflect` reflects any type, so `.h2` reaches every public
 tuning property without help; `.h` with no printer falls through to `ValueVisualizer`'s
 `formatFallbackObject`, which prints the class name and an identity hash and nothing else — while
-the `afield.four` types the tracer is *built out of* (`Renderer`, `Camera`,
+the Field 4 types the tracer is *built out of* (`Renderer`, `Camera`,
 `ComputeModulePointer`, `RenderToTexture`, `VulkanBuffer`, …) all have printers in
 `FourVisualizers.kt`.
 
@@ -1887,7 +1887,7 @@ the configuration that sizes them.
 This is the largest file in the package and the one to read first, because the objects it returns
 are what almost everything else here consumes. `StandardRenderer.build(...)` builds the five
 passes — g-buffer, shadow map, ambient occlusion, lighting composite, transparent composite —
-and hands back a `Bundle` holding each as an ordinary `afield.four` `Target`, along with the
+and hands back a `Bundle` holding each as an ordinary Field 4 `Target`, along with the
 scene defaults, the scene graph and the post stack. Nothing is hidden
 behind that: `FabricateFrameGraph` wraps the same targets to give them names and an order,
 `FabricatePostStack` appends to them, and a box that wants to reach past all of it and

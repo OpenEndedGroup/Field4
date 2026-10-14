@@ -757,7 +757,7 @@ builds a three-box graph with a tie and a shadowed ancestor and checks all three
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9877 \
-  --command 'why Child _speed' --command 'why Child --type afield.four.Renderer'
+  --command 'why Child _speed' --command 'why Child --type afield.graphics.vulkan.Renderer'
 ```
 
 ## Suite runner details

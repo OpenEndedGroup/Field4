@@ -126,7 +126,7 @@ After the server is listening, run each entrypoint **one at a time**, through th
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --attach-existing --port 9816 --timeout 240 \
-  --command 'run-jvm-main afield.four.modules.ClusterGeometrySmoke --arg=--clip' \
+  --command 'run-jvm-main afield.graphics.render.ClusterGeometrySmoke --arg=--clip' \
   > build/neural-tools/clusters-final.json
 ```
 

@@ -42,7 +42,7 @@ internal data class CapturePathSpec(
 )
 
 /**
- * Every readback→encode path in `afield.four`, and the row order each one's source delivers.
+ * Every readback→encode path in the Vulkan stack, and the row order each one's source delivers.
  *
  * ## Why this exists as data
  *
@@ -73,7 +73,7 @@ internal data class CapturePathSpec(
  *
  * ## Adding a path
  *
- * Declare it here. [CaptureOrientationTest] scans the `afield.four` tree for flip-bearing encode calls
+ * Declare it here. [CaptureOrientationTest] scans the Vulkan stack's source roots for flip-bearing encode calls
  * and fails on any it cannot find in this list, so an undeclared path does not compile past CI.
  */
 internal object CaptureOrientation {
@@ -94,7 +94,7 @@ internal object CaptureOrientation {
     const val JPEG_WRITE = "stbi_write_jpg"
 
     /**
-     * Source roots the completeness scan covers. Deliberately only `afield.four`: `flipY` also
+     * Source roots the completeness scan covers. Deliberately only the Vulkan stack (`afield.graphics.vulkan`, `.render`, `.texture`): `flipY` also
      * appears in `afield.ui.visualization.heatmap` and `afield.media.image.imaging`, where it is a
      * user-facing *orientation option* on a CPU image and has nothing to do with a GPU readback.
      * Widening the scan to those would make it assert a convention they do not share.
@@ -152,7 +152,7 @@ internal object CaptureOrientation {
             why = "The shared stbi_write_jpg call. It makes no orientation decision — it writes " +
                     "whatever the packer handed it, and stbi_flip_vertically_on_write is never " +
                     "called anywhere in this repo. Declared so that a *new* JPEG writer added " +
-                    "elsewhere in afield.four has to come here and say which way its rows run."
+                    "elsewhere in the Vulkan stack has to come here and say which way its rows run."
         ),
         CapturePathSpec(
             id = "window-framebuffer-tempfile",
@@ -226,7 +226,7 @@ internal object CaptureOrientation {
         "clip y = +1 is image row 0, so a pass sampling a render target uses v = 0.5 - clip.y * 0.5"
 
     /**
-     * Every place `afield.four` sets up a `VkViewport`.
+     * Every place the Vulkan stack sets up a `VkViewport`.
      *
      * This list is not about encoding at all — it is the **premise** every `TopDown` row above
      * rests on, and it is here because it was the one load-bearing assumption with nothing
@@ -242,7 +242,7 @@ internal object CaptureOrientation {
      * A sixth render path added with an ordinary positive-height viewport would silently falsify
      * half of [paths] while every flip in the tree still matched its declaration — the table would
      * be self-consistent and wrong. `CaptureOrientationTest` therefore checks these too, and fails
-     * on any undeclared `VkViewport` setup in `afield.four`.
+     * on any undeclared `VkViewport` setup in the Vulkan stack.
      */
     val viewportConventionSites: List<ViewportConventionSite> = listOf(
         ViewportConventionSite(

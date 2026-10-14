@@ -1,7 +1,7 @@
 name: rectsl_inverse_animation
 description: >
   Self-contained demo of RectSL's third, differentiable backend: inverse animation. A RectSL track
-  now lowers to an afield.stdlib.Functions.Fn, which autodiff_fn.kt differentiates exactly, so a
+  now lowers to an afield.math.functions.Functions.Fn, which autodiff_fn.kt differentiates exactly, so a
   track marked with free parameters can be *solved* instead of authored. Box one declares a rect
   whose position is `amp * trig(rate*t + phase) + centre` in both axes with all six numbers unknown,
   says where the rect must be at three instants, and solves — then renders target / seed / fitted as

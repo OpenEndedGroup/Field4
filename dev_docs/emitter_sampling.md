@@ -221,7 +221,7 @@ For a standalone run with a durable audit verdict:
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9730 --timeout 3900 \
-  --command 'run-jvm-main afield.four.fabricated.RayTracingGpuAudit --arg=--stage=emitters --timeout 3800'
+  --command 'run-jvm-main afield.graphics.scene.fabricated.RayTracingGpuAudit --arg=--stage=emitters --timeout 3800'
 ```
 
 That route writes `build/raytracing-audit/gpu/emitters/<backend>/` and `report.json`.

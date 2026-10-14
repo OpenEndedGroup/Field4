@@ -28,8 +28,8 @@ start(renderer::run)
 ```
 
 ```text [field-property box="rp_renderer" name="preamble"]
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -61,7 +61,7 @@ under an `import ...StandardRenderer` fails against the *import* line.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
 import afield.math.linalg.Matrix4f
-import afield.math.linalg.Vector3f
+
 
 prop<afield.graphics.scene.fabricated.StandardRenderer.Bundle>(bundle)
 
@@ -97,10 +97,10 @@ println("bundle ready: " + bundle.postStack.names())
 ```
 
 ```text [field-property box="rp_bundle" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
+var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -161,12 +161,12 @@ frames {
 ```
 
 ```text [field-property box="rp_chain" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
-var Box.chain by Inheritance<afield.four.fabricated.FabricateBuiltChain>() /**/
-val Once.chain by Onceing<afield.four.fabricated.FabricateBuiltChain>() /**/
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
+var Box.chain by Inheritance<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+val Once.chain by Onceing<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -222,12 +222,12 @@ frames {
 ```
 
 ```text [field-property box="rp_modes" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
-var Box.chain by Inheritance<afield.four.fabricated.FabricateBuiltChain>() /**/
-val Once.chain by Onceing<afield.four.fabricated.FabricateBuiltChain>() /**/
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
+var Box.chain by Inheritance<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+val Once.chain by Onceing<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/

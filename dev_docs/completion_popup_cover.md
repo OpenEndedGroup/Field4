@@ -219,7 +219,7 @@ least one, and no mutation survived unnoticed:
 ## Running it
 
 ```
-./gradlew --no-daemon jvmTest --tests 'afield.FieldSuggestPresentationTest'
+./gradlew --no-daemon jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 ```
 
 All three tests print every case's PASS/FAIL line, so a failure in CI is readable without re-running

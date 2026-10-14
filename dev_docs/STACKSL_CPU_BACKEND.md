@@ -242,7 +242,7 @@ every program, with the per-program table beside it in `gallery_agreement.md`. R
 
 ```
 java -Djava.awt.headless=true -cp build/classes/kotlin/jvm/main:<kotlin-stdlib> \
-     afield.stacksl.cpu.StackSLCpuContactSheetKt
+     afield.lang.stacksl.cpu.StackSLCpuContactSheetKt
 ```
 
 Its difference tiles decimate by **maximum**, not average. That is deliberate: the interesting

@@ -31,7 +31,7 @@ scalar.
 
 - `GlslFloatScalars` is the binary32 reference. Every body in it is the pre-refactor expression
   **verbatim**, moved rather than rewritten, so nothing is widened, reordered or fused.
-- `GlslAdScalars` (`GlslAd.kt`) is reverse mode on `afield.stdlib`'s `AD` tape — reused, not
+- `GlslAdScalars` (`GlslAd.kt`) is reverse mode on `afield.math.autodiff`'s `AD` tape — reused, not
   rewritten. One tape per pixel: the loss is a sum over pixels, so the gradient is a sum of
   per-pixel backward sweeps and no tape outlives the pixel that built it.
 
@@ -94,8 +94,8 @@ only. **A program's wire count is an upper bound on its fittable parameter count
 Every number below is asserted, not printed. Run:
 
 ```
-./gradlew jvmTest --tests 'afield.stacksl.cpu.*' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
-./gradlew jvmMeasurements --tests 'afield.stacksl.cpu.StackSLCpuThroughputMeasurements' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
+./gradlew jvmTest --tests 'afield.lang.stacksl.cpu.*' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
+./gradlew jvmMeasurements --tests 'afield.lang.stacksl.cpu.StackSLCpuThroughputMeasurements' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
 ```
 
 ### The `Float` path did not move

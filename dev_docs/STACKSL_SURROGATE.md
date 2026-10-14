@@ -143,7 +143,7 @@ would be overselling it without that sentence.
 Every number below is asserted in `StackSLSurrogateTest`, not printed. Run:
 
 ```
-./gradlew jvmTest --tests 'afield.stacksl.*' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx6g
+./gradlew jvmTest --tests 'afield.lang.stacksl.*' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx6g
 ```
 
 ### M1 — which words gain a gradient, and which of those gains are real

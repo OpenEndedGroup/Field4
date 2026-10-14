@@ -224,7 +224,7 @@ data class InspectFunctionStudy(val revision: String = "current")
 data class EditFunctionStudy(
     val expectedRevision: String,
     val expectedSourceHash: String,
-    @JsonPropertyDescription("Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.")
+    @JsonPropertyDescription("Complete Kotlin source with imports. Last expression returns afield.math.functions.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.")
     val source: String,
     val description: String,
     val previewStartSeconds: Double = 0.0,

@@ -88,7 +88,7 @@ private data class ControllerInput(
     val g: Double = 0.0,
     val b: Double = 0.0,
     val a: Double = 1.0,
-    /** The whole value of a multislider, matrix, range slider or menu; see `afield/visualizers.kt`. */
+    /** The whole value of a multislider, matrix, range slider or menu; see `afield/ui/visualization/visualizers.kt`. */
     val values: List<Double> = emptyList()
 )
 

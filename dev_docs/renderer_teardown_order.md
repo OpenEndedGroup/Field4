@@ -1,6 +1,6 @@
 # Renderer teardown order
 
-What happens, in what order, when a Vulkan `Field 4` owned by a box goes away, and what a
+What happens, in what order, when a Vulkan `Renderer` owned by a box goes away, and what a
 box that draws or writes buffers can rely on. Written 2026-09-26, after a JVM crash on this path
 was reproduced and fixed.
 

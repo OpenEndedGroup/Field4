@@ -70,8 +70,6 @@ println(1)
 """
 
 EDITABLE_LINES_SNIPPET = """\
-import afield.graphics.*
-
 val foo = fline {
     color = vec(0.2, 0.8, 1.0, 1.0)
     thickness = 2.0
@@ -83,8 +81,6 @@ lines(foo, editable = true)
 """
 
 STATIC_LINES_SNIPPET = """\
-import afield.graphics.*
-
 val staticLine = fline {
     color = vec(1.0, 0.55, 0.2, 1.0)
     thickness = 3.0
@@ -97,8 +93,6 @@ lines(staticLine, w = 360.0, h = 220.0, fitToSize = true)
 """
 
 SHOW_PLANE_INTERACTIVE_SNIPPET = """\
-import afield.graphics.*
-
 val ring = fline {
     color = vec(0.42, 0.78, 1.0, 1.0)
     thickness = 2.0

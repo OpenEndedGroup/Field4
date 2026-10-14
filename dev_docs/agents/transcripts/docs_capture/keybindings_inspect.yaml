@@ -1,7 +1,7 @@
 name: keybindings_inspect
 description: >
   One box that asks Field what its shortcuts currently are, reading the same resolved bindings the
-  keypresses themselves use (afield.UserKeybindingsManager.resolved). Backs the "Asking Field
+  keypresses themselves use (afield.app.settings.UserKeybindingsManager.resolved). Backs the "Asking Field
   directly" capture on public/docs/keybindings.md, and is worth running on its own when a shortcut
   is not doing what a keybindings.yaml says it should. The box code here is exactly what that page
   shows.

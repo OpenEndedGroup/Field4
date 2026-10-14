@@ -32,8 +32,8 @@ val view = three(name = "foo", width = 760, height = 440) {
 
 `three` is a function on the current Field box. The block has a `ThreeSceneBuilder` receiver:
 `mesh`, `lines`, `camera` and the other operations below describe the scene. The graphics and
-mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.*`
-and `afield.stdlib.*` and call `three` on a `Box`.
+mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.three.*`
+and `afield.geometry.mesh.*` and call `three` on a `Box`.
 
 ### Viewer name, channel and size
 

@@ -71,7 +71,7 @@ enum class BiquadType {
 /**
  * This signal through a 12 dB/octave [Biquad] lowpass at [cutoffHz]: `bass.lowpass(150f)`.
  *
- * Box code reaches for this rather than `Biquad(BiquadType.LPF, …)` because `afield.stdlib` has a
+ * Box code reaches for this rather than `Biquad(BiquadType.LPF, …)` because `afield.math.statistics` has a
  * `BiquadType` of its own, so the bare name is ambiguous in a box. Chain two for 24 dB/octave.
  */
 fun Signal.lowpass(cutoffHz: Float, q: Float = 0.707f): Signal = through(Biquad(BiquadType.LPF, Param(cutoffHz), Param(q)))

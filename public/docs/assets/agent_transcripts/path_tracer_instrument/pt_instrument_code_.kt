@@ -5,7 +5,7 @@
 // and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a
 // data class and had no value printer registered, so `ValueVisualizer` fell all the way through
 // to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26
-// `afield.four` types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
+// Field 4 types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,
 // `RenderToTexture`, `VulkanBuffer` -- has had a printer since it was written.
 //
 // Re-run this box at any time; it reads the live tracer.

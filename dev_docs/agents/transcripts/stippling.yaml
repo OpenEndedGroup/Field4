@@ -1,6 +1,6 @@
 name: stippling
 description: >
-  Stippling an image with `stipple` / `Stippler` (afield.stdlib, stippling.kt): exactly N dots that
+  Stippling an image with `stipple` / `Stippler` (afield.geometry.spatial, stippling.kt): exactly N dots that
   follow the picture's tone and keep an even, blue-noise spacing from one another.
 
   `stipple_hello` is the whole idea in two statements: draw a shaded sphere as an `Img`, then

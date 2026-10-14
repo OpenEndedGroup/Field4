@@ -49,7 +49,7 @@ fails in CI without anyone looking at a picture.
 
 ```
 AFIELD_TESSELLATION_RENDER_OUT=dev_docs/agents/artifacts/tessellate_facing \
-  ./gradlew jvmTest --tests 'afield.graphics.TessellationFacingRenderTest'
+  ./gradlew jvmTest --tests 'afield.geometry.path.TessellationFacingRenderTest'
 mv dev_docs/agents/artifacts/tessellate_facing/cube_faces.png \
    dev_docs/agents/artifacts/tessellate_facing/after_fixed.png
 ```
@@ -67,7 +67,7 @@ any current parameter:
 ```
 git checkout 590e1f781 -- src/jvmMain/kotlin/afield/geometry/path/FLine.kt
 AFIELD_TESSELLATION_RENDER_OUT=dev_docs/agents/artifacts/tessellate_facing \
-  ./gradlew jvmTest --tests 'afield.graphics.TessellationFacingRenderTest'   # fails, as it should
+  ./gradlew jvmTest --tests 'afield.geometry.path.TessellationFacingRenderTest'   # fails, as it should
 mv dev_docs/agents/artifacts/tessellate_facing/cube_faces.png \
    dev_docs/agents/artifacts/tessellate_facing/before_590e1f781.png
 git checkout HEAD -- src/jvmMain/kotlin/afield/geometry/path/FLine.kt

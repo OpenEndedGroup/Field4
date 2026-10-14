@@ -72,8 +72,8 @@ import kotlin.math.sqrt
  *    of rather than only play. `sample(t)` walks it and returns a [SampledScene], a flat
  *    z-ordered list of [SampledRect]s with no tracks left in it.
  *  - [lowerSampledScene] turns that into a [RectMesh]: four [RectVertex]es and six indices per
- *    rect, with colour, material index and per-object shader data interleaved, ready for an
- *    `afield.four` buffer.
+ *    rect, with colour, material index and per-object shader data interleaved, ready for a
+ *    Vulkan buffer.
  *
  * [RectAnimationOracle] is the one object that names all five steps, and
  * [compileRectSL] is the same compile with host-built curves bound in by name — the

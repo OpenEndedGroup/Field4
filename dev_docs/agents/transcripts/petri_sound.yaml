@@ -1,6 +1,6 @@
 name: petri_sound
 description: >
-  Loadable demo of Petri nets as a sequencer (afield.petri) — the model and firing engine in
+  Loadable demo of Petri nets as a sequencer (afield.simulation.petri) — the model and firing engine in
   PetriNets.kt, the `PatPattern` bridge in PetriMusic.kt, the notation in PetriNotation.kt, the
   structural analysis in PetriAnalysis.kt and the drawing in PetriVisual.kt. Seven pure-compute
   boxes; no Window, no Renderer, no GPU, no audio device.

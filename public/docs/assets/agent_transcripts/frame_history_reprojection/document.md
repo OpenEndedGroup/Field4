@@ -35,14 +35,14 @@ start(renderer::run)
 
 From `code`
 
-`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 
 ```edn [field-box id="rp_bundle" role="properties"]
-{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 49 "characters" 2296 "sha256" "a7ce824d2f5260366fbf0fb3f3ff16357f1147a78cccf7034c93546847552aa0"}]}
+{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 49 "characters" 2306 "sha256" "df7383f739d4e9ec8d0c5800675221668fcd0b4f19e48a253dad9d0c6815a051"}]}
 ```
 
 ```kotlin [field-property box="rp_bundle" name="code" path="rp_bundle_code_.kt"]
-// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
 import afield.math.linalg.Matrix4f

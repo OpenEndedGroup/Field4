@@ -11,7 +11,7 @@ description: >
 
   To see it: replay this, click into either box's editor, put the caret at the end of the seeded
   prefix line and press Ctrl+Space (or Cmd+Space). Read the grey group header above the rows. The
-  headless regression cover for the same thing is `afield.FieldSuggestPresentationTest`
+  headless regression cover for the same thing is `afield.runtime.completion.FieldSuggestPresentationTest`
   (dev_docs/completion_popup_cover.md); this is the human-eyeball version of it, and the only version
   that also proves the CSS, Monaco and the real transport.
 

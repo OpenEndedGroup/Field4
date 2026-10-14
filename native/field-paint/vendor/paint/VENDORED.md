@@ -79,7 +79,7 @@ Copy `crates/paint/{Cargo.toml,build.rs,src}` of the new commit over this direct
 ```bash
 cargo test --release --offline --manifest-path native/field-paint/vendor/paint/Cargo.toml --target-dir build/field-paint --lib
 ./gradlew buildPaintNative
-./gradlew jvmTest --tests 'afield.paint.*'
+./gradlew jvmTest --tests 'afield.graphics.paint.*'
 ```
 
 A new upstream engine number is a new behaviour, not a fix to an old one: keep `engine = N` canvases

@@ -18,7 +18,7 @@ It takes about six seconds and writes nothing to the repository.
 `LambdaTerms.parse` → `LambdaTerms.compile` → `Reducer.reduceDetailed` (`relaxIterations = 0`) →
 one `LambdaSoundDocs.Beat` per reaction → a boolean β mask → `patCondense` → `patRenderStereo`.
 
-Four subsystems: `afield.stdlib.lambdaterms`, `afield.stdlib.interactionnets`,
+Four subsystems: `lambdaterms.kt` (`afield.lang.lambda`), `interactionnets.kt` (`afield.data.graph`),
 `afield.audio.synth.PatCondense`, `afield.audio.synth.PatSynth`. No missing bridge — everything the
 route needed was already public, which is what makes this a C rather than a swing. The only new
 code is the recorder and the assertions.

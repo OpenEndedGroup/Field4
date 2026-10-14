@@ -166,7 +166,7 @@ Code:
 Run it (read-only):
 
 ```
-uv run --project . --group backdoor python tools/field_backdoor.py --json --command "run-jvm-main afield.chatlog.ChatArchiveCli --arg=--workspace --arg ~/house-machine/workspace --arg=--match --arg 'house-machine-*' --arg=--out --arg <dir>"
+uv run --project . --group backdoor python tools/field_backdoor.py --json --command "run-jvm-main afield.ai.conversation.chatlog.ChatArchiveCli --arg=--workspace --arg ~/house-machine/workspace --arg=--match --arg 'house-machine-*' --arg=--out --arg <dir>"
 ```
 
 The house corpus on 2026-10-06 (12 chats in 11 houses; houses 4 and 5 have none; 13 and 14 store

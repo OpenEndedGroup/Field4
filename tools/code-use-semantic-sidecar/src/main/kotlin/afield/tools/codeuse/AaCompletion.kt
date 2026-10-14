@@ -1941,7 +1941,7 @@ class AaCompleter(
             }
 
             // A dot inside a TYPE REFERENCE: `prop<afield.‸math.linalg.Vec4>(x)`, `fromContextWithNameOrNull<
-            // afield.four.‸targets.ComputeTarget>("…")`, `var f: java.util.‸concurrent.Future<T>`. A
+            // afield.graphics.vulkan.‸targets.ComputeTarget>("…")`, `var f: java.util.‸concurrent.Future<T>`. A
             // qualified type is a `KtUserType` with a qualifier, not a `KtQualifiedExpression`, so the dot
             // path below bailed with "no qualified expr" — 55 misses per editing bucket in the caret sweep,
             // every one of them a `prop<…>` or `fromContextWithNameOrNull<…>` path in a box written after

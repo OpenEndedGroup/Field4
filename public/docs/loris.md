@@ -332,7 +332,7 @@ Loris is optional, and Field does not build it unless you ask. Build the worker 
 
 ```diffstatic {data-lang=bash}
 ./gradlew buildLorisNative
-./gradlew jvmTest --tests 'afield.stdlib.loris.LorisTest'
+./gradlew jvmTest --tests 'afield.audio.analysis.loris.LorisTest'
 ```
 
 The build needs CMake 3.24+ and a C++17 compiler. It downloads a checksummed, pinned Loris source

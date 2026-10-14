@@ -141,7 +141,7 @@ hostStaticCall "max" ([5, 1, 9, 3], fun a b -> b - a) Collections
 
 ## Reaching Field 4
 
-`afield.four` is the package holding Field's Vulkan layer. A small complete scene (a window, a compute shader over particles, a draw pass) can be written in FieldML statement for statement, including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin receiver lambda and whose `vec4s` only exists inside it, and the per-frame builders. Imports have no FieldML counterpart because FieldML names every class in full. Several of the calls such a scene makes are source macros, covered next.
+Field 4 is Field's Vulkan layer. A small complete scene (a window, a compute shader over particles, a draw pass) can be written in FieldML statement for statement, including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin receiver lambda and whose `vec4s` only exists inside it, and the per-frame builders. Imports have no FieldML counterpart because FieldML names every class in full. Several of the calls such a scene makes are source macros, covered next.
 
 ## Source macros
 
