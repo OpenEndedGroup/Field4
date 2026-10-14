@@ -12,10 +12,10 @@ operations:
         code: |
           import afield.graphics.vulkan.util.Options
           import afield.graphics.vulkan.targets.OpenXRHmdTarget
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
           Options.enableVR = !Options.isMac
           once.renderer {
@@ -51,14 +51,14 @@ operations:
           layout(location=0) out vec4 outColor;
           void main() { outColor = fcol; }
         code: |
-          import afield.four.modules.*
+
           import afield.graphics.vulkan.targets.BinocularGazeIntersection
           import afield.math.linalg.Matrix4f
           import afield.math.linalg.Quaternionf
           import java.util.concurrent.atomic.AtomicBoolean
           import java.util.concurrent.atomic.AtomicReference
           import kotlinx.coroutines.delay
-          
+
           val xr = renderer.openXRHmdTarget
           if (xr != null) {
               check(xr.hasEyeViews) { "OpenXR views are not ready; check the headset/runtime, then re-launch this box" }
@@ -66,7 +66,7 @@ operations:
           val xrFormats = if (xr == null) emptyList<Int>() else renderer.runOnQueueThread {
               listOf(xr.sideBySideRTTParameters().format)
           }
-          
+
           // Change this and re-launch this box to exercise a different world origin.
           // It is deliberately non-identity: +0.35m X, +0.10m Y, -0.20m Z, +30 degrees yaw.
           val worldFromLocal = Matrix4f().translate(0.35f, 0.10f, -0.20f)
@@ -81,7 +81,7 @@ operations:
           val markerWorld = Vec3()
           var hasPlacement = false
           var held = false
-          
+
           val previewView = Matrix4f().translate(0f, -0.15f, -0.5f)
           val previewProjection = Matrix4f().setPerspective(1.15f, 1.5f, 0.01f, 100f, true)
           val module = moduleHere {
@@ -91,7 +91,7 @@ operations:
               blend = false
               colorFormats = xrFormats
           }
-          
+
           // Static vertex buffers, dynamic model matrices. No uploads after the render pass starts.
           fun lineMesh(name: String, vertices: List<Vec3>, color: Vec4, modelWorld: () -> Matrix4f): Mesh {
               val m = Mesh(renderer, module)
@@ -119,7 +119,7 @@ operations:
               }
               return result
           }
-          
+
           val grid = mutableListOf<Vec3>()
           for (i in -4..4) {
               val x = i * 0.5f
@@ -141,7 +141,7 @@ operations:
                   Matrix4f().translate(0f, 0f, -distance)
               }
           }
-          
+
           val leftModel = Matrix4f()
           val rightModel = Matrix4f()
           val combinedModel = Matrix4f()
@@ -157,7 +157,7 @@ operations:
           }
           leftRay.instanceCount = 0; rightRay.instanceCount = 0
           combinedRay.instanceCount = 0; gap.instanceCount = 0; marker.instanceCount = 0
-          
+
           fun point(v: Vec3) = "(%.3f, %.3f, %.3f)".format(v.x, v.y, v.z)
           module += "sample eyes once before left-eye drawing" to before { _, _ ->
               // The XR target updates tracking before this callback. Both rendered eyes use one solve.
@@ -214,7 +214,7 @@ operations:
           if (xr != null) xr += "eye intersection scene" to module
           else renderer += "eye intersection scene" to module
           module.enable()
-          
+
           checkbox("Hold the last valid marker in world space", false, "hold") { holdMarker.set(it) }
           println("Eye intersection scene ready; worldFromLocal is translation + 30-degree yaw")
           loop {

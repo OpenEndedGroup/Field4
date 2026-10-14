@@ -73,8 +73,8 @@ CPU work.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="240" padding="18" timeout="120" name="chain-polytope-readout" embed=true}
 :::static
 import afield.geometry.solid.manifold.*
-import afield.stdlib.*
-import afield.geometry.polytope.*
+
+
 
 val thickness = 0.09   // wall thickness, in the polytope's own units; the shape spans about 2
 

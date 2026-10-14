@@ -39,13 +39,13 @@ start(renderer::run)
 <!-- field-box id="computed_ray_geometry" index="1" -->
 
 ```edn [field-box id="computed_ray_geometry" role="properties"]
-{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 26 "characters" 1147 "sha256" "9550735580b1de9252149f9b71325dfd2188c2b9c188e6afd9389e612f632ee1"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 30 "characters" 1768 "sha256" "25ae45ac65babc0545a50d58b73605a97867b88d479eae27c899c25880a9e579"}]}
+{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 26 "characters" 1119 "sha256" "adf8c988f1c07937f7bbc155b6ac511ccef42a276dad96faf2f158ad82caf16b"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 30 "characters" 1768 "sha256" "25ae45ac65babc0545a50d58b73605a97867b88d479eae27c899c25880a9e579"}]}
 ```
 
 ```kotlin [field-property box="computed_ray_geometry" name="code" path="computed_ray_geometry_code_.kt"]
 import afield.ui.output.controlGroup
 import afield.ui.output.displayOpen
-import afield.four.modules.*
+
 
 prop<ClusterGeometryDemo>(lab)
 fromContextWithNameOrNull<ClusterGeometryDemo>("lab")?.close()

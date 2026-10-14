@@ -92,8 +92,10 @@ it. These are provider-specific histories, not complete document forks.
 A document can expose an existing history without adopting a new persistence format:
 
 ```diffstatic {data-lang=kotlin}
-import afield.*
-import afield.ai.core.*
+
+import afield.ai.completion.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
 
 // Connect these callbacks to your existing saved-state store.
 stateTree("design", "Design", read = {

@@ -109,7 +109,7 @@ the same non-reentrant dispatcher used elsewhere (see the `warmCompletion` note 
 - If `KotlinEngineConfig.activeCompletionBackend == AA` (`KotlinInterface2.kt:561#activeCompletionBackend ==`):
   1. gather the box's inherited preamble: `normalizePreambleText(gatherPreambleUpwards(box))`
      (`KotlinInterface2.kt:562#normalizePreambleText(gatherPreambleUpwards`; `gatherPreambleUpwards` in `macros/macros.kt:117#fun gatherPreambleUpwards`,
-     `normalizePreambleText` in `stdlib/shaders.kt:2569#fun normalizePreambleText`).
+     `normalizePreambleText` in `graphics/shader/shaders.kt:3109#fun normalizePreambleText`).
   2. collect implicit receiver type names (e.g. `afield.document.graph.Box`).
   3. call `AaCompletionClient.complete(s, cursor, completionPreamble, receiverTypes)` on
      `Dispatchers.IO` (`KotlinInterface2.kt:565-566`).

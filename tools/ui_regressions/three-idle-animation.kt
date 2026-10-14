@@ -1,5 +1,5 @@
-import afield.graphics.*
-import afield.stdlib.*
+
+
 import kotlin.math.sin
 val initial = fline { moveTo(-1,0,0); lineTo(1,0,0) }
 val view = threeLines(listOf(initial), name="idle-animation", channel="main", height=360)

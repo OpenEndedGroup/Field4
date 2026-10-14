@@ -26,7 +26,7 @@ operations:
       frame: { x: 520.0, y: 40.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.*
+
 
           val gallerySync = "analysis-gallery"
           val galleryRate = 8_000
@@ -87,13 +87,13 @@ operations:
         code: |
           import afield.ui.visualization.AudioVisualizerOptions
           import java.util.concurrent.CompletableFuture
-          
+
           val client = FieldAudioClient()
           val start = 18.0
           val duration = 24.0
           val timeSync = "nancy-analysis"
           display("job monitor", fieldAudioJobMonitor(heightPixels = 330))
-          
+
           client.assetByFilename("*Nancy*").thenCompose { source ->
               val region = AssetRegion(source.id, startSeconds = start, durationSeconds = duration)
               val canonical = source.representations.first { it.role == "canonical_project" }
@@ -106,7 +106,7 @@ operations:
                       syncGroup = timeSync,
                   ),
               ))
-          
+
               val requests = listOf(
                   "beats" to multiScaleBeatAnalysis(region, requestedBy = "field:audio-analysis/nancy"),
                   "monophonic pitch" to monophonicPitchAnalysis(region, requestedBy = "field:audio-analysis/nancy"),

@@ -105,7 +105,7 @@ the last of them is not what the rest of this section is about:
 
 | | |
 |---|---|
-| `graphics/StandardDrawing.kt:134#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
+| `graphics/render/FLineUpload.kt:192#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
 | `ThreeJsViewer.kt:1255#f.tessellate(samplesPerCubic)` | **geometry.** Inside `appendFilledMesh` (`ThreeJsViewer.kt:1244#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:690#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
 | `ThreeJsViewer.kt:1051#line.tessellate(samples)` | **a count, not geometry.** Inside `buildThreeGeometryPayload` (`ThreeJsViewer.kt:844#internal fun buildThreeGeometryPayload`), in the `editable` branch, where the client re-triangulates and this side only wants the number for `meta.triangles`: the callback is `_, indices` and keeps `indices.size / 3`. The vertices are discarded, so no triangle it makes reaches anything that could draw it the wrong way round. |
 
@@ -120,14 +120,14 @@ ring sanitiser. So this call site is out of scope for *this* page's defect and i
 neighbouring one, which is why the number it reports has a test of its own
 (`ThreeJsEditableFillParityTest.kt:73#bothModesReportTheSameTriangleCountForAMultiPlaneHoledLine`).
 
-Not on this path at all: SVG export (`graphics/someSkiko.kt:753#stroke="none" fill=` writes
-`<path fill=…>`), the 2D Skia canvas (`graphics/someSkiko.kt:375#f.filled) PaintMode.FILL`, a filled
+Not on this path at all: SVG export (`ui/visualization/someSkiko.kt:841#stroke="none" fill=` writes
+`<path fill=…>`), the 2D Skia canvas (`ui/visualization/someSkiko.kt:463#f.filled) PaintMode.FILL`, a filled
 Skia `Path`), and typography extrusion (`typography_field.kt:342#FloatEarcut.earcut` calls
 `FloatEarcut` directly).
 
 And the reason it shipped: **nothing in Field culls back faces.** Every Vulkan pipeline is
-`VK_CULL_MODE_NONE` (`four/modules/Module.kt:803`, `:988`, `:1146`; `four/modules/MeshModule.kt:466`,
-`:664`; `four/imgui/ImGuiRenderToTexture.kt:250#vkCmdSetCullMode(cmd, VK_CULL_MODE_NONE)`). The
+`VK_CULL_MODE_NONE` (`graphics/render/Module.kt:900`, `:1073`, `:1229`; `graphics/render/MeshModule.kt:500`,
+`:683`; `graphics/vulkan/imgui/ImGuiRenderToTexture.kt:244#vkCmdSetCullMode(cmd, VK_CULL_MODE_NONE)`). The
 three.js fill materials are `MeshStandardMaterial` with `side: THREE.DoubleSide`
 (`threejs_viewer.html:1137#side: THREE.DoubleSide`, `:1325`), and although they do derive normals
 from the winding — `computeVertexNormals()` at three sites, `:955`, `:1007` and `:3410` — three.js

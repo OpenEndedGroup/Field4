@@ -358,7 +358,7 @@ of a closed-curve model is one because its parameter is normalised arc length.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.graphics.*
+
 
 val stroke = FLine().moveTo(0, 0).lineTo(100, 60).lineTo(180, 0)
 val model = stroke.gaussianProcess(trainingSamples = 24, dimensions = 2,

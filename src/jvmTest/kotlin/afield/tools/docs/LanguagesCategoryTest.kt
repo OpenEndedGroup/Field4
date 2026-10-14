@@ -14,7 +14,7 @@ import kotlin.test.fail
  * reach the completion popup.
  *
  * [StdlibReferenceGenerator] groups its pages by the `@file:CompletionCategory` a source file
- * carries. Field's small languages carry none, so publishing them needed a label from somewhere, and
+ * carries. Field's unannotated language files need a label from somewhere, and
  * the tempting somewhere was the annotation. That is the foot-gun this whole test exists to keep shut,
  * and it is a measured one rather than a theoretical one — `StdlibReferenceGenerator`'s own KDoc
  * records the numbers. Three facts compose into it:
@@ -31,8 +31,8 @@ import kotlin.test.fail
  * silently change, or delete, rows in a working programmer's autocomplete. So the label lives in
  * `StdlibReferenceGenerator.CATEGORY_BY_PATH`, which is read by the generator and by nothing else,
  * and these tests hold the property that makes that safe: no reference-only label appears anywhere
- * in `src/` as a completion category, and no file under a prefix carrying one of those labels
- * carries a category annotation at all.
+ * in `src/` as a completion category. Files that already carried an annotation before moving under
+ * a language prefix retain exactly that category; no new annotation is introduced to publish a page.
  *
  * There are two such labels now — `Languages` and `Renderers`, the latter for
  * `afield.graphics.scene.fabricated` — and the class name is a historical accident rather than a scope.
@@ -97,19 +97,33 @@ class LanguagesCategoryTest {
      * A `Simulation`-annotated file under a `Simulation` prefix is not a conflict — a file's own
      * annotation always wins, so that is the map agreeing with the source. A file under the
      * `Renderers` or `Languages` prefixes is different: no source file anywhere carries either
-     * label, so an annotation appearing there is either a file leaving the page it is published on,
-     * or a documentation label becoming a completion label. Both are the failure this test is for.
+     * label. The package cutover moved eight already-annotated files into language directories.
+     * Pin their original categories, including the category inherited by the split stdlib file,
+     * so moving files does not silently relabel completions. Any added, removed or changed
+     * annotation still fails this guard.
      */
     @Test
-    fun `no file the reference labels by path carries a category annotation of its own`() {
-        val annotation = Regex("""@(?:file:)?(?:[\w.]+\.)?CompletionCategory\s*\(""")
+    fun `reference-only path labels preserve existing completion categories`() {
+        val annotation = Regex("""@(?:file:)?(?:[\w.]+\.)?CompletionCategory\s*\(([^)]*)\)""")
+        val existing = mapOf(
+            "src/jvmMain/kotlin/afield/lang/python/numpy.kt" to "Data",
+            "src/jvmMain/kotlin/afield/lang/remotejs/stdlib_remotejs.kt" to "Workspace",
+            "src/jvmMain/kotlin/afield/lang/stacksl/StackSLBox.kt" to "Graphics",
+            "src/jvmMain/kotlin/afield/lang/stacksl/stackAutoNumbers.kt" to "Graphics",
+            "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLWatchmaker.kt" to "Search",
+            "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolution.kt" to "Search",
+            "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolveStudio.kt" to "Search",
+            "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolve.kt" to "Search",
+        )
         val prefixes = referenceOnlyPathCategories().flatMap {
             StdlibReferenceGenerator.pathAssignedPrefixesFor(it)
         }
-        val offenders = mutableListOf<String>()
+        val observed = mutableMapOf<String, List<String>>()
         for (prefix in prefixes) {
             filesUnder(prefix).forEach { file ->
-                if (annotation.containsMatchIn(file.readText())) offenders += relative(file)
+                val categories = annotation.findAll(file.readText())
+                    .map { it.groupValues[1].trim().removeSurrounding("\"") }.toList()
+                if (categories.isNotEmpty()) observed[relative(file)] = categories
             }
         }
         assertTrue(
@@ -117,12 +131,10 @@ class LanguagesCategoryTest {
             "CATEGORY_BY_PATH files nothing under any reference-only label, so this guard is " +
                 "checking nothing"
         )
-        assertTrue(
-            offenders.isEmpty(),
-            "these files are labelled by path in StdlibReferenceGenerator.CATEGORY_BY_PATH and have " +
-                "now grown their own `@file:CompletionCategory`, so the reference will silently " +
-                "publish them elsewhere *and* the completion popup's view of every declaration in " +
-                "them has changed: $offenders"
+        assertEquals(
+            existing.mapValues { listOf(it.value) }, observed,
+            "A completion category changed under a reference-only path label. Preserve the existing " +
+                "source categories; documentation-only labels must not change completion behavior."
         )
     }
 

@@ -194,7 +194,6 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/animation/interpolation",
         "src/jvmMain/kotlin/afield/animation/keyframes",
         "src/jvmMain/kotlin/afield/animation/motion",
-        "src/jvmMain/kotlin/afield/app/commands",
         "src/jvmMain/kotlin/afield/app/diagnostics",
         "src/jvmMain/kotlin/afield/audio/ai",
         "src/jvmMain/kotlin/afield/audio/analysis",

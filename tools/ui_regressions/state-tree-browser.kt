@@ -1,5 +1,7 @@
-import afield.ai.core.*
-import afield.*
+import afield.ai.completion.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+
 
 val treeOwner = Box.context.get()!!
 fun addStateTurn(text: String) {

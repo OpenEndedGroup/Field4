@@ -203,11 +203,11 @@ typed boundaries, interpolation and persistence.
 
     Besides a `Structure`, a scope can target a live module's uniform structures:
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`stdlib/keyframer.kt:820#fun target(module: ModulePointer, name: String) =`, `:824`, `:828`). All three need a live renderer. Every
+    siblings (`animation/keyframes/keyframer.kt:902#fun target(module: ModulePointer, name: String) =`, `:906`, `:910`). All three need a live renderer. Every
     fence on this page uses the plain `Structure` form instead.
 
     Each is a one-line wrapper over the lazily-resolved `target(name) { … }`
-    (`stdlib/keyframer.kt:702#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
+    (`animation/keyframes/keyframer.kt:784#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
     structure. That map is keyed by the **uniform block's name**

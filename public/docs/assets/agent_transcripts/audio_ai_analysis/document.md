@@ -31,11 +31,11 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analysis_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="analysis_visualizer_gallery" role="properties"]
-{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 53 "characters" 2788 "sha256" "0d7cc4c6c90d6d879e68f8b1cbc538c5c9fe5393039188e714598f0da6e0af71"}]}
+{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 53 "characters" 2766 "sha256" "e18724c9825a372d043481f4778ebff31e30ef70a9aa808387f1eeda29f341c9"}]}
 ```
 
 ```kotlin [field-property box="analysis_visualizer_gallery" name="code" path="analysis_visualizer_gallery_code_.kt"]
-import afield.stdlib.*
+
 
 val gallerySync = "analysis-gallery"
 val galleryRate = 8_000

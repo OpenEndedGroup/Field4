@@ -352,7 +352,7 @@ recomputed rather than described as bounded by the old 1.0% figure.
 ## What this says to do instead
 
 The shipped bare dot's real number is **0.420 recall on a receiver this tree cannot annotate**, against
-0.918 on one it can — the prior is a source annotation (`afield/util.kt#annotation class CommonMembers`), so a
+0.918 on one it can — the prior is a source annotation (`runtime/completion/util_completion.kt:60#annotation class CommonMembers`), so a
 type this repo does not own has nowhere to carry one. R2 closes 0.120 of that gap without lowering owned contested recall, but makes the
 median visible foreign answer later. That measured trade-off is now the next ranking decision. Beyond it:
 

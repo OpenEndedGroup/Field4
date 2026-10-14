@@ -1924,7 +1924,7 @@ lines(listOf(showRaw, ema, oneEuro, ab, gpMean, oneDollarPlaced), w = 420.0, h =
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/driver_smoothing_2d.png" embed=true}
 :::static
-import afield.graphics.*
+
 
 val f = fline {
     moveTo(0, 0)
@@ -1963,7 +1963,7 @@ Here one path is chased with different turning limits. On the left the driver ca
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/driver_smoothing_3d.png" embed=true wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.graphics.*
+
 
 val f = fline {
     moveTo(0, 0, 0)
@@ -2435,7 +2435,7 @@ If `byBlendingWith(...)` is the “same control structure, just lerp it” tool,
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.graphics.*
+
 
 class FLineInterpolator(
     from: FLine,
@@ -2465,7 +2465,7 @@ fun FLineInterpolator.lineAt(
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_vanilla.png" embed=true}
 :::static
-import afield.graphics.*
+
 
 val f = fline {
     moveTo(0, 0)
@@ -2517,7 +2517,7 @@ This is the basic pattern: two contours in, one reusable interpolator out, then 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_rotation_matching.png" embed=true}
 :::static
-import afield.graphics.*
+
 
 fun asymmetricStroke() = polylineFrom(
     listOf(
@@ -2606,7 +2606,7 @@ Left is the default midpoint. Right pre-aligns the shapes before correspondence 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_motion_spins.png" embed=true}
 :::static
-import afield.graphics.*
+
 
 val f = fline {
     moveTo(0, 0)

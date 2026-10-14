@@ -166,7 +166,7 @@ class DocumentedApiEvaluationTest {
          * counts its own prose as evidence is the failure mode this whole class is named after,
          * reproduced inside the fix for it.
          */
-        const val GUARD_PACKAGE_DIR = "/afield/docs/"
+        const val GUARD_PACKAGE_DIR = "/afield/tools/docs/"
     }
 
     private val root = CitationGuard.repoRoot()

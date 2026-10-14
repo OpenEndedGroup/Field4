@@ -41,7 +41,7 @@ start(renderer::run)
 <!-- field-box id="eye_ray_scene" index="1" -->
 
 ```edn [field-box id="eye_ray_scene" role="properties"]
-{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 10 "characters" 308 "sha256" "ab8d89542e81627a4cd4d5eae892c294c4d5e28440d4866eac4a68ecafc34a1f"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 4 "characters" 117 "sha256" "7acd5011fc495b0df8f0099cfebc8ddff5e6b6c270376fdd89d4f941e313b8f9"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 173 "characters" 8116 "sha256" "47b349fe763cd413feb41bb9a1f7e4cec3d89cb8d78e2f22f2ff25525898cbad"}]}
+{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 10 "characters" 308 "sha256" "ab8d89542e81627a4cd4d5eae892c294c4d5e28440d4866eac4a68ecafc34a1f"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 4 "characters" 117 "sha256" "7acd5011fc495b0df8f0099cfebc8ddff5e6b6c270376fdd89d4f941e313b8f9"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 173 "characters" 8088 "sha256" "6ff3a32c49aea059392dbcc0ddf04b34817510606eade7641923540561fa417d"}]}
 ```
 
 ```glsl [field-property box="eye_ray_scene" name="vertex" path="eye_ray_scene_vertex_.glsl"]
@@ -65,7 +65,7 @@ void main() { outColor = fcol; }
 ```
 
 ```kotlin [field-property box="eye_ray_scene" name="code" path="eye_ray_scene_code_.kt"]
-import afield.four.modules.*
+
 import afield.graphics.vulkan.targets.BinocularGazeIntersection
 import afield.math.linalg.Matrix4f
 import afield.math.linalg.Quaternionf

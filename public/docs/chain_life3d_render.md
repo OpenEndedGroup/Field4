@@ -26,7 +26,7 @@ census. It needs no renderer: everything before the trace runs on the CPU.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_life3d_render/readout.png" wait="10" capture="box" open-outputs="true" w="1100" h="320" padding="18" timeout="180" name="chain-life3d-readout" embed=true alt="Tables: live cells per generation falling from 1852 to 164; Field's marching cubes reporting 10688 triangles, watertight, genus 0 against Manifold's level set reporting 5374 triangles and genus minus 47; a cluster census whose 48 volumes sum exactly to the whole solid's; and a sweep showing both the cluster count and the volume changing with the sampling spacing"}
 :::static
 import afield.geometry.solid.manifold.Solid
-import afield.stdlib.*
+
 import kotlin.random.Random
 
 val n = 36

@@ -365,7 +365,7 @@ them to make its own figure green.
 4. **`checkCodebaseReference` is red on `d7d8dccc2` itself**, independently of this branch. Measured
    2026-08-22 in a clean worktree: `visualization.md` generates 10 files / 323 symbols against the 9 /
    320 committed — `DataFrameVisualizer.kt` sits under the published source root
-   `StdlibReferenceGenerator.kt:115#kotlin/afield/visualization` and is not in `EXCLUDE_PREFIXES`, so the
+   `StdlibReferenceGenerator.kt:259#kotlin/afield/ui/visualization` and is not in `EXCLUDE_PREFIXES`, so the
    commit that added it needed a `./gradlew generateCodebaseReference` and did not get one. `index.md`
    and `dev_docs/kdoc_worklist.md` drift with it. Not regenerated here on purpose: a docs-only branch
    regenerating that artifact collides with every sibling branch.
