@@ -2,35 +2,51 @@
 
 Field aims to be full of unexpectedly fun features that help you interact with code. This page is going to be a long list of things that delight, things that you didn't think you'd need, and things that help when you are puzzled.
 
+## The Welcome page
+
+The first page of Field is the welcome page: the first tab in our desktop app, and at `https://localhost:9092/welcome` in any web browser:
+
+![The welcome page in a fresh workspace: a document list with a search box and the Starting points and Templates lists on the left, the Changelog and a stack of collapsible panels on the right](assets/welcome/welcome-page.png)
+
+On the left you can make new documents or find that document you just _know_ you edited last week; below the list are **Starting points** and **Templates**, curated scenes and scaffolds that open as an editable copy in your workspace. On the right is a stack of collapsible panels for the rest of Field: the changelog, projects, Maven dependencies, the workspace, the runtime, Vulkan and Python status, AI settings, preferences, and the OSC editor. The search box does full text search over the whole workspace:
+
+<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
+	<source src="assets/welcoming.mp4" type="video/mp4">
+</video>
+
+To help you find that snippet of code.
+
 ## Running things
 
 You can run code in Field the following ways (from the commonplace to the rare)
 
- * `alt-enter` — runs the line/block that the cursor is on/in.
- * Or, `alt-enter` — runs the currently selected code
- * `alt-up arrow` — launches the currently edited box. `alt-down arrow` stops.
- * `alt-click` — launches the clicked-on box while the mouse is down. Swipe up to let go and keep launched; `alt-click / swipe down` stops. e.g.:
+ * `alt/option-enter` — runs the line/block that the cursor is on/in.
+ * Or, `alt/option-enter` — runs the currently selected code
+ * `alt/option-up arrow` — *launches* the currently edited box. `alt/option-down arrow` stops.
+ * `alt/option-click` — *launches* the clicked-on box while the mouse is down. Swipe up to let go and keep launched; `alt/option-click / swipe down` stops. e.g.:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/launching.mp4" type="video/mp4">
 </video>
 
- * `alt-0` — runs everything in a box (but doesn't launch it)
+ * `alt/option-0` — runs everything in a box (but doesn't *launch* it)
 
-That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Go and write and run some code against your favourite libraries, in [Kotlin](kotlin_overview.md) (on the JVM), [Python](python.md), [Clojure](clojure.md), even [Lua](lua.md).
+ What's the difference between 'running' and 'launching'? Boxes have the opportunity to end with an object that could 'keep on going by itself'. These objects, on launching, get threaded into the _animation loop_. Every launched box gets one 'go' at computing per animation cycle in a consistent order. The idea of installing and deinstalling code into and out of the animation cycle is fundemental to making sound, image and data visualizations, so this idea is right at the heart of Field.
 
-Since running code is very important, we actually have a few more ways of doing this. For completeness, we'll list them here:
+That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Go! write and run some code against your favourite libraries, in [Kotlin](kotlin_overview.md) (on the JVM), [Python](python.md), [Clojure](clojure.md), even [Lua](lua.md).
 
- * `alt-shift-up arrow` — immediately launches the box without recompiling if it that's possible.
- * `Command/ctrl-alt-k` and `Command/ctrl-alt-j` increments and decrements the number under the cursor and then acts like you pressed alt-enter.
- * `alt-double-clicking` `true` or `false` or `disable`(`d`) or `enable`(`d`) in the editor flips it to the opposite and then `alt-enter`s
- *  `alt-double-clicking` the name of a function in scope that has signature `foo()` just runs the function.
- *  `alt-1` — launches just the current block that the cursor is in.
+_But ...._ since running code is very important, we actually have quite a few more ways of doing this. Sometimes just for convenience's sake, sometimes because of subtle differences in what you actualy mean by 'run' and 'code'.
+
+For completeness, we'll list them here:
+
+ * `alt/option-shift-up arrow` — immediately launches the box **without recompiling** if it that's possible. Handy if your box has some long complicated startup and then an animation or something at the end that you are playing with.
+ * `ctrl/command-alt/option-k` or `ctrl/command-alt/option-j` **increments** or **decrements** the number under the cursor and then acts like you pressed alt/option-enter.
+ * `alt/option-double-clicking` in the editor. If you do this to `true` or `false` or `disable { ... }` or `enable { ... }` in the editor flips that word to the opposite and then `alt/option-enter`s the block. Think of this as a toggle, but hanging out in your source code.
+ *  `alt/option-double-clicking` the name of a function in scope that has signature `foo()` just runs the function. Buttons everywhere!
+ *  `alt/option-1` — relaunches **just the selection**, or the line or enclosing block under the cursor (i.e. the same code `alt/option-enter` would run), without running other parts of the box again. See [Running code in a box](running_code.md#running-code-around-the-cursor). You get a handsome stripe in the margin that shows the launched code that's ongoing.
  *  Writing code that launches other boxes. For example `root.named("progress").begin()` launches a box called "progress". 
 
-What's the difference between 'running' and 'launching'? Boxes have the opportunity to end with an object that could 'keep on going by itself'. These objects, on launching, get threaded into the animation loop. Every launched box gets one 'go' at computing per animation cycle in a consistent order.  
-
-Some of these effects are language dependent. For example, if you are editing a GLSL shader property, alt-enter recompiles and reloads the shader instead.
+Some of these effects are language dependent. For example, if you are editing a GLSL shader property, alt/option-enter recompiles and reloads the shader instead.
 
 ## Printing things
 
@@ -69,7 +85,7 @@ There's a little bit of design here — if they are `print`ing but not changing 
 
 So, if you don't know what that variable is, drop in a `print()` and find out.
 
-## Printing complex things
+## Printing, but try harder
 
 Appending `.h` or even `.h2` to the thing that you are printing will cause Field to work much harder to make the thing that you are printing a pretty piece of `h`tml.
 
@@ -81,7 +97,7 @@ Appending `.h` or even `.h2` to the thing that you are printing will cause Field
 
 The highlighted colors are showing you the 'unusually' low and high values at a glance — great for scrolling through something long to find the interesting values.
 
-## `display`ing things
+## `display`ing things — print where everyone can see it
 
 We can also 'print' to the canvas using `display`. For example:
 
@@ -112,7 +128,7 @@ display("just some html", "<div style='font-weight:900'>foo!</div>")
 
 That's also how a lot of this documentation gets made: the docs build runs the examples in a real Field, automatically, and captures what they display. This page is older than that machinery and many of its screenshots were taken by hand, but the `print` example above, the flower in the geometry section below and the layers palette further down all came out of boxes that the build ran.
 
-## Browsing things
+## Browsing things — print where I can interact with it
 
 There are a few more elaborate visualizers for more tangled structures. The "column" visualizer is loosely modelled after Smalltalk's browser:
 
@@ -176,7 +192,7 @@ It's important to note that you're not just editing a *copy* of the FLine. This 
 
 See [fline_examples](fline_examples.md) for much more.
 
-## "Printing" UI and data visualization
+## "Printing" chunks of UI 
 
 Take a look at [visualizers](visualizers.md) if you want more help either visualizing values inside your code, or printing user interface components to provide input to your code. Field is set up to run a type and current-value driven 'autocomplete' as the cursor moves around the editor. Just to give you an active hint about what you might type (and what those parameters are in the function you are changing), and what value that variable currently has:
 
@@ -192,9 +208,9 @@ Additionally, we can write code that extends and decorates our text editor in a 
 </video>
 
 
-## Other output area related things
+## Other output-area related things
 
-You can remove output areas you no longer want to see by `option-click`ing their disclosure triangles:
+You can remove output areas you no longer want to see by `alt/option-click`ing their disclosure triangles:
 
 ![](assets/screenshot_38.png)
 
@@ -208,7 +224,7 @@ displayClear("foo")
 displayClearAll()
 ```
 
-Progress bars are useful for showing you how a box is getting through its processing:
+And output areas without contents are handy — progress bars are useful for showing you how a box is getting through its processing:
 
 ```diffstatic {data-lang=kotlin}
 var z = 0
@@ -247,13 +263,17 @@ These are polite by default: nothing is sent to the front end unless the work ru
 
 Turn them all off with `ProgressBars.enabled = false`, or tune `ProgressBars.showDelayMillis` (the grace period) and `ProgressBars.lingerMillis` (how long a completed bar sticks around).
 
-## AI support
+# AI support
 
-This is such a big and important topic, it gets its [own page](aiFeatures.md).
+Obviously, it's 2026, so it gets its [own page](aiFeatures.md).
 
-But here's the part that's hard to believe until you see it: you can *talk* things into existence, and the model looks at what it made before it answers. Below, a polytope's vertex and fragment shaders each have a small StackSL program in them; six turns of chat made the faces burst outward in a wave and burn out to ragged glowing frames, and in its last reply the model is checking nine real frames of the window before saying yes. That whole conversation, step by step, is [Talking to the StackSL in your shader](stackauto_conversation.md). The same thing works for [a function](function_conversation.md), [a shader in a window of its own](stacksl_conversation.md) and [an animated RectSL scene](rectsl_conversation.md).
+Simply put, we no longer expect to sit and write code without AI assistance and the amount of fun that we can have is partly gated by the number of ways we can interact alongside AI and our code. Field has lots of ways of doing this. We can include agents inside our documents, we can build tools for them, they can inspect, write, compile, execute, screenshot, traverse data-structures, fork, rewind, launch, harvest and ask for help. We've launch weeks long Field processes that build, moinitor and reap results from 200 other Field documents.
+
+In Field you can *talk* code and data structures into existence. Below, a polytope's vertex and fragment shaders each have a small StackSL program in them; six turns of chat made the faces burst outward in a wave and burn out to ragged glowing frames, and in its last reply the model is checking nine real frames of the window before saying yes. That whole conversation, step by step, is [Talking to the StackSL in your shader](stackauto_conversation.md). The same thing works for [a function](function_conversation.md), [a shader in a window of its own](stacksl_conversation.md) and [an animated RectSL scene](rectsl_conversation.md).
 
 ![The polytope box with its AI4 chat restored: the last request, a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
+
+Finally this documentation itself is both part of the agent's search context, the Field's test system, and mostly AI generated. Almost every screenshot that sits underneath a piece of code is mechanically produced by that code (and reproduced if the codebase changes). The prose is extended, cleaned, modified nightly as agents play in the [codebase](how_field_is_built.md). 
 
 # Multi-language, multi-paradigm
 
@@ -261,9 +281,9 @@ Field's primary language for live coding is Kotlin, which we've found to be expr
 
 ## Kotlin, with macros
 
-A handful of things that look like function calls in a Kotlin box are really macros, rewritten before the compiler sees them. You've met two already: `print` knows the line it sits on, and `prop` (further down, under [Making bigger things](#making-bigger-things)) turns a name into a typed property that child boxes inherit. The graphics system leans on one more: `moduleHere { }` reads the GLSL in the box's shader properties, compiles it, and generates typed Kotlin accessors for its inputs, push constants and structs, so a shader's `pos` and `worldToClip` become ordinary typed Kotlin names. [Running code in a box](running_code.md) shows what each of them expands to.
+To cure some of the challenges deploying Kotlin in a live-coding context we've gently extended the language with a macro system. A handful of things that look like function calls in a Kotlin box are really *macros*, rewritten before the compiler sees them. You might have met two already: `print` magically knows the line it sits on, and `prop` (further down, under [Making bigger things](#making-bigger-things)) turns a name into a typed property that child boxes inherit. The graphics system leans a few more: `moduleHere { }` reads the GLSL in the box's shader properties, compiles it, and generates typed Kotlin accessors for its inputs, push constants and structs, so a shader's `pos` and `worldToClip` become ordinary typed Kotlin names just in time for your code that uses them to actually work. [Running code in a box](running_code.md) goes through this in great detail.
 
-And you can write your own. A `rewrite { }` block in a box is a rule over the *shape* of your source:
+This isn't just internal gymnastics, you can write your own macros. A `rewrite { }` block in a box is a rule over the *shape* of your source:
 
 ```diffstatic {data-lang=kotlin}
 rewrite { x: Expr -> from { neg(x) }; to { -x } }
@@ -275,13 +295,13 @@ Rules can have guards, bind runs of arguments, run Kotlin at expansion time, and
 
 ## Python
 
-Via the JEP project, Python works splendidly in Field and we are incentivized to keep going in this direction. [Python in a box](python.md) is the full account: the box topology, the one shared interpreter, and where output lands. Autocompletion is driven by Jedi, and Field's central concept of launching (and stopping) boxes is supported by a custom async runner.
+Via the JEP project, Python works splendidly in Field — who among us doesn't need some PyTorch in-process every so often. [Python in a box](python.md) is the full account. Autocompletion is driven by Jedi, and Field's central concept of launching (and stopping) boxes is supported by a custom async runner.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/tinypython.mp4" type="video/mp4">
 </video>
 
-This means, in effect, that you can live code things like OpenCV and Torch with Jupyter-level autocomplete and Field-level AI support. We'd like Field to be an alternative to Jupyter. Thanks to JEP, interoperation between NumPy and Field's memory buffers is perfectly reasonable. And code like this:
+This means, in effect, that you can live code things like OpenCV and Torch with Jupyter-level autocomplete and Field-level AI support. We'd like Field to be good enough to end some peoples usage of Jupyter. Thanks to JEP, interoperation between NumPy and Field's memory buffers is perfectly reasonable. And code like this:
 
 ```diffstatic {data-lang=python}
 :::static
@@ -313,7 +333,7 @@ beside the form that printed it, and so does the exception when a form throws.
 
 And, yes: we have rainbow parens. [Clojure in a box](clojure.md) is the whole story.
 
-## ForthField
+## ForthField & a-Nano
 
 Primarily for teaching purposes, a bizarrely useful live-coding dialect of Forth: stack words, dictionary inspection, recursion, return-stack tricks, helpful diagnostics, Field-native visualization, and full JVM interop:
 
@@ -321,9 +341,7 @@ Primarily for teaching purposes, a bizarrely useful live-coding dialect of Forth
 	<source src="assets/someForth.mp4" type="video/mp4">
 </video>
 
-## a-Nano
-
-Nano is a little teaching assembly language with completely over the top integrated visualizers. We're using (a GPU accelerated) version of this language for a little ALife research.
+a-Nano is a little teaching assembly language with completely over the top integrated visualizers. We're using (a GPU accelerated) version of this language for a little ALife research — small enough to run Core Wars style simulations on GPUs.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/somenano.mp4" type="video/mp4">
@@ -337,7 +355,7 @@ The most successful and most important programming paradigm of all time — the 
 	<source src="assets/somesheet.mp4" type="video/mp4">
 </video>
 
-Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a very deep and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it. 
+Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a complete and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it. 
 
 ## Actors / Message-passing
 
@@ -367,8 +385,7 @@ We can start sending messages around. Messages propagate upwards until they find
 	<source src="assets/messagePassing.mp4" type="video/mp4">
 </video>
 
-
-## Document History
+# Where am I? How did I get here?
 
 Field keeps document backups as you work. The history view lets you inspect those saved versions and restore an earlier state.
 
@@ -383,7 +400,7 @@ Along the top is a timeline of every saved version, which you can scrub, and vie
 
 ## Documentation browser
 
-In some weird inception move, Field has a documentation browser (`Browse Documentation` or `command/ctrl-/`):
+In some weird inception move, Field has a documentation browser (`Browse Documentation` or `ctrl/command-/`):
 
 ![](assets/screenshot_40.png)
 
@@ -395,7 +412,7 @@ Beside the page is a **DOC NOTES** panel. Select a sentence, press `Ctrl+Shift+A
 
 A few keyboard shortcuts for getting around Field.
 
-`command/ctrl-shift-P` (or `f1`) — pressed in the editor, this brings up the command palette for that box; press it _again_ and you get the command palette for the document as a whole:
+`ctrl/command-shift-P` — pressed in the editor, this brings up the command palette for that box; press it _again_ and you get the command palette for the document as a whole:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/command-palette.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-command-palette" alt="In a small Field window with two boxes, sketch's editor is open. Cmd/Ctrl-Shift-P opens the Command Palette for the box, with editor commands in it, and typing fold all narrows it to the folding commands; pressing the shortcut again turns it into Document Commands, and typing document history narrows that to the document history commands. Escape closes it."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
@@ -448,7 +465,6 @@ ui.pause(600)
 
 `Double tap-command/control` (command on Mac, control on Windows/Linux) in the editor gives you an affordance that lets you use the cursor keys to switch box:
 
-
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/Screen-Recording-2026-03-21-at-14.12.21.mp4" type="video/mp4">
 </video>
@@ -463,7 +479,7 @@ Drag the little grip in the top-left corner of the canvas to split it into panes
 
 ![Field's canvas split into four panes by a black cross: bar headings along the top and instrument labels down the left stay lined up with the pattern boxes in the scrolled body](assets/moving_around_the_canvas/split_canvas.png)
 
-`command/ctrl-f` does the _Find_ you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
+`ctrl/command-f` does the _Find_ you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/Screen-Recording-2026-03-21-at-14.16.23.mp4" type="video/mp4">
@@ -478,7 +494,7 @@ you assign it to layers with `layers`:
 layers = "default,secondLayer"
 ```
 
-A box that names no layer is on `default`. `Alt+L` (**Show Layers Panel** in the command palette)
+A box that names no layer is on `default`. `alt/option-L` (**Show Layers Panel** in the command palette)
 opens the layers panel, which lists every layer some box is on:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#layers-panel" screenshot="assets/layers-panel-floating.png" transcript="assets/transcripts/layers_setup.yaml" padding="8" wait="0" timeout="120" embed=true hidden=true name="layers-panel-floating" alt="The layers panel: four rows, default, overlay, render and sketch, each with an eye button, a radio button, the layer name, its box count and a Solo button, all in aligned columns. overlay is hidden: its eye is dimmed and so is its row. default is the active layer: its radio is checked and its name is in the accent colour. Below the rows are Show all and Move selection to active layer buttons."}
@@ -540,10 +556,9 @@ ui.waitForSelector(".layers-palette", 8000.0)
 ui.pause(700)
 ```
 
-
 ## Drawing on the canvas
 
-`alt-d` turns the canvas into a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-drawn style, right over your boxes. `alt-d` again and you're back with the boxes, and the drawing stays put, panning and zooming along with everything else. Pinch to zoom, by the way; that works everywhere now.
+`alt/option-d` turns the canvas into a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-drawn style, right over your boxes. `alt/option-d` again and you're back with the boxes, and the drawing stays put, panning and zooming along with everything else. Pinch to zoom, by the way; that works everywhere now.
 
 ![Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over a score drawn by a box, with its blue piano-roll rectangles, a red glissando and its label, a green held note and an orange playhead, and the box that drew them to the left](assets/chain_drawn_score/hero.png)
 
@@ -552,20 +567,6 @@ The fun part is that boxes can read the drawing and draw on it. `notation { arro
 ![Six coloured curves in a frame labelled 'fontana mix', a grid, a point and a straight line, with the box's readout of where the line crosses the curves](assets/drawing_and_notation/fontana.png)
 
 There's a whole page on it: [Drawing and Notation](drawing_and_notation.md).
-
-## The Welcome page
-
-The first page of Field is the welcome page: the first tab in our desktop app, and at `https://localhost:9092/welcome` in any web browser:
-
-![The welcome page in a fresh workspace: a document list with a search box and the Starting points and Templates lists on the left, the Changelog and a stack of collapsible panels on the right](assets/welcome/welcome-page.png)
-
-On the left you can make new documents or find that document you just _know_ you edited last week; below the list are **Starting points** and **Templates**, curated scenes and scaffolds that open as an editable copy in your workspace. On the right is a stack of collapsible panels for the rest of Field: the changelog, projects, Maven dependencies, the workspace, the runtime, Vulkan and Python status, AI settings, preferences, and the OSC editor. The search box does full text search over the whole workspace:
-
-<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
-	<source src="assets/welcoming.mp4" type="video/mp4">
-</video>
-
-To help you find that snippet of code.
 
 # Keyframes and timelines
 
@@ -694,12 +695,13 @@ customMarking["SE" to "something"] = { print("se!") }
 customMarking["W2" to "the end"] = { print("W!")}  // outer ring
 ```
 
-You can open and swipe around these callbacks with `alt-shift-click`:
+You can open and swipe around these callbacks with `alt/option-shift-click`:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/customMarking.mp4" type="video/mp4">
 </video>
 
+This is nothing more (but also nothing less) than Field speaking to the long tradition of code-writing tools being able to extend and write themselves.
 
 ## Snapping
 
@@ -717,7 +719,7 @@ By default every box of code is pretty isolated from all of the other boxes. Thi
 
 ### Shared properties
 
-We can connect boxes together using the `connect` command, selecting the parent and then the child and pressing `g`:
+We can connect boxes together using the `connect` command, or selecting the parent and then the child and pressing `g`:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/connecting.mp4" type="video/mp4">
@@ -759,11 +761,11 @@ When the value depends on something — a view made for a particular renderer �
 `cached<View>(renderer) { View() }` instead, which makes a new one (and closes the old) when the key
 changes; see [`cached`](running_code.md#cached-one-value-per-set-of-keys).
 
-For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [Running code in a box](running_code.md).
+This can end up as a kind of reactive variable system for Kotlin. For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [Running code in a box](running_code.md).
 
 ## Nesting
 
-Boxes can be nested inside other boxes: select them, open the command palette (`command/ctrl-shift-P` or `f1`) and pick "Nest ...":
+Boxes can be nested inside other boxes: select them, open the command palette (`ctrl/command-shift-P`) and pick "Nest ...":
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/nesting.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-nesting" alt="Two boxes, sketch and helper. A click selects sketch and shift-click adds helper; F1 opens the palette over the canvas, typing nest narrows it to Nest 'helper' into 'sketch', and Enter runs it: helper disappears into sketch's nest."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
@@ -827,7 +829,7 @@ Nested parents can be referenced inside nesting children with `nestedIn` (`Box?`
 
 Finally, `named("foo")` returns a `Box?` called "foo" searching from the current box 'downwards' through the hierarchy if it exists. Similarly `root.named("foo")` searches starting at the root of the document — a virtual parent to all boxes.
 
-# Collaborating
+## Collaborating
 
 Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at its interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options). 
 
@@ -893,13 +895,13 @@ ui.pause(900)
 
 These additional, fully functional editors, give you a place to keep code (or outputs embedded in code!) that you keep coming back to.
 
-## From your phone
+## Extra screen time
 
 The other browser worth pointing at Field is the one in your pocket. Field serves a page at
 `/controllers` that is built for a phone rather than shrunk down to one: a large touch pad that
 sends X, Y or both into the selected box, the sliders and colour wells that box publishes, its
-output areas reformatted into a single narrow column, the real AI4 conversation for it, Open
-Anything, and a full Monaco editor on whatever is selected. There is one selection behind all of
+output areas reformatted into a single narrow column, the real AI4 conversation for it, `Open
+Anything`, and a full Monaco editor on whatever is selected. There is one selection state behind all of
 it, shared with the desktop — the phone follows Field's, and a pick made on the phone becomes
 Field's — so a piece can be running on a projector while you hold its controls and walk around in
 front of it. On the left is a box in the desktop app, its code open in the editor; on the right is the same box on the phone, the Group tab at iPhone size showing the step sequencer it published with `controlGroup(...)`: you sweep the bars and paint the grid with a finger, and the playhead the box drives moves across both. See [Sequencer controls](visualizers.md#sequencer-controls-multisliders-grids-ranges-and-menus) for the code:
