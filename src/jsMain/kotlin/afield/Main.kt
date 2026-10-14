@@ -5903,6 +5903,11 @@ suspend fun main() {
 
         Handled.yes
     }
+    handlers.put("go-jobs") { message, _ ->
+        val goJobs = Json.decodeFromJsonElement<GoJobs>(message.payload!!)
+        setGoJobsBadge(goJobs.uid, goJobs.count, goJobs.strands)
+        Handled.yes
+    }
     handlers.put("output") { message, _ ->
         val output = Json.decodeFromJsonElement<Output>(message.payload!!)
         routeMonacoOutput(output)
@@ -7798,3 +7803,52 @@ private fun resizeStartBoxTarget(it: dynamic): HTMLElement? {
 
 
 fun <E> MutableSet<E>.copy() = HashSet<E>(this)
+
+/** A `go { }` that finishes this quickly never shows the badge, so ordinary runs do not flicker. */
+private const val GO_JOBS_BADGE_DELAY_MS = 250
+
+/**
+ * The "semi-launched" badge: a striped inset over the box's upper-right quadrant, holding the number
+ * of its `go { }` blocks still running ([GoJobs]). Stopping the box cancels them.
+ */
+private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
+    val box = document.body!!.getElementsByClassName("box").asList()
+        .firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement ?: return
+    val state = box.asDynamic()
+    // The strands that still have go jobs keep their launch's margin marker on (bootstrapMonaco.js
+    // setBoxRunning); one whose last job just ended is turned off here.
+    val previous = (state.goJobStrandList as? Set<String>) ?: emptySet()
+    val now = strands.toSet()
+    state.goJobStrands = js("new Set()")
+    now.forEach { state.goJobStrands.add(it) }
+    val setMarker = window.asDynamic().setStatusForExecutionMarker
+    if (setMarker != null) {
+        now.forEach { setMarker(it, true, "go") }
+        (previous - now).forEach { setMarker(it, false, "go") }
+    }
+    state.goJobStrandList = now
+    state.goJobCount = count
+    val existing = box.querySelector(":scope > .go-jobs-badge") as? HTMLElement
+    if (count <= 0) {
+        existing?.remove()
+        return
+    }
+    if (existing != null) {
+        (existing.firstElementChild as? HTMLElement)?.textContent = count.toString()
+        return
+    }
+    if (state.goJobsBadgePending == true) return
+    state.goJobsBadgePending = true
+    window.setTimeout({
+        state.goJobsBadgePending = false
+        val now = (state.goJobCount as? Int) ?: 0
+        if (now > 0 && box.querySelector(":scope > .go-jobs-badge") == null) {
+            val badge = document.createElement("div") as HTMLElement
+            badge.classList.add("go-jobs-badge")
+            val number = document.createElement("span") as HTMLElement
+            number.textContent = now.toString()
+            badge.appendChild(number)
+            box.appendChild(badge)
+        }
+    }, GO_JOBS_BADGE_DELAY_MS)
+}
