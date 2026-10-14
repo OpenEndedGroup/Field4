@@ -11,7 +11,7 @@ from unittest.mock import patch as mock_patch
 
 from tools.refactoring.containers import ContainerError, EdnSpans, edn, extract, markdown, patch, qualified_name_properties, yaml_units
 from tools.refactoring.core import (KotlinEngine, RefactorError, apply_plan, canonical, digest,
-    load_plan, load_recipe, make_plan, save_json, undo, verify)
+    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern)
 
 RECIPE = {'schema': 1, 'id': 'test-move', 'packages': {'old.pkg': 'new.pkg'},
           'symbols': {}, 'splitPackages': [], 'generated': []}
@@ -120,6 +120,19 @@ class ContainerTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
+    def test_affected_references_respect_namespace_and_path_boundaries(self):
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'],
+                      knownPackages=['old', 'old.stays'], retainedSymbols=['old.Keep'])
+        pattern = affected_pattern(recipe)
+        for text in ('old.pkg.Type/path', 'old/pkg', 'some.old.pkg.Type', 'oldExtra.pkg.Type',
+                     'old.Keep.Nested', 'old.stays.Type', 'new.pkg.Type'):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+        for text, expected in (('old.pkg.Type.', 'old.pkg.Type'), ('old.Unknown', 'old.Unknown'),
+                               ('old.pkg.Type/path then old.Other', 'old.Other')):
+            with self.subTest(text=text):
+                self.assertEqual(expected, pattern.search(text).group())
+
     def test_workspace_markdown_scope_is_recursive_and_does_not_expand_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -163,6 +176,25 @@ class PlanTests(unittest.TestCase):
     def make(self, recipe=None):
         return make_plan([(self.root, False)], recipe or copy.deepcopy(RECIPE), self.plan, ImportFixture())
 
+    def test_unrelated_incomplete_snippet_does_not_hold_an_import_edit(self):
+        class ParsingFixture(ImportFixture):
+            def rewrite(self, code, script, recipe):
+                if '...' in code:
+                    return {'code': code, 'findings': [{'kind': 'parse-error', 'detail': 'Incomplete example'}]}
+                return super().rewrite(code, script, recipe)
+
+        for relevant in (False, True):
+            with self.subTest(relevant=relevant):
+                incomplete = ('import old.pkg.Other\n' if relevant else '') + 'val example = ...\n'
+                self.write('notes.md', '```kotlin\n' + SOURCE + '```\n```kotlin\n' + incomplete + '```\n')
+                out = self.base / ('relevant' if relevant else 'unrelated')
+                plan = make_plan([(self.root, False)], copy.deepcopy(RECIPE), out, ParsingFixture())
+                root = plan['roots'][0]
+                self.assertEqual(1, len(root['changes']))
+                self.assertEqual(relevant, root['changes'][0]['held'])
+                diagnostic = next(f for f in root['findings'] if f['kind'] == 'parse-error')
+                self.assertEqual(not relevant, bool(diagnostic.get('retained')))
+
     def test_document_pair_apply_verify_undo_exact_bytes(self):
         sidecar = self.write('doc/box_code_.kt', SOURCE)
         doc = self.write('doc/metadata.edn', metadata(sidecar='box_code_.kt'))
@@ -195,13 +227,18 @@ class PlanTests(unittest.TestCase):
         source = self.write('a.kt', SOURCE)
         self.write('backups/old.kt', SOURCE)
         self.write('thumbnails/test.png', 'irrelevant')
-        self.make()
+        scratch = self.write('.agent-scratch/session/metadata.edn', metadata())
+        plan = self.make()
+        self.assertTrue(any(f['kind'] == 'excluded-directory' and f['detail'] == '.agent-scratch'
+                            and f['retained'] for f in plan['roots'][0]['findings']))
         destination = self.base / 'migrated'
         apply_plan(self.plan, copy_to=destination)
         self.assertEqual(SOURCE, source.read_text())
         self.assertIn('new.pkg', (destination / 'a.kt').read_text())
         self.assertFalse((destination / 'backups').exists())
         self.assertFalse((destination / 'thumbnails').exists())
+        self.assertFalse((destination / '.agent-scratch').exists())
+        self.assertEqual(metadata(), scratch.read_text())
         self.assertEqual(str(destination), verify(self.plan)['root'])
 
     def test_stale_unedited_input_rejects_before_any_write(self):
@@ -320,6 +357,104 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_box_split_coverage_excludes_other_platforms_and_requires_host_imports(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            (root / 'doc').mkdir(parents=True)
+            source = 'import old.mixed.* // host supplied\nval x = Thing()\n'
+            recipe = dict(copy.deepcopy(RECIPE), packages={}, splitPackages=['old.mixed'],
+                          symbols={'old.mixed.Thing': 'new.model.Thing', 'old.mixed.Browser': 'new.browser.Browser'},
+                          splitStarImports={'old.mixed': ['new.model', 'new.browser']},
+                          boxImports=['new.model.*'], boxSplitStarImports={'old.mixed': ['new.model']},
+                          scriptImports=[])
+            save_json(base / 'recipe.json', recipe)
+            load_recipe(base / 'recipe.json')
+            (root / 'doc/metadata.edn').write_text(metadata(source, 'code.kt'))
+            (root / 'doc/code.kt').write_text(source)
+            (root / 'standalone.kts').write_text(source)
+            make_plan([(root, False)], recipe, base / 'plan', engine)
+            apply_plan(base / 'plan', offline=True, allow_partial=True)
+            self.assertEqual(' // host supplied\nval x = Thing()\n', (root / 'doc/code.kt').read_text())
+            self.assertNotIn('new.browser', (root / 'doc/metadata.edn').read_text())
+            self.assertIn('import new.browser.*', (root / 'standalone.kts').read_text())
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], again['roots'][0]['changes'])
+            for targets in (['new.browser'], ['not.mapped'], [], ['new.model', 'new.model']):
+                save_json(base / 'recipe.json', dict(recipe, boxSplitStarImports={'old.mixed': targets}))
+                with self.subTest(targets=targets), self.assertRaises(RefactorError):
+                    load_recipe(base / 'recipe.json')
+
+    def test_box_intro_removes_redundant_split_stars_only_from_registered_box_code(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            source = 'import old.mixed.* // supplied by intro\nval x = Thing()\n'
+            recipe = dict(copy.deepcopy(RECIPE), packages={}, splitPackages=['old.mixed'],
+                          symbols={'old.mixed.Thing': 'new.model.Thing'},
+                          boxImports=['old.mixed.*', 'new.model.*'])
+            save_json(base / 'recipe.json', recipe)
+            load_recipe(base / 'recipe.json')
+            (root / 'doc').mkdir()
+            (root / 'doc/metadata.edn').write_text(metadata(source, 'code.kt'))
+            (root / 'doc/code.kt').write_text(source)
+            (root / 'inline').mkdir()
+            (root / 'inline/metadata.edn').write_text(metadata(source))
+            (root / 'standalone.kts').write_text(source)
+            (root / 'unregistered.kt').write_text(source)
+            (root / 'docs.md').write_text('```kotlin\n' + source + '```\n')
+            (root / 'src').mkdir()
+            (root / 'src/Example.kt').write_text(source)
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            changes = plan['roots'][0]['changes']
+            self.assertEqual({'doc/code.kt', 'doc/metadata.edn', 'inline/metadata.edn'}, {c['path'] for c in changes})
+            self.assertTrue(all(not c['held'] for c in changes))
+            self.assertEqual({'standalone.kts', 'unregistered.kt', 'docs.md', 'src/Example.kt'},
+                             {f['path'] for f in plan['roots'][0]['findings'] if f['kind'] == 'split-star'})
+            apply_plan(base / 'plan', offline=True, allow_partial=True)
+            self.assertEqual(' // supplied by intro\nval x = Thing()\n', (root / 'doc/code.kt').read_text())
+            self.assertEqual(edn((root / 'doc/metadata.edn').read_text(), PROPS).units[0].code,
+                             (root / 'doc/code.kt').read_text())
+            verify(base / 'plan')
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], again['roots'][0]['changes'])
+
+    def test_exported_edn_documents_receive_the_box_intro_and_keep_sidecars_in_sync(self):
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp)
+            root = base / 'workspace'
+            root.mkdir()
+            source = 'import old.mixed.* // supplied by intro\nval x = Thing()\n'
+            recipe = dict(copy.deepcopy(RECIPE), packages={}, splitPackages=['old.mixed'],
+                          symbols={'old.mixed.Thing': 'new.model.Thing'},
+                          boxImports=['old.mixed.*', 'new.model.*'])
+            save_json(base / 'recipe.json', recipe)
+            load_recipe(base / 'recipe.json')
+            (root / 'doc').mkdir()
+            (root / 'doc/export.edn').write_text(metadata(source, 'code.kt'))
+            (root / 'doc/code.kt').write_text(source)
+            (root / 'inline').mkdir()
+            (root / 'inline/starter.edn').write_text(metadata(source))
+            (root / 'standalone.kts').write_text(source)
+            (root / 'unregistered.kt').write_text(source)
+            (root / 'docs.md').write_text('```kotlin\n' + source + '```\n')
+            (root / 'src').mkdir()
+            (root / 'src/Example.kt').write_text(source)
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            changes = plan['roots'][0]['changes']
+            self.assertEqual({'doc/code.kt', 'doc/export.edn', 'inline/starter.edn'}, {c['path'] for c in changes})
+            self.assertTrue(all(not c['held'] for c in changes))
+            self.assertEqual({'standalone.kts', 'unregistered.kt', 'docs.md', 'src/Example.kt'},
+                             {f['path'] for f in plan['roots'][0]['findings'] if f['kind'] == 'split-star'})
+            apply_plan(base / 'plan', offline=True, allow_partial=True)
+            self.assertEqual(' // supplied by intro\nval x = Thing()\n', (root / 'doc/code.kt').read_text())
+            self.assertEqual(edn((root / 'doc/export.edn').read_text(), PROPS).units[0].code,
+                             (root / 'doc/code.kt').read_text())
+            verify(base / 'plan')
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], again['roots'][0]['changes'])
+
     def test_docs_wrappers_preserve_markers_and_parse_before_after_separately(self):
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
             base = Path(tmp)
