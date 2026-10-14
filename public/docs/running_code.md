@@ -5,7 +5,8 @@ start writing boxes. It is for when something that looks like an ordinary call t
 one, or when a child box cannot see a value its parent set.
 
 - **Running versus launching.** `alt-enter` runs a selection, a line, or its outer enclosing block;
-  `alt-0` runs everything in the box; `alt-click` and `alt-up` *launch* it. Running evaluates and
+  `alt-0` runs everything in the box; `alt-click` and `alt-up` *launch* it, and `alt-1` relaunches
+  just the code `alt-enter` would run, without rerunning the rest of the box. Running evaluates and
   stops. Launching gives the code a
   chance to put something into the animation loop and keep going. The keys themselves, the `?`
   cheat sheet and the `F1` palette are in the [Survival Guide](survivalGuide.md).
@@ -41,6 +42,33 @@ repeat(2) {
 
 Select just the inner lines when you want to run less. **Alt+0** runs the whole box, regardless of
 the cursor position.
+
+**Alt+1** is for relaunching part of a box you have already run. It picks out the same code
+as Alt+Enter (the selection, or the line, or its outer enclosing block) and *launches* just
+that, so the setup at the top of the box is not run again. The fragment sees the variables earlier
+runs left behind: below, the box has been run once, and Alt+1 inside the `loop` relaunches the loop
+with the `count` the top part already made. Launched from a box that has never been run, the same
+fragment fails with `Unresolved reference 'count'`. The striped green bar in the margin marks the
+lines that were launched while they keep running:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x500" clip-selector=".monaco-editor-container" screenshot="assets/running_code/launch-fragment.png" transcript="../../dev_docs/agents/transcripts/docs_capture/launch_fragment.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-launch-fragment" alt="Field's editor with the cursor inside a loop block after Alt+1. A striped green bar in the left margin spans the five lines of the loop, lines 4 to 8, and not the two lines above it. Beside print(count) the running count reads 475."}
+ui.openEditor("launch_fragment")
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    Object.assign(c.style, {width:"560px", height:"260px", top:"20px", right:"20px", left:"auto", bottom:"auto", transform:"none"})
+    window.globalEditor.layout()
+    window.globalEditor.setPosition({lineNumber: 6, column: 5})
+    window.globalEditor.focus()
+    return true
+""".trimIndent())
+ui.press("Alt+1")
+ui.pause(1500)
+ui.eval("""
+    const bars = document.querySelectorAll(".monaco-editor .margin [class*='execution-marker-']")
+    if (bars.length == 0) throw new Error("no execution marker in the margin")
+    return true
+""".trimIndent())
+```
 
 To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
 number under cursor and rerun** or **Decrement number under cursor and rerun**. The shortcuts are
