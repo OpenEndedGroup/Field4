@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidcraft_compare" index="0" -->
 
 ```edn [field-box id="solidcraft_compare" role="properties"]
-{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 46 "characters" 2008 "sha256" "95a4f2b49668b4984d15c86b00d99eaf25376461582014ed38d32bdcb783090e"}]}
+{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1915 "sha256" "10b333a33e78501030f6ba7bb0b80e3ba28e1340d7541795371257d38194bc80"}]}
 ```
 
 ```kotlin [field-property box="solidcraft_compare" name="code" path="solidcraft_compare_code_.kt"]
@@ -20,8 +20,6 @@ import afield.solidcraft.SolidCraftLibrary
 import afield.stdlib.MeshRenderer
 import afield.stdlib.MeshView
 import afield.stdlib.showMeshGrid
-import afield.stdlib.quat
-import afield.stdlib.vec
 import afield.stdlib.weld
 
 run {
@@ -39,12 +37,10 @@ run {
 
     SolidCraftDesign.openBundledExample().use { part ->
         val original = part.summary().getJSONArray("bodies").getJSONObject(0)
-        // The cut starts on the XY plane. Turn both previews to see its opening.
-        val towardCut = quat(Math.PI, vec(0, 1, 0))
-        val before = part.mesh(tolerance = tolerance).toTriMesh().weld().rotated(towardCut)
+        val before = part.mesh(tolerance = tolerance).toTriMesh().weld()
         part.setParameter("width", "$width mm")
         val changed = part.summary().getJSONArray("bodies").getJSONObject(0)
-        val after = part.mesh(tolerance = tolerance).toTriMesh().weld().rotated(towardCut)
+        val after = part.mesh(tolerance = tolerance).toTriMesh().weld()
 
         println("B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
             "${"%.1f".format(changed.getDouble("volume"))} mm³")
@@ -56,7 +52,8 @@ run {
             "$width mm: blind cut" to after,
             columns = 2,
             cellWidth = 380,
-            view = MeshView(wireframe = false),
+            // Look from the cut's side of the XY plane so the blind hole stays visible.
+            view = MeshView(yawDegrees = 145.0, pitchDegrees = 32.0, wireframe = false),
             renderer = MeshRenderer.CPU,
         )
     }
