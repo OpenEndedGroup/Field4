@@ -139,7 +139,9 @@ function renderStatus(data, job) {
     renderDelivery(data, changedSession);
     options($('batch'),Object.entries(data.batches));
     options($('root'),[['','All roots'],...data.roots.map(r=>[r.id,r.kind==='repo'?'Repository':`Workspace copy ${r.id}`])]);
-    $('counts').replaceChildren(attentionCount(data.items.length),document.createTextNode(` review groups · ${data.counts.question||0} questions`));
+    const preserved=data.items.filter(i=>i.state==='preserve' && !i.candidateFiles.length).length;
+    const unresolved=data.items.length-preserved;
+    $('counts').replaceChildren(attentionCount(unresolved),document.createTextNode(` unresolved · ${preserved} preserved · ${data.items.length} total review groups · ${data.counts.question||0} questions`));
     const v=data.pass.verification;
     $('verification').replaceChildren(text('p', v ? `Rehearsal recorded ${new Date(v.at * 1000).toLocaleString()} for this plan: ${Object.values(v.results).reduce((n,r)=>n+r.restored.changedFiles,0)} changed files; all scanned text verified after restoration at that time. Compilation and binding equivalence have not been checked.` : 'No completed rehearsal for this plan. Imported plans must be replanned against the pass copies first.', 'muted check'));
     renderItems();
