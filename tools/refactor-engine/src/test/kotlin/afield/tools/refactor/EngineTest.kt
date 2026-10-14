@@ -249,6 +249,12 @@ class EngineTest {
         assertEquals(broken, engine.rewrite(broken, true, rules).code)
     }
 
+    @Test fun currentExplicitImportsSurviveHostImportDeduplication() = Engine().use { engine ->
+        val rules = recipe.copy(scriptImports = setOf("afield.lang.python.*", "afield.lang.remotejs.*", "afield.newplace.Thing"))
+        val source = "import afield.lang.python.*\nimport afield.lang.remotejs.*\nimport afield.newplace.Thing\nisPythonRoot = true\n"
+        assertEquals(source, engine.rewrite(source, true, rules).code)
+    }
+
     @Test fun identicalIntroImportsAreDroppedOnlyInScripts() = Engine().use { engine ->
         val rules = recipe.copy(scriptImports = setOf("afield.newplace.*", "afield.newplace.Thing"))
         val source = "import afield.old.*\r\nimport afield.old.Thing // keep\r\nimport afield.old.Other\r\nimport afield.old.Thing as T\r\nval x = T()\r\n"
