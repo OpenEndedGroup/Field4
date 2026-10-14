@@ -1,6 +1,9 @@
 const $ = id => document.getElementById(id);
 const labels = {open:'Open', patch:'Patch proposed', preserve:'Preserve', adapter:'Adapter needed', question:'Question', stale:'Changed since decision'};
 let current = null, selected = null, requestVersion = 0, busy = false;
+let reviewQueue = null, reviewIndex = 0, loadedItem = null, savingDecision = false, decisionVersion = 0;
+const resolved = item => item.state === 'preserve' && !item.candidateFiles.length;
+
 const text = (tag, value, className) => { const node = document.createElement(tag); node.textContent = value; if(className) node.className = className; return node; };
 const attentionCount = value => text('span', value, value > 0 ? 'attention' : 'clear-count');
 function error(value='') { $('error').textContent = value; $('error').hidden = !value; }
@@ -21,6 +24,7 @@ function renderJob(job = {}) {
     for(const id of ['import-button','start-button','resume-button','replan','rehearse','run-agent','session-agent','close-session','prepare','restore','continue-review','validate','land','publish','save-checks']) $(id).disabled = busy;
     if(current) renderDelivery(current, false);
     renderJobTime();
+    renderQuickControls();
 }
 function renderJobTime() {
     const j = displayedJob;
@@ -113,14 +117,14 @@ function renderStatus(data, job) {
     $('import-panel').hidden=exists;
     for(const id of ['scope-panel','actions-panel','review-panel','review-body','delivery']) $(id).hidden=!exists;
     if(!exists) {
-        current=null;
+        current=null;loadedItem=null;selected=null;++requestVersion;endQuickReview();
         $('saved-sessions').replaceChildren(...(data?.sessions||[]).map(s=>{
             const b=text('button',`${s.id} · ${s.phase}`);b.onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{action:'resume',session:s.directory});await refresh();});return b;
         }));
         return;
     }
     if(current && current.pass.plan!==data.pass.plan) {
-        selected=null; ++requestVersion;
+        endQuickReview(); selected=null; loadedItem=null; ++requestVersion;
         $('detail').replaceChildren(text('p','The plan has changed. Choose a remaining review group, or inspect proposed changes above for files that are now ready.','empty'));
         $('mechanical').open=false;
         $('change-list').replaceChildren();
@@ -136,34 +140,39 @@ function renderStatus(data, job) {
     }));
     $('recipe').textContent=JSON.stringify(data.recipe,null,2);
     $('branch').textContent=`Session worktree: ${data.pass.worktree} · delivery branch: ${data.pass.branch}`;
-    renderDelivery(data, changedSession);
-    options($('batch'),Object.entries(data.batches));
+    options($('batch'),[['*','All batches'],...Object.entries(data.batches)]);
     options($('root'),[['','All roots'],...data.roots.map(r=>[r.id,r.kind==='repo'?'Repository':`Workspace copy ${r.id}`])]);
-    const preserved=data.items.filter(i=>i.state==='preserve' && !i.candidateFiles.length).length;
+    renderDelivery(data, changedSession);
+    const preserved=data.items.filter(resolved).length;
     const unresolved=data.items.length-preserved;
-    $('counts').replaceChildren(attentionCount(unresolved),document.createTextNode(` unresolved · ${preserved} preserved · ${data.items.length} total review groups · ${data.counts.question||0} questions`));
+    $('counts').replaceChildren(attentionCount(unresolved),document.createTextNode(` unresolved · ${preserved} preserved · ${data.items.length} total review groups · ${data.items.filter(i=>i.state==='question').length} questions`));
     const v=data.pass.verification;
     $('verification').replaceChildren(text('p', v ? `Rehearsal recorded ${new Date(v.at * 1000).toLocaleString()} for this plan: ${Object.values(v.results).reduce((n,r)=>n+r.restored.changedFiles,0)} changed files; all scanned text verified after restoration at that time. Compilation and binding equivalence have not been checked.` : 'No completed rehearsal for this plan. Imported plans must be replanned against the pass copies first.', 'muted check'));
     renderItems();
+    renderQuickControls();
 }
 function renderItems() {
     if(!current) return;
     const query=$('search').value.toLowerCase();
-    const items=current.items.filter(i=>i.batch===$('batch').value && (!$('root').value || i.root===$('root').value) && (!$('decision-filter').value || i.state===$('decision-filter').value) && (i.group.toLowerCase().includes(query)||i.paths.some(p=>p.toLowerCase().includes(query))));
+    const items=current.items.filter(i=>($('batch').value==='*' || i.batch===$('batch').value) && (!$('root').value || i.root===$('root').value) && (!$('decision-filter').value || ($('decision-filter').value==='unresolved' ? !resolved(i) : i.state===$('decision-filter').value)) && (i.group.toLowerCase().includes(query)||i.paths.some(p=>p.toLowerCase().includes(query))));
     $('items').replaceChildren(...items.map(i=>{
         const button=document.createElement('button');button.className='item'+(selected===i.id?' selected':'');button.dataset.item=i.id;
         button.append(text('span',i.group.replace(/^(file|document):/,''),'item-title'),text('small',`${current.roots.find(r=>r.id===i.root)?.kind==='repo'?'Repository':`Workspace ${i.root}`} · ${i.findingCount} findings · ${labels[i.state]}`));
-        button.onclick=()=>guarded(()=>showItem(i.id));return button;
+        button.disabled=savingDecision;
+        button.onclick=()=>guarded(async()=>{if(reviewQueue) { const index=reviewQueue.indexOf(i.id); if(index<0) endQuickReview(); else reviewIndex=index; } await showItem(i.id);});return button;
     }));
     if(!items.length) $('items').append(text('p','No groups match these filters.','empty'));
 }
 async function showItem(id) {
-    selected=id;renderItems();const version=++requestVersion;
+    selected=id;loadedItem=null;renderItems();renderQuickControls();const version=++requestVersion;
+    $('detail').replaceChildren(text('p','Loading review group…','empty'));
+    $('detail').scrollTop=0;
     const result=await api(`/api/refactor-pass?item=${encodeURIComponent(id)}`);
     if(version!==requestVersion) return;
     if(result.error) throw new Error(result.error);
-    const item=result.data;
+    const item=result.data; loadedItem=item; renderQuickControls();
     $('detail').replaceChildren(text('h2',item.group.replace(/^(file|document):/,'')),text('p',`${item.findings.length} findings · ${item.candidateFiles.length} proposed file edits`,'muted'),text('p',item.workingRoot,'path'));
+    if(item.decision) $('detail').append(text('h3',`Recorded decision · ${labels[item.state]}`),text('p',item.decision.reason,'agent-decision'));
     if(!item.changes.length) {
         const explanation=text('div','','reference-legend');
         explanation.append(text('strong','Review only — no file edit proposed'),text('p',item.noProposalReason));
@@ -186,11 +195,92 @@ async function showItem(id) {
     const save=text('button','Record decision');save.type='submit';
     form.append(text('h3','Decision for this group'),text('p','Replan after editing. Preserve records an intentional exception; a group with held edits must still be resolved before delivery.','muted'),select,reason,save);
     form.onsubmit=e=>{e.preventDefault();guarded(async()=>{save.disabled=true;try{await api('/api/refactor-pass',{action:'decide',item:id,state:select.value,reason:reason.value});await refresh();await showItem(id);}finally{save.disabled=false;}});};
-    if((current.delivery?.phase||'review')==='review') $('detail').append(form);
+    if((current.delivery?.phase||'review')==='review') { if(!reviewQueue) $('detail').append(form); }
     else $('detail').append(text('p','Review decisions are frozen during delivery. Use the session terminal for fixes, then rerun verification.','muted'));
 }
+function renderQuickControls() {
+    if(!$('start-review')) return;
+    const reviewing=current && (current.delivery?.phase||'review')==='review';
+    $('start-review').disabled=!reviewing || busy || savingDecision || !current?.items.some(i=>!resolved(i));
+    $('start-review').hidden=!!reviewQueue;
+    $('quick-review').hidden=!reviewQueue;
+    if(!reviewQueue) return;
+    const ready=!!loadedItem && loadedItem.id===selected && reviewing && !busy && !savingDecision;
+    const currentItem=current.items.find(i=>i.id===selected);
+    const canPreserve=ready && !loadedItem.stale && currentItem?.state!=='stale' && !loadedItem.candidateFiles.length;
+    $('quick-progress').textContent=reviewIndex<reviewQueue.length ? `${reviewIndex+1} / ${reviewQueue.length} this round` : 'Round complete';
+    $('quick-preserve').disabled=!canPreserve;
+    $('quick-preserve').title=canPreserve ? 'Record that the remaining references should stay unchanged.' : 'Preservation needs current source and no proposed file edits. Replan or resolve the edits first.';
+    $('quick-edit').disabled=!ready;
+    $('quick-restriction').textContent=ready && !canPreserve ? 'Preserve is unavailable: this group has changed since planning or still has proposed file edits.' : '';
+    $('quick-next').disabled=savingDecision || reviewIndex>=reviewQueue.length;
+    $('quick-back').disabled=savingDecision || reviewIndex===0;
+    $('stop-review').disabled=savingDecision;
+    $('quick-reason').disabled=savingDecision || reviewIndex>=reviewQueue.length;
+}
+function endQuickReview() {
+    reviewQueue=null;
+    $('review-panel').classList.remove('fast-review');
+    renderQuickControls();
+}
+async function moveReview(delta) {
+    if(savingDecision || !reviewQueue) return;
+    reviewIndex=Math.max(0,Math.min(reviewQueue.length,reviewIndex+delta));
+    $('quick-reason').value='';
+    if(reviewIndex===reviewQueue.length) {
+        selected=null;loadedItem=null;++requestVersion;
+        $('detail').replaceChildren(text('h2','Review round complete'),text('p','Saved decisions are recorded. Skipped groups and groups marked Needs edit remain unresolved. Run the appropriate batch agent for edits, then replan.'));
+        renderItems();renderQuickControls();return;
+    }
+    await showItem(reviewQueue[reviewIndex]);
+}
+async function quickDecision(state) {
+    const button=$(state==='preserve'?'quick-preserve':'quick-edit');
+    if(button.disabled || savingDecision || !reviewQueue || !loadedItem) return;
+    const id=selected, plan=current.pass.plan;
+    const reason=$('quick-reason').value.trim() || (state==='preserve'
+        ? 'Reviewed the remaining findings: preserve these references unchanged; no further migration edit is needed for this group.'
+        : 'Human review: the remaining references need editing. Resolve them using the migration recipe and batch direction, then replan; this is a request for work, not an applied patch.');
+    savingDecision=true;++decisionVersion;renderItems();renderQuickControls();
+    $('quick-message').textContent='Saving decision…';
+    try {
+        const record=await api('/api/refactor-pass',{action:'decide',item:id,state,reason});
+        // A decision response is small: update the counter locally, without a full session scan.
+        if(current.pass.plan!==plan) throw new Error('The plan changed while saving. Refresh before continuing.');
+        const item=current.items.find(i=>i.id===id);
+        if(item) item.state=record.sourceChanged?'stale':record.state;
+        savingDecision=false;++decisionVersion;
+        renderStatus(current,displayedJob);
+        $('quick-message').textContent=state==='preserve'?'Saved: preserve unchanged.':'Saved: needs edit. The batch agent will receive this instruction.';
+        await moveReview(1);
+    } catch(e) {
+        $('quick-message').textContent='Decision not advanced. '+e.message;
+        throw e;
+    } finally {savingDecision=false;++decisionVersion;renderItems();renderQuickControls();}
+}
+$('start-review').onclick=()=>guarded(async()=>{
+    reviewQueue=current.items.filter(i=>!resolved(i)).map(i=>i.id);reviewIndex=0;
+    $('batch').value='*';$('root').value='';$('decision-filter').value='unresolved';$('search').value='';
+    $('review-panel').classList.add('fast-review');
+    $('quick-message').textContent='P preserves · E requests an edit · N skips · B goes back. Decisions save immediately. Shortcuts pause while typing.';
+    await moveReview(0);
+    $('quick-review').scrollIntoView({block:'start'});
+});
+$('stop-review').onclick=()=>guarded(async()=>{endQuickReview();if(selected)await showItem(selected);});
+$('quick-preserve').onclick=()=>guarded(()=>quickDecision('preserve'));
+$('quick-edit').onclick=()=>guarded(()=>quickDecision('question'));
+$('quick-next').onclick=()=>guarded(()=>moveReview(1));
+$('quick-back').onclick=()=>guarded(()=>moveReview(-1));
+document.addEventListener('keydown',event=>{
+    if(!reviewQueue || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ||
+       event.target.closest('input,textarea,select,[contenteditable="true"]')) return;
+    const action={p:'quick-preserve',e:'quick-edit',n:'quick-next',b:'quick-back'}[event.key.toLowerCase()];
+    if(action && !$(action).disabled) {event.preventDefault();$(action).click();}
+});
 async function refresh() {
+    const version=decisionVersion;
     const result=await api('/api/refactor-pass');
+    if(savingDecision || version!==decisionVersion) return;
     if(!startingAction) renderJob(result.job);
     if(result.error) { if(result.job?.running) return; throw new Error(result.error); }
     renderStatus(result.data,result.job);
@@ -205,7 +295,7 @@ $('cancel-job').onclick=()=>guarded(async()=>{await api('/api/refactor-pass',{ac
 $('refresh').onclick=()=>guarded(refresh);
 $('mechanical').addEventListener('toggle',()=>{if($('mechanical').open) guarded(async()=>{const result=await api('/api/refactor-pass?changes=1');if(result.error) throw new Error(result.error);options($('change-list'),[['','Choose a file'],...result.data.map(c=>[c.id,`${c.held?'HELD':'READY'} · root ${c.root} · ${c.path}`])]);});});
 $('change-list').onchange=()=>guarded(async()=>{if(!$('change-list').value)return;const result=await api(`/api/refactor-pass?change=${$('change-list').value}`);if(result.error)throw new Error(result.error);renderChange($('change-diff'),result.data);});
-for(const id of ['batch','root','decision-filter','search']) $(id).addEventListener(id==='search'?'input':'change',renderItems);
+for(const id of ['batch','root','decision-filter','search']) $(id).addEventListener(id==='search'?'input':'change',()=>{renderItems();if(current)renderDelivery(current,false);});
 $('run-agent').onclick=()=>guarded(async()=>{const session=await api('/api/terminal',{kind:'refactor-batch',batch:$('batch').value,text:$('direction').value});openTerminal(session.id);await refresh();});
 
 const defaultChecks=[
@@ -220,6 +310,7 @@ function renderDelivery(data, changedSession) {
     $('blocker-count').textContent=`${d.blockers?.length||0} remaining delivery blockers · review details`;
     $('delivery-blockers').replaceChildren(...(d.blockers||[]).map(b=>text('p',b)));
     for(const id of ['replan','rehearse','run-agent']) $(id).disabled=busy||!reviewing;
+    $('run-agent').disabled ||= $('batch').value==='*';
     $('prepare').disabled=busy||!reviewing||!!d.blockers?.length;
     $('restore').disabled=busy||!['applying','prepared','failed','checking','verified'].includes(d.phase);
     $('continue-review').disabled=busy||!['prepared','failed','checking','verified'].includes(d.phase);
@@ -263,5 +354,5 @@ $('publish-form').onsubmit=e=>{e.preventDefault();guarded(async()=>{await api('/
 $('plan-path').value=new URLSearchParams(location.search).get('plan')||'';
 await guarded(refresh);
 let polling = false;
-setInterval(async()=>{if(polling || startingAction) return;polling=true;try{await guarded(refresh);}finally{polling=false;}},3000);
+setInterval(async()=>{if(polling || startingAction || savingDecision) return;polling=true;try{await guarded(refresh);}finally{polling=false;}},3000);
 setInterval(renderJobTime,1000);
