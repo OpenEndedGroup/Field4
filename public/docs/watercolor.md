@@ -33,8 +33,8 @@ sheet.wash(FLine().moveTo(60, 180).lineTo(940, 180).moveTo(940, 225).lineTo(60, 
 sheet.dry()
 brush.load(Watercolors.burntSienna * 3.0 + Watercolors.ultramarine * 2.0)
 val hills = FLine().moveTo(40, 420).cubicTo(250, 300, 450, 420, 960, 340)
-sheet.wash(hills, brush, pressure = listOf(1.0), speed = 30.0)
-sheet.wash(FLine().moveTo(40, 470).lineTo(960, 450), brush, pressure = listOf(1.0), speed = 30.0)
+sheet.wash(hills, brush, pressure = [1.0], speed = 30.0)
+sheet.wash(FLine().moveTo(40, 470).lineTo(960, 450), brush, pressure = [1.0], speed = 30.0)
 sheet.dry()
 
 display("main", sheet.png())
@@ -106,9 +106,9 @@ val sheet = PaintCanvas.paper(700, aspect = 1.6, paper = Paper.ColdPress, sizeMm
 
 // wet in wet: clean water, then drops of colour into it at once
 sheet.wet(rect(60.0, 80.0, 460.0, 540.0), microns = 40.0)
-for ((x, y) in listOf(150.0 to 180.0, 330.0 to 260.0, 200.0 to 420.0))
+for ((x, y) in [150.0 to 180.0, 330.0 to 260.0, 200.0 to 420.0])
     sheet.drop(x, y, Watercolors.ultramarine * 15.0, volumeMm3 = 4.0)
-for ((x, y) in listOf(260.0 to 160.0, 380.0 to 440.0))
+for ((x, y) in [260.0 to 160.0, 380.0 to 440.0])
     sheet.drop(x, y, Watercolors.quinacridoneRose * 12.0, volumeMm3 = 4.0)
 
 // a backrun: a wash left until damp, then clean water into it
@@ -160,11 +160,11 @@ only the nearly dry one breaks up.
 :::static
 import afield.paint.*
 
-val sheets = listOf(Paper.Rough, Paper.HotPress).map { paper ->
+val sheets = [Paper.Rough, Paper.HotPress].map { paper ->
     val sheet = PaintCanvas.paper(420, aspect = 1.3, paper = paper, sizeMm = 120.0, seed = 5)
-    for ((i, fill) in listOf(1.0, 0.3, 0.1).withIndex()) {
+    for ((i, fill) in [1.0, 0.3, 0.1].withIndex()) {
         val brush = sheet.waterBrush(90.0).load(Watercolors.burntSienna * 40.0 + Watercolors.ultramarine * 20.0, fill = fill)
-        sheet.wash(FLine().moveTo(60, 130.0 + i * 230).lineTo(940, 130.0 + i * 230), brush, pressure = listOf(0.3), speed = 200.0)
+        sheet.wash(FLine().moveTo(60, 130.0 + i * 230).lineTo(940, 130.0 + i * 230), brush, pressure = [0.3], speed = 200.0)
     }
     sheet.dry()
 }
@@ -194,9 +194,9 @@ val brush = sheet.waterBrush(50.0)
 val band = FLine().moveTo(150, 330).lineTo(850, 330)
 repeat(6) {
     brush.load(WaterPaint.Clear, fill = 0.6)
-    sheet.wash(band, brush, pressure = listOf(0.9), speed = 120.0)
+    sheet.wash(band, brush, pressure = [0.9], speed = 120.0)
     brush.load(WaterPaint.Clear, fill = 0.05)
-    sheet.wash(band, brush, pressure = listOf(0.9), speed = 120.0)
+    sheet.wash(band, brush, pressure = [0.9], speed = 120.0)
 }
 sheet.dry()
 display("main", sheet.png())
@@ -237,7 +237,7 @@ fun rect(x0: Double, y0: Double, x1: Double, y1: Double) =
 val sheet = PaintCanvas.paper(700, aspect = 2.0, paper = Paper.ColdPress, sizeMm = 160.0, seed = 7)
 val u = Watercolors.ultramarine * 3.0
 val p = Watercolors.phthaloBlue * 0.8
-for ((i, paint) in listOf(u, p, u + p).withIndex())
+for ((i, paint) in [u, p, u + p].withIndex())
     sheet.wet(rect(60.0 + i * 310, 70.0, 320.0 + i * 310, 430.0), microns = 120.0, paint = paint)
 sheet.dry()
 display("main", sheet.png(relief = 0.4))

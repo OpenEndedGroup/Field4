@@ -40,6 +40,7 @@ expect:
     path: /tmp/docs-stacksl-gallery-hero.png
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/_gallery-hero.png" source-image="/tmp/docs-stacksl-gallery-hero.png" wait="45.0" timeout="300" execution="launch" embed=false graphics-context=true name="stacksl-gallery" hidden=true fabricate-scene="stacksl-gallery"}
+
 ```
 
 **Normalized coordinates** — the initial stack value, clamped.
@@ -336,6 +337,7 @@ expect:
     path: /tmp/docs-stacksl-animations-hero.png
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/_animations-hero.png" source-image="/tmp/docs-stacksl-animations-hero.png" wait="120.0" timeout="600" execution="launch" embed=false graphics-context=true name="stacksl-animations" hidden=true fabricate-scene="stacksl-animations"}
+
 ```
 
 **FBM drifting through a palette** — `uv 5.0 * time 0.12 * + fbm palette saturate`
@@ -894,7 +896,7 @@ val result = StackSLCompiler.compile(
     options = StackSLCompileOptions(
         prefix = "ping",
         entrypoint = "main",
-        sampleTextures = listOf("state"),
+        sampleTextures = ["state"],
         externalizeConstants = true
     )
 )
@@ -913,7 +915,7 @@ From a box, the stdlib helper is shorter:
 ```diffstatic {data-lang=kotlin}
 val glsl = stackSLToGlsl(
     prefix = "ping",
-    sampleTextures = listOf("otherView"),
+    sampleTextures = ["otherView"],
     declareSamplers = false
 )
 ```

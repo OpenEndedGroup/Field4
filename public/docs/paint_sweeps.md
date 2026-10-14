@@ -45,7 +45,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -53,8 +53,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -79,7 +79,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -88,14 +88,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.05, 0.15, 0.5, 1.0, 4.0, 16.0, 128.0).map { column("amount $it", Settings(amount = it, moving = moving)) } }
+val sheet = rows { moving -> [0.05, 0.15, 0.5, 1.0, 4.0, 16.0, 128.0].map { column("amount $it", Settings(amount = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-amount.png")
 ```
@@ -127,7 +127,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -135,8 +135,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -161,7 +161,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -170,14 +170,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.5, 1.0, 2.0, 8.0, 32.0, 256.0).map { column("lay $it", Settings(lay = it, moving = moving)) } }
+val sheet = rows { moving -> [0.5, 1.0, 2.0, 8.0, 32.0, 256.0].map { column("lay $it", Settings(lay = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-lay.png")
 ```
@@ -208,7 +208,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -216,8 +216,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -242,7 +242,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -251,14 +251,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(50.0, 300.0, 1100.0, 4000.0, 30000.0, 1000000.0).map { column("run ${it.toInt()}", Settings(run = it, moving = moving)) } }
+val sheet = rows { moving -> [50.0, 300.0, 1100.0, 4000.0, 30000.0, 1000000.0].map { column("run ${it.toInt()}", Settings(run = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-run.png")
 ```
@@ -291,7 +291,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -299,8 +299,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -325,7 +325,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -334,14 +334,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.0, 0.01, 0.02, 0.05, 0.2, 0.5, 0.9).map { column("thinner $it", Settings(thinner = it, moving = moving)) } }
+val sheet = rows { moving -> [0.0, 0.01, 0.02, 0.05, 0.2, 0.5, 0.9].map { column("thinner $it", Settings(thinner = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-thinner.png")
 ```
@@ -372,7 +372,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -380,8 +380,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -406,7 +406,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -415,14 +415,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.0001, 0.001, 0.01, 0.1, 0.65, 1.0).map { column("hiding $it", Settings(hiding = it, moving = moving)) } }
+val sheet = rows { moving -> [0.0001, 0.001, 0.01, 0.1, 0.65, 1.0].map { column("hiding $it", Settings(hiding = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-hiding.png")
 ```
@@ -456,7 +456,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -464,8 +464,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -490,7 +490,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -499,14 +499,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.0, 0.5, 2.0, 5.0, 30.0, 300.0).map { column("stiff $it", Settings(stiff = it, moving = moving)) } }
+val sheet = rows { moving -> [0.0, 0.5, 2.0, 5.0, 30.0, 300.0].map { column("stiff $it", Settings(stiff = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-stiff.png")
 ```
@@ -542,7 +542,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -550,8 +550,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -576,7 +576,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -585,14 +585,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(-1.0, -0.25, 0.0, 0.4, 1.0, 2.0, 1000.0).map { column("stiffness $it", Settings(stiffness = it, moving = moving)) } }
+val sheet = rows { moving -> [-1.0, -0.25, 0.0, 0.4, 1.0, 2.0, 1000.0].map { column("stiffness $it", Settings(stiffness = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-stiffness.png")
 ```
@@ -624,7 +624,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -632,8 +632,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -658,7 +658,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -667,14 +667,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(2, 4, 8, 48, 256, 1024).map { column("hairs $it", Settings(hairs = it)) }
+val strokes = [2, 4, 8, 48, 256, 1024].map { column("hairs $it", Settings(hairs = it)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-hairs.png")
@@ -708,7 +708,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -716,8 +716,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -742,7 +742,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -751,14 +751,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(1, 3, 10, 40, 140, 1000, 10000, 100000).map { column("bristles $it", Settings(bristles = it, moving = false)) }
+val strokes = [1, 3, 10, 40, 140, 1000, 10000, 100000].map { column("bristles $it", Settings(bristles = it, moving = false)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-bristles.png")
@@ -792,7 +792,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -800,8 +800,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -826,7 +826,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -835,14 +835,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(1.0, 0.5, 0.2, 0.05, 0.01, 0.002).map { column("hair $it", Settings(hair = it, moving = moving)) } }
+val sheet = rows { moving -> [1.0, 0.5, 0.2, 0.05, 0.01, 0.002].map { column("hair $it", Settings(hair = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-hair.png")
 ```
@@ -874,7 +874,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -882,8 +882,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -908,7 +908,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -917,14 +917,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(200.0, 100.0, 50.0, 20.0, 8.0, 2.0).map { column("width ${it.toInt()}", Settings(width = it, moving = moving)) } }
+val sheet = rows { moving -> [200.0, 100.0, 50.0, 20.0, 8.0, 2.0].map { column("width ${it.toInt()}", Settings(width = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-width.png")
 ```
@@ -957,7 +957,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -965,8 +965,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -991,7 +991,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1000,14 +1000,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.0, 0.5, 1.0, 2.0, 4.0, 10.0).map { column("pickup $it", Settings(pickup = it, moving = moving)) } }
+val sheet = rows { moving -> [0.0, 0.5, 1.0, 2.0, 4.0, 10.0].map { column("pickup $it", Settings(pickup = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-pickup.png")
 ```
@@ -1040,7 +1040,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1048,8 +1048,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1074,7 +1074,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1083,14 +1083,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.0, 0.5, 1.0, 2.0, 10.0, 100.0).map { column("push $it", Settings(push = it, moving = moving)) } }
+val sheet = rows { moving -> [0.0, 0.5, 1.0, 2.0, 10.0, 100.0].map { column("push $it", Settings(push = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-push.png")
 ```
@@ -1123,7 +1123,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1131,8 +1131,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1157,7 +1157,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1166,14 +1166,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.0, 1.0, 8.0, 64.0, 512.0, 4096.0).map { column("ragged $it", Settings(ragged = it, moving = moving)) } }
+val sheet = rows { moving -> [0.0, 1.0, 8.0, 64.0, 512.0, 4096.0].map { column("ragged $it", Settings(ragged = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-ragged.png")
 ```
@@ -1206,7 +1206,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1214,8 +1214,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1240,7 +1240,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1249,14 +1249,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val sheet = rows { moving -> listOf(0.0, 0.3, 0.6, 1.0, 2.0, 4.0, 10.0).map { column("splay $it", Settings(splay = it, moving = moving)) } }
+val sheet = rows { moving -> [0.0, 0.3, 0.6, 1.0, 2.0, 4.0, 10.0].map { column("splay $it", Settings(splay = it, moving = moving)) } }
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-splay.png")
 ```
@@ -1294,7 +1294,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1302,8 +1302,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1328,7 +1328,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1337,7 +1337,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
@@ -1345,8 +1345,8 @@ fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
 }
 :::endfold
 // moving hairs only (an ordinary brush has neither model): unsplayed above, splayed below
-val sheet = montage(listOf(0.0, 2.0).map { sp ->
-    val strokes = listOf(-1.0, 0.0, 0.5, 1.0, 1.5, 2.0).map { column("clumping $it", Settings(cohesion = 4.0, clumping = it, splay = sp)) }
+val sheet = montage([0.0, 2.0].map { sp ->
+    val strokes = [-1.0, 0.0, 0.5, 1.0, 1.5, 2.0].map { column("clumping $it", Settings(cohesion = 4.0, clumping = it, splay = sp)) }
     "cohesion 4, splay $sp" to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 }, columns = 1, cellSide = 4000, textScale = 3)
 showImg(sheet)
@@ -1381,7 +1381,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1389,8 +1389,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1415,7 +1415,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1424,7 +1424,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
@@ -1432,8 +1432,8 @@ fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
 }
 :::endfold
 // liquid bridges (clumping 1); unsplayed above, fanned open below (`splayFan`, next)
-val sheet = montage(listOf(0.0, 3.0).map { sp ->
-    val strokes = listOf(-8.0, 0.0, 0.35, 1.0, 4.0, 16.0, 32.0).map { column("cohesion $it", Settings(cohesion = it, clumping = 1.0, splay = sp, splayFan = if (sp > 0) 1.0 else null)) }
+val sheet = montage([0.0, 3.0].map { sp ->
+    val strokes = [-8.0, 0.0, 0.35, 1.0, 4.0, 16.0, 32.0].map { column("cohesion $it", Settings(cohesion = it, clumping = 1.0, splay = sp, splayFan = if (sp > 0) 1.0 else null)) }
     (if (sp > 0) "liquid bridges, splay $sp fanned" else "liquid bridges, no splay") to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 }, columns = 1, cellSide = 4000, textScale = 3)
 showImg(sheet)
@@ -1469,7 +1469,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1477,8 +1477,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1503,7 +1503,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1512,7 +1512,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
@@ -1521,7 +1521,7 @@ fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
 :::endfold
 // a flat half the usual width, 64 hairs, splay 3 fanned open, liquid bridges
 val sheet = run {
-    val strokes = listOf(0.0, 0.15, 0.3, 0.6, 1.0, 2.0).map { column("scatter $it", Settings(width = 100.0, hairs = 64, splay = 3.0, splayFan = 1.0, cohesion = 1.0, clumping = 1.0, splayScatter = it)) }
+    val strokes = [0.0, 0.15, 0.3, 0.6, 1.0, 2.0].map { column("scatter $it", Settings(width = 100.0, hairs = 64, splay = 3.0, splayFan = 1.0, cohesion = 1.0, clumping = 1.0, splayScatter = it)) }
     montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 }
 showImg(sheet)
@@ -1557,7 +1557,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1565,8 +1565,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1591,7 +1591,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1600,14 +1600,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(0.0, 0.15, 0.4, 0.8, 1.3, 4.0).map { column("oil $it", Settings(oil = it, lamp = true, dry = true)) }
+val strokes = [0.0, 0.15, 0.4, 0.8, 1.3, 4.0].map { column("oil $it", Settings(oil = it, lamp = true, dry = true)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-gloss.png")
@@ -1639,7 +1639,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1647,8 +1647,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1673,7 +1673,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1682,14 +1682,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(0.0, 0.15, 0.4, 0.8, 1.3, 4.0).map { column("oil $it", Settings(oil = it, absorbent = 1.0, lamp = true, dry = true)) }
+val strokes = [0.0, 0.15, 0.4, 0.8, 1.3, 4.0].map { column("oil $it", Settings(oil = it, absorbent = 1.0, lamp = true, dry = true)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-absorbent.png")
@@ -1722,7 +1722,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1730,8 +1730,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1756,7 +1756,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1765,7 +1765,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
@@ -1773,7 +1773,7 @@ fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
 }
 :::endfold
 fun hours(m: Double) = if (m < 60) "${m.toInt()} min" else if (m < 2880) "${(m / 60).toInt()} h" else "${(m / 1440).toInt()} d"
-val strokes = listOf(0.0, 480.0, 1440.0, 2880.0, 5760.0, 10080.0, 20160.0).map { column("wipe " + hours(it), Settings(wipeAfter = it)) }
+val strokes = [0.0, 480.0, 1440.0, 2880.0, 5760.0, 10080.0, 20160.0].map { column("wipe " + hours(it), Settings(wipeAfter = it)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-wipe.png")
@@ -1806,7 +1806,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1814,8 +1814,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1840,7 +1840,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1849,14 +1849,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(0.25, 1.0, 4.0, 16.0, 64.0, 256.0).map { column("drying $it", Settings(drying = it, wipeAfter = 480.0)) }
+val strokes = [0.25, 1.0, 4.0, 16.0, 64.0, 256.0].map { column("drying $it", Settings(drying = it, wipeAfter = 480.0)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-drying.png")
@@ -1890,7 +1890,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1898,8 +1898,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -1924,7 +1924,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -1933,14 +1933,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(0.0, 30.0, 60.0, 85.0, 120.0, 179.0).map { column("tilt $it", Settings(tilt = it)) }
+val strokes = [0.0, 30.0, 60.0, 85.0, 120.0, 179.0].map { column("tilt $it", Settings(tilt = it)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-tilt.png")
@@ -1972,7 +1972,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -1980,8 +1980,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -2006,7 +2006,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -2015,14 +2015,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(0.0625, 0.25, 1.0, 4.0, 16.0, 64.0).map { column("speed × $it", Settings(faster = it)) }
+val strokes = [0.0625, 0.25, 1.0, 4.0, 16.0, 64.0].map { column("speed × $it", Settings(faster = it)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-faster.png")
@@ -2055,7 +2055,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -2063,8 +2063,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -2089,7 +2089,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -2098,14 +2098,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(null, 200.0, 60.0, 20.0, 6.0, 2.0).map { column(if (it == null) "smooth" else "facets ${it.toInt()}", Settings(facets = it)) }
+val strokes = [null, 200.0, 60.0, 20.0, 6.0, 2.0].map { column(if (it == null) "smooth" else "facets ${it.toInt()}", Settings(facets = it)) }
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-facets.png")
@@ -2138,7 +2138,7 @@ val loop = FLine().moveTo(510, 900).apply {
     for (i in 1..480) { val a = PI / 2 + 2 * PI * 1.15 * i / 480; lineTo(510 + 190 * cos(a), 1090 - 190 * sin(a)) }
 }
 val scrub = FLine().moveTo(560, 1330).apply { for (i in 0 until 5) lineTo(if (i % 2 == 0) 380.0 else 640.0, 1375.0 + 45 * i) }
-val last = listOf(1600.0, 1800.0, 2000.0, 2200.0, 2400.0).zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
+val last = [1600.0, 1800.0, 2000.0, 2200.0, 2400.0].zipWithNext().mapIndexed { k, (y0, y1) -> FLine().moveTo(500.0 + 4 * k, y0).lineTo(504.0 + 4 * k, y1) }
 
 // a long straight, a loop that crosses itself, a scrub back and forth, and a last straight in four
 // pieces, each faster and lighter: 100, 200, 350, then 600 mm/s, lifting off the canvas at the end
@@ -2146,8 +2146,8 @@ fun gesture(c: PaintCanvas, s: Settings): TimedGesture {
     fun part(line: FLine, speed: Double, vararg pressure: Double) =
         c.gesture(line, speed = speed, pressure = pressure.toList(), tilt = s.tilt, facets = s.facets)
     var g = part(straight, 250.0, 0.8, 1.0, 1.0).then(part(loop, 250.0, 1.0, 0.9)).pause(0.1).then(part(scrub, 300.0, 1.1))
-    val press = listOf(1.0, 0.8, 0.6, 0.3, -0.2)
-    for ((k, speed) in listOf(100.0, 200.0, 350.0, 600.0).withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
+    val press = [1.0, 0.8, 0.6, 0.3, -0.2]
+    for ((k, speed) in [100.0, 200.0, 350.0, 600.0].withIndex()) g = g.then(part(last[k], speed, press[k], press[k + 1]))
     return g.faster(s.faster)
 }
 
@@ -2172,7 +2172,7 @@ fun column(label: String, s: Settings): Pair<String, Img> {
     s.wipeAfter?.let { minutes ->
         if (minutes.isInfinite()) c.dry() else c.wait(minutes)
         val rag = c.rag(150.0)
-        for (y in listOf(500.0, 1090.0, 2000.0)) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, listOf(0.8))
+        for (y in [500.0, 1090.0, 2000.0]) c.wipe(FLine().moveTo(250, y).lineTo(760, y + 10), rag, [0.8])
     }
     if (s.dry) c.dry()
     val png = if (s.lamp) c.png(relief = 0.3, light = PaintLight.Gallery) else c.png(relief = 0.3)
@@ -2181,14 +2181,14 @@ fun column(label: String, s: Settings): Pair<String, Img> {
 
 // the same columns twice: a row with moving hairs above a row with an ordinary brush
 fun rows(cells: (moving: Boolean) -> List<Pair<String, Img>>): Img {
-    val rows = listOf("moving hairs" to true, "ordinary brush" to false).map { (name, moving) ->
+    val rows = ["moving hairs" to true, "ordinary brush" to false].map { (name, moving) ->
         val strokes = cells(moving)
         name to montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
     }
     return montage(rows, columns = 1, cellSide = 4000, textScale = 3)
 }
 :::endfold
-val strokes = listOf(column("moving hairs", Settings()), column("ordinary brush", Settings(moving = false)))
+val strokes = [column("moving hairs", Settings()), column("ordinary brush", Settings(moving = false))]
 val sheet = montage(strokes, columns = strokes.size, cellSide = 750, textScale = 3)
 showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-moving.png")

@@ -841,7 +841,10 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
                         first.latestWatermark.set(strand, watermark)
                         first.latestRunningState.set(strand, false)
 
-                        window.setStatusForExecutionMarker?.(strand, false, mode)
+                        // A launch that started go { } jobs ends before they do (Alt+1 on a go block):
+                        // its margin marker stays on while they run (setGoJobsBadge in Main.kt).
+                        if (first.goJobStrands?.has(strand)) window.setStatusForExecutionMarker?.(strand, true, "go")
+                        else window.setStatusForExecutionMarker?.(strand, false, mode)
 
                         let removedAny = false
                         if (first.runningEntries.delete(name)) {

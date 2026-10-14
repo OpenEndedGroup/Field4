@@ -19,11 +19,13 @@ import tempfile
 from .containers import ContainerError, extract, issue, patch
 
 VERSION = 1
-EXCLUDED = {'.git', '.gradle', '.kotlin', '.venv', 'node_modules', 'build', 'backups', 'backup', '.backups', 'thumbnails', '.field-backdoor'}
+EXCLUDED = {'.git', '.gradle', '.kotlin', '.venv', 'node_modules', 'build', 'backups', 'backup', '.backups', 'thumbnails', '.field-backdoor', '.agent-scratch'}
 HISTORY = {'transcript.edn', 'history_metrics.edn'}
 TEXT = {'.kt', '.kts', '.java', '.md', '.yaml', '.yml', '.edn', '.json', '.py', '.js', '.sh', '.html', '.xml', '.toml', '.properties'}
 PROPERTIES = {'code', 'preamble', 'sharedTypes'}
 MAX_BYTES = 16 * 1024 * 1024
+# Generated Kotlin/JS resources retain their filenames when Kotlin packages move.
+RESOURCE_REFERENCES = {'afield.mjs', 'afield.mjs.map'}
 
 
 class RefactorError(ValueError):
@@ -91,7 +93,7 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports', 'proseReplacements'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
@@ -102,6 +104,14 @@ def load_recipe(path: Path) -> dict:
         if not isinstance(recipe.get(key, []), list) or any(not isinstance(g, str) or not g.endswith('.md') for g in recipe.get(key, [])):
             raise RefactorError(f'{key} must list Markdown path patterns')
     name = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\Z')
+    prose_rules = recipe.get('proseReplacements', {})
+    if not isinstance(prose_rules, dict) or any(not isinstance(k, str) or not name.fullmatch(k) or
+            not isinstance(v, str) or not v.strip() or len(v) > 200 or '\n' in v or '\r' in v
+            for k, v in prose_rules.items()):
+        raise RefactorError('proseReplacements must map qualified names to short single-line text')
+    if any(re.search(r'(?<![\w.])' + re.escape(k) + r'(?![\w.])', v)
+           for k in prose_rules for v in prose_rules.values()):
+        raise RefactorError('proseReplacements must be idempotent')
     for key in ('packages', 'symbols'):
         values = recipe.setdefault(key, {})
         if not isinstance(values, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not name.fullmatch(k) or not name.fullmatch(v) or k == v for k, v in values.items()):
@@ -112,18 +122,68 @@ def load_recipe(path: Path) -> dict:
     if set(recipe['packages']) & set(recipe['symbols']):
         raise RefactorError('a name cannot be both a package and a symbol rule')
     # Reject rule chains/cycles: applying the same recipe twice must be inert.
-    if any(new == old or new.startswith(old + '.') for new in all_rules.values() for old in all_rules):
+    if any(new == old or (new.startswith(old + '.') and not (old in recipe['symbols'] and old.rsplit('.', 1)[-1][0].islower())) for new in all_rules.values() for old in all_rules):
         raise RefactorError('recipe destinations overlap old names (not idempotent)')
     splits = recipe.setdefault('splitPackages', [])
     if not isinstance(splits, list) or any(not isinstance(s, str) or not name.fullmatch(s) for s in splits):
         raise RefactorError('splitPackages must be qualified package names')
     if set(splits) & set(recipe['packages']):
         raise RefactorError('a package cannot be both moved whole and split')
-    script_imports = recipe.get('scriptImports', [])
-    if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
-        raise RefactorError('scriptImports must list destination import paths, optionally ending in .*')
-    if any(s == old or s.startswith(old + '.') for s in script_imports for old in all_rules):
-        raise RefactorError('scriptImports must describe the destination intro, not old packages')
+    for key in ('knownPackages', 'retainedSymbols'):
+        values = recipe.get(key, [])
+        if not isinstance(values, list) or any(not isinstance(v, str) or not name.fullmatch(v) for v in values):
+            raise RefactorError(f'{key} must list qualified names')
+    if any(v == old or v.startswith(old + '.') or old.startswith(v + '.')
+           for v in recipe.get('retainedSymbols', []) for old in all_rules):
+        raise RefactorError('retained symbols overlap move rules')
+    split_symbols = recipe.get('splitSymbols', {})
+    if not isinstance(split_symbols, dict):
+        raise RefactorError('splitSymbols must map overload families to destination lists')
+    for old, targets in split_symbols.items():
+        if (not isinstance(old, str) or not name.fullmatch(old) or old in all_rules or
+                old.rsplit('.', 1)[0] not in splits or not isinstance(targets, list) or len(targets) < 2 or
+                any(not isinstance(t, str) or not name.fullmatch(t) or t.rsplit('.', 1)[-1] != old.rsplit('.', 1)[-1] for t in targets) or
+                len(set(targets)) != len(targets)):
+            raise RefactorError('splitSymbols requires distinct destinations with the same short name in an exact split package')
+    old_names = set(all_rules) | set(split_symbols)
+    new_names = list(all_rules.values()) + [t for targets in split_symbols.values() for t in targets]
+    if any(new == old or (new.startswith(old + '.') and not (old in recipe['symbols'] and old.rsplit('.', 1)[-1][0].islower())) for new in new_names for old in old_names):
+        raise RefactorError('splitSymbols destinations overlap old names')
+    if any(v == old or v.startswith(old + '.') or old.startswith(v + '.')
+           for v in recipe.get('retainedSymbols', []) for old in split_symbols):
+        raise RefactorError('retained symbols overlap split families')
+    stars = recipe.get('splitStarImports', {})
+    if not isinstance(stars, dict):
+        raise RefactorError('splitStarImports must map split packages to destination package lists')
+    for old, targets in stars.items():
+        if (old not in splits or not isinstance(targets, list) or not targets or
+                any(not isinstance(v, str) or not name.fullmatch(v) for v in targets) or len(set(targets)) != len(targets)):
+            raise RefactorError('splitStarImports requires exact split packages and nonempty unique destinations')
+        mapped = {v.rsplit('.', 1)[0] for k, v in recipe['symbols'].items() if k.rsplit('.', 1)[0] == old}
+        mapped.update(t.rsplit('.', 1)[0] for k, targets in split_symbols.items() if k.rsplit('.', 1)[0] == old for t in targets)
+        if any(v.rsplit('.', 1)[0] == old for v in recipe.get('retainedSymbols', [])):
+            mapped.add(old)
+        if set(targets) != mapped or any(k.rsplit('.', 1)[0] == old and k.rsplit('.', 1)[-1] != v.rsplit('.', 1)[-1]
+                                          for k, v in recipe['symbols'].items()):
+            raise RefactorError('splitStarImports must match mapped owners and preserve symbol names')
+        if any(v != old and v in splits for v in targets):
+            raise RefactorError('splitStarImports destinations cannot be another unresolved split package')
+    for field in ('scriptImports', 'boxImports'):
+        script_imports = recipe.get(field, [])
+        if not isinstance(script_imports, list) or any(not isinstance(s, str) or not name.fullmatch(s.removesuffix('.*')) for s in script_imports):
+            raise RefactorError(f'{field} must list destination import paths, optionally ending in .*')
+        if any((s == old or s.startswith(old + '.')) and not destination_reference(s, recipe, destination_packages(recipe))
+               for s in script_imports for old in all_rules):
+            raise RefactorError(f'{field} must describe the destination intro, not old packages')
+    box_stars = recipe.get('boxSplitStarImports', {})
+    if not isinstance(box_stars, dict):
+        raise RefactorError('boxSplitStarImports must map split packages to JVM intro destinations')
+    for old, targets in box_stars.items():
+        if (old not in stars or not isinstance(targets, list) or not targets or
+                any(not isinstance(t, str) for t in targets) or len(set(targets)) != len(targets) or
+                not set(targets).issubset(stars[old]) or
+                any(t + '.*' not in recipe.get('boxImports', []) for t in targets)):
+            raise RefactorError('boxSplitStarImports must select mapped destinations all supplied by boxImports')
     qualified_properties = recipe.get('qualifiedNameProperties', {})
     if not isinstance(qualified_properties, dict) or any(
             not isinstance(glob, str) or not glob.endswith('.properties') or not isinstance(keys, list) or
@@ -138,22 +198,80 @@ def load_recipe(path: Path) -> dict:
     return recipe
 
 
+def destination_packages(recipe: dict) -> set[str]:
+    return (set(recipe['packages'].values()) | {v.rsplit('.', 1)[0] for v in recipe['symbols'].values()} |
+            {v.rsplit('.', 1)[0] for targets in recipe.get('splitSymbols', {}).values() for v in targets})
+
+
+def destination_reference(path: str, recipe: dict, destinations: set[str]) -> bool:
+    parts = path.split('.')
+    prefixes = ['.'.join(parts[:n]) for n in range(1, len(parts) + 1)]
+    new = max((len(p) for p in prefixes[:-1] if p in destinations), default=0)
+    if not new:
+        return False
+    old = max((len(p) for p in prefixes if p in recipe['symbols'] or p in recipe['packages'] or
+               p in recipe.get('splitSymbols', {})), default=0)
+    return new >= old
+
+
 def affected_pattern(recipe: dict):
-    names = sorted(set(recipe['packages']) | set(recipe['symbols']) | set(recipe['splitPackages']), key=len, reverse=True)
-    return re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in names) + r')(?![\w/])') if names else re.compile(r'(?!)')
+    destinations = destination_packages(recipe)
+    rules = set(recipe['packages']) | set(recipe['symbols']) | set(recipe.get('splitSymbols', {}))
+    splits = set(recipe['splitPackages'])
+    known = set(recipe.get('knownPackages', []))
+    retained = set(recipe.get('retainedSymbols', []))
+    roots = sorted({n.split('.')[0] for n in rules | splits})
+    # Match a root once, then use component-prefix lookups. A thousands-way alternation
+    # repeats the same namespace prefix at every possible position in every document.
+    candidates = re.compile(r'(?<![\w./\\])(?:' + '|'.join(re.escape(n) for n in roots) +
+                            r')(?:\.[A-Za-z_]\w*)*(?![\w])') if roots else re.compile(r'(?!)')
+    class References:
+        def finditer(self, text):
+            for match in candidates.finditer(text):
+                path = match.group()
+                # A bare namespace followed by '-' is a resource/CSS name, not a package.
+                if path in roots and text[match.end():match.end() + 1] == '-':
+                    continue
+                if path in RESOURCE_REFERENCES or destination_reference(path, recipe, destinations):
+                    continue
+                if text[match.end():match.end() + 1] == '/':
+                    continue
+                parts = path.split('.')
+                prefixes = ['.'.join(parts[:n]) for n in range(len(parts), 0, -1)]
+                if retained.intersection(prefixes):
+                    continue
+                if rules.intersection(prefixes):
+                    yield match
+                    continue
+                owner = next((p for p in prefixes if p in known), None)
+                if (owner in splits if owner else splits.intersection(prefixes)):
+                    yield match
+
+        def search(self, text):
+            return next(self.finditer(text), None)
+    return References()
 
 
 def rewrite_qualified_text(text: str, recipe: dict) -> str:
+    destinations = destination_packages(recipe)
     def replace(match):
         name = match.group()
+        if name in recipe.get('proseReplacements', {}) and text[match.end():match.end()+2] != '.*' and text[match.end():match.end()+1] != '/':
+            return recipe['proseReplacements'][name]
+        if name in RESOURCE_REFERENCES or name in destinations or destination_reference(name, recipe, destinations):
+            return name
         if text[match.end():match.end() + 1] == '/':
             return name
+        if any(name == v or name.startswith(v + '.') for v in recipe.get('retainedSymbols', [])):
+            return name
+        parts = name.split('.')
+        prefixes = ['.'.join(parts[:n]) for n in range(len(parts), 0, -1)]
         for rules in (recipe['symbols'], recipe['packages']):
-            old = max((p for p in rules if name == p or name.startswith(p + '.')), key=len, default=None)
+            old = next((p for p in prefixes if p in rules), None)
             if old:
                 return rules[old] + name[len(old):]
         return name
-    return re.sub(r'(?<![\w.])[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', replace, text)
+    return re.sub(r'(?<![\w./\\])[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', replace, text)
 
 
 def repo_owned_outputs(root: Path, paths: list[str]) -> dict[str, str]:
@@ -209,6 +327,17 @@ class KotlinEngine:
         self.proc = subprocess.Popen([str(executable)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                      stderr=None, text=True, encoding='utf-8', bufsize=1)
         self.cache = {}
+
+    def declarations(self, code: str) -> dict:
+        self.proc.stdin.write(json.dumps({'operation': 'declarations', 'code': code}, ensure_ascii=False) + '\n')
+        self.proc.stdin.flush()
+        line = self.proc.stdout.readline()
+        if not line:
+            raise RefactorError('Kotlin declaration indexer exited unexpectedly')
+        result = json.loads(line)
+        if 'error' in result:
+            raise RefactorError(result['error'])
+        return result
 
     def rewrite(self, code: str, script: bool, recipe: dict) -> dict:
         key = digest(canonical([code, script, recipe]))
@@ -281,9 +410,31 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
         prose = markdown_prose_enabled(recipe, rel, repo)
         return extract(rel, text, properties, workspace=not repo, qualified_names=keys, markdown_prose=prose)
 
-    def rewrite_unit(unit):
+    # A Field intro belongs to saved boxes, not arbitrary .kts files or Markdown fences.
+    # Only metadata-registered sidecars inherit it; a filename alone proves no host.
+    box_sidecars = set()
+    if 'boxImports' in recipe:
+        for rel in paths:
+            if Path(rel).suffix != '.edn':
+                continue
+            try:
+                target = confined(root, rel)
+                if target.stat().st_size > MAX_BYTES:
+                    continue
+                extraction = extract_file(rel, target.read_text())
+                for reference in extraction.references:
+                    side = confined(root / Path(rel).parent, reference).relative_to(root).as_posix()
+                    box_sidecars.add(side)
+            except (OSError, ValueError, RecursionError):
+                pass  # Normal extraction below reports malformed/unsafe containers.
+    box_recipe = dict(recipe, scriptImports=recipe.get('boxImports', []),
+                      splitStarImports=recipe.get('splitStarImports', {}) | recipe.get('boxSplitStarImports', {}))
+
+    def rewrite_unit(unit, rel):
         if not unit.identity.startswith('prose:'):
-            return engine.rewrite(unit.code, unit.script, recipe)
+            host = box_recipe if 'boxImports' in recipe and unit.script and (
+                unit.box_context or Path(rel).suffix == '.edn' or rel in box_sidecars) else recipe
+            return engine.rewrite(unit.code, unit.script, host)
         after = rewrite_qualified_text(unit.code, recipe)
         pending = [issue('prose-reference', 'Unmapped qualified name in prose requires contextual review')] if pattern.search(after) else []
         return {'code': after, 'findings': pending, 'imports': [], 'package': '', 'evidence': 'exact-qualified-text'}
@@ -329,7 +480,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
             for unit in extraction.units:
                 if unit.sidecar:
                     continue
-                response = rewrite_unit(unit)
+                response = rewrite_unit(unit, rel)
                 package = response.get('package', '')
                 if not unit.script and unit.identity == 'source' and package:
                     rule = max((old for old in recipe['packages'] if package == old or package.startswith(old + '.')),
@@ -347,7 +498,13 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                             else:
                                 destinations[rel] = destination
                 for value in response['findings']:
-                    finding(rel, dict(value, unit=unit.identity))
+                    # A refactor is not a syntax sweep of every historical snippet. Keep evidence
+                    # about untouched, unrelated fragments without making them migration blockers.
+                    unrelated_syntax = (value['kind'] == 'parse-error' and
+                                        response['code'] == unit.code and not pattern.search(unit.code))
+                    finding(rel, dict(value, unit=unit.identity, **(
+                        {'retained': True, 'retentionReason': 'Unchanged unit has no names affected by this migration'}
+                        if unrelated_syntax else {})))
                 records.append({'path': rel, 'unit': unit.identity, 'imports': response.get('imports', []),
                                 'package': response.get('package', ''),
                                 'evidence': response.get('evidence', 'syntax')})
@@ -363,7 +520,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
             outputs[rel] = text
 
     for rel, extraction in extracted.items():
-        if Path(rel).name != 'metadata.edn':
+        if Path(rel).suffix != '.edn':
             continue
         edits = []
         for reference in extraction.references:
@@ -393,7 +550,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                 if after != unit.code:
                     edits.append((unit.start, unit.end, unit.encode(after)))
             else:
-                response = rewrite_unit(unit)
+                response = rewrite_unit(unit, rel)
                 if response['code'] != unit.code:
                     edits.append((unit.start, unit.end, unit.encode(response['code'])))
         outputs[rel] = patch(originals[rel], edits)
@@ -413,7 +570,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                     side = confined(root / Path(rel).parent, old.sidecar).relative_to(root).as_posix()
                     expected = outputs.get(side, old.code)
                 else:
-                    expected = rewrite_unit(old)['code']
+                    expected = rewrite_unit(old, rel)['code']
                 if new.code != expected:
                     raise ContainerError(f'container round-trip changed {old.identity}')
         except (ContainerError, ValueError) as error:

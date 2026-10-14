@@ -18,7 +18,7 @@ print(run.best!!.text)
 val watchmaker = StackSLProgram.of(
     "[0.05,0.06,0.15] [0.98,0.9,0.1] uv x 0.5 < mix [0.1,0.5,0.95] [0.9,0.1,0.1] uv x 0.5 < mix uv y 0.5 > mix"
 )
-showImg(run.contactSheet(also = listOf("watchmaker" to watchmaker)),
+showImg(run.contactSheet(also = ["watchmaker" to watchmaker]),
     caption = "the target, the evolved program, the random control's best, and the watchmaker's (skill %.2f)"
         .format(run.skillOf(watchmaker)))
 ```
@@ -148,13 +148,13 @@ A program can have the right words and a wrong number: a disc of radius 0.4 wher
 :::static
 val evolution = StackSLEvolution(StackSLTargets.spot(32))
 val seed = StackSLProgram.of("[1,0.82,0.25] [0.03,0.04,0.12] p length 0.4 threshold mix")
-val fitted = evolution.fit(seed, literals = listOf(4), iterations = 30)
+val fitted = evolution.fit(seed, literals = [4], iterations = 30)
 print(fitted)
-showImg(montage(listOf(
+showImg(montage([
     "target" to evolution.target.raster.toImg().upscaleNearest(5),
     "seed" to seed.render(),
     "fitted" to StackSLProgram.of(fitted.fitted!!).render()
-), columns = 3, cellSide = 170), caption = "the disc's radius, moved by gradient descent")
+], columns = 3, cellSide = 170), caption = "the disc's radius, moved by gradient descent")
 ```
 
 `literals = listOf(4)` lets only the fifth word, `0.4`, move. Leave it out and every number in the program may. The gradient goes through the threshold's hard edge by smoothing it slightly while the descent runs, and through LPIPS, which Field also differentiates. The fit scores LPIPS plus pixel error, because LPIPS alone would let a descent turn a striped program's colours the wrong way round.
@@ -191,11 +191,11 @@ print("lpips: " + lpips.best!!.text)
 :::fold draw the target and both winners side by side
 showImg(
     montage(
-        listOf(
+        [
             "target" to target.raster.toImg().upscaleNearest(5),
             "pixel error" to pixel.objective.render(pixel.best!!, 160).toImg(),
             "LPIPS" to lpips.objective.render(lpips.best!!, 160).toImg()
-        ),
+        ],
         columns = 3, cellSide = 170
     ),
     caption = "six yellow and blue bands, and the best program found under each score"

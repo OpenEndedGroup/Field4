@@ -73,7 +73,7 @@ voice under it, and pick a new melody each time the bass plays:
 ```diffstatic {data-lang=kotlin}
 o.bpm = 140
 o.write(0, 9, "D4\n.:03C")
-o.onNote { if (it.channel == 1) o.write(5, 3, listOf("CDEGAGED", "EGBDBGEB").random()) }
+o.onNote { if (it.channel == 1) o.write(5, 3, ["CDEGAGED", "EGBDBGEB"].random()) }
 ```
 
 A change reaches ORCA at its next frame. Inside a coroutine, `o.sync()` waits until ORCA has applied everything sent so far and

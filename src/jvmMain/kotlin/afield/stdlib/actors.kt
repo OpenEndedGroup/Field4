@@ -168,9 +168,18 @@ fun <T : Any> Box.send(payload: T) {
 fun Box.go(block: suspend CoroutineScope.() -> Unit) {
     val box = this
     val epoch = box.captureLaunchEpoch()
+    // The run that called go: its strand travels with the job, alongside Box.context.
+    val strand = RunScope.currentFor(box)?.strand ?: "default"
     inMain {
         val job = coroutineContext[Job]!!
+        // Marked as a go job before registerLaunchJob, so the box never flashes as fully launched.
+        box.goJobs[job] = strand
+        job.invokeOnCompletion {
+            box.goJobs.remove(job)
+            box.publishGoJobs()
+        }
         if (!box.registerLaunchJob(job, epoch)) return@inMain
+        box.publishGoJobs()
         try {
             Box.withBoxContext(box) {
                 try {
@@ -187,6 +196,15 @@ fun Box.go(block: suspend CoroutineScope.() -> Unit) {
         }
     }
 }
+
+/**
+ * Wait [ms] milliseconds inside `go { }` (or any coroutine) without holding the runloop.
+ *
+ * Box code does not import `kotlinx.coroutines.delay`, so without this a bare `delay(500)` in a
+ * `go` block found some other `delay` — once the synth effect now called [afield.four.synth.delayEffect],
+ * which returned at once and let a `while (true)` around it hold the runloop.
+ */
+suspend fun delay(ms: Number) = kotlinx.coroutines.delay(ms.toLong())
 
 // -- public API: send and await handler completion ----------------------------
 

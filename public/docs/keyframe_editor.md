@@ -13,7 +13,7 @@ Here a curve drives a meter. `keyframes(name = "brightness", ...)` shows the edi
 
 ```diffstatic_runner {data-lang=kotlin video="assets/keyframe_editor/playback.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="5" fps="20" timeout="180" w="700" embed=true name="keyframe-playback" alt="The brightness editor: four keys joined by straight lines, rising from 0.1 at time 0 to 0.9 at time 1 and falling back to 0.1 at time 4, with an orange playhead sweeping left to right and a dot riding the curve. Below it a meter labelled brightness rises and falls with the dot"}
 :::static
-val brightness = keyframes(name = "brightness", defaults = listOf(vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)))
+val brightness = keyframes(name = "brightness", defaults = [vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)])
 
 lateinit var level: MeterHandle
 controlGroup("level") { level = meter("brightness") }
@@ -349,14 +349,14 @@ To start a curve with keys of particular types, pass `keys` instead of `defaults
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/types.png" capture="box" open-outputs="true" wait="2.0" timeout="120" w="700" embed=true name="keyframe-types" alt="A curve through six keys. From time 0 a straight line climbs to 0.8 at time 1; from there the value holds flat to time 2 and drops on a dashed line to 0.3; it then eases smoothly up to a rounded peak of 0.9 at time 3 and down through 0.5 at time 4, before a straight line to 0.2 at time 5. Bezier keys show their handles"}
 :::static
-val shape = keyframes(name = "shape", keys = listOf(
+val shape = keyframes(name = "shape", keys = [
     Keyframe(0.0, 0.1, "linear"),
     Keyframe(1.0, 0.8, "hold"),
     Keyframe(2.0, 0.3, "bezierFlat"),
     Keyframe(3.0, 0.9, "bezierContinuous"),
     Keyframe(4.0, 0.5, "bezierFree"),
     Keyframe(5.0, 0.2, "linear"),
-))
+])
 ```
 
 A bezier key given without handles gets the handles the editor would give it, worked out from its neighbours.
@@ -432,12 +432,12 @@ interpolant("chaos") {
     lerp(u) + 0.25 * sin(PI * u) * (x - 0.5)
 }
 
-val custom = keyframes(name = "custom", keys = listOf(
+val custom = keyframes(name = "custom", keys = [
     Keyframe(0.0, 0.1, "overshoot"),
     Keyframe(1.5, 0.8, "wobble"),
     Keyframe(3.0, 0.3, "chaos"),
     Keyframe(4.5, 0.6, "linear"),
-))
+])
 ```
 
 Drag a key and the shapes either side of it follow, worked out in Kotlin as you move:
@@ -526,9 +526,9 @@ An overlay is a second curve drawn on the graph for reference, that you cannot e
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/overlay.png" capture="box" open-outputs="true" wait="2.5" timeout="120" w="700" embed=true name="keyframe-overlay" alt="A jagged curve of five keys zig-zagging between 0.1 and 0.9 over two seconds, drawn dimmed, with a dashed orange overlay running smoothly through the middle of the zig-zag"}
 :::static
-val wobble = keyframes(name = "wobble", defaults = listOf(
+val wobble = keyframes(name = "wobble", defaults = [
     vec(0.0, 0.2), vec(0.5, 0.9), vec(1.0, 0.1), vec(1.5, 0.8), vec(2.0, 0.3)
-))
+])
 
 val smooth = { keys: List<Keyframe> -> with(Functions) { gaussianSmooth(fromKeyframeEditor(keys), sigma = 0.15) } }
 wobble.setOverlay(smooth(wobble.getKeyframes()))
@@ -542,8 +542,8 @@ wobble.onChange = smooth
 Each editor is one value, so a movement in two dimensions is two editors. Here `x` and `y` curves move the handle of an XY pad:
 
 ```diffstatic {data-lang=kotlin}
-val x = keyframes(name = "x", defaults = listOf(vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)))
-val y = keyframes(name = "y", defaults = listOf(vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)))
+val x = keyframes(name = "x", defaults = [vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)])
+val y = keyframes(name = "y", defaults = [vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)])
 
 lateinit var spot: ControlValueHandle<Vector2f>
 controlGroup("spot") { spot = vec2Control("spot") { } }

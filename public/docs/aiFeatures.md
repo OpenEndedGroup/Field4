@@ -98,7 +98,7 @@ import afield.ai.core.*
 // Connect these callbacks to your existing saved-state store.
 stateTree("design", "Design", read = {
     StateTreeSnapshot(
-        nodes = listOf(StateTreeNode("saved-1", title = "Initial design")),
+        nodes = [StateTreeNode("saved-1", title = "Initial design")],
         current = "saved-1",
         note = "Saved authored states")
 }, inspect = { id ->

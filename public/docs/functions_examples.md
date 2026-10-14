@@ -51,7 +51,7 @@ with(Functions) {
         filled = false
     }
 
-    val guides = listOf(
+    val guides = [
         frame(),
         hLine(220.0, vec(1.0, 1.0, 1.0, 0.35), 1.6),
         hLine(220.0 - 85.0, vec(1.0, 1.0, 1.0, 0.18), 1.0),
@@ -62,7 +62,7 @@ with(Functions) {
             color = vec(1.0, 1.0, 1.0, 0.12)
             this.thickness = 1.0
         }
-    )
+    ]
 
     lines(guides + waveform, channel = "harmonic-graph", w = 980.0, h = 430.0, fitToSize = false)
     markdown("notes", "**1D stack**\n\nsin + overtone + value noise, windowed and soft-clipped.")
@@ -123,7 +123,7 @@ with(Functions) {
         thickness = 1.0
     }
 
-    lines(listOf(frame, center, a, b, c), channel = "pulse-stack", w = 980.0, h = 400.0, fitToSize = false)
+    lines([frame, center, a, b, c], channel = "pulse-stack", w = 980.0, h = 400.0, fitToSize = false)
     markdown("notes", "**Pulse stack**\n\npulseTrain → clip → blur → sampleHold")
 }
 ```
@@ -173,7 +173,7 @@ with(Functions) {
         color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6
     }
 
-    val guides = listOf(frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2))
+    val guides = [frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2)]
     val targetLine = asLine(target, vec(0.30, 0.79, 0.94, 1.0), 4.5)      // cyan, thick
     val fittedLine = asLine(run.fitted, vec(0.97, 0.45, 0.18, 1.0), 2.2)  // orange, thin, on top
 
@@ -214,13 +214,13 @@ with(Functions) {
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
-        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        val parts = if (dashed) line.byDashing(10f, 7f) else [line]
         return parts.onEach { it.color = color; it.thickness = thickness }
     }
-    val guides = listOf(
+    val guides = [
         fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
         fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
-    )
+    ]
     val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
     val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
     val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
@@ -263,13 +263,13 @@ loop {
         val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
         fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
             val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
-            val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+            val parts = if (dashed) line.byDashing(10f, 7f) else [line]
             return parts.onEach { it.color = color; it.thickness = thickness }
         }
-        val guides = listOf(
+        val guides = [
             fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
             fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
-        )
+        ]
         val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
         val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
         val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
@@ -333,7 +333,7 @@ with(Functions) {
         thickness = 1.4
     }
 
-    val cross = listOf(
+    val cross = [
         fline {
             moveTo(120.0, cy)
             lineTo(880.0, cy)
@@ -346,14 +346,14 @@ with(Functions) {
             color = vec(1.0, 1.0, 1.0, 0.12)
             thickness = 1.0
         }
-    )
+    ]
 
     val curve = parametric(xFn, yFn).apply {
         color = vec(0.98, 0.9, 0.32, 0.95)
         thickness = 2.3
     }
 
-    lines(listOf(frame) + cross + curve, channel = "xy-parametric", w = 1000.0, h = 500.0, fitToSize = false)
+    lines([frame] + cross + curve, channel = "xy-parametric", w = 1000.0, h = 500.0, fitToSize = false)
     markdown("notes", "**2D parametric**\n\nx(t) and y(t) are independent Functions stacks.")
 }
 ```
@@ -427,7 +427,7 @@ with(Functions) {
         thickness = 1.0
     }
 
-    lines(listOf(frame, ringGuide, line), channel = "xy-rosette", w = 1000.0, h = 500.0, fitToSize = false)
+    lines([frame, ringGuide, line], channel = "xy-rosette", w = 1000.0, h = 500.0, fitToSize = false)
     markdown("notes", "**2D rosette**\n\nradial(t) + angle(t) stack mapped into x/y.")
 }
 ```
@@ -467,7 +467,7 @@ with(Functions) {
         thickness = 1.3
     }
 
-    lines(listOf(frame, line), channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
+    lines([frame, line], channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
     markdown("notes", "**Before**: simple sin + pulse stack.")
 }
 :::after
@@ -502,7 +502,7 @@ with(Functions) {
         thickness = 1.0
     }
 
-    lines(listOf(frame, center, line), channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
+    lines([frame, center, line], channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
     markdown("notes", "**After**: shaped pulse + fbm detail + stronger soft clip.")
 }
 ```
@@ -716,13 +716,13 @@ with(Functions) {
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
-        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        val parts = if (dashed) line.byDashing(10f, 7f) else [line]
         return parts.onEach { it.color = color; it.thickness = thickness }
     }
-    val guides = listOf(
+    val guides = [
         fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
         fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
-    )
+    ]
     val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
     val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
     val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
@@ -767,13 +767,13 @@ with(Functions) {
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
-        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        val parts = if (dashed) line.byDashing(10f, 7f) else [line]
         return parts.onEach { it.color = color; it.thickness = thickness }
     }
-    val guides = listOf(
+    val guides = [
         fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
         fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
-    )
+    ]
     val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
     val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
     val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
@@ -868,13 +868,13 @@ with(Functions) {
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
-        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        val parts = if (dashed) line.byDashing(10f, 7f) else [line]
         return parts.onEach { it.color = color; it.thickness = thickness }
     }
-    val guides = listOf(
+    val guides = [
         fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
         fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
-    )
+    ]
     val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
     val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
     val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
@@ -2405,7 +2405,7 @@ Spline constructors turn keyframes into continuous curves with different interpo
 Linearly interpolates between two keyframes.
 
 ```diffstatic {data-lang=kotlin}
-val f = piecewiseLinear(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linear")))
+val f = piecewiseLinear([Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linear")])
 ```
 
 **Creative**
@@ -2416,7 +2416,7 @@ import afield.Keyframe
 import afield.stdlib.Functions
 
 with(Functions) {
-    val f = catmullRomSpline(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.2, 0.9, "linear"), Keyframe(0.6, -0.4, "linear"), Keyframe(1.0, 0.2, "linear")), alpha = 0.5).mix(monotoneCubic(listOf(Keyframe(0.0, 0.1, "linear"), Keyframe(0.4, 0.8, "linear"), Keyframe(1.0, 0.0, "linear"))), constant(0.35))
+    val f = catmullRomSpline([Keyframe(0.0, 0.0, "linear"), Keyframe(0.2, 0.9, "linear"), Keyframe(0.6, -0.4, "linear"), Keyframe(1.0, 0.2, "linear")], alpha = 0.5).mix(monotoneCubic([Keyframe(0.0, 0.1, "linear"), Keyframe(0.4, 0.8, "linear"), Keyframe(1.0, 0.0, "linear")]), constant(0.35))
     f.plot()
 }
 ```
@@ -2430,7 +2430,7 @@ Handle and B-spline helpers make smoother keyframe-derived curves.
 Builds a smooth quadratic B-spline through the keyframe values.
 
 ```diffstatic {data-lang=kotlin}
-val f = bSplineQuadratic(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "linear"), Keyframe(1.0, 0.2, "linear")))
+val f = bSplineQuadratic([Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "linear"), Keyframe(1.0, 0.2, "linear")])
 ```
 
 **Creative**
@@ -2441,7 +2441,7 @@ import afield.Keyframe
 import afield.stdlib.Functions
 
 with(Functions) {
-    val f = hermiteFromHandles(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.3, 0.8, "linear"), Keyframe(0.75, -0.2, "linear"), Keyframe(1.0, 0.1, "linear"))).softClip(constant(1.2))
+    val f = hermiteFromHandles([Keyframe(0.0, 0.0, "linear"), Keyframe(0.3, 0.8, "linear"), Keyframe(0.75, -0.2, "linear"), Keyframe(1.0, 0.1, "linear")]).softClip(constant(1.2))
     f.plot()
 }
 ```
@@ -2455,7 +2455,7 @@ Discrete and eased interpolators choose how keyframes are held or blended.
 Holds each keyframe value until the next keyframe is reached.
 
 ```diffstatic {data-lang=kotlin}
-val f = stepHold(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Keyframe(1.0, 0.5, "linear")))
+val f = stepHold([Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Keyframe(1.0, 0.5, "linear")])
 ```
 
 **Creative**
@@ -2466,7 +2466,7 @@ import afield.Keyframe
 import afield.stdlib.Functions
 
 with(Functions) {
-    val f = cosineInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))).mix(smootherStepInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))), constant(0.5))
+    val f = cosineInterp([Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear")]).mix(smootherStepInterp([Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear")]), constant(0.5))
     f.plot()
 }
 ```
@@ -2491,7 +2491,7 @@ import afield.Keyframe
 import afield.stdlib.Functions
 
 with(Functions) {
-    val f = gaussianSmooth(fromKeyframeEditor(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "bezier"), Keyframe(1.0, 0.1, "linear"))), sigma = 0.03, taps = 41).let { resample(it, sampleCount = 512, interpolation = CUBIC) }
+    val f = gaussianSmooth(fromKeyframeEditor([Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "bezier"), Keyframe(1.0, 0.1, "linear")]), sigma = 0.03, taps = 41).let { resample(it, sampleCount = 512, interpolation = CUBIC) }
     f.plot()
 }
 ```
@@ -4115,7 +4115,7 @@ with(Functions) {
         color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6
     }
 
-    val guides = listOf(frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2))
+    val guides = [frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2)]
     val seedLine   = asLine(seed,     vec(0.55, 0.55, 0.55, 0.9), 2.0)   // grey: where it started
     val targetLine = asLine(target,   vec(0.84, 0.15, 0.16, 1.0), 4.5)   // red: the target
     val bestLine   = asLine(run.best, vec(0.12, 0.47, 0.71, 1.0), 2.4)   // blue: evolved best, on top

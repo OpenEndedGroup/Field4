@@ -124,6 +124,8 @@ that every script receives Field's default imports.
 ### Comments, Markdown and contextual review
 
 `"rewriteComments": true` enables exact qualified-name replacement in Kotlin comments and KDoc.
+Generated bundle filenames `afield.mjs` and `afield.mjs.map` are preserved in text and do not produce package-reference findings.
+Hyphenated root labels such as `afield-stacksl-token-comment` are also preserved; they are resource names, not Kotlin packages.
 `"markdownProse": ["public/docs/*.md"]` enables the same operation in selected Markdown prose;
 patterns match paths relative to each root (`*` can span directories). Kotlin fences still use
 the parser, and other fenced languages are excluded from prose rewriting.
@@ -159,6 +161,66 @@ and `fc` types, plus the linalg, arena and storage wildcards. A future intro pro
 post-migration names. The existing live-box `analyzeBoxImports`/`formatBoxImports` helper can do
 broader cleanup with classpath/K2 evidence; this standalone tool does not infer that evidence.
 
+## Generate a split-package symbol map
+
+The map needs a declaration inventory and reviewed destination choices. Generate the inventory
+from the unmodified session worktree before changing source:
+
+```sh
+uv run python tools/refactor.py declarations --repo /path/to/session/repository \
+  --out /path/to/session/declaration-index
+```
+
+This indexes Git-tracked `.kt` files in Kotlin source directories, including common/JVM/JS and
+standalone tools. It uses PSI rather than regex to identify top-level classes, objects, aliases,
+properties and functions. It records source hashes, signatures, visibility and individual overloads.
+Class members and local declarations are not separate package-level symbols; nested references
+follow the owning type's mapping. Parser errors are explicit inventory gaps. This is syntax
+inventory, not a resolved symbol/ABI index.
+
+Assign coherent files to destination packages, with exact symbol choices for mixed files:
+
+```json
+{
+  "schema": 1,
+  "files": {
+    "src/jvmMain/kotlin/afield/visualization/Colormaps.kt": "afield.graphics.color"
+  },
+  "symbols": {
+    "afield.four.modules.fromContext": "afield.document.context.fromContext"
+  },
+  "keep": []
+}
+```
+
+```sh
+uv run python tools/refactor.py symbol-map --repo /path/to/session/repository \
+  --index /path/to/session/declaration-index/declarations.json \
+  --assignments /path/to/assignments.json --recipe /path/to/session/recipe.json \
+  --out /path/to/session/symbol-map
+```
+
+The output `recipe.json` expands file choices into exact symbol families; `symbol-map.json` keeps
+per-declaration evidence and unassigned families, and `report.md` groups remaining choices by file.
+`assignments.template.json` lists the remaining files with null destinations: fill in coherent
+file destinations, leaving null entries unresolved, then generate into a new output directory.
+A file assignment covers all overloads/platform counterparts of each named family, even when some
+are declared elsewhere. Conflicting family choices are rejected rather than picking the last one.
+Private top-level declarations stay in the inventory but are not exported into reference rules.
+Explicit `keep` families become `retainedSymbols`; they cannot overlap move rules. Stale source
+hashes, added/removed tracked sources, unknown choices, parser errors in assigned files and direct
+destination collisions fail closed.
+
+The generated `knownPackages` records old and proposed package ownership. A split applies to its
+own declarations, not automatically to every descendant package. This avoids treating an unmoved
+child such as `afield.math.gp` as part of a split of the root `afield` package. Unknown qualified
+names remain findings.
+
+Review the generated recipe, copy it to the session's `recipe.json`, then replan. This step does
+not move declarations out of mixed files, add same-package imports, or resolve split star imports.
+Those remain held until extraction and binding-aware repair are done. Do not treat an empty
+unassigned list as proof of equivalent JVM names, overload resolution or script defaults.
+
 ## Containers and document boundaries
 
 - Kotlin source and scripts: PSI edits preserve import aliases, comments, LF/CRLF and Unicode offsets.
@@ -183,6 +245,35 @@ Kotlin files. Any blocking finding in that group holds all of its proposed edits
 individual groups. Generated starting points remain generator-owned in repository mode. Backups
 and logs are preserved; migrating code restored from history is a later explicit scan, not an
 automatic restore hook in this version.
+
+## Expanding wildcard imports from split packages
+
+The symbol-map generator emits `splitStarImports` for each fully assigned split package:
+
+```json
+{"splitStarImports": {"old.mixed": ["new.geometry", "new.graphics"]}}
+```
+
+The engine replaces `import old.mixed.*` with both destination wildcard imports. It deduplicates
+against existing destination stars and the configured script host imports, preserves line endings
+and trailing comments, and leaves explicit/aliased imports to their normal symbol rules.
+Explicitly retained declarations keep the original package among the destination stars.
+
+For scripts, expansion requires an explicit `scriptImports` destination-host profile. A missing
+profile keeps split stars held; it must not spray dozens of imports into box code whose host
+already supplies them. When the intro covers all destination stars, the old import is removed.
+When it covers some, only the missing ones are added. An explicit empty list opts into expansion
+for standalone scripts with no host imports. The profile is a caller assertion for all scripts in
+the selected roots, so do not mix incompatible script hosts in one plan. Migrate the central Field
+intro first and populate this profile from its destination imports. Compiled source files never
+use the script profile to remove imports.
+
+The generator recomputes these lists from the inventory every time. Unassigned declarations,
+parser gaps in that package, renamed symbols, or destinations that are another split package
+prevent expansion. Missing mappings never mean that a declaration stays put. Comments inside
+an import keep that import held for review. These are syntactic proposals: broader imports can
+introduce ambiguity or change overload resolution, so build, runtime and binding checks remain
+necessary. Regenerate the symbol map and replan after completing or changing assignments.
 
 ## Apply, verify, undo
 
@@ -234,48 +325,145 @@ automatic generator scheduling, typed Java/build/embedded-command adapters, vers
 live workspace leases and an upgrade UI. The current report distinguishes these gaps from completed
 mechanical changes; it is not yet an unattended whole-repository cutover engine.
 
-## Refactor pass: contextual review in Field
+## Refactor sessions in Field
 
-Open `/refactor-pass.html` in the same Field server as the docs pass (there is a link from the
-Docs pass page), and import the absolute directory of a migration plan. The pass creates one
-`codex/refactor-pass-…` integration worktree and new workspace copies, excluding the same backups
-and thumbnails as the migration tool. Private pass state, copied plans, briefs and decisions live
-under `~/.afield/refactor-passes/`; the checkout keeps only an ignored pointer. The original
-repository and workspaces are not edited by review sessions.
+Open **Refactoring** from welcome or `/refactor-pass.html`. A session owns a repository
+worktree, workspace copies, a recipe, immutable plans, review decisions and delivery receipts.
+Session data lives under `~/.afield/refactor-passes`; the hosting checkout stores only an
+ignored pointer. Keep the host server in that checkout while working in the session worktree.
 
-The first version provides:
+1. **Create:** describe the refactor, enter old → new package pairs (or a complete recipe), and
+   choose workspace directories. The repository starts at the host checkout's HEAD; uncommitted
+   host edits are not copied. Workspace copies exclude backups and thumbnails. Leave the map
+   empty to develop it with the session agent. An existing plan can still be imported.
+2. **Review:** inspect mechanical diffs and highlighted findings. Batch terminals use the same
+   configured agent as Docs pass and open as separate Electron tabs. **Open worktree terminal**
+   handles cross-batch work or development of the recipe. Close the agent session when finished
+   so it releases the writer lease, then replan. Decisions remain review records; they never alter
+   the immutable plan. Preserve permits an intentional unchanged reference at delivery only if
+   that group has no proposed edits. Held edits must be resolved in source or by an adapter.
+   **Review all unresolved** opens a keyboard review round across batches, with the previous
+   decision and its reason above the source. **P** preserves the remaining references, **E**
+   records a Needs edit instruction (a `question` for the batch agent), **N** skips, and **B**
+   goes back. An optional note replaces the standard reason. Save success advances immediately;
+   a failed save stays on the current group. Shortcuts are inactive while typing. Preservation
+   is unavailable for stale source or groups with proposed edits. Needs edit and skipped groups
+   remain unresolved: run the relevant batch agent, then replan. The default list hides resolved
+   Preserve groups; choose All decisions to inspect them. Quick review does not apply patches.
+   Large agent batches should write dispositions as a JSON array of
+   `{"item":"ITEM_ID","state":"patch","reason":"What changed"}` records, then run
+   `tools/refactor_pass.py decide-many --file /absolute/path/to/decisions.json` once.
+   The command checks every item and its current source hashes under the session state lock,
+   then saves all records together. An invalid or stale preservation record rejects the whole
+   submission without partial writes. These records do not clear migration holds.
+3. **Rehearse:** apply ready groups in the copies, verify their bytes, undo, and verify restoration.
+   Rehearsals use fresh journals and can be repeated. This is not build or runtime verification.
+4. **Prepare:** once the relevant findings are resolved, apply the complete plan and leave it
+   applied. The original repository and workspaces remain untouched. Inspect the repository diff
+   from the session's base, the listed new files and workspace copies before delivery.
+5. **Verify:** configure named commands with `kind` (`generate`, `build`, `test`, `runtime`) and
+   `argv` (an argument array, never shell text). At least build, test and runtime are required.
+   Generators run first. Other checks must not change source. Commands run in the worktree;
+   `{worktree}` and `{root:1}` arguments expand to session roots. `FIELD_REFACTOR_SESSION` and
+   `FIELD_REFACTOR_ROOT_<id>` are also available. Tailored runtime commands should exercise the
+   migrated documents. Exit codes and log paths are retained. A successful receipt binds the
+   recipe, check configuration and content/modes of all nonexcluded input files, including binaries.
+6. **Deliver:** **Commit and enqueue repository** commits the dedicated worktree and invokes the
+   existing lander. The queue receipt is displayed; queued does not mean landed. **Publish verified
+   workspace copy** writes to a new, nonoverlapping directory without overwriting an original.
+   Publication refuses workspace symlinks and rechecks copied content. Open that copy with the
+   migrated Field version after landing. Either action refuses files changed since verification.
 
-- The recipe, root counts, file moves and proposed diffs, including held changes.
-- Review groups with actual source excerpts and decoded code-unit line numbers. Before/after
-  blobs preserve the evidence even when the original source later changes.
-- Suggested batches for prose, display labels, dynamic names, languages, incomplete syntax,
-  generated outputs and source layout. These are suggestions for review, not automatic approvals.
-- Decisions per document/file group: patch proposed, preserve with a reason, adapter needed,
-  question or open. Recipe, group-source and finding fingerprints reopen changed decisions.
-- The existing interactive terminal, using the configured agent. A generated private brief includes
-  exact findings and proposed changes. One writer lease serializes agent sessions, replanning and
-  rehearsal. Decisions can be recorded while the agent owns the lease.
-- Replanning against the working copies, followed by apply/verify/undo/verify of ready groups.
-  Each plan can be rehearsed once; replan for another rehearsal.
+**Undo preparation** restores the mechanical edits only when doing so will not overwrite later
+work. If verification exposes a defect, use the worktree terminal to fix it and rerun verification.
+Use **Keep edits and replan** to retain the applied migration and any fixes as the input to a new
+review plan. Earlier delivery journals remain retained for inspection. Undo never discards later changes. Interrupted preparation remains visible and can be undone.
+An interrupted verification can be rerun. **Close session · keep worktree** detaches the page;
+resume from the saved-session list or directory. It does not delete files or stop active writers.
+The writer lease prevents closing or mutating a session while an agent/check is active.
 
-The page's state survives a reload and the terminal can be reattached. A decision does not alter
-an immutable plan or waive its held groups. The agent stops after recording outcomes; its brief
-forbids partial commits/landings. This first pass does not enqueue the namespace cutover or publish
-workspace upgrades. Compilation, runtime validation, deliberate preservation rules, and final
-coordinated delivery remain required. Sidecar filename conventions are unchanged.
+The default commands are a starting point for Field; add required generators and adapt runtime
+checks to the particular migration. Passing configured commands proves those commands passed,
+not that every possible document or API binding was tested. The example preview recipe still
+represents a proposed hierarchy; it does not authorize silently dropping remaining holds.
 
-The same operations are available from the CLI:
+The same operations are available in the CLI:
 
 ```sh
-uv run --project . --group backdoor python tools/refactor_pass.py create --plan /path/to/migration
-uv run --project . --group backdoor python tools/refactor_pass.py status
-uv run --project . --group backdoor python tools/refactor_pass.py item --item <id>
-uv run --project . --group backdoor python tools/refactor_pass.py decide --item <id> --state preserve --reason 'Dated historical description'
-uv run --project . --group backdoor python tools/refactor_pass.py brief --batch dynamic-names
-uv run --project . --group backdoor python tools/refactor_pass.py replan
-uv run --project . --group backdoor python tools/refactor_pass.py rehearse
+uv run --group backdoor python tools/refactor_pass.py start --recipe-json '<recipe JSON>' --workspace /path/to/workspace
+uv run --group backdoor python tools/refactor_pass.py create --plan /path/to/existing-plan
+uv run --group backdoor python tools/refactor_pass.py replan
+uv run --group backdoor python tools/refactor_pass.py rehearse
+uv run --group backdoor python tools/refactor_pass.py prepare
+uv run --group backdoor python tools/refactor_pass.py configure --checks-json '<named argument arrays>'
+uv run --group backdoor python tools/refactor_pass.py validate
+uv run --group backdoor python tools/refactor_pass.py delivery-diff
+uv run --group backdoor python tools/refactor_pass.py land
+uv run --group backdoor python tools/refactor_pass.py publish --root 1 --destination /new/workspace
+uv run --group backdoor python tools/refactor_pass.py close
+uv run --group backdoor python tools/refactor_pass.py resume --session /path/to/session
 ```
 
-The server must stay in its hosting checkout while the migration is developed in the integration
-worktree. Agent sessions use `tools/field_agent.py`'s choice; browser reads and writes use the same
-loopback/same-site boundary as docs passes and terminals because reports contain private source.
+Sidecar filename conventions are unchanged. Private source and operations retain the
+loopback/same-site boundary used by Docs pass and terminals.
+
+### Field box intro coverage
+
+Use `boxImports` (import paths without the `import` keyword) when the destination defaults are
+Field's `intro`. It overrides `scriptImports` only for Kotlin properties in `metadata.edn` and
+sidecars explicitly registered by those documents. Standalone scripts, unregistered `.kt` files,
+and Markdown fences do not inherit this profile. Compiled Kotlin never uses host coverage.
+
+Migrate the central intro first and copy its exact import list into `boxImports`. An identical
+host import is redundant even while a split package still has unresolved declarations: remove it
+from boxes rather than expanding it there. During a staged migration the central intro may keep
+an old split wildcard as a temporary fallback alongside its known destinations. That is not a
+complete split map or permission to leave the package unchanged; finish the declaration assignments
+and remove the fallback before delivery. A complete `splitStarImports` entry lets boxes drop the
+old wildcard once all destinations are supplied centrally. Named imports are removed only when
+the identical explicit import is in the intro; wildcard coverage alone cannot prove they are
+redundant. Syntax errors and existing EDN/sidecar drift continue to hold their document groups.
+
+For a multiplatform package, set `boxSplitStarImports` to its JVM/common declaration destinations
+from the expanded inventory. Each entry must be a subset of the complete `splitStarImports` map,
+and every selected destination must have a wildcard in `boxImports`. This limits registered box
+code to its host platform; it does not change the global map used for compiled source or unrelated
+scripts. Review this runtime projection with the intro: validation checks membership and coverage,
+while the inventory's source sets provide the evidence that no JVM declaration was omitted.
+
+### Overload families that split across domains
+
+A qualified function name may identify several different receivers. Assign these with
+`declarations: {inventoryDeclarationId: destinationQualifiedName}` in the assignments file.
+Provide every public/internal declaration in that family; partial or stale assignments fail.
+Per-declaration assignments override file defaults, but cannot contradict an explicit whole-family
+assignment. The inventory and expanded map retain source file, signature and source set.
+
+Generation emits `splitSymbols` for families with multiple destinations. These are assigned
+owners, not unassigned work. Complete split-star imports include their destination packages;
+explicit imports (including aliases) and qualified call sites remain `split-symbol` findings
+that list the candidate destinations. The syntax-only engine never guesses a receiver's type.
+A compile/binding pass must resolve these uses. Reuse the declaration assignments when regenerating;
+a previous recipe's split list alone is not evidence of current declaration coverage.
+
+Declaration IDs include source path and declaration signature, not line numbers: moving a comment
+or changing the intro does not discard ownership decisions. Inventories still check complete file
+hashes before generation, so refresh the inventory after any source edit. Renamed or moved
+declarations and changed signatures need refreshed assignments.
+
+### Screenshot for public documentation
+
+Marc selected [this refactor review screenshot](../../public/docs/assets/refactoring/refactor-pass-review.png) on 2026-10-14 for the future public documentation. It is the original, unmodified capture of the live review UI (Plan 23), including the session copies, replan controls, review batches, and red/green attention indicators. Use it when documenting this workflow; the counts describe that session, not a completed or verified migration.
+
+### Recorded prose rules and exported preambles
+
+`proseReplacements` records exact qualified-name replacements in selected Markdown prose
+and Kotlin comments (with `rewriteComments` enabled), for example
+`"proseReplacements": {"afield.four": "Field 4"}`. It does not rename executable
+imports, qualified descendants, wildcard package references, or string values. Rules must
+be idempotent. Kotlin comments inside typed EDN/YAML/document units use the same rule.
+
+Field's exported `text [field-property box="…" name="preamble"]` fences are recognized
+as Kotlin box preambles, with the recipe's box imports and split-package rules. Ordinary
+text fences and other non-Kotlin properties remain untouched. The exported fence and
+its attributes are preserved.

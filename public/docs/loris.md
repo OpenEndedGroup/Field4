@@ -256,8 +256,8 @@ client.analyzeWavAsync(
     val b = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).model
     display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
     val end = a.durationSeconds
-    val aligned = client.dilate(b, listOf(0.0, b.loudestTimeSeconds(), end),
-        listOf(0.0, a.loudestTimeSeconds(), end), durationSeconds = end).model
+    val aligned = client.dilate(b, [0.0, b.loudestTimeSeconds(), end],
+        [0.0, a.loudestTimeSeconds(), end], durationSeconds = end).model
     val morphed = client.morph(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6))
     display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
 }.exceptionally { error ->

@@ -27,9 +27,9 @@ val chosen =
         Candidate(seed, net, attr)
     }.first()
 
-val pitches = listOf(36, 43, 48, 55, 60)
-val labels = listOf("C2", "G2", "C3", "G3", "C4")
-val colors = listOf("#63b3ff", "#ff9b54", "#6df0a7", "#f67bff", "#ffe46b")
+val pitches = [36, 43, 48, 55, 60]
+val labels = ["C2", "G2", "C3", "G3", "C4"]
+val colors = ["#63b3ff", "#ff9b54", "#6df0a7", "#f67bff", "#ffe46b"]
 
 val process =
     chosen.net.asNoteProcess(
@@ -85,8 +85,8 @@ import afield.four.synth.*
 
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)
 val attr = net.findAttractors().maxByOrNull { it.period }!!
-val tokens = listOf("bd:3", "sn:1", "hh:4", "cp:0", "perc:5")
-val colors = listOf("#69b8ff", "#ff8e5a", "#c4ff5f", "#ff6cc4", "#ffe36e")
+val tokens = ["bd:3", "sn:1", "hh:4", "cp:0", "perc:5"]
+val colors = ["#69b8ff", "#ff8e5a", "#c4ff5f", "#ff6cc4", "#ffe36e"]
 
 val preview =
     net.asNoteProcess(
@@ -154,11 +154,11 @@ data class Layer(
 data class Chosen(val layer: Layer, val seed: Long, val net: BooleanNetwork, val attr: Attractor)
 
 val layers =
-    listOf(
+    [
         Layer(seed = 27L, stepDuration = 0.125, steps = 64, mode = BooleanTriggerMode.RISING_EDGE, basePitch = 36, label = "bd", color = "#69b8ff", velocity = 0.98),
         Layer(seed = 11L, stepDuration = 0.1875, steps = 48, mode = BooleanTriggerMode.CHANGE, basePitch = 50, label = "sn", color = "#ff8e5a", velocity = 0.76),
         Layer(seed = 42L, stepDuration = 0.0625, steps = 128, mode = BooleanTriggerMode.ACTIVE, basePitch = 74, label = "hh", color = "#c4ff5f", velocity = 0.42),
-    )
+    ]
 
 val chosen =
     layers.map { layer ->
@@ -249,13 +249,13 @@ fun <T> Iterator<T>.collectAll(): List<T> {
 
 val net =
     BooleanNetwork(
-        listOf(
+        [
             BoolNode("clk", "external", emptyList()) { s -> s[0] },
-            BoolNode("kick", "clk XOR clap", listOf(0, 3)) { s -> s[0] xor s[3] },
-            BoolNode("snare", "kick OR hat", listOf(1, 4)) { s -> s[1] || s[4] },
-            BoolNode("clap", "snare AND NOT clk", listOf(2, 0)) { s -> s[2] && !s[0] },
-            BoolNode("hat", "kick XOR snare", listOf(1, 2)) { s -> s[1] xor s[2] },
-        )
+            BoolNode("kick", "clk XOR clap", [0, 3]) { s -> s[0] xor s[3] },
+            BoolNode("snare", "kick OR hat", [1, 4]) { s -> s[1] || s[4] },
+            BoolNode("clap", "snare AND NOT clk", [2, 0]) { s -> s[2] && !s[0] },
+            BoolNode("hat", "kick XOR snare", [1, 2]) { s -> s[1] xor s[2] },
+        ]
     )
 
 val driver = { stepIndex: Long, _: Double, _: Double, state: BooleanArray ->
@@ -270,9 +270,9 @@ val steps =
         driver = driver,
     ).collectAll()
 
-val labels = listOf("clk", "bd", "sn", "cp", "hh")
-val pitches = listOf(30, 36, 50, 57, 74)
-val colors = listOf("#5fa8ff", "#69b8ff", "#ff8e5a", "#ff6cc4", "#c4ff5f")
+val labels = ["clk", "bd", "sn", "cp", "hh"]
+val pitches = [30, 36, 50, 57, 74]
+val colors = ["#5fa8ff", "#69b8ff", "#ff8e5a", "#ff6cc4", "#c4ff5f"]
 
 val process =
     net.asDrivenNoteProcess(
@@ -331,7 +331,7 @@ import afield.four.synth.*
 val clock = musicClock().reset(started = true)
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)
 val attr = net.findAttractors().maxByOrNull { it.period }!!
-val tokens = listOf("bd:3", "sn:1", "hh:4", "cp:0", "perc:5")
+val tokens = ["bd:3", "sn:1", "hh:4", "cp:0", "perc:5"]
 
 val lib = dirt("/absolute/path/to/Dirt-Samples", preload = false)
 val kit = dirtPlayer(library = lib, voices = 24, gain = 0.22.p)

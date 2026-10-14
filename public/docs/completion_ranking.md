@@ -202,9 +202,9 @@ val ranks = afield.CommonMemberPrior.ranksFor(receiver)
 
 // Sorted by position rather than trusting the map's iteration order, so the figure is the same
 // every time it is captured.
-val prior = Table(listOf("position", "member", "prior score"))
+val prior = Table(["position", "member", "prior score"])
     .rows(ranks.entries.sortedBy { it.value }.map { (member, position) ->
-        listOf(position, member, afield.CommonMemberPrior.scoreOf(position))
+        [position, member, afield.CommonMemberPrior.scoreOf(position)]
     })
     .role("member", CellRole.ACCENT)
 

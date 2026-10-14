@@ -148,10 +148,10 @@ fun explain(name: String, values: List<Double>): String {
 val skewedNote = explain("skewed", skewed)
 val bimodalNote = explain("bimodal", bimodal)
 :::fold draw both histograms
-val svgs = listOf(
+val svgs = [
     histogramToSvg(buildHistogram(skewed), widthPx = 470, heightPx = 270, padTop = 26, title = "exp(0.6 g), n=500", decimals = 3),
     histogramToSvg(buildHistogram(bimodal), widthPx = 470, heightPx = 270, padTop = 26, title = "two modes at -2 and +2, n=500", decimals = 3),
-)
+]
 showRow("histograms", svgs)
 markdown("the rule, re-derived", """
     {muted:$skewedNote}
@@ -189,14 +189,14 @@ val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }          // an even sweep 
 val noise = DoubleArray(n) { rng.nextGaussian() }              // ONE noise draw, reused, so the
                                                                // "independent" panel is literally
                                                                // the noise the others are built on
-val cases = listOf(
+val cases = [
     "linear" to DoubleArray(n) { 0.8 * x[it] + 0.25 * noise[it] },
     "monotone, curved" to DoubleArray(n) { exp(3.0 * x[it]) },
     "parabola" to DoubleArray(n) { x[it] * x[it] },
     "sine, 1.5 cycles" to DoubleArray(n) { sin(3.0 * PI * x[it]) },
     "same mean, growing spread" to DoubleArray(n) { (0.05 + abs(x[it])) * noise[it] },
     "independent" to DoubleArray(n) { noise[it] },
-)
+]
 
 fun coefficients(y: DoubleArray): String {
     val d = "%.3f"
@@ -226,7 +226,7 @@ val panels = cases.map { (name, y) ->
         color = vec(0.48, 0.85, 1.0, 0.8),
         pointSize = 1.1,
     )
-    "$name\n${coefficients(y)}" to listOf(frame, cloud)
+    "$name\n${coefficients(y)}" to [frame, cloud]
 }
 
 showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 430, cellHeight = 262, window = window)
@@ -348,7 +348,7 @@ val xiExceed = nullXi.count { it >= observedXi }
 
 // How large does dCor have to be before it means anything? Measure the null's 95th percentile
 // against n, and against a fitted 2.5/sqrt(n).
-val sizes = listOf(25, 50, 100, 150, 200, 300, 400)
+val sizes = [25, 50, 100, 150, 200, 300, 400]
 val thresholds = sizes.map { m ->
     val r2 = java.util.Random(1234)
     val k = 150
@@ -370,10 +370,10 @@ showSignals(
     title = "The null distribution of dCor, and where the observed value sits",
     xTitle = "distance correlation",
     yTitle = "count",
-    marks = listOf(
+    marks = [
         "null 95th pct = ${"%.3f".format(p95)}" to p95,
         "observed = ${"%.3f".format(observedDcor)}" to observedDcor,
-    ),
+    ],
 )
 showSignals(
     "measured 95th pct of the dCor null" to thresholds,
@@ -481,7 +481,7 @@ showSignals(
     title = "Three rolling coefficients across one regime change (window $w)",
     xTitle = "sample",
     yTitle = "coefficient",
-    marks = listOf("regime change" to change),
+    marks = ["regime change" to change],
 )
 // The two windows are the same three coefficients measured twice, so they read as a table.
 // The pipes in `|r|` are escaped, or they would split the cell they sit in.
@@ -579,7 +579,7 @@ showSignals(
     xTitle = "quantile of the fitting sample",
     yTitle = "warped value",
 )
-val svgs = listOf(
+val svgs = [
     histogramToSvg(
         buildHistogram(held.toList()), widthPx = 460, heightPx = 250, padTop = 26, decimals = 2,
         title = "held-out input: skew ${"%.1f".format(before.skewness)}",
@@ -588,7 +588,7 @@ val svgs = listOf(
         buildHistogram(warped), widthPx = 460, heightPx = 250, padTop = 26, decimals = 2,
         title = "after the warp: skew ${"%.3f".format(after.skewness)}",
     ),
-)
+]
 showRow("distributions", svgs)
 // before/after over the same four moments: a table says it in a quarter of the characters.
 markdown("numbers", """

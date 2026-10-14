@@ -206,7 +206,7 @@ val path = fline {
     thickness = 1.0
     color = vec(1.0, 1.0, 1.0, 0.7)
 }
-lines(listOf(path), w = 320.0, h = 170.0, fitToSize = true)
+lines([path], w = 320.0, h = 170.0, fitToSize = true)
 ```
 
 Two readers of one bank as two coordinates. The path stays coherent without the coordinates being

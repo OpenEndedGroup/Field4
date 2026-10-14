@@ -63,12 +63,12 @@ import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.TextPosition
 
-val families = listOf(
-    listOf("compute", "computes", "computed", "computer", "computing"),
-    listOf("render", "renders", "rendered", "renderer", "rendering"),
-    listOf("listen", "listens", "listened", "listener", "listening"),
-    listOf("sample", "samples", "sampled", "sampler", "sampling"),
-)
+val families = [
+    ["compute", "computes", "computed", "computer", "computing"],
+    ["render", "renders", "rendered", "renderer", "rendering"],
+    ["listen", "listens", "listened", "listener", "listening"],
+    ["sample", "samples", "sampled", "sampler", "sampling"],
+]
 val words = families.flatten()
 
 // Ordinary Levenshtein, in the fence rather than from the stdlib: `afield.brief.editDistance`
@@ -139,7 +139,7 @@ println("plane vs input: r = ${"%.4f".format(r)}, stress-1 = ${"%.4f".format(str
 println("nearest neighbour in own family: ${ownFamily(distances)}/20 by edit distance, " +
     "${ownFamily(plane)}/20 in the plane; lost: $lost")
 :::fold draw the twenty words
-val palette = listOf("#7ad9ff", "#ff9e4a", "#8fff9a", "#c58cff")
+val palette = ["#7ad9ff", "#ff9e4a", "#8fff9a", "#c58cff"]
 display("plane", Plotly.plot {
     families.forEachIndexed { family, members ->
         val rows = members.indices.map { family * 5 + it }
@@ -340,11 +340,11 @@ import space.kscience.plotly.models.ScatterMode
 val dimensions = 12
 val perCluster = 60
 val rng = java.util.Random(4)
-val centres = listOf(
+val centres = [
     DoubleArray(dimensions),
     DoubleArray(dimensions).also { it[0] = 10.0 },
     DoubleArray(dimensions).also { it[1] = 40.0 },
-)
+]
 val data = ArrayList<DoubleArray>()
 val label = ArrayList<Int>()
 centres.forEachIndexed { cluster, centre ->
@@ -389,7 +389,7 @@ println("10-nearest-neighbour recall: MDS ${"%.4f".format(recall(mds.coordinates
     "t-SNE ${"%.4f".format(recall(tsne.coordinates, 10))}")
 
 // Perplexity is the dial between the two, so sweep it rather than describing it.
-val sweep = listOf(5.0, 30.0, 100.0).map { perplexity ->
+val sweep = [5.0, 30.0, 100.0].map { perplexity ->
     val fit = smileTsne(vectors, dimensions = 2, distance = SmileMdsDistance.EUCLIDEAN, perplexity = perplexity)
     Triple(perplexity, ratio(fit.coordinates), recall(fit.coordinates, 10))
 }
@@ -407,7 +407,7 @@ println("refit at the default seed: worst coordinate difference ${drift(tsne.coo
 println("refit at seed 7: worst coordinate difference ${"%.4f".format(drift(tsne.coordinates, other.coordinates))}, " +
     "cost ${"%.4f".format(tsne.cost)} vs ${"%.4f".format(other.cost)}")
 :::fold the two planes, side by side
-val palette = listOf("#7ad9ff", "#ff9e4a", "#8fff9a")
+val palette = ["#7ad9ff", "#ff9e4a", "#8fff9a"]
 val panel = { coordinates: Array<DoubleArray>, caption: String ->
     Plotly.plot {
         (0..2).forEach { cluster ->
@@ -493,12 +493,12 @@ obeys the triangle inequality and is still not Euclidean.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/positive_correction.png" wait="2.0" capture="box" open-outputs="true" w="980" h="560" padding="16"}
 :::static
-val families = listOf(
-    listOf("compute", "computes", "computed", "computer", "computing"),
-    listOf("render", "renders", "rendered", "renderer", "rendering"),
-    listOf("listen", "listens", "listened", "listener", "listening"),
-    listOf("sample", "samples", "sampled", "sampler", "sampling"),
-)
+val families = [
+    ["compute", "computes", "computed", "computer", "computing"],
+    ["render", "renders", "rendered", "renderer", "rendering"],
+    ["listen", "listens", "listened", "listener", "listening"],
+    ["sample", "samples", "sampled", "sampler", "sampling"],
+]
 val words = families.flatten()
 val wordEditDistance = { a: String, b: String ->
     var previous = IntArray(b.length + 1) { it }
@@ -519,7 +519,7 @@ val distances = Array(words.size) { a ->
 
 // How many dimensions will each setting give you before the spectrum runs out of positive
 // eigenvalues? Ask for more and more until the call refuses.
-val spectra = listOf(false, true).map { correction ->
+val spectra = [false, true].map { correction ->
     var accepted = 0
     var scores = DoubleArray(0)
     var refusal = "never refused"
@@ -543,7 +543,7 @@ spectra.forEach { (result, refusal) ->
 }
 
 // And what it costs in the plane, which is the part that is easy to guess wrong.
-listOf(false, true).forEach { correction ->
+[false, true].forEach { correction ->
     val fit = smileMdsDistances(distances, dimensions = 2, positiveCorrection = correction)
     val pairsIn = ArrayList<Double>(); val pairsOut = ArrayList<Double>()
     for (a in words.indices) for (b in 0 until a) {

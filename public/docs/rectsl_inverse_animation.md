@@ -16,7 +16,7 @@ val duration = 4.0
 :::fold build each axis as amp · trig(rate · t + phase) + centre, with amp, phase and centre unknown
 // A clamped identity in time: RectSL's way of saying "follow the clock".
 fun clock(d: Double): Track<Double> =
-    LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
+    LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(d, d)])
 
 fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
     BinaryDoubleTrack(
@@ -41,11 +41,11 @@ val seedX = channel("x", 1.1, TrackOp1.COS)
 val seedY = channel("y", 1.1, TrackOp1.SIN)
 
 // Where the rect must be, and when.
-val waypoints = listOf(
+val waypoints = [
     RectSLFitFigure.Marker(0.4, -6.5, 2.6),
     RectSLFitFigure.Marker(1.8, 0.5, -2.4),
     RectSLFitFigure.Marker(3.4, 6.2, 1.8)
-)
+]
 val window = Functions.Domain(0.0, duration)
 val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
 val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
@@ -55,7 +55,7 @@ fun miss(x: Track<Double>, y: Track<Double>): Double =
 
 :::fold draw the target, the seed and the fit as three strips
 display("figure", RectSLFitFigure.render(
-    bands = listOf(
+    bands = [
         RectSLFitFigure.Band(
             "target", constantTrack(0.0), constantTrack(0.0),
             Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
@@ -68,7 +68,7 @@ display("figure", RectSLFitFigure.render(
             "fitted", fitX.fitted, fitY.fitted, Color4(0.29, 0.83, 0.7),
             note = "worst miss %.1em".format(miss(fitX.fitted, fitY.fitted))
         )
-    ),
+    ],
     markers = waypoints,
     wall = WallSpec(18.0, 8.0, UnitKind.Meters),
     rectSize = Vec2d(1.5, 1.5),
@@ -118,7 +118,7 @@ import afield.rectsl.*
 // A sweep that follows the clock, times gain, plus bias: the same track as the scene below.
 val track = BinaryDoubleTrack(
     BinaryDoubleTrack(
-        LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(4.0, 4.0))),
+        LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(4.0, 4.0)]),
         FreeParamTrack("gain", 1.0),
         TrackOp2.MUL
     ),
@@ -126,7 +126,7 @@ val track = BinaryDoubleTrack(
     TrackOp2.ADD
 )
 
-val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 
 val quick = track.fitParameters(targets)                      // iterations = 300, lr = 0.05
 val patient = track.fitParameters(targets, iterations = 2000)
@@ -180,7 +180,7 @@ val x = node.x
 
 // Two waypoints and two unknowns. The sweep follows the clock, so -4 at t=1 and +4 at t=3 means
 // gain = 4 and bias = -8.
-val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
 
 fun missOf(track: Track<Double>): Double =
@@ -188,7 +188,7 @@ fun missOf(track: Track<Double>): Double =
 
 :::fold draw the scene as written and as solved; only ->x has unknowns, so both bands share the node's y
 display("before / after", RectSLFitFigure.render(
-    bands = listOf(
+    bands = [
         RectSLFitFigure.Band(
             "authored", x, node.y, Color4(1.0, 0.42, 0.28),
             note = "${x.freeParameters()} — worst miss %.2fm".format(missOf(x))
@@ -197,7 +197,7 @@ display("before / after", RectSLFitFigure.render(
             "solved", fit.fitted, node.y, Color4(0.29, 0.83, 0.7),
             note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted))
         )
-    ),
+    ],
     markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
     wall = WallSpec(18.0, 8.0, UnitKind.Meters),
     rectSize = Vec2d(1.4, 1.4),
@@ -323,7 +323,7 @@ checks `clamp01(floor(x) + 1)` against the ideal step, including at the boundary
 val step = with(Functions) { identity(Functions.Domain.ALL).floor().offsetY(1.0).clamp(0.0, 1.0) }
 
 val grid = (-4000..4000).map { it / 1000.0 }
-val edges = listOf(-3.0, -2.0, -1.0, -1e-16, 0.0, 1e-16, 1.0, 2.0)
+val edges = [-3.0, -2.0, -1.0, -1e-16, 0.0, 1e-16, 1.0, 2.0]
 val xs = grid + edges
 
 val wrong = xs.filter { x -> step.eval(x) != (if (x >= 0.0) 1.0 else 0.0) }

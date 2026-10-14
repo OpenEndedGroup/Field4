@@ -65,11 +65,11 @@ val threads = field.paths(80, steps = 48, seed = 13).map {
 } + vec(330, 0, 0)
 :::fold draw both panels and report the radius
 lines(
-    listOf(
+    [
         // Target underneath at a larger point size, so it shows as a halo where the two agree.
         cloud(target, 3.0, vec(0.55, 0.55, 0.62, 0.9)),
         cloud(samples, 1.4, vec(0.44, 0.83, 0.78, 1.0)),
-    ) + threads,
+    ] + threads,
     w = 1000.0, h = 460.0, fitToSize = true,
 )
 markdown("fit", """
@@ -148,10 +148,10 @@ fun asClosed(points: List<Vec3>, c: Vec4, t: Double): FLine = fline {
 // roles, in the same three colours, as every other figure on this page. The target is drawn even
 // though the t = 1 stage lands on top of it, because otherwise there is nothing to judge against.
 fun stages(field: FlowMatchField, source: List<Vec3>): List<FLine> =
-    listOf(
+    [
         asClosed(target, vec(0.45, 0.45, 0.52, 0.9), 3.0),
         asClosed(source, vec(0.6, 0.42, 0.85, 1.0), 1.8),
-    ) + listOf(0.25, 0.5, 0.75, 1.0).map {
+    ] + [0.25, 0.5, 0.75, 1.0].map {
         asClosed(field.transport(source, to = it, steps = 48), vec(0.44, 0.83, 0.78, 0.9), 1.2)
     }
 
@@ -238,13 +238,13 @@ fun cloud(points: List<Vec3>, c: Vec4, shift: Vec3): FLine {
 
 val flowed = field.transport(source, steps = 64)
 lines(
-    listOf(
+    [
         cloud(source, vec(0.6, 0.42, 0.85, 0.85), vec(0, 0, 0)),
         cloud(field.transport(source, to = 0.35, steps = 48), vec(0.44, 0.83, 0.78, 0.85), vec(280, 0, 0)),
         cloud(field.transport(source, to = 0.7, steps = 48), vec(0.44, 0.83, 0.78, 0.85), vec(0, 360, 0)),
         cloud(target, vec(0.35, 0.35, 0.4, 0.7), vec(280, 360, 0)),
         cloud(flowed, vec(0.44, 0.83, 0.78, 0.85), vec(280, 360, 0)),
-    ),
+    ],
     w = 1000.0, h = 540.0, fitToSize = true,
 )
 
@@ -302,7 +302,7 @@ val field = flowMatch(
     options = FlowMatchOptions(steps = 8000, seed = 11, coupling = FlowCoupling.PAIRED),
 )
 
-val drift = listOf(0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0).map { t ->
+val drift = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0].map { t ->
     val flowed = field.transport(source, to = t, steps = 64)
     val away = (0 until n).sumOf {
         val exact = source[it] * (1 - t) + target[it] * t
@@ -381,11 +381,11 @@ fun asLine(points: List<Vec3>, c: Vec4, t: Double): FLine = fline {
 // projection, cannot be told apart; they are worth orbiting through live but not worth printing.
 // Grey target, purple source, cyan where the flow landed.
 threeLines(
-    listOf(
+    [
         asLine(knot, vec(0.42, 0.42, 0.5, 0.9), 4.0),
         asLine(circle, vec(0.6, 0.42, 0.85, 1.0), 2.0),
         asLine(landed, vec(0.44, 0.83, 0.78, 1.0), 1.6),
-    ),
+    ],
     channel = "trefoil3d", height = 460, editable = false,
 )
 markdown("knot", """
@@ -442,10 +442,10 @@ val threads = field.pathsFrom(
 }
 
 threeLines(
-    listOf(
+    [
         cloud(source, vec(0.6, 0.42, 0.85, 0.9), 1.6),
         cloud(landed, vec(0.44, 0.83, 0.78, 0.9), 1.6),
-    ) + threads,
+    ] + threads,
     channel = "tube3d", height = 460, editable = false,
 )
 markdown("miss3d", """

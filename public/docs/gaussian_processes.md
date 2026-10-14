@@ -28,7 +28,7 @@ val draws = (0L..4L).map { seed ->
     }
 }
 val (lower, upper) = posterior.intervalFLines(grid)
-val band = listOf(lower, upper).map {
+val band = [lower, upper].map {
     plot(it).apply { color = vec(1, 0.5, 0.2, 0.5); thickness = 1.0 }
 }
 val mean = plot(posterior.meanFLine(grid)).apply {
@@ -93,14 +93,14 @@ with the same length scale:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/kernels.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 val grid = DoubleArray(241) { -2.0 + 4.0 * it / 240 }
-val kernels = listOf(
+val kernels = [
     GpKernels.rbf(lengthScale = 0.5),
     GpKernels.matern(1.5, lengthScale = 0.5),
     GpKernels.matern(0.5, lengthScale = 0.5),
     GpKernels.periodic(period = 1.3, lengthScale = 0.8),
-)
-val colors = listOf(vec(0.3, 0.65, 0.9, 0.8), vec(0.95, 0.55, 0.25, 0.8),
-    vec(0.9, 0.35, 0.55, 0.8), vec(0.4, 0.85, 0.5, 0.8))
+]
+val colors = [vec(0.3, 0.65, 0.9, 0.8), vec(0.95, 0.55, 0.25, 0.8),
+    vec(0.9, 0.35, 0.55, 0.8), vec(0.4, 0.85, 0.5, 0.8)]
 
 // one row per kernel, stacked down the page; y-up within each row
 val rows = kernels.flatMapIndexed { row, kernel ->
@@ -182,7 +182,7 @@ of your positions, not grid indices.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/field2d.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
-val points = listOf(vec(-0.8, -0.5), vec(0.55, -0.5), vec(-0.3, 0.65), vec(0.65, 0.55))
+val points = [vec(-0.8, -0.5), vec(0.55, -0.5), vec(-0.3, 0.65), vec(0.65, 0.55)]
 val field = gp2D(points, doubleArrayOf(0.9, -0.7, -0.8, 0.65),
     kernel = GpKernels.matern(1.5, doubleArrayOf(0.55, 0.8)), noiseStd = 0.04)
 val side = 40
@@ -223,7 +223,7 @@ each spatial point, such as density, displacement magnitude or a material parame
 ```diffstatic {data-lang=kotlin}
 :::static
 val volume = gp3D(
-    listOf(vec(-0.7, -0.4, -0.5), vec(0.6, 0.4, 0.5), vec(-0.5, 0.6, 0.0)),
+    [vec(-0.7, -0.4, -0.5), vec(0.6, 0.4, 0.5), vec(-0.5, 0.6, 0.0)],
     doubleArrayOf(0.8, -0.8, -0.5),
     kernel = GpKernels.rbf(doubleArrayOf(0.7, 0.7, 0.9)), noiseStd = 0.04)
 val atOnePoint = volume.predict(0.1, 0.2, 0.3)
@@ -259,7 +259,7 @@ fun slice(z: Double, f: (Double, Double, Double) -> Double) = Array(side) { row 
 fun row(panels: List<Array<DoubleArray>>, gap: Double) = Array(side) { r ->
     panels.flatMapIndexed { i, p -> (if (i > 0) List(2) { gap } else emptyList()) + p[r].toList() }.toDoubleArray()
 }
-val zs = listOf(-0.5, 0.0, 0.5)
+val zs = [-0.5, 0.0, 0.5]
 showHeatmap(row(zs.map { z -> slice(z) { x, y, zz -> oneVolume(x, y, zz) } }, gap = 0.0),
     vmin = -2.0, vmax = 2.0, normalize = false, colormap = "coolwarm", width = 720,
     channel = "one sample at z = -0.5, 0, 0.5")
@@ -299,7 +299,7 @@ each coordinate's parameter axis.
 :::static
 val curve = gpCurve(
     doubleArrayOf(0.0, 0.2, 0.65, 1.0),
-    listOf(vec(-1.0, -0.6, 0), vec(-0.65, 0.65, 0), vec(0.6, 0.5, 0), vec(0.9, -0.5, 0)),
+    [vec(-1.0, -0.6, 0), vec(-0.65, 0.65, 0), vec(0.6, 0.5, 0), vec(0.9, -0.5, 0)],
     kernel = GpKernels.matern(2.5, lengthScale = 0.28, variance = 0.3),
     noiseStd = DoubleArray(4) { 0.015 }, dimensions = 2,
     outputCovariance = arrayOf(doubleArrayOf(1.0, 0.35), doubleArrayOf(0.35, 0.7)))
@@ -383,8 +383,8 @@ centroid, which for a loop is its middle.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/loop.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // six pins around a loop; move any of them and run again
-val pins = listOf(vec(1.0, 0.0, 0), vec(0.45, 0.8, 0), vec(-0.5, 0.95, 0),
-                  vec(-1.1, 0.0, 0), vec(-0.4, -0.75, 0), vec(0.6, -0.9, 0))
+val pins = [vec(1.0, 0.0, 0), vec(0.45, 0.8, 0), vec(-0.5, 0.95, 0),
+                  vec(-1.1, 0.0, 0), vec(-0.4, -0.75, 0), vec(0.6, -0.9, 0)]
 // each pin's place on the loop's parameter, which runs once round from 0 to 1
 val at = DoubleArray(pins.size) { it.toDouble() / pins.size }
 
@@ -443,9 +443,9 @@ direction is less certain:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/frames.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // two loose pins, a pinned launch direction, and a free middle
-val arch = gpCurve(doubleArrayOf(0.0, 1.0), listOf(vec(0, 0, 0), vec(1, 0, 0)),
+val arch = gpCurve(doubleArrayOf(0.0, 1.0), [vec(0, 0, 0), vec(1, 0, 0)],
     GpKernels.rbf(0.4), dimensions = 2, noiseStd = doubleArrayOf(0.02, 0.02),
-    velocities = listOf(0.0 to vec(0, 3, 0), 1.0 to vec(0, -3, 0)))
+    velocities = [0.0 to vec(0, 3, 0), 1.0 to vec(0, -3, 0)])
 val ts = DoubleArray(41) { it / 40.0 }
 
 fun plot(line: FLine) = line.transform { vec(it.x * 500, -it.y * 500, 0) }
@@ -511,7 +511,7 @@ fun plot(line: FLine) = line.transform { vec(it.x * 220, -it.y * 120, 0) }
 val free = gp1D(doubleArrayOf(0.0, 2.0), doubleArrayOf(0.0, 0.0), GpKernels.rbf(lengthScale = 0.6))
 val launched = gp1D(doubleArrayOf(0.0, 2.0), doubleArrayOf(0.0, 0.0),
     GpKernels.rbf(lengthScale = 0.6),
-    slopes = listOf(GpDerivativeObservation.slope(0.0, value = 1.5, noiseStd = 0.1)))
+    slopes = [GpDerivativeObservation.slope(0.0, value = 1.5, noiseStd = 0.1)])
 
 fun drawsOf(model: GaussianProcess, c: Vec4, offset: Double) =
     model.posterior(grid).samples(4, seed = 7).map { ys ->
@@ -561,11 +561,11 @@ in log space, using finite differences of Field's own likelihood:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val fit = fitGpHyperparametersWithSmile(listOf(
+val fit = fitGpHyperparametersWithSmile([
     GpParameter("lengthScale", 0.5, 0.03, 3.0),
     GpParameter("variance", 1.0, 0.01, 10.0),
     GpParameter("noiseStd", 0.1, 0.001, 0.5)
-)) { p ->
+]) { p ->
     gp1D(xs, ys, GpKernels.matern(2.5, p[0], p[1]), noiseStd = p[2])
 }
 val fittedModel = fit.process

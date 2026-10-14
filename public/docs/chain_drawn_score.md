@@ -40,7 +40,7 @@ line at beat 4½, in the middle of the glissando:
 notation { drawnScore() }
 val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
 val playhead = 4.5
-notation("playhead") { stroke = "#f08c00"; line(listOf(score.toWorld(playhead, 85.0), score.toWorld(playhead, 47.0))) }
+notation("playhead") { stroke = "#f08c00"; line([score.toWorld(playhead, 85.0), score.toWorld(playhead, 47.0)]) }
 
 :::fold what the playhead cuts, and every note the score reads as
 val cut = score.vertical(playhead).filter { !it.isSpan }

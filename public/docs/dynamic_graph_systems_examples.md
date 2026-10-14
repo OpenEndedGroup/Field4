@@ -237,7 +237,7 @@ fun walk(rExit: Double): Pair<Boolean, Boolean> {
     return formedWhileClose to (edges.get(0, 1) != null)
 }
 
-for (rExit in listOf(0.16, 0.10)) {
+for (rExit in [0.16, 0.10]) {
     val (formed, survives) = walk(rExit)
     println("rExit $rExit: formed at d=0.05 = $formed, survives d=0.13 = $survives")
 }
@@ -310,12 +310,12 @@ animateEvolution(
         s
     },
     panels = { s, step ->
-        listOf(
+        [
             "breathing, t=%.2fs, %d edges".format(s.warped.time, s.warpedEdges.values().size) to
                 dynamicGraphPanel(s.warped.points, s.warpedEdges.values(), window, 460, 460, ceiling, "magma"),
             "frozen, step %d, %d edges".format(step, s.plainEdges.values().size) to
                 dynamicGraphPanel(s.plain.points, s.plainEdges.values(), window, 460, 460, ceiling, "magma")
-        )
+        ]
     }
 )
 ```
@@ -413,19 +413,19 @@ animateEvolution(
     // seven eighths of the clip on the aftermath. ramp = 25 puts the clip's mid-point at step 93.
     ramp = 25.0,
     step = { (grown, flat) ->
-        for (m in listOf(grown, flat)) {
+        for (m in [grown, flat]) {
             stepDynamicGraphWithExponentialDecay(1f / 60f, m.state, m.edges, m.hash, m.system, 0.6)
             m.pipeline.step(1f / 60f, m.state, m.kinetics, m.edges, m.hash)
         }
         grown to flat
     },
     panels = { (grown, flat), step ->
-        listOf(
+        [
             "grow ON  s%d  %dpts %de".format(step, grown.state.pointCount, grown.edges.values().size) to
                 dynamicGraphPanel(grown.state.points, grown.edges.values(), window, 490, 490, ceiling, "magma"),
             "grow OFF  s%d  %dpts %de".format(step, flat.state.pointCount, flat.edges.values().size) to
                 dynamicGraphPanel(flat.state.points, flat.edges.values(), window, 490, 490, ceiling, "magma")
-        )
+        ]
     }
 )
 ```
@@ -470,8 +470,8 @@ val perCluster = 22
 val n = nBg + 3 * perCluster
 val background = disc(nBg, 0.50)
 val blobs = List(3) { disc(perCluster, 0.070) }
-val starts = listOf(Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f))
-val velocities = listOf(Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f))
+val starts = [Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f)]
+val velocities = [Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f)]
 // group: -1 background, else which cluster. Only used to check the answer, not to build the graph.
 val group = IntArray(n) { if (it < nBg) -1 else (it - nBg) / perCluster }
 
@@ -551,7 +551,7 @@ fun relaxed(graph: PointGraph, start: List<Vec3>, iterations: Int = 300): List<V
 }
 
 // Every threshold is measured; two of them are drawn, each as the run left it and relaxed.
-val panels = listOf(0.0, 0.5, 1.2, 2.0).flatMap { cut ->
+val panels = [0.0, 0.5, 1.2, 2.0].flatMap { cut ->
     val graph = edges.toPointGraph(minWeight = cut)
     val groups = componentSizes(graph).filter { it > 1 }
     val cross = graph.edges.count { group[it.i] != group[it.j] }
@@ -559,12 +559,12 @@ val panels = listOf(0.0, 0.5, 1.2, 2.0).flatMap { cut ->
         cut, graph.edges.size, cross, groups))
     if (cut != 0.0 && cut != 1.2) return@flatMap emptyList()
     val kept = edges.values().filter { it.weight > cut }
-    listOf(
+    [
         "w>%.1f  as it ran".format(cut) to
             dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma"),
         "w>%.1f  relaxed, %d groups".format(cut, groups.size) to
             dynamicGraphFLines(relaxed(graph, state.points), kept, maxWeight = ceiling, colormap = "magma"),
-    )
+    ]
 }
 showPlaneGrid(
     *panels.toTypedArray(),

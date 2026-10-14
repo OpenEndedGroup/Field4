@@ -2,13 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Refactor pass · Field</title>
+<title>Refactoring · Field</title>
 <meta name="color-scheme" content="dark">
 <link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/iosevka.css">
 <link rel="stylesheet" href="/field-tool-pages.css">
 <style>
 /* Share the Docs pass shell; only the review layout is specific to this page. */
+.job-panel { position: sticky; top: 0; z-index: 8; padding: 10px 18px; background: #000; }
+.job-line { display: flex; gap: 12px; align-items: center; min-height: 32px; }
+.job-name, .job-run { white-space: nowrap; }
+.job-run { color: var(--cyan); }
+.job-last { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-line button { padding: 6px 12px; }
+.job-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--soft); flex: none; opacity: .4; }
+.job-panel.running .job-dot { background: var(--cyan); opacity: 1; animation: blink 1.2s ease-in-out infinite; }
+.job-panel.failed .job-dot { background: var(--danger); opacity: 1; }
+.job-panel.ok .job-dot { background: var(--ok); opacity: 1; }
+#job-detail pre { max-height: 40vh; }
+@media (max-width: 600px) { .job-line { flex-wrap: wrap; } .job-last { flex-basis: 100%; order: 1; } }
+@media (prefers-reduced-motion: reduce) { .job-panel.running .job-dot { animation: none; } }
 header nav { display: flex; gap: 20px; flex-wrap: wrap; }
 .spread { justify-content: space-between; margin: 0 0 12px; }
 .spread h2 { margin-bottom: 0; }
@@ -17,6 +30,8 @@ h3 { margin: 0 0 8px; font-size: 14px; font-weight: 400; color: var(--cyan); }
 small { color: var(--soft); }
 .path { overflow-wrap: anywhere; font-size: 12px; }
 .metrics { font-size: 20px; margin-bottom: 4px; }
+.attention { color: var(--danger); }
+.clear-count { color: var(--ok); }
 .tag { border: 1px solid var(--border-strong); border-radius: 4px; padding: 2px 7px; color: var(--soft); font-size: 11px; }
 .controls { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
 label, .row label { display: grid; gap: 5px; color: var(--soft); font-size: 12px; }
@@ -34,6 +49,13 @@ textarea:focus { border-color: var(--cyan); }
 .item small { display: block; margin-top: 5px; }
 .item-title { font-size: 13px; }
 .detail { padding: 18px; min-width: 0; max-height: 78vh; overflow: auto; }
+.quick-review { scroll-margin-top: 90px; padding: 12px 18px; border-top: 1px solid var(--border-strong); background: #111; }
+.quick-review .row { margin: 0 0 8px; gap: 8px; flex-wrap: wrap; }
+.quick-review input { width: 100%; }
+#quick-message { margin: 6px 0 0; min-height: 1.5em; }
+#review-panel.fast-review .controls, #review-panel.fast-review .batch-direction { display: none; }
+#review-panel.fast-review .review-controls { padding-bottom: 8px; }
+.agent-decision { white-space: pre-wrap; border-left: 2px solid var(--cyan); padding: 8px 12px; background: #111; }
 .detail h2 { text-transform: none; letter-spacing: 0; overflow-wrap: anywhere; color: var(--cyan); }
 .finding { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
 summary { cursor: pointer; overflow-wrap: anywhere; }
@@ -69,21 +91,57 @@ details.logs pre { max-height: 180px; }
     #terminal-pane { left: 12px; }
     .controls > label { max-width: 100%; }
 }
+#terminal-pane { left: auto; height: auto; padding: 12px; }
+#start-form { display: grid; gap: 12px; }
+#start-form button { justify-self: start; }
+#delivery-blockers { max-height: 160px; overflow: auto; color: var(--warn); }
+#saved-sessions { display: grid; gap: 6px; margin: 10px 0; }
 </style>
 </head>
 <body class="field-webgl-page">
 <script src="/fieldWebglBackground.js"></script>
 <script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
 <main>
-<header><div><h1>Refactor pass</h1><p>Review a migration, work through its holds, and verify the result in copies.</p></div><nav><a href="/docs-pass.html">Docs pass</a><a href="/land.html">Landing queue</a></nav></header>
+<header><div><h1>Refactoring</h1><p>Create a session, work in isolated copies, and verify the complete migration before delivery.</p></div><nav><a href="/docs-pass.html">Docs pass</a><a href="/land.html">Landing queue</a></nav></header>
+<section id="job-panel" class="job-panel idle" aria-label="Operation progress">
+<div class="job-line"><span class="job-dot" aria-hidden="true"></span><span id="job-title" class="job-name" role="status">No operation yet</span><span id="job-last" class="job-last muted"></span><span id="job-run" class="job-run"></span><button id="toggle-log" aria-expanded="false" aria-controls="job-detail">Log</button><button id="cancel-job" hidden>Stop operation</button></div>
+<div id="job-detail" hidden><p id="job-file" class="path muted"></p><pre id="job-log">No operation yet.</pre></div>
+</section>
 <div id="error" role="alert" hidden></div>
-<section id="import-panel"><h2>Start from a migration plan</h2><p class="muted">Creates one integration worktree and private workspace copies. Thumbnails and backups are excluded.</p><form id="import-form" class="row"><label class="wide">Plan directory<input id="plan-path" required placeholder="Absolute path to the migration plan directory"></label><button class="primary" id="import-button">Import plan</button></form><p id="import-progress" role="status" class="muted"></p></section>
-<section id="scope-panel" hidden><div class="row spread"><h2>1 · Scope</h2><span id="revision" class="tag"></span></div><div id="scope" class="scope"></div><details><summary>Package map and recipe</summary><pre id="recipe"></pre></details></section>
-<section id="actions-panel" hidden><h2>2 · Mechanical changes and verification</h2><p class="muted">Replan reads the integration worktree and workspace copies. Rehearse applies ready groups, checks their bytes, then undoes and checks restoration.</p><div class="row"><button id="replan">Replan copies</button><button id="rehearse">Rehearse ready changes</button><button id="refresh">Refresh</button><span id="job-state" role="status"></span></div><details id="mechanical"><summary>Inspect proposed changes</summary><label>File<select id="change-list"><option>Select a change</option></select></label><div id="change-diff">Open this section to load the proposed files.</div></details><div id="verification"></div><details class="logs"><summary>Operation log</summary><pre id="log">No operation yet.</pre></details></section>
-<section id="review-panel" hidden><div class="review-controls"><div class="row spread"><h2>3 · Review batches</h2><span id="counts" class="muted"></span></div><div class="controls"><label>Batch<select id="batch"></select></label><label>Root<select id="root"><option value="">All roots</option></select></label><label>Decision<select id="decision-filter"><option value="">All decisions</option><option value="open">Open</option><option value="question">Questions</option><option value="patch">Patch proposed</option><option value="preserve">Preserve</option><option value="adapter">Adapter needed</option><option value="stale">Changed since decision</option></select></label><label class="wide">Find a document or file<input id="search" placeholder="Filter by path"></label></div><div style="margin-top:16px"><label>Direction for this batch<textarea id="direction" placeholder="For example: update current display labels; preserve explicitly dated historical descriptions."></textarea></label><div class="row" style="margin-top:8px"><button id="run-agent" class="primary">Work through batch in terminal</button><span class="muted">One writer at a time. Batches do not commit or land.</span><span id="sessions"></span></div></div></div>
+<section id="import-panel"><h2>New refactor session</h2><p class="muted">Creates a worktree from this checkout’s current commit (HEAD) and copies the chosen workspaces. Uncommitted repository edits are not included. Backups and thumbnails are excluded.</p>
+<form id="start-form"><label>What is this refactor for?<input id="purpose" required placeholder="Organize packages for the public preview"></label>
+<label>Package moves · optional, one old → new pair per line<textarea id="mappings" placeholder="afield.stdlib.linalg → afield.math.linalg"></textarea></label>
+<label>Workspace directories · one absolute path per line<textarea id="workspace-paths" placeholder="/Users/you/Documents/AFieldWorkspace"></textarea></label>
+<label>Repository Markdown paths · comma separated<input id="markdown-paths" value="public/docs/*.md, dev_docs/*.md, native/*.md"></label>
+<label><span><input id="workspace-markdown" type="checkbox" checked> Include Markdown throughout workspace copies</span></label>
+<details><summary>Advanced: supply a complete recipe</summary><label>Recipe JSON<textarea id="new-recipe" placeholder="Optional: overrides the package moves and Markdown choices above"></textarea></label></details>
+<p class="muted">If the map is not decided yet, leave it empty and use the session terminal to develop a recipe from your description.</p><button id="start-button" class="primary">Create session and plan</button></form>
+<details><summary>Import an existing plan</summary><form id="import-form" class="row"><label class="wide">Plan directory<input id="plan-path" required placeholder="Absolute path to a migration plan"></label><button id="import-button">Import plan</button></form></details>
+<details open><summary>Resume a session</summary><div id="saved-sessions"></div><form id="resume-form" class="row"><label class="wide">Session directory<input id="resume-path" required placeholder="Absolute path to a saved session"></label><button id="resume-button">Resume</button></form></details>
+<p id="import-progress" role="status" class="muted"></p></section>
+<section id="scope-panel" hidden><div class="row spread"><h2>1 · Session worktree and copies</h2><span id="revision" class="tag"></span></div><div id="scope" class="scope"></div><details><summary>Package map and recipe</summary><pre id="recipe"></pre></details><div class="row"><button id="session-agent">Open worktree terminal</button><button id="close-session">Close session · keep worktree</button></div></section>
+<section id="actions-panel" hidden><h2>2 · Mechanical changes and verification</h2><p class="muted">Replan reads the integration worktree and workspace copies. Rehearse applies ready groups, checks their bytes, then undoes and checks restoration.</p><div class="row"><button id="replan">Replan copies</button><button id="rehearse">Rehearse ready changes</button><button id="refresh">Refresh</button></div><details id="mechanical"><summary>Inspect proposed changes</summary><label>File<select id="change-list"><option>Select a change</option></select></label><div id="change-diff">Open this section to load the proposed files.</div></details><div id="verification"></div></section>
+<section id="review-panel" hidden><div class="review-controls"><div class="row spread"><h2>3 · Review batches</h2><span id="counts" class="muted"></span></div><div class="row"><button id="start-review">Review all unresolved</button><span class="muted">One group at a time · keyboard shortcuts · save and advance</span></div><div class="controls"><label>Batch<select id="batch"></select></label><label>Root<select id="root"><option value="">All roots</option></select></label><label>Decision<select id="decision-filter"><option value="unresolved" selected>Unresolved</option><option value="">All decisions</option><option value="open">Open</option><option value="question">Questions</option><option value="patch">Patch proposed</option><option value="preserve">Preserve</option><option value="adapter">Adapter needed</option><option value="stale">Changed since decision</option></select></label><label class="wide">Find a document or file<input id="search" placeholder="Filter by path"></label></div><div class="batch-direction" style="margin-top:16px"><label>Direction for this batch<textarea id="direction" placeholder="For example: update current display labels; preserve explicitly dated historical descriptions."></textarea></label><div class="row" style="margin-top:8px"><button id="run-agent" class="primary">Work through batch in terminal</button><span class="muted">One writer at a time. Batches do not commit or land.</span><span id="sessions"></span></div></div></div>
+<div id="quick-review" class="quick-review" hidden>
+<div class="row"><strong id="quick-progress"></strong><button id="quick-back" aria-keyshortcuts="b">Back · B</button><button id="quick-preserve" aria-keyshortcuts="p">Preserve · P</button><button id="quick-edit" aria-keyshortcuts="e">Needs edit · E</button><button id="quick-next" aria-keyshortcuts="n">Skip · N</button><button id="stop-review">Exit quick review</button></div>
+<label>Optional note for this decision<input id="quick-reason" placeholder="Preserve keeps the remaining references; Needs edit sends them back for agent work."></label>
+<p id="quick-restriction" class="attention"></p>
+<p id="quick-message" class="muted" role="status" aria-live="polite"></p>
+</div>
 <div class="review" id="review-body" hidden><aside><div id="items"></div></aside><article class="detail" id="detail"><p class="empty">Choose a review group to see its source and proposed changes.</p></article></div></section>
-<section id="delivery" hidden><h2>4 · Coordinated delivery</h2><p>Review decisions do not clear migration holds. Replanning checks what remains; compilation and runtime checks are still required before the whole repository migration can land.</p><p class="muted">This first pass supports review and reversible rehearsal. It does not publish workspace changes or enqueue a partial package migration.</p><div id="branch" class="path"></div></section>
+<section id="delivery" hidden><h2>4 · Prepare, verify and deliver</h2>
+<p id="delivery-state" role="status"></p><details id="blocker-disclosure"><summary id="blocker-count"></summary><div id="delivery-blockers"></div></details>
+<p class="muted">Preparation keeps the complete migration applied in the worktree and copies. Held edits must be resolved first. A preserved group is allowed only when it has no proposed edits.</p>
+<div class="row"><button id="prepare">Prepare delivery</button><button id="restore">Undo preparation</button><button id="continue-review">Keep edits and replan</button><button id="delivery-review">Review worktree changes</button></div>
+<div id="delivery-diff"></div>
+<details><summary>Verification commands</summary><p class="muted">Commands run in the session worktree, in order: generators first, then build, test and runtime checks. Each entry has a name, kind and argument array. Use {root:1} for the first workspace copy. Validation commands must leave source unchanged.</p>
+<label>Checks<textarea id="checks" style="min-height:230px"></textarea></label><button id="save-checks">Save checks</button></details>
+<div class="row"><button id="validate">Run delivery checks</button><button id="land">Commit and enqueue repository</button></div>
+<div id="check-results"></div><pre id="delivery-receipt" hidden></pre>
+<form id="publish-form" class="row"><label>Workspace<select id="publish-root"></select></label><label class="wide">New destination directory<input id="publish-path" required placeholder="/Users/you/Documents/AFieldWorkspace-migrated"></label><button id="publish">Publish verified workspace copy</button></form>
+<p class="muted">Publication never replaces an original workspace. Open the published copy with the migrated Field version after the repository has landed. Enqueueing is not confirmation of landing; follow the landing queue.</p>
+<div id="publications"></div><div id="branch" class="path"></div></section>
 </main>
-<div id="terminal-pane" hidden><div class="row spread"><a id="terminal-link" target="_blank" rel="noopener">Open terminal in its own page</a><button id="hide-terminal">Hide (keep running)</button></div><iframe id="terminal" title="Refactor review terminal"></iframe></div>
+<div id="terminal-pane" hidden><a id="terminal-link" target="_blank" rel="noopener">Open or reattach the terminal tab</a></div>
 <script type="module" src="/refactor-pass.js"></script>
 </body></html>

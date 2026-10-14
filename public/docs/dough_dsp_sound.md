@@ -114,7 +114,7 @@ retrigger free of clicks. The envelope plot shows three clean humps.
 val gate   = Gate()
 val voice  = SineOsc(Param(220f)) * CurvedADSR(gate, Param(0.02f), Param(0.08f), Param(0.6f), Param(0.15f))
 // (open?, seconds): three notes with silent gaps
-val rhythm = listOf(true to 0.25f, false to 0.20f, true to 0.25f, false to 0.20f, true to 0.25f, false to 0.35f)
+val rhythm = [true to 0.25f, false to 0.20f, true to 0.25f, false to 0.20f, true to 0.25f, false to 0.35f]
 :::fold render the gate schedule offline and plot the amplitude envelope
 val audio = doughRenderGated(voice, gate, rhythm)
 showSignals(

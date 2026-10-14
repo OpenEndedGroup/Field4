@@ -24,7 +24,7 @@ val view = three(name = "foo", width = 760, height = 440) {
     camera(yaw = 34.0, pitch = 24.0)
     background("#080b0c")
     caption("Drag to orbit · Pick to annotate · ruler to measure")
-    inspect(units = "mm", groups = listOf("Block"))
+    inspect(units = "mm", groups = ["Block"])
 }
 ```
 
@@ -164,14 +164,14 @@ use. On a contact sheet every panel turns together, each about its own centre, a
 drag. This sheet shows six shapes in a three-by-two grid and turns them at 15° a second:
 
 ```diffstatic {data-lang=kotlin}
-val shapes = listOf(
+val shapes = [
     "block" to boxMesh(1.2, 0.8, 0.6),
     "tower" to boxMesh(0.5, 1.6, 0.5),
     "slab" to boxMesh(1.6, 0.3, 0.9),
     "cone" to coneMesh(segments = 7, radius = 0.6, height = 1.2),
     "can" to cylinderMesh(segments = 6, radius = 0.5, height = 1.0),
     "ring" to torusMesh(majorSegments = 12, minorSegments = 6),
-)
+]
 three(name = "sheet", width = 900, height = 560) {
     columns(3)
     shapes.forEachIndexed { i, (label, shape) ->
@@ -398,10 +398,10 @@ overload, for a gallery that has something specific to say about each cell:
 
 ```diffstatic {data-lang=kotlin}
 threeGrid(
-    listOf(
+    [
         ThreeMeshPanel("cuboctahedron", solid, facts = "12 vertices · 24 edges · 14 faces (8 triangles, 6 squares)"),
         ThreeMeshPanel("…kis'd", kissed, facts = "38 vertices · 84 edges · 48 faces (all triangles)"),
-    ),
+    ],
     columns = 2,
 )
 ```
@@ -632,13 +632,13 @@ three(name = "section", channel = "section", width = 760, height = 460) {
         // Cut halfway through along z, so the plane runs straight down the bore.
         section = ThreeSection(enabled = true, normal = floatArrayOf(0f, 0f, 1f), fraction = 0.5),
         // From the block's +x face, on the cut plane, to the datum beside it: 1.4 - 1.0 = 0.4.
-        measurements = listOf(
+        measurements = [
             ThreeMeasurement(
                 ThreeMeasureElement.point(1.0, 0.0, 0.0),
                 ThreeMeasureElement.segment(1.4, -0.6, 0.0, 1.4, 0.6, 0.0),
                 "clear "
             )
-        )
+        ]
     )
 }
 ```
@@ -674,8 +674,8 @@ three(name = "vehicle") {
     mesh(boxMesh(120, 60, 40), id = "body", wireframe = false)
     mesh(boxMesh(20, 20, 20), id = "wheel", wireframe = false)
     inspect(partPaths = mapOf(
-        "body" to listOf("Vehicle", "Bodywork"),
-        "wheel" to listOf("Vehicle", "Running gear")
+        "body" to ["Vehicle", "Bodywork"],
+        "wheel" to ["Vehicle", "Running gear"]
     ))
 }
 ```

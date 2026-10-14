@@ -50,7 +50,7 @@ on this machine.
 Whatever a box sends goes to every connected peer:
 
 ```diffstatic {data-lang=kotlin}
-for (pitch in listOf(60, 64, 67, 72)) {
+for (pitch in [60, 64, 67, 72]) {
     midi.noteOn(pitch, 90)
     Thread.sleep(150)
     midi.noteOff(pitch)

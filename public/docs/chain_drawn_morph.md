@@ -72,7 +72,7 @@ fun dot(p: Vec2, dx: Double, dy: Double, colour: Vec4) = FLine().also { f ->
     f.moveTo(x - 2, y - 2).lineTo(x + 2, y - 2).lineTo(x + 2, y + 2).lineTo(x - 2, y + 2).lineTo(x - 2, y - 2)
     f.color = colour; f.filled = true; f.stroked = false
 }
-val steps = listOf(0.0, 0.25, 0.5, 0.75, 1.0)
+val steps = [0.0, 0.25, 0.5, 0.75, 1.0]
 lines(steps.indices.flatMap { s ->
     morphBetween(from, partner, steps[s]).map { dot(it, s * 200.0, 0.0, vec(0.1, 0.45, 0.85, 1.0)) } +
         morphBetween(from, to, steps[s]).map { dot(it, s * 200.0, 200.0, vec(0.88, 0.2, 0.2, 1.0)) }

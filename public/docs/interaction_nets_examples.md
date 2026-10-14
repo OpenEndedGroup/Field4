@@ -81,7 +81,7 @@ net.relax(28)
 val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = listOf(
+val comparisonLines = [
     beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
     afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
     arrow(
@@ -90,17 +90,17 @@ val comparisonLines = listOf(
         color = vec(0.92, 0.90, 0.84, 0.95),
         thickness = 2.0
     ),
-) +
+] +
     beforeLines.fitInto(beforeFrame, padding = 26.0) +
     afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
-    cards = listOf(
+    cards = [
         beforeSummary,
         detail.summaryHtml("Rewrite"),
         net.summaryHtml("After beta", maxNodes = 5)
-    ),
+    ],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
     graphicWidth = 1040.0,
@@ -164,7 +164,7 @@ net.relax(28)
 val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = listOf(
+val comparisonLines = [
     beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
     afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
     arrow(
@@ -173,17 +173,17 @@ val comparisonLines = listOf(
         color = vec(0.92, 0.90, 0.84, 0.95),
         thickness = 2.0
     ),
-) +
+] +
     beforeLines.fitInto(beforeFrame, padding = 26.0) +
     afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
-    cards = listOf(
+    cards = [
         beforeSummary,
         detail.summaryHtml("Selected pair"),
         net.summaryHtml("After one step", maxNodes = 5)
-    ),
+    ],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
     graphicWidth = 1040.0,
@@ -229,7 +229,7 @@ net.relax(28)
 val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = listOf(
+val comparisonLines = [
     beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
     afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
     arrow(
@@ -238,17 +238,17 @@ val comparisonLines = listOf(
         color = vec(0.92, 0.90, 0.84, 0.95),
         thickness = 2.0
     ),
-) +
+] +
     beforeLines.fitInto(beforeFrame, padding = 26.0) +
     afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
-    cards = listOf(
+    cards = [
         beforeSummary,
         detail.summaryHtml("Duplicate event"),
         net.summaryHtml("After duplication", maxNodes = 5)
-    ),
+    ],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
     graphicWidth = 1040.0,
@@ -294,7 +294,7 @@ net.relax(28)
 val afterLines = net.toFLines()
 val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
 val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = listOf(
+val comparisonLines = [
     beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
     afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
     arrow(
@@ -303,17 +303,17 @@ val comparisonLines = listOf(
         color = vec(0.92, 0.90, 0.84, 0.95),
         thickness = 2.0
     ),
-) +
+] +
     beforeLines.fitInto(beforeFrame, padding = 26.0) +
     afterLines.fitInto(afterFrame, padding = 26.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
-    cards = listOf(
+    cards = [
         beforeSummary,
         detail.summaryHtml("Prune step"),
         net.summaryHtml("After erase step", maxNodes = 5)
-    ),
+    ],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
     graphicWidth = 1040.0,
@@ -384,7 +384,7 @@ val afterLines = subject.toFLines()
 val firstFrame = Rect(28.0, 54.0, 296.0, 232.0)
 val middleFrame = Rect(372.0, 54.0, 296.0, 232.0)
 val lastFrame = Rect(716.0, 54.0, 296.0, 232.0)
-val comparisonLines = listOf(
+val comparisonLines = [
     firstFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
     middleFrame.toFLine(filled = true, color = vec(0.16, 0.13, 0.08, 0.54)),
     lastFrame.toFLine(filled = true, color = vec(0.08, 0.17, 0.12, 0.54)),
@@ -400,19 +400,19 @@ val comparisonLines = listOf(
         color = vec(0.92, 0.90, 0.84, 0.95),
         thickness = 2.0
     ),
-) +
+] +
     beforeLines.fitInto(firstFrame, padding = 22.0) +
     middleLines.fitInto(middleFrame, padding = 22.0) +
     afterLines.fitInto(lastFrame, padding = 22.0)
 
 showInteractionOverview(
     graphicLines = comparisonLines,
-    cards = listOf(
+    cards = [
         beforeSummary,
         branch.summaryHtml("fan-fan, commuting branch"),
         middleSummary,
         subject.summaryHtml("Fixed point after $rest more steps", maxNodes = 8)
-    ),
+    ],
     channel = "overview",
     graphicTitle = "Two fans, one commute, four duplications",
     graphicWidth = 1040.0,
