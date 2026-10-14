@@ -220,9 +220,11 @@ class Engine : AutoCloseable {
             if (!directive.isAllUnder && path in recipe.splitSymbols) {
                 findings += Finding("split-symbol", line(directive.textOffset),
                     "Overloads have assigned destinations; resolve this use: ${recipe.splitSymbols.getValue(path).joinToString()}")
-            } else if (script && directive.aliasName == null && destinationImport in recipe.scriptImports &&
+            } else if (script && (destination != path || split) && directive.aliasName == null && destinationImport in recipe.scriptImports &&
                 importComments.none { it.textOffset < expression.textRange.endOffset }) {
-                // Remove only an identical host import. A star does not prove that a named import
+                // Remove only a migrating import covered by the host. Already-current explicit
+                // imports may belong to language roots or exported sidecars; leave them intact.
+                // A star does not prove that a named import
                 // is redundant: that explicit import might disambiguate two star packages.
                 // Leave surrounding whitespace, semicolons and trailing comments untouched.
                 var end = importComments.minOfOrNull { it.textOffset } ?: directive.textRange.endOffset
