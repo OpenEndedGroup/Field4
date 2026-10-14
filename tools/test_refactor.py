@@ -84,6 +84,16 @@ class ContainerTests(unittest.TestCase):
         self.assertEqual(len(result.units), 1)
         self.assertEqual(self.transform(text, result), text.replace('old.pkg.X', 'new.pkg.X'))
 
+    def test_exported_text_preamble_is_box_kotlin_not_arbitrary_text(self):
+        source = ('```text [field-property box="box1" name="preamble"]\nimport old.pkg.X\n```\n'
+                  '```text [field-property box="box1" name="notes"]\nimport old.pkg.X\n```\n'
+                  '```text\nimport old.pkg.X\n```\n'
+                  '```python [field-property box="box1" name="preamble"]\nimport old.pkg.X\n```\n')
+        units = markdown(source).units
+        self.assertEqual(1, len(units))
+        self.assertTrue(units[0].box_context)
+        self.assertEqual(source.replace('old.pkg.X', 'new.pkg.X', 1), self.transform(source, markdown(source)))
+
     def test_yaml_block_and_quoted_edit_both_directions(self):
         text = 'operations:\n  - create:\n      properties:\n        code: |- # retain me\n          import old.pkg.X\n          val x = 1\n  - edit:\n      property: code\n      from: "import old.pkg.X\\n"\n      to: "import old.pkg.Y\\n"\n'
         result = yaml_units(text, PROPS)
@@ -176,6 +186,18 @@ class PlanTests(unittest.TestCase):
         text = 'See src/jvmMain/kotlin/old; run old.pkg.Thing then old.Unknown'
         self.assertEqual(['old.pkg.Thing', 'old.Unknown'], [m.group() for m in pattern.finditer(text)])
         self.assertEqual('old', pattern.search('package old').group())
+
+    def test_prose_branding_is_exact_and_repeatable(self):
+        recipe = dict(copy.deepcopy(RECIPE), proseReplacements={'afield.four': 'Field 4'})
+        source = 'Use `afield.four`. Keep afield.four.* and afield.four.Renderer and src/afield.four/file.'
+        after = rewrite_qualified_text(source, recipe)
+        self.assertEqual('Use `Field 4`. Keep afield.four.* and afield.four.Renderer and src/afield.four/file.', after)
+        self.assertEqual(after, rewrite_qualified_text(after, recipe))
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / 'recipe.json'; save_json(p, recipe)
+            self.assertEqual(recipe['proseReplacements'], load_recipe(p)['proseReplacements'])
+            recipe['proseReplacements'] = {'afield.four': 'afield.four again'}; save_json(p, recipe)
+            with self.assertRaises(RefactorError): load_recipe(p)
 
     def test_workspace_markdown_scope_is_recursive_and_does_not_expand_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -401,6 +423,25 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_exported_preamble_uses_box_split_import_rules_and_roundtrips(self):
+        source = ('```text [field-property box="b" name="preamble"]\n'
+                  'import old.split.*\nval n = 1\n```\n')
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old.split'],
+                      splitStarImports={'old.split': ['new.first', 'new.second']},
+                      boxImports=['new.first.*', 'new.second.*'],
+                      boxSplitStarImports={'old.split': ['new.first', 'new.second']})
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; root.mkdir()
+            path = root / 'document.md'; path.write_text(source)
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            self.assertFalse(plan['roots'][0]['changes'][0]['held'])
+            apply_plan(base / 'plan', offline=True)
+            self.assertNotIn('import old.split', path.read_text())
+            self.assertNotIn('import new.', path.read_text())
+            self.assertIn('```text [field-property box="b" name="preamble"]', path.read_text())
+            verify(base / 'plan'); undo(base / 'plan')
+            self.assertEqual(source, path.read_text())
+
     def test_box_split_coverage_excludes_other_platforms_and_requires_host_imports(self):
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
             base = Path(tmp)

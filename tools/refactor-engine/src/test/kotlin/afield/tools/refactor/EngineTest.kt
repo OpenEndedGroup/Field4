@@ -63,6 +63,16 @@ class EngineTest {
         assertEquals(result.code, engine.rewrite(result.code, true, recipe.copy(rewriteComments = true)).code)
     }
 
+    @Test fun brandingRulesOnlyRewriteExactNamesInComments() = Engine().use { engine ->
+        val r = Recipe(mapOf("afield.four.buffers" to "afield.graphics.vulkan.buffers"), emptyMap(), setOf("afield.four"),
+            rewriteComments = true, proseReplacements = mapOf("afield.four" to "Field 4"))
+        val source = "// Use `afield.four` itself. afield.four.buffers.Buffer\nval name = \"afield.four\"\n"
+        val result = engine.rewrite(source, true, r)
+        assertEquals("// Use `Field 4` itself. afield.graphics.vulkan.buffers.Buffer\nval name = \"afield.four\"\n", result.code)
+        assertEquals(result.code, engine.rewrite(result.code, true, r).code)
+        assertEquals("afield.four.*", r.rewriteText("afield.four.*"))
+    }
+
     @Test fun hyphenatedNamespaceLabelsStayInCommentsAndStrings() = Engine().use { engine ->
         val r = Recipe(emptyMap(), mapOf("afield.Thing" to "moved.Thing"), setOf("afield"), rewriteComments = true)
         val source = "// afield-token-* and afield-\nval css = \"afield-stacksl-token-comment\"\n"

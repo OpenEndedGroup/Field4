@@ -34,6 +34,7 @@ data class Recipe(
     val splitStarImports: Map<String, List<String>> = emptyMap(),
     val scriptImportsKnown: Boolean = false,
     val splitSymbols: Map<String, List<String>> = emptyMap(),
+    val proseReplacements: Map<String, String> = emptyMap(),
 ) {
     private fun prefix(path: String, old: String) = path == old || path.startsWith("$old.")
     private val destinationPackages = packages.values.toSet() + symbols.values.map { it.substringBeforeLast('.') } +
@@ -80,7 +81,7 @@ data class Recipe(
         else moved(path) // A class-member wildcard follows its class, including nested classes.
 
     fun rewriteText(text: String): String = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+")
-        .replace(text) { match -> if (match.value in RESOURCE_REFERENCES || text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else moved(match.value) ?: match.value }
+        .replace(text) { match -> if (match.value in RESOURCE_REFERENCES || text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else if (match.value in proseReplacements && !text.startsWith(".*", match.range.last + 1)) proseReplacements.getValue(match.value) else moved(match.value) ?: match.value }
 }
 
 data class Edit(val start: Int, val end: Int, val replacement: String)
@@ -368,7 +369,8 @@ fun main() {
                     config["retainedSymbols"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
                     config["splitStarImports"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty(),
                     config.containsKey("scriptImports"),
-                    config["splitSymbols"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty())
+                    config["splitSymbols"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty(),
+                    config.mapping("proseReplacements"))
                 val result = engine.rewrite(request.getValue("code").jsonPrimitive.content,
                     request["script"]?.jsonPrimitive?.boolean ?: true, recipe)
                 buildJsonObject {
