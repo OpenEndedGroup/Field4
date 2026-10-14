@@ -82,4 +82,14 @@ class SlideShowTest {
         assertTrue("href=\"#slideshow:stop\">Finish<" in html, html)
         assertEquals(1, Regex("#slideshow:next").findAll(html).count())
     }
+
+    @Test
+    fun templateValuesFromPropertiesAreHtmlEscaped() {
+        val (s, _) = document("escape")
+        val host = boxIn(s, "host")
+        host.properties["who"] = "<img src=x onerror=alert(1)> & \"friends\""
+        host.properties["count"] = 3
+        val html = slideTemplateValues(host, "<p>Hello {{who}}, {{count}} visits</p>")
+        assertEquals("<p>Hello &lt;img src=x onerror=alert(1)&gt; &amp; &quot;friends&quot;, 3 visits</p>", html)
+    }
 }

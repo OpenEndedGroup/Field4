@@ -168,11 +168,11 @@ for (i in pairing.from.indices step 100) {
 threads.color = vec(1.0, 0.62, 0.25, 0.75); threads.thickness = 1.2
 :::fold draw the source, the target and the pairing
 lines(
-    listOf(
+    [
         cloud(pairing.to, 2.0, vec(0.55, 0.55, 0.62, 0.9)),
         cloud(pairing.from, 1.6, vec(0.44, 0.83, 0.78, 1.0)),
         threads,
-    ),
+    ],
     w = 1000.0, h = 450.0, fitToSize = true,
 )
 markdown("what", """

@@ -58,7 +58,7 @@ Chart(title = "line, area and points share one frame", xLabel = "t (radians)", y
 
 ```diffstatic {data-lang=kotlin}
 Chart(title = "bars put their categories on the axis", yLabel = "gates")
-    .bars("cost", listOf("xor", "maj3", "adder", "mux", "parity"), listOf(6, 11, 27, 4, 19))
+    .bars("cost", ["xor", "maj3", "adder", "mux", "parity"], [6, 11, 27, 4, 19])
 ```
 
 ![Five bars labelled xor, maj3, adder, mux and parity, with their categories written under them on the axis](assets/chart_gallery/chart-bars-categorical.png)

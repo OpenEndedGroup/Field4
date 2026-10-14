@@ -84,7 +84,7 @@ val tools = registerStudyTools("Rings", rings, about = "The source is three numb
 
 val empty = rings.inspect(StudyCall.Inspect())
 val first = rings.edit(StudyCall.Edit("empty", empty.facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
-val seen = rings.observe(StudyCall.Observe(seconds = listOf(0.0, 0.5, 1.0)))
+val seen = rings.observe(StudyCall.Observe(seconds = [0.0, 0.5, 1.0]))
 
 markdown("main", tools.values.joinToString(" · ") { "`${it.name}`" } +
     "\n\n`${first.revision}`: ${first.facts["message"]}\n\n" + seen.h)
@@ -142,7 +142,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
 val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
 val hash = rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String
 
-val cooler = rings.setNumbers(StudyCall.SetNumbers(first.revision, hash, listOf(StudyCall.Number(2, 0.2)), "cooler rings"))
+val cooler = rings.setNumbers(StudyCall.SetNumbers(first.revision, hash, [StudyCall.Number(2, 0.2)], "cooler rings"))
 val late = runCatching { rings.edit(StudyCall.Edit(first.revision, hash, "3 rings 0.5 ink 0.5 warmth", "an edit from a stale read")) }
 val kept = rings.compare(StudyCall.Compare(first.revision, cooler.revision, mode = "luma"))
 
@@ -193,11 +193,11 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
 
 val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
 
-val swept = rings.sweep(StudyCall.Sweep(knob = 0, values = listOf(3.0, 5.0, 7.0, 11.0, 15.0)))
-val tried = rings.tryVariants(StudyCall.TryVariants(listOf(
+val swept = rings.sweep(StudyCall.Sweep(knob = 0, values = [3.0, 5.0, 7.0, 11.0, 15.0]))
+val tried = rings.tryVariants(StudyCall.TryVariants([
     StudyCall.Variant("tight", source = "15 rings 0.05 ink 0.8 warmth", note = "twice the rings"),
-    StudyCall.Variant("cold", edits = listOf(StudySourceEdit("0.8 warmth", "0.1 warmth"))),
-    StudyCall.Variant("short", source = "7 rings"))))
+    StudyCall.Variant("cold", edits = [StudySourceEdit("0.8 warmth", "0.1 warmth")]),
+    StudyCall.Variant("short", source = "7 rings")]))
 
 val now = rings.inspect(StudyCall.Inspect())
 val adopted = rings.adoptVariant(StudyCall.Adopt(now.revision, now.facts["liveSourceHash"] as String, "cold"))
@@ -235,7 +235,7 @@ val lookOnly = object : LiveStudy {
 val tools = registerStudyTools("Look", lookOnly, verbs = setOf(StudyVerb.INSPECT, StudyVerb.OBSERVE))
 
 val read = lookOnly.inspect(StudyCall.Inspect())
-val look = runCatching { lookOnly.observe(StudyCall.Observe(seconds = listOf(0.0))) }
+val look = runCatching { lookOnly.observe(StudyCall.Observe(seconds = [0.0])) }
 
 markdown("main", "Tools: ${tools.values.joinToString { "`${it.name}`" }}. Inspect: ${read.facts}. " +
     "Observe: ${look.exceptionOrNull()?.message}.")
@@ -263,14 +263,14 @@ For an existing `SourceStudy` named `design`, this small stage writes a report f
 source it captured when the build started:
 
 ```diffstatic {data-lang=kotlin}
-val builds = studyBuilds("reports", listOf(
+val builds = studyBuilds("reports", [
     StudyBuildStage("summary", "Source report", "report-v1", setOf("source")) { context ->
         val source = context.inputs.getValue("source")
         context.progress(0.5, "Writing the report")
         context.file("summary.txt").writeText("${source.lines().size} source lines")
-        StudyBuildProduct(listOf("summary.txt"))
+        StudyBuildProduct(["summary.txt"])
     }
-)) { mapOf("source" to design.liveSource()) }
+]) { mapOf("source" to design.liveSource()) }
 showStudyBuilds("reports")
 ```
 
@@ -335,7 +335,7 @@ over its saved `StudyBuildRecord.facts`, for example:
 ```diffstatic {data-lang=kotlin}
 resultNotes = { result ->
     val count = (result.facts["unresolved"] as? Number)?.toInt() ?: 0
-    if (count > 0) listOf(StudyBuildNotice("$count findings remain. Inspect the retained report."))
+    if (count > 0) [StudyBuildNotice("$count findings remain. Inspect the retained report.")]
     else emptyList()
 }
 ```
@@ -366,7 +366,7 @@ the box in `details["geometryView"]`. Here the box that owns the stage draws the
 
 ```diffstatic {data-lang=kotlin}
 throw StudyBuildFailure(StudyBuildProblem("stair-clash", "Wall W3 crosses the stair opening",
-    listOf("Move the stair or shorten W3"),
+    ["Move the stair or shorten W3"],
     details = mapOf("geometryView" to mapOf("box" to thisBox.id, "caption" to "W3 and the stair opening"))))
 ```
 
@@ -415,20 +415,20 @@ expect:
 // Each loot point, and how many steps it is from the spawn.
 thisBox.setPropertyRaw("loot", "L1 12, L3 41, L7 30")
 
-val reachable = StudyBuildGate("reachable loot", dependencies = listOf("paths")) { evidence ->
+val reachable = StudyBuildGate("reachable loot", dependencies = ["paths"]) { evidence ->
     val far = evidence.facts("paths")["outOfReach"] as List<*>
     if (far.isEmpty()) null else "Out of reach (more than 30 steps): ${far.joinToString()}."
 }
-val builds = studyBuilds("loot", listOf(
+val builds = studyBuilds("loot", [
     StudyBuildStage("paths", "Measure paths", "paths-v1", setOf("loot")) { c ->
         val steps = c.inputs.getValue("loot").split(", ").associate { it.substringBefore(' ') to it.substringAfter(' ').toInt() }
         c.file("steps.txt").writeText(steps.toString())
-        StudyBuildProduct(listOf("steps.txt"), mapOf("outOfReach" to steps.filterValues { it > 30 }.keys.toList()))
+        StudyBuildProduct(["steps.txt"], mapOf("outOfReach" to steps.filterValues { it > 30 }.keys.toList()))
     },
-    StudyBuildStage("place", "Place loot", "place-v1", setOf("reachable loot"), listOf("paths")) { c ->
+    StudyBuildStage("place", "Place loot", "place-v1", setOf("reachable loot"), ["paths"]) { c ->
         c.file("placed.txt").writeText("loot placed along " + c.dependencyFile("paths", "steps.txt").readText())
-        StudyBuildProduct(listOf("placed.txt"))
-    }), gates = listOf(reachable)) { mapOf("loot" to thisBox.getPropertyRaw("loot", "").toString()) }
+        StudyBuildProduct(["placed.txt"])
+    }], gates = [reachable]) { mapOf("loot" to thisBox.getPropertyRaw("loot", "").toString()) }
 
 builds.await(builds.start("paths", builds.stages().first { it.id == "paths" }.fingerprint!!).id)
 showStudyBuilds("loot")
@@ -465,13 +465,13 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/request.png" alt="the builds output channel: a card with one stage, 'Search for routes', marked Current with a Rebuild button, and the grey line 'Request: budgetSeconds = 60'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Current" capture="box" embed=true timeout="90" name="studies-request" w="760" h="120"}
 :::static
-val builds = studyBuilds("search", listOf(
+val builds = studyBuilds("search", [
     StudyBuildStage("route", "Search for routes", "route-v1", setOf("rooms")) { c ->
         val budget = (c.request["budgetSeconds"] as? Number)?.toInt() ?: 10
         c.progress(0.5, "Searching for $budget s")
         c.file("route.txt").writeText("${c.inputs.getValue("rooms")} rooms searched for $budget s")
-        StudyBuildProduct(listOf("route.txt"), mapOf("budgetSeconds" to budget))
-    })) { mapOf("rooms" to "6") }
+        StudyBuildProduct(["route.txt"], mapOf("budgetSeconds" to budget))
+    }]) { mapOf("rooms" to "6") }
 
 builds.start("route", builds.stages().single().fingerprint!!, mapOf("budgetSeconds" to 60))
 showStudyBuilds("search")
@@ -507,18 +507,18 @@ expect:
 :::static
 thisBox.setPropertyRaw("plan", "four rooms, two doors")
 
-val level = studyBuilds("level", listOf(
+val level = studyBuilds("level", [
     StudyBuildStage("blockout", "Block out walls", "blockout-v1", setOf("plan")) { c ->
         c.file("walls.txt").writeText("walls for " + c.inputs.getValue("plan"))
-        StudyBuildProduct(listOf("walls.txt"))
-    })) { mapOf("plan" to thisBox.getPropertyRaw("plan", "").toString()) }
+        StudyBuildProduct(["walls.txt"])
+    }]) { mapOf("plan" to thisBox.getPropertyRaw("plan", "").toString()) }
 
-val loot = studyBuilds("loot", listOf(
-    StudyBuildStage("place", "Place loot", "place-v1", dependencies = listOf(dependsOn("level", "blockout"))) { c ->
+val loot = studyBuilds("loot", [
+    StudyBuildStage("place", "Place loot", "place-v1", dependencies = [dependsOn("level", "blockout")]) { c ->
         val walls = c.dependencyFile(dependsOn("level", "blockout"), "walls.txt").readText()
         c.file("loot.txt").writeText("loot placed inside $walls")
-        StudyBuildProduct(listOf("loot.txt"))
-    })) { emptyMap() }
+        StudyBuildProduct(["loot.txt"])
+    }]) { emptyMap() }
 
 level.await(level.start("blockout", level.stages().single().fingerprint!!).id)
 showStudyBuilds("loot")
@@ -552,14 +552,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/resume.png" alt="the builds output channel: a card with one stage, 'Relax the route', marked Current with a Rebuild button, and two grey lines: 'Request: resume = ' followed by the first attempt's ID, and 'Continued from attempt' followed by the first eight characters of that ID and 'checkpoint.txt'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="builds" wait-output-contains="Continued from attempt" capture="box" embed=true timeout="90" name="studies-resume" w="760" h="120"}
 :::static
-val builds = studyBuilds("relax", listOf(
+val builds = studyBuilds("relax", [
     StudyBuildStage("relax", "Relax the route", "relax-v1", setOf("route")) { c ->
-        (c.request["resume"] as? String)?.let { c.resumeFrom(it, listOf("checkpoint.txt")) }
+        (c.request["resume"] as? String)?.let { c.resumeFrom(it, ["checkpoint.txt"]) }
         val checkpoint = c.file("checkpoint.txt")
         val passes = (if (checkpoint.isFile) checkpoint.readText().toInt() else 0) + 100
         checkpoint.writeText("$passes")
-        StudyBuildProduct(listOf("checkpoint.txt"), mapOf("passes" to passes))
-    })) { mapOf("route" to "spawn to L7") }
+        StudyBuildProduct(["checkpoint.txt"], mapOf("passes" to passes))
+    }]) { mapOf("route" to "spawn to L7") }
 
 val fingerprint = builds.stages().single().fingerprint!!
 val first = builds.await(builds.start("relax", fingerprint).id)
@@ -617,11 +617,11 @@ for n in range(1, 5):
 open("relaxed.txt", "w").write("relaxed in 4 passes")
 """.trimStart())
 
-val builds = studyBuilds("external", listOf(
+val builds = studyBuilds("external", [
     StudyBuildStage("relax", "Relax in Python", "relax-" + fileIdentity(script), setOf("route")) { c ->
-        c.runProcess(listOf("python3", script.path), progressFile = "progress.json", stall = 30.seconds, deadline = 10.minutes)
-        StudyBuildProduct(listOf("relaxed.txt", "process.log"))
-    })) { mapOf("route" to "spawn to L7") }
+        c.runProcess(["python3", script.path], progressFile = "progress.json", stall = 30.seconds, deadline = 10.minutes)
+        StudyBuildProduct(["relaxed.txt", "process.log"])
+    }]) { mapOf("route" to "spawn to L7") }
 
 builds.start("relax", builds.stages().single().fingerprint!!)
 showStudyBuilds("external")
@@ -665,11 +665,11 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/prune.png" alt="the main output channel: 'A dry run would delete 3 attempts. Pruning deleted 3 and freed' followed by about 1900 kB, 'keeping 2: the current walls and the pinned first version.'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" wait-output-contains="Pruning deleted" capture="box" embed=true timeout="90" name="studies-prune" w="760" h="120"}
 :::static
-val builds = studyBuilds("walls", listOf(
+val builds = studyBuilds("walls", [
     StudyBuildStage("mesh", "Mesh the walls", "mesh-v1", setOf("rooms")) { c ->
         c.file("walls.obj").writeText("v 0 0 0\n".repeat(20_000 * c.inputs.getValue("rooms").toInt()))
-        StudyBuildProduct(listOf("walls.obj"))
-    })) { mapOf("rooms" to thisBox.getPropertyRaw("rooms", "2").toString()) }
+        StudyBuildProduct(["walls.obj"])
+    }]) { mapOf("rooms" to thisBox.getPropertyRaw("rooms", "2").toString()) }
 
 // Five versions of the level, each built once.
 val built = (2..6).map { rooms ->

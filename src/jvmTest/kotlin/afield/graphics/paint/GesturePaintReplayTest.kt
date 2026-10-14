@@ -23,10 +23,6 @@ import kotlin.test.assertTrue
  */
 class GesturePaintReplayTest {
 
-    private fun available(): Boolean {
-        if (!PaintLibrary.isAvailable) println("SKIPPED gesture replay tests: ${PaintLibrary.describe()}")
-        return PaintLibrary.isAvailable
-    }
 
     private val umber = Vec4(0.25f, 0.15f, 0.1f, 1f)
     private val out = File("build/gesture-paint-replay").apply { mkdirs() }
@@ -72,7 +68,7 @@ class GesturePaintReplayTest {
     }
 
     @Test fun theTakesTimingPressureAndTiltReachTheGesture() {
-        if (!available()) return
+        requirePaintLibrary()
         canvas().use { c ->
             val take = recordedWave()
             val g = c.gesture(take, into = Rect(100.0, 100.0, 800.0, 800.0))
@@ -94,7 +90,7 @@ class GesturePaintReplayTest {
     /** The whole chain: record, bake, edit a lane, replay, and the paint is where the edit put it. */
     @Test
     fun anEditedTakePaintsWhereTheEditMovedIt() {
-        if (!available()) return
+        requirePaintLibrary()
         val take = recordedWave()
         val flat = take.flatMap { listOf(it.t, it.x, it.y) }.toDoubleArray()
         val lanes = takeToLanes(flat, 0.01)
@@ -134,7 +130,7 @@ class GesturePaintReplayTest {
      */
     @Test
     fun aPensPressurePressesTheHairsWhereThePenPressed() {
-        if (!available()) return
+        requirePaintLibrary()
         val take = recordedWave()
         fun contact(samples: List<PenSample>, name: String): List<Double> = canvas().use { c ->
             c.stroke(c.gesture(samples, into = Rect(100.0, 100.0, 800.0, 800.0)), c.dynamicBrush(BrushKind.Round, 40.0, hairs = 32).load(umber, stiff = 0.5), seed = 4)

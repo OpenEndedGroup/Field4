@@ -58,7 +58,7 @@ import afield.geometry.mesh.tetgen.*
 val part = Solid.scope {
     val foot = Solid.cube(80.0, 40.0, 15.0)
     val post = Solid.cube(15.0, 40.0, 70.0)
-    val bolts = listOf(12.0, 28.0).map {
+    val bolts = [12.0, 28.0].map {
         Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
     }
     val eye = Solid.cylinder(60.0, 6.0, segments = 48)
@@ -233,7 +233,7 @@ import afield.geometry.mesh.tetgen.*
 val part = Solid.scope {
     val foot = Solid.cube(80.0, 40.0, 15.0)
     val post = Solid.cube(15.0, 40.0, 70.0)
-    val bolts = listOf(12.0, 28.0).map {
+    val bolts = [12.0, 28.0].map {
         Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
     }
     val eye = Solid.cylinder(60.0, 6.0, segments = 48)
@@ -551,7 +551,7 @@ fun worstError(xyz: DoubleArray, distance: (Double, Double, Double) -> Double): 
 }
 fun coordinates(m: TriMesh) = DoubleArray(m.positions.size) { m.positions[it].toDouble() }
 :::fold march both bodies at four resolutions, then plot the corner and the convergence
-val sizes = listOf(0.4, 0.2, 0.1, 0.05)
+val sizes = [0.4, 0.2, 0.1, 0.05]
 val boxError = mutableListOf<Double>()
 val sphereError = mutableListOf<Double>()
 val corners = mutableListOf<Pair<String, List<Vec2>>>()
@@ -631,8 +631,8 @@ corner.line("exact, and TetGen's", exactCorner.first, exactCorner.second,
     color = vec(1.0, 0.72, 0.35, 1.0), thickness = 3.0)
 // Coarsest red through finest blue, explicitly. The default palette gives three of these four
 // series a warm colour and the figure becomes four orange lines.
-val byResolution = listOf(
-    vec(0.95, 0.45, 0.45, 1.0), vec(0.55, 0.95, 0.55, 1.0), vec(0.45, 0.85, 1.0, 1.0))
+val byResolution = [
+    vec(0.95, 0.45, 0.45, 1.0), vec(0.55, 0.95, 0.55, 1.0), vec(0.45, 0.85, 1.0, 1.0)]
 corners.forEachIndexed { i, (label, points) ->
     val clipped = clippedToWindow(points)
     corner.line(label, clipped.first, clipped.second, color = byResolution[i], thickness = 2.0)

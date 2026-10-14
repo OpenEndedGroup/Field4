@@ -112,7 +112,7 @@ controlGroup("sequencer") {
         band = it
         print(it.h)
     }
-    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+    menu("wave", ["sine", "saw", "square", "noise"], initialIndex = 1) { _, name ->
         wave = name
     }
 }

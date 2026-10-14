@@ -80,7 +80,7 @@ intact, and open it. It has two boxes:
 | Box | What it is |
 | --- | --- |
 | **renderer — launch me first** | Opens the window. Select it and choose **Launch Box**. |
-| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (**command/ctrl-return**) once the window is open, then press **command/ctrl-4** for AI4 chat. |
+| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (**ctrl/command-return**) once the window is open, then press **ctrl/command-4** for AI4 chat. |
 
 Configure an AI provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md). In a document of your own, any box whose shader has a
@@ -302,7 +302,7 @@ void main() {
             val n = solid.faceNormal(face.id)
             val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
             for (k in ring.indices) {
-                for ((p, r) in listOf(c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f)) {
+                for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
                     pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
                     fid.add(face.id.value.toFloat()); faceRadius.add(r)
                 }

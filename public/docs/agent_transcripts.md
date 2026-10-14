@@ -195,7 +195,7 @@ and compare bytes per frame. See [Simulation time](profiling_timeline.md#simulat
 
 ### drawing_notation
 
-Six boxes on the drawing layer (`alt-d`) and the `notation` API. `draw` circles itself and draws an
+Six boxes on the drawing layer (`alt/option-d`) and the `notation` API. `draw` circles itself and draws an
 arrow to `listen` that follows both boxes when you drag them; `read` prints every mark and what it
 sits on; `listen` prints each stroke you draw. The other three read the drawing by cutting it:
 `projection 1`, after Feldman, reads rectangles in a three-row grid as onsets, durations and
@@ -2200,8 +2200,8 @@ boxes and skips the three Pd ones, as it skips Python cells. [Pure Data](pure_da
 
 **Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
 five Kotlin boxes that talk to Csound. **pluck** is a `.csd` with a plucked string, a MIDI-played
-`Key` instrument and a global reverb on a `chnmix` bus. Launched, Alt-Enter on its score line
-`i "Pluck" 0 1 69 -9` answers `sent …`, and Alt-Enter inside `instr Pluck` answers `recompiled instr
+`Key` instrument and a global reverb on a `chnmix` bus. Launched, alt/option-Enter on its score line
+`i "Pluck" 0 1 69 -9` answers `sent …`, and alt/option-Enter inside `instr Pluck` answers `recompiled instr
 Pluck`. **typo** has `oscilx` on line 4, which launching marks there. **talk to pluck** writes a k-
 and an S-channel and sends score events built from Kotlin values; the orchestra's `outvalue`s come
 back as `Csound said: from Kotlin` and the reverb's level. **keys** sends MIDI notes, which `Key`
@@ -2571,7 +2571,7 @@ because its pixels belong to another image by the time the page table stops nami
 Worth opening for the shape as much as the subject. The wall's geometry is arithmetic on
 `gl_InstanceIndex` — six vertices, one instance per image, no vertex buffer at all — and both
 shaders are box properties with `{{ mega.all }}` interpolated into them, so the sampling, the layout
-and the LOD policy are all editable with `alt-r` rather than buried in Kotlin. Flip
+and the LOD policy are all editable with `alt/option-r` rather than buried in Kotlin. Flip
 `showResidentLevel` in the fragment shader to watch residency directly: red is the base level, green
 is a full source frame, and flying at the wall turns it green ahead of you. The library is
 `afield/four/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.

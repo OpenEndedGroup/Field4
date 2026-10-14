@@ -17,7 +17,7 @@ In any document, select a box (press **n** to make one) and choose **Make a
 Function Study** from the command palette. An empty box is given the starter's
 source, below, which is checked in as the first revision and drawn in the box's
 signal viewer; a box whose Kotlin already returns a `StudyComposition` keeps it.
-Select the box and press **command/ctrl-4** to open AI4 chat. Configure an AI
+Select the box and press **ctrl/command-4** to open AI4 chat. Configure an AI
 provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md).
 
@@ -58,12 +58,12 @@ import afield.math.functions.StudyChoice
 // Three empty channels. Describe the function you want in this box's AI4 chat.
 with(Functions) {
     StudyComposition(
-        channels = listOf("x", "y", "z").map { name ->
+        channels = ["x", "y", "z"].map { name ->
             fn(0.0..3600.0, name) { 0.0 }
         },
-        choices = listOf(
+        choices = [
             StudyChoice("One hour, three zero-valued channels: a starting point to replace", "starter assumption")
-        )
+        ]
     )
 }
 ```
@@ -108,7 +108,7 @@ entirely. Zoom in before you judge a detail.
 to open **function_conversation_example**. It contains the finished source, all
 nine saved revisions, and the recorded conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
-here (AI4)** and press **command/ctrl-4**.
+here (AI4)** and press **ctrl/command-4**.
 The seven recorded turns are already in that box's chat, with their original
 prompts, replies, tool traces and plot images. Scroll back to watch the function
 grow, or send a new message to continue from the finished example. Simply opening
@@ -138,8 +138,8 @@ import afield.math.functions.StudyChoice
 // The final expression returns a candidate; the tools box compiles and checks it.
 with(Functions) {
     StudyComposition(
-        channels = listOf("x", "y", "z").map { name -> fn(0.0..3600.0, name) { 0.5 } },
-        choices = listOf(StudyChoice("Initial constant background is a disposable starting point", "agent assumption"))
+        channels = ["x", "y", "z"].map { name -> fn(0.0..3600.0, name) { 0.5 } },
+        choices = [StudyChoice("Initial constant background is a disposable starting point", "agent assumption")]
     )
 }
 ```
@@ -179,7 +179,7 @@ background into a pulse train and then into the hold.
 
 <!-- function-study-source:channels -->
 ```diffstatic {data-lang=kotlin}
-val channels = listOf("x", "y", "z").mapIndexed { index, name ->
+val channels = ["x", "y", "z"].mapIndexed { index, name ->
     fn(0.0..durationSeconds, name) { seconds ->
         // The background always uses absolute time; events never restart it.
         val base = background(seconds, index)
@@ -329,13 +329,13 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
 
         // Starts are independent of rise durations: changing a rise pins its start.
         // Stable IDs survive moves and chronological reordering.
-        val events = listOf(
+        val events = [
             StudyEvent("e1", firstStartSeconds, riseSeconds, holdSeconds, fallSeconds),
             StudyEvent("e2", firstStartSeconds + eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),
             StudyEvent("e3", firstStartSeconds + 2.0 * eventSpacingSeconds + e3OffsetSeconds, e3RiseSeconds, holdSeconds, fallSeconds),
             StudyEvent("e5", firstStartSeconds + 4.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),
             StudyEvent("e6", firstStartSeconds + 5.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds)
-        )
+        ]
 
         fun smooth01(value: Double): Double {
             val u = value.coerceIn(0.0, 1.0)
@@ -365,7 +365,7 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
             return (1.0 - merge) * pulsed + merge
         }
 
-        val channels = listOf("x", "y", "z").mapIndexed { index, name ->
+        val channels = ["x", "y", "z"].mapIndexed { index, name ->
             fn(0.0..durationSeconds, name) { seconds ->
                 // The background always uses absolute time; events never restart it.
                 val base = background(seconds, index)
@@ -398,7 +398,7 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
             events = events,
             duration = durationSeconds,
             maxFrequencyHz = 2.0,
-            choices = listOf(
+            choices = [
                 StudyChoice("Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale", "user requirement"),
                 StudyChoice("Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries", "user requirement"),
                 StudyChoice("Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6", "user requirement"),
@@ -415,7 +415,7 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
                 StudyChoice("Select background-only interval 1100..1250 seconds; slow its first half and catch up in its second with a strictly monotonic time map pinned in value and slope 1 at both ends. Preserve all other times, current event instances, metadata, and held plateaus", "user requirement"),
                 StudyChoice("Within the selected interval evaluate all background channels at T(t)=t-A*64*u^3*(1-u)^3, u=(t-1100)/150, A=6 seconds; identity elsewhere. Peak delay 6 seconds at 1175; derivative 1-(A/150)*192*u^2*(1-u)^2*(1-2u) lies in approximately 0.8626..1.1374. Endpoint second derivatives also vanish. Strength zero restores the unwarped background; the strictly increasing map is invertible. This supersedes absolute-time background only inside the selected event-free passage; event clocks and e3 y lag are untouched", "agent assumption"),
                 StudyChoice("Restore the unwarped absolute-time background using historical r7-ebc54198e3ae as reference, in a new checked child of r8 rather than discarding history. Remove the background time-map implementation only; preserve all current event timings, e3 y lag and e4 deletion. This supersedes the preceding 1100..1250 background-warp requirement and map assumption; retain that experiment in revision history", "user requirement")
-            )
+            ]
         )
     }
     ```

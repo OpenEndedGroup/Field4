@@ -102,7 +102,7 @@ val light = canvas.brush(BrushKind.HogFlat, width = 70.0)
 dark.load(rgb(0.1, 0.1, 0.12))
 canvas.stroke(FLine().moveTo(40, 250).lineTo(470, 250), dark, shake = 0.3)
 canvas.dry()
-listOf(0.05, 0.5, 0.92).forEachIndexed { i, hiding ->
+[0.05, 0.5, 0.92].forEachIndexed { i, hiding ->
     val x = 110.0 + i * 140
     light.load(rgb(0.97, 0.96, 0.93), hiding = hiding)
     canvas.stroke(FLine().moveTo(x, 80).lineTo(x, 420), light, shake = 0.3)
@@ -270,7 +270,7 @@ val hills = FLine().moveTo(40, 380).cubicTo(250, 250, 420, 300, 560, 360).cubicT
 val trunk = FLine().moveTo(700, 560).lineTo(705, 380)
 val crown = FLine().moveTo(705, 300).cubicTo(640, 300, 630, 400, 705, 400).cubicTo(780, 400, 770, 300, 705, 300)
 val pencil = canvas.pencil("3B")
-for (line in listOf(hills, trunk, crown)) canvas.sketch(line, pencil, pressure = 0.7, passes = 2)
+for (line in [hills, trunk, crown]) canvas.sketch(line, pencil, pressure = 0.7, passes = 2)
 
 // thin paint over it: the pencil shows through a glaze, and is sealed in where paint covers it
 val sky = FLine().moveTo(0, 0).lineTo(1000, 0).lineTo(1000, 380).cubicTo(850, 280, 700, 300, 560, 360)
@@ -311,7 +311,7 @@ import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.25, ground = PaintGround.Oil, sizeMm = 250.0, seed = 5)
 val brush = canvas.brush(BrushKind.Filbert, width = 70.0)
-val tubes = listOf("ultramarine blue", "viridian", "Naples yellow", "vermilion", "rose madder", "burnt sienna", "bone black")
+val tubes = ["ultramarine blue", "viridian", "Naples yellow", "vermilion", "rose madder", "burnt sienna", "bone black"]
 tubes.forEachIndexed { i, tube ->
     brush.load(mapOf("lead white" to 2.0, tube to 1.0))
     canvas.stroke(FLine().moveTo(60, 90 + i * 100).cubicTo(400, 40 + i * 100, 600, 160 + i * 100, 940, 80 + i * 100), brush)
@@ -359,9 +359,9 @@ val passage = FLine().moveTo(60, 60).lineTo(940, 60).lineTo(940, 600).lineTo(60,
 canvas.work(passage, rgb(0.22, 0.16, 0.12), handling = Handling.Broad, hiding = 0.7, stiff = 0.3)
 
 val rag = canvas.rag(70.0)
-canvas.wipe(FLine().moveTo(120, 170).cubicTo(350, 120, 600, 220, 880, 150), rag, listOf(0.8))
+canvas.wipe(FLine().moveTo(120, 170).cubicTo(350, 120, 600, 220, 880, 150), rag, [0.8])
 canvas.refold(rag).dampen(rag, 0.8)
-canvas.wipe(FLine().moveTo(160, 260).lineTo(840, 250), rag, listOf(0.6))
+canvas.wipe(FLine().moveTo(160, 260).lineTo(840, 250), rag, [0.6])
 
 val knife = canvas.knife(90.0).load(rgb(0.92, 0.85, 0.66), amount = 1.0)
 canvas.knife(FLine().moveTo(100, 420).lineTo(900, 400), knife, pressure = 0.4..0.6)
@@ -391,8 +391,8 @@ ploughing aside most of the paint it passes over, and laying a thin film that la
 import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.6, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 300.0)
-val configs = listOf(null, BrushConfig(bristles = 12), BrushConfig(bristles = 40, ragged = 1.0),
-    BrushConfig(pickup = 0.9, push = 0.9), BrushConfig(lay = 0.4, run = 900.0))
+val configs = [null, BrushConfig(bristles = 12), BrushConfig(bristles = 40, ragged = 1.0),
+    BrushConfig(pickup = 0.9, push = 0.9), BrushConfig(lay = 0.4, run = 900.0)]
 configs.forEachIndexed { i, config ->
     val brush = canvas.brush(BrushKind.HogFlat, width = 60.0, config = config)
     brush.load(rgb(0.12, 0.13, 0.2), amount = 0.6)

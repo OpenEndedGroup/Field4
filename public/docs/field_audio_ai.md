@@ -93,7 +93,7 @@ client.submit(underfitCandidates(
     source = region,
     prompt = "sparse suspended orchestral tension",
     durationSeconds = 30.0,
-    checkpoints = listOf(lora),
+    checkpoints = [lora],
     model = UnderfitModel.SMALL_MUSIC,
     controls = UnderfitGenerationControls(
         steps = 8,

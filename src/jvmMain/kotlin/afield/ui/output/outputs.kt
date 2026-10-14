@@ -2706,11 +2706,14 @@ fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlG
  * of the same type (set by an earlier run, or loaded from disk) the control starts there, so re-running
  * the box does not throw the setting away. For a slider over another range use the overload that
  * takes `min`/`max`.
+ *
+ * A property this box declares with `propDown` / `propUpDown` reruns the boxes that read it whenever
+ * the control changes it, as an assignment in code would.
  */
 fun Box.syncToProperty(propertyName: String, initialValue: Any, channel: String = "controls", label: String = propertyName) {
     val stored = getPropertyRaw(propertyName)
     val start = if (stored != null && initialValue::class.isInstance(stored)) stored else initialValue
-    val write: (Any) -> Unit = { setPropertyRaw(propertyName, it, doResync = true) }
+    val write: (Any) -> Unit = { writeSyncedProperty(propertyName, it) }
     when (start) {
         is Double -> {
             syncToProperty(propertyName, initialValue as Double, 0.0, 1.0, 0.01, channel, label)
@@ -2750,11 +2753,18 @@ fun Box.syncToProperty(
 ) {
     val start = (getPropertyRaw(propertyName) as? Double) ?: initialValue
     val sliderId = "slider-${UUID.randomUUID()}"
-    registerSliderCallback(sliderId) { setPropertyRaw(propertyName, it, doResync = true) }
+    registerSliderCallback(sliderId) { writeSyncedProperty(propertyName, it) }
     val spec = ControlLawSpec(law, min, max).also { it.validate(label) }
     display(channel, buildSliderHtml(sliderId, label, min, max, step, start, spec, defaultValue = initialValue))
     if (getPropertyRaw(propertyName) == null) setPropertyRaw(propertyName, start, doResync = true)
     markPersistent(propertyName)
+}
+
+/** A control's write into its property; a `propDown` property reruns its readers, as a delegate write would. */
+private fun Box.writeSyncedProperty(propertyName: String, value: Any) {
+    val old = getPropertyRaw(propertyName)
+    setPropertyRaw(propertyName, value, doResync = true)
+    afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, propertyName, old, value)
 }
 
 private fun markPersistent(propertyName: String) {

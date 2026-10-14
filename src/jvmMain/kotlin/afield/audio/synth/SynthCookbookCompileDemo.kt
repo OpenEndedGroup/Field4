@@ -462,7 +462,7 @@ val hit       = saw(80)  * perc(0.08)
 
 // ── Filter/effect factories — compose with / ──────────
 val darkPad    = saw(55) / lpf(800, 0.3) / reverb(0.7, 0.5, 0.3)
-val brightLead = saw(440) / hpf(1200) / delay(0.25, feedback = 0.4)
+val brightLead = saw(440) / hpf(1200) / delayEffect(0.25, feedback = 0.4)
 val filtered   = square(110) / bpf(600) / chorus()
 val dynCutoff  = saw(110) / lpf(Param { 400f + 200f * kotlin.math.sin(time * 0.3f) })
 

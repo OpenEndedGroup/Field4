@@ -45,7 +45,7 @@ f3.thickness = 1.0
 f3.color = vec(1.0, 1.0, 1.0, 0.25)
 
 // Show they really are the same geometry (offset so you can see them).
-lines(listOf(f1 + vec(0, 0, 0), f3 + vec(180, 0, 0)), w = 320.0, h = 170.0, fitToSize = true)
+lines([f1 + vec(0, 0, 0), f3 + vec(180, 0, 0)], w = 320.0, h = 170.0, fitToSize = true)
 ```
 
 
@@ -104,7 +104,7 @@ val nodes = wave.copy().apply {
     color = vec(1.0, 0.5, 0.25, 1.0)
 }
 
-lines(listOf(fill, wave, nodes), w = 520.0, h = 320.0, fitToSize = true)
+lines([fill, wave, nodes], w = 520.0, h = 320.0, fitToSize = true)
 ```
 
 If you switch on `editable = true`, the same output becomes an editor. You can click points, edges, or filled regions, drag a selection, marquee-select, and press `e` to hide or reveal the edit UI.
@@ -130,7 +130,7 @@ val stem = fline {
     color = vec(0.45, 0.95, 0.62, 1.0)
 }
 
-lines(listOf(petal, stem), w = 420.0, h = 420.0, fitToSize = true, editable = true)
+lines([petal, stem], w = 420.0, h = 420.0, fitToSize = true, editable = true)
 ```
 
 This is not editing a copy of the SVG: it mutates the `FLine` you passed in, so it is useful as a geometry sketchpad, a control-shape editor, or a quick way to pull a hand-tuned curve back into your code.
@@ -204,11 +204,11 @@ fun ribbon(z: Double, phase: Double, color: Vec4): FLine = fline {
     this.color = color
 }
 
-val ribbons = listOf(
+val ribbons = [
     ribbon(-50.0, 0.0, vec(1.0, 0.6, 0.24, 0.32)),
     ribbon(0.0, 0.8, vec(0.4, 0.92, 1.0, 0.28)),
     ribbon(55.0, 1.6, vec(0.72, 0.58, 1.0, 0.28))
-)
+]
 
 threeLines(ribbons, channel = "editable3d", height = 430, editable = true)
 ```
@@ -270,12 +270,12 @@ fun skin(name: String, x: Double, c: Vec4) = fline {
     color = c
 }
 
-val wall = listOf(
+val wall = [
     skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.5)),
     skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.28)),
     skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.28)),
     skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.4))
-)
+]
 
 val conduit = fline {
     moveTo(120.0, 1300.0, 1500.0)
@@ -291,7 +291,7 @@ threeInspect(
     channel = "wall-measured",
     height = 520,
     units = "mm",
-    measurements = listOf(
+    measurements = [
         // the build-up: sheathing face to lining face, which is 152 by construction
         ThreeMeasurement(
             ThreeMeasureElement.face(wall[0]),
@@ -305,7 +305,7 @@ threeInspect(
             ThreeMeasureElement.face(wall[3]),
             "clear "
         )
-    )
+    ]
 )
 ```
 
@@ -335,12 +335,12 @@ fun skin(name: String, x: Double, c: Vec4) = fline {
     color = c
 }
 
-val wall = listOf(
+val wall = [
     skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.75)),
     skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.6)),
     skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.6)),
     skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.7))
-)
+]
 
 val view = threeInspect(
     wall,
@@ -384,12 +384,12 @@ fun skin(name: String, x: Double, c: Vec4) = fline {
     color = c
 }
 
-val wall = listOf(
+val wall = [
     skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.7)),
     skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.5)),
     skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.5)),
     skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.6))
-)
+]
 
 val conduit = (0 until 5).map { i ->
     fline {
@@ -471,12 +471,12 @@ fun skin(name: String, x: Double, c: Vec4) = fline {
 }
 
 // x is the depth through the wall, in millimetres. 152 mm of build-up.
-val wall = listOf(
+val wall = [
     skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.5)),
     skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.28)),
     skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.28)),
     skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.4))
-)
+]
 
 val conduits = (0 until 5).map { i ->
     fline {
@@ -499,7 +499,7 @@ val view = threeInspect(
     height = 560,
     units = "mm",
     explode = ThreeExplode(mode = "axis", axis = floatArrayOf(1f, 0f, 0f), sliderMax = 1400.0),
-    measurements = listOf(
+    measurements = [
         // the build-up: 152 by construction, and the figure now says so
         ThreeMeasurement(
             ThreeMeasureElement.face(wall[0]),
@@ -513,7 +513,7 @@ val view = threeInspect(
             ThreeMeasureElement.face(wall[3]),
             "clear "
         )
-    )
+    ]
 )
 
 // And because the explosion is a PARAMETER rather than a literal you retype, the
@@ -621,7 +621,7 @@ val blob = fline {
     onClick = { hit -> status("blob @ ${hit.closestVertexIndex}") }
 }
 
-lines(listOf(triangle, blob), channel = "callbacks2d", w = 760.0, h = 340.0, fitToSize = true)
+lines([triangle, blob], channel = "callbacks2d", w = 760.0, h = 340.0, fitToSize = true)
 ```
 
 In practice this is useful for picking diagram elements, selecting generated forms, or turning a sketch into a tiny control surface without writing separate HTML.
@@ -651,11 +651,11 @@ fun ring(radius: Double, z: Double, color: Vec4, hover: Vec4, name: String): FLi
     onClick = { hit -> status("$name @ ${hit.closestVertexIndex}") }
 }
 
-val stack = listOf(
+val stack = [
     ring(90.0, -80.0, vec(1.0, 0.58, 0.22, 0.70), vec(1.0, 0.82, 0.42, 1.0), "front ring"),
     ring(130.0, 0.0, vec(0.42, 0.92, 1.0, 0.70), vec(0.72, 1.0, 1.0, 1.0), "middle ring"),
     ring(170.0, 90.0, vec(0.74, 0.60, 1.0, 0.70), vec(0.92, 0.82, 1.0, 1.0), "back ring")
-)
+]
 
 threeLines(stack, channel = "callbacks3d", height = 430, editable = false)
 ```
@@ -715,7 +715,7 @@ val debugPoints = shape.copy().apply {
     color = vec(1.0, 0.5, 0.2, 1.0)
 }
 
-lines(listOf(filledOnly, strokedOnly, debugPoints), w = 420.0, h = 320.0, fitToSize = true)
+lines([filledOnly, strokedOnly, debugPoints], w = 420.0, h = 320.0, fitToSize = true)
 ```
 
 ## Building paths: `moveTo`, `lineTo`, `cubicTo`, `close`
@@ -813,10 +813,10 @@ val curve = fline {
 }
 
 // The "handle lines" show how tangents are determined.
-val handles = listOf(
+val handles = [
     seg(p0, c1, pointed = false, color = vec(1.0, 1.0, 1.0, 0.35)).apply { thickness = 2.0 },
     seg(p3, c2, pointed = false, color = vec(1.0, 1.0, 1.0, 0.35)).apply { thickness = 2.0 },
-)
+]
 
 // Dots for endpoints and control points.
 fun dot(p: Vec2, color: Vec4) = fline {
@@ -829,14 +829,14 @@ fun dot(p: Vec2, color: Vec4) = fline {
     this.color = color
 }
 
-val pts = listOf(
+val pts = [
     dot(p0, vec(1.0, 1.0, 1.0, 1.0)),
     dot(p3, vec(1.0, 1.0, 1.0, 1.0)),
     dot(c1, vec(0.4, 1.0, 0.6, 1.0)),
     dot(c2, vec(0.4, 1.0, 0.6, 1.0)),
-)
+]
 
-lines(handles + listOf(curve) + pts, w = 420.0, h = 320.0, fitToSize = true)
+lines(handles + [curve] + pts, w = 420.0, h = 320.0, fitToSize = true)
 ```
 
 ### `close()`
@@ -933,7 +933,7 @@ val box = FLine().data("m l l l z", 340, 200, 460, 200, 460, 300, 340, 300).appl
     color = vec(0.34, 0.82, 1.0, 1.0)
 }
 
-lines(listOf(zig, tri, seg, box), w = 520.0, h = 340.0, fitToSize = true)
+lines([zig, tri, seg, box], w = 520.0, h = 340.0, fitToSize = true)
 ```
 
 Because `+` repeats a group over whatever points remain, one short format can stamp a whole pattern. Here `m c+ z` turns a list of points into a flower of cubic petals, with each `c` taking three of them:
@@ -945,7 +945,7 @@ Because `+` repeats a group over whatever points remain, one short format can st
 val f = fline {
     data(
         format = "m c+ z",
-        parameters = listOf(
+        parameters = [
             vec(200, 130, 0),
 
             // Each repetition of `c` consumes 3 points: c1, c2, end.
@@ -953,7 +953,7 @@ val f = fline {
             vec(340, 180, 0), vec(260, 220, 0), vec(200, 190, 0),
             vec(140, 220, 0), vec(60, 180, 0), vec(100, 130, 0),
             vec(60, 80, 0),  vec(140, 40, 0),  vec(200, 130, 0),
-        )
+        ]
     )
 
     filled = true
@@ -1070,7 +1070,7 @@ val wobble = base.transform { p ->
     color = vec(1.0, 0.4, 0.4, 1.0)
 }
 
-lines(listOf(base, wobble), w = 420.0, h = 260.0, fitToSize = true)
+lines([base, wobble], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Operator transforms: `+`, `-`, `*`
@@ -1103,7 +1103,7 @@ val a = (square * 1.0) + vec(60, 60, 0)
 val b = (square * 1.4) + vec(200, 80, 0)
 val c = (square * 0.7) + vec(320, 140, 0)
 
-lines(listOf(a, b, c), w = 420.0, h = 260.0, fitToSize = true)
+lines([a, b, c], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## Quick path construction helpers
@@ -1213,7 +1213,7 @@ val sync = arrow(
     endHead = true
 )
 
-lines(listOf(left, top, right, flow, feedback, sync), w = 420.0, h = 260.0, fitToSize = true)
+lines([left, top, right, flow, feedback, sync], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Smooth polylines: cubic splines
@@ -1247,7 +1247,7 @@ val spline = cubicSplineFrom(pts2, closed = false, tension = 1f).apply {
     color = vec(0.7, 0.9, 1.0, 1.0)
 }
 
-lines(listOf(poly2, spline), w = 420.0, h = 260.0, fitToSize = true)
+lines([poly2, spline], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Incremental smoothing: `smoothTo(...)` and `tcbTo(...)`
@@ -1286,7 +1286,7 @@ val s2 = fline {
     color = vec(0.4, 1.0, 0.6, 0.9)
 }
 
-lines(listOf(s1, s2), w = 420.0, h = 260.0, fitToSize = true)
+lines([s1, s2], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Biarcs: `biarcTo(...)` and `biarcBetween(...)`
@@ -1363,7 +1363,7 @@ fun dot(p: Vec2, c: Vec4) = fline {
     color = c
 }
 
-lines(listOf(f1, f2, dot(a, vec(1, 1, 1, 1)), dot(b, vec(1, 1, 1, 1))), w = 420.0, h = 260.0, fitToSize = true)
+lines([f1, f2, dot(a, vec(1, 1, 1, 1)), dot(b, vec(1, 1, 1, 1))], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Arcs: `arcTo(...)`
@@ -1462,7 +1462,7 @@ val shear = base.byShearing2D(shearX = 0.35f, shearY = 0.0f).apply {
     color = vec(0.4, 1.0, 0.6, 0.25)
 }
 
-lines(listOf(base, rot, shear), w = 420.0, h = 260.0, fitToSize = true)
+lines([base, rot, shear], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### 3D transforms and projections
@@ -1508,7 +1508,7 @@ val persp = rotated.byPerspectiveProjecting(cameraPos = vec(210f, 130f, -320f)).
     color = vec(1.0, 0.7, 0.2, 0.9)
 }
 
-lines(listOf(ortho, persp), w = 420.0, h = 260.0, fitToSize = true)
+lines([ortho, persp], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## Sampling and traversal
@@ -1620,7 +1620,7 @@ while (d <= total) {
     d += step
 }
 
-lines(listOf(f) + ticks + dots, w = 420.0, h = 260.0, fitToSize = true)
+lines([f] + ticks + dots, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### `sampleByNumber(...)` and `sampleByDistance(...)`
@@ -1651,7 +1651,7 @@ val dots = polylineFrom(f.sampleByNumber(40).map { it.v2 }).apply {
     color = vec(1.0, 0.5, 0.2, 1.0)
 }
 
-lines(listOf(f, dots), w = 420.0, h = 260.0, fitToSize = true)
+lines([f, dots], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## Geometry operations (simple → complex)
@@ -1692,7 +1692,7 @@ val simple = smooth.bySimplifying(epsilon = 2.0f).apply {
     color = vec(1.0, 0.4, 0.4, 0.75)
 }
 
-lines(listOf(noisy, smooth, simple), w = 420.0, h = 260.0, fitToSize = true)
+lines([noisy, smooth, simple], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Cleanup and resampling
@@ -1736,7 +1736,7 @@ val resampled = simplified.byArcLengthParameterizing(spacing = 12f).apply {
     filled = false
 }
 
-lines(listOf(raw, simplified, resampled), w = 420.0, h = 260.0, fitToSize = true)
+lines([raw, simplified, resampled], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Noise utilities (make it organic)
@@ -1778,7 +1778,7 @@ val perlin = base.byPerlinNoising(amplitude = 12f, frequency = 0.02f, octaves = 
     color = vec(0.7, 0.9, 1.0, 0.85)
 }
 
-lines(listOf(clean, gauss, oriented, perlin), w = 420.0, h = 260.0, fitToSize = true)
+lines([clean, gauss, oriented, perlin], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Filtering + interpolation (Gaussian process / EMA / One Euro / alpha-beta / driver pursuit) {#filters-and-gp}
@@ -1917,7 +1917,7 @@ val oneDollar = (raw.byOneDollarFiltering(targetSamples = 64, targetSize = 220f,
 }
 val oneDollarPlaced = oneDollar + vec(210, 140, 0)
 
-lines(listOf(showRaw, ema, oneEuro, ab, gpMean, oneDollarPlaced), w = 420.0, h = 260.0, fitToSize = true)
+lines([showRaw, ema, oneEuro, ab, gpMean, oneDollarPlaced], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 #### Driver smoothing in 2D
@@ -2026,7 +2026,7 @@ val (l, r) = base.byCreatingParallelCurves(distance = 12f, samples = 80)
 val left = l.apply { color = vec(0.4, 1.0, 0.6, 1.0); thickness = 3.0 }
 val right = r.apply { color = vec(1.0, 0.4, 0.4, 1.0); thickness = 3.0 }
 
-lines(listOf(base, left, right), w = 420.0, h = 260.0, fitToSize = true)
+lines([base, left, right], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Dashing
@@ -2097,7 +2097,7 @@ val hitDots = polylineFrom(hits.map { it.v2 }).apply {
     color = vec(1.0, 0.5, 0.2, 1.0)
 }
 
-lines(listOf(a, b, hitDots), w = 420.0, h = 260.0, fitToSize = true)
+lines([a, b, hitDots], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Curvature + tangents/normals
@@ -2135,7 +2135,7 @@ val normals = f.byCreatingNormalLines(samples = 18, length = 18f).onEach {
 }
 
 val highCurvature = f.findHighCurvaturePoints(threshold = 0.02f, samples = 120)
-val corners = if (highCurvature.isEmpty()) emptyList() else listOf(
+val corners = if (highCurvature.isEmpty()) emptyList() else [
     polylineFrom(highCurvature.map { it.v2 }).apply {
         pointed = true
         pointSize = 3.5
@@ -2143,9 +2143,9 @@ val corners = if (highCurvature.isEmpty()) emptyList() else listOf(
         filled = true
         color = vec(1.0, 0.5, 0.2, 1.0)
     }
-)
+]
 
-lines(listOf(f) + tangents + normals + corners, w = 420.0, h = 260.0, fitToSize = true)
+lines([f] + tangents + normals + corners, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Convex hull + inflections
@@ -2183,7 +2183,7 @@ val pieces = scribble.bySplittingAtInflections().mapIndexed { i, p ->
     }
 }
 
-lines(listOf(hull, scribble) + pieces, w = 420.0, h = 260.0, fitToSize = true)
+lines([hull, scribble] + pieces, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## Parameterized operations (vary along the curve)
@@ -2260,7 +2260,7 @@ val qp = fline {
     color = vec(0.4, 1.0, 0.6, 1.0)
 }
 
-lines(listOf(clean, breathing, flared, qp), w = 900.0, h = 520.0, fitToSize = true)
+lines([clean, breathing, flared, qp], w = 900.0, h = 520.0, fitToSize = true)
 ```
 
 ### Curve combination utilities
@@ -2308,7 +2308,7 @@ val projected = messy.byProjectingOnto(circle, samples = 180).apply {
     color = vec(0.4, 1.0, 0.6, 0.85)
 }
 
-lines(listOf(circle, messy, projected), w = 420.0, h = 260.0, fitToSize = true)
+lines([circle, messy, projected], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Wiggling one line along another: `wiggledBy(...)`
@@ -2358,7 +2358,7 @@ val kept = (path + vec(0.0, 220.0)).wiggledBy(wave, subtractChord = false, ampli
     color = vec(1.0, 0.6, 0.2, 0.9); thickness = 2.0
 }
 
-lines(listOf(path, path + vec(0.0, 110.0), path + vec(0.0, 220.0), once, eight, kept),
+lines([path, path + vec(0.0, 110.0), path + vec(0.0, 220.0), once, eight, kept],
     w = 440.0, h = 360.0, fitToSize = true)
 ```
 
@@ -2385,7 +2385,7 @@ val coil = path.wiggledBy(turn, repeats = 30, subtractChord = false, amplitude =
     color = vec(0.4, 0.9, 1.0, 0.9); thickness = 1.5
 }
 
-threeLines(listOf(path, coil), channel = "coil3d", height = 430, editable = false)
+threeLines([path, coil], channel = "coil3d", height = 430, editable = false)
 ```
 
 ## Path operations and fitting
@@ -2426,7 +2426,7 @@ val snippet = a.byExtracting(tStart = 0.8f, tEnd = 1.9f).apply {
     color = vec(1.0, 0.7, 0.2, 0.8)
 }
 
-lines(listOf(a, b, mid, snippet), w = 420.0, h = 260.0, fitToSize = true)
+lines([a, b, mid, snippet], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Contour-aware morphing: `FLineInterpolator`
@@ -2489,10 +2489,10 @@ fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
     color = tint
 }
 
-val ghosts = listOf(
+val ghosts = [
     ink(f.copy(), vec(0.78, 0.9, 1.0, 0.20), 1.8),
     ink(f2.copy(), vec(1.0, 0.76, 0.52, 0.20), 1.8)
-)
+]
 
 val frames = (0 until 10).map { i ->
     val t = i / 9f
@@ -2520,14 +2520,14 @@ This is the basic pattern: two contours in, one reusable interpolator out, then 
 
 
 fun asymmetricStroke() = polylineFrom(
-    listOf(
+    [
         vec(-150, 20),
         vec(-80, -110),
         vec(-10, -30),
         vec(35, 120),
         vec(90, 40),
         vec(150, -60)
-    )
+    ]
 ).apply {
     filled = false
     stroked = true
@@ -2572,7 +2572,7 @@ fun ghost(line: FLine, tint: Vec4) = line.copy().apply {
 val leftShift = vec(-190, 0, 0)
 val rightShift = vec(190, 0, 0)
 
-val panels = listOf(
+val panels = [
     fline {
         rect(-330, -160, 300, 320)
         filled = true
@@ -2585,17 +2585,17 @@ val panels = listOf(
         stroked = false
         color = vec(0.15, 0.12, 0.09, 0.28)
     }
-)
+]
 
 val comparison = panels +
-    listOf(
+    [
         ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + leftShift,
         ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + leftShift,
         vanillaMid + leftShift,
         ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + rightShift,
         ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + rightShift,
         alignedMid + rightShift
-    )
+    ]
 
 lines(comparison, w = 720.0, h = 360.0, fitToSize = true)
 ```
@@ -2657,10 +2657,10 @@ val frames = (0 until 10).map { i ->
     )
 }
 
-val ghosts = listOf(
+val ghosts = [
     ink(f.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift, vec(0.78, 0.9, 1.0, 0.18), 1.8),
     ink(f2.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift, vec(1.0, 0.76, 0.52, 0.18), 1.8)
-)
+]
 
 lines(ghosts + frames, w = 460.0, h = 240.0, fitToSize = true)
 ```
@@ -2747,12 +2747,12 @@ val f = fline {
     color = vec(1.0, 0.7, 0.2, 1.0)
 }
 
-val endDirs = listOf(
+val endDirs = [
     seg(start.v2, (start + vec(60, 0, 0)).v2, pointed = false, color = vec(1.0, 1.0, 1.0, 0.25)).apply { thickness = 2.0 },
     seg(end.v2, (end + vec(-15, -60, 0)).v2, pointed = false, color = vec(1.0, 1.0, 1.0, 0.25)).apply { thickness = 2.0 },
-)
+]
 
-lines(endDirs + listOf(f), w = 420.0, h = 260.0, fitToSize = true)
+lines(endDirs + [f], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 
@@ -2799,7 +2799,7 @@ The interesting behaviour is what happens as the arms grow. `circleArm(theta)` i
 // end tangents are held fixed; only the arm length changes, as a multiple of circleArm.
 val chord = 200.0
 val theta = Math.PI / 4
-val multiples = listOf(0.4, 0.7, 1.0, 1.4, 1.9, 2.4)
+val multiples = [0.4, 0.7, 1.0, 1.4, 1.9, 2.4]
 
 val out = mutableListOf<FLine>()
 multiples.forEachIndexed { i, multiple ->
@@ -2858,9 +2858,9 @@ fit.cubics         // the (control1, control2, end) triples
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/hyperbezier_spline_through_points.png" embed=true}
 :::static
 
-val pts = listOf(
+val pts = [
     vec(40, 70, 0), vec(150, 200, 0), vec(260, 80, 0), vec(370, 210, 0), vec(470, 60, 0)
-)
+]
 
 val loose = hyperbezierThrough(pts, tension = 1.0).apply {
     thickness = 2.5
@@ -2876,7 +2876,7 @@ val dots = pts.map { p ->
         .toFLine(color = vec(1.0, 1.0, 1.0, 0.75), filled = true, stroked = false)
 }
 
-lines(dots + listOf(loose, tight), w = 520.0, h = 260.0, fitToSize = true)
+lines(dots + [loose, tight], w = 520.0, h = 260.0, fitToSize = true)
 ```
 
 Blue is the default `tension = 1.0`; orange is `tension = 0.45`, which shortens the estimated arms and pulls the curve tighter to the polyline. Raising tension past `circleArm` territory is what turns the corners sharp rather than round — the same dial as the panels above, applied to every span at once.
@@ -2919,7 +2919,7 @@ val b = fline {
 val u = a.byUnionWith(b).apply { color = vec(0.4, 1.0, 0.6, 0.40); filled = true; stroked = true; thickness = 3.0 }
 val i = a.byIntersectionWith(b).apply { color = vec(1.0, 0.5, 0.2, 0.55); filled = true; stroked = true; thickness = 3.0 }
 
-lines(listOf(a, b, u, i), w = 420.0, h = 260.0, fitToSize = true)
+lines([a, b, u, i], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Exact booleans and offsets
@@ -2960,7 +2960,7 @@ fun dot(x: Float, y: Float, c: Vec4) = fline {
 }
 
 val out = mutableListOf<FLine>()
-for ((row, op) in listOf(FLineBooleanOp.Union, FLineBooleanOp.Subtract).withIndex()) {
+for ((row, op) in [FLineBooleanOp.Union, FLineBooleanOp.Subtract].withIndex()) {
     for (col in 0..1) {
         val x = 40.0 + col * 260
         val y = 40.0 + row * 190
@@ -3026,11 +3026,11 @@ fun dot(x: Float, y: Float, c: Vec4) = fline {
 val out = mutableListOf<FLine>()
 for (col in 0..1) {
     val x = 30.0 + col * 280
-    for (s in listOf(star(x + 110, 100.0), sCurve(x, 270.0))) {
+    for (s in [star(x + 110, 100.0), sCurve(x, 270.0)]) {
         s.thickness = 1.0
         s.color = vec(1.0, 1.0, 1.0, 0.6)
         out.add(s)
-        for (d in listOf(12f, -12f)) {
+        for (d in [12f, -12f]) {
             val o = if (col == 0) s.byOffsetting(d) else s.byOffsettingExact(d)
             val c = if (col == 0) vec(1.0, 0.45, 0.25, 1.0) else vec(0.3, 0.8, 1.0, 1.0)
             o.thickness = 1.5
@@ -3100,7 +3100,7 @@ val normals = stops.map { loc ->
 }
 
 // the circle that matches the bend, at three of them
-val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
+val bends = [stops[3], stops[7], stops[10]].map { loc ->
     val r = 1.0 / loc.signedCurvature2D
     fline {
         circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
@@ -3109,7 +3109,7 @@ val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
     }
 }
 
-lines(listOf(curve) + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
+lines([curve] + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 The 3D frame is for lines that leave the xy plane. On a helix the principal normal points straight at the axis, the binormal tilts with the rise, and the curvature is the same everywhere. This one is built from cubics, a quarter turn each, so its curvature comes out within a few percent of a true helix's:
@@ -3153,11 +3153,11 @@ fun tick(p: Vec3, d: Vec3?, c: Vec4) = fline {
 }
 val frames = (0..15).flatMap { i ->
     val loc = helix.locationAtFraction(i / 15f)!!
-    listOf(
+    [
         tick(loc.point, loc.tangent, vec(1.0, 0.6, 0.2, 1.0)),
         tick(loc.point, loc.normal, vec(0.4, 0.8, 1.0, 1.0)),
         tick(loc.point, loc.binormal, vec(0.5, 1.0, 0.5, 1.0)),
-    )
+    ]
 }
 
 // a helix has constant curvature r / (r^2 + c^2), with c the rise per radian
@@ -3166,7 +3166,7 @@ val mid = helix.locationAtFraction(0.5f)!!
 println("curvature %.5f, a true helix %.5f".format(mid.curvature, r / (r * r + c * c)))
 println("normal points at the axis: %.3f".format(mid.normal!!.dot(vec(-mid.point.x, -mid.point.y, 0.0).normalize())))
 
-lines(listOf(drawn) + frames, w = 420.0, h = 260.0, fitToSize = true)
+lines([drawn] + frames, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Trimming and splitting by distance
@@ -3209,7 +3209,7 @@ head.apply { thickness = 2.0; color = vec(1.0, 0.6, 0.2, 1.0) }
 
 print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
 
-lines(listOf(curve, head, middle), w = 420.0, h = 260.0, fitToSize = true)
+lines([curve, head, middle], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Crossings, bounds and orientation
@@ -3249,7 +3249,7 @@ val ring = fline {
 }
 
 // where the loop crosses the ring, and where it crosses itself
-val hits = listOf(loop.crossings2D(ring), loop.selfCrossings2D()).flatten().map { it.point }
+val hits = [loop.crossings2D(ring), loop.selfCrossings2D()].flatten().map { it.point }
 val dots = polylineFrom(hits.map { it.v2 }).apply {
     pointed = true
     pointSize = 3.0
@@ -3263,7 +3263,7 @@ val loose = fline { rect(loop.fast2DBounds()); thickness = 1.0; color = vec(1.0,
 
 print("${hits.size} crossings; clockwise on screen: ${ring.isClockwise2D()}")
 
-lines(listOf(loose, tight, ring, loop, dots), w = 420.0, h = 260.0, fitToSize = true)
+lines([loose, tight, ring, loop, dots], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Nearest location
@@ -3292,14 +3292,14 @@ val curve = fline {
 val query = vec(260, 60, 0)
 val closest = curve.nearestLocation(query)!!.point
 
-val marker = polylineFrom(listOf(query.v2, closest.v2)).apply {
+val marker = polylineFrom([query.v2, closest.v2]).apply {
     thickness = 2.0
     color = vec(1.0, 0.4, 0.4, 1.0)
     pointed = true
     pointSize = 3.0
 }
 
-lines(listOf(curve, marker), w = 420.0, h = 260.0, fitToSize = true)
+lines([curve, marker], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Containment and area
@@ -3343,7 +3343,7 @@ val center = fline {
     color = vec(1.0, 0.5, 0.2, 1.0)
 }
 
-lines(listOf(poly, center), w = 420.0, h = 260.0, fitToSize = true)
+lines([poly, center], w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## Java2D bridge
@@ -3387,7 +3387,7 @@ val hitPts = polylineFrom(hits.map { it.v2 }).apply {
     color = vec(0.4, 1.0, 0.6, 1.0)
 }
 
-lines(listOf(circle, diag, hitPts), w = 420.0, h = 320.0, fitToSize = true)
+lines([circle, diag, hitPts], w = 420.0, h = 320.0, fitToSize = true)
 ```
 
 ## Reference

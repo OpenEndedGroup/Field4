@@ -6,7 +6,7 @@ instrument plays. Field runs Csound in-process, through its C library, in two wa
 
 - **as a box language**: set a box's Main Language to Csound, and its children hold `.csd` text.
   The editor highlights it and completes opcodes with their signatures. Launching a box plays it,
-  and Alt-Enter sends single instruments and score lines to the running Csound.
+  and alt/option-Enter sends single instruments and score lines to the running Csound.
 - **from Kotlin**: `csound(orchestra, score)` and `CsoundInstance` hold a Csound inside a Kotlin
   box, for when the Kotlin side is doing most of the work.
 
@@ -69,15 +69,15 @@ something writes the channel. Other Csound hosts may start it at 0, which makes 
 
 | Key | Where | What it does |
 | --- | --- | --- |
-| **Alt-0**, Run, Launch | anywhere | Compiles the orchestra and score into a new Csound of the box's own and plays it, replacing any earlier one. The box runs until it is stopped or the score ends. `f 0 z` in the score keeps Csound running with nothing scheduled. |
-| **Alt-Enter** | a line inside `instr … endin` | Recompiles that whole instrument into the running Csound (`csoundCompileOrc`). Notes already sounding finish with the old definition, and the next event uses the new one. |
-| **Alt-Enter** | a selection of whole instruments | Compiles the selection as it is. |
-| **Alt-Enter** | an orchestra line outside any instrument | Compiles that line (or selection) as global code, which runs once: a new `ftgen` table, a `chn_k` declaration. |
-| **Alt-Enter** | a score line or selection | Reads it into the running Csound now (`csoundReadScore`). Start times count from this moment, so `i "Pluck" 0 1 69 -9` sounds at once. |
-| **Alt-Enter** | `<CsOptions>` | Sends nothing. The box says that options apply at the next launch. |
+| **alt/option-0**, Run, Launch | anywhere | Compiles the orchestra and score into a new Csound of the box's own and plays it, replacing any earlier one. The box runs until it is stopped or the score ends. `f 0 z` in the score keeps Csound running with nothing scheduled. |
+| **alt/option-Enter** | a line inside `instr … endin` | Recompiles that whole instrument into the running Csound (`csoundCompileOrc`). Notes already sounding finish with the old definition, and the next event uses the new one. |
+| **alt/option-Enter** | a selection of whole instruments | Compiles the selection as it is. |
+| **alt/option-Enter** | an orchestra line outside any instrument | Compiles that line (or selection) as global code, which runs once: a new `ftgen` table, a `chn_k` declaration. |
+| **alt/option-Enter** | a score line or selection | Reads it into the running Csound now (`csoundReadScore`). Start times count from this moment, so `i "Pluck" 0 1 69 -9` sounds at once. |
+| **alt/option-Enter** | `<CsOptions>` | Sends nothing. The box says that options apply at the next launch. |
 | Stop | | Ends the performance and frees the Csound. |
 
-Alt-Enter needs the box to be playing, and says so if it is not. Errors from any of these, Csound's
+alt/option-Enter needs the box to be playing, and says so if it is not. Errors from any of these, Csound's
 own messages, are marked on the box line they belong to.
 
 ### Completion
@@ -131,7 +131,7 @@ Rest the cursor on a line to see its note:
 - on a line that declares or uses a channel (`chn_k`, `chnget`, `chnset`, `invalue`, `outvalue`),
   the channel's value in the playing Csound, read live.
 
-The event count comes from the score text, so events sent later with Alt-Enter or from Kotlin are
+The event count comes from the score text, so events sent later with alt/option-Enter or from Kotlin are
 not counted.
 
 With the cursor on `instr Pluck`, the note at the editor's foot counts the score's events for it:
@@ -187,7 +187,7 @@ pluck.setChannel("cutoff", 900)                 // chnget "cutoff" sees it on th
 pluck.setStringChannel("voice", "from Kotlin")  // an S channel
 println(pluck.channel("level"))                 // what chnset last wrote
 
-listOf(57, 60, 64, 69).forEachIndexed { k, note ->
+[57, 60, 64, 69].forEachIndexed { k, note ->
     pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12")   // p-fields from Kotlin values
 }
 

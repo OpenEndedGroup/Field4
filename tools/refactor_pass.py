@@ -18,7 +18,7 @@ import uuid
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 from tools.refactoring.core import (EXCLUDED, PROPERTIES, KotlinEngine, RefactorError, apply_plan,
-    atomic, canonical, confined, digest, group_for, identity, load_plan, load_recipe, lock, make_plan, markdown_prose_enabled, save_json, undo, verify)
+    affected_pattern, rewrite_qualified_text, atomic, canonical, confined, digest, group_for, identity, load_plan, load_recipe, lock, make_plan, markdown_prose_enabled, save_json, undo, verify)
 from tools.refactoring.containers import ContainerError, extract
 from tools.refactoring.diffs import unified_text, compact_changes
 from tools.field_agent import configured_agent, find_executable
@@ -228,6 +228,33 @@ def numbered(code, line=1, radius=5):
     return '\n'.join(f'{i + 1:5}  {lines[i][:1000]}' for i in range(start, end))
 
 
+def reference_excerpt(code, pattern, fallback_line=1, radius=2, limit=8):
+    """Use scanner matches and merge touching context windows into one excerpt."""
+    lines = code.splitlines()
+    matches = sorted({code.count('\n', 0, m.start()) for m in pattern.finditer(code)})[:limit]
+    windows = []
+    for line in matches:
+        start, end = max(0, line - radius), min(len(lines), line + radius + 1)
+        if windows and start <= windows[-1][1]:
+            windows[-1] = (windows[-1][0], max(end, windows[-1][1]))
+        else:
+            windows.append((start, end))
+    return '\n\n'.join('\n'.join(f'{i + 1:5}  {lines[i][:1000]}' for i in range(start, end))
+                         for start, end in windows) if windows else numbered(code, fallback_line)
+
+
+def excerpt_references(excerpt, recipe, pattern):
+    """Browser offsets are UTF-16; keep highlighting identical to scanner classification."""
+    result = []
+    for match in pattern.finditer(excerpt):
+        name = match.group()
+        destination = rewrite_qualified_text(name, recipe)
+        result.append({'start': len(excerpt[:match.start()].encode('utf-16-le')) // 2,
+                       'end': len(excerpt[:match.end()].encode('utf-16-le')) // 2,
+                       'name': name, 'destination': destination if destination != name else None})
+    return result
+
+
 def detail(repo, item_id):
     directory, state = load(repo)
     item = next((i for i in json.loads((Path(state['plan']) / 'review-index.json').read_text()) if i['id'] == item_id), None)
@@ -244,7 +271,7 @@ def item_detail(state, plan_dir, plan, item, *, compact=True):
     working = next(r for r in state['roots'] if r['id'] == item['root'])
     stale = current_hashes(Path(working['path']), item['snapshots']) != item['snapshots']
     snippets = []
-    names = list(plan['recipe']['packages']) + list(plan['recipe']['symbols']) + plan['recipe'].get('splitPackages', [])
+    pattern = affected_pattern(plan['recipe'])
     texts = {}; extracted = {}; excerpts = {}
     for finding in item['findings']:
         path = finding['path']
@@ -265,11 +292,11 @@ def item_detail(state, plan_dir, plan, item, *, compact=True):
                     pass
             if excerpt is None:
                 if path not in excerpts:
-                    matches = [i for i, line in enumerate(text.splitlines(), 1) if any(n in line for n in names)]
-                    excerpts[path] = '\n\n'.join(numbered(text, n, 2) for n in matches[:8])
+                    excerpts[path] = reference_excerpt(text, pattern, finding.get('line', 1))
                 excerpt = excerpts[path] or numbered(text, finding.get('line', 1))
         snippets.append(finding | {'excerpt': excerpt, 'location': location,
-                                  'sourceAvailable': text is not None})
+                                  'sourceAvailable': text is not None,
+                                  'references': excerpt_references(excerpt or '', plan['recipe'], pattern)})
     diffs = []
     for change in root['changes']:
         if change['group'] != item['group']:
@@ -443,7 +470,10 @@ Plan: {state['plan']}
 Only edit files belonging to the listed review groups, or the recipe when the direction requires it.
 Keep document sidecars, metadata and exported examples consistent. Do not edit the immutable plan.
 Do not edit original workspaces, rename sidecar extensions, commit, enqueue, merge or push.
-When a reusable adapter is needed, record the need; leave its implementation to the tool-maintenance pass.
+There is no automatic tool-maintenance pass. If an adapter is genuinely missing, record the exact
+unsupported format, current finding and required tool change as an unresolved implementation task.
+Check existing recipe options and the current plan first; an older adapter note may already be obsolete.
+Do not describe the batch as complete while approved changes remain unimplemented.
 Record a disposition for each item with the CLI below: patch, preserve, adapter, question, or open.
 A patch record means proposed work; it does not claim that the remaining findings or build passed.
 A preserve record requires an explanation; it does not override the migrator's held groups.

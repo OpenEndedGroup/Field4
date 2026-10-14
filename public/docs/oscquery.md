@@ -27,7 +27,7 @@ var on = true
 val q = oscQuery("My piece")
 q.float("/synth/cutoff", 20.0..20000.0, cutoff, "filter cutoff in Hz") { cutoff = it }
 q.bool("/synth/on", on) { on = it }
-q.menu("/scene", listOf("dawn", "dusk", "night")) { scene -> markdown("scene: $scene") }
+q.menu("/scene", ["dawn", "dusk", "night"]) { scene -> markdown("scene: $scene") }
 ```
 
 `oscQuery(name)` starts the service, or reuses it if it is already running. It serves HTTP on port
@@ -142,7 +142,7 @@ import afield.io.osc.query.*
 val q = oscQuery("My piece", httpPort = 0)
 q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
 q.bool("/synth/on", true) { }
-q.menu("/scene", listOf("dawn", "dusk", "night")) { }
+q.menu("/scene", ["dawn", "dusk", "night"]) { }
 
 val self = oscQueryRemote("127.0.0.1", q.httpPort)
 markdown(self.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range}" })

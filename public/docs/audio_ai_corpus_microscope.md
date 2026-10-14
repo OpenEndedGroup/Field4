@@ -56,7 +56,7 @@ fun tracked(label: String, operation: ModelOperation): CompletableFuture<Analysi
         client.awaitAnalysis(accepted)
     }
 
-val lookups = listOf("*Nancy*", "*Candlestick Park*").map { client.assetByFilename(it) }
+val lookups = ["*Nancy*", "*Candlestick Park*"].map { client.assetByFilename(it) }
 CompletableFuture.allOf(*lookups.toTypedArray()).thenCompose {
     val assets = lookups.map { it.join() }
     val jobs = assets.map { asset ->

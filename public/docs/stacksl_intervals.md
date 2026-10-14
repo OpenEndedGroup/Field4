@@ -28,18 +28,18 @@ The width of the bound depends on how much the program can change across the reg
 import afield.lang.stacksl.cpu.StackSLCpu
 import afield.lang.stacksl.cpu.StackSLIntervals
 
-val programs = listOf(
+val programs = [
     "p length 0.5 0.08 pulse white *",
     "uv x 18 * sin 0.5 + 0.5 * palette saturate",
     "uv 6 * noise palette saturate",
     "uv 5 * fbm 0.45 threshold orange * saturate",
-)
-val sizes = listOf(64, 16, 4, 2, 1)
-val table = Table(listOf("program") + sizes.map { "${it}×$it" },
+]
+val sizes = [64, 16, 4, 2, 1]
+val table = Table(["program"] + sizes.map { "${it}×$it" },
     title = "widest channel of the bound, for a square centred on pixel (64, 8) of a 128×128 render")
 for (program in programs) {
     val glsl = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), program)
-    table.row(listOf(program) + sizes.map { n ->
+    table.row([program] + sizes.map { n ->
         val x0 = 64 - n / 2
         val y0 = (8 - n / 2).coerceIn(0, 128 - n)
         val b = StackSLIntervals.enclosePixels(glsl, x0, y0, x0 + n - 1, y0 + n - 1, 128, 128)
@@ -89,7 +89,7 @@ val early = """
     void main() { outColor = vec4(f(fragUV.x)); }
 """.trimIndent()
 
-display("branches", Table(listOf("shader", "pixels", "red channel"), title = "an undecided if runs both arms")
+display("branches", Table(["shader", "pixels", "red channel"], title = "an undecided if runs both arms")
     .row("if (x < 0.5) v = 0.75", "left third", StackSLIntervals.enclosePixels(shader, 0, 0, 20, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
     .row("if (x < 0.5) v = 0.75", "right third", StackSLIntervals.enclosePixels(shader, 43, 0, 63, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
     .row("if (x < 0.5) v = 0.75", "a row across the middle", StackSLIntervals.enclosePixels(shader, 0, 0, 63, 0, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })

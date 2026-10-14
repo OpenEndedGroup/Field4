@@ -233,9 +233,9 @@ showImgGrid(
 )
 showPlaneGrid(
     "the circle it sits on — original untouched: ${ring.glyphs.all { it.isUntransformed }}" to
-        (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
+        ([circle.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }] + onCircle.toFLines(thickness = 1.0)),
     "the cubic it sits on" to
-        (listOf(wave.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }) + onWave.toFLines(thickness = 1.0)),
+        ([wave.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }] + onWave.toFLines(thickness = 1.0)),
     channel = "paths", columns = 2, cellWidth = 430, cellHeight = 430,
 )
 :::endfold
@@ -433,9 +433,9 @@ val km = vec2KMedoids(coarse, k = 6, options = KMedoidsOptions(randomSeed = 11L)
 val layer = ClusterLayer("outline strokes", km.labels)
 showPlaneGrid(
     "outline samples — ${coarse.size} at spacing 18, ${fine.size} at 4.5 (%.2fx for 4x finer)"
-        .format(fine.size.toDouble() / coarse.size) to listOf(layout.toPointFLine(spacing = 18.0, pointSize = 1.1)),
+        .format(fine.size.toDouble() / coarse.size) to [layout.toPointFLine(spacing = 18.0, pointSize = 1.1)],
     "vec2DelaunayGraph over those samples — ${graph.edges.size} edges" to
-        listOf(graph.toFLine(coarse, thickness = 0.8), layout.toPointFLine(spacing = 18.0, pointSize = 0.9)),
+        [graph.toFLine(coarse, thickness = 0.8), layout.toPointFLine(spacing = 18.0, pointSize = 0.9)],
     "vec2KMedoids, k = 6 — distortion %.1f, converged ${km.converged}".format(km.distortion) to
         layer.toFLines(coarse, centers = km.medoids, drawSpokes = false),
     "the outlines the samples came from" to layout.toFLines(thickness = 1.2),

@@ -444,14 +444,14 @@ Python loops over values; counting uses `range(start, stop[, step])`. JavaScript
 
 ### Lists and maps
 
-If you only learn two data structures in Kotlin for everyday Field scripting, learn `List` and `Map`. Kotlin distinguishes between read-only interfaces (`List`, `Map`) and mutable versions (`MutableList`, `MutableMap`). The common constructors are `listOf(...)` and `mapOf(...)`, and the mutable ones are `mutableListOf(...)` and `mutableMapOf(...)`.
+If you only learn two data structures in Kotlin for everyday Field scripting, learn `List` and `Map`. Kotlin distinguishes between read-only interfaces (`List`, `Map`) and mutable versions (`MutableList`, `MutableMap`). Write a list as a literal in square brackets, `[10, 20, 30]`; on its own that is a read-only `List`. Declare a type and the same brackets build that instead: `val ys: MutableList<Int> = [1, 2, 3]`, or `val s: Set<String> = ["a", "b"]`, and `[]` is an empty one. Maps are built with `mapOf(...)` and `mutableMapOf(...)`.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val xs = listOf(10, 20, 30)
+val xs = [10, 20, 30]
 val first = xs[0] // result: 10
 
-val ys = mutableListOf(1, 2, 3)
+val ys: MutableList<Int> = [1, 2, 3]
 ys.add(4)
 ys[0] = 99
 // result: ys is [99, 2, 3, 4]
@@ -623,7 +623,7 @@ The odd Kotlin-specific syntax is that if the _last_ argument to a function is a
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val nums = listOf(1, 2, 3)
+val nums = [1, 2, 3]
 
 val doubled = nums.map { it * 2 } // result: [2, 4, 6]
 

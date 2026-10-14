@@ -344,7 +344,7 @@ val fairTable = table(reverseLast = true, fairly = true)
 :::fold draw the deadlocked table, then compare all three
 fun row(label: String, net: PetriNet) = "| $label | " +
     (if (net.willDeadlock()) "**yes**" else "no") + " | " +
-    net.deadTransitions().ifEmpty { listOf("—") }.joinToString(", ") + " |"
+    net.deadTransitions().ifEmpty { ["—"] }.joinToString(", ") + " |"
 
 showPetriNet(naive, w = 900.0, h = 560.0)
 markdown("main", """

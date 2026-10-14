@@ -25,6 +25,7 @@ import afield.document.properties.MissingInheritedPropertyException
 import afield.document.properties.Reactive
 import afield.document.properties.ReactiveInheritance
 import afield.document.properties.inheritedPropertyRaw
+import afield.document.properties.macro_reactive_prop
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -184,6 +185,26 @@ class ReactivePropsTest {
         }
         val changes = ReactiveRuns.recentEvents().count { it.contains("changed a.reactiveTestDown") }
         assertEquals(2, changes, ReactiveRuns.recentEvents().joinToString("\n"))
+    }
+
+    /**
+     * `syncToProperty` writes with `setPropertyRaw`, not through the delegate. Until 2026-10-14 a
+     * slider bound to a `propDown` property therefore changed it without rerunning its readers,
+     * although `propDown`'s KDoc promised a slider callback would. The raw write is a change only
+     * for a property its box declared Down.
+     */
+    @Test
+    fun aRawWriteToADeclaredDownPropertyIsAChange() {
+        val s = session("raw")
+        val a = boxIn(s, "a")
+        ReactiveRuns.clearEvents()
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, "undeclared name noted")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        ReactiveRuns.noteRawWrite(a, "gain", 0.8, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, "unchanged value noted")
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().any { it.contains("changed a.gain") }, ReactiveRuns.recentEvents().joinToString("\n"))
     }
 
     @Test

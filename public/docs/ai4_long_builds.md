@@ -12,7 +12,7 @@ This box defines one slow stage. It estimates π from sixty billion random point
 a billion, and reports its progress after each batch:
 
 ```diffstatic {data-lang=kotlin}
-val builds = studyBuilds("estimate", listOf(
+val builds = studyBuilds("estimate", [
     StudyBuildStage("pi", "Estimate π", "pi-v1") { context ->
         val random = java.util.SplittableRandom(4)
         val batches = 60
@@ -30,14 +30,14 @@ val builds = studyBuilds("estimate", listOf(
         val samples = batches.toLong() * perBatch
         val estimate = 4.0 * inside / samples
         context.file("estimate.txt").writeText("$estimate\n")
-        StudyBuildProduct(listOf("estimate.txt"),
+        StudyBuildProduct(["estimate.txt"],
             facts = mapOf("samples" to samples, "estimate" to estimate, "error" to Math.abs(estimate - Math.PI)))
     }
-)) { emptyMap() }
+]) { emptyMap() }
 showStudyBuilds("estimate")
 ```
 
-Run the box to get its build card, open the box's AI4 chat (`command/ctrl-4`), and ask for the
+Run the box to get its build card, open the box's AI4 chat (`ctrl/command-4`), and ask for the
 build:
 
 > Run the π estimate build on this box. It takes a few minutes; tell me what it finds.

@@ -540,6 +540,26 @@ check(times("cascade $A") <= 3 && times("cascade $B") <= 3) { evText }
 
 
 @scenario
+def down_external_writer_not_capped(s: Scenario):
+    """A writer outside any cascade (a loop, a slider) that keeps writing is not a cycle: B follows."""
+    s.box("A", "B").connect("A", "B")
+    s.run("A", "propDown<Int>(x)\nx = 0")
+    # B's rerun (300 ms) outlasts the gap between writes (100 ms), so changes keep arriving while
+    # the cascade is still draining: the shape that used to trip the cycle cap.
+    s.run("B", "Thread.sleep(300)\nsetPropertyRaw(\"result\", x)")
+    s.clear()
+    s.ctl(f'''propDown<Int>(x)
+val a = thisBox.named("{s.p('A')}")
+Thread {{ for (i in 1..20) {{ a.x = i; Thread.sleep(100) }} }}.start()''')
+    s.sleep(8.0)
+    s.check('''
+none("cap ")
+expectResult(B, 20)
+check(times("cascade $B") >= 4) { evText }
+''')
+
+
+@scenario
 def down_reader_pulls_up(s: Scenario):
     """A cascade rerun that itself needs a missing value pulls it."""
     s.box("A", "C", "B").connect("A", "B").connect("C", "B")

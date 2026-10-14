@@ -32,10 +32,10 @@ fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
 :::endfold
 
 lines(
-    listOf(
+    [
         panel(30.0, 40.0, 430.0, 430.0, vec(0.08, 0.13, 0.18, 0.56)),
         panel(500.0, 40.0, 500.0, 430.0, vec(0.16, 0.11, 0.08, 0.54)),
-    ) +
+    ] +
         shift(net.drawNetworkGraph(radius = 120.0, nodeR = 18.0), 80.0, 80.0) +
         shift(net.drawStateTransitionGraph(radius = 150.0), 560.0, 55.0),
     channel = "boolean-toggle",
@@ -82,11 +82,11 @@ fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
 :::endfold
 
 lines(
-    listOf(
+    [
         panel(30.0, 40.0, 220.0, 420.0, vec(0.08, 0.13, 0.18, 0.56)),
         panel(290.0, 40.0, 380.0, 420.0, vec(0.10, 0.10, 0.14, 0.56)),
         panel(710.0, 40.0, 620.0, 420.0, vec(0.16, 0.11, 0.08, 0.54)),
-    ) +
+    ] +
         shift(net.drawUnrolled(trajectory, cellSize = 34.0), 72.0, 128.0) +
         shift(net.drawStateTransitionGraph(radius = 125.0), 347.0, 83.0) +
         shift(net.drawAttractorBasins(shown, samplesPerAttractor = 3, cellSize = 18.0), 724.0, 154.0),
@@ -129,13 +129,13 @@ val rows = (1..5).map { k ->
 }
 
 :::fold plot helpers: shared y scale, axes and grid, polylines, square markers
-val maxY = listOf(
+val maxY = [
     rows.maxOf { it.attractors },
     rows.maxOf { it.period },
     rows.maxOf { it.fixed }
-).max() + 0.5
+].max() + 0.5
 
-fun guides() = listOf(
+fun guides() = [
     fline {
         moveTo(80, 580); lineTo(1100, 580)
         moveTo(80, 120); lineTo(80, 580)
@@ -154,7 +154,7 @@ fun guides() = listOf(
         color = vec(1, 1, 1, 0.08)
         thickness = 1.0
     }
-)
+]
 
 fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = fline {
     values.forEachIndexed { i, value ->
@@ -183,14 +183,14 @@ fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
 :::endfold
 
 lines(
-    guides() + listOf(
+    guides() + [
         curve(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 3.0),
         curve(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 3.0),
         curve(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 3.0),
         markers(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 5.0),
         markers(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 5.0),
         markers(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 5.0),
-    ),
+    ],
     channel = "boolean-kauffman",
     w = 1180.0,
     h = 660.0,
@@ -259,11 +259,11 @@ fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
 :::endfold
 
 lines(
-    listOf(
+    [
         panel(30.0, 40.0, 280.0, 420.0, vec(0.08, 0.13, 0.18, 0.56)),
         panel(350.0, 40.0, 470.0, 420.0, vec(0.10, 0.10, 0.14, 0.56)),
         panel(860.0, 40.0, 470.0, 420.0, vec(0.16, 0.11, 0.08, 0.54)),
-    ) +
+    ] +
         shift(candidate.net.drawNetworkGraph(radius = 96.0, nodeR = 17.0), 76.0, 118.0) +
         shift(drawRhythmGrid(natural, cellW = 21.0, cellH = 22.0, stepGap = 5.0, laneGap = 9.0, accentEvery = 4), 390.0, 150.0) +
         shift(drawRhythmGrid(gated, cellW = 21.0, cellH = 22.0, stepGap = 5.0, laneGap = 9.0, accentEvery = 4), 900.0, 150.0),

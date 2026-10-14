@@ -92,7 +92,7 @@ val byRank = topology.elements(2).groupBy { chain.sourceElements(it.id).single()
 val censusRows = byRank.keys.sortedDescending().joinToString("\n") { rank ->
     val group = byRank.getValue(rank)
     val sides = group.map { topology.faceCycle(it.id).size }.distinct().sorted()
-    val seed = listOf("a vertex", "an edge", "a pentagon").getOrElse(rank) { "?" }
+    val seed = ["a vertex", "an edge", "a pentagon"].getOrElse(rank) { "?" }
     "| rank $rank, $seed | ${group.size} | ${sides.joinToString(", ")} |"
 }
 

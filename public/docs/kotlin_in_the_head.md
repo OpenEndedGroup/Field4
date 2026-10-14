@@ -196,7 +196,7 @@ onStart {
     reverb.toDestination()
     synth.connect(reverb)
 
-    val notes = listOf("C4", "E4", "G4", "B4")
+    val notes = ["C4", "E4", "G4", "B4"]
     val transport = Tone.getTransport()
     transport.bpm.value = 96.0
 

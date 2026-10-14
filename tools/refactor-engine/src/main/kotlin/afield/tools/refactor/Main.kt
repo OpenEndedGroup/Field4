@@ -18,6 +18,10 @@ import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.*
 import kotlinx.serialization.json.*
 
+// Generated Kotlin/JS filenames are not qualified Kotlin names in text.
+private val RESOURCE_REFERENCES = setOf("afield.mjs", "afield.mjs.map")
+private val FIELD_URL = Regex("""(?<![\w.+-])afield:/[^\s"'`<>]*""", RegexOption.IGNORE_CASE)
+
 /** Syntax evidence only. Unresolved qualified uses and package splits stay review findings. */
 data class Recipe(
     val packages: Map<String, String>,
@@ -31,6 +35,7 @@ data class Recipe(
     val splitStarImports: Map<String, List<String>> = emptyMap(),
     val scriptImportsKnown: Boolean = false,
     val splitSymbols: Map<String, List<String>> = emptyMap(),
+    val proseReplacements: Map<String, String> = emptyMap(),
 ) {
     private fun prefix(path: String, old: String) = path == old || path.startsWith("$old.")
     private val destinationPackages = packages.values.toSet() + symbols.values.map { it.substringBeforeLast('.') } +
@@ -54,8 +59,15 @@ data class Recipe(
         val owner = knownPackages.filter { prefix(path, it) }.maxByOrNull(String::length)
         return if (owner != null) owner in splitPackages else splitPackages.any { prefix(path, it) }
     }
-    fun affectedText(text: String, includePaths: Boolean = true) = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*")
-        .findAll(text).any { (includePaths || text.getOrNull(it.range.last + 1) != '/') && affected(it.value) }
+    fun affectedText(text: String, includePaths: Boolean = true): Boolean {
+        val urls = FIELD_URL.findAll(text).map { it.range }.toList()
+        return Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*")
+        .findAll(text).any { match ->
+            urls.none { match.range.first in it } && match.value !in RESOURCE_REFERENCES &&
+                !(match.value in roots && text.getOrNull(match.range.last + 1) == '-') &&
+                (includePaths || text.getOrNull(match.range.last + 1) != '/') && affected(match.value)
+        }
+    }
 
     fun moved(path: String): String? {
         if (retained(path) || destinationReference(path)) return null
@@ -75,8 +87,11 @@ data class Recipe(
         if (star && (isKnownPackage(path) || path in splitPackages)) packageMove(path)
         else moved(path) // A class-member wildcard follows its class, including nested classes.
 
-    fun rewriteText(text: String): String = Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+")
-        .replace(text) { match -> if (text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else moved(match.value) ?: match.value }
+    fun rewriteText(text: String): String {
+        val urls = FIELD_URL.findAll(text).map { it.range }.toList()
+        return Regex("(?<![\\w.])[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+")
+        .replace(text) { match -> if (urls.any { match.range.first in it } || match.value in RESOURCE_REFERENCES || text.getOrNull(match.range.last + 1) == '/' || match.value in destinationPackages) match.value else if (match.value in proseReplacements && !text.startsWith(".*", match.range.last + 1)) proseReplacements.getValue(match.value) else moved(match.value) ?: match.value }
+    }
 }
 
 data class Edit(val start: Int, val end: Int, val replacement: String)
@@ -205,9 +220,11 @@ class Engine : AutoCloseable {
             if (!directive.isAllUnder && path in recipe.splitSymbols) {
                 findings += Finding("split-symbol", line(directive.textOffset),
                     "Overloads have assigned destinations; resolve this use: ${recipe.splitSymbols.getValue(path).joinToString()}")
-            } else if (script && directive.aliasName == null && destinationImport in recipe.scriptImports &&
+            } else if (script && (destination != path || split) && directive.aliasName == null && destinationImport in recipe.scriptImports &&
                 importComments.none { it.textOffset < expression.textRange.endOffset }) {
-                // Remove only an identical host import. A star does not prove that a named import
+                // Remove only a migrating import covered by the host. Already-current explicit
+                // imports may belong to language roots or exported sidecars; leave them intact.
+                // A star does not prove that a named import
                 // is redundant: that explicit import might disambiguate two star packages.
                 // Leave surrounding whitespace, semicolons and trailing comments untouched.
                 var end = importComments.minOfOrNull { it.textOffset } ?: directive.textRange.endOffset
@@ -364,7 +381,8 @@ fun main() {
                     config["retainedSymbols"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
                     config["splitStarImports"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty(),
                     config.containsKey("scriptImports"),
-                    config["splitSymbols"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty())
+                    config["splitSymbols"]?.jsonObject?.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }.orEmpty(),
+                    config.mapping("proseReplacements"))
                 val result = engine.rewrite(request.getValue("code").jsonPrimitive.content,
                     request["script"]?.jsonPrimitive?.boolean ?: true, recipe)
                 buildJsonObject {

@@ -1,0 +1,31 @@
+name: reactive_props_up
+description: |
+  Setup for `public/docs/reactive_properties.md`, "A missing value runs its supplier". "Scale"
+  declares `propUp<Double>(scale)` and sets 2.5, counting its runs; "Plot", under Scale, declares
+  the same name and shows it. Only Plot is run: its read finds nothing, runs Scale inside the read,
+  and carries on, so Plot's output reports the value and that Scale ran once.
+operations:
+  - create:
+      box: rp_scale
+      name: Scale
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          propUp<Double>(scale)
+          scale = 2.5
+          prop<Int>(runs, 0)
+          runs = (runs ?: 0) + 1
+  - create:
+      box: rp_plot
+      name: Plot
+      frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          propUp<Double>(scale)
+          prop<Int>(runs, 0)
+          val s = scale
+          val ran = thisBox.named("Scale").runs
+          display("main", "<p>scale = $s (Scale has run $ran time)</p>")
+  - connect: { parent: rp_scale, child: rp_plot }
+  - execute: { box: rp_plot, property: code }
+  - await: {}

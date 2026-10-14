@@ -30,10 +30,10 @@ fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     this.color = color
 }
 
-val frames = listOf(
+val frames = [
     panel(30.0, 40.0, 1030.0, 390.0, vec(0.08, 0.14, 0.20, 0.55)),
     panel(30.0, 500.0, 1030.0, 390.0, vec(0.18, 0.11, 0.07, 0.52)),
-)
+]
 :::endfold
 
 lines(
@@ -226,21 +226,21 @@ val mergeDense =
     SortingNetwork(
         8,
         merge.comparators +
-            listOf(
+            [
                 SortingComparator(0, 1),
                 SortingComparator(2, 3),
                 SortingComparator(4, 5),
                 SortingComparator(6, 7),
-            ),
+            ],
     )
 
 val configs =
-    listOf(
+    [
         Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
         Triple("merge+", mergeDense, "#ffb857"),
         Triple("merge", merge, "#94ffad"),
-    ).flatMapIndexed { familyIndex, (family, initial, hue) ->
-        listOf(0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01).flatMapIndexed { tempIndex, (startTemp, endTemp) ->
+    ].flatMapIndexed { familyIndex, (family, initial, hue) ->
+        [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
             (0 until 3).map { seed ->
                 RunConfig(
                     family = family,

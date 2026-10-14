@@ -11,7 +11,7 @@ from unittest.mock import patch as mock_patch
 
 from tools.refactoring.containers import ContainerError, EdnSpans, edn, extract, markdown, patch, qualified_name_properties, yaml_units
 from tools.refactoring.core import (KotlinEngine, RefactorError, apply_plan, canonical, digest,
-    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern)
+    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern, rewrite_qualified_text)
 
 RECIPE = {'schema': 1, 'id': 'test-move', 'packages': {'old.pkg': 'new.pkg'},
           'symbols': {}, 'splitPackages': [], 'generated': []}
@@ -37,6 +37,23 @@ def metadata(code=SOURCE, sidecar=None):
 
 
 class ContainerTests(unittest.TestCase):
+    def test_dependency_records_are_distinct_from_box_metadata(self):
+        source = ('; keep layout\n{"version" 1 "edges" [\n'
+                  '{"name" "old.pkg.Thing" "mechanism" "FROM_CONTEXT" "count" 7 "matchedName" "renderer"}\n'
+                  '{"name" "old.pkg.Thing" "mechanism" "INHERITANCE" "count" 9}]}\n')
+        result = extract('doc/dependencies.edn', source, PROPS)
+        self.assertEqual(1, len(result.units))
+        unit = result.units[0]
+        self.assertEqual('import old.pkg.Thing\n', unit.code)
+        edited = patch(source, [(unit.start, unit.end, unit.encode('import new.pkg.Thing\n'))])
+        self.assertEqual(source.replace('"old.pkg.Thing"', '"new.pkg.Thing"', 1), edited)
+        with self.assertRaises(ContainerError):
+            extract('doc/dependencies.edn', source.replace('"version" 1', '"version" 2'), PROPS)
+        with self.assertRaises(ContainerError):
+            unit.encode('import new.pkg.*\n')
+        unsupported = extract('dependencies.edn', source.replace('old.pkg.Thing', '[Lold.pkg.Thing;'), PROPS)
+        self.assertEqual('unsupported-dependency-type', unsupported.findings[0]['kind'])
+
     def test_qualified_name_configuration_preserves_layout_and_unrelated_values(self):
         source = '# Names\r\n linalg.package = old.pkg  \r\nurl=https://example.test\r\n'
         result = qualified_name_properties(source, {'linalg.package'})
@@ -84,6 +101,16 @@ class ContainerTests(unittest.TestCase):
         self.assertEqual(len(result.units), 1)
         self.assertEqual(self.transform(text, result), text.replace('old.pkg.X', 'new.pkg.X'))
 
+    def test_exported_text_preamble_is_box_kotlin_not_arbitrary_text(self):
+        source = ('```text [field-property box="box1" name="preamble"]\nimport old.pkg.X\n```\n'
+                  '```text [field-property box="box1" name="notes"]\nimport old.pkg.X\n```\n'
+                  '```text\nimport old.pkg.X\n```\n'
+                  '```python [field-property box="box1" name="preamble"]\nimport old.pkg.X\n```\n')
+        units = markdown(source).units
+        self.assertEqual(1, len(units))
+        self.assertTrue(units[0].box_context)
+        self.assertEqual(source.replace('old.pkg.X', 'new.pkg.X', 1), self.transform(source, markdown(source)))
+
     def test_yaml_block_and_quoted_edit_both_directions(self):
         text = 'operations:\n  - create:\n      properties:\n        code: |- # retain me\n          import old.pkg.X\n          val x = 1\n  - edit:\n      property: code\n      from: "import old.pkg.X\\n"\n      to: "import old.pkg.Y\\n"\n'
         result = yaml_units(text, PROPS)
@@ -120,6 +147,32 @@ class ContainerTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
+    def test_field_urls_are_opaque_but_adjacent_names_still_migrate(self):
+        recipe = dict(copy.deepcopy(RECIPE), packages={'afield.old': 'afield.newplace'},
+                      symbols={}, splitPackages=['afield'])
+        pattern = affected_pattern(recipe)
+        for url in ('afield:/document/box/code', 'afield://document/box/code',
+                    'afield://document/afield.old.Thing?type=afield.old.Other',
+                    'AFIELD:/document/afield.old.Thing'):
+            text = f'fileKey={url} next'
+            with self.subTest(url=url):
+                self.assertIsNone(pattern.search(text))
+                self.assertEqual(text, rewrite_qualified_text(text, recipe))
+        text = '`afield:/document/afield.old.Thing` then afield.old.Thing'
+        self.assertEqual(['afield.old.Thing'], [m.group() for m in pattern.finditer(text)])
+        self.assertEqual('`afield:/document/afield.old.Thing` then afield.newplace.Thing',
+                         rewrite_qualified_text(text, recipe))
+        self.assertEqual('afield', pattern.search('afield: Value').group())
+        self.assertEqual('afield', pattern.search('package afield').group())
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'workspace'; root.mkdir()
+            (root / 'conversation.json').write_text(json.dumps({
+                'log': ['fileKey=afield://function_conversation/function_source/code',
+                        'primary=afield:/document/afield.old.Thing']}))
+            plan = make_plan([(root, False)], recipe, Path(tmp) / 'plan', ImportFixture())
+            self.assertFalse(plan['roots'][0]['findings'])
+            self.assertFalse(plan['roots'][0]['changes'])
+
     def test_affected_references_respect_namespace_and_path_boundaries(self):
         recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'],
                       knownPackages=['old', 'old.stays'], retainedSymbols=['old.Keep'])
@@ -132,6 +185,62 @@ class PlanTests(unittest.TestCase):
                                ('old.pkg.Type/path then old.Other', 'old.Other')):
             with self.subTest(text=text):
                 self.assertEqual(expected, pattern.search(text).group())
+
+    def test_hyphenated_namespace_labels_are_not_packages(self):
+        recipe = dict(copy.deepcopy(RECIPE), packages={}, symbols={'afield.Thing': 'moved.Thing'},
+                      splitPackages=['afield'])
+        pattern = affected_pattern(recipe)
+        for text in ('afield-stacksl-token-comment', 'afield-stacksl-token-*', 'afield-',
+                     'class="afield-panel"', 'data-afield-token'):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+                self.assertEqual(text, rewrite_qualified_text(text, recipe))
+        # Do not hide qualified references next to arithmetic or punctuation.
+        for text, expected in (('afield.Thing-other', 'afield.Thing'),
+                               ('afield.Unknown', 'afield.Unknown'), ('package afield', 'afield')):
+            self.assertEqual(expected, pattern.search(text).group())
+        self.assertEqual('moved.Thing-other', rewrite_qualified_text('afield.Thing-other', recipe))
+        self.assertEqual(['afield.Thing'], [m.group() for m in pattern.finditer(
+            'afield-token followed by afield.Thing')])
+
+    def test_javascript_bundle_filenames_are_not_package_references(self):
+        recipe = dict(copy.deepcopy(RECIPE), packages={'afield': 'moved'}, symbols={}, splitPackages=[])
+        pattern = affected_pattern(recipe)
+        for text in ('afield.mjs', '`afield.mjs`', './afield.mjs', '/afield.mjs?v=2',
+                     'afield.mjs.map', 'import { send } from "./afield.mjs";'):
+            with self.subTest(text=text):
+                self.assertIsNone(pattern.search(text))
+                self.assertEqual(text, rewrite_qualified_text(text, recipe))
+        for text in ('afield.mjsHelper', 'afield.mjs.Factory', 'afield.Server'):
+            self.assertEqual(text, pattern.search(text).group())
+            self.assertEqual(text.replace('afield', 'moved'), rewrite_qualified_text(text, recipe))
+
+    def test_source_roots_and_paths_are_not_package_references(self):
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old'])
+        pattern = affected_pattern(recipe)
+        paths = ['src/jvmMain/kotlin/old', 'src/commonMain/kotlin/old',
+                 'src/jsMain/kotlin/old', 'src/jvmTest/kotlin/old',
+                 'src/jvmMain/kotlin/old/pkg/Thing.kt', '/tmp/old.pkg',
+                 r'src\jvmMain\kotlin\old', r'C:\src\old.pkg']
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertIsNone(pattern.search(f'`{path}`'))
+                self.assertEqual(path, rewrite_qualified_text(path, recipe))
+        text = 'See src/jvmMain/kotlin/old; run old.pkg.Thing then old.Unknown'
+        self.assertEqual(['old.pkg.Thing', 'old.Unknown'], [m.group() for m in pattern.finditer(text)])
+        self.assertEqual('old', pattern.search('package old').group())
+
+    def test_prose_branding_is_exact_and_repeatable(self):
+        recipe = dict(copy.deepcopy(RECIPE), proseReplacements={'afield.four': 'Field 4'})
+        source = 'Use `afield.four`. Keep afield.four.* and afield.four.Renderer and src/afield.four/file.'
+        after = rewrite_qualified_text(source, recipe)
+        self.assertEqual('Use `Field 4`. Keep afield.four.* and afield.four.Renderer and src/afield.four/file.', after)
+        self.assertEqual(after, rewrite_qualified_text(after, recipe))
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / 'recipe.json'; save_json(p, recipe)
+            self.assertEqual(recipe['proseReplacements'], load_recipe(p)['proseReplacements'])
+            recipe['proseReplacements'] = {'afield.four': 'afield.four again'}; save_json(p, recipe)
+            with self.assertRaises(RefactorError): load_recipe(p)
 
     def test_workspace_markdown_scope_is_recursive_and_does_not_expand_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -194,6 +303,34 @@ class PlanTests(unittest.TestCase):
                 self.assertEqual(relevant, root['changes'][0]['held'])
                 diagnostic = next(f for f in root['findings'] if f['kind'] == 'parse-error')
                 self.assertEqual(not relevant, bool(diagnostic.get('retained')))
+
+    def test_parse_error_policy_never_releases_other_errors_or_changed_invalid_units(self):
+        for kind, changed in [('rewrite-parse-error', False), ('parse-error', True), ('container-error', False)]:
+            with self.subTest(kind=kind, changed=changed):
+                class ErrorFixture(ImportFixture):
+                    def rewrite(self, code, script, recipe):
+                        return {'code': code + ('\n' if changed else ''),
+                                'findings': [{'kind': kind, 'detail': 'Must still block'}]}
+                self.write('doc/metadata.edn', metadata(code='val x = 1'))
+                self.write('doc/broken_code_.kt', SOURCE)
+                self.write('doc/AGENTS.md', 'Use `old.pkg.Thing`.\n')
+                recipe = dict(copy.deepcopy(RECIPE), parseErrorPolicy='retain', workspaceMarkdownProse=['**/*.md'])
+                out = self.base / (kind + str(changed))
+                plan = make_plan([(self.root, False)], recipe, out, ErrorFixture())
+                root = plan['roots'][0]
+                self.assertTrue(root['changes'])
+                self.assertTrue(all(c['held'] for c in root['changes']))
+                self.assertTrue(any(f['kind'] == kind and not f.get('retained') for f in root['findings']))
+
+    def test_parse_error_policy_validation(self):
+        path = self.base / 'recipe.json'
+        for policy in ['hold', 'retain', 'ignore-everything', True, None]:
+            save_json(path, dict(copy.deepcopy(RECIPE), parseErrorPolicy=policy))
+            if policy in ('hold', 'retain'):
+                self.assertEqual(policy, load_recipe(path)['parseErrorPolicy'])
+            else:
+                with self.assertRaises(RefactorError):
+                    load_recipe(path)
 
     def test_document_pair_apply_verify_undo_exact_bytes(self):
         sidecar = self.write('doc/box_code_.kt', SOURCE)
@@ -357,6 +494,110 @@ ENGINE = Path(__file__).resolve().parent / 'refactor-engine/build/install/field-
 
 @unittest.skipUnless(ENGINE.exists(), 'standalone engine integration: run tools/refactor.py build-engine first')
 class RealEngineTests(unittest.TestCase):
+    def test_reviewed_import_exception_releases_only_unchanged_exact_unit(self):
+        from tools import refactor_pass as passes
+        code = 'import old.split.mistake\n'
+        yaml = '- execute:\n    property: code\n    code: |\n      import old.split.mistake\n'
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; doc = root / 'doc'; doc.mkdir(parents=True)
+            (doc / 'metadata.edn').write_text(metadata(code='val n = 1'))
+            (doc / 'operations.yaml').write_text(yaml)
+            (doc / 'AGENTS.md').write_text('Use `old.pkg.Thing`.\n')
+            recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old.split'], workspaceMarkdownProse=['**/*.md'])
+            strict = make_plan([(root, False)], recipe, base / 'strict', engine)
+            self.assertTrue(strict['roots'][0]['changes'][0]['held'])
+            finding = next(f for f in strict['roots'][0]['findings'] if f['kind'] == 'unmapped-import')
+            rule = {k: finding[k] for k in ('path', 'unit', 'kind', 'detail')}
+            rule.update(codeSha256=digest(code.encode()), reason='Recorded failed experiment; retain history')
+            recipe['retainedFindings'] = [rule]
+            save_json(base / 'recipe.json', recipe)
+            recipe = load_recipe(base / 'recipe.json')
+            plan = make_plan([(root, False)], recipe, base / 'accepted', engine)
+            self.assertFalse(plan['roots'][0]['changes'][0]['held'])
+            self.assertEqual([], passes.build_index(base, base / 'accepted'))
+            apply_plan(base / 'accepted', offline=True); verify(base / 'accepted', '0')
+            self.assertEqual(yaml, (doc / 'operations.yaml').read_text())
+            self.assertEqual('Use `new.pkg.Thing`.\n', (doc / 'AGENTS.md').read_text())
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], passes.build_index(base, base / 'again'))
+            undo(base / 'accepted', '0')
+            for label, content in [('changed', yaml + '      val n = 2\n'), ('additional', yaml + yaml)]:
+                (doc / 'operations.yaml').write_text(content)
+                changed = make_plan([(root, False)], recipe, base / label, engine)
+                self.assertTrue(changed['roots'][0]['changes'][0]['held'])
+            for key, value in [('kind', 'roundtrip-error'), ('path', '**/operations.yaml'), ('codeSha256', '')]:
+                bad = copy.deepcopy(recipe); bad['retainedFindings'][0][key] = value
+                save_json(base / 'recipe.json', bad)
+                with self.assertRaises(RefactorError):
+                    load_recipe(base / 'recipe.json')
+
+    def test_dependency_edn_and_custom_transcript_properties_migrate_and_roundtrip(self):
+        from tools import refactor_pass as passes
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; root.mkdir()
+            deps = '{"version" 1 "edges" [{"name" "old.pkg.Thing" "mechanism" "FROM_CONTEXT" "count" 3 "reader" "r" "supplier" "s"}]}'
+            yaml = '- edit:\n    property: cameraCheck\n    from: ""\n    to: |\n      import old.pkg.Thing\n      val x = Thing()\n'
+            (root / 'dependencies.edn').write_text(deps)
+            (root / 'operations.yaml').write_text(yaml)
+            recipe = dict(copy.deepcopy(RECIPE), kotlinProperties=['cameraCheck'])
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            self.assertEqual(2, len(plan['roots'][0]['changes']))
+            self.assertFalse(any(c['held'] for c in plan['roots'][0]['changes']))
+            self.assertEqual([], passes.build_index(base, base / 'plan'))
+            apply_plan(base / 'plan', offline=True); verify(base / 'plan', '0')
+            self.assertEqual(deps.replace('old.pkg.Thing', 'new.pkg.Thing'), (root / 'dependencies.edn').read_text())
+            self.assertEqual(yaml.replace('old.pkg.Thing', 'new.pkg.Thing'), (root / 'operations.yaml').read_text())
+            again = make_plan([(root, False)], recipe, base / 'again', engine)
+            self.assertEqual([], again['roots'][0]['changes'])
+            undo(base / 'plan', '0')
+            self.assertEqual(deps, (root / 'dependencies.edn').read_text())
+            self.assertEqual(yaml, (root / 'operations.yaml').read_text())
+
+    def test_retained_parse_error_releases_independent_document_edit(self):
+        from tools import refactor_pass as passes
+        broken = 'import old.pkg.Thing\nfun incomplete() {\n'
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; doc = root / 'doc'; doc.mkdir(parents=True)
+            (doc / 'metadata.edn').write_text(metadata(code=broken, sidecar='broken_code_.kt'))
+            (doc / 'broken_code_.kt').write_text(broken)
+            (doc / 'AGENTS.md').write_text('Use `old.pkg.Thing`.\n')
+            recipe = dict(copy.deepcopy(RECIPE), workspaceMarkdownProse=['**/*.md'])
+            strict = make_plan([(root, False)], recipe, base / 'strict', engine)
+            self.assertTrue(strict['roots'][0]['changes'][0]['held'])
+            recipe['parseErrorPolicy'] = 'retain'
+            plan = make_plan([(root, False)], recipe, base / 'retain', engine)
+            spec = plan['roots'][0]
+            self.assertEqual(['doc/AGENTS.md'], [c['path'] for c in spec['changes']])
+            self.assertFalse(spec['changes'][0]['held'])
+            errors = [f for f in spec['findings'] if f['kind'] == 'parse-error']
+            self.assertTrue(errors)
+            self.assertTrue(all(f.get('retained') and f.get('retentionReason') for f in errors))
+            self.assertEqual([], passes.build_index(base, base / 'retain'))
+            self.assertIn('Retained parse errors (non-blocking', (base / 'retain/report.md').read_text())
+            apply_plan(base / 'retain', offline=True)
+            verify(base / 'retain', '0')
+            self.assertEqual('Use `new.pkg.Thing`.\n', (doc / 'AGENTS.md').read_text())
+            self.assertEqual(broken, (doc / 'broken_code_.kt').read_text())
+
+    def test_exported_preamble_uses_box_split_import_rules_and_roundtrips(self):
+        source = ('```text [field-property box="b" name="preamble"]\n'
+                  'import old.split.*\nval n = 1\n```\n')
+        recipe = dict(copy.deepcopy(RECIPE), splitPackages=['old.split'],
+                      splitStarImports={'old.split': ['new.first', 'new.second']},
+                      boxImports=['new.first.*', 'new.second.*'],
+                      boxSplitStarImports={'old.split': ['new.first', 'new.second']})
+        with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
+            base = Path(tmp); root = base / 'workspace'; root.mkdir()
+            path = root / 'document.md'; path.write_text(source)
+            plan = make_plan([(root, False)], recipe, base / 'plan', engine)
+            self.assertFalse(plan['roots'][0]['changes'][0]['held'])
+            apply_plan(base / 'plan', offline=True)
+            self.assertNotIn('import old.split', path.read_text())
+            self.assertNotIn('import new.', path.read_text())
+            self.assertIn('```text [field-property box="b" name="preamble"]', path.read_text())
+            verify(base / 'plan'); undo(base / 'plan')
+            self.assertEqual(source, path.read_text())
+
     def test_box_split_coverage_excludes_other_platforms_and_requires_host_imports(self):
         with tempfile.TemporaryDirectory() as tmp, KotlinEngine(ENGINE) as engine:
             base = Path(tmp)

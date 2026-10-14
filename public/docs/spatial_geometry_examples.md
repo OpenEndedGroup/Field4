@@ -97,7 +97,7 @@ val hullLine = polylineFrom(hull.hullPoints, 0, closed = true).also {
 
 showPlaneGrid(
     "vec2DelaunayTriangles — the faces\n${triangles.size} triangles, expected 2n-2-h = $trianglesExpected" to
-        listOf(frame, delaunayTrianglesToFLine(sites, triangles, color = vec(0.55, 0.70, 0.88, 0.6)), cloud),
+        [frame, delaunayTrianglesToFLine(sites, triangles, color = vec(0.55, 0.70, 0.88, 0.6)), cloud],
     "vec2VoronoiDiagram — the dual\n${voronoi.cells.size} cells for $n sites, $bounded of them wholly inside this window" to
         listOf(frame, *voronoi.toFLines(palette = okhslSet(n, 0.7, 0.62, 0.9f), thickness = 1.2).toTypedArray(), cloud),
     "both, plus vec2ConvexHull\n${delaunay.edges.size} Delaunay edges, expected 3n-3-h = $edgesExpected; $h sites on the hull" to
@@ -176,17 +176,17 @@ and one site much heavier than the rest.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/apollonius.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
 // Sites are (x, y, weight). Same five positions in all three panels; only the weights change.
-val positions = listOf(
+val positions = [
     vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
-)
+]
 val clip = CircularDirichlet.Aabb(vec(-3.4, -3.4), vec(4.6, 4.6))
 
 fun diagramOf(weights: List<Double>) =
     CircularDirichlet.build(positions.mapIndexed { i, p -> vec(p.x, p.y, weights[i]) })
 
 val equal = diagramOf(List(5) { 1.0 })
-val mixed = diagramOf(listOf(1.0, 1.35, 0.8, 1.1, 1.6))
-val swallowed = diagramOf(listOf(1.0, 2.6, 1.0, 1.0, 1.0))
+val mixed = diagramOf([1.0, 1.35, 0.8, 1.1, 1.6])
+val swallowed = diagramOf([1.0, 2.6, 1.0, 1.0, 1.0])
 
 // With equal weights every bisector degenerates to a straight line: a line only when the weights
 // match. These two counts go into the captions below.
@@ -271,9 +271,9 @@ The sweep below is an `animate { }` reading `AnimationClock`, described in
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_geometry_examples/apollonius_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="apollonius-weight-sweep" alt="an Apollonius diagram of five sites with one site's weight rising from 1.0 to 2.7 and falling back, its straight bisectors bowing into circular arcs that grow until two neighbouring cells pinch shut into complete discs, then re-open and flatten"}
 :::static
 :::fold the same five sites, a fixed window, the palette, and the clock
-val positions = listOf(
+val positions = [
     vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
-)
+]
 val clip = CircularDirichlet.Aabb(vec(-3.4, -3.4), vec(4.6, 4.6))
 // A FIXED window, not the default fit-to-contents. Left to fit each frame's own bounds the picture
 // would rescale as the arcs swell, and the sweep would appear to stand still — the same trap that
@@ -352,9 +352,9 @@ uses the same machinery to outline a stroke.
 :::static
 // Six sites; the field is "how much nearer is the closest site than the second closest", which is
 // zero exactly on the Voronoi seams and grows into the middle of each cell.
-val sites = listOf(
+val sites = [
     vec(-1.6, -0.9), vec(1.4, -1.2), vec(2.0, 1.1), vec(-0.2, 1.7), vec(-2.1, 0.9), vec(0.4, -0.1),
-)
+]
 val gap: ScalarField2D = { x, y ->
     val d = sites.map { s -> kotlin.math.hypot(x - s.x, y - s.y) }.sorted()
     d[1] - d[0]
@@ -364,7 +364,7 @@ val gap: ScalarField2D = { x, y ->
 // Marching squares finds *sign changes*, so iso = 0.0 finds no contours, which is
 // correct. A small positive level instead traces each cell shrunk inwards by that margin,
 // and raising it shrinks them further. That is the useful knob.
-val levels = listOf(0.05, 0.35, 0.8, 1.4)
+val levels = [0.05, 0.35, 0.8, 1.4]
 val byLevel = levels.map { iso -> iso to generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, iso) }
 val atZero = generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, 0.0)
 
@@ -497,16 +497,16 @@ fun dotted(
     }
 }
 
-val warm = listOf(vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95),
-                  vec(0.98, 0.55, 0.62, 0.95), vec(0.6, 1.0, 0.72, 0.95))
+val warm = [vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95),
+                  vec(0.98, 0.55, 0.62, 0.95), vec(0.6, 1.0, 0.72, 0.95)]
 
 showPlaneGrid(
     "f(x,y) = x at iso 0, grid aligned on x = 0\n${planeContours.size} contour of ${planeContours.sumOf { it.size }} points" to
-        (listOf(gridLines(-1.0, 1.0, -1.0, 1.0, 4, 4)) + dotted(planeContours, -1.0, 1.0, -1.0, 1.0, warm, 0.4)),
+        ([gridLines(-1.0, 1.0, -1.0, 1.0, 4, 4)] + dotted(planeContours, -1.0, 1.0, -1.0, 1.0, warm, 0.4)),
     "unit circle at nx = 16, aligned\n1 loop of ${aligned[0].size} points, perimeter %.4f vs 2pi = %.4f".format(perimeter(aligned[0]), 2 * PI) to
-        (listOf(gridLines(-2.0, 2.0, -2.0, 2.0, 16, 16)) + dotted(aligned, -2.0, 2.0, -2.0, 2.0, warm, 0.2)),
+        ([gridLines(-2.0, 2.0, -2.0, 2.0, 16, 16)] + dotted(aligned, -2.0, 2.0, -2.0, 2.0, warm, 0.2)),
     "f = x*y at iso 0 — the saddle cell\n${branches.size} branches of ${branches.map { it.size }.joinToString(" and ")} points" to
-        (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 8, 8)) + dotted(branches, -1.05, 1.03, -1.02, 1.07, warm, 0.2)),
+        ([gridLines(-1.05, 1.03, -1.02, 1.07, 8, 8)] + dotted(branches, -1.05, 1.03, -1.02, 1.07, warm, 0.2)),
     columns = 2,
     cellWidth = 430,
     cellHeight = 280,
@@ -585,8 +585,8 @@ fun saddleValue(v: List<Double>, iso: Double = 0.0): Double {
 }
 
 // Same sign pattern in both, but the DEEP diagonal moves. That is what the decider reads.
-val deepInside = listOf(-3.0, 1.0, -3.0, 1.0)   // saddle -1: the inside joins through the centre
-val deepOutside = listOf(-1.0, 3.0, -1.0, 3.0)  // saddle +1: the outside joins, so the cuts move
+val deepInside = [-3.0, 1.0, -3.0, 1.0]   // saddle -1: the inside joins through the centre
+val deepOutside = [-1.0, 3.0, -1.0, 3.0]  // saddle +1: the outside joins, so the cuts move
 
 val insideCut = generateIsoContours(oneCell(deepInside), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)
 val outsideCut = generateIsoContours(oneCell(deepOutside), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)
@@ -597,7 +597,7 @@ val outsideCut = generateIsoContours(oneCell(deepOutside), 0.0, 1.0, 0.0, 1.0, 1
 fun cutCentres(cuts: List<List<Vec2>>) = cuts.map { c ->
     "%.2f,%.2f".format((c[0].x + c[1].x) / 2.0, (c[0].y + c[1].y) / 2.0)
 }.sorted()
-val negationIsInvariant = listOf(deepInside, deepOutside).all { v ->
+val negationIsInvariant = [deepInside, deepOutside].all { v ->
     cutCentres(generateIsoContours(oneCell(v), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)) ==
         cutCentres(generateIsoContours(oneCell(v.map { -it }), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0))
 }
@@ -611,7 +611,7 @@ fun tieNumerator(nx: Int): Double {
     for (i in 0 until nx) for (j in 0 until nx) {
         val a = -1.05 + i * dx; val c = a + dx
         val b = -1.02 + j * dy; val d = b + dy
-        val v = listOf(a * b, c * b, c * d, a * d)
+        val v = [a * b, c * b, c * d, a * d]
         val alternates = (v[0] < 0) != (v[1] < 0) && (v[1] < 0) != (v[2] < 0) && (v[2] < 0) != (v[3] < 0)
         if (alternates) return v[0] * v[2] - v[1] * v[3]
     }
@@ -633,10 +633,10 @@ fun cellFigure(v: List<Double>, cuts: List<List<Vec2>>): List<FLine> {
         color = vec(0.34, 0.42, 0.54, 0.7)
         thickness = 1.0
     }
-    val corners = listOf(vec(0.0, 0.0), vec(1.0, 0.0), vec(1.0, 1.0), vec(0.0, 1.0))
+    val corners = [vec(0.0, 0.0), vec(1.0, 0.0), vec(1.0, 1.0), vec(0.0, 1.0)]
     corners.forEachIndexed { i, p ->
         out += pointCloudFLine(
-            listOf(p),
+            [p],
             color = if (v[i] < 0.0) insideColor else outsideColor,
             pointSize = 3.0,
         )
@@ -657,7 +657,7 @@ fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, n: Int) = fline {
 }
 
 fun branchLines(contours: List<List<Vec2>>): List<FLine> {
-    val palette = listOf(vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95))
+    val palette = [vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95)]
     return contours.mapIndexed { i, c ->
         polylineFrom(c, 0, closed = false).also {
             it.color = palette[i % palette.size]; it.thickness = 2.4
@@ -676,9 +676,9 @@ showPlaneGrid(
     "−1 / +3 / −1 / +3   deep outside\nsaddle ${"%+.3f".format(saddleValue(deepOutside))} — same signs, other diagonal" to
         cellFigure(deepOutside, outsideCut),
     "f = x·y at nx = 8 — a genuine tie\nnumerator ${"%+.1e".format(tieNumerator(8))} = zero; ${sizes(tie8)} points" to
-        (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 8)) + branchLines(tie8)),
+        ([gridLines(-1.05, 1.03, -1.02, 1.07, 8)] + branchLines(tie8)),
     "…at nx = 32, same tie, same pairing\nnumerator ${"%+.1e".format(tieNumerator(32))}; ${sizes(tie32)} points" to
-        (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 32)) + branchLines(tie32)),
+        ([gridLines(-1.05, 1.03, -1.02, 1.07, 32)] + branchLines(tie32)),
     columns = 2,
     cellWidth = 430,
     cellHeight = 260,
@@ -729,12 +729,12 @@ val field: ScalarField2D = { x, y ->
 val x0 = -3.2; val x1 = 3.2; val y0 = -1.9; val y1 = 1.9
 val window = Rect(-3.0, -1.7, 6.0, 3.4)
 val peakDots = pointCloudFLine(
-    listOf(vec(1.4, 0.0), vec(-1.4, 0.0)), color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.4,
+    [vec(1.4, 0.0), vec(-1.4, 0.0)], color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.4,
 )
 val saddleDot = pointCloudFLine(
-    listOf(vec(0.0, 0.0)), color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
+    [vec(0.0, 0.0)], color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
 )
-val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
+val byIndex = [vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95)]
 // Match the eight-second fence: offline capture advances this clock by exactly 1 / fps per frame.
 val sweepSeconds = 8.0
 val started = AnimationClock.nowSeconds()
@@ -807,13 +807,13 @@ all of them. Watch what each strategy does with that one point.
 // Three tight Gaussian blobs, 28 points each, centres 2.4 apart. Then one stray, far from all three.
 // The only interesting thing about this cloud is that 85th point.
 val rng = java.util.Random(7)
-val blobCentres = listOf(vec(0.0, 0.0), vec(2.4, 0.2), vec(1.2, 2.2))
+val blobCentres = [vec(0.0, 0.0), vec(2.4, 0.2), vec(1.2, 2.2)]
 val blobs = blobCentres.flatMap { c ->
     List(28) { vec(c.x + rng.nextGaussian() * 0.30, c.y + rng.nextGaussian() * 0.30) }
 }
 val stray = vec(9.0, 8.0)
 // NOT `blobs + stray`: in Field, `List<Vec2> + Vec2` is `FLineGeometry`'s elementwise operator and
-// TRANSLATES all 84 points by (9, 8) rather than appending an 85th. `+ listOf(stray)` is worse still
+// TRANSLATES all 84 points by (9, 8) rather than appending an 85th. `+ [stray]` is worse still
 // — that overload zips two equal-length lists. Append explicitly.
 val points = buildList { addAll(blobs); add(stray) }
 val window = Rect(-1.4, -1.4, 11.2, 10.2)   // shared by all four panels, so they are comparable
@@ -933,10 +933,10 @@ the second.
 // happen. n = 83, and there is no "right" answer, which is the point.
 val rng = java.util.Random(23)
 val band = { y0: Double -> (0 until 40).map { i -> vec(i * 0.25 + rng.nextDouble() * 0.1, y0 + rng.nextDouble() * 0.28) } }
-val bridge = listOf(vec(4.4, 0.62), vec(4.9, 0.78), vec(5.4, 0.95))
+val bridge = [vec(4.4, 0.62), vec(4.9, 0.78), vec(5.4, 0.95)]
 // NB `flatten()`, not `+`: on List<Vec2> the plus operator is *elementwise vector addition*, so
 // `band(0.0) + bridge` is an IllegalArgumentException about mismatched list sizes, not a concat.
-val banded = listOf(band(0.0), band(1.5), bridge).flatten()
+val banded = [band(0.0), band(1.5), bridge].flatten()
 
 // Every linkage, cut at the same k. The ONLY thing that varies between panels is the linkage.
 val cuts = AgglomerativeLinkage.entries.map { linkage ->
@@ -960,7 +960,7 @@ val singleAtTwoLargest = (0 until singleAtTwo.clusterCount).maxOf { singleAtTwo.
 :::fold draw the input and all seven cuts
 fun panel(cut: ClusterLayer) = cut.toFLines(banded, drawSpokes = false, pointSize = 1.5)
 
-val inputPanel = listOf(pointCloudFLine(banded, color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.5))
+val inputPanel = [pointCloudFLine(banded, color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.5)]
 val frame = Rect(-0.4, -0.4, 10.6, 2.6)
 
 showPlaneGrid(
@@ -1124,10 +1124,10 @@ val cool = okhslSet(9, saturation = 0.5, lightness = 0.72)
 val sliced = sliceLines(lattice, 1.5, warm)
 val cubicSlice = sliceLines(cubicLattice, 1.2, cool)
 
-val flatLines = listOf(
+val flatLines = [
     flat2d.toFLines(),
-    listOf(pointCloudFLine(flattened, color = vec(1.0, 0.9, 0.5, 0.9), pointSize = 1.6)),
-).flatten()
+    [pointCloudFLine(flattened, color = vec(1.0, 0.9, 0.5, 0.9), pointSize = 1.6)],
+].flatten()
 // One window for all three panels, so they are directly comparable and no stray clip-box line can
 // set the scale.
 val sliceWindow = Rect(-0.25, -0.25, 3.5, 3.5)

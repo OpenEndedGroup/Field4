@@ -45,11 +45,11 @@ val source = RenderToTexture(renderer) {
     height = inputSize.height
     useDepth = true
     colorAttachments = 3
-    colorFormats = listOf(
+    colorFormats = [
         VK_FORMAT_R16G16B16A16_SFLOAT, // opaque linear HDR color
         VK_FORMAT_R32_SFLOAT,         // sampled projected depth
         VK_FORMAT_R32G32_SFLOAT       // current → previous motion, input pixels
-    )
+    ]
 }
 val sceneModule = moduleHere {
     source.apply()

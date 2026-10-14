@@ -77,7 +77,7 @@ import java.nio.file.Path
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_render_analysis")
 val wav = WavFloatArrayLoader.loadWavToFloatArray(File(folder, "pat-dirt-study.wav").absolutePath)
-val previews = listOf("beats", "pitch_mono", "pitch_poly").map { json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText()) }
+val previews = ["beats", "pitch_mono", "pitch_poly"].map { json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText()) }
 val sync = "docs-real-pat"
 val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate, options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync), wavBytes = File(folder, "pat-dirt-study.wav").readBytes(), label = "Pat through pinned Dirt samples · 12 cycles at 1.6 cps")
 display("analysis", source + analysisPreviewDashboardHtml(previews, width = 1040, panelHeight = 210, syncGroup = sync))

@@ -185,10 +185,10 @@ long quieting-down toward something stationary.
 // Both boards are integer-upscaled to the same 384 pixels, so a cell is a block you can count:
 // twenty-four pixels for the glider's 16-cell torus, six for the R-pentomino's 64-cell walled
 // board.
-fun boards(g: IntGrid, r: IntGrid, n: Int) = listOf(
+fun boards(g: IntGrid, r: IntGrid, n: Int) = [
     "glider, gen " + n to g.toImg(2).upscaleNearest(24),
     "R-pent " + n + ": " + r.population() + " live" to r.toImg(2).upscaleNearest(6)
-)
+]
 :::endfold
 
 // 400 generations over 200 displayed frames: TWO generations per frame. Slower than every other
@@ -258,12 +258,12 @@ println("rule 30 centre column: " + col30.count { it == 1 } + "/600 ones, longes
 :::fold draw four of the 256 space-time diagrams, time downward
 showImg(
     montage(
-        listOf(
+        [
             "rule 90 = Pascal mod 2" to rule90.toImg(2),
             "rule 30" to elementaryCa(30, 257, 128).toImg(2),
             "rule 110 (universal)" to elementaryCa(110, 257, 128, IntArray(257) { if (it % 13 == 0) 1 else 0 }).toImg(2),
             "rule 184 (density-conserving)" to traffic.toImg(2)
-        ),
+        ],
         columns = 2, cellSide = 300
     )
 )
@@ -298,12 +298,12 @@ universality has to be built out of. Rule 184 just shifts, forever, conserving i
 :::fold compute the four space-time diagrams once, in full
 // Compute the four space-time diagrams once, in full: 257 cells wide, 128 generations tall.
 val seedRow = IntArray(257) { if ((it * 7919) % 3 == 0) 1 else 0 }
-val diagrams = listOf(
+val diagrams = [
     "rule 90" to elementaryCa(90, 257, 128).toImg(2),
     "rule 30" to elementaryCa(30, 257, 128).toImg(2),
     "rule 110" to elementaryCa(110, 257, 128, IntArray(257) { if (it % 13 == 0) 1 else 0 }).toImg(2),
     "rule 184" to elementaryCa(184, 257, 128, seedRow).toImg(2)
-)
+]
 :::endfold
 
 // 128 generations over 128 displayed frames: ONE row of every diagram per frame. The upscale comes
@@ -379,12 +379,12 @@ println("correlation length: labyrinth " + "%.2f".format(settled.toImg(rule.stat
 val palette = cyclicPalette(rule.states)
 showImg(
     montage(
-        listOf(
+        [
             "gen 0 (soup)" to soup.toImg(palette),
             "gen 40" to soup.stepTimes(rule, 40).toImg(palette),
             "gen 400" to settled.toImg(palette),
             "excitable, gen 200" to exSettled.toImg(cyclicPalette(ex.states))
-        ),
+        ],
         columns = 2, cellSide = 280
     )
 )
@@ -425,10 +425,10 @@ you cannot see any of that in a photograph of one.
 // pixels to a cell, nearest-neighbour, so the bands are countable and the encoder sees flat blocks.
 val pal = cyclicPalette(CYCLIC_LABYRINTH.states)
 val exPal = cyclicPalette(CYCLIC_EXCITABLE.states)
-fun soups(a: IntGrid, b: IntGrid, n: Int) = listOf(
+fun soups(a: IntGrid, b: IntGrid, n: Int) = [
     "labyrinth, gen " + n to a.toImg(pal).upscaleNearest(3),
     "excitable, gen " + n to b.toImg(exPal).upscaleNearest(3)
-)
+]
 :::endfold
 
 // Two cyclic rules from the same kind of soup, stepped together so the schedule is shared:
@@ -489,12 +489,12 @@ Turing instability's short-scale advantage is gone and the same seed, the same r
 // one connected structure dominates.
 val side = 128
 val steps = 6000
-val runs = listOf(
+val runs = [
     "spots 0.030/0.062" to GRAY_SCOTT_SPOTS,
     "worms 0.037/0.060" to GRAY_SCOTT_WORMS,
     "maze 0.029/0.057" to GRAY_SCOTT_MAZE,
     "holes 0.039/0.058" to GRAY_SCOTT_HOLES
-).map { (label, p) -> label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps) }
+].map { (label, p) -> label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps) }
 for ((label, end) in runs) println(label + " -> " + end.v.morphology())
 
 // Two controls. v = 0 is a fixed point of the equations, so an unseeded field never patterns;
@@ -509,7 +509,7 @@ println("CONTROL Du == Dv -> " + equalD.v.morphology())
 :::fold draw the four regimes and the two controls, all on one fixed magma range
 showImg(
     montage(
-        (runs + listOf("CONTROL no seed" to unseeded, "CONTROL Du == Dv" to equalD))
+        (runs + ["CONTROL no seed" to unseeded, "CONTROL Du == Dv" to equalD])
             .map { (label, s) -> label to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(2) },
         columns = 3, cellSide = 260
     )
@@ -572,7 +572,7 @@ Those five events are not spread evenly through the 6000 steps, so the clip is n
 // animation of a growing pattern appear to stand still, and it is the single easiest way to turn
 // a reaction-diffusion clip into a lie.
 fun view(s: GrayScottState, n: Int) =
-    listOf("maze - step " + n + " of 6000" to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(3))
+    ["maze - step " + n + " of 6000" to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(3)]
 :::endfold
 
 // The `maze` preset, the same 6000 steps the figure above measures, over 140 displayed frames --
@@ -662,7 +662,7 @@ println("CONTROL, growth window at B4/S234: difference " +
 
 // The continuous regime, reported as a measured phase trichotomy rather than as a named creature:
 // this file ships no published Lenia initial pattern, so it claims none.
-val runs = listOf(0.06, 0.14).map { mu ->
+val runs = [0.06, 0.14].map { mu ->
     val r = LeniaPresets.ring(mu, sigma = 0.017, radius = 8, dt = 0.12)
     mu to leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
 }
@@ -674,12 +674,12 @@ println("a growth bell positive over the whole unit interval -> " + sat)
 :::fold draw the discrete limit, the kernel and the three phases on a fixed inferno range
 showImg(
     montage(
-        listOf(
+        [
             "discrete limit == Life" to field.upscaleNearest(8),
             "ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10)
-        ) + runs.map { (mu, run) ->
+        ] + runs.map { (mu, run) ->
             "mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3)
-        } + listOf("wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)),
+        } + ["wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)],
         columns = 3, cellSide = 280
     )
 )
@@ -719,10 +719,10 @@ than it gains and runs down to nothing. Same code, same seed, one number.
 // inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
 // is measured while you watch. An auto-ranged field that saturates renders black and looks
 // the same as one that has died.
-fun fields(x: Img, y: Img, n: Int) = listOf(
+fun fields(x: Img, y: Img, n: Int) = [
     "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
     "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4)
-)
+]
 :::endfold
 
 // Same seed, same ring kernel, one number different: where the growth window is centred.
@@ -802,12 +802,12 @@ println("mean speed " + "%.2f".format(flock.meanSpeed()) + " of a " + params.max
 :::fold draw the four populations with a five-unit motion streak behind each agent
 showImg(
     montage(
-        listOf(
+        [
             "gen 0: order " + "%.2f".format(start.order()) to start.toImg(1.4, tail = 5.0),
             "900 steps: " + "%.2f".format(flock.order()) to flock.toImg(1.4, tail = 5.0),
             "no alignment: " + "%.2f".format(noAlign.order()) to noAlign.toImg(1.4, tail = 5.0),
             "no separation" to noSep.toImg(1.4, tail = 5.0)
-        ),
+        ],
         columns = 2, cellSide = 300
     )
 )
@@ -842,10 +842,10 @@ measured, because `order()` reads the velocity array and not the picture.
 // One pixel per domain unit, with an 8-unit motion streak behind each agent -- long enough to join
 // up at nine units of travel per frame. `order()` reads the velocity array, so neither choice
 // touches what is measured; the number in each caption is computed fresh every frame.
-fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = listOf(
+fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = [
     "flock " + n + ": order " + "%.2f".format(a.order()) to a.toImg(1.0, tail = 8.0),
     "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 8.0)
-)
+]
 :::endfold
 
 // The same initial state, twice, stepped together -- so the ONLY difference between the two panels
@@ -909,10 +909,10 @@ println("blind   morphology: " + blind.trail.normalized().morphology())
 :::fold draw both trail fields in magma
 showImg(
     montage(
-        listOf(
+        [
             "sensing" to sensing.trail.normalized().colormap("magma"),
             "CONTROL: sensing off" to blind.trail.normalized().colormap("magma")
-        ),
+        ],
         columns = 2, cellSide = 340
     )
 )
@@ -963,10 +963,10 @@ uniform, at a share that stays near a fifth of the sensing run's.
 // deposit / (1 - decay) = 62.5. A lower ceiling clips the network to flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
 val p = PhysarumParams()
 val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
-fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = listOf(
+fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = [
     "sensing " + n + "  " + "%.3f".format(a.trail.topShare(0.05)) to a.trail.colormap("magma", 0f, ceiling),
     "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling)
-)
+]
 :::endfold
 
 // Sensing and blind, from the same seed, stepped together: 400 steps over 140 displayed frames,
@@ -1049,11 +1049,11 @@ println("CONTROL uniform sprinkle dimension " + "%.3f".format(sprinkleFit.dimens
 :::fold draw all three clusters, the first two coloured by arrival order
 showImg(
     montage(
-        listOf(
+        [
             "DLA: D = " + "%.2f".format(fit.dimension) to dla.arrivalOrderImg().colormap("turbo"),
             "Eden: D = " + "%.2f".format(edenFit.dimension) to eden.arrivalOrderImg().colormap("turbo"),
             "sprinkle: D = " + "%.2f".format(sprinkleFit.dimension) to sprinkle.mask
-        ),
+        ],
         columns = 3, cellSide = 280
     )
 )
@@ -1117,8 +1117,8 @@ val ch = (dla.points.maxOf { it.y }.toInt() + pad + 1 - y0).coerceAtMost(300 - y
 // the colour it arrived with; `arrivalOrderImg` normalises by its own count and would re-map the
 // newest particle to the top of turbo on every frame.
 fun cluster(dla: Aggregate, n: Int) =
-    listOf("particles " + n + " of " + dla.points.size to
-        dla.arrivalPrefixImg(n).crop(x0, y0, cw, ch).colormap("turbo", 0f, 1f).upscaleNearest(3))
+    ["particles " + n + " of " + dla.points.size to
+        dla.arrivalPrefixImg(n).crop(x0, y0, cw, ch).colormap("turbo", 0f, 1f).upscaleNearest(3)]
 :::endfold
 
 // Why the crop: a cluster is a fixed amount of ink, and how legible its growth is depends entirely on
@@ -1201,9 +1201,9 @@ println("arrowhead, generation 7: " + arrow.drawnSegments + " drawn segments (3^
 :::fold rasterize the three curves and the three plants
 showImg(
     montage(
-        listOf("Koch snowflake gen 4" to rasterizeFLines(gens[4].lines, 300, 300),
+        ["Koch snowflake gen 4" to rasterizeFLines(gens[4].lines, 300, 300),
             "arrowhead gen 7" to rasterizeFLines(arrow.lines, 300, 300),
-            "dragon gen 12" to rasterizeFLines(drawLSystem(LSYSTEM_DRAGON, 12, TurtleParams(angle = Math.PI / 2.0)).lines, 300, 300)) +
+            "dragon gen 12" to rasterizeFLines(drawLSystem(LSYSTEM_DRAGON, 12, TurtleParams(angle = Math.PI / 2.0)).lines, 300, 300)] +
             plants.mapIndexed { i, pl -> "plant seed " + (i + 1) to rasterizeFLines(pl.lines, 240, 300) },
         columns = 3, cellSide = 280
     )
@@ -1247,10 +1247,10 @@ back on its start to `2.3 × 10⁻¹⁴` of a step.
 // to stay the same size while the world shrinks around it, and the growth becomes invisible.
 fun drawn(koch: List<FLine>, plant: List<FLine>, f: Double): List<Pair<String, Img>> {
     val pct = (f * 100).toInt()
-    return listOf(
+    return [
         "Koch gen 4: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(koch, f), koch, 420, 420),
         "plant gen 5: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(plant, f), plant, 420, 420)
-    )
+    ]
 }
 :::endfold
 
@@ -1340,13 +1340,13 @@ println("marched: " + mesh.triangleCount + " triangles, watertight = " + mesh.is
 :::fold draw the field, the contours, the tree and two views of the volume
 showImg(
     montage(
-        listOf(
+        [
             "Gray-Scott field" to rd.v.colormap("magma", 0f, 0.5f).upscaleNearest(3),
             "its iso-contours as FLines" to rasterizeFLines(contours, 300, 300),
             "space colonization tree" to rasterizeFLines(tree.toFLines(), 300, 300),
             "3-D CA: z slice" to volume.slice(24).toImg(2).upscaleNearest(5),
             "3-D CA: depth projection" to volume.depthProjection().colormap("viridis").upscaleNearest(5)
-        ),
+        ],
         columns = 3, cellSide = 280
     )
 )
@@ -1375,13 +1375,13 @@ level set as it moves.
 // corners of the 96x96 sample grid, in the contour extractor's own pixel coordinates. Framed by
 // the contours' own bounds instead, the early frames (two loops in one corner) would be drawn
 // zoomed right in and the whole figure would zoom out as the pattern spread.
-val fieldFrame = listOf(FLine().moveTo(0, 0), FLine().moveTo(95, 95))
+val fieldFrame = [FLine().moveTo(0, 0), FLine().moveTo(95, 95)]
 fun bridge(s: GrayScottState, n: Int): List<Pair<String, Img>> {
     val loops = s.v.isoContourFLines(0.25, cells = 96)
-    return listOf(
+    return [
         "v field, step " + n to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(4),
         "iso v=0.25: " + loops.size + " loops" to rasterizeFLinesFramed(loops, fieldFrame, 384, 384)
-    )
+    ]
 }
 :::endfold
 
@@ -1519,10 +1519,10 @@ what an average hides, and lexicase never averages.
 // that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 
 val ops = LifeRuleGenome(radius = 2)
-val soups = listOf(
+val soups = [
     randomSoup(48, 48, density = 0.35, seed = 101L),
     randomSoup(48, 48, density = 0.12, seed = 202L)
-)
+]
 
 // "Alive but not saturated, and still changing" -- activity times a Gaussian band on density.
 // Each factor alone is trivially gamed. A rule that fills the grid and stays filled scores 1 on
@@ -1620,10 +1620,10 @@ but a map of "the best rule that behaves like this".
 // and noisy; and somewhere in the middle band are the rules that hold structure while still moving.
 
 val ops = LifeRuleGenome(radius = 2)
-val soups = listOf(randomSoup(48, 48, density = 0.35, seed = 303L))
+val soups = [randomSoup(48, 48, density = 0.35, seed = 303L)]
 val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 25)
-val bins = listOf(6, 6)
-val axes = listOf(0.0..1.0, 0.0..0.6)
+val bins = [6, 6]
+val axes = [0.0..1.0, 0.0..0.6]
 val budget = 600
 
 val archive = PopulationSearch.mapElites(ops, objective, budget, axes, bins, seed = 31L, initial = 40)
@@ -1814,7 +1814,7 @@ val w = ScriptWorld(width = 200.0, height = 200.0, seed = 1L, wrap = false)
 w.addPolygon(12.0, 12.0, 188.0, 12.0, 188.0, 188.0, 12.0, 188.0, name = "room")
 w.addWall(120.0, 30.0, 120.0, 170.0, name = "barrier")
 
-listOf(WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP).forEachIndexed { i, r ->
+[WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP].forEachIndexed { i, r ->
     w.spawn(
         25.0, 60.0 + i * 25.0, maxSpeed = 90.0, radius = 2.0, steerResponse = 1.0,
         vx = 90.0, vy = 16.0, wallResponse = r, restitution = 0.9, tag = r.name
@@ -1828,7 +1828,7 @@ w.actors.forEach {
 :::fold the three trails, one colour each — SLIDE blue, BOUNCE orange, STOP green
 // FLine.color is an extension property and takes a vec(r, g, b, a); without this the three answers
 // are three identical grey trails and the figure cannot show what the table says.
-val cols = listOf(vec(0.45, 0.78, 1.0, 1.0), vec(1.0, 0.62, 0.28, 1.0), vec(0.55, 0.9, 0.55, 1.0))
+val cols = [vec(0.45, 0.78, 1.0, 1.0), vec(1.0, 0.62, 0.28, 1.0), vec(0.55, 0.9, 0.55, 1.0)]
 val trails = w.trailFLines().mapIndexed { i, f -> f.also { it.color = cols[i % cols.size] } }
 lines(*(w.obstacleFLines() + trails).toTypedArray(), channel = "walls", w = 620.0, h = 620.0, fitToSize = true)
 :::endfold
@@ -1862,7 +1862,7 @@ nothing.
 :::static
 val GOAL_X = 175.0; val GOAL_Y = 100.0
 val STEPS = 1800                              // 30 s at 60 Hz
-val SEEDS = listOf(1L, 2L, 3L, 4L); val PER_SEED = 8
+val SEEDS = [1L, 2L, 3L, 4L]; val PER_SEED = 8
 
 fun maze(seed: Long, routed: Boolean) = ScriptWorld(width = 200.0, height = 200.0, seed = seed, wrap = false).also { w ->
     w.addWall(70.0, 45.0, 70.0, 200.0, name = "open at the bottom")
@@ -1887,7 +1887,7 @@ fun maze(seed: Long, routed: Boolean) = ScriptWorld(width = 200.0, height = 200.
 // Stepped in lockstep across seeds rather than run() per seed, so the arrival fraction can be
 // sampled every tick and the two arms share one time base.
 val arrivals = mutableMapOf("routed" to mutableListOf<Double>(), "direct" to mutableListOf<Double>())
-for (routed in listOf(true, false)) {
+for (routed in [true, false]) {
     val name = if (routed) "routed" else "direct"
     val worlds = SEEDS.map { maze(it, routed) }
     val total = worlds.sumOf { it.actors.size }

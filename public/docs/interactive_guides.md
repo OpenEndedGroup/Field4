@@ -16,7 +16,7 @@ A guide is a `slideShow { ... }` block. Each `step("...")` is one stage of the g
 
 A guide's notes and callout lines come and go with its steps. For marks that stay on the canvas,
 such as a hand-drawn diagram beside the boxes it explains or arrows a box draws for itself, see
-[Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (`alt-d`) that is saved with
+[Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (`alt/option-d`) that is saved with
 the document.
 
 ## A three-step guide
@@ -195,6 +195,8 @@ A template value can come from `this.properties[...]`, from a Kotlin variable th
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
 
+A value that comes from a box property or a script variable is inserted as text: `<`, `>`, `&` and quotes are escaped, so a property holding `<b>hi</b>` shows those characters rather than bold text. Put markup in the note itself, not in the value.
+
 ## Annotations and code callouts
 
 Annotations let a note point at an exact target.
@@ -204,7 +206,7 @@ Annotations let a note point at an exact target.
 
 Use them when a sentence is about one box, one property, or one line.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, with a green arrowhead at its top-right corner, and beside it the note headed Annotation Lines with its two bullets. An orange dashed line runs from the note across the canvas and curves down to the editor's left edge, ending a little above line 17. On the right the editor shows the snippet, with a red mark in the gutter at line 17, the selectBox call."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, with a green arrowhead at its top-right corner, and beside it the note headed Annotation Lines with its two bullets. An orange dashed line runs from the note across the canvas and curves down to the editor's left edge, ending at the top of line 17. On the right the editor shows the snippet, with a red mark in the gutter at line 17, the selectBox call."}
 :::static
 val host = thisBox
 host.name = "guide-annotations"

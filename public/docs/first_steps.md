@@ -31,16 +31,16 @@ ui.pause(1200)
 ```
 
 1. Select **First steps · a moving drawing** to open its code.
-2. Press **Alt+Up** to launch it. On macOS, use **Option+Up**. Open the output disclosure below
+2. Press **alt/option-Up** to launch it. Open the output disclosure below
    the box if the drawing is collapsed. Fine blue-white curves ripple and twist together.
-3. Change `var petals = 5` to `var petals = 8`, then press **Alt+Up** again. The shape changes;
+3. Change `var petals = 5` to `var petals = 8`, then press **alt/option-Up** again. The shape changes;
    `println(petals)` prints the new value beside the code. Editing alone runs nothing; launching does.
-4. Press **Alt+Down** (**Option+Down** on macOS) to stop. The drawing freezes.
+4. Press **alt/option-Down** to stop. The drawing freezes.
 5. Wait for autosave (about five seconds), close the document tab, and reopen your copy from
    Welcome. The edited code is still there, but the drawing is not moving: opening a document
    does not restart its animations. Launch it again to bring it back.
 
-If a window manager intercepts the shortcuts, use Field's editor command palette (**F1**) to
+If a window manager intercepts the shortcuts, use Field's editor command palette (**ctrl/command-shift-P**) to
 find the launch and stop commands. Press **?** on the canvas for the shortcut card.
 
 The drawing is made of `FLine` paths drawn into the box's output, so it needs no separate graphics
@@ -125,11 +125,11 @@ ui.eval("""
 ui.pause(800)
 ```
 
-1. Click the **1 · Launch the renderer** box to select it and open its code. Press **Alt+Up**
-   (**Option+Up** on macOS). A separate, initially black graphics window opens.
-2. Return to Field, click the **2 · Launch the triangle** box, and press **Alt+Up**
-   (**Option+Up** on macOS). The graphics window now shows a colored triangle.
-3. To stop, select the triangle box and press **Alt+Down** (**Option+Down** on macOS).
+1. Click the **1 · Launch the renderer** box to select it and open its code. Press **alt/option-Up**.
+   A separate, initially black graphics window opens.
+2. Return to Field, click the **2 · Launch the triangle** box, and press **alt/option-Up**.
+   The graphics window now shows a colored triangle.
+3. To stop, select the triangle box and press **alt/option-Down**.
    Then select the renderer box and press the same shortcut.
 
 The Kotlin code and GLSL shader properties come from the worked

@@ -14,7 +14,7 @@ import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_ai_speech_embeddings")
-val previews = listOf("emotion2vec", "wavlm_base_plus").map {
+val previews = ["emotion2vec", "wavlm_base_plus"].map {
     json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText())
 }
 display("speech spaces", speechEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 220))
@@ -94,10 +94,10 @@ client.assetsByFilename("*near_drowning*").thenCompose { matches ->
         ),
     ))
 
-    val jobs = listOf(
+    val jobs = [
         tracked("emotion2vec", emotion2VecEmbeddingAnalysis(region)),
         tracked("WavLM Base+", wavlmBasePlusEmbeddingAnalysis(region, layer = 6)),
-    )
+    ]
     CompletableFuture.allOf(*jobs.toTypedArray()).thenApply { jobs.map { it.join() } }
 }.thenCompose { results ->
     val previews = results.map { result ->

@@ -939,8 +939,14 @@ fun reverbImpulse(
         seed = seed
     )
 
-/** Creates a delay effect with controllable delay time, feedback, and dry/wet mix. */
-fun delay(time: Number = 0.3, feedback: Number = 0.5, mix: Number = 0.5): Delay =
+/**
+ * Creates a delay effect with controllable delay time, feedback, and dry/wet mix.
+ *
+ * Not called `delay`: in box code that name shadowed `kotlinx.coroutines.delay`, so `delay(500)`
+ * inside `go { }` built an effect and returned at once, and a `while (true)` around it held the
+ * runloop.
+ */
+fun delayEffect(time: Number = 0.3, feedback: Number = 0.5, mix: Number = 0.5): Delay =
     Delay(delayTime = Param(time.toFloat()), feedback = Param(feedback.toFloat()), mix = Param(mix.toFloat()))
 
 fun chorus(rate: Number = 1.5, depth: Number = 0.003, mix: Number = 0.5): Chorus =

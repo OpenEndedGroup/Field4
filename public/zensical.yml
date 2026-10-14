@@ -86,6 +86,7 @@ nav:
     # when a call turns out not to be one or a child cannot see its parent's value, not to start.
     # Directly after why.md, which already sends readers into its inheritance section.
     - Running Code in a Box: running_code.md
+    - Properties That Re-run Boxes: reactive_properties.md
     # The three history pages together. history_lens.md used to sit below the two performance
     # pages, which put the inline view of a property's past two clicks away from the two pages
     # that explain what that past is; nothing about the split was deliberate.

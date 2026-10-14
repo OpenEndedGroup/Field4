@@ -54,7 +54,7 @@ fun place(level: String): Map<String, String> {
 """.trimStart()
 
 val loot = qualifiedSource("loot", rule, label = "Loot rule",
-    frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+    frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
     fixtures = mapOf(
         "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
@@ -123,7 +123,7 @@ fun place(level: String): Map<String, String> {
 """.trimStart()
 
 val loot = qualifiedSource("loot", rule, label = "Loot rule",
-    frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+    frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
     fixtures = mapOf(
         "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
@@ -135,7 +135,7 @@ val loot = qualifiedSource("loot", rule, label = "Loot rule",
 :::endfold
 val legendary = QualifiedEdit("doors >= 4 -> \"epic\"", "doors >= 5 -> \"legendary\"\n    doors >= 4 -> \"epic\"")
 val first = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-    "A legendary tier for the deepest rooms", listOf(legendary))
+    "A legendary tier for the deepest rooms", [legendary])
 loot.test(first.id)
 ```
 
@@ -202,7 +202,7 @@ fun place(level: String): Map<String, String> {
 """.trimStart()
 
 val loot = qualifiedSource("loot", rule, label = "Loot rule",
-    frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+    frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
     fixtures = mapOf(
         "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
@@ -213,7 +213,7 @@ val loot = qualifiedSource("loot", rule, label = "Loot rule",
 }
 :::endfold
 val second = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-    "Epic loot from three doors in", listOf(QualifiedEdit("doors >= 4", "doors >= 3")))
+    "Epic loot from three doors in", [QualifiedEdit("doors >= 4", "doors >= 3")])
 val job = loot.test(second.id)
 kotlin.concurrent.thread {
     loot.replays.await(job.id)

@@ -17,10 +17,6 @@ import kotlin.test.assertTrue
  */
 class StereoTest {
 
-    private fun available(): Boolean {
-        if (!PaintLibrary.isAvailable) println("SKIPPED stereo tests: ${PaintLibrary.describe()}")
-        return PaintLibrary.isAvailable
-    }
 
     private val umber = Vec4(0.25f, 0.15f, 0.1f, 1f)
     private fun line(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().moveTo(x0, y0).lineTo(x1, y1)
@@ -51,7 +47,7 @@ class StereoTest {
     }
 
     @Test fun aSeededBrushStrokeIsTheSameWhateverCameBefore() {
-        if (!available()) return
+        requirePaintLibrary()
         val (a, b) = pair {
             val brush = brush(BrushKind.HogFlat, 80.0, seed = 11).load(umber, part = LoadPart(side = 1.0, share = 0.5, streak = 1.0, seed = 5))
             stroke(FLine().moveTo(150, 650).cubicTo(400, 550, 600, 800, 850, 700), brush, seed = 21)
@@ -66,7 +62,7 @@ class StereoTest {
     }
 
     @Test fun seededKnifeRagPencilAndMovingBrushCorrespondToo() {
-        if (!available()) return
+        requirePaintLibrary()
         val (a, b) = pair {
             val k = knife(70.0).load(umber, amount = 1.0)
             knife(line(150.0, 600.0, 850.0, 620.0), k, seed = 31)
@@ -86,7 +82,7 @@ class StereoTest {
      */
     @Test
     fun aStrokeRecedingInDepthRunsOutAtTheSameWorldLengthInBothEyes() {
-        if (!available()) return
+        requirePaintLibrary()
         val world = FLine().moveTo(0.0, 0.0).lineTo(300.0, 0.0).also { l -> l.nodes.forEach { n -> n.storage[0] = Vec3(n.storage[0].x, 0f, n.storage[0].x) } }
         // where along the line, 0..1, each eye puts a world point
         val even: (Double) -> Double = { u -> u }
@@ -123,7 +119,7 @@ class StereoTest {
     }
 
     @Test fun aSeededWatercolourStrokeCorresponds() {
-        if (!available()) return
+        requirePaintLibrary()
         fun eye(extra: Boolean) = PaintCanvas.paper(200, aspect = 1.0, paper = Paper.ColdPress, sizeMm = 100.0, seed = 3).use { c ->
             if (extra) c.wash(line(100.0, 150.0, 900.0, 150.0), c.waterBrush(40.0).load(Watercolors.ultramarine * 3.0))
             c.wash(line(150.0, 700.0, 850.0, 700.0), c.waterBrush(60.0).load(Watercolors.burntSienna * 3.0), seed = 41)
@@ -145,7 +141,7 @@ class StereoTest {
         (0 until a.size / w).sumOf { y -> (from until to).count { x -> a[y * w + x] != b[y * w + x - dx] } }
 
     @Test fun aWarpedGroundIsTheReferenceGroundMoved() {
-        if (!available()) return
+        requirePaintLibrary()
         // 200 px over 1000 units: 25 units is 5 px
         val (a, b) = listOf(false, true).map { warped ->
             PaintCanvas(200, aspect = 1.0, ground = PaintGround.Oil, sizeMm = 100.0, seed = 3).use { c ->
@@ -161,7 +157,7 @@ class StereoTest {
     }
 
     @Test fun aPencilLineAndAWashThroughTheWarpFallOnTheSameGrainAndPaper() {
-        if (!available()) return
+        requirePaintLibrary()
         fun drawn(warped: Boolean) = PaintCanvas(200, aspect = 1.0, ground = PaintGround.Oil, sizeMm = 100.0, seed = 3).use { c ->
             val dx = if (warped) { shifted(c, 25.0); -25.0 } else 0.0
             c.draw(line(200.0 + dx, 300.0, 800.0 + dx, 700.0), c.pencil("4B"), seed = 51)
@@ -189,7 +185,7 @@ class StereoTest {
 
     @Test
     fun aDryBrushSkipsOverTheSameThreadsThroughTheWarp() {
-        if (!available()) return
+        requirePaintLibrary()
         // a hog flat run dry over linen (tooth 1, so it catches only the weave's peaks): the eye whose
         // ground is warped paints its skips on the same threads as the reference, 5 px over
         fun dry(warped: Boolean, moved: Boolean = warped) = PaintCanvas(400, aspect = 1.0, ground = PaintGround.Linen, groundColor = Vec4(0.95f, 0.94f, 0.9f, 1f), sizeMm = 100.0, seed = 3).use { c ->

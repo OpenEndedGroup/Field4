@@ -431,28 +431,7 @@ class SlideShowInstance(
     /**
      * Process templates in HTML, replacing {{propertyName}} with box properties/variables
      */
-    private fun processTemplates(html: String): String {
-        return replaceTemplate(html) { placeholder, _ ->
-            // Try to get from box properties first
-            val property = hostBox.properties[placeholder]
-            if (property != null) {
-                return@replaceTemplate property.toString()
-            }
-            
-            // Try to get from Kotlin scripting context variables
-            try {
-                val variable = hostBox.ki.context.vars[placeholder]?.value
-                if (variable != null) {
-                    return@replaceTemplate variable.toString()
-                }
-            } catch (e: Exception) {
-                // Ignore if context not available
-            }
-            
-            // Try templates map and knownValues (from replacements.kt)
-            knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
-        }
-    }
+    private fun processTemplates(html: String): String = slideTemplateValues(hostBox, html)
 
     /**
      * Goes to a specific step
@@ -620,27 +599,8 @@ fun Box.showNote(
     annotations: List<SlideAnnotation> = emptyList()
 ) {
     // Process templates before displaying
-    val processedHtml = replaceTemplate(html) { placeholder, _ ->
-        // Try to get from box properties first
-        val property = this.properties[placeholder]
-        if (property != null) {
-            return@replaceTemplate property.toString()
-        }
-        
-        // Try to get from Kotlin scripting context variables
-        try {
-            val variable = this.ki.context.vars[placeholder]?.value
-            if (variable != null) {
-                return@replaceTemplate variable.toString()
-            }
-        } catch (e: Exception) {
-            // Ignore if context not available
-        }
-        
-        // Try templates map and knownValues (from replacements.kt)
-        knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
-    }
-    
+    val processedHtml = slideTemplateValues(this, html)
+
     sendToHostDocument(this, Message("show-slide-note").payload(
         ShowSlideNote(
             html = processedHtml,
@@ -734,4 +694,31 @@ fun Box.withChat(id: String? = null) {
         })(0);
         </script>
     """.trimIndent())
+}
+
+private fun escapeSlideTemplateValue(text: String): String = buildString(text.length) {
+    for (c in text) when (c) {
+        '&' -> append("&amp;")
+        '<' -> append("&lt;")
+        '>' -> append("&gt;")
+        '"' -> append("&quot;")
+        '\'' -> append("&#39;")
+        else -> append(c)
+    }
+}
+
+/**
+ * Fills `{{name}}` in note HTML from [box]: its properties, then its script variables, then the
+ * global `knownValues` / `templates`. Property and variable values are data, so they are
+ * HTML-escaped (a value of `<b>` shows as `<b>`, and cannot inject markup or script into the
+ * note); `knownValues` and `templates` entries are registered by code and inserted as HTML.
+ */
+internal fun slideTemplateValues(box: Box, html: String): String = replaceTemplate(html) { placeholder, _ ->
+    box.properties[placeholder]?.let { return@replaceTemplate escapeSlideTemplateValue(it.toString()) }
+    try {
+        box.ki.context.vars[placeholder]?.value?.let { return@replaceTemplate escapeSlideTemplateValue(it.toString()) }
+    } catch (e: Exception) {
+        // no scripting context yet
+    }
+    knownValues[placeholder] ?: templates[placeholder]?.invoke(placeholder, html) ?: ""
 }

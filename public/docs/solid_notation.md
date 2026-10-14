@@ -177,7 +177,7 @@ val shellCut = sphere(0.9).shelled(0.08) - cuboid(1.2, 1.2, 1.2).at(0.9, 0.0, 0.
 // The gyroid has no window of its own and borrows the cuboid's, which is the bounds story below.
 val gyr = gyroid(6.0, 0.30) and cuboid(2.6, 2.6, 2.6)
 
-listOf("blend" to blend, "rounded" to rounded, "shell" to shellCut, "gyroid" to gyr).forEach { (n, e) ->
+["blend" to blend, "rounded" to rounded, "shell" to shellCut, "gyroid" to gyr].forEach { (n, e) ->
     println("%-8s refuses=%s".format(n, e.exactRefusal() != null))
 }
 
@@ -234,7 +234,7 @@ import afield.lang.solidsl.*
 val q = SolidQuality(segments = 96, edgeLengthFraction = 1.0 / 80.0)
 
 val plate = cuboid(3.2, 2.2, 0.42)
-val bores = unionOf(listOf(-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7).map { (x, y) ->
+val bores = unionOf([-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7].map { (x, y) ->
     cylinder(2.0, 0.30, segments = 96).at(x, y, 0.0)
 })
 val boss = smoothUnion(
@@ -580,7 +580,7 @@ val fit = model.fitParameters(
 // `run.trajectory` is the parameter vector at every recorded iteration, indexed exactly like
 // `run.losses`. `shapeAt` substitutes one back into the template, so these are the shapes the
 // optimizer really held -- not six descents truncated at six different caps.
-val frames = listOf(0, 150, 500, 1200, 2400, fit.run.trajectory.lastIndex)
+val frames = [0, 150, 500, 1200, 2400, fit.run.trajectory.lastIndex]
 val tilt = model.names.indexOf("barTilt")
 
 threeGrid(
@@ -661,7 +661,7 @@ from every sample, and a descent on its radius stops immediately because the gra
 zero.
 
 ```diffstatic {data-lang=kotlin}
-unionOf(listOf(sphere(1.0), sphere(0.25))).parameterize { … }
+unionOf([sphere(1.0), sphere(0.25)]).parameterize { … }
     .fitParameters(target, …).deadParameters      // [inner]
 
 smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }

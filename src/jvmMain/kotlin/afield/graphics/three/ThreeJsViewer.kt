@@ -108,6 +108,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 private const val THREE_CHANNEL = "__threejs__"
+/** How many superseded generations a view keeps serving buffers for, so a viewer's in-flight fetch still lands. */
+private const val RECENT_GENERATIONS = 2
 
 @Serializable
 @OptIn(ExperimentalSerializationApi::class)
@@ -547,6 +549,12 @@ class ThreeGeometryViewState(val uid: String) {
         val native: Lazy<ByteArray?>,
     )
     private var published: Published? = null
+    /**
+     * The generations just before [published], still served by [buffers]. A viewer fetches a description's
+     * buffers after it arrives; a box updating every frame publishes the next one before that fetch lands,
+     * and serving only the newest generation made such a viewer 404 on every fetch and never draw.
+     */
+    private val recentBuffers = ArrayDeque<Pair<String, ThreeGeometryBuffers>>()
     private var editSessionId: String? = null
     internal var sourcePayload: ThreeGeometryPayload? = null
         private set
@@ -640,6 +648,8 @@ class ThreeGeometryViewState(val uid: String) {
             editSessionId = nextSession
 
             val next = Published(generation, description, appearance, split.buffers, native)
+            published?.let { old -> old.buffers?.let { recentBuffers.addLast(old.generation to it) } }
+            while (recentBuffers.size > RECENT_GENERATIONS) recentBuffers.removeFirst()
             published = next
             onBroadcast?.invoke(description)
             sessions.forEach { if (it in bufferSessions) sendTo(it, description) else sendNative(it, next) }
@@ -652,10 +662,11 @@ class ThreeGeometryViewState(val uid: String) {
         }
     }
 
-    /** The buffers for [generation], while it is the view's current geometry; `null` once superseded. */
+    /** The buffers for [generation], while it is the view's current or a recent geometry; `null` once long superseded. */
     @Synchronized
     internal fun buffers(generation: String): ThreeGeometryBuffers? =
         published?.takeIf { it.generation == generation }?.buffers
+            ?: recentBuffers.lastOrNull { it.first == generation }?.second
 
     private fun appearanceKey(): String = reviewInbox.localViewId ?: uid
     private fun storedAppearance(): Map<String, Map<String, ThreePartAppearance>> =

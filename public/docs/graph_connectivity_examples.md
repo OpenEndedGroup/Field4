@@ -58,13 +58,13 @@ val queryDot = fline {
 }
 
 lines(
-    listOf(
+    [
         cloud,
         edgeSet(kApprox, vec(0.55, 1.0, 0.66, 0.35), 1.2),
         edgeSet(kExact, vec(0.56, 0.86, 1.0, 0.95), 2.2),
         edgeSet(radius, vec(1.0, 0.62, 0.36, 0.45), 1.5),
         queryDot
-    ),
+    ],
     channel = "neighbors-query",
     w = 1120.0,
     h = 720.0,
@@ -102,7 +102,7 @@ val edges = fline {
     thickness = 2.0
 }
 val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
-lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
+lines([dots, edges], channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 :::after
 import afield.geometry.path.FLine
 
@@ -121,7 +121,7 @@ val edges = fline {
     thickness = 2.4
 }
 val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
-lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
+lines([dots, edges], channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 ```
 
 ![the same pale point cloud with only the green LSH edges drawn: a tight burst of about a dozen short edges around the query point, none of them reaching beyond the immediate neighbourhood](assets/smile_neighbors_examples/lsh_tuning.png)
@@ -175,14 +175,14 @@ val cloud = fline {
 }
 
 lines(
-    listOf(
+    [
         graphLine(delaunay, vec(0.52, 0.62, 0.75, 0.25), 1.0),
         graphLine(gabriel, vec(0.56, 0.92, 1.0, 0.45), 1.3),
         graphLine(urquhart, vec(0.92, 0.55, 1.0, 0.5), 1.45),
         graphLine(rng, vec(1.0, 0.7, 0.32, 0.55), 1.6),
         graphLine(mst, vec(0.56, 1.0, 0.67, 0.95), 2.6),
         cloud
-    ),
+    ],
     channel = "graph-families",
     w = 1180.0,
     h = 760.0,
@@ -217,7 +217,7 @@ draws both graphs over three clusters.
 :::static
 import afield.geometry.path.FLine
 
-val centers = listOf(vec(250.0, 550.0), vec(600.0, 250.0), vec(950.0, 520.0))
+val centers = [vec(250.0, 550.0), vec(600.0, 250.0), vec(950.0, 520.0)]
 val points = centers.flatMap { c ->
     List(40) {
         val a = random() * PI * 2.0
@@ -249,11 +249,11 @@ val cloud = fline {
 }
 
 lines(
-    listOf(
+    [
         graphLine(orthant, vec(0.56, 1.0, 0.67, 0.8), 1.4),
         graphLine(knn, vec(1.0, 0.7, 0.32, 0.9), 2.2),
         cloud
-    ),
+    ],
     channel = "orthant-vs-knn",
     w = 1180.0,
     h = 760.0,
@@ -317,12 +317,12 @@ val cloud = fline {
 }
 
 threeLines(
-    listOf(
+    [
         graphLine3(knn, vec(0.52, 0.7, 0.95, 0.18), 1.0),
         graphLine3(gabriel, vec(0.96, 0.64, 0.28, 0.5), 1.6),
         graphLine3(mst, vec(0.58, 1.0, 0.68, 0.96), 3.1),
         cloud
-    ),
+    ],
     channel = "graph-3d-families",
     height = 500,
     editable = false

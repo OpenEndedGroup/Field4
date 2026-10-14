@@ -72,12 +72,12 @@ edited()
 // bare property name, not on the qualified key name.
 fun live(s: Structure, p: String) = s.bindings[p]?.invoke()?.toString() ?: "{dim:unbound}"
 // Read now, while the edit is still applied — the next line puts the old values back.
-val liveRows = listOf(
+val liveRows = [
     "glow.radius" to live(glow, "radius"),
     "glow.intensity" to live(glow, "intensity"),
     "blur.radius" to live(blur, "radius"),
     "glow.*glow@radius*" to live(glow, "glow@radius")
-).joinToString("\n") { (k, v) -> "| $k | $v |" }
+].joinToString("\n") { (k, v) -> "| $k | $v |" }
 
 // Put the original back, and diff to show the scope is exactly where it started.
 captured()
@@ -584,11 +584,11 @@ val closer = (1.0 - lerpMid / rMax) * 100.0
 showPlaneGrid(
     ("plan view, looking down y\n" +
         "blue: sclerp, a quarter circle. orange: the straight line between the same two positions") to
-        listOf(sight, sightLerp, subject, chord, screw),
+        [sight, sightLerp, subject, chord, screw],
     ("distance to the subject, over the move\n" +
         "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer".format(
             rMin, rMax, lerpMid, closer)) to
-        listOf(dScrew, dChord),
+        [dScrew, dChord],
     columns = 2, cellWidth = 440, cellHeight = 380
 )
 :::fold render the aiming-error note
@@ -667,7 +667,7 @@ scope.saveKey(path, scope.Key(mutableMapOf(
 val lossy = scope.Key(mutableMapOf(
     "gain" to 0.90f,
     "enabled" to true,          // a Boolean is outside the union
-    "taps" to listOf(1, 2, 3),  // so is a list
+    "taps" to [1, 2, 3],  // so is a list
     "absent" to null            // and a null is dropped too
 ))
 scope.saveKey(path, lossy, note = "with unsupported values")
@@ -817,12 +817,12 @@ scope.target("glow@intensity", glow)
 scope.target("glow@falloff", glow)
 
 // Four looks, each saved as its own key with a note.
-listOf(
-    Triple("soft", listOf(3f, 0.20f, 1.5f), "first pass"),
-    Triple("hot", listOf(9f, 0.80f, 0.6f), "too much"),
-    Triple("mid", listOf(6f, 0.50f, 1.0f), "between the two"),
-    Triple("wide", listOf(12f, 0.35f, 2.2f), "for the long shot"),
-).forEach { (name, v, note) ->
+[
+    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
+    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
+    Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
+    Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
+].forEach { (name, v, note) ->
     glow.bind("radius") { v[0] }
     glow.bind("intensity") { v[1] }
     glow.bind("falloff") { v[2] }
@@ -863,7 +863,7 @@ val key = scope.Key(mutableMapOf(
     // A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string would
     // have let the '$' interpolate at paste time; it now falls back to an escaped literal.
     "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-    "notes" to listOf("unsupported", "on purpose")
+    "notes" to ["unsupported", "on purpose"]
 ))
 
 :::fold render the generated update code

@@ -13,7 +13,7 @@ Here a curve drives a meter. `keyframes(name = "brightness", ...)` shows the edi
 
 ```diffstatic_runner {data-lang=kotlin video="assets/keyframe_editor/playback.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="5" fps="20" timeout="180" w="700" embed=true name="keyframe-playback" alt="The brightness editor: four keys joined by straight lines, rising from 0.1 at time 0 to 0.9 at time 1 and falling back to 0.1 at time 4, with an orange playhead sweeping left to right and a dot riding the curve. Below it a meter labelled brightness rises and falls with the dot"}
 :::static
-val brightness = keyframes(name = "brightness", defaults = listOf(vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)))
+val brightness = keyframes(name = "brightness", defaults = [vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)])
 
 lateinit var level: MeterHandle
 controlGroup("level") { level = meter("brightness") }
@@ -33,7 +33,7 @@ Time is whatever unit your loop counts in; the editor labels it in seconds. Valu
 
 ## Editing the curve
 
-Double-click empty graph to add a key. Drag a key to move it in time and value at once. Right-click a key for its menu: its exact time and value, its type, copy and paste, lock and delete. Double-click a key to type its value. A bezier key has handles that bend the curve on either side, and Cmd-Z (Ctrl-Z) undoes any of it:
+Double-click empty graph to add a key. Drag a key to move it in time and value at once. Right-click a key for its menu: its exact time and value, its type, copy and paste, lock and delete. Double-click a key to type its value. A bezier key has handles that bend the curve on either side, and ctrl/command-Z undoes any of it:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x470" clip="0,0,700,470" hide-toasts=true video="assets/keyframe_editor/editing.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml" fps="12" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-editing" alt="The brightness editor while the playhead plays and the meter follows. A double-click adds a key near time 3, which is then dragged down and to the right. A right-click on the peak at time 1 opens a menu of key types, and choosing Bezier (Continuous) rounds the peak and shows its handles; dragging the right-hand handle up reshapes the curve on both sides. A drag across empty graph from time 2 to 3.7 selects the two keys in that band, and dragging one of them moves both"}
 // Wait for the editor and its keys, then find things in its iframe, in page coordinates, as "x,y".
@@ -169,14 +169,14 @@ ui.pause(450)
 | add a key | double-click empty graph, or right-click it for the curve's menu |
 | move keys | drag a key; every selected key moves with it |
 | select | click a key; shift-click to select a range; drag across empty graph to select every key in that time band |
-| select a box of keys | Alt-drag across empty graph |
-| select a moment in every linked lane | Cmd-drag (Ctrl-drag) across empty graph; then drag, nudge or delete them together |
+| select a box of keys | alt/option-drag across empty graph |
+| select a moment in every linked lane | ctrl/command-drag across empty graph; then drag, nudge or delete them together |
 | type a key's time or value | double-click the key, or right-click it; Enter applies |
 | change a key's type, lock or delete it | right-click the key; with several selected, the menu acts on all of them |
 | delete keys | Delete or Backspace removes the selection |
 | nudge keys | the arrow keys move the selection a tenth of a grid step; Shift-arrow a whole step |
-| undo, redo | Cmd-Z, Shift-Cmd-Z (Ctrl-Z, Ctrl-Y elsewhere) |
-| copy, cut, paste, duplicate | Cmd-C, Cmd-X, Cmd-V, Cmd-D; select all with Cmd-A |
+| undo, redo | ctrl/command-Z, shift-ctrl/command-Z (ctrl-Y also redoes elsewhere) |
+| copy, cut, paste, duplicate | ctrl/command-C, ctrl/command-X, ctrl/command-V, ctrl/command-D; select all with ctrl/command-A |
 | bend a bezier key | drag one of its handles |
 | move without snapping | hold Alt while dragging |
 | pan | scroll, or drag with the right or middle button on empty graph |
@@ -349,14 +349,14 @@ To start a curve with keys of particular types, pass `keys` instead of `defaults
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/types.png" capture="box" open-outputs="true" wait="2.0" timeout="120" w="700" embed=true name="keyframe-types" alt="A curve through six keys. From time 0 a straight line climbs to 0.8 at time 1; from there the value holds flat to time 2 and drops on a dashed line to 0.3; it then eases smoothly up to a rounded peak of 0.9 at time 3 and down through 0.5 at time 4, before a straight line to 0.2 at time 5. Bezier keys show their handles"}
 :::static
-val shape = keyframes(name = "shape", keys = listOf(
+val shape = keyframes(name = "shape", keys = [
     Keyframe(0.0, 0.1, "linear"),
     Keyframe(1.0, 0.8, "hold"),
     Keyframe(2.0, 0.3, "bezierFlat"),
     Keyframe(3.0, 0.9, "bezierContinuous"),
     Keyframe(4.0, 0.5, "bezierFree"),
     Keyframe(5.0, 0.2, "linear"),
-))
+])
 ```
 
 A bezier key given without handles gets the handles the editor would give it, worked out from its neighbours.
@@ -432,12 +432,12 @@ interpolant("chaos") {
     lerp(u) + 0.25 * sin(PI * u) * (x - 0.5)
 }
 
-val custom = keyframes(name = "custom", keys = listOf(
+val custom = keyframes(name = "custom", keys = [
     Keyframe(0.0, 0.1, "overshoot"),
     Keyframe(1.5, 0.8, "wobble"),
     Keyframe(3.0, 0.3, "chaos"),
     Keyframe(4.5, 0.6, "linear"),
-))
+])
 ```
 
 Drag a key and the shapes either side of it follow, worked out in Kotlin as you move:
@@ -526,9 +526,9 @@ An overlay is a second curve drawn on the graph for reference, that you cannot e
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/overlay.png" capture="box" open-outputs="true" wait="2.5" timeout="120" w="700" embed=true name="keyframe-overlay" alt="A jagged curve of five keys zig-zagging between 0.1 and 0.9 over two seconds, drawn dimmed, with a dashed orange overlay running smoothly through the middle of the zig-zag"}
 :::static
-val wobble = keyframes(name = "wobble", defaults = listOf(
+val wobble = keyframes(name = "wobble", defaults = [
     vec(0.0, 0.2), vec(0.5, 0.9), vec(1.0, 0.1), vec(1.5, 0.8), vec(2.0, 0.3)
-))
+])
 
 val smooth = { keys: List<Keyframe> -> with(Functions) { gaussianSmooth(fromKeyframeEditor(keys), sigma = 0.15) } }
 wobble.setOverlay(smooth(wobble.getKeyframes()))
@@ -542,8 +542,8 @@ wobble.onChange = smooth
 Each editor is one value, so a movement in two dimensions is two editors. Here `x` and `y` curves move the handle of an XY pad:
 
 ```diffstatic {data-lang=kotlin}
-val x = keyframes(name = "x", defaults = listOf(vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)))
-val y = keyframes(name = "y", defaults = listOf(vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)))
+val x = keyframes(name = "x", defaults = [vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)])
+val y = keyframes(name = "y", defaults = [vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)])
 
 lateinit var spot: ControlValueHandle<Vector2f>
 controlGroup("spot") { spot = vec2Control("spot") { } }
@@ -681,7 +681,7 @@ println(pad.fit(x, y))                            // GestureFit(keys=28 of 240 s
 pad.setTake(x, y)                                 // later: the edited lanes, replayed through the pad
 ```
 
-A recorded take has hundreds of samples, far too many keys to edit. `bakeGesture` keeps only the samples it needs so that neither lane is ever more than `tolerance` (in pad units) from what you performed, at any moment. The keys are `linear`, and both lanes have keys at the same times, so Cmd-dragging across a moment selects it in both. The lanes run from 0 to the end of the take, so they loop as the take did. Baking replaces whatever keys the lanes held. The lanes are `x` and `y` unless you name them with `xName` and `yName`, and `channel` groups them as it does for `keyframes(...)`.
+A recorded take has hundreds of samples, far too many keys to edit. `bakeGesture` keeps only the samples it needs so that neither lane is ever more than `tolerance` (in pad units) from what you performed, at any moment. The keys are `linear`, and both lanes have keys at the same times, so ctrl/command-dragging across a moment selects it in both. The lanes run from 0 to the end of the take, so they loop as the take did. Baking replaces whatever keys the lanes held. The lanes are `x` and `y` unless you name them with `xName` and `yName`, and `channel` groups them as it does for `keyframes(...)`.
 
 For a two-second figure eight drawn by hand, 240 samples:
 

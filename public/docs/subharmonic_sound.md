@@ -194,7 +194,7 @@ val steps = Param(2f).apply {
 }
 val wobble = SineOsc(Param(3f)) * 0.07f * subBetween(12f, 15f)
 val single = SubharmonicQuadPLL()
-val stack = SubharmonicQuadPLL().apply { voices = listOf(SubVoice(2.0, 0.7), SubVoice(3.0, 0.2), SubVoice(4.0, 0.1)) }
+val stack = SubharmonicQuadPLL().apply { voices = [SubVoice(2.0, 0.7), SubVoice(3.0, 0.2), SubVoice(4.0, 0.1)] }
 val sub = clean.through(Subharmonic(single, division = steps + wobble)) * subBetween(0f, 15f) +
     clean.through(Subharmonic(stack)) * subBetween(15f, 18f)
 val out = bass * 0.25f + sub * 1.5f
@@ -302,7 +302,7 @@ tracker on the attack.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/arpy.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-arpy"}
 :::static
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+val notes = [0, 2, 4, 3, 0, 1, 4, 2]
 val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
 val arpy = SamplesSignal(subSequence(8.0, hits))
 val tracker = SubharmonicQuadPLL()
@@ -507,7 +507,7 @@ with eight tracked harmonics.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/phase-harmonics-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-phase-harmonics"}
 :::static
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+val notes = [0, 2, 4, 3, 0, 1, 4, 2]
 val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
 val plucks = SamplesSignal(subSequence(8.0, hits))
 val tracker = HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0)
@@ -534,7 +534,7 @@ Replace the eight harmonics with `rationalLattice()` to mix ratios `1/2`, `2/3`,
 plays this bank. The notes now have tones both above and below their tracked pitch.
 
 ```diffstatic {data-lang=kotlin}
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+val notes = [0, 2, 4, 3, 0, 1, 4, 2]
 val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
 val plucks = SamplesSignal(subSequence(8.0, hits))
 val analysis = TrackedPhaseAnalysis(plucks,

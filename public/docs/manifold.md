@@ -60,7 +60,7 @@ import afield.geometry.solid.manifold.*
 
 val part = Solid.scope {
     val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
-    val corners = listOf(-20.0 to -12.0, 20.0 to -12.0, -20.0 to 12.0, 20.0 to 12.0)
+    val corners = [-20.0 to -12.0, 20.0 to -12.0, -20.0 to 12.0, 20.0 to 12.0]
 
     // Bosses standing on the plate, and a bore straight through each.
     val bosses = corners.map { (x, y) ->
@@ -77,7 +77,7 @@ val part = Solid.scope {
         .extruded(30.0)
         .translated(0.0, 0.0, -15.0)
 
-    Solid.union(listOf(plate) + bosses) - Solid.union(bores + slot)
+    Solid.union([plate] + bosses) - Solid.union(bores + slot)
 }
 :::fold measure it — including the wall thickness that decides whether it survives being cut
 // The plain mesh for measuring, because `normals = true` splits vertices at every crease and

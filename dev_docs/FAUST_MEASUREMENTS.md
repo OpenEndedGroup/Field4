@@ -58,15 +58,21 @@ to a µs-per-block average. Measured with `getCurrentThreadAllocatedBytes` over 
 
 | | Bytes per 128-frame block |
 |---|---|
-| `FaustVoiceBank`, 8 voices, steady state | 7386 (923 per voice) |
-| `FaustVoiceBank`, 1 voice — the like-for-like comparison | 984 |
-| `FaustDsp`, one voice — the monophonic path | 1075 |
+| `FaustVoiceBank`, 8 voices, steady state | 2584 (323 per voice) |
+| `FaustVoiceBank`, 1 voice — the like-for-like comparison | 344 |
+| `FaustDsp`, one voice — the monophonic path | 456–523 |
 
-One voice of the bank costs 0.92× what one `FaustDsp` costs, doing the same DSP and paying the same
-once-per-block context enter and queue drain. Fitting the two bank measurements as a line gives 915
-bytes per voice and a fixed 69 bytes per block, which places the source: `Value.readBuffer`, the one
-bulk copy per channel per block that gets the samples out of WebAssembly, present in both paths.
-Both bank measurements are held to a bound by `synth.faust.poly`.
+(2026-10-14; earlier figures on this page were 7386 / 984 / 1075 on an older build.) One voice of the
+bank costs less than one `FaustDsp`, doing the same DSP. Sweeping 1, 2, 4, 8 and 16 voices in one run
+(three interleaved trials, minimum per point) gives exactly 24 + 320·n bytes per block, residual 0:
+320 bytes per voice and a fixed 24 bytes per block, which places the source in `Value.readBuffer`,
+the one bulk copy per channel per block that gets the samples out of WebAssembly, present in both
+paths. `synth.faust.poly` checks the line's residual, the intercept's sign and the 8-voice bound.
+
+Single trials are noisier than the minima: a window occasionally reads +70 to +550 bytes per block
+(a JIT recompilation or TLAB refill landing inside it), and the very first window a process measures
+has read 3474–3522 at 8 voices. A two-point fit that paired such a first window with a settled
+1-voice figure is what produced a "fixed cost" of −110 bytes per block in one run.
 
 The `voices = 1` row exists because the obvious comparison is wrong in a way that flatters this
 code. Dividing an 8-voice block by 8 spreads the bank's fixed cost across eight voices while
@@ -74,7 +80,7 @@ code. Dividing an 8-voice block by 8 spreads the bank's fixed cost across eight 
 slope and intercept is what makes the claim checkable; two figures from different runs, solved as a
 pair, will happily imply a negative fixed cost per block.
 
-**Open.** Removing the ~0.9 KB per voice per block means changing how samples leave WebAssembly for
+**Open.** Removing the ~0.3 KB per voice per block means changing how samples leave WebAssembly for
 *both* the monophonic and polyphonic paths — a `ByteBuffer`-backed view rather than a copying
 `readBuffer`, if the polyglot API allows one. Not started.
 

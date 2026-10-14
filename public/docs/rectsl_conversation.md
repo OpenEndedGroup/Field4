@@ -18,12 +18,12 @@ tools that check, draw, compare and version the scene.
 In any document, select a box (press **n** to make one) and choose **Make a RectSL Scene** from
 the command palette. A root box, **RectSL window**, appears above it and opens a window; the box
 becomes a scene, a wall with one turning gold square, and plays in it. Select the scene and press
-**command/ctrl-4** to open AI4 chat. Configure an AI provider through Field's welcome page if you have
+**ctrl/command-4** to open AI4 chat. Configure an AI provider through Field's welcome page if you have
 not already; see [AI features](aiFeatures.md).
 
 The scene box edits its `rectSL` property, and the window follows every edit that compiles; a
 problem is marked on its line (`Unknown word: ->yy (did you mean '->xy' or '->y'?)`) and the window
-keeps the last scene that compiled. Running the box (command/ctrl-return) checks your scene in as a
+keeps the last scene that compiled. Running the box (ctrl/command-return) checks your scene in as a
 revision. The root holds no code: it is the box whose main language is RectSL, and it opens its
 window when a scene beneath it starts. Stopping the root, or closing the window, stops the scenes in
 it; running one again reopens the window. **Set Main Language: RectSL** on a box you made yourself
@@ -37,7 +37,7 @@ it. It has two boxes:
 | Box | What it is |
 | --- | --- |
 | **RectSL window** | The RectSL root. It holds no code; its window opens when the scene starts. |
-| **the scene — talk here (AI4)** | The scene. Select it and press **command/ctrl-4** to open AI4 chat. |
+| **the scene — talk here (AI4)** | The scene. Select it and press **ctrl/command-4** to open AI4 chat. |
 
 The scene starts as an empty wall:
 

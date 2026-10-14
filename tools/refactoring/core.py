@@ -24,6 +24,10 @@ HISTORY = {'transcript.edn', 'history_metrics.edn'}
 TEXT = {'.kt', '.kts', '.java', '.md', '.yaml', '.yml', '.edn', '.json', '.py', '.js', '.sh', '.html', '.xml', '.toml', '.properties'}
 PROPERTIES = {'code', 'preamble', 'sharedTypes'}
 MAX_BYTES = 16 * 1024 * 1024
+# Generated Kotlin/JS resources retain their filenames when Kotlin packages move.
+RESOURCE_REFERENCES = {'afield.mjs', 'afield.mjs.map'}
+# Field document/property URLs are identifiers, including any package-looking path text.
+FIELD_URL = re.compile(r'''(?<![\w.+-])afield:/[^\s"'`<>]*''', re.IGNORECASE)
 
 
 class RefactorError(ValueError):
@@ -91,23 +95,49 @@ def load_recipe(path: Path) -> dict:
         recipe = yaml.safe_load(path.read_text())
     allowed = {'schema', 'id', 'fromApi', 'toApi', 'packages', 'symbols', 'splitPackages',
                'kotlinProperties', 'generated', 'description', 'scriptImports', 'qualifiedNameProperties',
-               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports'}
+               'rewriteComments', 'markdownProse', 'workspaceMarkdownProse', 'knownPackages', 'retainedSymbols', 'splitStarImports', 'boxImports', 'splitSymbols', 'boxSplitStarImports', 'proseReplacements', 'parseErrorPolicy', 'retainedFindings'}
     if not isinstance(recipe, dict) or recipe.get('schema') != 1 or not recipe.get('id'):
         raise RefactorError('recipe needs schema: 1 and an id')
     if set(recipe) - allowed:
         raise RefactorError(f'unknown recipe fields: {sorted(set(recipe) - allowed)}')
     if not isinstance(recipe.get('rewriteComments', False), bool):
         raise RefactorError('rewriteComments must be a boolean')
+    if recipe.get('parseErrorPolicy', 'hold') not in ('hold', 'retain'):
+        raise RefactorError('parseErrorPolicy must be hold or retain')
+    exceptions = recipe.get('retainedFindings', [])
+    fields = {'path', 'unit', 'kind', 'detail', 'codeSha256', 'reason'}
+    if not isinstance(exceptions, list):
+        raise RefactorError('retainedFindings must list exact reviewed findings')
+    for rule in exceptions:
+        if (not isinstance(rule, dict) or set(rule) != fields or
+                any(not isinstance(v, str) or not v.strip() for v in rule.values()) or
+                rule['kind'] not in {'unmapped-import', 'comment-reference', 'string-reference', 'prose-reference'} or
+                not re.fullmatch(r'[0-9a-f]{64}', rule['codeSha256']) or
+                PurePosixPath(rule['path']).is_absolute() or '..' in PurePosixPath(rule['path']).parts or
+                any(c in rule['path'] for c in '*?[]\\')):
+            raise RefactorError('retainedFindings needs an exact relative path, unit, review kind, detail, code hash and reason')
     for key in ('markdownProse', 'workspaceMarkdownProse'):
+
         if not isinstance(recipe.get(key, []), list) or any(not isinstance(g, str) or not g.endswith('.md') for g in recipe.get(key, [])):
             raise RefactorError(f'{key} must list Markdown path patterns')
     name = re.compile(r'[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*\Z')
+    prose_rules = recipe.get('proseReplacements', {})
+    if not isinstance(prose_rules, dict) or any(not isinstance(k, str) or not name.fullmatch(k) or
+            not isinstance(v, str) or not v.strip() or len(v) > 200 or '\n' in v or '\r' in v
+            for k, v in prose_rules.items()):
+        raise RefactorError('proseReplacements must map qualified names to short single-line text')
+    if any(re.search(r'(?<![\w.])' + re.escape(k) + r'(?![\w.])', v)
+           for k in prose_rules for v in prose_rules.values()):
+        raise RefactorError('proseReplacements must be idempotent')
     for key in ('packages', 'symbols'):
         values = recipe.setdefault(key, {})
         if not isinstance(values, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not name.fullmatch(k) or not name.fullmatch(v) or k == v for k, v in values.items()):
             raise RefactorError(f'{key} must map distinct qualified names')
         if len(set(values.values())) != len(values):
-            raise RefactorError(f'{key} has destination collisions')
+            collisions = {target: [old for old, new in values.items() if new == target]
+                          for target, count in Counter(values.values()).items() if count > 1}
+            raise RefactorError(f'{key} has destination collisions: ' + '; '.join(
+                ', '.join(sources) + ' -> ' + target for target, sources in sorted(collisions.items())))
     all_rules = recipe['packages'] | recipe['symbols']
     if set(recipe['packages']) & set(recipe['symbols']):
         raise RefactorError('a name cannot be both a package and a symbol rule')
@@ -213,13 +243,19 @@ def affected_pattern(recipe: dict):
     roots = sorted({n.split('.')[0] for n in rules | splits})
     # Match a root once, then use component-prefix lookups. A thousands-way alternation
     # repeats the same namespace prefix at every possible position in every document.
-    candidates = re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in roots) +
+    candidates = re.compile(r'(?<![\w./\\])(?:' + '|'.join(re.escape(n) for n in roots) +
                             r')(?:\.[A-Za-z_]\w*)*(?![\w])') if roots else re.compile(r'(?!)')
     class References:
-        def search(self, text):
+        def finditer(self, text):
+            urls = [m.span() for m in FIELD_URL.finditer(text)]
             for match in candidates.finditer(text):
+                if any(start <= match.start() < end for start, end in urls):
+                    continue
                 path = match.group()
-                if destination_reference(path, recipe, destinations):
+                # A bare namespace followed by '-' is a resource/CSS name, not a package.
+                if path in roots and text[match.end():match.end() + 1] == '-':
+                    continue
+                if path in RESOURCE_REFERENCES or destination_reference(path, recipe, destinations):
                     continue
                 if text[match.end():match.end() + 1] == '/':
                     continue
@@ -228,19 +264,27 @@ def affected_pattern(recipe: dict):
                 if retained.intersection(prefixes):
                     continue
                 if rules.intersection(prefixes):
-                    return match
+                    yield match
+                    continue
                 owner = next((p for p in prefixes if p in known), None)
                 if (owner in splits if owner else splits.intersection(prefixes)):
-                    return match
-            return None
+                    yield match
+
+        def search(self, text):
+            return next(self.finditer(text), None)
     return References()
 
 
 def rewrite_qualified_text(text: str, recipe: dict) -> str:
     destinations = destination_packages(recipe)
+    urls = [m.span() for m in FIELD_URL.finditer(text)]
     def replace(match):
         name = match.group()
-        if name in destinations or destination_reference(name, recipe, destinations):
+        if any(start <= match.start() < end for start, end in urls):
+            return name
+        if name in recipe.get('proseReplacements', {}) and text[match.end():match.end()+2] != '.*' and text[match.end():match.end()+1] != '/':
+            return recipe['proseReplacements'][name]
+        if name in RESOURCE_REFERENCES or name in destinations or destination_reference(name, recipe, destinations):
             return name
         if text[match.end():match.end() + 1] == '/':
             return name
@@ -253,7 +297,7 @@ def rewrite_qualified_text(text: str, recipe: dict) -> str:
             if old:
                 return rules[old] + name[len(old):]
         return name
-    return re.sub(r'(?<![\w.])[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', replace, text)
+    return re.sub(r'(?<![\w./\\])[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', replace, text)
 
 
 def repo_owned_outputs(root: Path, paths: list[str]) -> dict[str, str]:
@@ -415,7 +459,7 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
     def rewrite_unit(unit, rel):
         if not unit.identity.startswith('prose:'):
             host = box_recipe if 'boxImports' in recipe and unit.script and (
-                Path(rel).suffix == '.edn' or rel in box_sidecars) else recipe
+                unit.box_context or Path(rel).suffix == '.edn' or rel in box_sidecars) else recipe
             return engine.rewrite(unit.code, unit.script, host)
         after = rewrite_qualified_text(unit.code, recipe)
         pending = [issue('prose-reference', 'Unmapped qualified name in prose requires contextual review')] if pattern.search(after) else []
@@ -480,13 +524,21 @@ def plan_root(root: Path, repo: bool, recipe: dict, engine, blobs: Path, progres
                             else:
                                 destinations[rel] = destination
                 for value in response['findings']:
-                    # A refactor is not a syntax sweep of every historical snippet. Keep evidence
-                    # about untouched, unrelated fragments without making them migration blockers.
-                    unrelated_syntax = (value['kind'] == 'parse-error' and
-                                        response['code'] == unit.code and not pattern.search(unit.code))
-                    finding(rel, dict(value, unit=unit.identity, **(
-                        {'retained': True, 'retentionReason': 'Unchanged unit has no names affected by this migration'}
-                        if unrelated_syntax else {})))
+                    # Only pre-existing errors in unchanged units can be retained. Failed
+                    # rewrites and container/round-trip errors must still hold the group.
+                    unchanged_parse_error = value['kind'] == 'parse-error' and response['code'] == unit.code
+                    retain_syntax = unchanged_parse_error and (
+                        recipe.get('parseErrorPolicy') == 'retain' or not pattern.search(unit.code))
+                    reason = ('Existing parse error retained by the migration recipe; source unit left unchanged'
+                              if recipe.get('parseErrorPolicy') == 'retain'
+                              else 'Unchanged unit has no names affected by this migration')
+                    reviewed = next((r for r in recipe.get('retainedFindings', [])
+                        if r['path'] == rel and r['unit'] == unit.identity and
+                        r['kind'] == value['kind'] and r['detail'] == value.get('detail') and
+                        r['codeSha256'] == digest(unit.code.encode('utf-8')) and response['code'] == unit.code), None)
+                    retention = ({'retained': True, 'retentionReason': reviewed['reason'], 'reviewedException': True}
+                                 if reviewed else {'retained': True, 'retentionReason': reason} if retain_syntax else {})
+                    finding(rel, dict(value, unit=unit.identity, **retention))
                 records.append({'path': rel, 'unit': unit.identity, 'imports': response.get('imports', []),
                                 'package': response.get('package', ''),
                                 'evidence': response.get('evidence', 'syntax')})
@@ -666,6 +718,9 @@ def write_report(plan: dict, directory: Path):
             lines.append(f'- {kind}: {count}')
         lines.extend(['', f'Migration-relevant review: {len(grouped)} groups, {len(blockers)} findings; '
                       f'{len(pending) - len(blockers)} other inventory findings. See `review.md` and `review-groups.json`.'])
+        retained_errors = sum(f['kind'] == 'parse-error' and f.get('retained', False) for f in root['findings'])
+        if retained_errors:
+            lines.append(f'- Retained parse errors (non-blocking, source not repaired): {retained_errors}')
         lines.extend(['', 'Exact locations and retained/skipped categories are in `findings.json`.', ''])
         review_lines.extend([f'## Root {root["id"]}: {root["path"]}', '',
                              f'{len(grouped)} groups. Generated outputs are listed with their regeneration instructions.', ''])

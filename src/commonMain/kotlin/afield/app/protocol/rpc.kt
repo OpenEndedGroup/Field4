@@ -293,6 +293,17 @@ data class IsRunning(
     val mode: String = "launch"
 )
 
+/**
+ * How many `go { }` blocks of box [uid] are still running, and the run strands that started them.
+ * The canvas shows a non-zero [count] as the inset "semi-launched" badge; zero clears it.
+ */
+@Serializable
+data class GoJobs(
+    val uid: String,
+    val count: Int,
+    val strands: List<String> = emptyList()
+)
+
 @Serializable
 data class Metadata(
     val icon: String,

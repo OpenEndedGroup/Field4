@@ -40,7 +40,7 @@ eight seconds of it:
 to have this box in a document of your own.
 
 Click the grid to give ORCA the keyboard: arrows move, letters write, **Space** plays and pauses,
-**Escape** puts the cursor back, **Cmd-K** opens ORCA's command line, and **Cmd-G** shows its guide
+**Escape** puts the cursor back, **ctrl/command-K** opens ORCA's command line, and **ctrl/command-G** shows its guide
 to every operator. [ORCA's README](https://github.com/hundredrabbits/Orca#operators) lists the
 operators too.
 
@@ -73,7 +73,7 @@ voice under it, and pick a new melody each time the bass plays:
 ```diffstatic {data-lang=kotlin}
 o.bpm = 140
 o.write(0, 9, "D4\n.:03C")
-o.onNote { if (it.channel == 1) o.write(5, 3, listOf("CDEGAGED", "EGBDBGEB").random()) }
+o.onNote { if (it.channel == 1) o.write(5, 3, ["CDEGAGED", "EGBDBGEB"].random()) }
 ```
 
 A change reaches ORCA at its next frame. Inside a coroutine, `o.sync()` waits until ORCA has applied everything sent so far and
@@ -235,7 +235,7 @@ o.exposeTools(about = "Channel 0 is a soft triangle lead, 1 a sine bass, 2 a noi
 
 The [jam starting point ↗](offline.html?file=assets/agent_transcripts/orca_jam/metadata.edn) is
 that: a four-note arpeggio, four voiced channels, and AI4 on the board. Run it, open its AI Chat
-with **Cmd-4**, and ask it to play. This is the request, and the first 45 seconds after it, with
+with **ctrl/command-4**, and ask it to play. This is the request, and the first 45 seconds after it, with
 `gpt-6.1-sol` as the model:
 
 > Jam with this. Add a bassline on channel 1, a hi-hat on channel 2 on the off-beats, and an

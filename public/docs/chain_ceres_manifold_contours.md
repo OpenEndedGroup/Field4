@@ -34,7 +34,7 @@ fun cut(what: String, solid: Solid, z: Double) {
     solid.slice(z).use { s ->
         // Nine decimals, because two of these cuts are one part in a billion apart and a
         // table that printed both as 1.000000 would read as a contradiction.
-        rows += listOf(what, "%.9f".format(z), if (s.isEmpty) "—" else "%.4f".format(s.area), s.contourCount)
+        rows += [what, "%.9f".format(z), if (s.isEmpty) "—" else "%.4f".format(s.area), s.contourCount]
     }
 }
 
@@ -66,21 +66,21 @@ Solid.scope {
     // The prediction. Two unit cubes touching along one edge at z = 0.5: the lower one ends
     // there, the upper one begins there. If only material above the plane answers, exactly one
     // square comes back, and it is the upper cube's — centred at x = 1 rather than x = 0.
-    val pair = Solid.compose(listOf(
+    val pair = Solid.compose([
         Solid.cube(1.0, 1.0, 1.0, center = true),
         Solid.cube(1.0, 1.0, 1.0, center = true).translated(1.0, 0.0, 1.0),
-    ))
+    ])
     pair.slice(0.5).use { s ->
         val centre = (s.bounds.first.x + s.bounds.second.x) / 2.0
-        rows += listOf(
+        rows += [
             "two unit cubes meeting along one edge, cut on it",
             "0.500000000", "%.4f".format(s.area) + " centred at x = %.4f".format(centre), s.contourCount,
-        )
+        ]
     }
     Unit
 }
 
-markdown("cuts", Table(listOf("the cut", "z", "area", "contours")).rows(rows).h, width = 1040)
+markdown("cuts", Table(["the cut", "z", "area", "contours"]).rows(rows).h, width = 1040)
 ```
 
 The cuts all follow one rule:
@@ -240,20 +240,20 @@ val rows = mutableListOf<List<Any?>>()
 val profiles = mutableListOf<Pair<String, List<Number>>>()
 val panels = mutableListOf<List<List<List<Vec2>>>>()
 
-for (expression in listOf("gC", "gD")) {
+for (expression in ["gC", "gD"]) {
     val raw = conway(expression).polyhedron
     val canonical = raw.canonicalize().polyhedron
     val turn = directionTurn(raw, canonical)
 
     Solid.scope {
-        for (label in listOf("raw", "canonical")) {
+        for (label in ["raw", "canonical"]) {
             val solid = onTheBed(solidOf(if (label == "raw") raw else canonical))
             val height = solid.bounds.max.z.toDouble()
             val a = areasOf(solid, LAYERS)
             val layers = contoursOf(solid, LAYERS)
             profiles.add("$expression $label" to a)
             if (expression == "gC") panels.add(layers)
-            rows.add(listOf(
+            rows.add([
                 "$expression, $label",
                 "%.6f".format(height),
                 "%.6f".format(solid.surfaceArea),
@@ -262,17 +262,17 @@ for (expression in listOf("gC", "gD")) {
                 "%.6f".format(a.min()),
                 "%.6f".format(a.max()),
                 if (label == "raw") "" else "%.2f° / %.2f°".format(turn.first, turn.second),
-            ))
+            ])
         }
         Unit
     }
 }
 
 display("plan", plan(panels))
-markdown("forms", Table(listOf(
+markdown("forms", Table([
     "form", "height", "surface", "Σ area·h/n", "contours over $LAYERS layers",
     "smallest layer", "largest layer", "vertex turn, worst / mean",
-)).rows(rows).h, width = 1180)
+]).rows(rows).h, width = 1180)
 showSignals(
     profiles[0], profiles[1], profiles[2], profiles[3],
     x = (0 until LAYERS).map { (it + 0.5) / LAYERS },
@@ -361,41 +361,41 @@ fun overlap(s: Solid, n: Int = 192): Pair<Int, Double> {
     return disagreeing to gap * h / n / 2.0
 }
 
-val SWEEP = listOf(12, 24, 48, 96, 192, 384, 768)
+val SWEEP = [12, 24, 48, 96, 192, 384, 768]
 :::
 
 val rows = mutableListOf<List<Any?>>()
 val sweeps = mutableListOf<Pair<String, List<Number>>>()
 
 Solid.scope {
-    for ((label, p) in listOf("kkC as built" to seed, "canonicalize()" to iterated, "relaxWithCeres()" to solved)) {
+    for ((label, p) in ["kkC as built" to seed, "canonicalize()" to iterated, "relaxWithCeres()" to solved]) {
         val d = p.canonicalDiagnostics()
         val bare = solidOf(p)
         // A non-positive signed volume is not a printable body, and scaling it onto the bed
         // would mirror it into looking like one. So it is reported rather than rescued.
         if (bare.volume <= 0.0) {
-            rows += listOf(label, "%.3e".format(d.tangencyRadiusSpread), "${bare.status}", bare.genus,
-                "%.4f".format(bare.volume), "—", "—", "inside out")
+            rows += [label, "%.3e".format(d.tangencyRadiusSpread), "${bare.status}", bare.genus,
+                "%.4f".format(bare.volume), "—", "—", "inside out"]
             continue
         }
         val solid = onTheBed(bare)
         val sweep = SWEEP.map { riemann(solid, it) }
         val (disagreeing, over) = overlap(solid)
         sweeps += label to sweep
-        rows += listOf(
+        rows += [
             label, "%.3e".format(d.tangencyRadiusSpread), "${bare.status}", bare.genus,
             "%.4f".format(bare.volume), "%.5f".format(sweep.last()),
             "$disagreeing / 192, %.6f".format(over),
             "%.5f".format(1.0 - 2.0 * over),
-        )
+        ]
     }
     Unit
 }
 
-markdown("kkc", Table(listOf(
+markdown("kkc", Table([
     "embedding", "tangency spread", "Manifold status", "genus", "signed volume",
     "Σ area·h/n at 768 layers", "layers where POSITIVE ≠ EVEN_ODD, overlap", "1 − 2·overlap",
-)).rows(rows).h, width = 1180)
+]).rows(rows).h, width = 1180)
 showSignals(
     *sweeps.map { (k, v) -> k to v }.toTypedArray(),
     x = SWEEP,

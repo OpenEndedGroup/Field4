@@ -34,9 +34,9 @@ fun draw(pts: List<Pair<Double, Double>>, dx: Double, colour: Vec4, width: Doubl
 }
 val grey = vec(0.6, 0.6, 0.6, 1.0)
 lines(
-    listOf(draw(target, 0.0, grey, 6.0)) +
+    [draw(target, 0.0, grey, 6.0)] +
         opt.history.take(5).map { draw(curve(it.parameters), 0.0, vec(0.2, 0.4, 0.9, 0.35), 1.0) } +
-        listOf(draw(target, 320.0, grey, 6.0), draw(curve(opt.best!!.parameters), 320.0, vec(0.9, 0.2, 0.2, 1.0), 2.0)),
+        [draw(target, 320.0, grey, 6.0), draw(curve(opt.best!!.parameters), 320.0, vec(0.9, 0.2, 0.2, 1.0), 2.0)],
     w = 640.0, h = 300.0, fitToSize = true)
 showChart("best misfit so far" to opt.bestSoFar.map { log10(it) }, channel = "convergence",
     title = "log10 misfit after each try", xLabel = "try", yLabel = "log10 misfit")

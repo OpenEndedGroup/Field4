@@ -427,6 +427,24 @@ object ReactiveRuns {
     /** [writer]'s code changed [name] on [holder]; [seq] orders it against reads. */
     class Change(val holder: Box, val name: String, val seq: Long, val writer: Box?)
 
+    private val downDeclared: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    private fun downKey(box: Box, name: String) = box.id + "\u0000" + name
+
+    /** [box]'s code declared [name] with `propDown` / `propUpDown`; recorded when the macro expands. */
+    fun declaredDown(box: Box, name: String) {
+        downDeclared.add(downKey(box, name))
+    }
+
+    /**
+     * A write that did not go through the `propDown` delegate (a control bound with
+     * `syncToProperty`, which calls `setPropertyRaw`): if [holder] declared [name] Down and the
+     * value changed, its readers rerun as they would after `holder.name = v`.
+     */
+    fun noteRawWrite(holder: Box, name: String, old: Any?, new: Any?) {
+        if (old != new && downDeclared.contains(downKey(holder, name))) noteChange(holder, name)
+    }
+
     /** A `propDown` value changed: hold it to the end of the writer's run, or send it on now. */
     fun noteChange(holder: Box, name: String) {
         if (!enabled) return
@@ -495,7 +513,10 @@ object ReactiveRuns {
                     if ((runsHere[next] ?: 0) >= MAX_RUNS_PER_CASCADE) {
                         capped += next
                         event("cap ${label(next)}: ran $MAX_RUNS_PER_CASCADE times in one cascade (a propDown cycle?)")
-                        lprintln("warning,autorun", "propDown: '${label(next)}' reran $MAX_RUNS_PER_CASCADE times in one cascade; stopping there (is there a cycle?)")
+                        val message = "propDown: '${label(next)}' reran $MAX_RUNS_PER_CASCADE times in one cascade; stopping there (is there a cycle?)"
+                        lprintln("warning,autorun", message)
+                        // The server log is not where anyone is looking: say it on the box that stopped.
+                        runCatching { next.error(message) }
                         continue
                     }
                     // A reader still evaluating (or blocked in a pull) finishes first; it may be up to

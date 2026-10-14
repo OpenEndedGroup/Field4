@@ -82,12 +82,12 @@ val f = loud.fn
 
 :::fold the viewer, the audio, and the numbers
 val sync = "chain-fn-roundtrip"
-val viewer = SignalViewer(listOf(
+val viewer = SignalViewer([
     certifiedSignalChannel("f, and its loudness read back", f, 0.1, 0.95).copy(comparison = loud::recoveredAt),
     certifiedSignalChannel("f, and its pitch read back", f, 0.1, 0.95).copy(comparison = pitch::recoveredAt),
     SignalChannel("loudness − f", loud::errorAt, -0.1, 0.1),
     SignalChannel("pitch − f", pitch::errorAt, -0.1, 0.1),
-), 0.0, FnSoundDocs.SECONDS, sampleStep = 1.0 / 4000, gaps = true)
+], 0.0, FnSoundDocs.SECONDS, sampleStep = 1.0 / 4000, gaps = true)
 displaySignal(viewer, "viewer", SignalViewerOptions(width = 1100, laneHeight = 120,
     label = "one function, played two ways and read back", comparisonLabel = "read back from the .wav",
     syncGroup = sync, viewKey = "chain-fn-roundtrip:viewer"))
@@ -138,10 +138,10 @@ fun trip(e: Encoding, r: Route) = trips.single { it.encoding == e && it.route ==
 
 :::fold the bump up close, and the four delays
 val f = trips.first().fn
-val viewer = SignalViewer(listOf(
+val viewer = SignalViewer([
     SignalChannel("loudness through toSignal()", f::eval, 0.35, 0.8, comparison = trip(Encoding.LOUDNESS, Route.PER_SAMPLE)::recoveredAt),
     SignalChannel("loudness through Param { }", f::eval, 0.35, 0.8, comparison = trip(Encoding.LOUDNESS, Route.PER_BLOCK)::recoveredAt),
-), 0.0, FnSoundDocs.SECONDS, sampleStep = 1.0 / 48000, gaps = true)
+], 0.0, FnSoundDocs.SECONDS, sampleStep = 1.0 / 48000, gaps = true)
 displaySignal(viewer, "viewer", SignalViewerOptions(width = 1100, laneHeight = 150,
     label = "the bump at 2.6 s, 30 ms wide", comparisonLabel = "read back from the .wav",
     initialStart = FnSoundDocs.BLIP_AT - 0.015, initialDuration = 0.03, viewKey = "chain-fn-roundtrip:delays"))

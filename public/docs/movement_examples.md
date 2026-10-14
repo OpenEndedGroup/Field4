@@ -59,7 +59,7 @@ showSignals(
     channel = "dial",
     title = "A step goal, two dampers and a critically damped spring",
     xTitle = "frame at 60 fps",
-    marks = listOf("one half-life" to 41, "two" to 53),
+    marks = ["one half-life" to 41, "two" to 53],
     markColor = "#9aa4b2",
 )
 
@@ -335,7 +335,7 @@ val walked = fline {
     thickness = 2.6
 }
 
-lines(listOf(targetPath, walked) + marks, channel = "chase", w = 1080.0, h = 560.0, fitToSize = true)
+lines([targetPath, walked] + marks, channel = "chase", w = 1080.0, h = 560.0, fitToSize = true)
 :::fold render the colour key
 markdown("legend", """
     <span style='color:#9a9a9a'>grey</span>: the target's figure-eight;
@@ -396,7 +396,7 @@ showSignals(
     title = "Two laps of it, measured",
     xTitle = "frame at 60 fps",
     yTitle = "units, and units/second",
-    marks = listOf("second lap" to frames / 2),
+    marks = ["second lap" to frames / 2],
     markColor = "#9aa4b2",
 )
 ```
@@ -440,12 +440,12 @@ val across = 130
 // Four MovementParams, and a colour each. The two dials are the first two arguments.
 // The colours are signalPalette's first four, in order, so they mean the same thing here
 // as in the showSignals plot below.
-val runs = listOf(
+val runs = [
     Triple("straight at the error, loose turn", MovementParams(directionalAcceleration = 0f, turnStrength = 1f), vec(0.478, 0.851, 1.0, 0.95)),
     Triple("straight at the error, hard turn", MovementParams(directionalAcceleration = 0f, turnStrength = 16f), vec(1.0, 0.620, 0.290, 0.95)),
     Triple("along the input, loose turn", MovementParams(directionalAcceleration = 1f, turnStrength = 1f), vec(0.561, 1.0, 0.604, 0.95)),
     Triple("along the input, hard turn", MovementParams(directionalAcceleration = 1f, turnStrength = 16f), vec(1.0, 0.878, 0.400, 0.95))
-)
+]
 
 // y grows downwards in the output, so "up" is negative and the origin sits at the bottom left.
 fun sx(v: Float) = 100.0 + v
@@ -479,10 +479,10 @@ for ((_, params, rgba) in runs) {
     }
 }
 
-val corner = listOf(
+val corner = [
     fline { moveTo(sx(0f), sy(0f)); lineTo(sx(940f), sy(0f)); color = vec(1, 1, 1, 0.18); thickness = 1.2 },
     fline { moveTo(sx(0f), sy(0f)); lineTo(sx(0f), sy(-500f)); color = vec(1, 1, 1, 0.18); thickness = 1.2 }
-)
+]
 
 lines(corner + drawn, channel = "paths", w = 1080.0, h = 560.0, fitToSize = true)
 :::fold render the colour key
@@ -513,12 +513,12 @@ val dt = 1f / 60f
 val up = 48
 val across = 130
 
-val runs = listOf(
+val runs = [
     "straight at the error, loose turn" to MovementParams(directionalAcceleration = 0f, turnStrength = 1f),
     "straight at the error, hard turn" to MovementParams(directionalAcceleration = 0f, turnStrength = 16f),
     "along the input, loose turn" to MovementParams(directionalAcceleration = 1f, turnStrength = 1f),
     "along the input, hard turn" to MovementParams(directionalAcceleration = 1f, turnStrength = 16f)
-)
+]
 
 val speeds = runs.map { (label, params) ->
     val character = MovementState()
@@ -534,7 +534,7 @@ showSignals(
     title = "What each pair of dials did to the speed through the corner",
     xTitle = "frame at 60 fps",
     yTitle = "units/second",
-    marks = listOf("the input turns" to up),
+    marks = ["the input turns" to up],
     markColor = "#9aa4b2",
 )
 ```

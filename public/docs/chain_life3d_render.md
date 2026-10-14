@@ -91,7 +91,7 @@ whole.close()
 val sweep = buildString {
     appendLine("| spacing | clusters | volume |")
     appendLine("|---|---|---|")
-    listOf(1.4, 0.7, 0.35).forEach { edge ->
+    [1.4, 0.7, 0.35].forEach { edge ->
         Solid.scope {
             val s = Solid.levelSet(bounds, edgeLength = edge, parallel = false) { x, y, z ->
                 field(vec(x, y, z)).toDouble()
@@ -100,7 +100,7 @@ val sweep = buildString {
                 "${"%.2f".format(s.volume)} |")
         }
     }
-    listOf(55, 110, 220).forEach { resolution ->
+    [55, 110, 220].forEach { resolution ->
         val m = marchingCubes(field, bounds, resolution = resolution, positiveOutside = false)
         appendLine("| `marchingCubes` resolution ${resolution} | | ${"%.2f".format(m.signedVolume())} |")
     }

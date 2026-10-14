@@ -163,7 +163,7 @@ a drilled solid and a gyroid:
 // doubles. Watch it: this is the check that tells you the marcher is right, not just plausible.
 val exact = 4.0 / 3.0 * PI
 println("resolution   tris    volume     relative error")
-for (resolution in listOf(12, 24, 48, 64)) {
+for (resolution in [12, 24, 48, 64]) {
     val m = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), resolution)
     val error = abs(m.signedVolume() - exact) / exact
     println("%10d %7d %10.6f %14.5f   watertight=%s chi=%d".format(
@@ -325,7 +325,7 @@ println()
 println("target    got   deviation   min angle   watertight")
 
 val budgets = ArrayList<Pair<String, TriMesh>>()
-for (target in listOf(2000, 600, 150)) {
+for (target in [2000, 600, 150]) {
     val small = detailed.decimate(target)
     // Symmetric: the largest distance either mesh's vertices sit from the other's surface.
     val deviation = maxDeviation(detailed, small)
