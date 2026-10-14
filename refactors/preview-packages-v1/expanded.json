@@ -72,7 +72,8 @@
     "afield.graphics.slug": "afield.graphics.text.slug",
     "afield.layout": "afield.ui.layout",
     "afield.util": "afield.media.image.util",
-    "field.graphics": "afield.geometry.path.java2d"
+    "field.graphics": "afield.geometry.path.java2d",
+    "afield.solidcraft": "afield.geometry.solid.solidcraft"
   },
   "symbols": {
     "afield.Box": "afield.document.graph.Box",

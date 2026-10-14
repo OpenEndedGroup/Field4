@@ -112,6 +112,17 @@ def manifold_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def solidcraft_library_path(repo_root: Path) -> Path:
+    """The optional Rust bridge built by ``buildSolidCraftNative``."""
+    override = os.environ.get("AFIELD_SOLIDCRAFT_LIBRARY", "").strip()
+    if override:
+        return Path(override).expanduser()
+    name = ("field_solidcraft_jvm.dll" if sys.platform.startswith("win") else
+            "libfield_solidcraft_jvm.dylib" if sys.platform == "darwin" else
+            "libfield_solidcraft_jvm.so")
+    return repo_root / "build" / "native" / "solidcraft" / name
+
+
 def tetgen_library_path(repo_root: Path) -> Path:
     """Where `afield.geometry.mesh.tetgen.TetgenLibrary.resolvedPath` will look, from Python.
 
@@ -433,6 +444,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "loris": (loris_executable_path, "./gradlew buildLorisNative"),
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
+    "solidcraft": (solidcraft_library_path, "./gradlew buildSolidCraftNative"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
     "paint": (paint_library_path, "./gradlew buildPaintNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),

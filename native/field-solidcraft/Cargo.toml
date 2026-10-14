@@ -1,0 +1,17 @@
+[package]
+name = "field_solidcraft_jvm"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+# The build script stages this crate inside a pinned SolidCraft workspace so its
+# locally patched truck dependencies remain in effect.
+[dependencies]
+solidcraft-doc = { workspace = true }
+solidcraft-geom = { workspace = true }
+solidcraft-io = { workspace = true }
+solidcraft-kernel = { workspace = true }
+serde_json = { workspace = true }

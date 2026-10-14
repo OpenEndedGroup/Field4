@@ -1,0 +1,46 @@
+import afield.geometry.solid.solidcraft.SolidCraftDesign
+import afield.geometry.solid.solidcraft.SolidCraftLibrary
+import afield.geometry.mesh.MeshRenderer
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
+import afield.math.linalg.quat
+import afield.math.linalg.vec
+import afield.geometry.mesh.weld
+
+run {
+    if (!SolidCraftLibrary.isAvailable) {
+        display("main", "<div style='padding:24px;background:#101318;color:#e6ecf4;font-family:Iosevka,monospace'>" +
+            "SolidCraft is optional. Run <code>./gradlew buildSolidCraftNative</code>, restart Field, then run this box.</div>")
+        println(SolidCraftLibrary.describe())
+        return@run
+    }
+
+    // Change this value and run again. The sketch is 40 × 30 mm; the first extrusion is
+    // width / 2 deep, while the circular cut remains exactly 20 mm deep.
+    val width = 50
+    val tolerance = 0.1
+
+    SolidCraftDesign.openBundledExample().use { part ->
+        val original = part.summary().getJSONArray("bodies").getJSONObject(0)
+        // The cut starts on the XY plane. Turn both previews to see its opening.
+        val towardCut = quat(Math.PI, vec(0, 1, 0))
+        val before = part.mesh(tolerance = tolerance).toTriMesh().weld().rotated(towardCut)
+        part.setParameter("width", "$width mm")
+        val changed = part.summary().getJSONArray("bodies").getJSONObject(0)
+        val after = part.mesh(tolerance = tolerance).toTriMesh().weld().rotated(towardCut)
+
+        println("B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
+            "${"%.1f".format(changed.getDouble("volume"))} mm³")
+        println("STEP ${part.exportStep().size} bytes; STL ${part.exportStl().size} bytes")
+        println("The hole is blind at width > 40 mm: its cut depth stays 20 mm.")
+
+        showMeshGrid(
+            "40 mm: through cut" to before,
+            "$width mm: blind cut" to after,
+            columns = 2,
+            cellWidth = 380,
+            view = MeshView(wireframe = false),
+            renderer = MeshRenderer.CPU,
+        )
+    }
+}

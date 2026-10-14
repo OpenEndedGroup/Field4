@@ -175,6 +175,7 @@ nav:
     - Geometry & Solids:
       - Meshes & 3D Geometry: mesh_examples.md
       - Solids & Booleans (Manifold): manifold.md
+      - Parametric CAD (SolidCraft): solidcraft.md
       - Tetrahedral Meshing (TetGen): tetgen.md
       - A Solid, Written Down (solidsl): solid_notation.md
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
@@ -516,4 +517,3 @@ extra_javascript:
 site_url: http://openendedgroup.com/Field4/
 site_dir: field4
   
-

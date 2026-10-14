@@ -1432,8 +1432,8 @@ absent one.
 
 ### manifold_solids
 
-Two boxes on [robust mesh Booleans](manifold.md), the second optional native
-dependency in the tree, and the one that needs no wrapper: Manifold ships a C ABI, so the whole
+Two boxes on [robust mesh Booleans](manifold.md), an optional native
+dependency that needs no wrapper: Manifold ships a C ABI, so the whole
 binding is Panama/FFM against `libmanifoldc`. *A part, and whether it is manufacturable* builds a
 60×40×8 plate with four bored bosses, a properly rounded slot (a square `offset` by 4.5 with round
 joins, then extruded) and an 0.8mm chamfer done as a Minkowski closing with an octahedron, then
@@ -1454,6 +1454,19 @@ same shape through Field's own `marchingCubes` and names the difference.
 ![A gyroid-thickened torus drawn as a pale wireframed surface, its rim rippling in and out where the gyroid cuts it, captioned 14869 verts, 29738 tris, chi=0 genus 1, watertight, volume 17750.1245, and "29738 triangles, genus 1, guaranteed closed"](assets/manifold/levelset.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
+
+### solidcraft_intro
+
+**One design, two evaluations.** The box from [SolidCraft: edit the design, then see the part](solidcraft.md)
+opens a bundled feature-tree design, changes `width` from 40 to 50 mm, and draws the resulting
+parts side by side. A fixed 20 mm circular cut is through the first extrusion and blind in the
+second; the box also prints B-rep volumes and STEP/STL export sizes. This uses the optional
+SolidCraft Rust bridge (`./gradlew buildSolidCraftNative`). Without it, the box gives that command
+instead of failing.
+
+![The SolidCraft starting point showing the 40 mm through-cut part beside the 50 mm blind-cut part](assets/solidcraft/compare.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
 
 ### ai4_paint_studio
 

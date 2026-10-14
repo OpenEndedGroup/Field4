@@ -165,6 +165,7 @@ class DocsGatesWiringTest {
             "runDocsPanelCodeLinksSmokeTest" to "covered as examples.docs-panel-code-links.smoke in the catalog",
             "smokeCeres" to "needs the Ceres redistributable built first; run it with buildCeresRedistributable",
             "smokeManifold" to "needs a system Manifold (brew install manifold)",
+            "smokeSolidCraft" to "needs the Rust toolchain to build the optional SolidCraft bridge first (buildSolidCraftNative)",
             "fieldAudioAnalysisTest" to "opt-in; installs librosa and Basic Pitch over the network",
             "fieldAudioModelSmoke" to "opt-in; requires FIELD_AUDIO_ALLOW_MODEL_DOWNLOAD=1 and a large checkpoint",
             "fieldAudioAudioCraftImportTest" to "opt-in AudioCraft environment probe",
