@@ -4,12 +4,12 @@ This page is about what Field does behind the scenes when you run a box. You do 
 start writing boxes. It is for when something that looks like an ordinary call turns out not to be
 one, or when a child box cannot see a value its parent set.
 
-- **Running versus launching.** `alt-enter` runs a selection, a line, or its outer enclosing block;
-  `alt-0` runs everything in the box; `alt-click` and `alt-up` *launch* it, and `alt-1` relaunches
-  just the code `alt-enter` would run, without rerunning the rest of the box. Running evaluates and
+- **Running versus launching.** `alt/option-enter` runs a selection, a line, or its outer enclosing block;
+  `alt/option-0` runs everything in the box; `alt/option-click` and `alt/option-up` *launch* it, and `alt/option-1` relaunches
+  just the code `alt/option-enter` would run, without rerunning the rest of the box. Running evaluates and
   stops. Launching gives the code a
   chance to put something into the animation loop and keep going. The keys themselves, the `?`
-  cheat sheet and the `F1` palette are in the [Survival Guide](survivalGuide.md).
+  cheat sheet and the `ctrl/command-shift-P` palette are in the [Survival Guide](survivalGuide.md).
 - **What happens between the keystroke and the compiler** — fragments, macro expansion, the
   preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
 - **What happens after the last line evaluates**, when what you returned is a `Frames`, is
@@ -27,7 +27,7 @@ For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechan
 
 ## Running code around the cursor
 
-In the code editor, **Alt+Enter** runs the selected text if you have a selection. With no
+In the code editor, **alt/option-Enter** runs the selected text if you have a selection. With no
 selection, it runs the line under the cursor. If that line is inside a `{ … }` block, it runs the
 **outer enclosing block**, from its opening line through its closing line. This includes the whole
 outer block when the cursor is inside a nested block:
@@ -40,11 +40,11 @@ repeat(2) {
 }
 ```
 
-Select just the inner lines when you want to run less. **Alt+0** runs the whole box, regardless of
+Select just the inner lines when you want to run less. **alt/option-0** runs the whole box, regardless of
 the cursor position.
 
-**Alt+1** is for relaunching part of a box you have already run. It picks out the same code
-as Alt+Enter (the selection, or the line, or its outer enclosing block) and *launches* just
+**alt/option-1** is for relaunching part of a box you have already run. It picks out the same code
+as alt/option-Enter (the selection, or the line, or its outer enclosing block) and *launches* just
 that, so the setup at the top of the box is not run again. The fragment sees the variables earlier
 runs left behind: below, the box has been run once, and Alt+1 inside the `loop` relaunches the loop
 with the `count` the top part already made. Launched from a box that has never been run, the same
@@ -72,10 +72,10 @@ ui.eval("""
 
 To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
 number under cursor and rerun** or **Decrement number under cursor and rerun**. The shortcuts are
-**Command+Option+K/J** on Mac and **Ctrl+Alt+K/J** elsewhere (K increments, J decrements). Each
-command changes that number and then performs the same run as Alt+Enter, so a number inside a block
+**ctrl/command-alt/option-K/J** (K increments, J decrements). Each
+command changes that number and then performs the same run as alt/option-Enter, so a number inside a block
 reruns the outer enclosing block. Integers change by one; decimal numbers use a step scaled to the
-value and keep their decimal precision. You can also find both commands by name in the **F1**
+value and keep their decimal precision. You can also find both commands by name in the **ctrl/command-shift-P**
 palette.
 
 ---
@@ -299,13 +299,13 @@ aside("reset") {
 }
 ```
 
-Running the whole box skips the block. Put the cursor inside it and press Alt+Enter to run
+Running the whole box skips the block. Put the cursor inside it and press alt/option-Enter to run
 just that block. (Running a selection that includes it runs it too.) The name is only a label for
 you; it changes nothing. It saves keeping that code commented out and uncommenting it each time.
 
 ### `flipbox`: a block with a checkbox
 
-A `flipbox` sits between `once` and `aside`: a block you switch on and off with a checkbox. Press Cmd+Shift+. to insert a marker (drawn
+A `flipbox` sits between `once` and `aside`: a block you switch on and off with a checkbox. Press ctrl/command-shift-. to insert a marker (drawn
 as a single rune), then write `.flipbox(true) { … }` after it:
 
 ```diffstatic {data-lang=kotlin}
@@ -317,7 +317,7 @@ __m("Zk3q-a1").flipbox(true) {
 The editor draws the `true` as a checkbox. The block runs when the box runs with the box ticked,
 and each run unticks it. With `true` it starts ticked, so it runs on the first run like `once`, and
 later runs skip it. Click the checkbox to run the block again, without running the box, like
-Alt+Enter on an `aside`. With `false` it runs only when you click. The tick is not saved
+alt/option-Enter on an `aside`. With `false` it runs only when you click. The tick is not saved
 with the document, so `true` applies again after Field restarts.
 
 ### What lasts how long
@@ -499,7 +499,7 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
 - **`once`** and **`cached`** keep a value across runs; `cached` keeps one per type and key, and closes the old one when a key changes (see **What lasts how long**).
-- **`aside { }`** is the reverse: a block a full run skips, run by hand with Alt+Enter.
+- **`aside { }`** is the reverse: a block a full run skips, run by hand with alt/option-Enter.
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 

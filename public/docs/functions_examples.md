@@ -3630,7 +3630,7 @@ The browser always leaves the final curve visible in gray. The selected cyan tra
 - **cascade** steps the selected component up its ancestor chain one transform at a time, so you watch a raw piece *become the final shape* — a slider walks leaf → root, every stage on the shared x-axis;
 - **sensitivity** sweeps the selected numeric node across a range and overlays the resulting family of final curves, so you can see how much that one number moves the finished gesture.
 
-Shift- or ⌘-click nodes in the sidebar to overlay several occurrences at once for side-by-side comparison.
+Shift- or ctrl/command-click nodes in the sidebar to overlay several occurrences at once for side-by-side comparison.
 
 Local and effect diverge in the cases you care about. A sine below `shift`, `warp`, `repeat`, multiplication, or a timeline may look ordinary locally while its effect shows where it actually lands in the finished gesture. Every graph occurrence has its own path, so a shared function used in two places can be inspected twice in context.
 

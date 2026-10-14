@@ -2,8 +2,8 @@
 
 Every AI feature in Field works from where you already are. The box you have
 selected and the spot your cursor sits in travel with the request; what changes
-between features is what you are asking for. `command/ctrl-4` starts a
-conversation about a box, `command/ctrl-3` asks for an edit at one place in the
+between features is what you are asking for. `ctrl/command-4` starts a
+conversation about a box, `ctrl/command-3` asks for an edit at one place in the
 editor, `ctrl-space` mixes AI candidates into ordinary completion, and
 `ai("...")` fills in a function body from its signature. None of it works until Field has a provider
 to talk to, so configure OpenAI, OpenRouter or Anthropic from
@@ -11,7 +11,7 @@ to talk to, so configure OpenAI, OpenRouter or Anthropic from
 
 ## Chat about one box
 
-Select one box and press `command/ctrl-4`, or run **AI Chat (panel)** from the
+Select one box and press `ctrl/command-4`, or run **AI Chat (panel)** from the
 command palette. Field opens the `ai-chat` output area for that box. The chat
 receives the box's current code and can use the Field tools made available by
 the server to inspect or propose edits to box properties and related source.
@@ -162,7 +162,7 @@ StackSL program drawn live in a window, with three recorded sessions, and
 
 ## Chat at an editor location
 
-Press `command/ctrl-3`, or run **AI Chat in editor**. With a selection, Field
+Press `ctrl/command-3`, or run **AI Chat in editor**. With a selection, Field
 marks that range as the requested rewrite; without a selection, it marks the
 cursor position. The request also identifies the current box property and line.
 
@@ -321,7 +321,7 @@ The second is `13.02`, and it arrived by way of a JSON string, through the same
 Jackson call the bridge makes, so a request class whose defaults or enums do not
 survive the trip fails here rather than in the middle of a conversation.
 
-Now select any box, press `command/ctrl-4`, and ask *"is a 4.2 by 3.1 metre room
+Now select any box, press `ctrl/command-4`, and ask *"is a 4.2 by 3.1 metre room
 big enough?"*
 
 ### Live coding

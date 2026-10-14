@@ -2,7 +2,7 @@
 
 A Field document is usually bigger than the window. You can pan and zoom with the mouse or trackpad; split the canvas so headings or labels stay in view while the rest
 scrolls; step from box to box with the keyboard, by tapping `Cmd` twice and holding it; bring the
-selection into view with `Alt+F`; or jump to one of nine views you have saved. All of them change
+selection into view with `alt/option-F`; or jump to one of nine views you have saved. All of them change
 what you are looking at and never the document itself.
 
 ## Panning and zooming
@@ -14,7 +14,7 @@ what you are looking at and never the document itself.
   point under it stays put. The zoom runs from 10% to 400%.
 - **Reset Canvas Zoom** in the command palette returns to 100%, keeping the centre of the window
   where it is.
-- **`Alt+H`** (**Reset View** in the command palette, and a button at the top of the bookmarks
+- **`alt/option-H`** (**Reset View** in the command palette, and a button at the top of the bookmarks
   panel) also returns to 100%, and closes every output panel. Use it when a panel has grown to fill
   the window: the wheel and pinch then go to the panel, so you cannot zoom or scroll away from it.
 
@@ -112,7 +112,7 @@ repeat(40) { scrollBody(-6.0, -4.0); ui.pause(30) }
 ui.pause(2500)
 ```
 
-The drawing layer (`Alt+D`) works in every pane: its toolbar is in the bottom-right pane, and the
+The drawing layer (`alt/option-D`) works in every pane: its toolbar is in the bottom-right pane, and the
 tool you pick there follows the pointer into the others.
 
 The split is saved with the document. A bookmark saved while the canvas is split restores the split
@@ -324,7 +324,7 @@ if (!report.contains("overlay-settled")) {
 
 ## Framing the selection
 
-`Alt+F` (**Frame Selected** in the command palette, rebindable as `frame-selected`) brings the
+`alt/option-F` (**Frame Selected** in the command palette, rebindable as `frame-selected`) brings the
 selected boxes, and their open output panels, into view. It puts them in the largest part of the
 window that the editor, the docs panel and Field's own panels leave uncovered. If they do not fit
 there it zooms out until they do, and if the canvas was zoomed further out than that it zooms back
@@ -338,8 +338,8 @@ a wide editor is not worth squinting at.
 
 Arrows reach neighbours. For everywhere else there are nine numbered slots.
 
-- Save the current view: `Cmd+Shift+F1` through `Cmd+Shift+F9`
-- Restore a saved view: `Shift+F1` through `Shift+F9`
+- Save the current view: `ctrl/command-shift-F1` through `ctrl/command-shift-F9`
+- Restore a saved view: `shift-F1` through `shift-F9`
 
 `Cmd` is Command on macOS and Control everywhere else. Both sets are rebindable as
 `save-bookmark-N` and `restore-bookmark-N`, and both appear in the command palette as
@@ -357,7 +357,7 @@ A slot stores a view rather than a box reference. Restoring one reapplies, in th
 
 ### The bookmarks panel
 
-`Alt+B` (**Show Bookmarks** in the command palette, rebindable as `show-bookmarks`) opens a panel
+`alt/option-B` (**Show Bookmarks** in the command palette, rebindable as `show-bookmarks`) opens a panel
 with a row for each of the nine slots, so you can see what a slot holds before you jump to it:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#bookmarks-panel" screenshot="assets/moving_around_the_canvas/bookmarks_panel.png" transcript="../../dev_docs/agents/transcripts/docs_capture/bookmarks_panel.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="bookmarks-panel" alt="The bookmarks panel. Nine rows, F1 to F9. F1, named ideas, and F2, named render, are saved: each shows a small map of the document's three boxes with the saved view drawn as a dashed rectangle and the selected box in the accent colour, the view position, the box that was being edited, how many output panels were open and closed with a pill naming each open one and its size, and three options, restore view, restore selection and close unrecorded panels. Each has Restore, Save and delete buttons. The other seven rows read empty, with a Save here button."}
@@ -395,7 +395,7 @@ Each saved slot shows:
 - how many output panels were open and closed, and a pill for each open one with its size
 
 Click the name to rename a slot. **Restore** and **Save** do what `Shift+F`*n* and
-`Cmd+Shift+F`*n* do, and **×** empties the slot. The three checkboxes are saved with the slot:
+`ctrl/command-shift-F`*n* do, and **×** empties the slot. The three checkboxes are saved with the slot:
 
 - **restore view**: pan and zoom back to the saved view. Turn it off for a slot that should rearrange
   output panels without moving the canvas.
@@ -407,7 +407,7 @@ Click the name to rename a slot. **Restore** and **Save** do what `Shift+F`*n* a
 Saving over a slot keeps its name and its options.
 
 While the navigation overlay is up, every box on screen that a slot points at wears an `F` chip
-with that slot's number: `F3` is the view saved in slot 3, reached with `Shift+F3`. A box wears
+with that slot's number: `F3` is the view saved in slot 3, reached with `shift-F3`. A box wears
 more than one chip if several slots were saved on it.
 
 Bookmarks live on the root box as the `bookmarks` property and are saved with the rest of the

@@ -11,7 +11,7 @@ Unit
 ```
 
 [Open the Iframe hello starting point ↗](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
-in Field, **run the box**, and open its AI Chat panel with `command/ctrl-4`. Try:
+in Field, **run the box**, and open its AI Chat panel with `ctrl/command-4`. Try:
 
 > Write “hello” in the webpage's Message textbox, then inspect the page and tell me what it says.
 

@@ -55,7 +55,7 @@ runs in a background worker and reports its progress on the page.
 
 ## Conversational code search is separate
 
-**Search Documentation & Code** (`Ctrl/Cmd+Shift+D`) opens a generated-answer
+**Search Documentation & Code** (`ctrl/command-shift-D`) opens a generated-answer
 surface in the documentation pane. The label mentions documentation, but its
 retrieval store covers Field's indexed Kotlin roots and query-selected GLSL
 include libraries, not the local Lucene corpora above. With no remote vector

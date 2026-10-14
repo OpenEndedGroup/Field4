@@ -294,7 +294,7 @@ git pull
 
 and then start it again, which rebuilds whatever changed.
 
-The command palette (`Cmd-Shift-P`, or `Ctrl-Shift-P` on Windows and Linux; `F1` also works) includes **Check for updates**, which tells you whether that is worth
+The command palette (`ctrl/command-shift-P`) includes **Check for updates**, which tells you whether that is worth
 doing. It reports how many commits you are behind `origin`, and any local commits of your own that
 `origin` does not have.
 

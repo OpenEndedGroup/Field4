@@ -206,7 +206,7 @@ and that window starts before the strike.
 
 Open [drawn_score](agent_transcripts.md#drawn_score) from the welcome screen's starting points: `score`, `read`, `play`,
 `pentatonic` and `listen back`, run in that order. `play` holds the reading loop from this page, so
-that is the box to change. Then press `alt-d` and draw into the frame: `r` for a rectangle (a note),
+that is the box to change. Then press `alt/option-d` and draw into the frame: `r` for a rectangle (a note),
 `p` for a pen stroke (a glissando if it moves, a held note if it does not). Run the boxes after
 `score` again, and they read what you drew along with what the code drew.
 

@@ -1021,8 +1021,8 @@ Before, running `uv 4.0 * fbm palette saturate`:
 ![stack.auto before rebinding: a grainy blue-and-orange cloud with no symmetry in it — warm territory through the lower left, cold blue and white through the upper right, and speckled violet borders between them](assets/stacksl/stacksl-auto-before.png)
 
 Re-assigning the same slot swaps the function in place, with no new module and no
-window teardown. Edit the string and run that one line with `alt-return`, which
-runs it against the `module` the box already built. `alt-0` runs the whole box
+window teardown. Edit the string and run that one line with `alt/option-return`, which
+runs it against the `module` the box already built. `alt/option-0` runs the whole box
 again from the top, which builds a new module:
 
 ```diffstatic {data-lang=kotlin}

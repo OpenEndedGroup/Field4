@@ -37,7 +37,7 @@ val builds = studyBuilds("estimate", [
 showStudyBuilds("estimate")
 ```
 
-Run the box to get its build card, open the box's AI4 chat (`command/ctrl-4`), and ask for the
+Run the box to get its build card, open the box's AI4 chat (`ctrl/command-4`), and ask for the
 build:
 
 > Run the π estimate build on this box. It takes a few minutes; tell me what it finds.

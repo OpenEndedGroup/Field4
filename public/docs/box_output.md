@@ -103,10 +103,10 @@ With the mouse, on a panel's title bar:
 |---|---|
 | click | opens or closes the panel |
 | Shift-click | opens this panel and closes all the others |
-| Alt-click (Option-click on macOS) | removes this panel |
-| Alt-Shift-click | removes every other panel |
+| alt/option-click | removes this panel |
+| alt/option-Shift-click | removes every other panel |
 
-Holding Alt or Alt-Shift while the pointer is over a title marks the panels that a click would
+Holding alt/option or alt/option-Shift while the pointer is over a title marks the panels that a click would
 remove. Removing a panel with the mouse is the same as `displayClear`: it comes back the next time
 the code displays into that channel.
 
@@ -123,7 +123,7 @@ progressBar("done", 0.66)
 
 `progressBar("done", value)` is built on this: it displays into `*done`, and
 `progressBarClear("done")` removes it again. `displayClear("*status")` removes a one-line
-channel, and Alt-click on it does too.
+channel, and alt/option-click on it does too.
 
 ## How big a panel is
 
