@@ -833,20 +833,17 @@ object FaustPolySmokeTest {
             check(bank.activeVoices() == 8) { "only ${bank.activeVoices()} voices sounding" }
 
             val blocks = 4000
+            // The first window this process measures, kept only to print: it runs before the render path has
+            // settled under the JIT, and in some runs reads ~3.5 KB (3474, 3522) against a settled 2584 for
+            // the same 8 voices; in others it is already 2584. Compared with a later, settled 1-voice figure, that excess is what produced a
+            // "negative fixed cost" — the two points were not measured under the same conditions.
             val before = bean.currentThreadAllocatedBytes
             repeat(blocks) { bank.render(l, r, BLOCK) }
-            val perBlock = (bean.currentThreadAllocatedBytes - before).toDouble() / blocks
-            val perVoice = perBlock / 8.0
-            println(
-                "  steady state, 8 voices: ${"%.0f".format(perBlock)} bytes per $BLOCK-frame block " +
-                    "(${"%.0f".format(perVoice)} per voice)"
-            )
+            val firstPerBlock = (bean.currentThreadAllocatedBytes - before).toDouble() / blocks
 
-            // The number that decides whether this is *ours*. FaustDsp — the shipped single-voice audio path,
-            // merged yesterday — crosses the same boundary the same way: one `Value.readBuffer` per channel
-            // per block. If it allocates the same amount per voice, the allocation is the polyglot buffer
-            // read rather than anything in FaustVoiceBank, and fixing it means changing how the samples come
-            // out of WebAssembly for both paths.
+            // FaustDsp — the shipped single-voice path — crosses the same boundary the same way: one
+            // `Value.readBuffer` per channel per block. If one voice of the bank allocates about what it
+            // does, the allocation is the polyglot buffer read rather than anything in FaustVoiceBank.
             val gate = program.ui.writable.first { it.label == "gate" }
             val dsp = FaustDsp(program, SR)
             val dspPerBlock: Double
@@ -859,35 +856,53 @@ object FaustPolySmokeTest {
             } finally {
                 dsp.close()
             }
+
+            // Per-voice and fixed cost from a sweep over 1, 2, 4, 8, 16 voices, three interleaved trials,
+            // fitted by least squares. Each point is the minimum over trials: a transient (a JIT
+            // recompilation, a TLAB refill landing in the window) can only ADD bytes, so the minimum is the
+            // steady state. Measured on 2026-10-14 the minima were exactly 24 + 320·n (residual 0); the
+            // one trial-to-trial outlier was +87 B at 1 voice. The fit's residual check is what tests the
+            // premise that the cost is affine at all — an intercept from a non-line would mean nothing.
+            val counts = listOf(1, 2, 4, 8, 16)
+            fun bankPerBlock(n: Int): Double {
+                val b = FaustVoiceBank(program, SR, voices = n)
+                try {
+                    b.schedule((0 until n).map { FaustNote(0, Long.MAX_VALUE / 4, patMidiToHz(48.0 + it), 0.1, "s$it") })
+                    repeat(2000) { b.render(l, r, BLOCK) }
+                    check(b.activeVoices() == n) { "only ${b.activeVoices()} of $n voices sounding" }
+                    val b0 = bean.currentThreadAllocatedBytes
+                    repeat(blocks) { b.render(l, r, BLOCK) }
+                    return (bean.currentThreadAllocatedBytes - b0).toDouble() / blocks
+                } finally {
+                    b.close()
+                }
+            }
+            val trials = List(3) { counts.map { bankPerBlock(it) } }
+            trials.forEachIndexed { i, t ->
+                println("  trial $i: " + counts.zip(t).joinToString { (n, v) -> "$n=${"%.0f".format(v)}" })
+            }
+            val ys = counts.indices.map { i -> trials.minOf { it[i] } }
+            val spread = counts.indices.maxOf { i -> trials.maxOf { it[i] } - trials.minOf { it[i] } }
+            val xs = counts.map { it.toDouble() }
+            val mx = xs.average()
+            val my = ys.average()
+            val slope = xs.indices.sumOf { (xs[it] - mx) * (ys[it] - my) } / xs.sumOf { (it - mx) * (it - mx) }
+            val intercept = my - slope * mx
+            val worstResidual = xs.indices.maxOf { kotlin.math.abs(ys[it] - (intercept + slope * xs[it])) }
+            val soloPerBlock = ys[0]
+            val perBlock = ys[counts.indexOf(8)]
+            val perVoice = perBlock / 8.0
+            println(
+                "  first window, 8 voices: ${"%.0f".format(firstPerBlock)} bytes/block (before the JIT settles)"
+            )
+            println(
+                "  steady state, 8 voices: ${"%.0f".format(perBlock)} bytes per $BLOCK-frame block " +
+                    "(${"%.0f".format(perVoice)} per voice)"
+            )
             println(
                 "  the same for one FaustDsp (the shipped single-voice path): " +
                     "${"%.0f".format(dspPerBlock)} bytes per block"
             )
-            // The like-for-like comparison, and the reason it is measured here rather than inferred.
-            //
-            // `perVoice` divides the WHOLE block's cost by 8, including the once-per-block context
-            // enter/leave and queue drain that a bank pays however many voices sound. `FaustDsp` pays its own
-            // fixed cost once, for one voice. So "perVoice vs dspPerBlock" compares an average diluted by 8
-            // against one that is not, and it flatters the bank.
-            //
-            // A bank at `voices = 1` removes that: same class, same drain, same enter/leave, the same amount
-            // of DSP as one FaustDsp. Measuring 1 and 8 also gives the split directly — per-voice cost is the
-            // slope, fixed cost is the intercept — rather than solving two equations from figures taken in
-            // different runs, which is how this was last published with an implied NEGATIVE fixed cost.
-            val solo = FaustVoiceBank(program, SR, voices = 1)
-            val soloPerBlock: Double
-            try {
-                solo.schedule(listOf(FaustNote(0, Long.MAX_VALUE / 4, patMidiToHz(48.0), 0.1, "solo")))
-                repeat(2000) { solo.render(l, r, BLOCK) }
-                check(solo.activeVoices() == 1) { "the solo bank is not sounding" }
-                val beforeSolo = bean.currentThreadAllocatedBytes
-                repeat(blocks) { solo.render(l, r, BLOCK) }
-                soloPerBlock = (bean.currentThreadAllocatedBytes - beforeSolo).toDouble() / blocks
-            } finally {
-                solo.close()
-            }
-            val slope = (perBlock - soloPerBlock) / 7.0
-            val intercept = soloPerBlock - slope
             println(
                 "  the same bank at 1 voice: ${"%.0f".format(soloPerBlock)} bytes per block, against " +
                     "${"%.0f".format(dspPerBlock)} for one FaustDsp — " +
@@ -895,17 +910,24 @@ object FaustPolySmokeTest {
             )
             println(
                 "  => per voice ${"%.0f".format(slope)} bytes/block, fixed ${"%.0f".format(intercept)} " +
-                    "bytes/block, as a slope over 1 and 8 voices in one run"
+                    "bytes/block, least squares over $counts voices; worst residual " +
+                    "${"%.0f".format(worstResidual)}, worst trial spread ${"%.0f".format(spread)}"
             )
             report.check(
                 "one voice of the bank costs about what one FaustDsp costs, so the source is the shared " +
                     "polyglot buffer read and not this class",
                 soloPerBlock < dspPerBlock * 1.6
             ) { "${"%.0f".format(soloPerBlock)} vs ${"%.0f".format(dspPerBlock)} bytes/block" }
+            // 64 bytes is one object header plus a small array's worth: comfortably above the measured
+            // residual (0) and below one voice's 320, so a real non-linearity or a per-voice regression
+            // that only some counts hit still fails.
             report.check(
-                "the fixed per-block cost is not negative — which is what the two previously published " +
-                    "figures implied, because they came from different runs",
-                intercept > -1.0
+                "bytes/block is a line in the voice count (fixed + per voice × n)",
+                worstResidual < 64.0 + 0.02 * ys.last()
+            ) { "worst residual ${"%.0f".format(worstResidual)} bytes/block" }
+            report.check(
+                "the fixed per-block cost is not negative, measured as a fit in one run",
+                intercept > -64.0
             ) { "intercept ${"%.0f".format(intercept)} from slope ${"%.0f".format(slope)}" }
             // Ratchet near the measurement so a regression that doubles it fails, and honestly reported
             // rather than asserted away: this is real GC pressure on the audio thread and
