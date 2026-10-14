@@ -260,8 +260,8 @@ expect:
 :::static
 val server = osc(57304)
 server.debug = false
-val patterns = listOf("/fader/1", "/fader/*", "/fader/?", "/fader/[1-3]",
-                      "/fader/{1,2}", "/fader/{1,10}", "//volume")
+val patterns = ["/fader/1", "/fader/*", "/fader/?", "/fader/[1-3]",
+                      "/fader/{1,2}", "/fader/{1,10}", "//volume"]
 val hits = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
 
 for (p in patterns) server.on(p) { m ->
@@ -269,7 +269,7 @@ for (p in patterns) server.on(p) { m ->
     gather<OscServer.Message> { }
 }
 
-val addresses = listOf("/fader/1", "/fader/2", "/fader/10", "/mixer/strip/volume")
+val addresses = ["/fader/1", "/fader/2", "/fader/10", "/mixer/strip/volume"]
 val out = oscClient("127.0.0.1", 57304)
 for (a in addresses) out.send(a, 1f)
 Thread.sleep(300)
@@ -436,8 +436,8 @@ fun timetagIn(ms: Long): OSCTimeTag64 {
 }
 
 val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57306)).build()
-out.send(OSCBundle(listOf(OSCMessage("/when", listOf("stamped 500 ms ahead"))), timetagIn(500)))
-out.send(OSCBundle(listOf(OSCMessage("/when", listOf("stamped immediate"))), OSCTimeTag64.IMMEDIATE))
+out.send(OSCBundle([OSCMessage("/when", ["stamped 500 ms ahead"])], timetagIn(500)))
+out.send(OSCBundle([OSCMessage("/when", ["stamped immediate"])], OSCTimeTag64.IMMEDIATE))
 Thread.sleep(900)
 out.close()
 
@@ -491,12 +491,12 @@ val tracker = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.
 fun frame(fseq: Int, alive: List<Int>, vararg set: List<Any>) {
     val packets = mutableListOf<OSCPacket>(OSCMessage("/tuio/2Dcur", listOf<Any>("alive") + alive))
     for (s in set) packets += OSCMessage("/tuio/2Dcur", listOf<Any>("set") + s)
-    packets += OSCMessage("/tuio/2Dcur", listOf("fseq", fseq))
+    packets += OSCMessage("/tuio/2Dcur", ["fseq", fseq])
     tracker.send(OSCBundle(packets))
 }
-frame(1, listOf(11), listOf(11, 0.25f, 0.5f, 0f, 0f, 0f))
-frame(2, listOf(11, 12), listOf(11, 0.3f, 0.5f, 0f, 0f, 0f), listOf(12, 0.75f, 0.25f, 0f, 0f, 0f))
-frame(3, listOf(12), listOf(12, 0.75f, 0.3f, 0f, 0f, 0f))
+frame(1, [11], [11, 0.25f, 0.5f, 0f, 0f, 0f])
+frame(2, [11, 12], [11, 0.3f, 0.5f, 0f, 0f, 0f], [12, 0.75f, 0.25f, 0f, 0f, 0f])
+frame(3, [12], [12, 0.75f, 0.3f, 0f, 0f, 0f])
 frame(4, listOf())
 Thread.sleep(300)
 tracker.close()

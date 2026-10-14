@@ -139,6 +139,38 @@ class RuleTests(unittest.TestCase):
         self.assertEqual([x.line for x in findings], [2, 9])
 
 
+class ListLiteralTests(unittest.TestCase):
+    PATH = "dev_docs/agents/demos/d/x_code_.kt"
+
+    def fixed(self, code: str) -> str:
+        f = Fixture({self.PATH: code})
+        try:
+            f.run("--fix")
+            return f.read(self.PATH)
+        finally:
+            f.close()
+
+    def test_a_one_line_call_becomes_a_literal(self):
+        self.assertEqual(self.fixed('val xs = listOf("a(", f(1, 2), listOf(3 to 4))\nfor (d in listOf(E, S)) { }\n'),
+                         'val xs = ["a(", f(1, 2), [3 to 4]]\nfor (d in [E, S]) { }\n')
+
+    def test_empty_typed_and_spread_calls_are_left_alone(self):
+        code = "val a = listOf()\nval b = listOf<Int>(1)\nval c = listOf(*xs)\nval d = xs.listOf(1)\nval e = mutableListOf(1)\n"
+        self.assertEqual(self.fixed(code), code)
+        self.assertEqual(self.fixed("val p = listOf(a * b, c)\n"), "val p = [a * b, c]\n")
+
+    def test_a_call_spanning_lines_is_a_note_not_a_rewrite(self):
+        code = "val xs = listOf(\n    1,\n    2,\n)\n"
+        f = Fixture({self.PATH: code})
+        try:
+            findings = idioms.process(self.PATH, f.root, fix=False)
+            self.assertEqual([(x.line, x.rule, x.fixable, x.blocking) for x in findings], [(1, "list-literal", False, False)])
+            f.run("--fix")
+            self.assertEqual(f.read(self.PATH), code)
+        finally:
+            f.close()
+
+
 class BoxContextTests(unittest.TestCase):
     PATH = "dev_docs/agents/demos/d/x_code_.kt"
 

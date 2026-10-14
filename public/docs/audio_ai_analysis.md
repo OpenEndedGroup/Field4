@@ -60,11 +60,11 @@ client.assetByFilename("*Nancy*").thenCompose { source ->
         ),
     ))
 
-    val requests = listOf(
+    val requests = [
         "beats" to multiScaleBeatAnalysis(region, requestedBy = "field:analysis-example"),
         "monophonic pitch" to monophonicPitchAnalysis(region, requestedBy = "field:analysis-example"),
         "polyphonic pitch" to polyphonicPitchAnalysis(region, requestedBy = "field:analysis-example"),
-    )
+    ]
     val futures = requests.map { (label, request) ->
         client.submit(request).thenCompose { accepted ->
             display("$label job", fieldAudioJobStatusHtml(accepted))

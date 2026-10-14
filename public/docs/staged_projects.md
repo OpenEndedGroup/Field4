@@ -112,7 +112,7 @@ ui.clickSelector("button[id$='-traversal-build']")
 ui.waitForSelector("text=Waiting for reachable loot", 120000.0)
 val plan = thisBox.named("Level").properties["levelPlan"] as SourceStudy<String>
 val edit = thisBox.named("Level").properties["editLevel"] as (String, List<Map<String, Any?>>, String) -> String
-edit(plan.currentId(), listOf(mapOf("op" to "door", "id" to "d5", "at" to listOf(11, 7, "e"))), "A door from the vault into the well")
+edit(plan.currentId(), [mapOf("op" to "door", "id" to "d5", "at" to [11, 7, "e"])], "A door from the vault into the well")
 ui.waitForSelector("text=Needs rebuilding", 60000.0)
 ui.clickSelector("button[id$='-blockout-build']")
 ui.clickSelector("button[id$='-traversal-build']")
@@ -141,7 +141,7 @@ shows them side by side with their measurements:
 ui.waitForSelector("text=seed 5", 180000.0)
 val plan = thisBox.named("Level").properties["levelPlan"] as SourceStudy<String>
 val edit = thisBox.named("Level").properties["editLevel"] as (String, List<Map<String, Any?>>, String) -> String
-edit(plan.currentId(), listOf(mapOf("op" to "door", "id" to "d5", "at" to listOf(11, 7, "e"))), "A door from the vault into the well")
+edit(plan.currentId(), [mapOf("op" to "door", "id" to "d5", "at" to [11, 7, "e"])], "A door from the vault into the well")
 thisBox.named("Corpus").begin()
 ui.waitForSelector("text=placed: L1", 180000.0)
 ui.waitForSelector("text=seed 5", 180000.0)

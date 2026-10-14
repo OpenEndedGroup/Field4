@@ -275,7 +275,7 @@ runtime error in the middle of a performance. This layer runs through reverb and
 sonicPiProgram(
     sonicPiLayer(
         "bass", pat("e3 ~ [e4 g3] ~") with cutoff(700.0), synth = "tb303",
-        fx = listOf(sonicPiFx("reverb", "room" to 0.8), sonicPiFx("echo", "phase" to 0.25, "decay" to 4))
+        fx = [sonicPiFx("reverb", "room" to 0.8), sonicPiFx("echo", "phase" to 0.25, "decay" to 4)]
     ),
     cps = 0.5
 )
@@ -372,7 +372,7 @@ println(groove.sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))
 println()
 println(SonicPiVocabulary)
 val kit = SonicPiInstruments()
-listOf("bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch").forEach {
+["bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch"].forEach {
     println("  %-10s -> %s".format(it, kit.resolve(it) ?: "NOTHING — this atom would be silent"))
 }
 ```
@@ -401,13 +401,13 @@ sonicPiPattern(
     sonicPiLayer(
         "hats",
         pat("[hh hh hh hh]").degradeBy(0.35, salt = 4) with gain(0.35),
-        fx = listOf(sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3))
+        fx = [sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3)]
     ),
     sonicPiLayer(
         "bass",
         pat("<e3 g3> ~ e4 ~").every(4) { it.rev() } with cutoff(700.0),
         synth = "tb303",
-        fx = listOf(sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4))
+        fx = [sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4)]
     ),
     cps = 0.5,
     cycles = 4

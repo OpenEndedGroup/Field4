@@ -73,9 +73,9 @@ named("field").forEachIndexed { i, s ->
 }
 canvas.wait(40.0)   // let the field set a little before the grass goes into it
 val grass = canvas.brush(BrushKind.Round, width = 10.0)
-val greens = listOf(mapOf("viridian" to 1.0, "yellow ochre" to 1.5), mapOf("green earth" to 2.0, "chrome yellow" to 1.0),
+val greens = [mapOf("viridian" to 1.0, "yellow ochre" to 1.5), mapOf("green earth" to 2.0, "chrome yellow" to 1.0),
     mapOf("viridian" to 1.0, "raw umber" to 1.0), mapOf("yellow ochre" to 2.0, "lead white" to 1.0),
-    mapOf("Prussian blue" to 0.2, "chrome yellow" to 2.0), mapOf("Naples yellow" to 2.0, "green earth" to 1.0))
+    mapOf("Prussian blue" to 0.2, "chrome yellow" to 2.0), mapOf("Naples yellow" to 2.0, "green earth" to 1.0)]
 named("grass").sortedBy { it.start!!.y }.forEachIndexed { i, s -> paint(s, grass.load(greens[i % greens.size], wipe = 0.5), 0.4 + 0.6 * depth(s), shake = 0.6) }
 val poppy = canvas.brush(BrushKind.Filbert, width = 24.0)
 named("poppy").sortedBy { it.start!!.y }.forEach { s -> paint(s, poppy.load(mapOf("vermilion" to 3.0, "cadmium red" to 1.0, "lead white" to 0.2), wipe = 0.9), 0.3 + 0.7 * depth(s)) }
@@ -167,9 +167,9 @@ named("field").withIndex().chunked(2).forEach { group -> steps += "field" to { g
     paint(s, field.load(mapOf("green earth" to 2.0, "yellow ochre" to 2.0 * (1 - t), "raw umber" to 1.5 * t, "lead white" to 1.0 * (1 - t)), wipe = 0.5), 1.0, 1.0) } } }
 steps += "forty minutes pass" to { canvas.wait(40.0) }
 val grass = canvas.brush(BrushKind.Round, width = 10.0)
-val greens = listOf(mapOf("viridian" to 1.0, "yellow ochre" to 1.5), mapOf("green earth" to 2.0, "chrome yellow" to 1.0),
+val greens = [mapOf("viridian" to 1.0, "yellow ochre" to 1.5), mapOf("green earth" to 2.0, "chrome yellow" to 1.0),
     mapOf("viridian" to 1.0, "raw umber" to 1.0), mapOf("yellow ochre" to 2.0, "lead white" to 1.0),
-    mapOf("Prussian blue" to 0.2, "chrome yellow" to 2.0), mapOf("Naples yellow" to 2.0, "green earth" to 1.0))
+    mapOf("Prussian blue" to 0.2, "chrome yellow" to 2.0), mapOf("Naples yellow" to 2.0, "green earth" to 1.0)]
 named("grass").sortedBy { it.start!!.y }.withIndex().chunked(14).forEach { group -> steps += "grass" to { group.forEach { (i, s) -> paint(s, grass.load(greens[i % greens.size], wipe = 0.5), 0.4 + 0.6 * depth(s), 0.6) } } }
 val poppy = canvas.brush(BrushKind.Filbert, width = 24.0)
 named("poppy").sortedBy { it.start!!.y }.chunked(5).forEach { group -> steps += "poppies" to { group.forEach { s -> paint(s, poppy.load(mapOf("vermilion" to 3.0, "cadmium red" to 1.0, "lead white" to 0.2), wipe = 0.9), 0.3 + 0.7 * depth(s), 1.0) } } }
@@ -251,7 +251,7 @@ notation {
 // pressing as the pen did; the pen's pressure squared, so light strokes go lighter; one even pressure.
 val region = Rect(40.0, 40.0, 1040.0, 400.0)
 val strokes = notation.strokes.filter { it.bounds.intersects(region) }
-val colours = listOf(mapOf("ultramarine blue" to 2.0, "bone black" to 0.3), mapOf("vermilion" to 1.0), mapOf("viridian" to 1.0, "chrome yellow" to 0.6))
+val colours = [mapOf("ultramarine blue" to 2.0, "bone black" to 0.3), mapOf("vermilion" to 1.0), mapOf("viridian" to 1.0, "chrome yellow" to 0.6)]
 val canvas = PaintCanvas(900, aspect = 0.9, view = Rect(40.0, 40.0, 1000.0, 1110.0))
 val brush = canvas.brush(BrushKind.Round, width = 70.0)
 fun lower(s: Mark, dy: Double) = FLine().also { f -> s.points.forEachIndexed { k, p -> if (k == 0) f.moveTo(p.x, p.y + dy) else f.lineTo(p.x, p.y + dy) } }
@@ -330,7 +330,7 @@ again after 2, 10, 33 and 100 hours:
 import afield.paint.*
 
 // One yellow band, crossed in blue after longer and longer waits.
-val hours = listOf(0.0, 2.0, 10.0, 33.0, 100.0)
+val hours = [0.0, 2.0, 10.0, 33.0, 100.0]
 notation {
     stroke(FLine().moveTo(60, 1080).cubicTo(400, 1070, 700, 1090, 1020, 1080), name = "slow band", pressure = { 0.85 })
     hours.indices.forEach { i ->
@@ -382,7 +382,7 @@ val region = Rect(40.0, 40.0, 1040.0, 400.0)
 val canvas = PaintCanvas(900, aspect = 3.0, view = Rect(40.0, 40.0, 1040.0, 347.0), sizeMm = 200.0)
 val pencil = canvas.pencil("6B")
 for (s in notation.strokes.filter { it.bounds.intersects(region) })
-    canvas.draw(s.toFLine(), pencil, pressure = s.pressuresAlong(32).ifEmpty { listOf(0.6) })
+    canvas.draw(s.toFLine(), pencil, pressure = s.pressuresAlong(32).ifEmpty { [0.6] })
 display("main", canvas.png())
 notation.clear()
 ```

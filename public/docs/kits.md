@@ -239,14 +239,14 @@ library. When a build's results are only trustworthy with particular versions of
 it as an asset of the kit:
 
 ```diffstatic {data-lang=kotlin}
-RuntimeIdentity.capture(listOf(Solid::class), natives = listOf(File(ManifoldLibrary.resolvedPath!!)))
+RuntimeIdentity.capture([Solid::class], natives = [File(ManifoldLibrary.resolvedPath!!)])
     .write("runtime-identity.json".file)
 ```
 
 Then check it before building on that code:
 
 ```diffstatic {data-lang=kotlin}
-RuntimeIdentity.verify("runtime-identity.json".file, natives = listOf(File(ManifoldLibrary.resolvedPath!!)))
+RuntimeIdentity.verify("runtime-identity.json".file, natives = [File(ManifoldLibrary.resolvedPath!!)])
 ```
 
 `verify` refuses a Field that loaded other code, and names each class or library that differs with

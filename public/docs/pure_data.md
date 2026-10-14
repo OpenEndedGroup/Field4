@@ -198,7 +198,7 @@ pd.openPatchText("""
 
 // A wavetable for [tabosc4~ wave]: 2048 points plus the three guard points it wants.
 // Three partials, so what comes back is plainly not a sine.
-val partials = listOf(1.0, 0.5, 0.33)
+val partials = [1.0, 0.5, 0.33]
 pd.writeArray("wave", FloatArray(2051) { i ->
     val phase = 2 * PI * (i - 1) / 2048
     (partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * phase) } * 0.5).toFloat()
@@ -357,7 +357,7 @@ pdBox("drone").pdSend("freq", 330)
 
 // Launched, this plays an arpeggio into [r freq] until the box stops.
 val drone = pdBox("drone")
-val notes = listOf(110, 165, 220, 330, 440, 330, 220, 165)
+val notes = [110, 165, 220, 330, 440, 330, 220, 165]
 var i = 0
 loop {
     drone.pdSend("freq", notes[i++ % notes.size])

@@ -190,15 +190,15 @@ expect:
 :::static
 data class Take(val clip: String, val shot: String, val seconds: Int, val rating: Int)
 
-val takes = listOf(
+val takes = [
     Take("a017", "wide",   42, 5), Take("a018", "wide",   38, 2),
     Take("a021", "close",  19, 4), Take("a022", "close",  22, 3),
     Take("a030", "insert",  8, 2), Take("a031", "insert", 11, 1),
-)
+]
 
 val d = Datalog()
-d.facts("take", takes) { listOf(it.clip, it.shot, it.seconds, it.rating) }
-d.facts("shot", listOf(listOf("wide"), listOf("close"), listOf("insert")))
+d.facts("take", takes) { [it.clip, it.shot, it.seconds, it.rating] }
+d.facts("shot", [["wide"], ["close"], ["insert"]])
 d.add("""
     #datalog
     covered(S) :- take(_, S, _, R), R >= 4.
@@ -361,10 +361,10 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/reachability.png" alt="seven yellow diamond nodes numbered 0 to 6 around an ellipse. Eight thick yellow lines are the stated edges, the ring 0-1-2-3-4 back to 0, plus the branch 1-5-6 rejoining at 2. Behind them a dense haze of thin blue-grey lines joins almost every other pair of nodes: the implied edges, outnumbering the stated ones four to one" wait="1.5" capture="box" open-outputs="true" embed=true name="datalog-reachability" w="760" h="430"}
 :::static
-val links = listOf(0 to 1, 1 to 2, 2 to 3, 3 to 4, 4 to 0, 1 to 5, 5 to 6, 6 to 2)
+val links = [0 to 1, 1 to 2, 2 to 3, 3 to 4, 4 to 0, 1 to 5, 5 to 6, 6 to 2]
 
 val d = Datalog()
-d.facts("edge", links.map { listOf(it.first, it.second) })
+d.facts("edge", links.map { [it.first, it.second] })
 d.add("""
     #datalog
     path(X, Y) :- edge(X, Y).

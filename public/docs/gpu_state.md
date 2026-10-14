@@ -115,7 +115,7 @@ The trap is the second buffer's contents before the first frame.
 ```diffstatic {data-lang=kotlin}
 // BOTH halves of the ping-pong. The shader reads one and writes the other from frame one, so
 // an unwritten second buffer means the first frame integrates from zeroes.
-for (target in listOf(stateA, stateB)) {
+for (target in [stateA, stateB]) {
     target.write {
         for (h in home) {
             put(vec(h.first, h.second, h.third, 0.0))   // position, age

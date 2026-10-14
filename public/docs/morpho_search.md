@@ -28,11 +28,11 @@ println("input space at 1 bit: ${problem.spec.inputSpace(1)} vectors, " +
 
 // Three drivers with the same generator, seed and budget. One unit of budget is one
 // invocation of morpho's compiler.
-val runs = listOf(
+val runs = [
     MorphoSearch.random(problem.spec, problem.generator, budget, seed = 2),
     MorphoSearch.hillClimb(problem.spec, problem.generator, budget, seed = 2),
     MorphoSearch.evolve(problem.spec, problem.generator, budget, seed = 2),
-)
+]
 runs.forEach { println(it.summary()) }
 
 // What was actually found, in MorphoHDL. This is paste-into-a-morpho-box text.
@@ -100,10 +100,10 @@ import afield.morpho.*
 val problem = MorphoProblems.orReduce()
 println(problem)
 
-val runs = listOf(
+val runs = [
     MorphoSearch.random(problem.spec, problem.generator, 6000, seed = 2),
     MorphoSearch.evolve(problem.spec, problem.generator, 6000, seed = 2, mu = 24, lambda = 40),
-)
+]
 runs.forEach { println(it.summary()) }
 
 // The cheapest correct design across both runs, or the closest one if neither solved it.
@@ -115,8 +115,8 @@ println(best.genome.phenotype().cells[0].render())
 
 // Selected at widths 2, 3 and 5 (see "Why the width family is 2, 3 and 5" below), then
 // re-compiled from the same source at widths it was never tested on.
-listOf(7, 9, 16, 32, 48).forEach { w ->
-    val f = MorphoSearch.generalization(best.genome, problem.spec, listOf(w))
+[7, 9, 16, 32, 48].forEach { w ->
+    val f = MorphoSearch.generalization(best.genome, problem.spec, [w])
     println("  at %2d bits: %s".format(w, f))
 }
 
@@ -130,7 +130,7 @@ println("Pareto front (gates, depth) at %d bits: %s".format(
 
 // The found circuit itself at three widths: one source, three signatures, three circuits.
 val source = best.genome.render()
-val panels = listOf(4, 8, 16).map { w ->
+val panels = [4, 8, 16].map { w ->
     val c = morphoCircuit(MorphoProblems.ROOT, w, source = source)
     c.growFully(relaxSteps = 220)
     "evolved or-reduce at %d bits — %d gates, depth %d".format(w, c.netlist.gateCount, c.depth.toInt()) to
@@ -215,41 +215,41 @@ import afield.morpho.*
 val free = MorphoProblems.recursiveAdder()
 val guided = MorphoProblems.guidedRecursiveAdder()
 val budget = 6000
-val runs = listOf(
+val runs = [
     MorphoSearch.random(free.spec, free.generator, budget, seed = 1),
     MorphoSearch.hillClimb(free.spec, free.generator, budget, seed = 1),
     MorphoSearch.evolve(free.spec, free.generator, budget, seed = 1),
     MorphoSearch.evolve(guided.spec, guided.generator, budget, seed = 1,
         label = "evolution, SPLITs given"),
-)
+]
 runs.forEach { println(it.summary()) }
 
 // The ripple adder written by hand in the generator's own grammar, scored by the same
 // evaluator: the answer is in the search space.
 val target = MorphoGenome(
-    listOf(MorphoCellGenome(
+    [MorphoCellGenome(
         name = MorphoProblems.ROOT,
-        inputs = listOf("a", "b", "c"),
-        statements = listOf(
-            MorphoStatement(listOf("a0", "a1"), "SPLIT", listOf("a")),
-            MorphoStatement(listOf("b0", "b1"), "SPLIT", listOf("b")),
-            MorphoStatement(listOf("s0", "cm"), MorphoProblems.ROOT, listOf("a0", "b0", "c")),
-            MorphoStatement(listOf("s1", "co"), MorphoProblems.ROOT, listOf("a1", "b1", "cm")),
-            MorphoStatement(listOf("sum"), "CAT", listOf("s0", "s1")),
-        ),
-        outputs = listOf("sum", "co"),
+        inputs = ["a", "b", "c"],
+        statements = [
+            MorphoStatement(["a0", "a1"], "SPLIT", ["a"]),
+            MorphoStatement(["b0", "b1"], "SPLIT", ["b"]),
+            MorphoStatement(["s0", "cm"], MorphoProblems.ROOT, ["a0", "b0", "c"]),
+            MorphoStatement(["s1", "co"], MorphoProblems.ROOT, ["a1", "b1", "cm"]),
+            MorphoStatement(["sum"], "CAT", ["s0", "s1"]),
+        ],
+        outputs = ["sum", "co"],
         fallback = "full_adder",
-    )),
+    )],
     free.generator.preamble,
 )
 println()
 println(target.cells[0].render())
 println("  scored at 2/4/8: " + MorphoEvaluator(free.spec).evaluate(target.render(), target.rootName))
-println("  at 16 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(16)))
-println("  at 32 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(32)))
+println("  at 16 bits:      " + MorphoSearch.generalization(target, free.spec, [16]))
+println("  at 32 bits:      " + MorphoSearch.generalization(target, free.spec, [32]))
 
 // morpho's own adders, scored by the same evaluator.
-val references = listOf("ripple_adder", "brent_kung_adder").mapNotNull { design ->
+val references = ["ripple_adder", "brent_kung_adder"].mapNotNull { design ->
     free.reference(design).cost?.let { MorphoCostPoint(design, it.gates, it.depth, reference = true) }
 }
 references.forEach { println("  reference ${it.label}: ${it.gates} gates, depth ${it.depth}") }

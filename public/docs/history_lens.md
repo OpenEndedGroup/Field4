@@ -21,7 +21,7 @@ ui.eval("""
     return true
 """.trimIndent())
 ui.pause(6500)
-val versions = listOf(
+val versions = [
     """
     // A ring of points, saved three times.
     val radius = 64.0
@@ -35,7 +35,7 @@ val versions = listOf(
     val ring = (0 until count).map { it * 360.0 / count }
     println("radius " + radius + ", " + ring.size + " points")
     """.trimIndent(),
-)
+]
 for (text in versions) {
     val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
     ui.eval("window.globalEditor.setValue($quoted); return true")

@@ -70,12 +70,12 @@ a built-in, because the directional form is the one you need the moment tiles st
 val SEA = 0
 val SAND = 1
 val GRASS = 2
-val names = listOf("sea", "sand", "grass")
+val names = ["sea", "sand", "grass"]
 
 // The primitive is directional. "May touch", for tiles that have no orientation, is that
 // primitive applied both ways round in both authored directions.
 fun WfcRulesBuilder.mayTouch(a: Int, b: Int) {
-    for (d in listOf(WFC_EAST, WFC_SOUTH)) {
+    for (d in [WFC_EAST, WFC_SOUTH]) {
         allow(d, a, b)
         allow(d, b, a)
     }
@@ -121,11 +121,11 @@ markdown("rules", """
 :::endfold
 
 :::fold render one flat colour per cell, big enough to count them
-val palette = listOf(
+val palette = [
     Triple(0.07f, 0.20f, 0.33f),
     Triple(0.85f, 0.78f, 0.55f),
     Triple(0.28f, 0.52f, 0.22f)
-)
+]
 val img = Img.generateRGB(22, 14) { x, y -> palette[grid[x + y * 22]] }
 showImgGrid("22x14 cells, seed 12" to img.upscaleNearest(26), columns = 1, cellSide = 700)
 :::endfold
@@ -165,13 +165,13 @@ fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
     return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
 }
 
-val palette = listOf(
+val palette = [
     Triple(0.08f, 0.20f, 0.31f),   // deep water
     Triple(0.18f, 0.48f, 0.66f),   // shallow water
     Triple(0.85f, 0.78f, 0.55f),   // sand
     Triple(0.31f, 0.55f, 0.24f),   // grass
     Triple(0.12f, 0.29f, 0.14f)    // forest
-)
+]
 
 val sw = 26
 val sh = 18
@@ -224,7 +224,7 @@ reweighted.weights[tileOfBand[1]] *= 1.5     // shallow water
 reweighted.weights[tileOfBand[2]] *= 10.0    // sand, the only band that may touch both sides
 val boosted = solveWith(reweighted)
 
-val bandNames = listOf("deep", "shallow", "sand", "grass", "forest")
+val bandNames = ["deep", "shallow", "sand", "grass", "forest"]
 fun histogram(cells: IntArray, bandOf: (Int) -> Int): String =
     palette.indices.joinToString("  ") { b ->
         bandNames[b] + " " + (cells.count { bandOf(it) == b } * 100 / cells.size).toString().padStart(2) + "%"
@@ -298,13 +298,13 @@ fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
     return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
 }
 
-val palette = listOf(
+val palette = [
     Triple(0.08f, 0.20f, 0.31f),   // deep water
     Triple(0.18f, 0.48f, 0.66f),   // shallow water
     Triple(0.85f, 0.78f, 0.55f),   // sand
     Triple(0.31f, 0.55f, 0.24f),   // grass
     Triple(0.12f, 0.29f, 0.14f)    // forest
-)
+]
 
 val sw = 26
 val sh = 18
@@ -331,7 +331,7 @@ val outH = 26
 
 // Twelve seeds, because one picture of a stochastic process is an anecdote. No pinning, no
 // re-weighting: this is the learned model exactly as `toRules()` handed it over.
-val seeds = listOf(1L, 3L, 5L, 7L, 9L, 11L, 12L, 17L, 23L, 42L, 101L, 2026L)
+val seeds = [1L, 3L, 5L, 7L, 9L, 11L, 12L, 17L, 23L, 42L, 101L, 2026L]
 val panels = mutableListOf<Pair<String, Img>>()
 var firstAttempt = 0
 for (seed in seeds) {
@@ -440,7 +440,7 @@ the original "simple tiled model", and it is about ten lines once the sockets ar
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/circuit.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-circuit"}
 :::static
 // Sockets per tile, in WFC_NORTH, WFC_EAST, WFC_SOUTH, WFC_WEST order. 1 = a trace leaves this edge.
-val sockets = listOf(
+val sockets = [
     intArrayOf(0, 0, 0, 0),   // blank
     intArrayOf(0, 1, 0, 1),   // horizontal
     intArrayOf(1, 0, 1, 0),   // vertical
@@ -449,7 +449,7 @@ val sockets = listOf(
     intArrayOf(0, 0, 1, 1),   // elbow S-W
     intArrayOf(1, 0, 0, 1),   // elbow W-N
     intArrayOf(1, 1, 1, 1)    // cross
-)
+]
 
 // Edge matching, stated once. Everything else about the picture follows from it.
 val rules = wfcRules(tileCount = sockets.size) {
@@ -538,7 +538,7 @@ val BLOSSOM = Triple(0.88f, 0.34f, 0.42f)
 val sw = 26
 val sh = 18
 val soilTop = 13
-val flowers = listOf(3 to 4, 8 to 6, 13 to 3, 18 to 5, 22 to 4)   // column to stem height
+val flowers = [3 to 4, 8 to 6, 13 to 3, 18 to 5, 22 to 4]   // column to stem height
 
 val source = Img.generateRGB(sw, sh) { x, y ->
     val flower = flowers.firstOrNull { it.first == x }
@@ -706,13 +706,13 @@ fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
     val dy = v - cy
     return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
 }
-val palette = listOf(
+val palette = [
     Triple(0.08f, 0.20f, 0.31f),
     Triple(0.18f, 0.48f, 0.66f),
     Triple(0.85f, 0.78f, 0.55f),
     Triple(0.31f, 0.55f, 0.24f),
     Triple(0.12f, 0.29f, 0.14f)
-)
+]
 val bands = IntArray(26 * 18)
 for (cy in 0 until 18) for (cx in 0 until 26) {
     val u = cx / 25.0
@@ -792,13 +792,13 @@ fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
     val dy = v - cy
     return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
 }
-val palette = listOf(
+val palette = [
     Triple(0.08f, 0.20f, 0.31f),
     Triple(0.18f, 0.48f, 0.66f),
     Triple(0.85f, 0.78f, 0.55f),
     Triple(0.31f, 0.55f, 0.24f),
     Triple(0.12f, 0.29f, 0.14f)
-)
+]
 val bands = IntArray(26 * 18)
 for (cy in 0 until 18) for (cx in 0 until 26) {
     val u = cx / 25.0
@@ -833,7 +833,7 @@ loop {
     if (solver.status == WfcStatus.Running) solver.step()   // one WFC iteration per displayed frame
     val label = "${(solver.resolvedFraction() * 100).toInt()}% decided — ${solver.status}"
     display("main", montage(
-        listOf(label to tiles.waveToImg(solver).upscaleNearest(8)),
+        [label to tiles.waveToImg(solver).upscaleNearest(8)],
         columns = 1,
         cellSide = 460
     ).toPngBytes())
@@ -884,13 +884,13 @@ fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
     val dy = v - cy
     return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
 }
-val palette = listOf(
+val palette = [
     Triple(0.08f, 0.20f, 0.31f),
     Triple(0.18f, 0.48f, 0.66f),
     Triple(0.85f, 0.78f, 0.55f),
     Triple(0.31f, 0.55f, 0.24f),
     Triple(0.12f, 0.29f, 0.14f)
-)
+]
 val bands = IntArray(26 * 18)
 for (cy in 0 until 18) for (cx in 0 until 26) {
     val u = cx / 25.0
@@ -1059,7 +1059,7 @@ val patternHeights: FloatArray = patterns.render(patternGrid, outW, outH)
 // Three seeds rather than one, because the claim is about the ensemble: each field keeps a grain,
 // and what symmetry closure removes is every field having the SAME grain. One panel cannot show that.
 val symmetric = patterns.expandSymmetry(WfcSymmetry.All)
-val symSeeds = listOf(5L, 23L, 42L)
+val symSeeds = [5L, 23L, 42L]
 val symFields = mutableListOf<Pair<Long, FloatArray>>()
 for (seed in symSeeds) {
     val solver = WfcSolver(outW, outH, symmetric.toRules(), seed = seed)
@@ -1122,7 +1122,7 @@ $statsReport
 // field -- the banded one has nothing worth contouring.
 val smooth = symField.gaussianBlur(1.2)
 val contours = ArrayList<FLine>()
-for (iso in listOf(0.15, 0.35, 0.55, 0.75)) {
+for (iso in [0.15, 0.35, 0.55, 0.75]) {
     for (line in smooth.isoContourFLines(iso)) {
         line.color = vec(0.30 + iso * 0.65, 0.95 - iso * 0.45, 0.40 + iso * 0.45, 0.95)
         line.thickness = 1.6
@@ -1268,14 +1268,14 @@ val relaxed = wfcRules(tileCount = 3) {
 }
 val relaxedOutcome = WfcSolver(6, 6, relaxed, seed = 1L).solveWithRetries()
 
-val report = listOf(
+val report = [
     "strict rules:   ${stuckOutcome.status} after ${stuckOutcome.attempts} attempt(s)",
     "  east of 2:    ${(0..2).filter { strict.allows(WFC_EAST, 2, it) }} (nothing may follow it)",
     "  symmetric?    ${strict.findAsymmetry() ?: "yes"}",
     "relaxed rules:  ${relaxedOutcome.status} after ${relaxedOutcome.attempts} attempt(s)",
     "  east of 2:    ${(0..2).filter { relaxed.allows(WFC_EAST, 2, it) }}",
     "  symmetric?    ${relaxed.findAsymmetry() ?: "yes"}"
-).joinToString("<br>")
+].joinToString("<br>")
 :::fold render the deadlock report
 markdown("deadlock", """
     ~~~
@@ -1287,13 +1287,13 @@ $report
 :::fold same rules, two seeds, side by side
 val chain = wfcRules(tileCount = 3) {
     weights(3.0, 1.0, 4.0)
-    for (d in listOf(WFC_EAST, WFC_SOUTH)) {
+    for (d in [WFC_EAST, WFC_SOUTH]) {
         allow(d, 0, 0); allow(d, 0, 1); allow(d, 1, 0)
         allow(d, 1, 1); allow(d, 1, 2); allow(d, 2, 1)
         allow(d, 2, 2)
     }
 }
-val shades = listOf(Triple(0.07f, 0.20f, 0.33f), Triple(0.85f, 0.78f, 0.55f), Triple(0.28f, 0.52f, 0.22f))
+val shades = [Triple(0.07f, 0.20f, 0.33f), Triple(0.85f, 0.78f, 0.55f), Triple(0.28f, 0.52f, 0.22f)]
 fun draw(seed: Long): Img {
     val s = WfcSolver(34, 22, chain, seed = seed)
     s.solveWithRetries()

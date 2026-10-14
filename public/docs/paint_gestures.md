@@ -23,7 +23,7 @@ import afield.paint.*
 val canvas = PaintCanvas(900, aspect = 1.5, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 200.0, seed = 2)
 val umber = rgb(0.25, 0.15, 0.1)
 
-for ((i, speed) in listOf(20.0, 80.0, 300.0).withIndex()) {
+for ((i, speed) in [20.0, 80.0, 300.0].withIndex()) {
     val brush = canvas.dynamicBrush(BrushKind.Round, 60.0, hairs = 32).load(umber, stiff = 0.5)
     val y = 90.0 + i * 120
     canvas.stroke(FLine().moveTo(80, y).cubicTo(350, y - 60, 600, y + 70, 920, y), brush, speed = speed, tilt = 35.0)
@@ -80,16 +80,16 @@ val umber = rgb(0.25, 0.15, 0.1)
 fun round() = canvas.dynamicBrush(BrushKind.Round, 50.0).load(umber, stiff = 0.4)
 
 // a flick, then a slow lift over the same distance
-canvas.stroke(canvas.gesture(line(80.0, 100.0, 420.0, 70.0), speed = 400.0, pressure = listOf(0.9, -0.6), tilt = 30.0), round())
-canvas.stroke(canvas.gesture(line(500.0, 100.0, 900.0, 70.0), speed = 30.0, pressure = listOf(0.9, -0.6), tilt = 30.0), round())
+canvas.stroke(canvas.gesture(line(80.0, 100.0, 420.0, 70.0), speed = 400.0, pressure = [0.9, -0.6], tilt = 30.0), round())
+canvas.stroke(canvas.gesture(line(500.0, 100.0, 900.0, 70.0), speed = 30.0, pressure = [0.9, -0.6], tilt = 30.0), round())
 
 // a pause halfway
-val first = canvas.gesture(line(80.0, 250.0, 450.0, 250.0), speed = 80.0, pressure = listOf(0.6), tilt = 30.0)
-val second = canvas.gesture(line(450.0, 250.0, 900.0, 250.0), speed = 80.0, pressure = listOf(0.6), tilt = 30.0)
+val first = canvas.gesture(line(80.0, 250.0, 450.0, 250.0), speed = 80.0, pressure = [0.6], tilt = 30.0)
+val second = canvas.gesture(line(450.0, 250.0, 900.0, 250.0), speed = 80.0, pressure = [0.6], tilt = 30.0)
 canvas.stroke(first.pause(0.6).then(second), round())
 
 // a flat rolled through half a turn
-val straight = canvas.gesture(line(80.0, 400.0, 900.0, 400.0), speed = 60.0, pressure = listOf(0.6), tilt = 20.0)
+val straight = canvas.gesture(line(80.0, 400.0, 900.0, 400.0), speed = 60.0, pressure = [0.6], tilt = 20.0)
 val n = straight.samples.size - 1
 val rolled = TimedGesture(straight.samples.mapIndexed { i, s -> s.copy(roll = 90.0 + 180.0 * i / n) })
 canvas.stroke(rolled, canvas.dynamicBrush(BrushKind.HogFlat, 60.0).load(umber, stiff = 0.7))
@@ -115,7 +115,7 @@ import afield.paint.*
 
 val canvas = PaintCanvas(600, aspect = 2.0, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 100.0, seed = 3)
 val brush = canvas.dynamicBrush(BrushKind.Round, 80.0, hairs = 24).load(rgb(0.25, 0.15, 0.1))
-canvas.stroke(canvas.gesture(FLine().moveTo(200, 250).lineTo(500, 250), speed = 60.0, pressure = listOf(0.8), tilt = 20.0), brush)
+canvas.stroke(canvas.gesture(FLine().moveTo(200, 250).lineTo(500, 250), speed = 60.0, pressure = [0.8], tilt = 20.0), brush)
 
 // x along the stroke against height: on a 100 mm canvas 10 units are a mm, so this is to scale
 val side = canvas.hairs(brush).map { hair ->
@@ -172,14 +172,14 @@ val umber = rgb(0.25, 0.15, 0.1)
 val scrap = PaintCanvas(400, aspect = 1.5, sizeMm = 200.0, seed = 4)
 val abused = scrap.dynamicBrush(BrushKind.HogFlat, 60.0, hairs = 40).load(umber, stiff = 0.6)
 val scrub = scrap.gesture(FLine().moveTo(100, 300).lineTo(900, 300).lineTo(100, 310).lineTo(900, 320).lineTo(100, 330),
-    speed = 120.0, pressure = listOf(1.6), tilt = 10.0, roll = 0.0)
+    speed = 120.0, pressure = [1.6], tilt = 10.0, roll = 0.0)
 scrap.stroke(scrub, abused)
 
 val canvas = PaintCanvas(900, aspect = 3.0, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 200.0, seed = 4)
 val fresh = canvas.dynamicBrush(BrushKind.HogFlat, 60.0, hairs = 40)
-for ((y, brush) in listOf(100.0 to fresh, 230.0 to abused)) {
+for ((y, brush) in [100.0 to fresh, 230.0 to abused]) {
     brush.load(umber, stiff = 0.6, wipe = 1.0)
-    canvas.stroke(canvas.gesture(line(100.0, y, 900.0, y), speed = 80.0, pressure = listOf(0.5), tilt = 25.0), brush)
+    canvas.stroke(canvas.gesture(line(100.0, y, 900.0, y), speed = 80.0, pressure = [0.5], tilt = 25.0), brush)
 }
 display("main", canvas.png(relief = 0.6))
 markdown("retained bend: fresh %.3f rad, scrubbed %.3f rad".format(fresh.retainedBend, abused.retainedBend))
@@ -199,11 +199,11 @@ and nearly dry:
 import afield.paint.*
 
 val sheet = PaintCanvas.paper(700, aspect = 2.5, paper = Paper.Rough, sizeMm = 150.0, seed = 5)
-for ((i, fill) in listOf(1.0, 0.25, 0.08).withIndex()) {
+for ((i, fill) in [1.0, 0.25, 0.08].withIndex()) {
     val brush = sheet.dynamicBrush(BrushKind.Round, 80.0, hairs = 32)
         .loadWater(sheet, Watercolors.burntSienna * 80.0 + Watercolors.ultramarine * 40.0, fill = fill)
     val y = 70.0 + i * 120
-    sheet.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = listOf(0.3), speed = 200.0, tilt = 50.0)
+    sheet.stroke(FLine().moveTo(60, y).lineTo(940, y), brush, pressure = [0.3], speed = 200.0, tilt = 50.0)
 }
 sheet.dry()
 display("main", sheet.png(relief = 0.5))
@@ -247,13 +247,13 @@ fun oval(cx: Double, cy: Double, rx: Double, ry: Double): FLine {
 }
 
 // three slabs, each one movement, pressed down and lifted off the canvas at its end
-for ((x, width) in listOf(120.0 to 70.0, 470.0 to 80.0, 905.0 to 65.0))
+for ((x, width) in [120.0 to 70.0, 470.0 to 80.0, 905.0 to 65.0])
     canvas.stroke(canvas.gesture(FLine().moveTo(x, 25).lineTo(x + 8, h - 25), speed = 260.0,
-        pressure = listOf(0.7, 1.0, 0.9, 0.4, -0.2), tilt = 25.0), brush(width))
+        pressure = [0.7, 1.0, 0.9, 0.4, -0.2], tilt = 25.0), brush(width))
 // and two ovals between them
-for ((cx, cy, rx) in listOf(Triple(300.0, 250.0, 120.0), Triple(690.0, 230.0, 140.0)))
+for ((cx, cy, rx) in [Triple(300.0, 250.0, 120.0), Triple(690.0, 230.0, 140.0)])
     canvas.stroke(canvas.gesture(oval(cx, cy, rx, 170.0), speed = 320.0,
-        pressure = listOf(1.1, 1.0, 0.8, 0.4, -0.2), tilt = 35.0), brush(80.0))
+        pressure = [1.1, 1.0, 0.8, 0.4, -0.2], tilt = 35.0), brush(80.0))
 
 display("main", canvas.png(relief = 0.3))
 ```
@@ -287,13 +287,13 @@ fun oval(cx: Double, cy: Double, rx: Double, ry: Double): FLine {
 }
 
 // three slabs, each one movement, pressed down and lifted off the canvas at its end
-for ((x, width) in listOf(120.0 to 70.0, 470.0 to 80.0, 905.0 to 65.0))
+for ((x, width) in [120.0 to 70.0, 470.0 to 80.0, 905.0 to 65.0])
     canvas.stroke(canvas.gesture(FLine().moveTo(x, 25).lineTo(x + 8, h - 25), speed = 260.0,
-        pressure = listOf(0.7, 1.0, 0.9, 0.4, -0.2), tilt = 25.0), brush(width))
+        pressure = [0.7, 1.0, 0.9, 0.4, -0.2], tilt = 25.0), brush(width))
 // and two ovals between them
-for ((cx, cy, rx) in listOf(Triple(300.0, 250.0, 120.0), Triple(690.0, 230.0, 140.0)))
+for ((cx, cy, rx) in [Triple(300.0, 250.0, 120.0), Triple(690.0, 230.0, 140.0)])
     canvas.stroke(canvas.gesture(oval(cx, cy, rx, 170.0), speed = 320.0,
-        pressure = listOf(1.1, 1.0, 0.8, 0.4, -0.2), tilt = 35.0), brush(80.0))
+        pressure = [1.1, 1.0, 0.8, 0.4, -0.2], tilt = 35.0), brush(80.0))
 
 display("main", canvas.png(relief = 0.3))
 ```

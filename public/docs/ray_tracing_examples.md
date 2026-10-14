@@ -122,17 +122,17 @@ vertexBuffer.mapAndWrite_bytes { asFloatBuffer().put(vertices) }
 
 val blas = AccelerationStructure(renderer, "triangle-blas")
     .buildBottomLevelNow(
-        triangles = listOf(
+        triangles = [
             AccelerationStructureTriangles(
                 vertexBuffer = vertexBuffer,
                 maxVertex = 2,
                 primitiveCount = 1
             )
-        )
+        ]
     )
 
 val tlas = AccelerationStructure(renderer, "triangle-tlas")
-    .buildTopLevelNow(instances = listOf(RayTracingInstance(blas)))
+    .buildTopLevelNow(instances = [RayTracingInstance(blas)])
 ```
 
 Once the TLAS exists, the module connects shader source to the output image and acceleration structure:
@@ -232,13 +232,13 @@ After those vertices are written into a device-addressable buffer, the BLAS is b
 ```diffstatic {data-lang=kotlin}
 val blas = AccelerationStructure(renderer, "shader-tiles-blas")
     .buildBottomLevelNow(
-        triangles = listOf(
+        triangles = [
             AccelerationStructureTriangles(
                 vertexBuffer = quadVertexBuffer,
                 maxVertex = 5,
                 primitiveCount = 2
             )
-        )
+        ]
     )
 ```
 
@@ -290,31 +290,31 @@ The TLAS carries one floor instance and three sphere instances:
 ```diffstatic {data-lang=kotlin}
 val floorBlas = AccelerationStructure(renderer, "mirror-floor-blas")
     .buildBottomLevelNow(
-        triangles = listOf(
+        triangles = [
             AccelerationStructureTriangles(
                 vertexBuffer = floorVertexBuffer,
                 maxVertex = 5,
                 primitiveCount = 2
             )
-        )
+        ]
     )
 
 val sphereBlas = AccelerationStructure(renderer, "mirror-sphere-blas")
     .buildBottomLevelNow(
-        aabbs = listOf(
+        aabbs = [
             AccelerationStructureAabbs(
                 aabbBuffer = sphereAabbBuffer,
                 primitiveCount = 1
             )
-        )
+        ]
     )
 
-val instances = listOf(
+val instances = [
     RayTracingInstance(floorBlas, shaderBindingTableRecordOffset = 0),
     RayTracingInstance(sphereBlas, transform = sphereA, shaderBindingTableRecordOffset = 1),
     RayTracingInstance(sphereBlas, transform = sphereB, shaderBindingTableRecordOffset = 1),
     RayTracingInstance(sphereBlas, transform = sphereC, shaderBindingTableRecordOffset = 1)
-)
+]
 
 val tlas = AccelerationStructure(renderer, "mirror-balls-tlas")
     .buildTopLevelNow(instances = instances)

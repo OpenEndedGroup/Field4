@@ -73,7 +73,7 @@ Profiles provided: `RGB`, `GRB` (the WS2812 order many pixel controllers expose)
 slots:
 
 ```diffstatic {data-lang=kotlin}
-val myPar = FixtureProfile("my par", listOf(Slot.DIMMER, Slot.RED, Slot.GREEN, Slot.BLUE, Slot.ZERO, Slot.ZERO))
+val myPar = FixtureProfile("my par", [Slot.DIMMER, Slot.RED, Slot.GREEN, Slot.BLUE, Slot.ZERO, Slot.ZERO])
 ```
 
 A fixture's colour is always set as RGB, 0..1. Profiles with a white channel take the common part of
@@ -205,7 +205,7 @@ wired, and the receiver draws slots in wire order.
 other software (a console, a media server, another Field) can drive it.
 
 ```diffstatic {data-lang=kotlin}
-val input = artnetIn()                  // UDP 6454; sacnIn(universes = listOf(1, 2)) joins multicast groups
+val input = artnetIn()                  // UDP 6454; sacnIn(universes = [1, 2]) joins multicast groups
 input.channel(1, 1)                     // universe 1, channel 1, 0..255
 input.universe(2)                       // all 512 slots, merged
 input.version(1)                        // bumps when universe 1 may have changed; cheap to poll

@@ -138,11 +138,11 @@ fun trace(values: List<Pair<Double, Float>>, rgba: Vec4, width: Double) = fline 
     thickness = width
 }
 
-val guides = listOf(
+val guides = [
     fline { moveTo(40, 560); lineTo(1020, 560); color = vec(1,1,1,0.22); thickness = 1.2 },
     fline { moveTo(40, 140); lineTo(1020, 140); color = vec(1,1,1,0.14); thickness = 1.0 },
     fline { moveTo(x(duration), 110); lineTo(x(duration), 580); color = vec(1,1,1,0.18); thickness = 1.0 }
-)
+]
 
 val stepLine = trace(samples.map { it.elapsed to it.byStep }, vec(1.0, 0.72, 0.35, 0.95), 2.6)
 val timeLine = trace(samples.map { it.elapsed to it.byTime }, vec(0.56, 1.0, 0.68, 0.95), 3.0)
@@ -278,14 +278,14 @@ incoming speeds instead:
 :::static
 // One unit of distance still to go, five different speeds of arrival at it. Velocity is
 // per blend time, not per second: a 0.4s blend on something moving 5 units/second is v = 2.
-val speeds = listOf(0.0, 1.0, 3.0, 8.0, 20.0)
-val shades = listOf(
+val speeds = [0.0, 1.0, 3.0, 8.0, 20.0]
+val shades = [
     vec(0.48, 0.85, 1.0, 0.95),
     vec(0.55, 0.95, 0.80, 0.95),
     vec(0.75, 1.00, 0.55, 0.95),
     vec(1.00, 0.85, 0.40, 0.95),
     vec(1.00, 0.62, 0.42, 0.95)
-)
+]
 
 fun x(u: Double, from: Double) = 40.0 + (u - from) / (1.3 - from) * 1000.0
 fun y(v: Double, span: Double) = 560.0 - v / span * 400.0
@@ -309,7 +309,7 @@ fun guides(from: Double, span: Double, at: List<Double>) = at.map { v ->
         moveTo(x(from, from), y(v, span)); lineTo(x(1.3, from), y(v, span))
         color = vec(1, 1, 1, if (v == 0.0 || v == 1.0) 0.22 else 0.10); thickness = 1.2
     }
-} + listOf(
+} + [
     fline {
         moveTo(x(0.0, from), y(-0.06 * span, span)); lineTo(x(0.0, from), y(span * 1.04, span))
         color = vec(1, 1, 1, 0.16); thickness = 1.0
@@ -318,16 +318,16 @@ fun guides(from: Double, span: Double, at: List<Double>) = at.map { v ->
         moveTo(x(1.0, from), y(-0.06 * span, span)); lineTo(x(1.0, from), y(span * 1.04, span))
         color = vec(1, 1, 1, 0.16); thickness = 1.0
     }
-)
+]
 
 val family = speeds.mapIndexed { i, v -> curve(v, 0.05, shades[i], -0.05, 1.1, 2.6) }
-lines(guides(-0.05, 1.1, listOf(0.0, 1.0)) + family, channel = "family", w = 1080.0, h = 540.0, fitToSize = true)
+lines(guides(-0.05, 1.1, [0.0, 1.0]) + family, channel = "family", w = 1080.0, h = 540.0, fitToSize = true)
 
 // Past v = 21.3 × the distance left, `solve` prefers the negative root: the curve is entered
 // before its own zero crossing, which flies past the target and comes back.
 val jolt = curve(26.0, 0.0, vec(0.55, 0.72, 0.95, 0.9), -0.6, 6.4, 2.2)
 val past = curve(26.0, 0.05, vec(1.00, 0.62, 0.42, 0.95), -0.6, 6.4, 2.8)
-lines(guides(-0.6, 6.4, listOf(0.0, 1.0)) + jolt + past, channel = "overshoot", w = 1080.0, h = 540.0, fitToSize = true)
+lines(guides(-0.6, 6.4, [0.0, 1.0]) + jolt + past, channel = "overshoot", w = 1080.0, h = 540.0, fitToSize = true)
 :::fold render the colour key
 markdown("legend", """
     top, incoming speed per blend time:
@@ -428,7 +428,7 @@ val code = fline {
     thickness = 2.2
 }
 
-lines(listOf(path, gain, code), channel = "keyframe-morph", w = 1080.0, h = 640.0, fitToSize = true)
+lines([path, gain, code], channel = "keyframe-morph", w = 1080.0, h = 640.0, fitToSize = true)
 :::fold render the colour key
 // As above: the three colours are the trace colours, the card around them is not.
 markdown("keys", """
@@ -484,7 +484,7 @@ showSignals(
     "rolling xi" to xi.toList(),
     title = "Dependence coming in and out: linear → noise → nonlinear",
     xTitle = "sample",
-    marks = listOf("noise" to 140, "nonlinear" to 280),
+    marks = ["noise" to 140, "nonlinear" to 280],
     markColor = "#9aa4b2",
 )
 ```
