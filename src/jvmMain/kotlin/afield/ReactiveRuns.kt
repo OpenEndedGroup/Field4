@@ -478,7 +478,10 @@ object ReactiveRuns {
                     if ((runsHere[next] ?: 0) >= MAX_RUNS_PER_CASCADE) {
                         capped += next
                         event("cap ${label(next)}: ran $MAX_RUNS_PER_CASCADE times in one cascade (a propDown cycle?)")
-                        lprintln("warning,autorun", "propDown: '${label(next)}' reran $MAX_RUNS_PER_CASCADE times in one cascade; stopping there (is there a cycle?)")
+                        val message = "propDown: '${label(next)}' reran $MAX_RUNS_PER_CASCADE times in one cascade; stopping there (is there a cycle?)"
+                        lprintln("warning,autorun", message)
+                        // The server log is not where anyone is looking: say it on the box that stopped.
+                        runCatching { next.error(message) }
                         continue
                     }
                     // A reader still evaluating (or blocked in a pull) finishes first; it may be up to
