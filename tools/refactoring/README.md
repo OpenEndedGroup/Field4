@@ -442,3 +442,7 @@ Declaration IDs include source path and declaration signature, not line numbers:
 or changing the intro does not discard ownership decisions. Inventories still check complete file
 hashes before generation, so refresh the inventory after any source edit. Renamed or moved
 declarations and changed signatures need refreshed assignments.
+
+### Screenshot for public documentation
+
+Marc selected [this refactor review screenshot](../../public/docs/assets/refactoring/refactor-pass-review.png) on 2026-10-14 for the future public documentation. It is the original, unmodified capture of the live review UI (Plan 23), including the session copies, replan controls, review batches, and red/green attention indicators. Use it when documenting this workflow; the counts describe that session, not a completed or verified migration.
