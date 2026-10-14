@@ -19,8 +19,8 @@ operations:
       frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
       properties:
         code: |
-          val runs = ((getPropertyRaw("runs") as? Int) ?: 0) + 1
-          setPropertyRaw("runs", runs)
+          prop<Int?>(runs)
+          runs = (runs ?: 0) + 1
           display("main", "<p>bpm $bpm: a beat every ${60000 / bpm} ms (run $runs)</p>")
   - connect: { parent: rp_tempo, child: rp_beat }
   - execute: { box: rp_tempo, property: code }

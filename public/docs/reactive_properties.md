@@ -31,8 +31,8 @@ bpm = 120
 inherited property, and counts its own runs in a box property so we can see them:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/reactive_properties/beat.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="reactive-props-beat" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_down.yaml" capture-box="rp_beat" w="560" h="80" alt="Beat's main output, one line: bpm 90: a beat every 666 ms (run 2)"}
-val runs = ((getPropertyRaw("runs") as? Int) ?: 0) + 1
-setPropertyRaw("runs", runs)
+prop<Int?>(runs)
+runs = (runs ?: 0) + 1
 display("main", "<p>bpm $bpm: a beat every ${60000 / bpm} ms (run $runs)</p>")
 ```
 
@@ -94,15 +94,17 @@ and counts its runs:
 ```diffstatic {data-lang=kotlin}
 propUp<Double>(scale)
 scale = 2.5
-setPropertyRaw("runs", ((getPropertyRaw("runs") as? Int) ?: 0) + 1)
+prop<Int?>(runs)
+runs = (runs ?: 0) + 1
 ```
 
 **Plot**, beneath it, also declares `propUp<Double>(scale)`, and only Plot is run:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/reactive_properties/plot.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="reactive-props-plot" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_up.yaml" capture-box="rp_plot" w="560" h="80" alt="Plot's main output, one line: scale = 2.5 (Scale has run 1 time)"}
 propUp<Double>(scale)
+prop<Int?>(runs)
 val s = scale
-val ran = thisBox.named("Scale").getPropertyRaw("runs")
+val ran = thisBox.named("Scale").runs
 display("main", "<p>scale = $s (Scale has run $ran time)</p>")
 ```
 

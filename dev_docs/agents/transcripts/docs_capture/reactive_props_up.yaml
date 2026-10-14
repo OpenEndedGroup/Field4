@@ -13,7 +13,8 @@ operations:
         code: |
           propUp<Double>(scale)
           scale = 2.5
-          setPropertyRaw("runs", ((getPropertyRaw("runs") as? Int) ?: 0) + 1)
+          prop<Int?>(runs)
+          runs = (runs ?: 0) + 1
   - create:
       box: rp_plot
       name: Plot
@@ -21,8 +22,9 @@ operations:
       properties:
         code: |
           propUp<Double>(scale)
+          prop<Int?>(runs)
           val s = scale
-          val ran = thisBox.named("Scale").getPropertyRaw("runs")
+          val ran = thisBox.named("Scale").runs
           display("main", "<p>scale = $s (Scale has run $ran time)</p>")
   - connect: { parent: rp_scale, child: rp_plot }
   - execute: { box: rp_plot, property: code }
