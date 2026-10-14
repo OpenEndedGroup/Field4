@@ -213,10 +213,10 @@ def affected_pattern(recipe: dict):
     roots = sorted({n.split('.')[0] for n in rules | splits})
     # Match a root once, then use component-prefix lookups. A thousands-way alternation
     # repeats the same namespace prefix at every possible position in every document.
-    candidates = re.compile(r'(?<![\w.])(?:' + '|'.join(re.escape(n) for n in roots) +
+    candidates = re.compile(r'(?<![\w./\\])(?:' + '|'.join(re.escape(n) for n in roots) +
                             r')(?:\.[A-Za-z_]\w*)*(?![\w])') if roots else re.compile(r'(?!)')
     class References:
-        def search(self, text):
+        def finditer(self, text):
             for match in candidates.finditer(text):
                 path = match.group()
                 if destination_reference(path, recipe, destinations):
@@ -228,11 +228,14 @@ def affected_pattern(recipe: dict):
                 if retained.intersection(prefixes):
                     continue
                 if rules.intersection(prefixes):
-                    return match
+                    yield match
+                    continue
                 owner = next((p for p in prefixes if p in known), None)
                 if (owner in splits if owner else splits.intersection(prefixes)):
-                    return match
-            return None
+                    yield match
+
+        def search(self, text):
+            return next(self.finditer(text), None)
     return References()
 
 
@@ -253,7 +256,7 @@ def rewrite_qualified_text(text: str, recipe: dict) -> str:
             if old:
                 return rules[old] + name[len(old):]
         return name
-    return re.sub(r'(?<![\w.])[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', replace, text)
+    return re.sub(r'(?<![\w./\\])[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+', replace, text)
 
 
 def repo_owned_outputs(root: Path, paths: list[str]) -> dict[str, str]:
