@@ -18,25 +18,29 @@ Swap `prop` for one of three variants and Field does the running for you:
 Each declares the same inherited property `prop` does, read and written the same way. Only the
 re-running differs.
 
+Any of them can be assigned where it is declared, `propDown<Int>(bpm) = 120`, and any of them takes
+a default for when no box up the graph has a value yet: with `prop<Int>(runs, 0)`, a first
+`runs += 1` reads 0 rather than failing. `propUp` runs the supplier first and falls back to the
+default only if that still finds nothing.
+
 ## A change reruns the boxes that read it
 
 **Tempo** declares `bpm` with `propDown` and sets it:
 
 ```diffstatic {data-lang=kotlin}
-propDown<Int>(bpm)
-bpm = 120
+propDown<Int>(bpm) = 120
 ```
 
 **Beat** is connected beneath Tempo (select Tempo, then Beat, and press `g`). It reads `bpm` like any
 inherited property, and counts its own runs in a box property so we can see them:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/reactive_properties/beat.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="reactive-props-beat" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_down.yaml" capture-box="rp_beat" w="560" h="80" alt="Beat's main output, one line: bpm 90: a beat every 666 ms (run 2)"}
-prop<Int?>(runs)
-runs = (runs ?: 0) + 1
+prop<Int>(runs, 0)
+runs += 1
 display("main", "<p>bpm $bpm: a beat every ${60000 / bpm} ms (run $runs)</p>")
 ```
 
-Both boxes ran once. Then Tempo's code was changed to `bpm = 90` and **only Tempo** was run. Beat
+Both boxes ran once. Then Tempo's code was changed to `propDown<Int>(bpm) = 90` and **only Tempo** was run. Beat
 says 90 and "run 2": the change reran it.
 
 What decides who reruns:
@@ -94,15 +98,15 @@ and counts its runs:
 ```diffstatic {data-lang=kotlin}
 propUp<Double>(scale)
 scale = 2.5
-prop<Int?>(runs)
-runs = (runs ?: 0) + 1
+prop<Int>(runs, 0)
+runs += 1
 ```
 
 **Plot**, beneath it, also declares `propUp<Double>(scale)`, and only Plot is run:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/reactive_properties/plot.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="reactive-props-plot" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_up.yaml" capture-box="rp_plot" w="560" h="80" alt="Plot's main output, one line: scale = 2.5 (Scale has run 1 time)"}
 propUp<Double>(scale)
-prop<Int?>(runs)
+prop<Int>(runs, 0)
 val s = scale
 val ran = thisBox.named("Scale").runs
 display("main", "<p>scale = $s (Scale has run $ran time)</p>")
@@ -135,7 +139,7 @@ The palette's **Toggle Dependency Layer** draws, over the canvas, one arrow from
 supplied a value to each box that read it, labelled with the names that flowed. Here Tempo supplies
 `bpm` and `key`; Beat and Harmony, beneath it, read one each; Accent, beneath Beat, reads both:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="720x480" screenshot="assets/reactive_properties/layer.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_layer.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="reactive-props-layer" alt="Four boxes on the canvas: Tempo at the top, Beat and Harmony beneath it, Accent beneath Beat. The dependency layer draws blue arrows from Tempo to Beat labelled bpm and from Tempo to Harmony labelled key, and an amber one, the most recent read, from Tempo past Beat to Accent labelled bpm, key. The grey connection lines of the box graph run beneath them."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="720x480" screenshot="assets/reactive_properties/layer.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/reactive_props_layer.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="reactive-props-layer" alt="Four boxes on the canvas: Tempo at the top, Beat and Harmony beneath it, Accent beneath Beat. The dependency layer draws an arrow from Tempo to Beat labelled bpm, one from Tempo to Harmony labelled key, and one from Tempo past Beat to Accent labelled with both names; the recent reads are amber, the older blue. The grey connection lines of the box graph run beneath them."}
 ui.eval("window.toggleDependencyLayer(); localStorage.setItem('afield.dependencyLayer', '0'); return true")
 for (i in 0 until 40) {
     ui.pause(250)
@@ -145,7 +149,7 @@ ui.pause(500)
 ```
 
 Accent's arrow starts at Tempo, not at Beat: an inherited value comes from the box that holds it,
-however many levels up. An arrow is bright (amber, as Accent's is here) for a couple of seconds after a read, solid for a read
+however many levels up. An arrow is bright (amber) for a couple of seconds after a read, solid for a read
 seen since Field started, and faint and dashed for one only remembered from an earlier session. A
 read that found nothing puts a red `? name` tag on the reader. **Clear Dependency Record** forgets
 what the document has recorded.

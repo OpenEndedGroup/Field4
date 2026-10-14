@@ -316,7 +316,7 @@ Two things have to be true for a child to use a parent's value:
 The dependency layer (palette: **Toggle Dependency Layer**) draws those reads on the canvas. Below,
 Tempo holds `bpm` and `key`, and Accent, two levels down, reads both straight from it:
 
-![Four boxes: Tempo at the top, Beat and Harmony beneath it, Accent beneath Beat. Arrows run from Tempo to Beat labelled bpm, to Harmony labelled key, and past Beat to Accent labelled bpm, key.](assets/reactive_properties/layer.png)
+![Four boxes: Tempo at the top, Beat and Harmony beneath it, Accent beneath Beat. Arrows run from Tempo to Beat labelled bpm, to Harmony labelled key, and past Beat to Accent labelled with both names.](assets/reactive_properties/layer.png)
 
 [Reactive properties](reactive_properties.md#seeing-who-reads-what) has the layer in more detail.
 

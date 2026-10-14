@@ -13,7 +13,7 @@ operations:
         code: |
           propUp<Double>(scale)
           scale = 2.5
-          prop<Int?>(runs)
+          prop<Int>(runs, 0)
           runs = (runs ?: 0) + 1
   - create:
       box: rp_plot
@@ -22,7 +22,7 @@ operations:
       properties:
         code: |
           propUp<Double>(scale)
-          prop<Int?>(runs)
+          prop<Int>(runs, 0)
           val s = scale
           val ran = thisBox.named("Scale").runs
           display("main", "<p>scale = $s (Scale has run $ran time)</p>")

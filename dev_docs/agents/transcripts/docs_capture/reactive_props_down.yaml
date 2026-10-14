@@ -11,22 +11,21 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
       properties:
         code: |
-          propDown<Int>(bpm)
-          bpm = 120
+          propDown<Int>(bpm) = 120
   - create:
       box: rp_beat
       name: Beat
       frame: { x: 40.0, y: 200.0, w: 200.0, h: 60.0 }
       properties:
         code: |
-          prop<Int?>(runs)
+          prop<Int>(runs, 0)
           runs = (runs ?: 0) + 1
           display("main", "<p>bpm $bpm: a beat every ${60000 / bpm} ms (run $runs)</p>")
   - connect: { parent: rp_tempo, child: rp_beat }
   - execute: { box: rp_tempo, property: code }
   - execute: { box: rp_beat, property: code }
   - await: {}
-  - edit: { box: rp_tempo, property: code, from: "bpm = 120", to: "bpm = 90" }
+  - edit: { box: rp_tempo, property: code, from: "(bpm) = 120", to: "(bpm) = 90" }
   - execute: { box: rp_tempo, property: code }
   - await: {}
   - wait: { millis: 1500 }
