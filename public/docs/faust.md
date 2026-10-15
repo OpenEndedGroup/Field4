@@ -70,9 +70,12 @@ Completion follows the way Faust is written, by library prefix:
 
 Hovering a qualified name shows its signature, summary and parameters.
 
-The list comes from the standard library inside the compiler Field ships:
-`tools/generate_faust_vocabulary.py` reads the libraries' documentation comments and writes
-`faust-vocabulary.json`. Re-run it after updating the compiler.
+The list comes from the documentation comments of the standard library inside the compiler Field
+ships.
+
+??? aside "Agents: regenerating the Faust vocabulary"
+    `tools/generate_faust_vocabulary.py` reads the libraries' documentation comments and writes
+    `src/commonMain/resources/faust-vocabulary.json`. Re-run it after updating the compiler.
 
 ## The controls are the program's own
 
@@ -394,7 +397,7 @@ clone can play a Faust box. The cost is the slower compiler described above.
 
 </div>
 
-??? aside "What the Faust smoke tests cover"
+??? aside "Agents: what the Faust smoke tests cover"
     The smokes check the compiler and its diagnostics, the editor extension, the box path and the
     polyphonic layer, so a compiler update that changes behaviour fails; the list is in
     `dev_docs/FAUST_MEASUREMENTS.md`. None covers a live launch through a speaker, which needs an
