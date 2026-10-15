@@ -7,7 +7,7 @@ end-to-end through the same machinery. This page covers running both locally.
 
 For every flag and the internals, see `AGENTS.md` and
 `dev_docs/testing/TESTING_STRATEGY.md` in the
-[repository](https://github.com/OpenEndedGroup/Field).
+[repository](https://github.com/OpenEndedGroup/Field4).
 
 ## Prerequisites
 
