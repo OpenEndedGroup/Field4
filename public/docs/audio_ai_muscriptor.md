@@ -64,7 +64,7 @@ it also downloads and runs a real model:
 Start the ordinary API separately with `./scripts/run-api.sh`. That script points
 `FIELD_AUDIO_MUSCRIPTOR_URL` at `http://127.0.0.1:8769`. Device, dtype, cache location, local
 checkpoint overrides, and revision override variables are documented in the
-[worker README](https://github.com/OpenEndedGroup/field4/blob/main/services/field-audio-ai/worker-environments/muscriptor/README.md).
+[worker README](https://github.com/OpenEndedGroup/field-audio-ai/blob/main/worker-environments/muscriptor/README.md).
 
 ## Transcribing a recording
 
