@@ -1,6 +1,6 @@
 # Graphics in an Output Area
 
-An Field 4 render target can draw straight into a box's output area, next to its code,
+A Field 4 render target can draw straight into a box's output area, next to its code,
 instead of into a separate render window. Frames go from the GPU to the panel without being
 copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer, which is
 85 to 120 frames a second on an Apple silicon Mac.
@@ -92,7 +92,7 @@ canvas pixel counts, the exact switches, and the checks after re-running and del
 See also: [Field 4 Graphics](afield_four_graphics.md) for meshes, modules and
 render-to-texture.
 
-??? aside "How the figure is captured"
+??? aside "Agents: how the figure is captured"
     The docs runner's capture browser is a plain Chromium, which cannot show these frames, so this
     page's figure is captured from the Field Electron app itself: the fence's
     `capture-profile="macos-electron"` makes the runner start this checkout's Electron with remote
