@@ -187,10 +187,8 @@ val added = scene.importTriMesh(shaded, body)
 println("${added.triangleCount} triangles appended, ${added.degenerateCount} dropped")
 ```
 
-The dropped count is not zero. Manifold's output of a Boolean followed by a plane trim contains a
-few triangles of zero area, and `PathTraceScene.triangle` rejects those outright, which would abort
-the whole scene. `importTriMesh` skips them instead and reports how many it skipped, so use it rather
-than feeding triangles to `PathTraceScene` yourself.
+Manifold's output of a Boolean followed by a plane trim contains a few triangles of zero area; the
+scene skips them, and `degenerateCount` says how many.
 
 ## One mesh to measure, another to draw
 
