@@ -5,15 +5,14 @@
 - **Filed by:** human, 2026-10-15 13:49
 - **Close with:** `python tools/docs_notes.py handoff-close 0148f821 "what happened"`
 
-Rule 25 sharp edge on `public/docs/function_conversation.md` (lines 14-16):
+Rule 25 sharp edge on `public/docs/kits.md` (section "Make a kit from a document"):
 
-> Kotlin listings on this page use Field's current `[…]` spelling for single-line
-> list constructors. Saved conversations, source revisions and downloadable documents
-> retain their recorded spelling; this presentation update is not a new execution.
+> A document opened from a starting point has not run yet. `activate` runs its roles in launch order:
 
-The page and its downloads disagree about the source text, so the page has to apologise. Fix it in
-data: either regenerate the downloadable documents (`function_conversation.zip`,
-`function_conversation_example.zip`, `final.kt`) and the saved revision sources with the current
-collection-literal spelling (recheck each revision, since hashes such as `r9-82456e1e48ac` are
-quoted on the page), or render the page's listings from the recorded bytes. Delete the paragraph in
-the same change.
+followed by the `tools/field_kit.py activate ~/kits/level-kit --document level-kit` fence and its
+output. A document made from a kit's starting point (the Welcome screen's Templates entry) opens with
+its role boxes unlaunched, so the reader must run a separate backdoor command before it does
+anything. Fix it in Field: when a document is opened from a kit starting point, launch its roles in
+the kit's launch order (what `activate` in `tools/field_kit.py` does today). Then delete the
+paragraph and its two fences in the same change, or reduce `activate` on the page to relaunching an
+existing document.
