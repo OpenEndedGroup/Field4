@@ -605,8 +605,9 @@ search roots: it canonicalises the requested path and then walks up the parent
 chain, which refuses a `..` that escapes, a symlink that points out, and a
 sibling directory whose name merely starts with a root's name.
 
-How the two bridges (the chat and MCP) use your registration is described in
-`dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
+??? aside "Agents: how the chat and MCP bridges use a registration"
+    How the two bridges (the chat and MCP) use your registration is described in
+    `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
 
 A tool set that edits something which draws — a program, a scene, numbers in a
 property — does not have to be written from scratch. [Studies](studies.md) shows a

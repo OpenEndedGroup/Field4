@@ -372,7 +372,7 @@ what the `onnx_webcam_live` starting point does.
 Weights are not in the repository (tens to hundreds of megabytes, and separately licensed), so a model
 is a URL plus somewhere to put it, and the first call fetches it.
 
-The cache root is `~/.afield/onnx/models`, overridable with the `afield.ai.inference.onnx.cacheRoot` system
+The cache root is `~/.afield/onnx/models`, overridable with the `afield.onnx.cacheRoot` system
 property or the `AFIELD_ONNX_CACHE_ROOT` environment variable, as for semantic search. Sizes are what these files occupy on disk:
 
 | file | on disk | what it is |
@@ -463,9 +463,10 @@ The opening snippet, the depth figure and the CLIP figure run as shown. The sess
 and the worker sketch are not run: the worker needs a Vulkan device and a webcam, so treat it as a
 starting point to finish rather than code to paste.
 
-??? aside "Snippet coverage"
+??? aside "Agents: snippet coverage"
     `StreamingTexture(...)` and `recordUpload(...)` are the only calls on this page that nothing in
     the repository exercises. [`dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md) has the block-by-block census.
+
 ## Reference
 
 <div class="field-reference" data-code-lang="kotlin" markdown>

@@ -146,7 +146,7 @@ or a blank value to mute nothing.
 
 The log widget's filter, at the other extreme, matches any substring. In the tree today,
 **123**<!--count:logChannelSubstringCollisions--> pairs of a real
-tag and a real channel string in the tree today are matched by a `LogStream` filter and
+tag and a real channel string are matched by a `LogStream` filter and
 would not be pinned by the same word. `kotlin` is the clearest of them: it is one of the
 most-used tags in the tree, and `kotlinjs` (the Kotlin/JS build) is a separate tag that
 a filter for `kotlin` also matches, because one name is a prefix of the other:

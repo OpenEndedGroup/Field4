@@ -189,7 +189,7 @@ display("cost", ("the compact form of a " + big.rowsCount() + "-row frame is " +
     compact.length + " characters").h)
 ```
 
-??? aside "The test behind this"
+??? aside "Agents: the test behind this"
     `kotlin.dataframe-visualizer.smoke` renders a 5,000-row and a 200,000-row frame and fails unless their compact forms differ by
     no more than 40 characters (`DataFrameVisualizerSmokeTest.kt:137#require(grew in -SHAPE_LINE_SLACK..SHAPE_LINE_SLACK) {`). The comparison is what catches a
     rendering that is linear in rows with a small constant, since that would pass a plain size ceiling at

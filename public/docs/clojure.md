@@ -338,8 +338,6 @@ Each row carries its argument vector, and the panel on the right shows the docst
 LOCAL is the `let` binding two lines up, and `spiral` under VALUES is a var an earlier box on this
 page defined in the shared namespace.
 
-If Compliment is not on the classpath, a Clojure box still runs and the popup is simply empty.
-
 The editor also shows what each form evaluated to the last time the box ran: rest the cursor on a
 form and the note beside it shows the value in bold with its type, how long ago that was, and
 whether the form has changed since. The value is recorded as the box runs, not by evaluating the

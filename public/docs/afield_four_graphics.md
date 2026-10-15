@@ -1596,8 +1596,10 @@ is gone, then the boxes it stopped, parents before children.
 Anything that is not a box job, such as a raw `thread {}` or a renderer stashed in a global, is
 not stopped. If it writes a buffer after the device is gone, it gets an `IllegalStateException`
 that says so. A queue submission after the renderer has gone, or a descriptor that still names a
-freed buffer, is refused the same way. Stop that work yourself, from a box you can stop. The
-order is written up in `dev_docs/renderer_teardown_order.md`.
+freed buffer, is refused the same way. Stop that work yourself, from a box you can stop.
+
+??? aside "Agents: teardown order"
+    The shutdown order is written up in `dev_docs/renderer_teardown_order.md`.
 
 ## Where these examples come from
 

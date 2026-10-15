@@ -181,7 +181,7 @@ If you add text of your own as FLines, use `TextLayout.toFLines()`, one line per
 it with `FLine.transform`. A single filled `toFLine()`, or moving each `node.to` alone, garbles the
 letters.
 
-??? aside "Where the pictures come from"
+??? aside "Agents: where the pictures come from"
 
     The figures on this page are committed captures from the `visualization.chart-gallery`
     FIELD_TEST: `Chart.toFLines()` → Skia's `outputTo` on a raster surface → PNG, with no AWT, no GPU

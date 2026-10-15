@@ -369,7 +369,7 @@ construct visibility and confidence; the model does not consume them directly.
     checkpoint loading. The [ink clip](assets/streaming_diffusion/motion-all.mp4)
     was recorded without the display fill and shows the pale paper outline it
     removes. The backend's setup and architecture are in
-    `optional/streamdiffusion/README.md` in the Field checkout.
+    [`optional/streamdiffusion/README.md`](https://github.com/OpenEndedGroup/Field4/blob/main/optional/streamdiffusion/README.md).
 
 See also [the graphics starting point](afield_four_graphics.md) and
 [render to texture](afield_four_graphics.md#render-to-texture).

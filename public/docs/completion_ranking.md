@@ -377,7 +377,7 @@ In rough order of how often each turns out to be the answer:
 
 | what | where |
 |---|---|
-| the annotation | `CommonMembers` in `src/jvmMain/kotlin/afield/app/diagnostics/util.kt` |
+| the annotation | `CommonMembers` in `src/jvmMain/kotlin/afield/runtime/completion/util_completion.kt` |
 | resolving it for a receiver | `src/jvmMain/kotlin/afield/runtime/completion/CommonMemberPrior.kt` |
 | naming the receiver when the backend did not | `receiverQualifiedNameAtCompletion` in `KotlinCompletionSupport.kt` |
 | putting it on the wire | `Metadata.commonMemberRank` in `src/commonMain/kotlin/afield/app/protocol/rpc.kt` |

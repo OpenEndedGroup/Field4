@@ -427,7 +427,7 @@ showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-hiding.png")
 ```
 
-The paint's own stiffness (`stiff`, 1 is tube paint). Up to tube paint it hardly changes a film
+`stiff` is the paint's own stiffness (1 is tube paint). Up to tube paint it hardly changes a film
 this thin. Past it the paint is a stiffer paste than any tube: it gathers the hairs into fewer,
 wider clumps that leave bare furrows between their ridges, and comes off the hairs more reluctantly,
 so the black goes paler and more broken the stiffer it is. The ordinary brush pales at 2 as well,
@@ -1946,7 +1946,7 @@ showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-tilt.png")
 ```
 
-The whole gesture faster or slower (`faster`, a factor on its speed). At 16 times as fast the
+`faster` plays the whole gesture faster or slower, as a factor on its speed. At 16 times as fast the
 hairs chatter on the last stroke; at 64 times the brush lands late and the loop is a blur.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/faster.png" source-image="/tmp/field-docs-paint-sweep-faster.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Slowed down, the ring and scrub have crisp dark outlines and pale ridges. The versions look much alike up to 4 times as fast; at 16 the end of the last stroke breaks into chattering dashes; at 64 the brush lands late, leaving a few marks above a bar that starts low, the loop is a blurred swirl wider than the rest and the scrub a loose tangle." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-faster" embed=true}

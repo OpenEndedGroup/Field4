@@ -418,7 +418,7 @@ something it can make. The signal or control twin comes first (`osc~` for `osc`,
 - **One output per launch.** Every patch opened in one Pd sums into that Pd's `[dac~]`; the launch's
   `gain` applies to the sum.
 
-??? aside "How the figures are made"
+??? aside "Agents: how the figures are made"
 
     Every figure is captured by running the code on the docs build machine; all but the patch
     drawing need libpd there (`./gradlew buildDocsNativePrerequisites` builds it). The two line-note

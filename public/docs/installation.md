@@ -306,7 +306,7 @@ It does not pull or change your checkout. If the answer is "7 new commits on ori
 If it cannot answer (Field was unpacked from an archive, `HEAD` is detached, there is no `origin`,
 or the network is down) it says which, rather than reporting that you are up to date.
 
-??? aside "For maintainers: making an update announce itself"
+??? aside "Agents: making an update announce itself"
     Most commits should pass without comment — the count is enough. When a commit needs everyone
     who pulls it to *do* something, give it a `Field-Notice` trailer:
 

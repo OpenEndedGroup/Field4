@@ -1478,13 +1478,15 @@ of these four is WFC-specific:
 
 Everything above as a Field document you can open and edit:
 [**wfc_worked_example**](offline.html?file=assets/agent_transcripts/wfc_worked_example/metadata.edn)
-(six connected boxes, one per section, each of which runs on its own). The transcript that builds it,
-`dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build.
+(six connected boxes, one per section, each of which runs on its own).
 
-`afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`) renders the figures, and asserts for every
-grid that every adjacent pair is an allowed pair, that the adjacency relation is symmetric, and that
-the output is not degenerate. On the terrain figures it also asserts that the set of terrain edges in
-the output is a subset of the set in the source.
+??? aside "Agents: how this page's figures are checked"
+    The transcript that builds the demo, `dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build.
 
-Three further checks hold particular claims about the terrain to account; they are listed in
-`dev_docs/WFC_GALLERY.md`.
+    `afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`) renders the figures, and asserts for every
+    grid that every adjacent pair is an allowed pair, that the adjacency relation is symmetric, and that
+    the output is not degenerate. On the terrain figures it also asserts that the set of terrain edges in
+    the output is a subset of the set in the source.
+
+    Three further checks hold particular claims about the terrain to account; they are listed in
+    `dev_docs/WFC_GALLERY.md`.

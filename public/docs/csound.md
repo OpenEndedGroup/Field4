@@ -291,7 +291,7 @@ boxes (**pluck**, **fx**, **typo**) and five Kotlin boxes that use each of the d
 See also: [Faust](faust.md) and [Pure Data](pure_data.md), the other languages that play through
 the same audio engine, and [How to make sound in Field](sound.md).
 
-??? aside "How the captures and numbers on this page were made"
+??? aside "Agents: how the captures and numbers on this page are made"
     The two editor figures and the completion popup are captured by the docs runner against a
     real Field. The editor figures are gated on `requires="csound"`, so a machine without a built
     libcsound keeps the committed images. `CsoundDocsFencesTest` renders every `data-lang=csound`

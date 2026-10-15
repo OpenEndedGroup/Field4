@@ -754,7 +754,7 @@ allocation samples ranked:
 
 | sampled weight | events | innermost frame |
 |---|---|---|
-| 28.87 MiB | 136 | `afield.stdlib.LinalgKt.vec` |
+| 28.87 MiB | 136 | `afield.math.linalg.LinalgKt.vec` |
 | 1.98 MiB | 9 | the vector box's own line 12 |
 | 1.92 MiB | 9 | `kotlinx.coroutines.EventLoopImplBase.scheduleResumeAfterDelay` |
 

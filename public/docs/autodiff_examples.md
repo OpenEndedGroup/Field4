@@ -350,6 +350,6 @@ discs just touch, the discs settle into contact instead of bouncing in and out o
 - The [`autodiff_worked_example`](agent_transcripts.md#autodiff_worked_example) starting point is
   this page as a document you can edit and re-run.
 
-??? aside "Developer notes"
+??? aside "Agents: how autodiff is built"
     [`dev_docs/autodiff.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/autodiff.md) covers the tape layout, the corner convention, how `Fn` graphs are
     differentiated and when that returns `null`, and what is not covered.

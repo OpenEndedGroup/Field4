@@ -613,7 +613,7 @@ whole move, the furthest the sclerp path's aim ever strays from the origin is **
 units**, three millionths, which is `Float` rounding rather than a wobble. The subject stays framed
 for free, with no look-at constraint anywhere in the loop.
 
-??? aside "What the test checks"
+??? aside "Agents: what the test checks"
     All of this is asserted in `aCameraPoseSclerpsItsTransformAndLerpsItsFocusDistance`: the constant
     distance, the constant height and the aim are each checked at eleven sample points across the
     move, and the midpoint figures (8/√2 on each axis for the sclerp, 6.0000 and 27.24% for the
@@ -773,7 +773,7 @@ An unreadable manifest is reported on the `error,keyframer` log channel rather t
 the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it. The notes in
 a half-written file are still there for you to read.
 
-??? aside "Tests, and gaps in older version directories"
+??? aside "Agents: tests, and gaps in older version directories"
     One test covers each way the manifest can go
     wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
     `aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
@@ -1014,6 +1014,6 @@ runtime program at five values of the push constant, and compares both ends agai
   as a space and let `KeyframeSweep` render blends of them you never tried, each beside the key
   that produced it.
 
-??? aside "Test coverage"
+??? aside "Agents: test coverage"
     [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md) has the public surface of `keyframer.kt` against its ledger, and
     the calls a headless test cannot reach.

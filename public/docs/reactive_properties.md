@@ -80,14 +80,14 @@ display("main", "<div style='width:${width}px;height:14px;background:#4a90d9'></
 
 Drag Gain's slider and Meter redraws as you go; there is no need to run Meter yourself.
 
-??? aside "A slider used to change a propDown value silently"
-    Until 2026-10-14 `syncToProperty` wrote with `setPropertyRaw`, which goes around the `propDown`
-    delegate, so a slider changed the value without rerunning anything, although `propDown`'s KDoc
-    already said a slider would. The macro now records the declaration and the control's write
-    notes the change; `ReactivePropsTest.aRawWriteToADeclaredDownPropertyIsAChange` pins it. A
-    `setPropertyRaw` of your own still goes around it: assign the property instead. The capture
-    above shows the slider before a drag, because the docs runner has no slider gesture; the drag
-    was checked live by sending the slider's own update message and watching Meter rerun.
+A `setPropertyRaw` of your own goes around the declaration and reruns nothing: assign the property
+instead.
+
+??? aside "Agents: the slider capture"
+    The capture above shows the slider before a drag, because the docs runner has no slider
+    gesture; the drag was checked live by sending the slider's own update message and watching
+    Meter rerun. `ReactivePropsTest.aRawWriteToADeclaredDownPropertyIsAChange` pins the
+    control's write as a change.
 
 ## A missing value runs its supplier
 

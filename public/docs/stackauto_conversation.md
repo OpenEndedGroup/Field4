@@ -18,9 +18,10 @@ That is the recorded document running in Field, two cycles of its window capture
 is the same kind of conversation as [Talking a shader into existence](stacksl_conversation.md), with
 the StackSL living inside your own graphics code instead of in a window of its own.
 
-Kotlin listings on this page use Field’s current `[…]` spelling for single-line
-list constructors. Saved conversations, source revisions and downloadable documents
-retain their recorded spelling; this presentation update is not a new execution.
+??? aside "Agents: listing spelling"
+    Kotlin listings on this page use Field’s current `[…]` spelling for single-line
+    list constructors. Saved conversations, source revisions and downloadable documents
+    keep their recorded spelling; the listings were re-rendered, not re-run.
 
 ## Two slots in one box
 

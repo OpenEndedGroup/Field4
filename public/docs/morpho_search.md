@@ -270,7 +270,7 @@ showPlaneGrid(
 
 ![Four search drivers on a recursive eight-bit adder, every curve flattening well short of zero, beside a cost plane for an eight-bit adder occupied only by the two cyan points for morpho's own ripple and Brent-Kung designs and no orange points at all](assets/morpho_examples/search-adder.png)
 
-??? aside "Where these numbers come from"
+??? aside "Agents: regenerating these numbers"
     The table is regenerated with
     `./gradlew jvmMeasurements --tests "afield.lang.morpho.MorphoSearchMeasurements" --rerun -i`.
     `MorphoSearchTest` asserts the claims above, including that the recursive adder is reachable

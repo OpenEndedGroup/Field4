@@ -233,7 +233,7 @@ one `render` call, with no adapter in between.
 
 ---
 
-??? aside "How the tables stay current"
+??? aside "Agents: how the tables stay current"
 
     The `synth.sound.path.map` smoke re-derives the list of paths that share `render` from the tree
     on every `check`, and cites each entry point by symbol, so a rename fails the build. It cannot

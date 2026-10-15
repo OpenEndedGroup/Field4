@@ -631,7 +631,7 @@ as the value of your box. `ReturnValueRegistry.registerFramesReturnValue` sees a
 dispatches `frames.body()` onto `Runloop.runLoop.main` inside `Box.withBoxContext(box)`, registers
 the coroutine in `box.jobs`, and starts reporting `is-running` for the box.
 
-None of the builders is syntax or a rewrite. `animate` is three lines in `stdlib.kt`:
+None of the builders is syntax or a rewrite. `animate` is three lines in `stdlib_execution.kt`:
 
 ```diffstatic {data-lang=kotlin}
 fun animate(block: suspend Frames.() -> Unit): Frames = eachFrame(block)
@@ -863,8 +863,11 @@ exception does not go through that path, and neither does one that simply return
 
 When both are present and a cancellation arrives, `.end { }` runs before the body's `finally`:
 `frame()` calls it from inside its own `catch`, before rethrowing, so the cancellation has not yet
-unwound the body. `FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds that order in
-place.
+unwound the body.
+
+??? aside "Agents: what pins this order"
+    `FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds the `.end { }`-before-`finally`
+    order in place; change the two together.
 
 When `atEnd` does run, `frame()` re-enters through `withContext(NonCancellable)` on a fresh `Job`
 that inherits the dispatcher and the box context, so the end block still gets frames and can still
@@ -989,7 +992,7 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | --- | --- |
 | `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) |
 | the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) |
-| `animate`, `start` | [`src/jvmMain/kotlin/afield/math/linalg/stdlib.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/linalg/stdlib.kt) — listed in [Workspace](reference/workspace.md) |
+| `animate`, `start` | [`src/jvmMain/kotlin/afield/runtime/execution/stdlib_execution.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/stdlib_execution.kt) — listed in [Workspace](reference/workspace.md#stdlib-execution-kt) |
 | what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt) |
 | stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/document/graph/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/document/graph/Boxes.kt) |
 | the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt) |
