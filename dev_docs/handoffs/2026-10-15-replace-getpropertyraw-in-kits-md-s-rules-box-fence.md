@@ -5,14 +5,14 @@
 - **Filed by:** human, 2026-10-15 13:49
 - **Close with:** `python tools/docs_notes.py handoff-close 1127f38d "what happened"`
 
-Rule 25 sharp edge on `public/docs/function_conversation.md` (lines 126-127):
+`public/docs/kits.md`, section "Make a kit from a document": the Rules box fence reads its rules
+with the escape hatch
 
-> The older turns predate model badges, so they show **Model not recorded**; the
-> archive names the run's provider and model.
+> val rules = thisBox.getPropertyRaw("roomRules", "").toString().lines().filter { "=" in it }
 
-The saved chat shows "Model not recorded" although the run's provider and model are known
-(gpt-6-astra / OpenAI, recorded in the archive). Backfill the model identity into the saved turns of
-the function_conversation_example document (`aiChatHtml.kt` labels a turn by `turn.model`), or have
-the chat fall back to a document-level recorded model, then recapture `saved-chat.png`. Delete the
-sentence in the same change. The same probably applies to the StackSL/RectSL conversation
-documents.
+`getPropertyRaw` is not how box code is written; docs and demo box code use `prop<T>(name)` and then
+the bare property name. The fence is byte-pinned (`diffstatic`), so this needs a code change, not a
+prose edit: rewrite the Rules box to declare `roomRules` with `prop<String>(...)` (or the nullable
+form if it can be missing) and read it by name, update the kit fixture/document the page is built
+from to match, and recapture the page's figures and outputs that depend on it (the kit revision hash
+`dad7f4dc`, quoted in several outputs and figure captions on the page, will change with the role code).
