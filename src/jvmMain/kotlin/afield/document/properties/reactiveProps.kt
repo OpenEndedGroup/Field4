@@ -173,3 +173,40 @@ fun Box.macro_reactive_prop(contents: List<String>, mode: Reactive, macroName: S
     """.trimIndent()
     )
 }
+
+/** [rootProp] with [propUp]'s pull: `rootPropUp<Double>(speed)`, read and written as `root.speed`. A macro placeholder. */
+fun <T> Box.rootPropUp(name: String) {
+    throw MacroRegistry.MacroNotExpandedException("rootPropUp should not be callable directly, but should be expanded as a macro")
+}
+
+/** [rootProp] with [propDown]'s reruns: changing `root.speed` reruns the boxes that read it. A macro placeholder. */
+fun <T> Box.rootPropDown(name: String) {
+    throw MacroRegistry.MacroNotExpandedException("rootPropDown should not be callable directly, but should be expanded as a macro")
+}
+
+/** [rootPropUp] and [rootPropDown] together. A macro placeholder. */
+fun <T> Box.rootPropUpDown(name: String) {
+    throw MacroRegistry.MacroNotExpandedException("rootPropUpDown should not be callable directly, but should be expanded as a macro")
+}
+
+/**
+ * Macro expansion for `rootPropUp` / `rootPropDown` / `rootPropUpDown`: [macro_reactive_prop]'s
+ * declarations on the document root, as [macro_root_prop] does for `rootProp`, with the call site
+ * becoming `root.<name>`. The declaring box is recorded, so the root's slot reruns its readers (Down)
+ * and a missing value runs the declaring box (Up) while that box's code still says so.
+ */
+fun Box.macro_reactive_root_prop(contents: List<String>, mode: Reactive, macroName: String): Insert? {
+    if (contents.size != 2)
+        throw MacroRegistry.MacroExpansionProblem("$macroName should be called like $macroName<Int>(foo)")
+
+    val (name, default) = propNameAndDefault(contents[1])
+    if (mode.down) ReactiveRuns.declaredDownOnRoot(this, this.root, name)
+    return Insert(
+        here = "root.$name", standaloneHere = "Unit",
+        preamble = propTypeImports(contents[0]), preambleAfterImports = """
+        var Box.${name} by ReactiveInheritance${contents[0]}(Reactive.${mode.name}${default?.let { ", $it" } ?: ""}) /**/
+        val Once.${name} by Onceing${contents[0]}() /**/
+        val Why.${name} by Whying() /**/
+    """.trimIndent(), target = this.root
+    )
+}

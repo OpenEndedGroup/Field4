@@ -128,7 +128,8 @@ no new frames until the pull returns. A supplier that blocks the thread (`Thread
 blocks everything for as long as it blocks.
 
 `propUpDown` is both: a missing value runs its supplier, and a changed one reruns its readers.
-`rootProp` has no reactive variant yet.
+`rootPropUp`, `rootPropDown` and `rootPropUpDown` do the same for a document-wide `rootProp` slot,
+read and written as `root.name`; the box whose code declares it is the supplier.
 
 ## Seeing who reads what
 

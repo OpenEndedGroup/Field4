@@ -223,6 +223,27 @@ class ReactivePropsTest {
     }
 
     @Test
+    fun aRootPropDownSlotRerunsItsReadersWhileItsDeclarerSaysSo() {
+        val s = session("root-down")
+        val w = boxIn(s, "w", "rootPropDown<Double>(level)\nroot.level = 1.0")
+        w.macro_reactive_root_prop(listOf("<Double>", "(level)"), Reactive.DOWN, "rootPropDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(s.root, "level"))
+        ReactiveRuns.clearEvents()
+        s.root.setPropertyRaw("level", 2.0)
+        assertTrue(ReactiveRuns.recentEvents().any { it.contains("changed") && it.contains("level") }, ReactiveRuns.recentEvents().joinToString("\n"))
+        w.setPropertyRaw("code", "rootProp<Double>(level)")
+        assertFalse(ReactiveRuns.isDeclaredDown(s.root, "level"), "editing the declaration out forgets it")
+    }
+
+    @Test
+    fun aRootPropUpSlotIsSuppliedByItsDeclarer() {
+        val s = session("root-up")
+        val supplier = boxIn(s, "supplier", "rootPropUp<Double>(level)\nroot.level = 3.0")
+        val reader = boxIn(s, "reader", "println(root.level)")
+        assertEquals(listOf(supplier), ReactiveRuns.suppliersFor(s.root, reader, "level"))
+    }
+
+    @Test
     fun aDownDeclarationEditedOutOfTheCodeIsForgotten() {
         val s = session("edited")
         val a = boxIn(s, "a", "propDown<Double>(gain)\ngain = 1.0")
