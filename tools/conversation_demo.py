@@ -53,6 +53,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def current_kotlin_listing(source: str) -> str:
+    """Present saved Kotlin using today's list spelling without editing the recording.
+
+    Only complete, non-spread calls supported by the box-idiom rewriter are adapted.
+    Callers disclose this presentation change; transcript readers and downloads keep
+    the saved source. This is not a new execution or capture of the example.
+    """
+    if __package__:
+        from .check_box_idioms import list_literals
+    else:
+        from check_box_idioms import list_literals
+    lines = []
+    for line in source.splitlines(keepends=True):
+        rewrite = list_literals(line)
+        lines.append(rewrite[0] if rewrite and rewrite[1] else line)
+    return "".join(lines)
+
+
 @dataclass(frozen=True)
 class Study:
     """What distinguishes one kind of study for recording: its box, property, tools and window."""
