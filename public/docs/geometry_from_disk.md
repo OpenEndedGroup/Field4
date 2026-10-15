@@ -647,11 +647,11 @@ Four separate pieces of code read geometry off disk:
 |---|---|---|---|
 | stdlib mesh I/O | `afield/geometry/mesh/mesh_io.kt` | OBJ, STL | `TriMesh` |
 | PLY | `afield/graphics/scene/simplePLYSupport.kt` | PLY, meshes and point clouds | packed 10-float GPU buffer |
-| Assimp / glTF | `afield/four/modules/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
-| Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
+| Assimp / glTF | `afield/graphics/scene/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
+| Fabricate | `afield/graphics/scene/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
 
 The PLY and Assimp loaders produce ordinary host memory rather than Vulkan allocations, so their
-*buffers* need no renderer even though their *textures* do. `afield/four/modules/MeshFromDisk.kt`
+*buffers* need no renderer even though their *textures* do. `afield/graphics/scene/MeshFromDisk.kt`
 turns them into a `TriMesh`: `PlyModel.toTriMesh()`, `assimpToTriMesh(path)`, the `meshFromAnyFile`
 dispatcher, and the `showMesh(path)` overload at the top of this page. A box calls all of these with
 no import. The CPU renderer is `VisionGeometryPreview`, a z-buffer whose output is deterministic.
