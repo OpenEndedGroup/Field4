@@ -1030,6 +1030,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         }
 
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
+        // A raw write to a property declared `propDown` reruns its readers, exactly as assigning it does.
+        afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, name, oldValue, incoming)
     }
 
     override fun getPropertyRaw(name: String, default: Any?): Any? {

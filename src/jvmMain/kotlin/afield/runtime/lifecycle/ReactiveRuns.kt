@@ -442,7 +442,7 @@ object ReactiveRuns {
      * value changed, its readers rerun as they would after `holder.name = v`.
      */
     fun noteRawWrite(holder: Box, name: String, old: Any?, new: Any?) {
-        if (old != new && isDeclaredDown(holder, name)) noteChange(holder, name)
+        if (old != new && downDeclared.isNotEmpty() && isDeclaredDown(holder, name)) noteChange(holder, name)
     }
 
     /**

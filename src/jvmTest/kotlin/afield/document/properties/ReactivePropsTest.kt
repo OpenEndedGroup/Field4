@@ -210,6 +210,19 @@ class ReactivePropsTest {
     }
 
     @Test
+    fun setPropertyRawOnADeclaredDownPropertyIsAChange() {
+        val s = session("raw-set")
+        val a = boxIn(s, "a", "propDown<Double>(gain)")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        a.setPropertyRaw("gain", 0.5)
+        ReactiveRuns.clearEvents()
+        a.setPropertyRaw("gain", 0.5)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, "an unchanged value is not a change")
+        a.setPropertyRaw("gain", 0.9)
+        assertEquals(1, ReactiveRuns.recentEvents().count { it.contains("changed a.gain") }, ReactiveRuns.recentEvents().joinToString("\n"))
+    }
+
+    @Test
     fun aDownDeclarationEditedOutOfTheCodeIsForgotten() {
         val s = session("edited")
         val a = boxIn(s, "a", "propDown<Double>(gain)\ngain = 1.0")

@@ -126,7 +126,8 @@ class ReactiveInheritance<T>(val mode: Reactive, val defaultValue: T? = null) {
         val old = f.getPropertyRaw(name)
         if (v == null) f.removePropertyRaw(name) else f.setPropertyRaw(name, v as Any)
         PropertyDependencies.recordWrite(f, name, ContextResolution.Mechanism.INHERITANCE)
-        if (mode.down && old != v && f is Box) ReactiveRuns.noteChange(f, name)
+        // Box.setPropertyRaw already noted a write to a name the box's code declares Down.
+        if (mode.down && old != v && f is Box && (v == null || !ReactiveRuns.isDeclaredDown(f, name))) ReactiveRuns.noteChange(f, name)
     }
 }
 
