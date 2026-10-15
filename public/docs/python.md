@@ -229,7 +229,7 @@ check that its native library and jar come from the same release.
 Activating a venv may not be enough to switch interpreters: the one saved by `/welcome` ranks above
 `VIRTUAL_ENV`. Set `FIELD_PYTHON_VENV` or `FIELD_PYTHON_EXECUTABLE` to be sure.
 
-??? aside "How this page's pictures are made"
+??? aside "Agents: how this page's pictures are made"
 
     The docs build runs each Python block in a real Field, as a child of a Python root. Each declares
     `jep` (and `python:numpy` / `python:plotly.graph_objects`) in `requires`; a recapture without them
