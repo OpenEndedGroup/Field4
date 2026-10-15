@@ -113,10 +113,8 @@ Plot's read of `scale` found nothing, ran Scale *inside the read*, waited for it
 2.5. A chain unwinds the same way: a leaf that reads from B, which reads from A, runs B, which runs
 A, in that order, each once.
 
-- **The reader declares it.** Up is decided by the reading box's declaration. Plot needs its own
-  `propUp<Double>(scale)` here for a second reason too: until Scale has run, Plot has no `scale` to
-  compile against, and without the declaration the read fails with *Function invocation
-  'scale(...)' expected*.
+- **The reader declares it.** Up is decided by the reading box's declaration. A box that only reads a
+  parent's `propUp` value compiles against the parent's declaration even before the parent has run.
 - **Which box supplies it.** The box asked, then the box whose declaration the reader inherited,
   then boxes that supplied the name before, then any ancestor whose code declares it, nearest first.
 - **A value that is present is just read.** Nothing runs when the walk finds a value.

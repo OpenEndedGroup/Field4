@@ -244,6 +244,20 @@ class ReactivePropsTest {
     }
 
     @Test
+    fun aChildCompilesAgainstAParentsPropUpBeforeTheParentHasRun() {
+        val s = session("gather")
+        val parent = boxIn(s, "scale", "propUp<Double>(scale)\nscale = 2.0")
+        val child = boxIn(s, "plot", "println(scale)")
+        parent.connect(child)
+        val gathered = afield.runtime.macros.gatherPreambleUpwards(child)
+        assertTrue(gathered.lines().any { "var Box.scale by ReactiveInheritance<Double>(Reactive.UP)" in it && "from:scale" in it }, gathered)
+        // The child's own declaration still wins, and is not duplicated by the parent's.
+        child.setPropertyRaw("preamble", "var Box.scale by ReactiveInheritance<Double>(Reactive.UP) /**/")
+        val again = afield.runtime.macros.gatherPreambleUpwards(child)
+        assertEquals(1, again.lines().count { "var Box.scale" in it }, again)
+    }
+
+    @Test
     fun aDownDeclarationEditedOutOfTheCodeIsForgotten() {
         val s = session("edited")
         val a = boxIn(s, "a", "propDown<Double>(gain)\ngain = 1.0")
