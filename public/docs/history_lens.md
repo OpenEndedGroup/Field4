@@ -82,7 +82,7 @@ Above, the lens is open under the line that sets `radius`, listing the values th
 
 Select the box, put your cursor on a line of its code (or select a range), **right-click**, and choose **Show History Lens for Line / Selection** from the editor context menu.
 
-The lens opens as a small zone directly beneath your selection. There is no keyboard shortcut for it.
+The lens opens as a small zone directly beneath your selection. Its shortcut is `alt+shift+h`.
 
 ## What it shows
 

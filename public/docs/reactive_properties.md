@@ -80,9 +80,6 @@ display("main", "<div style='width:${width}px;height:14px;background:#4a90d9'></
 
 Drag Gain's slider and Meter redraws as you go; there is no need to run Meter yourself.
 
-A `setPropertyRaw` of your own goes around the declaration and reruns nothing: assign the property
-instead.
-
 ??? aside "Agents: the slider capture"
     Meter's capture is taken after a real pointer drag of Gain's slider
     (`reactive_props_slider_drag.yaml`), which fails if the slider does not move.
@@ -116,22 +113,20 @@ Plot's read of `scale` found nothing, ran Scale *inside the read*, waited for it
 2.5. A chain unwinds the same way: a leaf that reads from B, which reads from A, runs B, which runs
 A, in that order, each once.
 
-- **The reader declares it.** Up is decided by the reading box's declaration. Plot needs its own
-  `propUp<Double>(scale)` here for a second reason too: until Scale has run, Plot has no `scale` to
-  compile against, and without the declaration the read fails with *Function invocation
-  'scale(...)' expected*.
+- **The reader declares it.** Up is decided by the reading box's declaration. A box that only reads a
+  parent's `propUp` value compiles against the parent's declaration even before the parent has run.
 - **Which box supplies it.** The box asked, then the box whose declaration the reader inherited,
   then boxes that supplied the name before, then any ancestor whose code declares it, nearest first.
 - **A value that is present is just read.** Nothing runs when the walk finds a value.
 - **Cycles fail.** If A's read pulls B and B's read needs A, the read fails and the message names
   the cycle.
 
-While a pull runs, other boxes' `frames {}` loops keep advancing, but a native graphics window shows
-no new frames until the pull returns. A supplier that blocks the thread (`Thread.sleep`, a busy loop)
+While a pull runs, other boxes' `frames {}` loops and a native graphics window keep advancing. A supplier that blocks the thread (`Thread.sleep`, a busy loop)
 blocks everything for as long as it blocks.
 
 `propUpDown` is both: a missing value runs its supplier, and a changed one reruns its readers.
-`rootProp` has no reactive variant yet.
+`rootPropUp`, `rootPropDown` and `rootPropUpDown` do the same for a document-wide `rootProp` slot,
+read and written as `root.name`; the box whose code declares it is the supplier.
 
 ## Seeing who reads what
 
