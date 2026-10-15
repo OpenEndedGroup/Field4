@@ -29,7 +29,7 @@ Because a rule's own pattern body is erased with the block, the pattern
 To use the DSL, import it:
 
 ```diffstatic {data-lang=kotlin}
-import afield.macros.*
+import afield.runtime.macros.*
 ```
 
 ## Your first rule: negation

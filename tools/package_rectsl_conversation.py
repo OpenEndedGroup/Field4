@@ -37,7 +37,7 @@ SCENE_FILE = "rectsl_source_rectSL_.rectsl"
 TOOL_EXAMPLE = ROOT / "src/jvmMain/kotlin/afield/examples/rectsl/RectSLDocumentToolSmoke.kt"
 STUDY = "studies/rectsl_source"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", SCENE_FILE)
-TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyTools.kt"
+TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt"
 # Screenshots of Field itself, taken by tools/capture_rectsl_conversation.py rather than built here.
 CAPTURED = ("card.png", "saved-chat.png", "window.png", "outline.png")
 IMAGE_REF = re.compile(r"\]\((images/[0-9a-f]{20}\.(?:png|jpg))\)")

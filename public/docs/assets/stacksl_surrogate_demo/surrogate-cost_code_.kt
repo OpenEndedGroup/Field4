@@ -9,10 +9,10 @@
 //
 // So this box runs the experiment the premise implies, and watches it fail on purpose.
 
-import afield.stacksl.cpu.AdSurrogate
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLImageLoss
-import afield.stacksl.cpu.StackSLWires
+import afield.lang.stacksl.cpu.AdSurrogate
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLImageLoss
+import afield.lang.stacksl.cpu.StackSLWires
 import kotlin.math.abs
 import kotlin.math.max
 

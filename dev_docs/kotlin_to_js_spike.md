@@ -65,9 +65,9 @@ the approach.
 
 ## What the spike built
 
-- `src/jvmMain/kotlin/afield/remotejs/KotlinToJsCompiler.kt` — the driver. `compile(kotlinSource)`
+- `src/jvmMain/kotlin/afield/lang/remotejs/KotlinToJsCompiler.kt` — the driver. `compile(kotlinSource)`
   → `{ js, diagnostics, success }`.
-- `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt` :: `compileAndSendKotlin(box, kotlinSource)` —
+- `src/jvmMain/kotlin/afield/lang/remotejs/RemoteJS.kt` :: `compileAndSendKotlin(box, kotlinSource)` —
   compiles, reports diagnostics on the box, ships the JS via `executeRemoteJS(doASTA = false)`.
 - `src/jvmMain/kotlin/afield/examples/KotlinToJsSpikeTest.kt` — smoke test
   (`remotejs.kotlin-to-js-spike`), runs in-process from a Field JVM; node-executes the JS if node

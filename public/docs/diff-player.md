@@ -158,7 +158,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 
 - `capture="box"` — the default: just the box that ran the code.
 - `capture="window"`, `capture="window-editor"`, `capture="editor"` — the browser window, with or without the editor pane, or the editor pane alone.
-- `capture="native-window"` — an `afield.four` renderer window.
+- `capture="native-window"` — an Field 4 renderer window.
 - `capture="ui"` — runs the fence body as a `drive` transcript scripting the live editor through Playwright.
 - `region="window-editor"` — what a `ui` capture is clipped to: `box`, `window`, `window-editor` (the default) or `editor`.
 - `clip-selector="#some-id"` — clips a `ui` capture to a CSS selector instead, for an overlay that no box owns. A selector that matches nothing fails the capture.

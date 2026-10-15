@@ -1,16 +1,16 @@
 package afield.examples
 
-import afield.graphics.VISION_METAL_VERTEX_FLOATS
-import afield.graphics.VisionMetalGeometryOrigin
-import afield.graphics.VisionMetalKotlinJs
-import afield.graphics.VisionMetalProgramPayload
-import afield.graphics.VisionMetalScriptPart
-import afield.graphics.VisionMetalShaderPart
-import afield.graphics.visionMetalWireJson
-import afield.remotejs.KotlinToJsCompiler
+import afield.graphics.visionos.VISION_METAL_VERTEX_FLOATS
+import afield.graphics.visionos.VisionMetalGeometryOrigin
+import afield.graphics.visionos.VisionMetalKotlinJs
+import afield.graphics.visionos.VisionMetalProgramPayload
+import afield.graphics.visionos.VisionMetalScriptPart
+import afield.graphics.visionos.VisionMetalShaderPart
+import afield.graphics.visionos.visionMetalWireJson
+import afield.lang.remotejs.KotlinToJsCompiler
 import java.io.File
 import java.nio.file.Files
-import afield.util.NodeTool
+import afield.media.image.util.NodeTool
 
 /*
 FIELD_TEST

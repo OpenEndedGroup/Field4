@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_ss_unbounded" index="0" -->
 
 ```edn [field-box id="petri_ss_unbounded" role="properties"]
-{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 38 "characters" 1693 "sha256" "5260fccc075482de19d532f1f8ef8d11b161c40d458cb940dbd31acc1240987f"}]}
+{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 38 "characters" 1704 "sha256" "5fcd264c6d3bd0a620b82718d8d43b3aa82946930e29aa256d802ced6f45048b"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_unbounded" name="code" path="petri_ss_unbounded_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // `make` puts its token straight back and drops another one in `queue`, so `queue` grows
 // forever and the state space is infinite.
@@ -60,11 +60,11 @@ println("  " + capped.stateSpace().report().lines().first())
 <!-- field-box id="petri_ss_philosophers" index="1" -->
 
 ```edn [field-box id="petri_ss_philosophers" role="properties"]
-{"id" "petri_ss_philosophers" "index" 1 "name" "1 — the table can wedge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the table can wedge" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_philosophers_code_.kt" "lines" 37 "characters" 1660 "sha256" "d0f051479977fb4f75cd029209581fd13dd4e3742329e878ccb4c3413a743a49"}]}
+{"id" "petri_ss_philosophers" "index" 1 "name" "1 — the table can wedge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the table can wedge" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_philosophers_code_.kt" "lines" 37 "characters" 1671 "sha256" "d5cde6c42239e4e460a9cb6834a666eb84ff609b4581e39b9b75de268ab0a4cf"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_philosophers" name="code" path="petri_ss_philosophers_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Five philosophers, five forks, everybody left-handed. Whether this wedges depends on
 // the order the grabs happen in, which is precisely what running it once cannot tell you.
@@ -108,11 +108,11 @@ showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 <!-- field-box id="petri_ss_exclusion" index="2" -->
 
 ```edn [field-box id="petri_ss_exclusion" role="properties"]
-{"id" "petri_ss_exclusion" "index" 2 "name" "5 — what the algebra cannot see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — what the algebra cannot see" "_tombstone" false "frame" #afield/rect [420.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_exclusion_code_.kt" "lines" 36 "characters" 1714 "sha256" "39811f62360bac42ff8a388f319685a11fba355281748dabdd6ed89cb458f8cd"}]}
+{"id" "petri_ss_exclusion" "index" 2 "name" "5 — what the algebra cannot see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — what the algebra cannot see" "_tombstone" false "frame" #afield/rect [420.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_exclusion_code_.kt" "lines" 36 "characters" 1725 "sha256" "a44503fff5866dc630c4ca3de76d59681923fefa54c9fbb4a2320d0679cf3a53"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_exclusion" name="code" path="petri_ss_exclusion_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Two processes and a critical section each. The only difference between these two nets
 // is an inhibitor arc — "not while the other one is in there".
@@ -155,11 +155,11 @@ showPetriNet(safe, w = 760.0, h = 400.0, layout = PetriLayout.FORCE)
 <!-- field-box id="petri_ss_asymmetric" index="3" -->
 
 ```edn [field-box id="petri_ss_asymmetric" role="properties"]
-{"id" "petri_ss_asymmetric" "index" 3 "name" "2 — proved, and the difference from starved" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — proved, and the difference from starved" "_tombstone" false "frame" #afield/rect [420.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_asymmetric_code_.kt" "lines" 34 "characters" 1508 "sha256" "d7133d0c5bda354f4c0db9abb504bb131fca19da310fc46dd3ef04a80b25ec2e"}]}
+{"id" "petri_ss_asymmetric" "index" 3 "name" "2 — proved, and the difference from starved" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — proved, and the difference from starved" "_tombstone" false "frame" #afield/rect [420.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_asymmetric_code_.kt" "lines" 34 "characters" 1519 "sha256" "34eee5c663b3c17a7577d5a7667bdd06ae6d6e26138ac7a5edf7ef16155bc87b"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_asymmetric" name="code" path="petri_ss_asymmetric_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 fun table(reverseLast: Boolean) = petri {
     conflict = PetriConflict.ORDER
@@ -200,11 +200,11 @@ showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 <!-- field-box id="petri_ss_reduction" index="4" -->
 
 ```edn [field-box id="petri_ss_reduction" role="properties"]
-{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [780.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 58 "characters" 2719 "sha256" "427d174c1fac2411433bfa4d02b50211143acc141720856aad7095d7b984e3d6"}]}
+{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [780.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 58 "characters" 2730 "sha256" "bd622f1a7cfb8a7c046ad2e2ede44eed5a03fdef11bed3d4b9839e0ad4a87f01"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_reduction" name="code" path="petri_ss_reduction_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 fun philosophers(n: Int) = petri {
     conflict = PetriConflict.ORDER
@@ -269,11 +269,11 @@ showPetriStateSpace(reduced, w = 1100.0, h = 600.0)
 <!-- field-box id="petri_ss_buffer" index="5" -->
 
 ```edn [field-box id="petri_ss_buffer" role="properties"]
-{"id" "petri_ss_buffer" "index" 5 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [780.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 29 "characters" 1244 "sha256" "383a496135c05360a28ac15436aa95b208b22dcf5d8a483d6c84991862709533"}]}
+{"id" "petri_ss_buffer" "index" 5 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [780.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 29 "characters" 1255 "sha256" "952b6900fe766e45dd3badd71283e4adb333eb291820b7227e5f09eb6d09aea3"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_buffer" name="code" path="petri_ss_buffer_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
 // it puts straight back, which is what makes it *one* worker rather than an unbounded

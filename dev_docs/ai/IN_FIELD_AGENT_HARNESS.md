@@ -55,7 +55,7 @@ applied at once. Unlike `EditFile` it is not a provisional proposal.
                                    AgentTaskResult (verdict, tool log, rounds, tokens, elapsed)
 ```
 
-- **`BoxOutputLog`** (`src/jvmMain/kotlin/afield/BoxOutputLog.kt`). Before this there was no
+- **`BoxOutputLog`** (`src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt`). Before this there was no
   server-side record of what a box printed; it existed only on the websocket. The log is a bounded
   per-box ring (400 entries per box, 4000 chars per entry, 4096 boxes) of `out` / `err` / `display` /
   `verdict` entries with a global sequence number. It is fed where each kind of message originates:
@@ -151,7 +151,7 @@ used to erase the box's code and then fail with "no code" (regression test
 through a server-owned Playwright page of its own (`BoxOutputCapture`), headless, with or without a
 browser attached. Panels a box displayed before any page existed are replayed to it. The page is
 released with its task document and when idle. `CaptureRenderWindowRequest` still covers native
-afield.four render windows. Details, the pixel checks and the measurements are in
+Field 4 render windows. Details, the pixel checks and the measurements are in
 [AI4_SEES_ITS_OUTPUT.md](AI4_SEES_ITS_OUTPUT.md).
 
 ## Entry points

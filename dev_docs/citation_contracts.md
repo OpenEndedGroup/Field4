@@ -36,9 +36,9 @@ recorded collisions, not from an exhaustive search of schedules.)
 
 | guard | source | guards | how it resolves | slack |
 |---|---|---|---|---|
-| `CitationContractTest` | `src/jvmTest/kotlin/afield/docs/CitationContractTest.kt` | corpus-wide, opt-in pages | symbol search | n/a — line advisory |
-| `SmallLanguageAnatomyTest` | `src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt` | `small_language_anatomy.md` | symbol search | n/a — line advisory |
-| `CloseNodeCitationDriftTest` | `src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt` | `fline_close_nodes.md` | symbol search | n/a — line advisory |
+| `CitationContractTest` | `src/jvmTest/kotlin/afield/tools/docs/CitationContractTest.kt` | corpus-wide, opt-in pages | symbol search | n/a — line advisory |
+| `SmallLanguageAnatomyTest` | `src/jvmTest/kotlin/afield/tools/docs/SmallLanguageAnatomyTest.kt` | `small_language_anatomy.md` | symbol search | n/a — line advisory |
+| `CloseNodeCitationDriftTest` | `src/jvmTest/kotlin/afield/geometry/path/CloseNodeCitationDriftTest.kt` | `fline_close_nodes.md` | symbol search | n/a — line advisory |
 
 All three now resolve by symbol; **no line window survives in the repo.** `CloseNodeCitationDriftTest`
 was the last, and until 2026-08-12 its window was **±1** — `subList((line - 2), (line + 1))` is 0-based,
@@ -74,7 +74,7 @@ it disambiguates an anchor that occurs more than once.
 ### How the *path* resolves, and why only a full suffix counts
 
 Prose cites `` `FloatEarcut.kt:705#linkedList` ``, not
-`src/jvmMain/kotlin/afield/graphics/FloatEarcut.kt`, and it should keep being able to — a sentence
+`src/jvmMain/kotlin/afield/geometry/path/FloatEarcut.kt`, and it should keep being able to — a sentence
 carrying a forty-character path is a sentence nobody reads. Measured 2026-08-17: **83 of the corpus's
 222 citations are abbreviated**, so this is the majority case, not a convenience.
 
@@ -330,7 +330,7 @@ registered interface* and is checked.
 
 The postscript is the part worth keeping. The nightly brief that commissioned this guard recounted the
 same population and produced six per-file numbers, **every one exactly one too high**, because
-`import afield.registerValuePrinter` matched the recount's grep. Two wrong counts, by the same
+`import afield.ui.visualization.registerValuePrinter` matched the recount's grep. Two wrong counts, by the same
 mechanism, in the evidence for and against the same sentence. Derive; do not grep.
 
 ### The marker

@@ -9,13 +9,13 @@ Added 2026-09-28. User-facing page: `public/docs/pure_data.md`. Loadable scene:
 | file | what |
 | --- | --- |
 | `tools/build_libpd_native.py`, `./gradlew buildLibpdNative` | shallow clone of libpd tag `0.16.1` + `pure-data` submodule into `~/Library/Caches/Field4/native-downloads/libpd/` (per-user, shared by worktrees, survives `clean`), verified against pinned commits (libpd `ba0dc632…`, pure-data `f009fd8d…`), cmake build with `PD_MULTI=ON` into `build/field-libpd/build/libs/libpd-multi.dylib`. ~1 min cold on an M-series Mac; `otool -L` shows only libSystem. |
-| `src/jvmMain/kotlin/afield/pd/PdNative.kt` | `PdLibrary` (locate: `-Dafield.pd.library`, `AFIELD_PD_LIBRARY`, then `build/field-libpd/…`) and `PdNative`: FFM downcalls for `z_libpd.h`, upcall stubs for the print/bang/float/symbol/list/message hooks. No wrapper library. |
-| `src/jvmMain/kotlin/afield/pd/PdInstance.kt` | `PdInstance` (one `t_pdinstance`), `PdPatch`, `PdNode : StereoNode` — the seam entry. |
-| `src/jvmMain/kotlin/afield/pd/PdPatchGraph.kt` | the patch text as a graph (object indices as Pd counts them, subpatches as one object), line descriptions, FLine drawing, `statementsOnly`. |
-| `src/jvmMain/kotlin/afield/pd/PdLanguage.kt` | `PdExecution`: Pd as a Main Language; message lines as fragments; LineNotes provider (`pdLineNote`: the split note — value line in bold over a muted meta line; an `[s]`/`[r]` note is `volatile` and says when the box is not playing; the caption stays `PdPatchGraph.describeLine`'s sentence, which `ReadLineNotes` reads). `PdLineNoteTest` (4; the live case is an `Assume`, reported as skipped without libpd). |
+| `src/jvmMain/kotlin/afield/audio/pd/PdNative.kt` | `PdLibrary` (locate: `-Dafield.pd.library`, `AFIELD_PD_LIBRARY`, then `build/field-libpd/…`) and `PdNative`: FFM downcalls for `z_libpd.h`, upcall stubs for the print/bang/float/symbol/list/message hooks. No wrapper library. |
+| `src/jvmMain/kotlin/afield/audio/pd/PdInstance.kt` | `PdInstance` (one `t_pdinstance`), `PdPatch`, `PdNode : StereoNode` — the seam entry. |
+| `src/jvmMain/kotlin/afield/audio/pd/PdPatchGraph.kt` | the patch text as a graph (object indices as Pd counts them, subpatches as one object), line descriptions, FLine drawing, `statementsOnly`. |
+| `src/jvmMain/kotlin/afield/audio/pd/PdLanguage.kt` | `PdExecution`: Pd as a Main Language; message lines as fragments; LineNotes provider (`pdLineNote`: the split note — value line in bold over a muted meta line; an `[s]`/`[r]` note is `volatile` and says when the box is not playing; the caption stays `PdPatchGraph.describeLine`'s sentence, which `ReadLineNotes` reads). `PdLineNoteTest` (4; the live case is an `Assume`, reported as skipped without libpd). |
 | `tools/build_zensical_docs.py` | `libpd_library_path` and the `libpd` entry in `NATIVE_PREREQUISITES`, so a docs fence can say `requires="libpd"`. |
-| `src/jvmMain/kotlin/afield/four/synth/PdBox.kt` | box API in the box import set: `pd(text|file)`, `PdLaunch`, `pdControls`, `pdGuiControls`, `pdWaveform`, `renderPdWav`, the return-value handler, and `pdBox(name)` / `Box.pdSend(receiver, values…)` for sending from Kotlin to a *Pd box's* running patch. |
-| `src/jvmMain/kotlin/afield/pd/PdObjects.kt` | typo hints: reads `pd-objects.txt`, which `build_libpd_native.py` writes beside the library from every `class_new` / `class_addcreator` name in the pinned `src` and `extra` (297 names at 0.16.1, internals removed), and suggests the signal/control twin, a case fix, or the nearest names within two edits (one for ≤3 letters). |
+| `src/jvmMain/kotlin/afield/audio/synth/PdBox.kt` | box API in the box import set: `pd(text|file)`, `PdLaunch`, `pdControls`, `pdGuiControls`, `pdWaveform`, `renderPdWav`, the return-value handler, and `pdBox(name)` / `Box.pdSend(receiver, values…)` for sending from Kotlin to a *Pd box's* running patch. |
+| `src/jvmMain/kotlin/afield/audio/pd/PdObjects.kt` | typo hints: reads `pd-objects.txt`, which `build_libpd_native.py` writes beside the library from every `class_new` / `class_addcreator` name in the pinned `src` and `extra` (297 names at 0.16.1, internals removed), and suggests the signal/control twin, a case fix, or the nearest names within two edits (one for ≤3 letters). |
 
 ## Thread discipline
 
@@ -37,7 +37,7 @@ so every call is made under the `PdInstance`'s own lock after `libpd_set_instanc
 Print output arrives in fragments; lines are reassembled on `\n` in Kotlin rather than with libpd's
 `z_print_util` concatenator.
 
-## Measurements (jvmTest `afield.pd.PdTest`, 13 tests, and `PdPatchGraphTest`, 6)
+## Measurements (jvmTest `afield.audio.pd.PdTest`, 13 tests, and `PdPatchGraphTest`, 6)
 
 All run against the built library on 2026-09-28; they print `SKIPPED` and pass when it is absent.
 

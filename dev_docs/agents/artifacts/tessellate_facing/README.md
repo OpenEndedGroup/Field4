@@ -1,7 +1,7 @@
 # `FLine.tessellate` facing and planes — before and after
 
 Two before/after pairs, all four images from
-`src/jvmTest/kotlin/afield/graphics/TessellationFacingRenderTest.kt`, which builds its scenes out of
+`src/jvmTest/kotlin/afield/geometry/path/TessellationFacingRenderTest.kt`, which builds its scenes out of
 filled FLines and rasterises them through a perspective camera with **back-face culling** and flat
 diffuse shading. Culling is the whole instrument: it is the thing that notices which way a triangle
 faces, and it is the thing Field's own viewers switch off (`four/modules/MeshModule.kt:466` sets
@@ -49,7 +49,7 @@ fails in CI without anyone looking at a picture.
 
 ```
 AFIELD_TESSELLATION_RENDER_OUT=dev_docs/agents/artifacts/tessellate_facing \
-  ./gradlew jvmTest --tests 'afield.graphics.TessellationFacingRenderTest'
+  ./gradlew jvmTest --tests 'afield.geometry.path.TessellationFacingRenderTest'
 mv dev_docs/agents/artifacts/tessellate_facing/cube_faces.png \
    dev_docs/agents/artifacts/tessellate_facing/after_fixed.png
 ```
@@ -65,12 +65,12 @@ The first pair's before still needs the old recipe, because the frame it shows i
 any current parameter:
 
 ```
-git checkout 590e1f781 -- src/jvmMain/kotlin/afield/graphics/FLine.kt
+git checkout 590e1f781 -- src/jvmMain/kotlin/afield/geometry/path/FLine.kt
 AFIELD_TESSELLATION_RENDER_OUT=dev_docs/agents/artifacts/tessellate_facing \
-  ./gradlew jvmTest --tests 'afield.graphics.TessellationFacingRenderTest'   # fails, as it should
+  ./gradlew jvmTest --tests 'afield.geometry.path.TessellationFacingRenderTest'   # fails, as it should
 mv dev_docs/agents/artifacts/tessellate_facing/cube_faces.png \
    dev_docs/agents/artifacts/tessellate_facing/before_590e1f781.png
-git checkout HEAD -- src/jvmMain/kotlin/afield/graphics/FLine.kt
+git checkout HEAD -- src/jvmMain/kotlin/afield/geometry/path/FLine.kt
 ```
 
 Since 2026-08-03 that checkout no longer compiles against the current test file — `tessellate` has

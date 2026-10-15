@@ -1,15 +1,15 @@
 package afield.examples.stdlib
 
-import afield.Box
-import afield.HistoryManager
-import afield.SessionInformation
-import afield.SavingContext
-import afield.stdlib.FILE_MANAGER_ACCESS_HISTORY_PROPERTY
-import afield.stdlib.FileManager
-import afield.stdlib.absolutePath
-import afield.stdlib.abslutePath
-import afield.stdlib.file
-import afield.stdlib.path
+import afield.document.graph.Box
+import afield.document.history.HistoryManager
+import afield.app.server.SessionInformation
+import afield.document.persistence.SavingContext
+import afield.document.workspace.FILE_MANAGER_ACCESS_HISTORY_PROPERTY
+import afield.document.workspace.FileManager
+import afield.document.workspace.absolutePath
+import afield.document.workspace.abslutePath
+import afield.document.workspace.file
+import afield.document.workspace.path
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap

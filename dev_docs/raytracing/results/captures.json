@@ -138,9 +138,9 @@
   ],
   "sourceHashes": {
     "src/jvmMain/resources/afield/four/pathtracing/trace.comp": "6b360d868d20055d935f13d59a0948b78cba2522858ca676503b769521d26359",
-    "src/jvmMain/kotlin/afield/four/fabricated/RayTracingGpuAudit.kt": "b6da553af8143e44156c9fd0a4bfc0dc042b081d2338608d61dcb0320b6059ff",
-    "src/jvmMain/kotlin/afield/four/fabricated/PathTraceGpuSmoke.kt": "430df77cc5e81c857e25c3abc45733140d5139328b4056b2ce93da03114b1a1c",
-    "src/jvmMain/kotlin/afield/four/fabricated/RayTracingDocsHarness.kt": "cfa345b77feefc2aa3016cbd2f956aacb3fd65e8a25e644d32b9806cd0b8d599",
+    "src/jvmMain/kotlin/afield/graphics/scene/fabricated/RayTracingGpuAudit.kt": "b6da553af8143e44156c9fd0a4bfc0dc042b081d2338608d61dcb0320b6059ff",
+    "src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceGpuSmoke.kt": "430df77cc5e81c857e25c3abc45733140d5139328b4056b2ce93da03114b1a1c",
+    "src/jvmMain/kotlin/afield/graphics/scene/fabricated/RayTracingDocsHarness.kt": "cfa345b77feefc2aa3016cbd2f956aacb3fd65e8a25e644d32b9806cd0b8d599",
     "public/docs_hooks.py": "3b32f1419f30ab34c35fef6b56c38f4bcd1aefe8f5816a2d31660c2f8e56e2ac"
   },
   "validationLayer": "VK_LAYER_KHRONOS_validation (loader insertion confirmed in full audit stdout)",

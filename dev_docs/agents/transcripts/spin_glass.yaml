@@ -24,8 +24,8 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -128,13 +128,13 @@ operations:
               pc.spins.s[idx] = ns;
           }
         code: |
-          import afield.four.modules.computeMemoryBarrier
-          import afield.four.modules.computeTask
-
+          import afield.graphics.render.computeMemoryBarrier
+          import afield.graphics.render.computeTask
+          
           val L = 128
           val N = L * L
           val groups = (N + 63) / 64
-
+          
           // simulation parameters, published so the measure + view boxes can read them
           prop<Int>(sgL) = L
           prop<Double>(sgTemperature) = 3.0
@@ -143,18 +143,18 @@ operations:
           prop<Int>(sgModel) = 0 // 0 = +/-J bimodal, 1 = Gaussian bonds
           prop<Int>(sgSweeps) = 0
           prop<Boolean>(sgAnneal) = true
-
+          
           // annealing schedule: temperature swings between Thi and Tlo every `period` sweeps
           val Thi = 3.0
           val Tlo = 0.04
           val period = 6000
           val model = sgModel
-
+          
           // in-place lattice state (single, persistent copy — not per-frame)
           var spins = defaultBuffer { size = N.floats }.buffer
           var jRight = defaultBuffer { size = N.floats }.buffer
           var jDown = defaultBuffer { size = N.floats }.buffer
-
+          
           val rng = java.util.Random(20260720L)
           /*
           random initial spins, then bonds: Gaussian when sgModel == 1, else +/-1.
@@ -168,20 +168,20 @@ operations:
           jDown.write {
               for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
           }
-
+          
           prop<FrameBufferGroup>(sgSpins) = spins
           prop<FrameBufferGroup>(sgJRight) = jRight
           prop<FrameBufferGroup>(sgJDown) = jDown
-
+          
           var sweep = 0
           var seed = 1
           var T = Thi
-
+          
           var module = computeModuleHere {}
           // a ComputeMesh must be added to its module before x/y/z or push constants are set
           val even = ComputeMesh()
           val odd = ComputeMesh()
-
+          
           // "tick" runs first each frame: advance the sweep counter + anneal schedule once.
           module +=
               "tick" to
@@ -202,7 +202,7 @@ operations:
           module += "odd" to odd
           module += "barrierO" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
           renderer += "spinGlassUpdate" to module
-
+          
           // both half-sweeps share bindings; they differ only in checkerboard colour and seed
           for (m in listOf(even, odd)) {
               m.x = groups
@@ -222,7 +222,7 @@ operations:
           odd.seed = {
               (seed + 100003).toUInt()
           } // offset so the two passes draw different randoms
-
+          
           println("update launched L=" + L + " N=" + N + " groups=" + groups)
   # 3. measure box: probe (spin, energy) for every site -> field-probe stats card.
   - create:
@@ -269,25 +269,25 @@ operations:
               fieldProbe(vec2(s, e));
           }
         code: |
-          import afield.four.modules.computeMemoryBarrier
-          import afield.four.modules.computeTask
-
+          import afield.graphics.render.computeMemoryBarrier
+          import afield.graphics.render.computeTask
+          
           val L = sgL
           val N = L * L
           val groups = (N + 63) / 64
-
+          
           // call fieldProbeHere BEFORE computeModuleHere so attachFieldProbe wires the SSBO.
           // samples >= N keeps every site each frame, so the reported means are exact.
           fieldProbeHere(samples = if (N < 262144) N else 262144).display("stats")
           displayOpen("stats")
-
+          
           var module = computeModuleHere {}
           val m = ComputeMesh()
           // leading barrier: make the update box's spin writes visible to this read.
           module += "sync" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
           module += "measure" to m
           renderer += "spinGlassMeasure" to module
-
+          
           m.x = groups
           m.y = 1
           m.z = 1

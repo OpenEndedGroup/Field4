@@ -1,7 +1,7 @@
 """tools/field_kit.py: the manifest commands on real files and git, the document commands against a fake Field.
 
 The fake keeps a document as boxes, properties and files, and inspects it with the same three-way rule
-`afield.stdlib.Kits.inspect` applies (KitsTest pins that rule on the JVM side). What these tests pin is
+`afield.document.workspace.Kits.inspect` applies (KitsTest pins that rule on the JVM side). What these tests pin is
 what the commands do with an inspection: what they refuse, what they write, and in which order.
 """
 

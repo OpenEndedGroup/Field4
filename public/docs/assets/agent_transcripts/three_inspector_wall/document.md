@@ -44,7 +44,7 @@ resolve to, which is not a coincidence -- a measurement you pick in the viewer
 produces exactly these.
 
 ```edn [field-box id="three-inspector-wall" role="properties"]
-{"id" "three-inspector-wall" "index" 0 "name" "The 3D output area as an instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The 3D output area as an instrument" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "three-inspector-wall_code_.kt" "lines" 101 "characters" 4382 "sha256" "0bea1d65cdf73f3fca2b2fa51c329e2119bd343adbade572e0cebadb13a513e6"}]}
+{"id" "three-inspector-wall" "index" 0 "name" "The 3D output area as an instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The 3D output area as an instrument" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "three-inspector-wall_code_.kt" "lines" 101 "characters" 4370 "sha256" "9c54f60637d22052ba44289c870e79d03ab16f7b721255e4aef3f78d79ca7878"}]}
 ```
 
 ```kotlin [field-property box="three-inspector-wall" name="code" path="three-inspector-wall_code_.kt"]
@@ -91,12 +91,12 @@ fun skin(name: String, x: Double, c: Vec4) = fline {
 }
 
 // x is the depth through the wall, in millimetres. 152 mm of build-up.
-val wall = listOf(
+val wall = [
     skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.5)),
     skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.28)),
     skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.28)),
     skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.4))
-)
+]
 
 val conduits = (0 until 5).map { i ->
     fline {
@@ -119,7 +119,7 @@ val view = threeInspect(
     height = 560,
     units = "mm",
     explode = ThreeExplode(mode = "axis", axis = floatArrayOf(1f, 0f, 0f), sliderMax = 1400.0),
-    measurements = listOf(
+    measurements = [
         // the build-up: 152 by construction, and the figure now says so
         ThreeMeasurement(
             ThreeMeasureElement.face(wall[0]),
@@ -133,7 +133,7 @@ val view = threeInspect(
             ThreeMeasureElement.face(wall[3]),
             "clear "
         )
-    )
+    ]
 )
 
 // And because the explosion is a PARAMETER rather than a literal you retype, the

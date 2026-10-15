@@ -22,7 +22,7 @@ not a corrupt key, and a list that files both under one red heading is a permane
 A permanent false alarm teaches you to stop reading the alarm.
 
 ```edn [field-box id="kf_junk_vs_damage" role="properties"]
-{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 46 "characters" 2299 "sha256" "f2eff2759c8c15e8c9d3d59091022729585e6c1105acc03803ea3d599ce39d19"}]}
+{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 46 "characters" 2338 "sha256" "eb0a8dc6ea66b064bc7f2ab6052ac2d06119c7feacc7bab658df61e26c33019c"}]}
 ```
 
 ```kotlin [field-property box="kf_junk_vs_damage" name="code" path="kf_junk_vs_damage_code_.kt"]
@@ -33,9 +33,9 @@ A permanent false alarm teaches you to stop reading the alarm.
 // not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
 // A permanent false alarm teaches you to stop reading the alarm.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-junk-vs-damage")
@@ -93,7 +93,7 @@ the scope loads fine — the extra names simply have nowhere to go on apply."
 So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
 
 ```edn [field-box id="kf_orphaned_slots" role="properties"]
-{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [60.0 226.0 592.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2945 "sha256" "64804ca66f37c662e8eaf23f552c7f6ca740fc84f2c1a4b7281bc4072c022a32"}]}
+{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [60.0 226.0 592.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2995 "sha256" "69d329f5b17980511c795e41cd7d8c3b0bdd9f50cbdac903a0408fa346e291e2"}]}
 ```
 
 ```kotlin [field-property box="kf_orphaned_slots" name="code" path="kf_orphaned_slots_code_.kt"]
@@ -107,10 +107,10 @@ So a rename half-done looks exactly like a working slot, and Apply quietly drops
 //
 // So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-orphaned-slots")
@@ -180,7 +180,7 @@ because `saveKey` writes the path it is handed and appends nothing.
 Run this box. Two browsers appear. The top one is what you used to get.
 
 ```edn [field-box id="kf_before_after" role="properties"]
-{"id" "kf_before_after" "index" 2 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 69 "characters" 3492 "sha256" "8825e27eafc628a115c08c61f3476052adaf98d21ce04f0d01ef47bde273f076"}]}
+{"id" "kf_before_after" "index" 2 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [60.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 69 "characters" 3542 "sha256" "a4b80974ea58b2333cafec8c6a17f6dfc80a7d832b97968819a38b2dc3063fa3"}]}
 ```
 
 ```kotlin [field-property box="kf_before_after" name="code" path="kf_before_after_code_.kt"]
@@ -192,10 +192,10 @@ Run this box. Two browsers appear. The top one is what you used to get.
 //
 // Run this box. Two browsers appear. The top one is what you used to get.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 // A temp directory, so this demo writes nothing into your document.

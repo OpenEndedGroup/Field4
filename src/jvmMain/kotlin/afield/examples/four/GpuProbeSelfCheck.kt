@@ -1,12 +1,12 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.buffers.defaultBuffer
-import afield.four.util.GpuProbe
-import afield.four.util.GpuProbeNeverLanded
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.four.util.gpuProbe
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.defaultBuffer
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbeNeverLanded
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.gpuProbe
 import kotlin.system.exitProcess
 
 /*

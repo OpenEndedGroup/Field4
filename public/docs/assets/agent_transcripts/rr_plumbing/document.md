@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["rr_plumbing"] "properties" {"children" #{#afield/box "rr_plumbing"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 289 "sha256" "48b4c5aeec967fc6ec5dc83b23de5c1e6e911c61acc39c811a8d1eac77f6020a"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["rr_plumbing"] "properties" {"children" #{#afield/box "rr_plumbing"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -38,19 +38,19 @@ start(renderer::run)
 <!-- field-box id="rr_plumbing" index="1" -->
 
 ```edn [field-box id="rr_plumbing" role="properties"]
-{"id" "rr_plumbing" "index" 1 "name" "rr plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "rr plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rr_plumbing_code_.kt" "lines" 112 "characters" 5425 "sha256" "a89e27370b30354cdb5371b88ed14b5f1f8d540e13fecfaa7e5078430ec3f9e8"} {"name" "vertex" "language" "glsl" "path" "rr_plumbing_vertex_.glsl" "lines" 2 "characters" 107 "sha256" "11e9110bea13bafec6292e2218890a34f8a60769aafc44ef4f811e59f72cf262"} {"name" "fragment" "language" "glsl" "path" "rr_plumbing_fragment_.glsl" "lines" 16 "characters" 779 "sha256" "9f5d344f7f005d1a674ec6f3bdcb68a761270cdfa225b2179db42c4778fabec9"}]}
+{"id" "rr_plumbing" "index" 1 "name" "rr plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "rr plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rr_plumbing_code_.kt" "lines" 112 "characters" 5496 "sha256" "6dd66cd4fbf8dd8adf14976cab8f18ef4ad4d87dadc509696ede441650fcd8e6"} {"name" "vertex" "language" "glsl" "path" "rr_plumbing_vertex_.glsl" "lines" 2 "characters" 107 "sha256" "11e9110bea13bafec6292e2218890a34f8a60769aafc44ef4f811e59f72cf262"} {"name" "fragment" "language" "glsl" "path" "rr_plumbing_fragment_.glsl" "lines" 16 "characters" 779 "sha256" "9f5d344f7f005d1a674ec6f3bdcb68a761270cdfa225b2179db42c4778fabec9"}]}
 ```
 
 ```kotlin [field-property box="rr_plumbing" name="code" path="rr_plumbing_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.Target
-import afield.four.device.CommandBuffer
-import afield.four.lighting.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.reconstruction.*
-import afield.four.texture.TextureSampler
-import afield.stdlib.fromViews
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.vulkan.Target
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.render.lighting.*
+import afield.document.context.fromContextWithNameOrNull
+import afield.media.reconstruction.*
+import afield.graphics.texture.TextureSampler
+import afield.graphics.shader.fromViews
 import org.lwjgl.vulkan.VK13.*
 
 // This guide conversion describes the existing opaque Lambertian RTXDI bridge.

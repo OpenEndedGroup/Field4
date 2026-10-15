@@ -1,13 +1,13 @@
 // Repair it, cut it, and be told what could not be done.
 
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.stdlib.TriMesh
-import afield.stdlib.defectFLines
-import afield.stdlib.icosphereMesh
-import afield.stdlib.repairToSolid
-import afield.stdlib.signedVolume
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.defectFLines
+import afield.geometry.mesh.icosphereMesh
+import afield.geometry.mesh.repairToSolid
+import afield.geometry.mesh.signedVolume
 
 run {
 

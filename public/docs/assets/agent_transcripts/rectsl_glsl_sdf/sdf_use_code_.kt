@@ -1,9 +1,9 @@
 // A distance is worth more than a coverage mask. Everything below comes
 // from the single float that `scene` returns, and none of it is available
 // from the rasterized-quad path that RectSL normally renders through.
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
-import afield.rectsl.RectSLSdfLook
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
+import afield.lang.rectsl.RectSLSdfLook
 
 val rectsl = """
 #rectsl

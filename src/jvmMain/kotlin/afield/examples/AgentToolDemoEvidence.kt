@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
-import afield.ai.core.CarriesToolImages
-import afield.four.modules.GeometryAgentTools
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
+import afield.ai.tools.CarriesToolImages
+import afield.graphics.render.GeometryAgentTools
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule

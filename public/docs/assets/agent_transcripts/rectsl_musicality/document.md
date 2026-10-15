@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="music_renderer" index="0" -->
 
 ```edn [field-box id="music_renderer" role="properties"]
-{"id" "music_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["music_groove"] "properties" {"children" #{#afield/box "music_groove"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_renderer_code_.kt" "lines" 14 "characters" 248 "sha256" "873d83fc20d7d6ebad68f9c26ca854438315e9f96ce94fb55c76151b4f76375c"}]}
+{"id" "music_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["music_groove"] "properties" {"children" #{#afield/box "music_groove"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_renderer_code_.kt" "lines" 14 "characters" 259 "sha256" "a1af0a93c41b96865d679b0836153c852f9b14348f6006d363b79c826551d5ac"}]}
 ```
 
 ```kotlin [field-property box="music_renderer" name="code" path="music_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -52,7 +52,7 @@ Nothing below is written in seconds. Edit `rectsl` and re-run to change the
 groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
 
 ```edn [field-box id="music_groove" role="properties"]
-{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 107 "characters" 3295 "sha256" "28616872584d4cd39bd95104a9fba00d12a2dcaaea77d3750f89e1a59d279aa2"}]}
+{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 107 "characters" 3313 "sha256" "1c232dcacda019c58604166e442e492ac6ccd086eac0dd4dc06b92a073f720c8"}]}
 ```
 
 ```kotlin [field-property box="music_groove" name="code" path="music_groove_code_.kt"]
@@ -67,10 +67,10 @@ groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
 //
 // Nothing below is written in seconds. Edit `rectsl` and re-run to change the
 // groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.rectMaterialShaderCode
-import afield.rectsl.writeFrameToMesh
-import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.writeFrameToMesh
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
@@ -151,7 +151,7 @@ renderer += "rectsl-musicality" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.stdlib.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

@@ -33,9 +33,9 @@ like a corrupt key. A permanent false alarm teaches you to stop reading the alar
 // not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
 // A permanent false alarm teaches you to stop reading the alarm.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-junk-vs-damage")
@@ -107,10 +107,10 @@ So a rename half-done looks exactly like a working slot, and Apply quietly drops
 //
 // So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-orphaned-slots")
@@ -192,10 +192,10 @@ Run this box. Two browsers appear. The top one is what you used to get.
 //
 // Run this box. Two browsers appear. The top one is what you used to get.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 // A temp directory, so this demo writes nothing into your document.

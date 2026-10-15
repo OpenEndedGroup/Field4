@@ -8,10 +8,10 @@
 //
 // [[property stackSL]]
 
-import afield.four.targets.PingPongRenderToTexture
+import afield.graphics.vulkan.targets.PingPongRenderToTexture
 
-prop<afield.four.targets.PingPongRenderToTexture>(target)
-prop<afield.four.texture.HasImageView>(source)
+prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
+prop<afield.graphics.texture.HasImageView>(source)
 
 // `once`, so re-running the box keeps the images and the trails already in them.
 once.target {

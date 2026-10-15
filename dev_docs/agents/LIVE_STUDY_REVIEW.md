@@ -245,7 +245,7 @@ answered on the server from each compiler's own vocabulary and the cheatsheet-de
 (`StackSLVocabulary`, `RectSLVocabulary`), as every other language with a runtime already was.
 
 The per-line pictures the studies render — StackSL stages, RectSL scenes built up line by line — are
-now offered back to the editor through a language-neutral registry, `afield.stdlib.LineNotes`, and a
+now offered back to the editor through a language-neutral registry, `afield.ui.output.LineNotes`, and a
 `line-note` request: the completion popup shows the note for the line it opened on, and the note beside
 the cursor shows it as the cursor rests. Any language can register a provider for its property.
 
@@ -346,7 +346,7 @@ as turned. Only a drag, or a page's own `window.updateFieldSlider`, announces a 
 
 ### Step 5, the end result: where a module is drawn — 2026-09-28
 
-`afield.four.ModuleDestinations` finds every place a renderer draws a module, by walking what it draws
+`afield.graphics.vulkan.ModuleDestinations` finds every place a renderer draws a module, by walking what it draws
 — each window's main pass, every target its `others` and `preTargets` reach, and the headset — and
 compares by identity; nothing had to be told where the module went. `capture` reads the window's
 swapchain (the whole window) or the render-to-texture's first attachment (`readPixelsAsync`; render

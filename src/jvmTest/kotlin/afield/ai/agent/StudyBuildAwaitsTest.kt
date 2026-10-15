@@ -1,11 +1,71 @@
 package afield.ai.agent
 
-import afield.AiAssist
-import afield.Box
-import afield.SessionInformation
-import afield.ai.core.*
-import afield.ai.core.program.NOT_CALLABLE_FROM_PROGRAMS
-import afield.stdlib.*
+import afield.app.protocol.AiAssist
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.ai.completion.*
+import afield.ai.conversation.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+import afield.ai.tools.*
+import afield.runtime.languages.*
+import afield.ai.tools.program.NOT_CALLABLE_FROM_PROGRAMS
+import afield.ai.learning.*
+import afield.ai.retrieval.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.animation.motion.*
+import afield.app.commands.*
+import afield.app.diagnostics.*
+import afield.audio.analysis.*
+import afield.audio.synth.*
+import afield.data.collections.*
+import afield.data.formats.*
+import afield.data.graph.*
+import afield.data.sorting.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.geometry.mesh.*
+import afield.geometry.path.*
+import afield.geometry.spatial.*
+import afield.graphics.color.*
+import afield.graphics.interaction.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.text.*
+import afield.graphics.vulkan.buffers.*
+import afield.io.osc.*
+import afield.io.process.*
+import afield.lang.lambda.*
+import afield.lang.python.*
+import afield.lang.remotejs.*
+import afield.lang.stacksl.*
+import afield.math.autodiff.*
+import afield.math.control.*
+import afield.math.estimation.*
+import afield.math.functions.*
+import afield.math.linalg.*
+import afield.math.optimization.*
+import afield.math.statistics.*
+import afield.math.units.*
+import afield.media.image.*
+import afield.media.video.*
+import afield.runtime.execution.*
+import afield.runtime.lifecycle.*
+import afield.simulation.agents.*
+import afield.simulation.automata.*
+import afield.simulation.particles.*
+import afield.study.build.*
+import afield.study.evidence.*
+import afield.study.search.*
+import afield.study.source.*
+import afield.study.ui.*
+import afield.tools.testing.*
+import afield.ui.controls.*
+import afield.ui.output.*
+import afield.ui.visualization.*
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
@@ -98,7 +158,7 @@ class StudyBuildAwaitsTest {
             val saved = awaits.suspend(f.info, f.chat, suspension, "code", 24)
             assertEquals(saved, StudyBuildAwaits.read(f.chat), "saved with the chat")
             assertContains(saved.row, "Waiting for 1 build · no model calls")
-            assertTrue(afield.parseAiChatBlocks(saved.row).single().isBuildWait, "the panel shows it on its own")
+            assertTrue(afield.ai.conversation.parseAiChatBlocks(saved.row).single().isBuildWait, "the panel shows it on its own")
             assertContains(saved.row, "attempt `$job`")
             val transcript = "<<you>>\nBake the mesh\n<<ai>>\nStarted it.\n" + saved.row
             assertEquals(transcript.replace("<<progress>>", "<<progress-open>>"), awaits.shown(f.info, f.chat, transcript),

@@ -18,7 +18,7 @@ fence below asks all three of the same cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/query_edges.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val points = List(220) {
     vec(80.0 + random() * 900.0, 70.0 + random() * 550.0)
@@ -89,7 +89,7 @@ options, and keeps the query, the point cloud and the drawing as they were.
 
 ```diff_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/lsh_tuning.png" wait="1.0" capture="box"}
 :::before
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)
@@ -104,7 +104,7 @@ val edges = fline {
 val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
 lines([dots, edges], channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 :::after
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)
@@ -141,7 +141,7 @@ removed. The example draws all five over the same cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/geometric_families.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val points = List(140) { i ->
     val a = i / 140.0 * PI * 2.0
@@ -215,7 +215,7 @@ draws both graphs over three clusters.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_vs_knn.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val centers = [vec(250.0, 550.0), vec(600.0, 250.0), vec(950.0, 520.0)]
 val points = centers.flatMap { c ->
@@ -281,8 +281,8 @@ example draws three graph families over a coiled 3D cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/three_graph_families.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.graphics.FLine
-import afield.graphics.threeLines
+import afield.geometry.path.FLine
+import afield.graphics.three.threeLines
 
 val points = List(170) { i ->
     val t = i / 170.0 * PI * 7.0
@@ -347,7 +347,7 @@ faded in the background.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/path_cover_astar.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val points = List(110) { vec(80.0 + random() * 940.0, 80.0 + random() * 560.0) }
 val base = vec2KnnGraph(points, k = 4)

@@ -7,9 +7,9 @@ flip.** But that is a derived result, not an axiom, and it has been got wrong in
 so the reasoning is written out here, and the table is enforced by a test rather than trusted.
 
 The machine-readable version of this table is
-[`CaptureOrientation`](../src/jvmMain/kotlin/afield/four/CaptureOrientation.kt), and
+[`CaptureOrientation`](../src/jvmMain/kotlin/afield/graphics/vulkan/CaptureOrientation.kt), and
 `CaptureOrientationTest` fails the build if a path's code disagrees with its declaration, or if a
-new flip-bearing path appears in `afield.four` without being declared.
+new flip-bearing path appears in Field 4 without being declared.
 
 ## Why top-down, for all of them
 
@@ -33,7 +33,7 @@ comparison via (2), which is why (2) is worth stating rather than assuming.
 
 **And (2) is itself guarded.** It is the load-bearing assumption, so
 `CaptureOrientation.viewportConventionSites` declares all five `VkViewport` setups in
-`afield.four` — `Renderer`, `RenderTarget`, `RenderToTexture`, `OpenXRHmdTarget`,
+Field 4 — `Renderer`, `RenderTarget`, `RenderToTexture`, `OpenXRHmdTarget`,
 `ImGuiRenderToTexture` — and the test asserts each really does use a negative height, and fails on
 any *undeclared* viewport setup in the package.
 
@@ -67,7 +67,7 @@ in a buffer. It is the same word on a different axis of the problem and is corre
 everything above. It is a *display-time* flip, which is why an ImGui RTT sampled directly reads
 opposite to what the screen shows.
 
-`flipY` in `afield.visualization.heatmap` and `afield.stdlib.imaging` is a user-facing orientation
+`flipY` in `afield.ui.visualization.heatmap` and `afield.media.image.imaging` is a user-facing orientation
 *option* on a CPU image — which row of a matrix you want at the bottom of a spectrogram. Unrelated,
 and deliberately outside the scanner's roots.
 
@@ -94,7 +94,7 @@ had no callers, so it was pure trap.
 
 The common cause is that the convention was per-path and unwritten, so each site was decided by
 whatever comment was nearest. Hence
-[`CaptureOrientation`](../src/jvmMain/kotlin/afield/four/CaptureOrientation.kt): the row order is
+[`CaptureOrientation`](../src/jvmMain/kotlin/afield/graphics/vulkan/CaptureOrientation.kt): the row order is
 now data, with the reason attached, and adding a path without declaring it fails the build.
 
 ## How the flip was measured

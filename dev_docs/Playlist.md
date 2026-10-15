@@ -4,7 +4,7 @@ Executes boxes in ascending order of their `playlist` (Double) property, calling
 `begin()` on each with a wait between boxes.
 
 The authoritative documentation now lives as KDoc in
-`src/jvmMain/kotlin/afield/playlist.kt`:
+`src/jvmMain/kotlin/afield/runtime/execution/playlist.kt`:
 
 - `Box.playlist` — the ordering property (Double, persisted).
 - `Box.pauseList` — per-box frame count: `executePlaylist` waits this many `frame()`

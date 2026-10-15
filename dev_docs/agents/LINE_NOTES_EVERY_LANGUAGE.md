@@ -1,6 +1,6 @@
 # Line notes for every language that can say (2026-09-28)
 
-`afield.stdlib.LineNotes` (added 2026-09-27, `d349eaefb`) gave the editor a note per line — beside the
+`afield.ui.output.LineNotes` (added 2026-09-27, `d349eaefb`) gave the editor a note per line — beside the
 cursor and at the top of the completion popup — but only StackSL and RectSL registered providers.
 This extends it to ForthField, Clojure, Python and Datalog, and to the AI4 tool surface.
 
@@ -11,7 +11,7 @@ This extends it to ForthField, Clojure, Python and Datalog, and to the AI4 tool 
   embedded StackSL/RectSL providers (which accept every `code` box) and a language's own provider
   would have shadowed one another depending on `@RunsAt(plugins)` order. `EmbeddedRectSL` no longer
   calls `EmbeddedStackSL` itself.
-- **`LastRunNotes`** (`src/jvmMain/kotlin/afield/stdlib/LastRunNotes.kt`) is the record for languages
+- **`LastRunNotes`** (`src/jvmMain/kotlin/afield/ui/output/LastRunNotes.kt`) is the record for languages
   whose partial programs are not side-effect free. A runtime calls `record(box, "code", code,
   execute.line, produced, stoppedAt, stopReason, notReached)` after a run; one provider for `code`
   (`installLastRunLineNotes`) reads it back. Entries keep the text of the lines they were recorded

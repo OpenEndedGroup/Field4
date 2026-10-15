@@ -18,7 +18,7 @@ This page is generated from the typed algebra model that emits Field's heap, fra
 
 All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.
 
-Further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only) and half precision (`Vector8h`, heap-only — eight IEEE-754 binary16 lanes that pack into a single `vec4` of GPU memory), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.
+Further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only) and half precision (`Vector8h`, heap-only — eight IEEE-754 binary16 lanes that pack into a single `vec4` of GPU memory), and the `afield.math.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.
 
 ## Vector2f
 

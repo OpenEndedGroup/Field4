@@ -1,18 +1,18 @@
 package afield.examples
 
-import afield.stdlib.BooleanNetwork
-import afield.stdlib.findAttractors
-import afield.stdlib.kauffmanNetwork
-import afield.stdlib.printAttractors
-import afield.stdlib.segmentPolarityNetwork
-import afield.stdlib.threeNodeNetwork
-import afield.stdlib.toggleNetwork
+import afield.simulation.automata.BooleanNetwork
+import afield.simulation.automata.findAttractors
+import afield.simulation.automata.kauffmanNetwork
+import afield.simulation.automata.printAttractors
+import afield.simulation.automata.segmentPolarityNetwork
+import afield.simulation.automata.threeNodeNetwork
+import afield.simulation.automata.toggleNetwork
 
 /**
  * Console-oriented examples for the Boolean-network stdlib.
  *
  * The model, attractor analysis, and FLine visualizations now live in
- * `afield.stdlib.booleannetworks.kt`; this file is intentionally just a thin
+ * `afield.simulation.automata.booleannetworks.kt`; this file is intentionally just a thin
  * showcase layer.
  */
 object BooleanNetworkExplorer {

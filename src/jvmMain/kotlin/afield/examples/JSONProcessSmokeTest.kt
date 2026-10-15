@@ -1,8 +1,8 @@
 package afield.examples
 
-import afield.Box
-import afield.ReturnValueRegistry
-import afield.stdlib.JSONProcess
+import afield.document.graph.Box
+import afield.runtime.execution.ReturnValueRegistry
+import afield.io.process.JSONProcess
 import java.nio.file.Files
 
 /*

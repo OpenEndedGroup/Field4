@@ -1,10 +1,10 @@
-import afield.four.modules.GltfSkinning
-import afield.four.modules.GltfSupport
-import afield.four.modules.RiggedFixture
-import afield.four.modules.assimpToTriMesh
-import afield.four.modules.skinnedGltfToTriMesh
-import afield.stdlib.MeshView
-import afield.stdlib.showMeshGrid
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.assimpToTriMesh
+import afield.graphics.scene.skinnedGltfToTriMesh
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
 
 // Field could load a glTF and it could sample per-NODE animation. It could not skin.
 //

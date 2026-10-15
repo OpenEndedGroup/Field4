@@ -473,7 +473,7 @@ def resolve_page_source(page_url: str, git: Git) -> PageSource:
             source_set, _, rest = trimmed.partition("/")
             kotlin = f"src/{source_set}/kotlin/{rest}.kt"
             if (git.root / kotlin).is_file():
-                return PageSource(page_url, rel, kotlin, {"generator": "afield.docs.SourcePageGenerator",
+                return PageSource(page_url, rel, kotlin, {"generator": "afield.tools.docs.SourcePageGenerator",
                                                           "from": kotlin, "regenerate": "./gradlew generateSourcePages"})
     return PageSource(page_url, candidates[0] if candidates else "", None)
 
@@ -1150,7 +1150,7 @@ def _draft_source(git: Git, path: str, line: int, draft: dict[str, Any], status:
               "trackedAtEpochMs": now_ms(), "trackedHead": head, "path": path, "startLine": line, "endLine": line,
               "status": status, "origins": origins_for(git, None, path, line, line), "anchoredAt": head,
               "method": "declaration", "excerpt": excerpt(text, line, line),
-              "generated": {"generator": "afield.docs.SourcePageGenerator", "from": path,
+              "generated": {"generator": "afield.tools.docs.SourcePageGenerator", "from": path,
                             "regenerate": "./gradlew generateSourcePages"},
               "draft": draft}
     if previous and previous.get("firstAnchoredAt"):

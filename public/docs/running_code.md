@@ -21,7 +21,7 @@ one, or when a child box cannot see a value its parent set.
 
 For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
 [Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
-[afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
+[Field 4 Graphics](afield_four_graphics.md). This page is the layer underneath both.
 
 ---
 
@@ -423,7 +423,7 @@ That makes `@rootExported`/`@metarootExported` the tidy way to define a helper o
 
 ## Generated GLSL accessors: `moduleHere { }`
 
-A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [afield.four Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
+A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
 
 For a vertex shader with `layout(location = 0) in vec3 pos;` and a push-constant block, expansion generates lines like:
 
@@ -435,7 +435,7 @@ val Mesh.pos by FromInput()
 // (generated MappedStructure with a FloatBuffer per input + an IntBuffer `tri`)
 
 // per push-constant / UBO member — typed, two ways to reach it:
-var Mesh.worldToClip by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>()
+var Mesh.worldToClip by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
 // ...or the untyped map form, which needs no generated accessor:
 //   m.push["worldToClip"] = ...
 ```
@@ -444,7 +444,7 @@ A GLSL `struct` (or a `buffer_reference` buffer) becomes a generated Kotlin clas
 
 ```diffstatic {data-lang=kotlin}
 class Params(/* layout members */) : Structure(/* ... */) {
-    var resolution_time_samples by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var resolution_time_samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
     val P: Params get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) }   // nested
 }
 fun ParamsByteSize(): Long = 464L
@@ -512,5 +512,5 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
-See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [afield.four Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
+See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [Field 4 Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
 value came from), and the [Kotlin Overview](kotlin_overview.md).

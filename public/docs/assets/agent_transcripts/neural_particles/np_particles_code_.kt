@@ -1,6 +1,6 @@
-import afield.stdlib.ShaderNeuralParticles
+import afield.simulation.particles.ShaderNeuralParticles
 
-prop<afield.stdlib.ShaderNeuralParticles>(particles)
+prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
 // `renderer` and `neuralExport` are the parent boxes' props, visible through the
 // preamble. The `once` is real rather than habit: the shader has the network's shape

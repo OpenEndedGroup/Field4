@@ -1,11 +1,11 @@
 package afield.examples
 
-import afield.graphics.VISION_POSE_CHANNEL
-import afield.graphics.VISION_POSE_VERSION
-import afield.graphics.VisionPoseLatency
-import afield.graphics.VisionPoseStream
-import afield.graphics.installVisionPoseHandler
-import afield.graphics.visionPoseRawHandler
+import afield.graphics.visionos.VISION_POSE_CHANNEL
+import afield.graphics.visionos.VISION_POSE_VERSION
+import afield.graphics.visionos.VisionPoseLatency
+import afield.graphics.visionos.VisionPoseStream
+import afield.graphics.visionos.installVisionPoseHandler
+import afield.graphics.visionos.visionPoseRawHandler
 import kotlin.math.abs
 
 /*

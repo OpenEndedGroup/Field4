@@ -1,6 +1,6 @@
 # The mesh / 3D geometry family
 
-A dependency-free CPU triangle-mesh layer in `afield.stdlib`, landed 2026-07-28. Eight source files,
+A dependency-free CPU triangle-mesh layer, now in `afield.geometry.mesh`, landed 2026-07-28 in `afield.stdlib`. Eight source files,
 101 invariant tests, a ten-panel rendered gallery, and a loadable demo transcript.
 
 ## Why it exists
@@ -27,7 +27,7 @@ same shaped gap the imaging family filled, in the other one.
 | `mesh_io.kt` | OBJ and STL (ASCII + binary), read and write, plus `meshFromFile`. PLY / glTF / GLB read through `afield/four/modules/MeshFromDisk.kt` — see [ply_loader.md](ply_loader.md) and `public/docs/geometry_from_disk.md`. |
 | `mesh_field.kt` | the Field bridges — `toFLines`, `tubeMesh(FLine)`, `VoronoiCell3`/`VoronoiLattice` → `TriMesh`, `coloredByScalar`, `MeshView` / `renderPng` / `toFigureHtml`, `Box.showMesh` / `showMeshGrid` / `showMeshTurntable`, `summary`. |
 
-Tests: `src/jvmTest/kotlin/afield/stdlib/Mesh{Core,Marching,Process,Query,Io}Test.kt`.
+Tests: `src/jvmTest/kotlin/afield/geometry/mesh/Mesh{Core,Marching,Process,Query,Io}Test.kt`.
 Gallery: `src/jvmMain/kotlin/afield/examples/mesh/MeshGallery.kt` (FIELD_TEST `mesh.gallery`).
 Demo: `dev_docs/agents/transcripts/mesh_geometry_examples.yaml`.
 
@@ -176,7 +176,7 @@ and fails on any broken invariant. `MESH_GALLERY_DIR=<dir>` regenerates the comm
 `dev_docs/assets/mesh_gallery/`; the FIELD_TEST run writes nothing into the tree.
 
 Rendering path: real `TriMesh` pipelines → `TriMesh.renderPixels` (the CPU rasterizer in
-`afield.graphics.VisionGeometryPreview` — perspective, z-buffer, perspective-correct attributes,
+`afield.graphics.visionos.VisionGeometryPreview` — perspective, z-buffer, perspective-correct attributes,
 near-plane clip, two-light lambert, depth-tested wireframe) → AWT compositing → `ImageIO` PNG, under
 `java.awt.headless = true`. AWT only draws the frames, captions and measurement strips.
 
@@ -226,7 +226,7 @@ with `field_backdoor.py run-jvm-main afield.examples.AgentTranscriptMaterializer
   formats again here") was wrong on both counts. Both loaders produce plain host memory, and the
   bridge unpacks what they already produced rather than re-parsing anything: 2026-08-10 added
   `afield/four/modules/MeshFromDisk.kt` — `PlyModel.toTriMesh()`, `assimpToTriMesh(path)`,
-  `meshFromAnyFile(path)` and `Box.showMesh(path)` — on the `afield.four` side of the line, so
+  `meshFromAnyFile(path)` and `Box.showMesh(path)` — on the Field 4 side of the line, so
   `mesh_io.kt` keeps its property and a box can still read a GLB in one call. See
   `public/docs/geometry_from_disk.md`.
 - **STEP / IGES / BREP.** Genuinely absent, everywhere in the tree, and the one on this list that is

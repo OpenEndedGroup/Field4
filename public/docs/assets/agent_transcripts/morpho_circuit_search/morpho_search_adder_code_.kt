@@ -1,4 +1,4 @@
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // The result this branch set out to get, and did not. Reported because the alternative is
 // to quietly not mention it.

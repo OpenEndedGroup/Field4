@@ -32,8 +32,8 @@ val view = three(name = "foo", width = 760, height = 440) {
 
 `three` is a function on the current Field box. The block has a `ThreeSceneBuilder` receiver:
 `mesh`, `lines`, `camera` and the other operations below describe the scene. The graphics and
-mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.*`
-and `afield.stdlib.*` and call `three` on a `Box`.
+mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.three.*`
+and `afield.geometry.mesh.*` and call `three` on a `Box`.
 
 ### Viewer name, channel and size
 
@@ -489,7 +489,7 @@ perspective, either project first with `FLine.byPerspectiveProjecting(...)` or r
 `threeLines`.
 
 **The ray tracer is not a separate renderer.** [Ray tracing examples](ray_tracing_examples.md) is
-`VK_KHR_ray_tracing_pipeline` inside `afield.four`, and Fabricate's `StandardRenderer` is a deferred
+`VK_KHR_ray_tracing_pipeline` inside Field 4, and Fabricate's `StandardRenderer` is a deferred
 g-buffer / shadow / AO / composite stack built on the same primitives. One Vulkan renderer, three
 front ends.
 

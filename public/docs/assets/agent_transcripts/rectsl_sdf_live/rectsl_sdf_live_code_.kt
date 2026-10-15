@@ -12,14 +12,14 @@
 // blending *between* rectangles, boolean ops, per-pixel normals and sub-frame
 // motion blur — in exchange for fill, material and z order, because `min` is
 // union and a union has no layers.
-import afield.four.modules.Mesh
-import afield.four.modules.Module
-import afield.four.modules.parameters
-import afield.four.modules.pointer
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
-import afield.rectsl.RectSLSdfLook
-import afield.rectsl.RectSLSdfShader
+import afield.graphics.render.Mesh
+import afield.graphics.render.Module
+import afield.graphics.render.parameters
+import afield.graphics.render.pointer
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
+import afield.lang.rectsl.RectSLSdfLook
+import afield.lang.rectsl.RectSLSdfShader
 
 // 1. An ordinary RectSL scene. Nothing here is SDF-specific: one animated
 //    template, six copies from `array`. Edit it and re-run.

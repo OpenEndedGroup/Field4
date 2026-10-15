@@ -57,7 +57,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -74,17 +74,17 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.FlowCoupling
-          import afield.stdlib.FlowMatchOptions
-          import afield.stdlib.contourComponents
-          import afield.stdlib.flowMatch
-
-          prop<afield.stdlib.FlowMatchExport>(fieldA)
-          prop<afield.stdlib.FlowMatchExport>(fieldB)
-
+          import afield.ai.learning.FlowCoupling
+          import afield.ai.learning.FlowMatchOptions
+          import afield.ai.learning.contourComponents
+          import afield.ai.learning.flowMatch
+          
+          prop<afield.simulation.particles.FlowMatchExport>(fieldA)
+          prop<afield.simulation.particles.FlowMatchExport>(fieldB)
+          
           val LETTERS = "C" to "S"
           val N = 512
-
+          
           // Both fields must start from the *same* cloud. That is what gives a particle one start
           // point and two destinations, and it is also what makes the two normalisation frames
           // agree -- `blendWith` refuses to mix two coordinate systems, so sharing the cloud is a
@@ -93,7 +93,7 @@ operations:
               val a = 2 * Math.PI * it / N
               vec(Math.cos(a), Math.sin(a), 0.0)
           }
-
+          
           // A letter as N points in arc-length order, centred and scaled to unit RMS radius so
           // that both letters live in the same frame as the circle.
           fun glyph(ch: String): List<Vec3> {
@@ -105,7 +105,7 @@ operations:
               val rms = Math.sqrt(p.sumOf { (it.x - cx) * (it.x - cx) + (it.y - cy) * (it.y - cy) } / p.size)
               return p.map { vec((it.x - cx) / rms, (it.y - cy) / rms, 0.0) }
           }
-
+          
           // Rotate and if necessary reverse the contour so index i starts near circle index i.
           // Without this each letter carries an arbitrary rotation relative to the circle, and --
           // worse for this scene -- a *different* one, so the two fields would disagree about
@@ -128,14 +128,14 @@ operations:
               }
               return best
           }
-
+          
           // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
           // that `flowMatch` reseeds, so this really is the same starting point twice.
           fun train(target: List<Vec3>) = flowMatch(
               target, source,
               FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
           ).export()
-
+          
           fieldA = train(align(glyph(LETTERS.first)))
           fieldB = train(align(glyph(LETTERS.second)))
           println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount} parameters each, one source of ${fieldA.sourceCount} points")
@@ -145,11 +145,11 @@ operations:
       frame: { x: 740.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.ShaderNeuralParticles
-          import afield.stdlib.blendWith
-
-          prop<afield.stdlib.ShaderNeuralParticles>(particles)
-
+          import afield.simulation.particles.ShaderNeuralParticles
+          import afield.simulation.particles.blendWith
+          
+          prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
+          
           once.particles {
               ShaderNeuralParticles(fieldA, renderer) {
                   particleCount = 200_000
@@ -161,16 +161,16 @@ operations:
                   dwellCycles = 1.2f
               }.also { it.installInto() }
           }
-
+          
           particles.settings.intensity = 1.1f
           particles.settings.arrivalBias = 0.55f
           particles.settings.pointSize = 1.5f
           particles.settings.viewScale = 3.4f
           particles.settings.sourceColor = vec(0.15, 0.45, 1.0, 1.0)
           particles.settings.targetColor = vec(1.0, 0.62, 0.22, 1.0)
-
+          
           val PERIOD = 2400.0    // frames for a full there-and-back: forty seconds at sixty
-
+          
           frames {
               while (true) {
                   // A plain triangle wave -- constant speed, every value of t given the same

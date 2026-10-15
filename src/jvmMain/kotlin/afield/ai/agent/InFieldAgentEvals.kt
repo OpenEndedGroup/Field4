@@ -1,6 +1,6 @@
 package afield.ai.agent
 
-import afield.ai.core.aiToolMapper
+import afield.ai.tools.aiToolMapper
 import kotlinx.serialization.Serializable
 
 /**
@@ -498,7 +498,7 @@ data class AgentEvalReport(
     val distilled: List<String> = emptyList(),
     val distilMessage: String = "",
     /**
-     * Leak evidence, filled by the server's entry points ([afield.runAgentEvalHeadless]): open documents
+     * Leak evidence, filled by the server's entry points ([afield.app.server.runAgentEvalHeadless]): open documents
      * before and after the run, and AI4 capture pages still open after it. -1 = not measured.
      */
     val documentsBefore: Int = -1,

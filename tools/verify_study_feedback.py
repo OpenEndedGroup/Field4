@@ -8,9 +8,7 @@ from pathlib import Path
 from field_backdoor import FieldBackdoor,SessionLogger
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=r'''
-import afield.*
-import afield.stdlib.*
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 val owner=Box.context.get()!!
 val builds=studyBuilds("feedback",listOf(
     StudyBuildStage("overlap","Check solid intersections","proof-v1",resultNotes={ job ->

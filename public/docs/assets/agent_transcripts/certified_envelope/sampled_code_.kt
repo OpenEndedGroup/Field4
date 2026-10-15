@@ -1,8 +1,8 @@
-import afield.stdlib.Functions
-import afield.stdlib.SignalChannel
-import afield.stdlib.SignalViewer
-import afield.stdlib.SignalViewerOptions
-import afield.stdlib.displaySignal
+import afield.math.functions.Functions
+import afield.ui.visualization.SignalChannel
+import afield.ui.visualization.SignalViewer
+import afield.ui.visualization.SignalViewerOptions
+import afield.ui.visualization.displaySignal
 
 // One hour: a slow 40-second swing, plus a glitch 10 ms wide at 1234.57 s — exactly halfway
 // between two of the viewer's 0.02 s samples. Built from Functions ops rather than a

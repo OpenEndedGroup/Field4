@@ -43,7 +43,7 @@ expect:
     - output
 */
 private val CONTROLS_SNIPPET = """
-import afield.four.synth.*
+import afield.audio.synth.*
 
 val src = "#faust\n" +
     "import(\"stdfaust.lib\");\n" +
@@ -93,7 +93,7 @@ expect:
     - output
 */
 private val COMPILE_ERROR_SNIPPET = """
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // `os.sawtoothX` does not exist.
 //

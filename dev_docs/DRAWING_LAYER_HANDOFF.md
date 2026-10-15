@@ -22,7 +22,7 @@ MVP and then unlocked by giving Field's canvas a zoom of its own.
 
 | Piece | File |
 | --- | --- |
-| Field-side logic: toggle, camera sync, persistence, lazy load | `src/jsMain/kotlin/afield/drawingLayer.kt` |
+| Field-side logic: toggle, camera sync, persistence, lazy load | `src/jsMain/kotlin/afield/app/canvas/drawingLayer.kt` |
 | React/Excalidraw adapter (the only React in Field) | `tools/excalidraw-bundle/entry.jsx` |
 | Bundle build (esbuild) | `tools/excalidraw-bundle/build.mjs`, `package.json` |
 | Vendored output, served at `/excalidraw/` | `src/jsMain/resources/excalidraw/` (committed, like Monaco) |

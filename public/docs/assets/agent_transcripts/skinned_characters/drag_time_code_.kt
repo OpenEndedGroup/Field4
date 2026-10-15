@@ -1,9 +1,9 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.modules.RiggedFixture
-import afield.four.modules.posedGltfToTriMesh
-import afield.stdlib.MeshView
-import afield.stdlib.showMesh
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.posedGltfToTriMesh
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMesh
 
 // Drag `time`. The cylinder bends.
 //

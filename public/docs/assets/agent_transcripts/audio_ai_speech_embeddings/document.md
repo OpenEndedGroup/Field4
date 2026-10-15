@@ -31,13 +31,13 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_speech" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_speech" role="properties"]
-{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 98 "characters" 4469 "sha256" "1c2afb061c9075ec748c8a8c6984f969cca6fc42178bad1c4314086ffa46c4a2"}]}
+{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 98 "characters" 4503 "sha256" "e87d39c131fe9a7c136ab882791fe8dcc5ed2b276fcffe0cdb642be50c336f05"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_speech" name="code" path="analyse_near_drowning_speech_code_.kt"]
-import afield.Box
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.SmileMdsDistance
+import afield.document.graph.Box
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.math.statistics.SmileMdsDistance
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -140,13 +140,13 @@ client.assetsByFilename("*near_drowning*").thenCompose { matches ->
 <!-- field-box id="speech_embedding_visualizer_gallery" index="2" -->
 
 ```edn [field-box id="speech_embedding_visualizer_gallery" role="properties"]
-{"id" "speech_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached synchronized MDS gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached synchronized MDS gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_visualizer_gallery_code_.kt" "lines" 11 "characters" 529 "sha256" "ccabe7797e317d27ef68b6957613d069a28fcbba2ad6c7db78c8cd25575f3a89"}]}
+{"id" "speech_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached synchronized MDS gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached synchronized MDS gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_visualizer_gallery_code_.kt" "lines" 11 "characters" 551 "sha256" "17f3b7403797755b2414203277e212426a1c6da762d9b989716fd4299aede769"}]}
 ```
 
 ```kotlin [field-property box="speech_embedding_visualizer_gallery" name="code" path="speech_embedding_visualizer_gallery_code_.kt"]
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
+import afield.ui.visualization.AudioVisualizer
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json

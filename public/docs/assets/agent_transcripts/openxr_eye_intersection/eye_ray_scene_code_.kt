@@ -1,7 +1,7 @@
-import afield.four.modules.*
-import afield.four.targets.BinocularGazeIntersection
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Quaternionf
+
+import afield.graphics.vulkan.targets.BinocularGazeIntersection
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Quaternionf
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.delay

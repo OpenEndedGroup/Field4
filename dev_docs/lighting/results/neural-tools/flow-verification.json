@@ -1,5 +1,5 @@
 {
-  "entrypoint": "afield.four.vision.OpticalFlowSmoke",
+  "entrypoint": "afield.media.vision.OpticalFlowSmoke",
   "exitCode": 0,
   "completionMarker": "OPTICAL FLOW CHECK DONE",
   "vulkanValidationErrors": 0,

@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "public/docs/ray_tracing_examples.md"
-HARNESS = ROOT / "src/jvmMain/kotlin/afield/four/fabricated/RayTracingDocsHarness.kt"
+HARNESS = ROOT / "src/jvmMain/kotlin/afield/graphics/scene/fabricated/RayTracingDocsHarness.kt"
 
 
 def tokens(code):

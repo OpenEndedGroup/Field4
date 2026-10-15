@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["reconstruction_plumbing"] "properties" {"children" #{#afield/box "reconstruction_plumbing"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 289 "sha256" "48b4c5aeec967fc6ec5dc83b23de5c1e6e911c61acc39c811a8d1eac77f6020a"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["reconstruction_plumbing"] "properties" {"children" #{#afield/box "reconstruction_plumbing"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -38,16 +38,16 @@ start(renderer::run)
 <!-- field-box id="reconstruction_plumbing" index="1" -->
 
 ```edn [field-box id="reconstruction_plumbing" role="properties"]
-{"id" "reconstruction_plumbing" "index" 1 "name" "reconstruction plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "reconstruction plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "reconstruction_plumbing_code_.kt" "lines" 103 "characters" 4474 "sha256" "e53a106005a77bb7b6ce4f216b30d01d47a92b2a8fdc61127deb6f40b7b6e18a"} {"name" "vertex" "language" "glsl" "path" "reconstruction_plumbing_vertex_.glsl" "lines" 41 "characters" 2372 "sha256" "6a509b1e0537b8c5c5db23c515e5a0bd7fa0676ed78e2c7b33ce2210efd66a38"} {"name" "fragment" "language" "glsl" "path" "reconstruction_plumbing_fragment_.glsl" "lines" 31 "characters" 1604 "sha256" "f4c71150e7f5dd16c2bb5e576fd5862c4f5df297eb59e14bba54c58f179b5399"}]}
+{"id" "reconstruction_plumbing" "index" 1 "name" "reconstruction plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "reconstruction plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "reconstruction_plumbing_code_.kt" "lines" 103 "characters" 4521 "sha256" "ac742db5c3fd2eb54080e0c330f9de51740c33a3072f43ab4563ed30586ec0f1"} {"name" "vertex" "language" "glsl" "path" "reconstruction_plumbing_vertex_.glsl" "lines" 41 "characters" 2372 "sha256" "6a509b1e0537b8c5c5db23c515e5a0bd7fa0676ed78e2c7b33ce2210efd66a38"} {"name" "fragment" "language" "glsl" "path" "reconstruction_plumbing_fragment_.glsl" "lines" 31 "characters" 1604 "sha256" "f4c71150e7f5dd16c2bb5e576fd5862c4f5df297eb59e14bba54c58f179b5399"}]}
 ```
 
 ```kotlin [field-property box="reconstruction_plumbing" name="code" path="reconstruction_plumbing_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.Target
-import afield.four.device.CommandBuffer
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.reconstruction.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.vulkan.Target
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.document.context.fromContextWithNameOrNull
+import afield.media.reconstruction.*
 import org.lwjgl.vulkan.VK13.*
 
 prop<AutoCloseable>(plumbing)

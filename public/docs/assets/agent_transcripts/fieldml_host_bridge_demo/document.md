@@ -19,11 +19,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fieldml-bridge-types" index="1" -->
 
 ```edn [field-box id="fieldml-bridge-types" role="properties"]
-{"id" "fieldml-bridge-types" "index" 1 "name" "Host members have real types now" "parents" ["root" "fieldml-bridge-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-bridge-root"} "name" "Host members have real types now" "_tombstone" false "frame" #afield/rect [400.0 300.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-bridge-types_code_.kt" "lines" 15 "characters" 524 "sha256" "42803f4bc2867ef72861c4e6e143dcdf2b3f24318b517e847ce284c46df87be7"}]}
+{"id" "fieldml-bridge-types" "index" 1 "name" "Host members have real types now" "parents" ["root" "fieldml-bridge-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-bridge-root"} "name" "Host members have real types now" "_tombstone" false "frame" #afield/rect [400.0 300.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-bridge-types_code_.kt" "lines" 15 "characters" 529 "sha256" "24f74088e5e7298f910a6a96cbcce5bb9f05e00c63ba386669dcd73913359cc8"}]}
 ```
 
 ```kotlin [field-property box="fieldml-bridge-types" name="code" path="fieldml-bridge-types_code_.kt"]
-let Img = hostClass "afield.stdlib.Img"
+let Img = hostClass "afield.media.image.Img"
 let img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img
 
 // Try it: put the caret after the quote in hostGet "" and ask for
@@ -57,7 +57,7 @@ is what makes the defaults reachable: a positional call has no way to say
 which parameter it is skipping.
 
 ```edn [field-box id="fieldml-bridge-named" role="properties"]
-{"id" "fieldml-bridge-named" "index" 2 "name" "Named arguments, and Kotlin defaults" "parents" ["root" "fieldml-bridge-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-bridge-root"} "name" "Named arguments, and Kotlin defaults" "_tombstone" false "frame" #afield/rect [1120.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-bridge-named_code_.kt" "lines" 34 "characters" 1649 "sha256" "b87d211359e17b87bd09b0900dbfbbade501d1cc1002622be19383260944035f"}]}
+{"id" "fieldml-bridge-named" "index" 2 "name" "Named arguments, and Kotlin defaults" "parents" ["root" "fieldml-bridge-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-bridge-root"} "name" "Named arguments, and Kotlin defaults" "_tombstone" false "frame" #afield/rect [1120.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-bridge-named_code_.kt" "lines" 34 "characters" 1659 "sha256" "7268e4fb4c191b37532c1177d6d66c157e84f4178555c038dbda5de005875fc1"}]}
 ```
 
 ```kotlin [field-property box="fieldml-bridge-named" name="code" path="fieldml-bridge-named_code_.kt"]
@@ -68,8 +68,8 @@ which parameter it is skipping.
 // you -- so this goes through Kotlin's own reflection, and naming the arguments
 // is what makes the defaults reachable: a positional call has no way to say
 // which parameter it is skipping.
-let Img = hostClass "afield.stdlib.Img"
-let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+let Img = hostClass "afield.media.image.Img"
+let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
 let img = hostNew {width = 2, height = 2, channels = 3, data = [
   0.0, 0.0, 0.0,  0.0, 0.0, 0.0,
@@ -102,12 +102,12 @@ let coloured = gray |> hostExt Imaging "colormap" {name = "magma"}
 <!-- field-box id="fieldml-bridge-raster" index="3" -->
 
 ```edn [field-box id="fieldml-bridge-raster" role="properties"]
-{"id" "fieldml-bridge-raster" "index" 3 "name" "A FieldML function, rasterised by Kotlin" "parents" ["root" "fieldml-bridge-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-bridge-root"} "name" "A FieldML function, rasterised by Kotlin" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-bridge-raster_code_.kt" "lines" 18 "characters" 699 "sha256" "ceab6e799164e4642f2e363040527f30267597129eac4696f02efb959944f02e"}]}
+{"id" "fieldml-bridge-raster" "index" 3 "name" "A FieldML function, rasterised by Kotlin" "parents" ["root" "fieldml-bridge-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-bridge-root"} "name" "A FieldML function, rasterised by Kotlin" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-bridge-raster_code_.kt" "lines" 18 "characters" 709 "sha256" "4c9b9a72330e239ace301d21598c6e8856981d2ba9f469a389c2163352313840"}]}
 ```
 
 ```kotlin [field-property box="fieldml-bridge-raster" name="code" path="fieldml-bridge-raster_code_.kt"]
-let Img = hostClass "afield.stdlib.Img"
-let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+let Img = hostClass "afield.media.image.Img"
+let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
 // The whole picture is this function. Change 11.0 to change the ring
 // spacing; change "viridis" below to "magma" or "coolwarm".

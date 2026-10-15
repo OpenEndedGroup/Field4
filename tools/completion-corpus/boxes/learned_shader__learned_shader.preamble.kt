@@ -1,6 +1,6 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.four.neural.LearnedShader
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.shader.learning.LearnedShader
 var Box.lab by Inheritance<LearnedShader>() /**/
 val Once.lab by Onceing<LearnedShader>() /**/
 val Why.lab by Whying() /**/

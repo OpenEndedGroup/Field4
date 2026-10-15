@@ -58,7 +58,7 @@ each point heads for the partner matchPoints gave it; on the right, for the hear
 point that shares its list index.
 
 ```edn [field-box id="square_to_heart" role="properties"]
-{"id" "square_to_heart" "index" 1 "name" "a morph, matched and unmatched" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a morph, matched and unmatched" "_tombstone" false "frame" #afield/rect [80.0 760.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "square_to_heart_code_.kt" "lines" 40 "characters" 1845 "sha256" "e8554d8949daf8d44f780821c576110b61123d9d76ce007874e73653aed67e03"}]}
+{"id" "square_to_heart" "index" 1 "name" "a morph, matched and unmatched" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a morph, matched and unmatched" "_tombstone" false "frame" #afield/rect [80.0 760.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "square_to_heart_code_.kt" "lines" 40 "characters" 1857 "sha256" "3e604990cd419d6a104a30c3d91c4788ab2f4d4ed26f12b6b02b373569e32ecb"}]}
 ```
 
 ```kotlin [field-property box="square_to_heart" name="code" path="square_to_heart_code_.kt"]
@@ -99,7 +99,7 @@ loop {
             splat(px, imageWidth / 4, square[i], partner[i], t, colour[i])
             splat(px, 3 * imageWidth / 4, square[i], heart[i], t, colour[i])
         }
-        display("morph", afield.util.PngEncoder.encode(px, imageWidth, imageHeight))
+        display("morph", afield.media.image.util.PngEncoder.encode(px, imageWidth, imageHeight))
     }
 }
 ```
@@ -118,7 +118,7 @@ to its area. Each pixel gets a target of its own, and is painted with that targe
 place in its disc: hue for the angle, lightness for the distance from the centre.
 
 ```edn [field-box id="million_pixels" role="properties"]
-{"id" "million_pixels" "index" 2 "name" "a million pixels, a million targets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a million pixels, a million targets" "_tombstone" false "frame" #afield/rect [80.0 1440.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "million_pixels_code_.kt" "lines" 37 "characters" 1815 "sha256" "ed01f4f318fe76b508ea40f128f72127bd67a59cf5edb5855fd7f75e954faa9f"}]}
+{"id" "million_pixels" "index" 2 "name" "a million pixels, a million targets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a million pixels, a million targets" "_tombstone" false "frame" #afield/rect [80.0 1440.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "million_pixels_code_.kt" "lines" 37 "characters" 1827 "sha256" "b0c5c855e250ff86e7731bdeff3f51780ec632e335330867fd27d1db69078934"}]}
 ```
 
 ```kotlin [field-property box="million_pixels" name="code" path="million_pixels_code_.kt"]
@@ -156,7 +156,7 @@ val px = IntArray(n) { i ->
     val c = okhsl(atan2(dy, dx) * 180 / PI + 360, 0.85, 0.25 + 0.6 * sqrt(dx * dx + dy * dy) / radius)
     (255 shl 24) or ((c.x * 255).toInt() shl 16) or ((c.y * 255).toInt() shl 8) or (c.z * 255).toInt()
 }
-display("main", afield.util.PngEncoder.encode(px, side, side))
+display("main", afield.media.image.util.PngEncoder.encode(px, side, side))
 displayOpen("main")
 println("matched %,d to %,d in %.1f s, rms travel %.1f px".format(n, n, seconds, sqrt(match.meanSquaredDistance)))
 ```

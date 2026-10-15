@@ -1,7 +1,7 @@
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 val scene = PathTraceScene()
 val model = scene.importGltf("public/docs/assets/fabricate_demo/ToyCar.glb", Matrix4f().scale(20f))
 val center = Vector3f(model.boundsMin).add(model.boundsMax).mul(0.5f)

@@ -138,7 +138,7 @@ def _kotlin_demo_corpus() -> set[str]:
     import re
 
     source = (
-        gc.REPO_ROOT / "src/jvmTest/kotlin/afield/docs/AgentDemoRegistrationTest.kt"
+        gc.REPO_ROOT / "src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt"
     ).read_text()
     match = re.search(r"val DEMO_CORPUS = setOf\((.*?)\n\s*\)", source, re.S)
     if match is None:

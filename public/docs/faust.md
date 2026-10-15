@@ -162,7 +162,7 @@ notes are, and both go through the same event timeline.
 Two offline renders of the example above. The first is the example as written, with `voices = 8`.
 The second changes only that argument, to `voices = 1`, so you can hear what the extra voices do.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-eight-voices.wav" audio-spec="poly-chord-eight-voices" audio-renderer="afield.four.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-eight-voices"}
+```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-eight-voices.wav" audio-spec="poly-chord-eight-voices" audio-renderer="afield.audio.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-eight-voices"}
 // FaustPolySoundDocs.render("poly-chord-eight-voices")
 // faustPatternRender(program, pat("[c4,ef4,g4] [af3,c4,ef4] [bf3,d4,f4] [ef4,g4,bf4]"),
 //                    cycles = 2, cps = 0.5, voices = 8, automation = cutoff steps)
@@ -173,7 +173,7 @@ together.
 
 With one voice, the pattern, program and gain are the same:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-one-voice.wav" audio-spec="poly-chord-one-voice" audio-renderer="afield.four.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-one-voice"}
+```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-one-voice.wav" audio-spec="poly-chord-one-voice" audio-renderer="afield.audio.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-one-voice"}
 // FaustPolySoundDocs.render("poly-chord-one-voice")
 // the identical call with voices = 1
 ```

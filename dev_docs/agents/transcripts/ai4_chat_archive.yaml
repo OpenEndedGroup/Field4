@@ -13,9 +13,9 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
-
+          
           val assets = File("public/docs/assets/ai4_chat_archive")
           registerChatlogTools(File(assets, "chats"), lensDir = File(assets, "lenses"))
           showChatLens("harbour", "storyline", height = 600)
@@ -26,9 +26,9 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
-
+          
           val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
           val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
           display("outline", "<pre style='margin:8px'>" + ChatLogViews.outline(tree).replace("<", "&lt;") + "</pre>")
@@ -39,9 +39,9 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
-
+          
           val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
           val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
           val page = ChatLogViews.read(tree, "t-23d59848-f38.b3", "t-23d59848-f38.b8", detail = "full")
@@ -53,9 +53,9 @@ operations:
       properties:
         "autorun": false
         "code": |
-          import afield.chatlog.*
+          import afield.ai.conversation.chatlog.*
           import java.io.File
-
+          
           val assets = File("public/docs/assets/ai4_chat_archive")
           val tree = ChatArchive.tree(ChatArchive.chats(File(assets, "chats/harbour")).single())
           val lens = File(assets, "lenses/harbour/storyline.md").readText()

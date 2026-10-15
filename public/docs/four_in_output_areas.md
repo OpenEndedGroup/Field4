@@ -1,6 +1,6 @@
 # Graphics in an Output Area
 
-An afield.four render target can draw straight into a box's output area, next to its code,
+An Field 4 render target can draw straight into a box's output area, next to its code,
 instead of into a separate render window. Frames go from the GPU to the panel without being
 copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer, which is
 85 to 120 frames a second on an Apple silicon Mac.
@@ -13,11 +13,11 @@ copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer
 ## A view in a box
 
 This box draws a moving, colour-shifting square into a 640×360 view and shows it in the box's
-`main` output. It sits under a renderer box, like any other afield.four box, and its `vertex` and
+`main` output. It sits under a renderer box, like any other Field 4 box, and its `vertex` and
 `fragment` properties hold the two shaders.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/four_in_output_areas/rtt-view.png" alt="a box's main output panel holding a black 640 by 360 view with a square a little left of centre, shaded from soft green at its lower left to rose at its upper right, and under the view a line of small grey text giving the frame rate, about 85 frames a second, and the time from the GPU finishing a frame to the panel showing it, under 3 milliseconds on average" capture="box" capture-profile="macos-electron" graphics-context=true wait="3" timeout="60" embed=true name="four-rtt-view" source-box="assets/four_in_output_areas/rtt-view" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.stream.ElectronRTTView
+import afield.media.stream.ElectronRTTView
 
 val view = ElectronRTTView(640, 360)
 
@@ -89,7 +89,7 @@ moving square, in the Linux app:
 The [verification record](assets/four_in_output_areas/linux-verification.json) has the source and
 canvas pixel counts, the exact switches, and the checks after re-running and deleting the box.
 
-See also: [afield.four Graphics](afield_four_graphics.md) for meshes, modules and
+See also: [Field 4 Graphics](afield_four_graphics.md) for meshes, modules and
 render-to-texture.
 
 ??? aside "How the figure is captured"
@@ -97,6 +97,6 @@ render-to-texture.
     page's figure is captured from the Field Electron app itself: the fence's
     `capture-profile="macos-electron"` makes the runner start this checkout's Electron with remote
     debugging on and capture through it (`playwright-open --electron` on the backdoor,
-    `afield.docs.ElectronCaptureBrowser`). Like the Linux GPU captures, it is regenerated only on a
+    `afield.tools.docs.ElectronCaptureBrowser`). Like the Linux GPU captures, it is regenerated only on a
     host that asks for it (`FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS), and kept
     everywhere else. The mechanism behind the view is in `dev_docs/ELECTRON_RTT_VIEW.md`.

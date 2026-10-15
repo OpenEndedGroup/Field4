@@ -1,4 +1,4 @@
-import afield.four.texture.*
+
 var bbc = LoadedTexture("/Users/marc/Desktop/bbc.jpg")
 bbc.transferNow()
 

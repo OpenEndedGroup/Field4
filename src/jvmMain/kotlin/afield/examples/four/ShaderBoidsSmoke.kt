@@ -1,11 +1,11 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.physics.ShaderBoids
-import afield.four.util.GpuNeighbourGrid
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.linalg.Vector2f
+import afield.graphics.vulkan.Renderer
+import afield.simulation.physics.ShaderBoids
+import afield.graphics.vulkan.util.GpuNeighbourGrid
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Vector2f
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.system.exitProcess
@@ -111,7 +111,7 @@ object ShaderBoidsSmoke {
         exitProcess(0)
     }
 
-    private fun build(renderer: Renderer, tag: String, configure: afield.four.physics.BoidSettings.() -> Unit) =
+    private fun build(renderer: Renderer, tag: String, configure: afield.simulation.physics.BoidSettings.() -> Unit) =
         ShaderBoids(
             grid = GpuNeighbourGrid(
                 capacity = COUNT,
@@ -256,13 +256,13 @@ object ShaderBoidsSmoke {
 
         // A short run: this asserts the shader matches the network, so the network only has to be
         // a real one, not a good one. Quality is DeepSetsInteractionTest's job.
-        val weights = afield.stdlib.trainDeepSets(
+        val weights = afield.ai.learning.trainDeepSets(
             radius = radius,
             velocityScale = velocityScale,
             accelScale = 20f,
             sumScale = 8f,
             minSeparation = minSeparation,
-            options = afield.stdlib.DeepSetsOptions(steps = 400, batch = 8, seed = 5),
+            options = afield.ai.learning.DeepSetsOptions(steps = 400, batch = 8, seed = 5),
         ) { List(8) { syntheticExample(random, radius, velocityScale, minSeparation) } }
         println("  trained ${weights.parameterCount} parameters")
 
@@ -318,7 +318,7 @@ object ShaderBoidsSmoke {
     /** A random neighbourhood with a boids target — enough to train a real, if brief, network. */
     private fun syntheticExample(
         random: kotlin.random.Random, radius: Float, velocityScale: Float, minSeparation: Float,
-    ): afield.stdlib.InteractionExample {
+    ): afield.ai.learning.InteractionExample {
         val v = floatArrayOf(
             (random.nextDouble() * 2 - 1).toFloat() * velocityScale,
             (random.nextDouble() * 2 - 1).toFloat() * velocityScale,
@@ -340,7 +340,7 @@ object ShaderBoidsSmoke {
             dvx += n[2]; dvy += n[3]; dx += n[0]; dy += n[1]
         }
         val n = neighbours.size.toFloat()
-        return afield.stdlib.InteractionExample(
+        return afield.ai.learning.InteractionExample(
             v, neighbours,
             floatArrayOf(0.02f * sx + 1.2f * dvx / n + 0.8f * dx / n, 0.02f * sy + 1.2f * dvy / n + 0.8f * dy / n),
         )
@@ -363,10 +363,10 @@ object ShaderBoidsSmoke {
         val velocityScale = 0.4f
         val random = kotlin.random.Random(5)
 
-        val weights = afield.stdlib.trainEquivariant(
+        val weights = afield.ai.learning.trainEquivariant(
             radius = radius, velocityScale = velocityScale, accelScale = 20f,
             sumScale = 8f, minSeparation = minSeparation,
-            options = afield.stdlib.DeepSetsOptions(
+            options = afield.ai.learning.DeepSetsOptions(
                 steps = 400, batch = 8, seed = 5, messageWidth = 4, psiHidden = intArrayOf(8, 8)),
         ) { List(8) { syntheticExample(random, radius, velocityScale, minSeparation) } }
         println("  trained ${weights.parameterCount} parameters, ${weights.channels} channels")

@@ -168,7 +168,7 @@ operations:
       frame: { x: 600.0, y: 80.0, w: 280.0, h: 120.0 }
       properties:
         code: |
-          import afield.graphics.visionMetalProgramByUID
+          import afield.graphics.visionos.visionMetalProgramByUID
           val s = visionMetalProgramByUID("$UID_LINE")!!
           s.updateShader(s.shaderSource!!)
           println("driver: shader-only reload -> r" + s.currentRevision)
@@ -213,7 +213,7 @@ operations:
       frame: { x: 600.0, y: 240.0, w: 280.0, h: 120.0 }
       properties:
         code: |
-          import afield.graphics.visionMetalProgramByUID
+          import afield.graphics.visionos.visionMetalProgramByUID
           // Line 4 of the shader below is the bad one — an undeclared identifier.
           val broken = """
           vertex FieldVarying field_vertex(uint vertexID [[vertex_id]])

@@ -94,7 +94,7 @@ log("scaled = ${a * 3.0}") // scaled = V(x=3.0, y=6.0)
 y=22.0)` is the `toString()` that `data class` generated for you, running in the head. It is ordinary
 Kotlin, compiled to JavaScript.
 
-Field's compiler (`afield.remotejs.KotlinToJsCompiler`) turns the Kotlin above into this JavaScript,
+Field's compiler (`afield.lang.remotejs.KotlinToJsCompiler`) turns the Kotlin above into this JavaScript,
 with only the ~4 KB Kotlin/JS stdlib runtime prelude elided, as marked. Your `data class V` became
 `function main$V`, its `operator fun plus`/`times` became prototype methods with Kotlin's mangled JS
 names (`plus_…_k$` / `times_…_k$`), and the string template `"sum = ${a + b}"` was lowered to a call

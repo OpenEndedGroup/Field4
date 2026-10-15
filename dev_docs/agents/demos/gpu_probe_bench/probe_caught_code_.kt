@@ -1,5 +1,5 @@
-import afield.four.util.GpuProbe
-import afield.four.util.GpuProbeNeverLanded
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbeNeverLanded
 
 // The same shader as box 2, told to write half as many cells on purpose. This is the
 // box that says whether the sentinel is load-bearing: a hand-rolled probe that waits

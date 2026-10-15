@@ -1,6 +1,6 @@
 # Generated linear algebra architecture
 
-`afield.stdlib.linalg` is generated from typed operation models so the same
+`afield.math.linalg` is generated from typed operation models so the same
 mathematics can be emitted for several storage representations. User-facing
 concepts belong in `public/docs/linear_algebra.md`; the generated operation
 reference is `public/docs/linear_algebra_api.md`.
@@ -60,7 +60,7 @@ handwritten APIs and callers, followed by compilation.
   intersection operations, with a smaller arena subset.
 
 There is no `org.joml` package or compatibility dependency under `src/` in this
-checkout. Default imports and persistence use `afield.stdlib.linalg`.
+checkout. Default imports and persistence use `afield.math.linalg`.
 
 ## Storage invariants
 

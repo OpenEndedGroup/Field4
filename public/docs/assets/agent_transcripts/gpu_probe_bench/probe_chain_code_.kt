@@ -1,4 +1,4 @@
-import afield.four.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbe
 
 // The chain the workspace document actually runs, at a size that fits in a box.
 //

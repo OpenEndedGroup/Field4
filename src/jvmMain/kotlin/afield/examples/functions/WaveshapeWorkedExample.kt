@@ -1,7 +1,7 @@
 package afield.examples.functions
 
-import afield.stdlib.Functions
-import afield.stdlib.graphSignature
+import afield.math.functions.Functions
+import afield.math.functions.graphSignature
 
 /*
 FIELD_TEST

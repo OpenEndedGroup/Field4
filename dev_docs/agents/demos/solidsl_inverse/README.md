@@ -4,10 +4,10 @@ Open `metadata.edn` in Field (**File ▸ Open**, or `./field.sh <path to this fo
 and run the three boxes. No Manifold, no GPU, no window: marching cubes and the mesh rasteriser are
 both pure Kotlin, so everything here runs on any machine that can run Field.
 
-`afield.solidsl` writes a 3D solid down as a **value**, and had two readings of it —
+`afield.lang.solidsl` writes a 3D solid down as a **value**, and had two readings of it —
 `toScalarField()` (a distance field, marchable) and `exactSolid()` (Manifold's exact CSG). Both are
 *evaluations*. Neither changes what you can ask the notation for. This document is the third
-reading, the one `afield.rectsl.RectSLFn` argued for in 2D: **a shape you can take the derivative
+reading, the one `afield.lang.rectsl.RectSLFn` argued for in 2D: **a shape you can take the derivative
 of is a shape you can solve.**
 
 | box | what it does | what to notice |
@@ -33,7 +33,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
 The loose `*_code_.kt` files are what Field loads; `metadata.edn` carries portable inline copies of
 the same text, and `./gradlew checkAgentDemos` fails if the two ever disagree.
 
-The measurements behind the claims are in `src/jvmTest/kotlin/afield/solidsl/SolidSLGradientTest.kt`
+The measurements behind the claims are in `src/jvmTest/kotlin/afield/lang/solidsl/SolidSLGradientTest.kt`
 — the gradient against central differences over a census of every construct in the algebra, and
 against `toScalarField`, which shares no code with it — and in `SolidSLInverseRenderProofTest.kt`,
 which is the same fit in pixels. The written-up version is

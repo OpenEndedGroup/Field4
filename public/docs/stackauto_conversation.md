@@ -18,6 +18,10 @@ That is the recorded document running in Field, two cycles of its window capture
 is the same kind of conversation as [Talking a shader into existence](stacksl_conversation.md), with
 the StackSL living inside your own graphics code instead of in a window of its own.
 
+Kotlin listings on this page use Field’s current `[…]` spelling for single-line
+list constructors. Saved conversations, source revisions and downloadable documents
+retain their recorded spelling; this presentation update is not a new execution.
+
 ## Two slots in one box
 
 The box `polytope_source` builds the mesh in Kotlin and draws it with its own `vertex` and `fragment`
@@ -393,7 +397,7 @@ max
 ## The tools
 
 A box whose code binds a slot has these in its AI4 chat, from
-[`afield.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
+[`afield.lang.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
 
 | Tool | What it does |
 | --- | --- |

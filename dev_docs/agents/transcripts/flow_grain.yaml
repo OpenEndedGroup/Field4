@@ -13,8 +13,8 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.util.Options
-
+        import afield.graphics.vulkan.util.Options
+        
         prop<Window>(window)
         prop<Renderer>(renderer)
         Options.enableHDR = false
@@ -34,12 +34,12 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.SimulationReset
-        import afield.stdlib.EffectiveParameter
-        import afield.stdlib.TileResidency
-        import afield.four.flow.*
-        import afield.four.targets.*
-
+        import afield.runtime.lifecycle.SimulationReset
+        import afield.ui.controls.EffectiveParameter
+        import afield.graphics.render.TileResidency
+        import afield.simulation.flow.*
+        import afield.graphics.vulkan.targets.*
+        
         val render: Renderer = fromContext()
         fun grid() = defaultBuffer {
             size = 14400.vec4s
@@ -82,7 +82,7 @@ operations:
         @exported var flowStep = java.util.concurrent.atomic.AtomicLong()
         @exported var travel = java.util.concurrent.atomic.AtomicBoolean(false) // Move across tile boundaries and exercise zoom history.
         @exported var flowWidth = EffectiveParameter("View half-height", 8.0, 3.0, 10.0, "world") // Visible vertical half-width in world units.
-
+        
         // A color surface and a correspondence attachment. The latter stores previous UV,
         // validity, and coverage; it is a sampling coordinate, not a velocity in pixels/s.
         @exported var flowSurface = RenderToTexture {
@@ -112,40 +112,40 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.four.flow.TileAtlasLayout
-        import afield.four.targets.*
-        import afield.stdlib.TileResidency
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.simulation.flow.TileAtlasLayout
+        import afield.graphics.vulkan.targets.*
+        import afield.graphics.render.TileResidency
         import kotlin.math.*
-
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
         val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
         val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
-        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
-        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-        val force = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("force")!!
-        val grainCell = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("grainCell")!!
-        val strokeTime = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("strokeTime")!!
-        val flowWidth = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("flowWidth")!!
-        val resetFlow = fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")!!
+        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
+        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+        val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!
+        val grainCell = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("grainCell")!!
+        val strokeTime = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("strokeTime")!!
+        val flowWidth = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("flowWidth")!!
+        val resetFlow = fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")!!
         val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
         val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
-
+        
         val pool = TileResidency(5, 5, 4f)
         val layout = TileAtlasLayout(pool, 24)
         val camera = FrameHistory()
         val items = MotionItems()
         val pose = MotionPose()
         val itemData = FloatArray(12)
-        val matrix = afield.stdlib.linalg.Matrix4f()
+        val matrix = afield.math.linalg.Matrix4f()
         val key = "flow-frame-inputs"
         var ticks = 0L
         var resetEpoch = 1
         var lastRendered = Long.MIN_VALUE
         var report = 0L
-
+        
         // This hook runs once per rendered frame, before compute/draw. No timer or
         // swapchain-image index advances the simulation or camera history.
         frames {
@@ -281,25 +281,25 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.four.buffers.VulkanBuffer
-        import afield.four.modules.computeMemoryBarrier
-        import afield.four.modules.graphicsMemoryBarrier
-        import afield.four.modules.computeTask
-
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.graphics.vulkan.buffers.VulkanBuffer
+        import afield.graphics.render.computeMemoryBarrier
+        import afield.graphics.render.graphicsMemoryBarrier
+        import afield.graphics.render.computeTask
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
         val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
         val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
         val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
         val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
         val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-
+        
         var module = computeModuleHere {}
-
+        
         val mesh = ComputeMesh()
         module += "dispatch" to mesh
         mesh.x = 225 // 14400 cells / 64 threads.
@@ -349,23 +349,23 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.four.buffers.VulkanBuffer
-        import afield.four.modules.computeMemoryBarrier
-        import afield.four.modules.graphicsMemoryBarrier
-        import afield.four.modules.computeTask
-
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.graphics.vulkan.buffers.VulkanBuffer
+        import afield.graphics.render.computeMemoryBarrier
+        import afield.graphics.render.graphicsMemoryBarrier
+        import afield.graphics.render.computeTask
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
         val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
         val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
         val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
-
+        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
+        
         var module = computeModuleHere {}
-
+        
         val mesh = ComputeMesh()
         module += "dispatch" to mesh
         mesh.x = 225 // 14400 cells / 64 threads.
@@ -407,23 +407,23 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.four.buffers.VulkanBuffer
-        import afield.four.modules.computeMemoryBarrier
-        import afield.four.modules.graphicsMemoryBarrier
-        import afield.four.modules.computeTask
-
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.graphics.vulkan.buffers.VulkanBuffer
+        import afield.graphics.render.computeMemoryBarrier
+        import afield.graphics.render.graphicsMemoryBarrier
+        import afield.graphics.render.computeTask
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
         val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
         val pressureB = fromContextWithNameOrNull<FrameBufferGroup>("pressureB")!!
         val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
-
+        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
+        
         var module = computeModuleHere {}
-
+        
         // The same editable shader performs each iteration. Every dependency has a barrier.
         for (i in 0 until 24) {
             val mesh = ComputeMesh()
@@ -468,25 +468,25 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.four.buffers.VulkanBuffer
-        import afield.four.modules.computeMemoryBarrier
-        import afield.four.modules.graphicsMemoryBarrier
-        import afield.four.modules.computeTask
-
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.graphics.vulkan.buffers.VulkanBuffer
+        import afield.graphics.render.computeMemoryBarrier
+        import afield.graphics.render.graphicsMemoryBarrier
+        import afield.graphics.render.computeTask
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
         val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
         val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
         val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
         val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
         val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-
+        
         var module = computeModuleHere {}
-
+        
         val mesh = ComputeMesh()
         module += "dispatch" to mesh
         mesh.x = 225 // 14400 cells / 64 threads.
@@ -535,25 +535,25 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.four.buffers.VulkanBuffer
-        import afield.four.modules.computeMemoryBarrier
-        import afield.four.modules.graphicsMemoryBarrier
-        import afield.four.modules.computeTask
-
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.graphics.vulkan.buffers.VulkanBuffer
+        import afield.graphics.render.computeMemoryBarrier
+        import afield.graphics.render.graphicsMemoryBarrier
+        import afield.graphics.render.computeTask
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
         val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
         val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
         val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
         val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
         val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-
+        
         var module = computeModuleHere {}
-
+        
         val mesh = ComputeMesh()
         module += "advect particles" to mesh
         mesh.x = 250
@@ -611,19 +611,19 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-
+        import afield.document.context.fromContextWithNameOrNull
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
         val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
         val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
         val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
         val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
-        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
-        val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
+        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
+        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
         val flowSurface = fromContextWithNameOrNull<RenderToTexture>("flowSurface")!!
         val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-
+        
         var module = moduleHere {
             flowSurface.apply()
             primitiveType = triangles
@@ -727,12 +727,12 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-
+        import afield.document.context.fromContextWithNameOrNull
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
+        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
         val flowSurface = fromContextWithNameOrNull<RenderToTexture>("flowSurface")!!
-
+        
         // The color and motion attachment are both available to future postprocessing boxes.
         var module = moduleHere {
             depthTest = false
@@ -781,14 +781,14 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-
+        import afield.document.context.fromContextWithNameOrNull
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
         val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
         val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
         val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
         val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-
+        
         var module = moduleHere { depthTest = false
             depthWrite = false
             primitiveType = triangles }
@@ -850,16 +850,16 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-
+        import afield.document.context.fromContextWithNameOrNull
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
-        val force = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("force")!!
-        val grainCell = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("grainCell")!!
-        val strokeTime = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("strokeTime")!!
-        val flowWidth = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("flowWidth")!!
+        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
+        val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!
+        val grainCell = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("grainCell")!!
+        val strokeTime = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("strokeTime")!!
+        val flowWidth = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("flowWidth")!!
         val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
-
+        
         // Edit and execute this box. The shader receives the effective values; all values
         // and bounds remain inspectable through Field's ordinary object viewer.
         force.requested = 2.5 // Vortex acceleration, clamped to 0–12 world units / second².
@@ -879,11 +879,11 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-
+        import afield.document.context.fromContextWithNameOrNull
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val resetFlow = fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")!!
-
+        val resetFlow = fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")!!
+        
         // Ordinary execution queues a reset; the existing renderer consumes it once at its boundary.
         println("Reset requested: ${resetFlow.request()}")
 - create:
@@ -896,17 +896,17 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.modules.fromContextWithNameOrNull
-
+        import afield.document.context.fromContextWithNameOrNull
+        
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")) { "Missing resetFlow; run Resources first" }
+        val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")) { "Missing resetFlow; run Resources first" }
         val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")) { "Missing travel; run Resources first" }
         val settings = listOf("force", "grainCell", "strokeTime", "flowWidth").map { parameterName ->
-            requireNotNull(fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>(parameterName)) {
+            requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
                 "Run Resources first: missing parameter $parameterName"
             }.snapshot()
         }
-
+        
         // Compare a deterministic 180-frame path with identical settings after a reset.
         // Stop Box also ends this capture and restores the previous travel setting.
         frames {

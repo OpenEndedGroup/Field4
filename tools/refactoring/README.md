@@ -7,7 +7,8 @@ container adapters, content hashes and a recovery journal. It never runs box cod
 The current engine provides **syntax evidence**, not compiler binding equivalence. A ready change
 is a mechanically applicable rewrite, not proof that the destination API exists or that the result
 compiles. This is the first working layer of the [package refactor proposal](../../dev_docs/PACKAGE_REFACTOR_PROPOSAL.md).
-The public-preview package migration itself has not been applied.
+The repository package relocation is implemented; the [migration recipe](../../refactors/preview-packages-v1/README.md)
+is the entry point for migrating external workspaces.
 
 ## Build once, before moving packages
 
@@ -233,6 +234,17 @@ The generated `knownPackages` records old and proposed package ownership. A spli
 own declarations, not automatically to every descendant package. This avoids treating an unmoved
 child such as `afield.math.gp` as part of a split of the root `afield` package. Unknown qualified
 names remain findings.
+
+A name ending in `Kt` (`afield.stdlib.StdlibKt`, `ImagingKt`, `afield.tools.refactor.MainKt`)
+names the class kotlinc generates for a file's top-level declarations — the file facade of
+`stdlib.kt`, `imaging.kt`, `Main.kt` — not a declaration in the inventory. Map it by its file:
+it goes to the package that the file's top-level declarations move to, and keeps its name only
+while the file keeps its name and has no `@file:JvmName`. When a file splits across packages, the
+old facade has no single destination. Each new file gets its own facade, so a `Class.forName`,
+`hostClass` or `run-jvm-main` string that names the old one has to name the file holding the
+member it uses. Do not invent a symbol rule for a `...Kt` name or treat it as unknown. The
+`symbol-map` step should derive these facade rules from the file assignments and report the split
+files; once it does, this paragraph can go.
 
 Review the generated recipe, copy it to the session's `recipe.json`, then replan. This step does
 not move declarations out of mixed files, add same-package imports, or resolve split star imports.

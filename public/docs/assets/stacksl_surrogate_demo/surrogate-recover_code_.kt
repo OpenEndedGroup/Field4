@@ -8,10 +8,10 @@
 // With the surrogate off the fitted value is bit-identical to the seed — an exact gradient of zero
 // is a zero step in ADAM too. That is what a wall looks like from inside an optimiser.
 
-import afield.stacksl.cpu.AdAnnealing
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
+import afield.lang.stacksl.cpu.AdAnnealing
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 import kotlin.math.abs
 
 run {
@@ -85,7 +85,7 @@ run {
 
     // Try it: replace `threshold` with `6.0 posterize palette` and set the truth to 0.52 — a
     // quantiser rather than a predicate, and it needs the STAIRCASE family instead — add
-    // `import afield.stacksl.cpu.AdSurrogateFamily` and pass:
+    // `import afield.lang.stacksl.cpu.AdSurrogateFamily` and pass:
     //
     //     annealing = AdAnnealing(0.25, 0.01, iterations, setOf(AdSurrogateFamily.STAIRCASE))
     //

@@ -1,11 +1,14 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.texture.LoadedTexture
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.texture.LoadedTexture
 var Box.inset by Inheritance<LoadedTexture>() /**/
 val Once.inset by Onceing<LoadedTexture>() /**/
 val Why.inset by Whying() /**/

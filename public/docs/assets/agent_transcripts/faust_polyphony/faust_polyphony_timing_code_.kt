@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Where the notes actually landed, in samples, against where they were notated.
 //
@@ -62,7 +62,7 @@ if (onsets.size == notated.size) {
 // Player and plot on SEPARATE channels: display() replaces a channel rather than appending,
 // so both on "waveform" left only whichever went out last.
 displayOpen("audio")
-display("audio", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
+display("audio", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
 showSignals(
     "mono" to (0 until render.frames step 24).map { mono[it] },
     x = (0 until render.frames step 24).map { it.toDouble() / render.sampleRate },

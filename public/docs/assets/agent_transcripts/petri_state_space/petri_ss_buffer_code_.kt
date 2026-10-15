@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
 // it puts straight back, which is what makes it *one* worker rather than an unbounded

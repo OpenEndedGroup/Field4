@@ -1,4 +1,4 @@
-import afield.stdlib.*
+
 
 val gallerySync = "analysis-gallery"
 val galleryRate = 8_000

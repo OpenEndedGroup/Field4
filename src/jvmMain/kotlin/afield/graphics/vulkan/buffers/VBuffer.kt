@@ -1,0 +1,252 @@
+package afield.graphics.vulkan.buffers
+
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.vulkan.device.Fence
+import afield.app.diagnostics.logging.lprintln
+import org.lwjgl.BufferUtils
+import org.lwjgl.system.MemoryStack
+import org.lwjgl.system.MemoryUtil
+import org.lwjgl.vulkan.VK10
+import org.lwjgl.vulkan.VK13.*
+import org.lwjgl.vulkan.VkBufferCopy
+import org.lwjgl.vulkan.VkBufferMemoryBarrier2
+import org.lwjgl.vulkan.VkDependencyInfo
+import java.nio.ByteBuffer
+import java.nio.FloatBuffer
+import java.nio.IntBuffer
+
+/**
+ * this is, as far as I can tell, completely decoy — with resizable BAR (or unified memory on Apple Silicon) this staging buffer thing is just excess engineering _and_ writing shaders that do their own pulling is better _and_ device pointers set through push constants is faster and architecturally skips all of the descriptor nonsense
+ */
+class VertexBuffer(
+    val renderer: Renderer,
+    val size: Long,
+    val usage: Int = VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, val createCPU: Boolean = false
+) : HasBuffer, BufferWriteable {
+
+    val cpu = if (createCPU) BufferUtils.createByteBuffer(size.toInt()) else null
+
+    val src = VulkanBuffer(
+        renderer,
+        size,
+        VK10.VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK10.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    )
+    val dest = VulkanBuffer(
+        renderer,
+        size,
+        VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT or usage,
+        VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    )
+
+    var watermark = 0
+    var transferWatermark = -1
+    var neededSize = size
+
+    override fun toString(): String {
+        val status = if (watermark != transferWatermark) "DIRTY" else "clean"
+        return "VertexBuffer(render, size=$size, usage=$usage $status)"
+    }
+
+    override fun clean(hostReading: Boolean, cmd: CommandBuffer?): VertexBuffer {
+        if (!hostReading) {
+            if (transferWatermark != watermark) {
+                if (cmd == null)
+                    transferNow()
+                else {
+                    if (cmd.inRenderPassInstance) {
+                        // vkCmdCopyBuffer is not allowed inside a render pass instance (including dynamic rendering).
+                        // Fall back to an immediate transfer on a separate command buffer to preserve correctness.
+                        transferNow()
+                    } else {
+                        transfer(cmd, immediate = false)
+                    }
+                }
+            }
+        }
+        return this
+    }
+
+    override fun mapAndWrite(builder: FloatBuffer.() -> Unit): VertexBuffer {
+        val rawMemory = src.map()
+        try {
+            builder(MemoryUtil.memFloatBuffer(rawMemory, src.requestedSize.toInt() / 4))
+        } finally {
+            src.unmap()
+            watermark++
+        }
+        return this
+    }
+
+    override fun mapAndWrite_ints(builder: IntBuffer.() -> Unit): VertexBuffer {
+        val rawMemory = src.map()
+        try {
+            builder(MemoryUtil.memIntBuffer(rawMemory, src.requestedSize.toInt() / 4))
+        } finally {
+            src.unmap()
+            watermark++
+        }
+        return this
+    }
+
+    override fun mapAndWrite_bytes(builder: ByteBuffer.() -> Unit): VertexBuffer {
+        val rawMemory = src.map()
+        try {
+            builder(MemoryUtil.memByteBuffer(rawMemory, src.requestedSize.toInt()))
+        } finally {
+            src.unmap()
+            watermark++
+        }
+        return this
+    }
+
+    private fun recordTransferToInputBarrier(cmd: CommandBuffer) {
+        var dstAccessMask = 0L
+        if ((usage and VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0) {
+            dstAccessMask = dstAccessMask or VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT
+        }
+        if ((usage and VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0) {
+            dstAccessMask = dstAccessMask or VK_ACCESS_2_INDEX_READ_BIT
+        }
+        if (dstAccessMask == 0L || neededSize <= 0) return
+
+        MemoryStack.stackPush().use { stack ->
+            val barriers = VkBufferMemoryBarrier2.calloc(1, stack)
+            barriers[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)
+                .srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
+                .dstStageMask(VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT)
+                .dstAccessMask(dstAccessMask)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(dest.buffer)
+                .offset(0L)
+                .size(neededSize)
+
+            val dep = VkDependencyInfo.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+                .pBufferMemoryBarriers(barriers)
+            vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+        }
+
+        if (debugTransferInputBarrier) {
+            val accessKinds = buildList {
+                if ((dstAccessMask and VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT) != 0L) add("vertex")
+                if ((dstAccessMask and VK_ACCESS_2_INDEX_READ_BIT) != 0L) add("index")
+            }.joinToString("+")
+            lprintln(
+                "debug,vulkan,sync",
+                "transfer->vertex-input barrier recorded buf=0x${dest.buffer.toULong().toString(16)} size=$neededSize access=$accessKinds usage=0x${usage.toUInt().toString(16)} cmd=0x${cmd.vkCommandBuffer.address().toULong().toString(16)}"
+            )
+        }
+    }
+
+    private fun recordInputToTransferBarrier(cmd: CommandBuffer) {
+        var srcAccessMask = 0L
+        if ((usage and VK10.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0) {
+            srcAccessMask = srcAccessMask or VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT
+        }
+        if ((usage and VK10.VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0) {
+            srcAccessMask = srcAccessMask or VK_ACCESS_2_INDEX_READ_BIT
+        }
+        if (srcAccessMask == 0L || neededSize <= 0) return
+
+        MemoryStack.stackPush().use { stack ->
+            val barriers = VkBufferMemoryBarrier2.calloc(1, stack)
+            barriers[0]
+                .sType(VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2)
+                .srcStageMask(VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT)
+                .srcAccessMask(srcAccessMask)
+                .dstStageMask(VK_PIPELINE_STAGE_2_COPY_BIT)
+                .dstAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
+                .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+                .buffer(dest.buffer)
+                .offset(0L)
+                .size(neededSize)
+
+            val dep = VkDependencyInfo.calloc(stack)
+                .sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
+                .pBufferMemoryBarriers(barriers)
+            vkCmdPipelineBarrier2(cmd.vkCommandBuffer, dep)
+        }
+    }
+
+    fun transfer(cmd: CommandBuffer, immediate: Boolean = false) {
+
+        if (transferWatermark != watermark) {
+            if (neededSize > 0) {
+                recordInputToTransferBarrier(cmd)
+                MemoryStack.stackPush().use { stack ->
+                    val copyRegion = VkBufferCopy.calloc(1, stack).srcOffset(0).dstOffset(0).size(neededSize)
+                    VK10.vkCmdCopyBuffer(
+                        cmd.vkCommandBuffer, src.buffer, dest.buffer, copyRegion
+                    )
+                }
+                recordTransferToInputBarrier(cmd)
+                renderer.recordVertexBufferUpload(neededSize, immediate)
+            }
+            transferWatermark = watermark
+        }
+    }
+
+    fun transferNow() {
+        val cmd = CommandBuffer(renderer.commandPool, true, true)
+
+        cmd.beginRecording()
+        transfer(cmd, immediate = true)
+        cmd.endRecording()
+
+        // apparently we should be reusing a fence here
+        if (fence==null)
+            fence = afield.graphics.vulkan.device.Fence(renderer.device, true)
+
+        fence!!.reset()
+        MemoryStack.stackPush().use { stack ->
+            renderer.graphQueue.submit(stack.pointers(cmd.vkCommandBuffer), null, null, null, fence)
+        }
+        fence!!.fenceWait()
+        cmd.cleanup()
+    }
+
+    companion object {
+        var fence : Fence? = null
+        @JvmStatic
+        var debugTransferInputBarrier: Boolean = parseDebugFlag(
+            System.getenv("AFIELD_DEBUG_TRANSFER_INPUT_BARRIER"),
+            System.getProperty("afield.debugTransferInputBarrier")
+        )
+
+        private fun parseDebugFlag(vararg raw: String?): Boolean {
+            return raw.any {
+                when (it?.trim()?.lowercase()) {
+                    "1", "true", "yes", "on" -> true
+                    else -> false
+                }
+            }
+        }
+    }
+
+    fun cleanup() {
+        renderer.cleanup.add {
+            src.cleanup()
+            dest.cleanup()
+        }
+    }
+
+    fun trimTo(neededSize: Long) {
+        this.neededSize = neededSize
+    }
+
+    // returns the dest buffer (the one for the GPU)
+    override fun getBuffer(): Long {
+        return dest.buffer
+    }
+
+    override fun getGPUAddress(cmd : CommandBuffer): Long {
+        throw IllegalStateException("Not supported")
+    }
+
+}

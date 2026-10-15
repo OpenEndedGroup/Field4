@@ -42,7 +42,7 @@ ExportRectSLStudy finished (12 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/4c580362a8c0d8403ba8.jpg)
 <<ai>>

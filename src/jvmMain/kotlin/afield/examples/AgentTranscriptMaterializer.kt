@@ -1,12 +1,12 @@
 package afield.examples
 
-import afield.Box
-import afield.METAROOT_ID
-import afield.OperationTranscript
-import afield.SavingContext
-import afield.SessionInformation
-import afield.isTrue
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.document.graph.METAROOT_ID
+import afield.tools.automation.OperationTranscript
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.document.graph.isTrue
+import afield.app.server.thisSessionInfo
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.nio.file.Files
@@ -74,7 +74,7 @@ object AgentTranscriptMaterializer {
      * `/abs/assets/robot.glb` that no checkout has; it now loads the committed CC0 Khronos ToyCar
      * over the `/sample-assets` mount, so there is nothing left to half-load.
      *
-     * `internal` rather than private because [afield.docs.AgentTranscriptIndexGuard] reads it: the
+     * `internal` rather than private because [afield.tools.docs.AgentTranscriptIndexGuard] reads it: the
      * public index page must carry an `Open ↗` starting-point link for a transcript exactly when that
      * transcript is materialized, so this set is also the list of entries that must *not* offer one.
      */
@@ -311,7 +311,7 @@ object AgentTranscriptMaterializer {
         workspace.deleteOnExit()
         val document = File(workspace, "doc").also { it.mkdirs() }
         File(document, SavingContext.METADATA_EDN).writeText("{:version 2 :boxes []}\n")
-        val root = afield.Box("root")
+        val root = afield.document.graph.Box("root")
         val session = SessionInformation(
             filename = document.absolutePath,
             documentName = document.name,
@@ -338,15 +338,15 @@ object AgentTranscriptMaterializer {
     }
 
     internal fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "agent-transcript-materializer-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "agent-transcript-materializer-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("AgentTranscriptMaterializer: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("AgentTranscriptMaterializer: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 
     private fun resolveOutRoot(args: Array<String>): File {

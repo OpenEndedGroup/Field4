@@ -27,7 +27,7 @@ circuit's own logic depth. Blue dots are input ports, orange are outputs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/family.png" wait="34.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // Each panel gets its OWN window: these are four different circuits at four different sizes, and a
 // shared frame would shrink the shifter to a speck to fit the multiplier. Where a shared frame IS
@@ -126,7 +126,7 @@ morpho box entirely and compile from Kotlin:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/from-kotlin.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 val c = morphoCircuit("wallace_multiplier", 16, 16)
 c.growFully(relaxSteps = 250)
@@ -156,7 +156,7 @@ included.
 To watch it grow instead:
 
 ```diffstatic {data-lang=kotlin}
-import afield.morpho.*
+import afield.lang.morpho.*
 
 val c = morphoCircuit("medusa", 36, 8)
 var window: DoubleArray? = null
@@ -224,7 +224,7 @@ together), the difference stops being a table:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/depth.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // Same width, same colormap, same window, same everything except the algorithm. Colour is arrival
 // time normalised PER PANEL, so each shows its own critical path end to end -- the comparison is the
@@ -266,7 +266,7 @@ is that loop, recorded straight off a box's output area, one `FLine` per wire, e
 
 ```diffstatic_runner {data-lang=kotlin video="assets/morpho_examples/growth.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="14" fps="20" timeout="360" w="1000" name="morpho-growth-video" alt="two MorphoHDL circuits unfolding from a single cell: a Brent-Kung adder resolving into a symmetrical prefix tree, and a triangle cell growing into a nested recursive shell, both re-laying-out continuously as they expand"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // Two designs growing on the same clock. Both start as ONE unexpanded cell -- everything you see
 // arrive is morpho's compiler dividing a cell and rewiring what it divided.
@@ -333,7 +333,7 @@ where the camera is:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/projections.png" wait="24.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // One circuit, one layout, three cameras. XY is the view morpho's own renderer is restricted to,
 // because force_layout.js pins z. XZ looks straight down the axis XY drops: if the layout really
@@ -363,7 +363,7 @@ completely static; only the azimuth changes.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/morpho_examples/orbit.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="12" fps="20" timeout="360" w="820" name="morpho-orbit-video" alt="a fully grown 32-bit Brent-Kung adder rotating slowly about its vertical axis, never flattening into a line at any angle, showing that the force-directed layout occupies three dimensions"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // NOTHING about the circuit changes in this clip -- it is grown before the loop starts and never
 // stepped again. Every frame re-projects the same fixed 3D positions from a new angle.

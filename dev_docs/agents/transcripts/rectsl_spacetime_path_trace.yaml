@@ -16,7 +16,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -31,31 +31,31 @@ operations:
       frame: { x: 320.0, y: 140.0, w: 300.0, h: 70.0 }
       properties:
         code: |
-          import afield.four.fabricated.PathTraceEnvironment
-          import afield.four.fabricated.PathTraceMaterial
-          import afield.four.fabricated.PathTraceScene
-          import afield.four.fabricated.PathTracingRenderer
-          import afield.four.fabricated.importTriMesh
-          import afield.four.util.Camera
-          import afield.manifold.ManifoldLibrary
-          import afield.manifold.Solid
-          import afield.rectsl.compileRectSL
-          import afield.rectsl.toAdField
-          import afield.stdlib.boundsOf
-          import afield.stdlib.diagnose
-          import afield.stdlib.genus
-          import afield.stdlib.isWatertight
-          import afield.stdlib.linalg.Vector3f
-          import afield.stdlib.marchingCubes
-          import afield.stdlib.sampledField3D
+          import afield.graphics.scene.fabricated.PathTraceEnvironment
+          import afield.graphics.scene.fabricated.PathTraceMaterial
+          import afield.graphics.scene.fabricated.PathTraceScene
+          import afield.graphics.scene.fabricated.PathTracingRenderer
+          import afield.graphics.scene.fabricated.importTriMesh
+          import afield.graphics.vulkan.util.Camera
+          import afield.geometry.solid.manifold.ManifoldLibrary
+          import afield.geometry.solid.manifold.Solid
+          import afield.lang.rectsl.compileRectSL
+          import afield.lang.rectsl.toAdField
+          import afield.geometry.mesh.boundsOf
+          import afield.geometry.mesh.diagnose
+          import afield.geometry.mesh.genus
+          import afield.geometry.mesh.isWatertight
+          import afield.math.linalg.Vector3f
+          import afield.geometry.mesh.marchingCubes
+          import afield.geometry.mesh.sampledField3D
           import java.io.File
-
+          
           prop<PathTracingRenderer>(tracer)
-
+          
           require(ManifoldLibrary.isAvailable) {
               ManifoldLibrary.describe() + "\nOn macOS: brew install manifold, then run this box again."
           }
-
+          
           // ---- the animation -------------------------------------------------------------
           // Two rects and four keyed tracks. `'( 0=a  4=b )` is RectSL's track literal: a value at
           // a time, linearly interpolated, and `->x` takes one wherever it takes a number.
@@ -64,18 +64,18 @@ operations:
           ->wall 8 8 abstract
           ->duration 4
           ->fps 30
-
+          
           "sweep" rect
             0.7 2.4 ->wh
             '( 0=-2.6  4=2.6 ) ->x
             '( 0=0  4=3.14159 ) ->rot
-
+          
           "pulse" rect
             1.2 1.2 ->wh
             1.6 -1.4 ->xy
             '( 0=0.3  4=2.2 ) ->w
           """.trimIndent()
-
+          
           val program = compileRectSL(source).program
           val field = program.toAdField()
           println("RectSL: ${program.wall.width} x ${program.wall.height} wall, " +
@@ -83,14 +83,14 @@ operations:
           println("  worst AD-against-Fn.eval disagreement across the lowered channels: " +
               field.worstChannelDisagreement)
           if (field.skipped.isNotEmpty()) println("  refused: ${field.skipped}")
-
+          
           // ---- time as the third axis ----------------------------------------------------
           val nx = 104
           val ny = 104
           val nt = 80
           val halfWall = 4.4       // the shapes reach 3.85, so this clears them
           val halfDepth = 3.0      // how long the time axis is, in the wall's own units
-
+          
           // One autodiff tape per slice, and the tape is the reason this is sampled onto a grid
           // rather than handed to a marcher directly: an ADTape grows monotonically, so it is worth
           // reusing across a slice and wrong to keep for a whole march. Sampling first also makes
@@ -112,12 +112,12 @@ operations:
           println("sampled ${inner.size} points, ${nt} tapes, ${"%.0f".format(sampleMs)} ms")
           println("  ${inner.count { it < 0f }} of them inside, distances " +
               "${"%.3f".format(inner.min())} to ${"%.3f".format(inner.max())}")
-
+          
           val innerBounds = boundsOf(
               vec(-halfWall, -halfWall, -halfDepth),
               vec(halfWall, halfWall, halfDepth),
           )
-
+          
           // ---- what happens at the wall, measured both ways ------------------------------
           // The animation is solid at t = 0 and at t = duration, so the surface of the unpadded
           // volume runs into the sampling window and has to stop there. This is the case the
@@ -133,7 +133,7 @@ operations:
           println("  levelSetOf:    ${cutSolid.triangleCount} triangles, status ${cutSolid.status}, " +
               "genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)}")
           cutSolid.close()
-
+          
           // ---- and the version that gets rendered ----------------------------------------
           // One empty slice each side, a hair outside, so the solid closes flat a fraction of a cell
           // beyond the first and last frame instead of being serrated by the jump to `outside`.
@@ -147,30 +147,30 @@ operations:
               vec(-halfWall, -halfWall, -(halfDepth + dz)),
               vec(halfWall, halfWall, halfDepth + dz),
           )
-
+          
           val spacetime = sampledField3D(padded, nx, ny, nt + 2, bounds)
           val marched = marchingCubes(spacetime, bounds, resolution = 140)
           println()
           println("and with one empty slice each side:")
           println("  marchingCubes: ${marched.triangleCount} triangles, " +
               "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
-
+          
           val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12, parallel = false)
           println("  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
               "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}")
-
+          
           val parts = whole.decompose()
           println("  ${parts.size} component(s): volumes " +
               parts.map { "%.2f".format(it.volume) }.joinToString(", ") +
               " — connected because the two rects overlap on screen at some frame")
-
+          
           // ---- the render ----------------------------------------------------------------
           val scene = PathTraceScene()
           // White base colour, because the per-vertex colour multiplies into it.
           val body = scene.material(PathTraceMaterial.plastic(1.0f, 1.0f, 1.0f, 0.26f))
           val floorMaterial = scene.material(PathTraceMaterial.plastic(0.42f, 0.43f, 0.45f, 0.5f))
-
-          val place = afield.stdlib.linalg.Matrix4f().scale(0.34f, 0.34f, 0.34f)
+          
+          val place = afield.math.linalg.Matrix4f().scale(0.34f, 0.34f, 0.34f)
           val sceneLo = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
           val sceneHi = Vector3f(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
           var appended = 0
@@ -187,7 +187,7 @@ operations:
                   colours[v * 3 + 1] = 0.34f + 0.14f * u
                   colours[v * 3 + 2] = 0.86f - 0.76f * u
               }
-              val tinted = afield.stdlib.TriMesh(
+              val tinted = afield.geometry.mesh.TriMesh(
                   positions = plain.positions,
                   indices = plain.indices,
                   normals = plain.normals,
@@ -207,7 +207,7 @@ operations:
           println("scene: $appended triangles, $dropped dropped, coloured by time along the third axis")
           parts.forEach { it.close() }
           whole.close()
-
+          
           val middle = Vector3f(sceneLo).add(sceneHi).mul(0.5f)
           val span = maxOf(sceneHi.x - sceneLo.x, sceneHi.y - sceneLo.y, sceneHi.z - sceneLo.z)
           val reach = span * 3f
@@ -218,7 +218,7 @@ operations:
               Vector3f(middle.x - reach, sceneLo.y - 0.25f, middle.z + reach),
               floorMaterial,
           )
-
+          
           val environment = PathTraceEnvironment.fromFile(
               File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
           )

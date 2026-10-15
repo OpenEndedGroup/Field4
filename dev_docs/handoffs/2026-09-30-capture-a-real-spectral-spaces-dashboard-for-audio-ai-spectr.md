@@ -26,7 +26,7 @@ A real capture of the page's workflow depends on things the docs runner doesn't 
 - `~/Downloads/near_drowning.wav`, or an asset already imported under that name (`:52`, `:65-70`);
 - the downloaded MessagePack artifact. `FieldAudioClient.spectralEmbeddingFrames` goes through
   `downloadBytes(result.spectralEmbeddingMessagePack())`
-  (`src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpectralEmbeddingProjection.kt:402`).
+  (`src/jvmMain/kotlin/afield/audio/ai/SpectralEmbeddingProjection.kt:402`).
 
 The only runnable model-free alternative is the transcript box
 `public/docs/assets/agent_transcripts/audio_ai_spectral_embeddings/spectral_embedding_visualizer_gallery_code_.kt`.

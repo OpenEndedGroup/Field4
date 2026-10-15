@@ -1,8 +1,8 @@
-import afield.SimulationReset
-import afield.stdlib.EffectiveParameter
-import afield.stdlib.TileResidency
-import afield.four.flow.*
-import afield.four.targets.*
+import afield.runtime.lifecycle.SimulationReset
+import afield.ui.controls.EffectiveParameter
+import afield.graphics.render.TileResidency
+import afield.simulation.flow.*
+import afield.graphics.vulkan.targets.*
 
 val render: Renderer = fromContext()
 fun grid() = defaultBuffer {

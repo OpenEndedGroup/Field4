@@ -81,7 +81,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --atta
   --command 'screenshot-box BOX_ID /tmp/box.png --padding 16'
 ```
 
-For native `afield.four` graphics, use `native-screenshot` after the renderer has advanced
+For native Field 4 graphics, use `native-screenshot` after the renderer has advanced
 a few frames (`wait-native-renderer … --frames 3`).
 
 ## The operations you'll use

@@ -25,8 +25,8 @@ those patches. The build script refuses a source checkout at any other revision.
 ## Kotlin API
 
 ```kotlin
-import afield.solidcraft.SolidCraftDesign
-import afield.solidcraft.SolidCraftLibrary
+import afield.geometry.solid.solidcraft.SolidCraftDesign
+import afield.geometry.solid.solidcraft.SolidCraftLibrary
 
 if (SolidCraftLibrary.isAvailable) {
     SolidCraftDesign.open(java.nio.file.Path.of("part.solidcraft")).use { part ->

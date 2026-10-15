@@ -1,22 +1,22 @@
 package afield.examples.visualization
 
-import afield.CHART_BAD
-import afield.Chart
-import afield.FLineClick
-import afield.ScaleKind
-import afield.chart
-import afield.getFLineClickCallback
+import afield.ui.visualization.CHART_BAD
+import afield.ui.visualization.Chart
+import afield.app.protocol.FLineClick
+import afield.ui.visualization.ScaleKind
+import afield.ui.visualization.chart
+import afield.ui.output.getFLineClickCallback
 import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
-import afield.graphics.linesToHTML
-import afield.graphics.outputTo
-import afield.hexColor
-import afield.niceTicks
-import afield.signalPalette
-import afield.stdlib.Vec4
-import afield.stdlib.label
-import afield.stdlib.thickness
-import afield.stdlib.vec
-import afield.toIntersection
+import afield.ui.visualization.linesToHTML
+import afield.ui.visualization.outputTo
+import afield.ui.visualization.hexColor
+import afield.ui.visualization.niceTicks
+import afield.ui.visualization.signalPalette
+import afield.math.linalg.Vec4
+import afield.graphics.render.label
+import afield.graphics.render.thickness
+import afield.math.linalg.vec
+import afield.ui.output.toIntersection
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.ImageInfo
@@ -270,7 +270,7 @@ object ChartGallery {
         expect(niceTicks(0.0, 0.5, 6), listOf(0.0, 0.1, 0.2, 0.3, 0.4, 0.5), "over 0..0.5")
         check(niceTicks(5.0, 5.0, 6) == listOf(5.0)) { "a degenerate range must give one tick" }
         check(niceTicks(Double.NaN, 1.0, 6).isEmpty()) { "a NaN range must give no ticks" }
-        val decades = afield.logTicks(1.0, 1e6)
+        val decades = afield.ui.visualization.logTicks(1.0, 1e6)
         check(decades.size == 7 && decades.first() == 1.0 && decades.last() == 1e6) {
             "log ticks over six decades should be the seven powers of ten, got $decades"
         }
@@ -437,8 +437,8 @@ object ChartGallery {
         // The counterfactual, computed from the figure's own layout so it cannot drift out of step:
         // where the unclipped outline *would* land. If this is not far outside, the case is a
         // tautology and the assertion below proves nothing.
-        val sx = afield.Scale(0.82, 1.06, plot.x, plot.x + plot.w)
-        val sy = afield.Scale(1.32, 1.56, plot.y + plot.h, plot.y)
+        val sx = afield.ui.visualization.Scale(0.82, 1.06, plot.x, plot.x + plot.w)
+        val sy = afield.ui.visualization.Scale(1.32, 1.56, plot.y + plot.h, plot.y)
         val rawExcursion = outline.maxOf { (x, y) ->
             val px = sx.toPixel(x)
             val py = sy.toPixel(y)
@@ -466,7 +466,7 @@ object ChartGallery {
         noted.width = 780.0
         noted.height = 440.0
 
-        val oneLineWidth = afield.chartLabelWidth(longNote)
+        val oneLineWidth = afield.ui.visualization.chartLabelWidth(longNote)
         val room = noted.width - noted.plotRect().x - 12.0
         if (oneLineWidth < room + 200.0) {
             problems += "the long-note counterfactual is toothless: on one line the note measures " +
@@ -499,7 +499,7 @@ object ChartGallery {
         generated.width = 780.0
         generated.height = 440.0
         val generatedNote = generated.note ?: ""
-        val generatedWidth = afield.chartLabelWidth(generatedNote)
+        val generatedWidth = afield.ui.visualization.chartLabelWidth(generatedNote)
         if (generatedWidth <= generated.width) {
             problems += "the generated-note case is toothless: DataFrameCharts produced only " +
                 "${"%.0f".format(generatedWidth)} px of footnote on a ${generated.width.toInt()} px " +
@@ -617,7 +617,7 @@ object ChartGallery {
                 "two series in one figure would read as one"
         }
 
-        val background = toLab(afield.hexColor("#12151c"))
+        val background = toLab(afield.ui.visualization.hexColor("#12151c"))
         val faintest = labs.minOf { deltaE2000(it, background) }
         check(faintest >= MIN_PALETTE_AGAINST_BACKGROUND) {
             "a palette colour is only ${"%.2f".format(faintest)} from the figure background, floor is " +
@@ -737,7 +737,7 @@ object ChartGallery {
     }
 
     /** The union of everything a chart draws, in figure pixels. */
-    private fun drawnBounds(chart: Chart): afield.Rect? =
+    private fun drawnBounds(chart: Chart): afield.app.protocol.Rect? =
         chart.toFLines().mapNotNull { runCatching { it.fast2DBounds() }.getOrNull() }
             .filter { it.x.isFinite() && it.y.isFinite() && it.w.isFinite() && it.h.isFinite() }
             .reduceOrNull { a, b -> a.union(b) }
@@ -860,7 +860,7 @@ object ChartGallery {
         return renderLines(placed, chart.width, chart.height) to scale
     }
 
-    private fun renderLines(lines: List<afield.graphics.FLine>, wd: Double, ht: Double): Raster {
+    private fun renderLines(lines: List<afield.geometry.path.FLine>, wd: Double, ht: Double): Raster {
         val w = wd.toInt()
         val h = ht.toInt()
         val surface = Surface.makeRasterN32Premul(w, h)

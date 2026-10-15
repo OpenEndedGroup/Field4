@@ -1,34 +1,39 @@
 package afield.examples.stdlib
 
-import afield.stdlib.EXTINCT_SCORE
-import afield.stdlib.Evaluation
-import afield.stdlib.GenomeOps
-import afield.stdlib.Img
-import afield.stdlib.IntGrid
-import afield.stdlib.LSystemGenome
-import afield.stdlib.LeniaGenome
-import afield.stdlib.LeniaRule
-import afield.stdlib.LifeRule
-import afield.stdlib.LifeRuleGenome
-import afield.stdlib.Objective
-import afield.stdlib.PopulationSearch
-import afield.stdlib.SearchRun
-import afield.stdlib.Selection
-import afield.stdlib.balanceBrackets
-import afield.stdlib.caEdgeOfChaosObjective
-import afield.stdlib.caRun
-import afield.stdlib.lSystemDimensionObjective
-import afield.stdlib.lSystemDrawing
-import afield.stdlib.leniaRun
-import afield.stdlib.leniaSeed
-import afield.stdlib.leniaSolitonObjective
-import afield.stdlib.lifeRule
-import afield.stdlib.lifeRuleSignature
-import afield.stdlib.montage
-import afield.stdlib.randomSoup
-import afield.stdlib.savePng
-import afield.stdlib.toImg
-import afield.stdlib.upscaleNearest
+import afield.simulation.agents.EXTINCT_SCORE
+import afield.study.search.Evaluation
+import afield.study.search.GenomeOps
+import afield.media.image.Img
+import afield.simulation.agents.IntGrid
+import afield.simulation.agents.LSystemGenome
+import afield.simulation.agents.LeniaGenome
+import afield.simulation.agents.LeniaRule
+import afield.simulation.automata.LifeRule
+import afield.simulation.agents.LifeRuleGenome
+import afield.study.search.Objective
+import afield.study.search.PopulationSearch
+import afield.study.search.SearchRun
+import afield.study.search.Selection
+import afield.simulation.agents.balanceBrackets
+import afield.simulation.agents.caEdgeOfChaosObjective
+import afield.simulation.agents.caRun
+import afield.simulation.agents.lSystemDimensionObjective
+import afield.simulation.agents.lSystemDrawing
+import afield.simulation.agents.leniaRun
+import afield.simulation.agents.leniaSeed
+import afield.simulation.agents.leniaSolitonObjective
+import afield.simulation.automata.lifeRule
+import afield.simulation.agents.lifeRuleSignature
+import afield.media.image.montage
+import afield.simulation.agents.randomSoup
+import afield.media.image.savePng
+import afield.simulation.automata.savePng
+import afield.graphics.text.toImg
+import afield.lang.stacksl.evolution.toImg
+import afield.media.image.toImg
+import afield.simulation.agents.toImg
+import afield.simulation.automata.toImg
+import afield.media.image.upscaleNearest
 import java.io.File
 import kotlin.math.max
 import kotlin.system.exitProcess
@@ -235,7 +240,7 @@ object AlifeEvolveGallery {
         val decayed = leniaRun(leniaSeed(48, 48, alwaysDecays, seed = 3L), alwaysDecays, steps = 60, sampleEvery = 10)
         val grew = leniaRun(leniaSeed(48, 48, alwaysGrows, seed = 3L), alwaysGrows, steps = 60, sampleEvery = 10)
         check(
-            decayed.phase == afield.stdlib.LeniaPhase.DEATH && grew.phase == afield.stdlib.LeniaPhase.SATURATION,
+            decayed.phase == afield.simulation.agents.LeniaPhase.DEATH && grew.phase == afield.simulation.agents.LeniaPhase.SATURATION,
             "premise: the two constructed Lenia rules really do die and saturate ($decayed / $grew)"
         )
         val tight = lenia.evaluate(alwaysDecays)
@@ -391,7 +396,7 @@ object AlifeEvolveGallery {
         val bestRule = evolved.best!!.genome
         val bestRun = leniaRun(leniaSeed(48, 48, bestRule, seed = 5L), bestRule, steps = 90, sampleEvery = 8)
         check(
-            bestRun.phase == afield.stdlib.LeniaPhase.BOUNDED,
+            bestRun.phase == afield.simulation.agents.LeniaPhase.BOUNDED,
             "Lenia: the evolved rule is measured BOUNDED, not merely better-scoring — $bestRun"
         )
         check(

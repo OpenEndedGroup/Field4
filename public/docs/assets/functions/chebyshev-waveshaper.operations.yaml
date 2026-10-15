@@ -27,18 +27,18 @@ operations:
           // the pure n-th harmonic: Tₙ(cos θ) = cos(nθ). chebyshev is first-class —
           // a rebuildable graph node, a composable FnTransform, and an OpRegistry
           // transmutation target reachable by op= and evolution.
-          import afield.stdlib.Functions
-
+          import afield.math.functions.Functions
+          
           with(Functions) {
               // A single-cycle sine fundamental across the domain.
               val fundamental = sin(1.0) over (0.0..1.0)
-
+          
               fundamental.withName("fundamental (harmonic 1)").plot(channel = "fund", title = "input: sine, 1 cycle", heightPx = 150)
               (fundamental / chebyshev(2)).plot(channel = "h2", title = "chebyshev(2) — 2nd harmonic", heightPx = 150)
               (fundamental / chebyshev(3)).plot(channel = "h3", title = "chebyshev(3) — 3rd harmonic", heightPx = 150)
               (fundamental / chebyshev(4)).plot(channel = "h4", title = "chebyshev(4) — 4th harmonic", heightPx = 150)
               (fundamental / chebyshev(5)).plot(channel = "h5", title = "chebyshev(5) — 5th harmonic", heightPx = 150)
-
+          
               // Because `order` is a param CHILD (an Fn), it can vary over x, sweeping
               // the harmonic content across the window. `ramp(1.0, 6.0)` is a value
               // line — 1 at x=0, 6 at x=1 — and the order is CONTINUOUS (Tₙ = cos(n·acos
@@ -65,11 +65,11 @@ operations:
           // multiplies its zero-crossings — a cheap way to "colour" noise. The input
           // is amplified toward [-1, 1] first so the shaper has full range to work in
           // (chebyshev clamps to [-1, 1] internally, as every waveshaper does).
-          import afield.stdlib.Functions
-
+          import afield.math.functions.Functions
+          
           with(Functions) {
               val noise = perlinNoise(seed = 7L, frequency = 6.0, amplitude = 1.6) over (0.0..1.0)
-
+          
               noise.withName("perlin noise").plot(channel = "n", title = "input: perlin noise (freq 6)", heightPx = 150)
               (noise / chebyshev(2)).plot(channel = "n2", title = "perlin / chebyshev(2)", heightPx = 150)
               (noise / chebyshev(3)).plot(channel = "n3", title = "perlin / chebyshev(3)", heightPx = 150)

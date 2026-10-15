@@ -1,4 +1,4 @@
-import afield.stdlib.path
+import afield.document.workspace.path
 import kotlin.math.PI
 import kotlin.math.pow
 import kotlin.math.sin

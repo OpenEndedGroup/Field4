@@ -1,5 +1,5 @@
-import afield.four.fabricated.PathTraceDemo
-import afield.four.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.PathTraceDemo
+import afield.graphics.scene.fabricated.PathTracingRenderer
 import java.io.File
 prop<PathTracingRenderer>(tracer)
 tracer = PathTraceDemo.install(renderer, width=1280, height=720,

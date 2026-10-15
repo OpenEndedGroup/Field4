@@ -39,14 +39,14 @@ WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that b
 idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
 
 ```edn [field-box id="fnrw_working" role="properties"]
-{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 31 "characters" 1546 "sha256" "f366d95883672cab6d1ddd546cff80457a1453f2ea66d67be5b7b5f7b9b64045"}]}
+{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 31 "characters" 1562 "sha256" "269d2b5333f1edc196ec65f901dcd43c34ec37bfe85515ab46b4e23d516e1f2d"}]}
 ```
 
 ```kotlin [field-property box="fnrw_working" name="code" path="fnrw_working_code_.kt"]
 // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
 // idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
-import afield.stdlib.Functions
-import afield.stdlib.rewriteFn
+import afield.math.functions.Functions
+import afield.math.functions.rewriteFn
 
 val spec = listOf(
     "#fnrewrite",
@@ -101,7 +101,7 @@ Twice is still once too many -- anything this body does before the rewrite happe
 which is why the box above is the form to copy. dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.
 
 ```edn [field-box id="fnrw_broken" role="properties"]
-{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 460.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 32 "characters" 1584 "sha256" "42a9619d9488a5b561d3a4fa9179bc53962c395d82d6261fcabbddfa1729ed8b"}]}
+{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 460.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 32 "characters" 1600 "sha256" "24338d25ab055bf972e1c3a8766a4169586b220696c1c6f8de2acd8a5f79a8d3"}]}
 ```
 
 ```kotlin [field-property box="fnrw_broken" name="code" path="fnrw_broken_code_.kt"]
@@ -120,8 +120,8 @@ which is why the box above is the form to copy. dev_docs/FN_REWRITE_SELF_BOX_REE
 //
 // Twice is still once too many -- anything this body does before the rewrite happens twice,
 // which is why the box above is the form to copy. dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.
-import afield.stdlib.Functions
-import afield.stdlib.rewriteKotlin
+import afield.math.functions.Functions
+import afield.math.functions.rewriteKotlin
 
 val spec = listOf(
     "#fnrewrite",

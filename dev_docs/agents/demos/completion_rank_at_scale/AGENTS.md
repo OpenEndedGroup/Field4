@@ -6,8 +6,8 @@ beside it in `<box>_code_.kt`. Field owns `metadata.edn` — drive Field rather 
 Three Kotlin boxes, none of which needs a window, a GPU or a running sidecar:
 
 - `corpus` reads the checked-in recording of 578 completion carets and reports the population.
-- `classify` calls `afield.ai.KotlinSourceIndex.getCompletionCategoryForSymbol` and
-  `afield.CommonMemberPrior.rankOf` — the live server-side ranking inputs — over one caret's rows.
+- `classify` calls `afield.runtime.completion.KotlinSourceIndex.getCompletionCategoryForSymbol` and
+  `afield.runtime.completion.CommonMemberPrior.rankOf` — the live server-side ranking inputs — over one caret's rows.
 - `sweep` shells out to `tools/rank_weight_lab.py` to re-run the whole weighting experiment.
 
 Each box's last expression is a `String`, which is what the output panel shows. `corpus` also plots

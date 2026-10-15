@@ -4,8 +4,8 @@ package afield.examples
 object ThreeFeatureReviewWorkout {
     fun checkGestures() {
         // Exercise pointer capture and the real Save note button through Field-owned Playwright.
-        kotlinx.coroutines.runBlocking(afield.playwrightDispatcher) {
-            val page = checkNotNull(afield.globalPlaywriteContext)
+        kotlinx.coroutines.runBlocking(afield.app.server.playwrightDispatcher) {
+            val page = checkNotNull(afield.app.server.globalPlaywriteContext)
             val frame = page.frames().first { it.url().contains("_features") }
             frame.locator("#feature-mode").selectOption("region")
             val canvas = frame.locator("canvas").first().boundingBox()

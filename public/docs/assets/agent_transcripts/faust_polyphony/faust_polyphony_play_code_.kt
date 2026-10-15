@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Eight instances of one compiled Faust program, allocated to notes by a pattern. Nothing is
 // recompiled per voice: a Faust wasm factory built with internal memory keeps its whole state at

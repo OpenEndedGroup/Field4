@@ -1,8 +1,8 @@
 package afield.examples
 
-import afield.CodeUseSemanticAnalyzeResult
-import afield.CodeUseSemanticUseRow
-import afield.CodeUseTelemetryService
+import afield.app.diagnostics.CodeUseSemanticAnalyzeResult
+import afield.app.diagnostics.CodeUseSemanticUseRow
+import afield.app.diagnostics.CodeUseTelemetryService
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.encodeToString
@@ -114,7 +114,7 @@ object CodeUseTelemetrySidecarStoreSmokeTest {
         }
     }
 
-    private fun waitForSummary(predicate: (afield.CodeUseSummary) -> Boolean): afield.CodeUseSummary {
+    private fun waitForSummary(predicate: (afield.app.diagnostics.CodeUseSummary) -> Boolean): afield.app.diagnostics.CodeUseSummary {
         val deadline = System.currentTimeMillis() + 5_000
         var latest = CodeUseTelemetryService.summary()
         while (System.currentTimeMillis() < deadline) {

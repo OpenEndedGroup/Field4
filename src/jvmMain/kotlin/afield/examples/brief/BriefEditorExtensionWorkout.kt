@@ -1,7 +1,7 @@
 package afield.examples.brief
 
-import afield.brief.BriefEditorExtension
-import afield.util.NodeTool
+import afield.lang.brief.BriefEditorExtension
+import afield.media.image.util.NodeTool
 import java.nio.file.Files
 import kotlin.io.path.writeText
 
@@ -105,7 +105,7 @@ object BriefEditorExtensionWorkout {
         if (extension.id !== "brief") throw new Error("wrong extension id " + extension.id);
 
         const text = `
-        import afield.brief.*
+        import afield.lang.brief.*
         val plan = ${"\"\"\""}
         #brief
         point west  at (0, 0)

@@ -10,17 +10,13 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-        \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
-        Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-      \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
-      Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
 - wait:
     frames: 3
 - create:
@@ -32,36 +28,7 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.neural.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
-        import org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<ShaderLearningView>(lab)\nfromContextWithNameOrNull<ShaderLearningView>(\"\
-        lab\")?.close()\nval source = RenderToTexture(renderer) {\n    width=1920; height=1080; useDepth=false\n\
-        \    format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher = moduleHere { source.apply(); depthTest=false;\
-        \ depthWrite=false; blend=false }\nval mesh = Mesh(renderer, teacher)\nmesh.resize(3,0,teacher)\nmesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\n\
-        teacher += \"fullscreen\" to mesh\nsource += \"teacher\" to teacher\nval setTime: (Float)->Unit = { t ->\
-        \ mesh.push[\"state\"]=vec(source.width,source.height,t,0) }\nlab = ShaderLearningView(renderer,source,setSourceParameter=setTime)\n\
-        var capture=false\nvar requestedView=0\nvar animate=true\nvar trainingJob: ShaderTrainingJob?=null\nvar\
-        \ reported=false\nvar steps=12000\ncontrolGroup(\"learn this module\") {\n    button(\"Capture shader and\
-        \ train\") { if(it)capture=true }\n    slider(\"Training steps\",min=1000.0,max=30000.0,step=1000.0,initialValue=12000.0)\
-        \ { steps=it.toInt() }\n    slider(\"0: Source · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=0.0)\
-        \ { requestedView=it.toInt() }\n    checkbox(\"Animate parameter\",initialValue=true) { animate=it }\n}\n\
-        displayOpen(\"learn this module\")\nprintln(\"Edit this box's fragment shader, run the box, then Capture\
-        \ shader and train. The source stays visible while training.\")\nval owner=renderer // Retain ownership\
-        \ even if the parent renderer box stops first.\nframes {\n    var phase=0.0\n    while(true) {\n       \
-        \ if(capture) {\n            capture=false\n            if(trainingJob?.result?.isDone!=false) {\n     \
-        \           runCatching {\n                    val run=File(\"build/shader-learning/module-${System.currentTimeMillis()}\"\
-        )\n                    val dataset=ShaderTraining.capture(renderer,source,File(run,\"dataset\"),setParameter=setTime)\n\
-        \                    trainingJob=ShaderTraining.trainAsync(dataset,File(run,\"model\"),steps)\n        \
-        \            reported=false\n                    println(\"Captured actual GPU RGB. Training log: ${trainingJob!!.log}\"\
-        )\n                }.onFailure { println(\"Capture failed: ${it.message}\") }\n            }\n        }\n\
-        \        val activeJob=trainingJob\n        if(activeJob!=null && activeJob.result.isDone && !reported)\
-        \ {\n            reported=true\n            runCatching {\n                val model=activeJob.result.join()\n\
-        \                lab.load(model)\n                println(\"LEARNED MODULE READY: $model — choose view 1\
-        \ or 2; weights.json records held-out error.\")\n                File(\"build/shader-learning/latest-model.txt\"\
-        ).writeText(model.absolutePath)\n            }.onFailure { println(\"Keeping the working view: ${it.message}\"\
-        ) }\n        }\n        lab.view=requestedView\n        if(animate)phase+=.01\n        lab.parameter=kotlin.math.sin(phase).toFloat()\n\
-        \        frame()\n    }\n}.end {\n    trainingJob?.close(); lab.close()\n    owner.cleanup+=Runnable {\n\
-        \        teacher.current.cleanup()\n        source.imageViewArray.forEach { it.imageView.cleanup() }\n \
-        \       source.colorImageRefs.forEach { it?.cleanup() }; source.defaultSampler?.cleanup()\n    }\n}\n"
+      code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.shader.learning.*\nimport afield.document.context.fromContextWithNameOrNull\nimport org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<ShaderLearningView>(lab)\nfromContextWithNameOrNull<ShaderLearningView>(\"lab\")?.close()\nval source = RenderToTexture(renderer) {\n    width=1920; height=1080; useDepth=false\n    format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher = moduleHere { source.apply(); depthTest=false; depthWrite=false; blend=false }\nval mesh = Mesh(renderer, teacher)\nmesh.resize(3,0,teacher)\nmesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\nteacher += \"fullscreen\" to mesh\nsource += \"teacher\" to teacher\nval setTime: (Float)->Unit = { t -> mesh.push[\"state\"]=vec(source.width,source.height,t,0) }\nlab = ShaderLearningView(renderer,source,setSourceParameter=setTime)\nvar capture=false\nvar requestedView=0\nvar animate=true\nvar trainingJob: ShaderTrainingJob?=null\nvar reported=false\nvar steps=12000\ncontrolGroup(\"learn this module\") {\n    button(\"Capture shader and train\") { if(it)capture=true }\n    slider(\"Training steps\",min=1000.0,max=30000.0,step=1000.0,initialValue=12000.0) { steps=it.toInt() }\n    slider(\"0: Source · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=0.0) { requestedView=it.toInt() }\n    checkbox(\"Animate parameter\",initialValue=true) { animate=it }\n}\ndisplayOpen(\"learn this module\")\nprintln(\"Edit this box's fragment shader, run the box, then Capture shader and train. The source stays visible while training.\")\nval owner=renderer // Retain ownership even if the parent renderer box stops first.\nframes {\n    var phase=0.0\n    while(true) {\n        if(capture) {\n            capture=false\n            if(trainingJob?.result?.isDone!=false) {\n                runCatching {\n                    val run=File(\"build/shader-learning/module-${System.currentTimeMillis()}\")\n                    val dataset=ShaderTraining.capture(renderer,source,File(run,\"dataset\"),setParameter=setTime)\n                    trainingJob=ShaderTraining.trainAsync(dataset,File(run,\"model\"),steps)\n                    reported=false\n                    println(\"Captured actual GPU RGB. Training log: ${trainingJob!!.log}\")\n                }.onFailure { println(\"Capture failed: ${it.message}\") }\n            }\n        }\n        val activeJob=trainingJob\n        if(activeJob!=null && activeJob.result.isDone && !reported) {\n            reported=true\n            runCatching {\n                val model=activeJob.result.join()\n                lab.load(model)\n                println(\"LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.\")\n                File(\"build/shader-learning/latest-model.txt\").writeText(model.absolutePath)\n            }.onFailure { println(\"Keeping the working view: ${it.message}\") }\n        }\n        lab.view=requestedView\n        if(animate)phase+=.01\n        lab.parameter=kotlin.math.sin(phase).toFloat()\n        frame()\n    }\n}.end {\n    trainingJob?.close(); lab.close()\n    owner.cleanup+=Runnable {\n        teacher.current.cleanup()\n        source.imageViewArray.forEach { it.imageView.cleanup() }\n        source.colorImageRefs.forEach { it?.cleanup() }; source.defaultSampler?.cleanup()\n    }\n}\n"
       vertex: "#version 460\nvoid main() {\n    vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n    gl_Position=vec4(p*2-1,0,1);\n\
         }\n"
       fragment: "#version 460\nlayout(push_constant) uniform P { vec4 state; } p;\nlayout(location=0) out vec4 color;\n\
@@ -78,34 +45,6 @@ operations:
     property: code
     type: code
     strand: scene
-    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.neural.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
-      import org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<ShaderLearningView>(lab)\nfromContextWithNameOrNull<ShaderLearningView>(\"\
-      lab\")?.close()\nval source = RenderToTexture(renderer) {\n    width=1920; height=1080; useDepth=false\n \
-      \   format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher = moduleHere { source.apply(); depthTest=false; depthWrite=false;\
-      \ blend=false }\nval mesh = Mesh(renderer, teacher)\nmesh.resize(3,0,teacher)\nmesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\n\
-      teacher += \"fullscreen\" to mesh\nsource += \"teacher\" to teacher\nval setTime: (Float)->Unit = { t -> mesh.push[\"\
-      state\"]=vec(source.width,source.height,t,0) }\nlab = ShaderLearningView(renderer,source,setSourceParameter=setTime)\n\
-      var capture=false\nvar requestedView=0\nvar animate=true\nvar trainingJob: ShaderTrainingJob?=null\nvar reported=false\n\
-      var steps=12000\ncontrolGroup(\"learn this module\") {\n    button(\"Capture shader and train\") { if(it)capture=true\
-      \ }\n    slider(\"Training steps\",min=1000.0,max=30000.0,step=1000.0,initialValue=12000.0) { steps=it.toInt()\
-      \ }\n    slider(\"0: Source · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=0.0) { requestedView=it.toInt()\
-      \ }\n    checkbox(\"Animate parameter\",initialValue=true) { animate=it }\n}\ndisplayOpen(\"learn this module\"\
-      )\nprintln(\"Edit this box's fragment shader, run the box, then Capture shader and train. The source stays\
-      \ visible while training.\")\nval owner=renderer // Retain ownership even if the parent renderer box stops\
-      \ first.\nframes {\n    var phase=0.0\n    while(true) {\n        if(capture) {\n            capture=false\n\
-      \            if(trainingJob?.result?.isDone!=false) {\n                runCatching {\n                   \
-      \ val run=File(\"build/shader-learning/module-${System.currentTimeMillis()}\")\n                    val dataset=ShaderTraining.capture(renderer,source,File(run,\"\
-      dataset\"),setParameter=setTime)\n                    trainingJob=ShaderTraining.trainAsync(dataset,File(run,\"\
-      model\"),steps)\n                    reported=false\n                    println(\"Captured actual GPU RGB.\
-      \ Training log: ${trainingJob!!.log}\")\n                }.onFailure { println(\"Capture failed: ${it.message}\"\
-      ) }\n            }\n        }\n        val activeJob=trainingJob\n        if(activeJob!=null && activeJob.result.isDone\
-      \ && !reported) {\n            reported=true\n            runCatching {\n                val model=activeJob.result.join()\n\
-      \                lab.load(model)\n                println(\"LEARNED MODULE READY: $model — choose view 1 or\
-      \ 2; weights.json records held-out error.\")\n                File(\"build/shader-learning/latest-model.txt\"\
-      ).writeText(model.absolutePath)\n            }.onFailure { println(\"Keeping the working view: ${it.message}\"\
-      ) }\n        }\n        lab.view=requestedView\n        if(animate)phase+=.01\n        lab.parameter=kotlin.math.sin(phase).toFloat()\n\
-      \        frame()\n    }\n}.end {\n    trainingJob?.close(); lab.close()\n    owner.cleanup+=Runnable {\n \
-      \       teacher.current.cleanup()\n        source.imageViewArray.forEach { it.imageView.cleanup() }\n    \
-      \    source.colorImageRefs.forEach { it?.cleanup() }; source.defaultSampler?.cleanup()\n    }\n}\n"
+    code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.shader.learning.*\nimport afield.document.context.fromContextWithNameOrNull\nimport org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<ShaderLearningView>(lab)\nfromContextWithNameOrNull<ShaderLearningView>(\"lab\")?.close()\nval source = RenderToTexture(renderer) {\n    width=1920; height=1080; useDepth=false\n    format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher = moduleHere { source.apply(); depthTest=false; depthWrite=false; blend=false }\nval mesh = Mesh(renderer, teacher)\nmesh.resize(3,0,teacher)\nmesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\nteacher += \"fullscreen\" to mesh\nsource += \"teacher\" to teacher\nval setTime: (Float)->Unit = { t -> mesh.push[\"state\"]=vec(source.width,source.height,t,0) }\nlab = ShaderLearningView(renderer,source,setSourceParameter=setTime)\nvar capture=false\nvar requestedView=0\nvar animate=true\nvar trainingJob: ShaderTrainingJob?=null\nvar reported=false\nvar steps=12000\ncontrolGroup(\"learn this module\") {\n    button(\"Capture shader and train\") { if(it)capture=true }\n    slider(\"Training steps\",min=1000.0,max=30000.0,step=1000.0,initialValue=12000.0) { steps=it.toInt() }\n    slider(\"0: Source · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=0.0) { requestedView=it.toInt() }\n    checkbox(\"Animate parameter\",initialValue=true) { animate=it }\n}\ndisplayOpen(\"learn this module\")\nprintln(\"Edit this box's fragment shader, run the box, then Capture shader and train. The source stays visible while training.\")\nval owner=renderer // Retain ownership even if the parent renderer box stops first.\nframes {\n    var phase=0.0\n    while(true) {\n        if(capture) {\n            capture=false\n            if(trainingJob?.result?.isDone!=false) {\n                runCatching {\n                    val run=File(\"build/shader-learning/module-${System.currentTimeMillis()}\")\n                    val dataset=ShaderTraining.capture(renderer,source,File(run,\"dataset\"),setParameter=setTime)\n                    trainingJob=ShaderTraining.trainAsync(dataset,File(run,\"model\"),steps)\n                    reported=false\n                    println(\"Captured actual GPU RGB. Training log: ${trainingJob!!.log}\")\n                }.onFailure { println(\"Capture failed: ${it.message}\") }\n            }\n        }\n        val activeJob=trainingJob\n        if(activeJob!=null && activeJob.result.isDone && !reported) {\n            reported=true\n            runCatching {\n                val model=activeJob.result.join()\n                lab.load(model)\n                println(\"LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.\")\n                File(\"build/shader-learning/latest-model.txt\").writeText(model.absolutePath)\n            }.onFailure { println(\"Keeping the working view: ${it.message}\") }\n        }\n        lab.view=requestedView\n        if(animate)phase+=.01\n        lab.parameter=kotlin.math.sin(phase).toFloat()\n        frame()\n    }\n}.end {\n    trainingJob?.close(); lab.close()\n    owner.cleanup+=Runnable {\n        teacher.current.cleanup()\n        source.imageViewArray.forEach { it.imageView.cleanup() }\n        source.colorImageRefs.forEach { it?.cleanup() }; source.defaultSampler?.cleanup()\n    }\n}\n"
 - wait:
     frames: 12

@@ -1,7 +1,7 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.vision.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.media.vision.*
+import afield.document.context.fromContextWithNameOrNull
 
 prop<OpticalFlowDemo>(lab)
 fromContextWithNameOrNull<OpticalFlowDemo>("lab")?.close()

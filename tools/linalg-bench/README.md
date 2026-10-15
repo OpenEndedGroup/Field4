@@ -1,6 +1,6 @@
 # linalg-bench
 
-JMH benchmarks for `afield.stdlib.linalg`. This module compiles the linear-algebra sources
+JMH benchmarks for `afield.math.linalg`. This module compiles the linear-algebra sources
 (`src/generatedLinalg` and `src/jvmMain/.../stdlib/linalg`) **standalone** — they depend only on the
 Kotlin stdlib and the JDK foreign-memory API — so the benchmarks build fast and, importantly, the
 arena safety profile can be set independently of the main app.

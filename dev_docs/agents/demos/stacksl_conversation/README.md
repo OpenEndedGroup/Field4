@@ -19,6 +19,6 @@ their lines; running the box checks your edit in as a revision. The program box'
 slider for every number, the program's stages (click one to hold the window at it, or let the window
 follow the editor's line), its history, and — when the model offers variants — each with **Adopt**.
 
-The study tools ship with Field (`afield.stacksl.study`): any box under a StackSL root has them in
+The study tools ship with Field (`afield.lang.stacksl.study`): any box under a StackSL root has them in
 its AI4 chat, and `StackSLStudyGuide` returns the working guide and searches the words guide. For
 agents: read [AGENTS.md](AGENTS.md).

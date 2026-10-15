@@ -67,8 +67,8 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -86,17 +86,17 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.DeepSetsOptions
-          import afield.stdlib.InteractionExample
-          import afield.stdlib.trainEquivariant
-
-          prop<afield.stdlib.EquivariantWeights>(learnedRule)
-
+          import afield.ai.learning.DeepSetsOptions
+          import afield.ai.learning.InteractionExample
+          import afield.ai.learning.trainEquivariant
+          
+          prop<afield.ai.learning.EquivariantWeights>(learnedRule)
+          
           val radius = 2f / 64f
           val minSeparation = radius * 0.05f
           val velocityScale = 0.4f
           val random = java.util.Random(5)
-
+          
           /*
           The rule being imitated, evaluated on random neighbourhoods. No simulation is needed
           to generate training data when you already have the law -- and having the law is what
@@ -153,7 +153,7 @@ operations:
                   ),
               )
           }
-
+          
           // Published to the children as `learnedRule`; rerun this box to retrain.
           learnedRule = trainEquivariant(
               radius = radius,
@@ -167,7 +167,7 @@ operations:
               exactly and a symmetric neighbourhood gives identically zero. Without that, a
               fixed-direction residual grows with crowding and drifts the flock out of its
               containment.
-
+          
               psi runs once per neighbour per boid, so it is nearly all of this scene's GPU cost.
               8x8 with a 4-wide message (library default 16x16 and 6) is about three times
               cheaper for a slightly worse fit. Keep two layers: one layer of 16 costs more and
@@ -183,7 +183,7 @@ operations:
           ) {
                   List(16) { sample() }
               }
-
+          
           println("trained ${learnedRule.parameterCount} parameters: ${learnedRule}")
   - create:
       box: lb_written
@@ -191,12 +191,12 @@ operations:
       frame: { x: 740.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.ShaderBoids
-          import afield.four.util.GpuNeighbourGrid
-          import afield.stdlib.linalg.Vector2f
-
-          prop<afield.four.physics.ShaderBoids>(written)
-
+          import afield.simulation.physics.ShaderBoids
+          import afield.graphics.vulkan.util.GpuNeighbourGrid
+          import afield.math.linalg.Vector2f
+          
+          prop<afield.simulation.physics.ShaderBoids>(written)
+          
           // Built once: GPU buffers, neighbour grid and draw pass. Everything below is live.
           once.written {
               val grid = GpuNeighbourGrid(
@@ -217,7 +217,7 @@ operations:
                       it.installDrawInto()
                   }
           }
-
+          
           /*
           The rule's weights. Live: the push buffer re-reads these every frame, so edit and
           rerun. They are far from the textbook 0.02/1.2/0.8 because separation *sums* over
@@ -241,12 +241,12 @@ operations:
           written.settings.dt = 1f / 60f
           written.settings.pointSize = 3f
           written.settings.intensity = 1.5f
-
+          
           /*
           A wandering point the flock flees (negative driverStrength). Left alone the flock
           settles into a near-static disc, so the motion comes from outside the rule. The
           learned box runs the identical walk about its own centre, so the A/B stays fair.
-
+          
           Called every frame. It is stateless: a seeded random target every 70 frames,
           smoothstepped between, so calling it twice in a frame gives the same point.
           */
@@ -268,7 +268,7 @@ operations:
           }
           written.settings.driverStrength = -0.9f
           written.settings.driverRadius = 0.22f
-
+          
           println("written rule: ${written.count} boids")
   - create:
       box: lb_learned
@@ -276,10 +276,10 @@ operations:
       frame: { x: 1080.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.physics.ShaderBoids
-          import afield.four.util.GpuNeighbourGrid
-          import afield.stdlib.linalg.Vector2f
-
+          import afield.simulation.physics.ShaderBoids
+          import afield.graphics.vulkan.util.GpuNeighbourGrid
+          import afield.math.linalg.Vector2f
+          
           // `learnedRule` is the trained network from the parent box. The only difference from
           // the written flock is this argument.
           //
@@ -304,7 +304,7 @@ operations:
                       it.installDrawInto()
                   }
           }
-
+          
           // The identical walk about this flock's own centre, so the two see the same forcing.
           learned.driver = {
               val t = renderer.frameCounter / 70.0
@@ -324,7 +324,7 @@ operations:
           }
           learned.settings.driverStrength = -0.9f
           learned.settings.driverRadius = 0.22f
-
+          
           // Everything except the force rule matches the written box; only the colours differ.
           learned.settings.separationRadiusFraction = 0.25f
           learned.settings.maxSpeed = 0.25f

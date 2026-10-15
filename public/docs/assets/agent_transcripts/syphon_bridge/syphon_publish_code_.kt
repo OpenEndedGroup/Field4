@@ -1,4 +1,4 @@
-import afield.syphon.*
+import afield.io.syphon.*
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.RenderingHints

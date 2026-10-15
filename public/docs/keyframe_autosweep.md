@@ -31,8 +31,8 @@ which reads the archive back.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_autosweep/contact-sheet.png" capture="box" open-outputs="true" execution="launch" wait="45" timeout="300" graphics-context=true name="keyframe-autosweep-sheet" padding="16" w="1100" h="1000"}
 :::fold imports
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
 import java.nio.file.Files
 import java.util.Base64
 import kotlin.io.path.readBytes
@@ -421,7 +421,7 @@ to start a real sweep against it. Its entry in
 [Agent transcripts](agent_transcripts.md#keyframe_autosweep) lists what each box does.
 
 ??? aside "Tests"
-    Two suites stand behind this page. `afield.stdlib.KeyframeSweepTest` is CPU-only and pins the provenance
+    Two suites stand behind this page. `afield.animation.keyframes.KeyframeSweepTest` is CPU-only and pins the provenance
     contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
     distribution; `tools/run_field_tests.py --id keyframe.sweep.smoke` runs a real six-render sweep on a
     GPU and pins that the picture actually follows the blend. Which claim belongs to which, and the gap

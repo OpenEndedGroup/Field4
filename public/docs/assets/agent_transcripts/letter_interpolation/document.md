@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="li_renderer" index="0" -->
 
 ```edn [field-box id="li_renderer" role="properties"]
-{"id" "li_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["li_fields"] "properties" {"children" #{#afield/box "li_fields"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_renderer_code_.kt" "lines" 11 "characters" 260 "sha256" "d28cd606359d20ae167a81a4d2b9e2472caf7092f4cfa7a90be93f4ab25e6dfb"}]}
+{"id" "li_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["li_fields"] "properties" {"children" #{#afield/box "li_fields"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_renderer_code_.kt" "lines" 11 "characters" 271 "sha256" "e584cf367ebbe3a390751c47b9fd1164d4e7545a3360993b8f0bbb53effa73a9"}]}
 ```
 
 ```kotlin [field-property box="li_renderer" name="code" path="li_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,17 +33,17 @@ start(renderer::run)
 <!-- field-box id="li_fields" index="1" -->
 
 ```edn [field-box id="li_fields" role="properties"]
-{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_sweep"] "properties" {"children" #{#afield/box "li_sweep"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 65 "characters" 3021 "sha256" "245b178fa4d7a7fa9efe3344c7d19c52862298403533be43bd0c4a3083f7214c"}]}
+{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_sweep"] "properties" {"children" #{#afield/box "li_sweep"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 65 "characters" 3069 "sha256" "46fcf0c61045348ef95b277164143b9b65ffeff67ce746f46bb2425fdd757e77"}]}
 ```
 
 ```kotlin [field-property box="li_fields" name="code" path="li_fields_code_.kt"]
-import afield.stdlib.FlowCoupling
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.contourComponents
-import afield.stdlib.flowMatch
+import afield.ai.learning.FlowCoupling
+import afield.ai.learning.FlowMatchOptions
+import afield.ai.learning.contourComponents
+import afield.ai.learning.flowMatch
 
-prop<afield.stdlib.FlowMatchExport>(fieldA)
-prop<afield.stdlib.FlowMatchExport>(fieldB)
+prop<afield.simulation.particles.FlowMatchExport>(fieldA)
+prop<afield.simulation.particles.FlowMatchExport>(fieldB)
 
 val LETTERS = "C" to "S"
 val N = 512
@@ -109,14 +109,14 @@ println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount
 <!-- field-box id="li_sweep" index="2" -->
 
 ```edn [field-box id="li_sweep" role="properties"]
-{"id" "li_sweep" "index" 2 "name" "the middle" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "the middle" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_sweep_code_.kt" "lines" 42 "characters" 1924 "sha256" "48b418a995fe48f3c8ac25f5c21f9e8c482c992e8e95e363d1217c58926feda9"}]}
+{"id" "li_sweep" "index" 2 "name" "the middle" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "the middle" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_sweep_code_.kt" "lines" 42 "characters" 1966 "sha256" "413fb626bcd8a4d09faf7da2eb99bbc62aec3c26724fb2c375222481d41159a5"}]}
 ```
 
 ```kotlin [field-property box="li_sweep" name="code" path="li_sweep_code_.kt"]
-import afield.stdlib.ShaderNeuralParticles
-import afield.stdlib.blendWith
+import afield.simulation.particles.ShaderNeuralParticles
+import afield.simulation.particles.blendWith
 
-prop<afield.stdlib.ShaderNeuralParticles>(particles)
+prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
 once.particles {
     ShaderNeuralParticles(fieldA, renderer) {

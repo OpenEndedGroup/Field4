@@ -1,13 +1,13 @@
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowser
-import afield.four.browser.PuppetBrowserUvInput
-import afield.four.browser.PuppetBrowserWindowInput
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowser
+import afield.media.browser.PuppetBrowserUvInput
+import afield.media.browser.PuppetBrowserWindowInput
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.concurrent.CompletableFuture
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
@@ -28,7 +28,7 @@ val removeReadyBridge = browser.onPageRequest("field-ready") { payload ->
     })
 }
 renderer.renderList.preTargets["field-ui-browser-upload"] =
-    afield.four.Target { command, _ -> browser.prepareSampledImagesFor(command) }
+    afield.graphics.vulkan.Target { command, _ -> browser.prepareSampledImagesFor(command) }
 
 val material = moduleHere {
     textures("fieldUi" to browser)

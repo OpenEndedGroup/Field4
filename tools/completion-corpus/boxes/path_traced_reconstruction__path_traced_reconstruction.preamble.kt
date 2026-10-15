@@ -1,6 +1,6 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.four.reconstruction.PathTracedReconstruction
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.media.reconstruction.PathTracedReconstruction
 var Box.lab by Inheritance<PathTracedReconstruction>() /**/
 val Once.lab by Onceing<PathTracedReconstruction>() /**/
 val Why.lab by Whying() /**/

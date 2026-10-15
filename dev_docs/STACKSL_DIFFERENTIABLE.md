@@ -31,7 +31,7 @@ scalar.
 
 - `GlslFloatScalars` is the binary32 reference. Every body in it is the pre-refactor expression
   **verbatim**, moved rather than rewritten, so nothing is widened, reordered or fused.
-- `GlslAdScalars` (`GlslAd.kt`) is reverse mode on `afield.stdlib`'s `AD` tape — reused, not
+- `GlslAdScalars` (`GlslAd.kt`) is reverse mode on `afield.math.autodiff`'s `AD` tape — reused, not
   rewritten. One tape per pixel: the loss is a sum over pixels, so the gradient is a sum of
   per-pixel backward sweeps and no tape outlives the pixel that built it.
 
@@ -94,8 +94,8 @@ only. **A program's wire count is an upper bound on its fittable parameter count
 Every number below is asserted, not printed. Run:
 
 ```
-./gradlew jvmTest --tests 'afield.stacksl.cpu.*' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
-./gradlew jvmMeasurements --tests 'afield.stacksl.cpu.StackSLCpuThroughputMeasurements' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
+./gradlew jvmTest --tests 'afield.lang.stacksl.cpu.*' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
+./gradlew jvmMeasurements --tests 'afield.lang.stacksl.cpu.StackSLCpuThroughputMeasurements' --no-daemon -Pkotlin.daemon.jvmargs=-Xmx4g
 ```
 
 ### The `Float` path did not move
@@ -257,11 +257,11 @@ import failure, which is why the boxes are also run by hand.
 
 | file | what |
 | --- | --- |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslScalars.kt` | the scalar seam and the `Float` instance |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslInterpreter.kt` | `GlslMachine<V>`, one copy of the control flow |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/GlslAd.kt` | `AdValue`, `GlslAdScalars`, the derivative rules |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLWires.kt` | lift, lower, re-emit |
-| `src/jvmMain/kotlin/afield/stacksl/cpu/StackSLFit.kt` | the image loss, the exact gradient, the descent |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslScalars.kt` | the scalar seam and the `Float` instance |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslInterpreter.kt` | `GlslMachine<V>`, one copy of the control flow |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslAd.kt` | `AdValue`, `GlslAdScalars`, the derivative rules |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLWires.kt` | lift, lower, re-emit |
+| `src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLFit.kt` | the image loss, the exact gradient, the descent |
 | `src/jvmTest/resources/stacksl/float_path_manifest.txt` | the 31 pre-refactor raster hashes |
 
 ## What is not here

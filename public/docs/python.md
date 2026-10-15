@@ -115,7 +115,7 @@ imported as a Python module. The cell below prints the Java version and the name
 :::static
 # java.lang, and anything else on Field's classpath, is importable.
 from java.lang import System
-from afield.python import PythonInterface
+from afield.lang.python import PythonInterface
 
 box = PythonInterface.thisBox          # the Box this cell is running in
 

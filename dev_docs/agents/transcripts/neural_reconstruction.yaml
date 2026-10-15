@@ -11,18 +11,13 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-        \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window\
-        \ = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\n\
-        start(renderer::run)\n"
+      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-      \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window =\
-      \ Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
 - wait:
     frames: 3
 - create:
@@ -34,37 +29,7 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.reconstruction.*\n\
-        import afield.four.modules.fromContextWithNameOrNull\n\nprop<ReconstructionDemo>(lab)\nfromContextWithNameOrNull<ReconstructionDemo>(\"\
-        lab\")?.close()\nval available = NgxSupport.availability(renderer.device)\navailable.onFailure\
-        \ { println(\"Neural reconstruction unavailable: ${it.message}; showing the source.\") }\nval\
-        \ modes = listOf(null, ReconstructionMode.DLAA, ReconstructionMode.QUALITY, ReconstructionMode.PERFORMANCE,\n\
-        \    ReconstructionMode.ULTRA_PERFORMANCE)\nval smallest = if(available.isSuccess) DlssReconstruction.recommend(renderer,ReconstructionSize(1920,1080),\n\
-        \    ReconstructionMode.ULTRA_PERFORMANCE).smallestFor(ReconstructionSize(1920,1080)) else null\n\
-        var requested = if (available.isSuccess) 1 else 0\nvar active = requested\nvar abstractScene =\
-        \ false\nvar animate = true\nvar camera = true\nvar cut = false\nvar reload = false\nlab = ReconstructionDemo(renderer,\
-        \ modes[active])\ncontrolGroup(\"reconstruction\") {\n    if (available.isSuccess) {\n       \
-        \ slider(\"0: Source · 1: DLAA · 2: Quality · 3: Performance · 4: Ultra\", min=0.0, max=4.0, step=1.0,\
-        \ initialValue=1.0) { requested=it.toInt() }\n    }\n    checkbox(\"Abstract colors and particles\"\
-        , initialValue=false) { abstractScene=it }\n    checkbox(\"Animate\", initialValue=true) { animate=it\
-        \ }\n    checkbox(\"Move camera\", initialValue=true) { camera=it }\n    button(\"Camera cut /\
-        \ reset\") { if(it)cut=true }\n    button(\"Reload edited shaders\") { if(it)reload=true }\n}\n\
-        displayOpen(\"reconstruction\")\nif(smallest!=null)println(\"Ultra minimum input: ${smallest.width}\
-        \ × ${smallest.height}. Mode 4 uses the SDK recommendation.\")\nprintln(\"1920 × 1080 output.\
-        \ Edit this box's vertex / fragment shaders, then reload.\")\nframes {\n    var previousAbstract\
-        \ = abstractScene\n    var previousCamera = camera\n    while(true) {\n        if(requested!=active)\
-        \ {\n            runCatching {\n                val next = ReconstructionDemo(renderer, modes[requested],\
-        \ attach=false)\n                next.time=lab.time\n                lab.close()\n           \
-        \     lab=next.attach()\n                active=requested\n                println(\"${modes[active]\
-        \ ?: \"Source\"}: ${lab.inputSize.width} × ${lab.inputSize.height} → 1920 × 1080\")\n        \
-        \    }.onFailure { println(\"Keeping current view: ${it.message}\");requested=active }\n     \
-        \   }\n        if(previousAbstract!=abstractScene || previousCamera!=camera)lab.reset(\"scene\
-        \ controls\")\n        previousAbstract=abstractScene;previousCamera=camera\n        lab.abstractScene=abstractScene;lab.animate=animate;lab.cameraMotion=camera\n\
-        \        if(cut) { lab.time+=4f;lab.reset(\"camera cut\");cut=false }\n        if(reload) {\n\
-        \            val vertexSource = thisBox.getPropertyRaw(\"vertex\") as String\n            val\
-        \ fragmentSource = thisBox.getPropertyRaw(\"fragment\") as String\n            lab.reload(vertexSource,fragmentSource).onFailure\
-        \ { println(\"Keeping working shaders: ${it.message}\") }\n            reload=false\n        }\n\
-        \        frame()\n    }\n}\n"
+      code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.media.reconstruction.*\nimport afield.document.context.fromContextWithNameOrNull\n\nprop<ReconstructionDemo>(lab)\nfromContextWithNameOrNull<ReconstructionDemo>(\"lab\")?.close()\nval available = NgxSupport.availability(renderer.device)\navailable.onFailure { println(\"Neural reconstruction unavailable: ${it.message}; showing the source.\") }\nval modes = listOf(null, ReconstructionMode.DLAA, ReconstructionMode.QUALITY, ReconstructionMode.PERFORMANCE,\n    ReconstructionMode.ULTRA_PERFORMANCE)\nval smallest = if(available.isSuccess) DlssReconstruction.recommend(renderer,ReconstructionSize(1920,1080),\n    ReconstructionMode.ULTRA_PERFORMANCE).smallestFor(ReconstructionSize(1920,1080)) else null\nvar requested = if (available.isSuccess) 1 else 0\nvar active = requested\nvar abstractScene = false\nvar animate = true\nvar camera = true\nvar cut = false\nvar reload = false\nlab = ReconstructionDemo(renderer, modes[active])\ncontrolGroup(\"reconstruction\") {\n    if (available.isSuccess) {\n        slider(\"0: Source · 1: DLAA · 2: Quality · 3: Performance · 4: Ultra\", min=0.0, max=4.0, step=1.0, initialValue=1.0) { requested=it.toInt() }\n    }\n    checkbox(\"Abstract colors and particles\", initialValue=false) { abstractScene=it }\n    checkbox(\"Animate\", initialValue=true) { animate=it }\n    checkbox(\"Move camera\", initialValue=true) { camera=it }\n    button(\"Camera cut / reset\") { if(it)cut=true }\n    button(\"Reload edited shaders\") { if(it)reload=true }\n}\ndisplayOpen(\"reconstruction\")\nif(smallest!=null)println(\"Ultra minimum input: ${smallest.width} × ${smallest.height}. Mode 4 uses the SDK recommendation.\")\nprintln(\"1920 × 1080 output. Edit this box's vertex / fragment shaders, then reload.\")\nframes {\n    var previousAbstract = abstractScene\n    var previousCamera = camera\n    while(true) {\n        if(requested!=active) {\n            runCatching {\n                val next = ReconstructionDemo(renderer, modes[requested], attach=false)\n                next.time=lab.time\n                lab.close()\n                lab=next.attach()\n                active=requested\n                println(\"${modes[active] ?: \"Source\"}: ${lab.inputSize.width} × ${lab.inputSize.height} → 1920 × 1080\")\n            }.onFailure { println(\"Keeping current view: ${it.message}\");requested=active }\n        }\n        if(previousAbstract!=abstractScene || previousCamera!=camera)lab.reset(\"scene controls\")\n        previousAbstract=abstractScene;previousCamera=camera\n        lab.abstractScene=abstractScene;lab.animate=animate;lab.cameraMotion=camera\n        if(cut) { lab.time+=4f;lab.reset(\"camera cut\");cut=false }\n        if(reload) {\n            val vertexSource = thisBox.getPropertyRaw(\"vertex\") as String\n            val fragmentSource = thisBox.getPropertyRaw(\"fragment\") as String\n            lab.reload(vertexSource,fragmentSource).onFailure { println(\"Keeping working shaders: ${it.message}\") }\n            reload=false\n        }\n        frame()\n    }\n}\n"
       vertex: "#version 460\nlayout(push_constant) uniform Scene { vec4 sizeJitter; vec4 times; vec4 settings;\
         \ } pc;\nlayout(location=0) out vec3 world;\nlayout(location=1) out vec3 normal;\nlayout(location=2)\
         \ out vec4 nowClip;\nlayout(location=3) out vec4 oldClip;\nlayout(location=4) flat out int objectId;\n\
@@ -108,36 +73,6 @@ operations:
     property: code
     type: code
     strand: scene
-    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.reconstruction.*\n\
-      import afield.four.modules.fromContextWithNameOrNull\n\nprop<ReconstructionDemo>(lab)\nfromContextWithNameOrNull<ReconstructionDemo>(\"\
-      lab\")?.close()\nval available = NgxSupport.availability(renderer.device)\navailable.onFailure {\
-      \ println(\"Neural reconstruction unavailable: ${it.message}; showing the source.\") }\nval modes\
-      \ = listOf(null, ReconstructionMode.DLAA, ReconstructionMode.QUALITY, ReconstructionMode.PERFORMANCE,\n\
-      \    ReconstructionMode.ULTRA_PERFORMANCE)\nval smallest = if(available.isSuccess) DlssReconstruction.recommend(renderer,ReconstructionSize(1920,1080),\n\
-      \    ReconstructionMode.ULTRA_PERFORMANCE).smallestFor(ReconstructionSize(1920,1080)) else null\n\
-      var requested = if (available.isSuccess) 1 else 0\nvar active = requested\nvar abstractScene = false\n\
-      var animate = true\nvar camera = true\nvar cut = false\nvar reload = false\nlab = ReconstructionDemo(renderer,\
-      \ modes[active])\ncontrolGroup(\"reconstruction\") {\n    if (available.isSuccess) {\n        slider(\"\
-      0: Source · 1: DLAA · 2: Quality · 3: Performance · 4: Ultra\", min=0.0, max=4.0, step=1.0, initialValue=1.0)\
-      \ { requested=it.toInt() }\n    }\n    checkbox(\"Abstract colors and particles\", initialValue=false)\
-      \ { abstractScene=it }\n    checkbox(\"Animate\", initialValue=true) { animate=it }\n    checkbox(\"\
-      Move camera\", initialValue=true) { camera=it }\n    button(\"Camera cut / reset\") { if(it)cut=true\
-      \ }\n    button(\"Reload edited shaders\") { if(it)reload=true }\n}\ndisplayOpen(\"reconstruction\"\
-      )\nif(smallest!=null)println(\"Ultra minimum input: ${smallest.width} × ${smallest.height}. Mode\
-      \ 4 uses the SDK recommendation.\")\nprintln(\"1920 × 1080 output. Edit this box's vertex / fragment\
-      \ shaders, then reload.\")\nframes {\n    var previousAbstract = abstractScene\n    var previousCamera\
-      \ = camera\n    while(true) {\n        if(requested!=active) {\n            runCatching {\n    \
-      \            val next = ReconstructionDemo(renderer, modes[requested], attach=false)\n         \
-      \       next.time=lab.time\n                lab.close()\n                lab=next.attach()\n   \
-      \             active=requested\n                println(\"${modes[active] ?: \"Source\"}: ${lab.inputSize.width}\
-      \ × ${lab.inputSize.height} → 1920 × 1080\")\n            }.onFailure { println(\"Keeping current\
-      \ view: ${it.message}\");requested=active }\n        }\n        if(previousAbstract!=abstractScene\
-      \ || previousCamera!=camera)lab.reset(\"scene controls\")\n        previousAbstract=abstractScene;previousCamera=camera\n\
-      \        lab.abstractScene=abstractScene;lab.animate=animate;lab.cameraMotion=camera\n        if(cut)\
-      \ { lab.time+=4f;lab.reset(\"camera cut\");cut=false }\n        if(reload) {\n            val vertexSource\
-      \ = thisBox.getPropertyRaw(\"vertex\") as String\n            val fragmentSource = thisBox.getPropertyRaw(\"\
-      fragment\") as String\n            lab.reload(vertexSource,fragmentSource).onFailure { println(\"\
-      Keeping working shaders: ${it.message}\") }\n            reload=false\n        }\n        frame()\n\
-      \    }\n}\n"
+    code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.media.reconstruction.*\nimport afield.document.context.fromContextWithNameOrNull\n\nprop<ReconstructionDemo>(lab)\nfromContextWithNameOrNull<ReconstructionDemo>(\"lab\")?.close()\nval available = NgxSupport.availability(renderer.device)\navailable.onFailure { println(\"Neural reconstruction unavailable: ${it.message}; showing the source.\") }\nval modes = listOf(null, ReconstructionMode.DLAA, ReconstructionMode.QUALITY, ReconstructionMode.PERFORMANCE,\n    ReconstructionMode.ULTRA_PERFORMANCE)\nval smallest = if(available.isSuccess) DlssReconstruction.recommend(renderer,ReconstructionSize(1920,1080),\n    ReconstructionMode.ULTRA_PERFORMANCE).smallestFor(ReconstructionSize(1920,1080)) else null\nvar requested = if (available.isSuccess) 1 else 0\nvar active = requested\nvar abstractScene = false\nvar animate = true\nvar camera = true\nvar cut = false\nvar reload = false\nlab = ReconstructionDemo(renderer, modes[active])\ncontrolGroup(\"reconstruction\") {\n    if (available.isSuccess) {\n        slider(\"0: Source · 1: DLAA · 2: Quality · 3: Performance · 4: Ultra\", min=0.0, max=4.0, step=1.0, initialValue=1.0) { requested=it.toInt() }\n    }\n    checkbox(\"Abstract colors and particles\", initialValue=false) { abstractScene=it }\n    checkbox(\"Animate\", initialValue=true) { animate=it }\n    checkbox(\"Move camera\", initialValue=true) { camera=it }\n    button(\"Camera cut / reset\") { if(it)cut=true }\n    button(\"Reload edited shaders\") { if(it)reload=true }\n}\ndisplayOpen(\"reconstruction\")\nif(smallest!=null)println(\"Ultra minimum input: ${smallest.width} × ${smallest.height}. Mode 4 uses the SDK recommendation.\")\nprintln(\"1920 × 1080 output. Edit this box's vertex / fragment shaders, then reload.\")\nframes {\n    var previousAbstract = abstractScene\n    var previousCamera = camera\n    while(true) {\n        if(requested!=active) {\n            runCatching {\n                val next = ReconstructionDemo(renderer, modes[requested], attach=false)\n                next.time=lab.time\n                lab.close()\n                lab=next.attach()\n                active=requested\n                println(\"${modes[active] ?: \"Source\"}: ${lab.inputSize.width} × ${lab.inputSize.height} → 1920 × 1080\")\n            }.onFailure { println(\"Keeping current view: ${it.message}\");requested=active }\n        }\n        if(previousAbstract!=abstractScene || previousCamera!=camera)lab.reset(\"scene controls\")\n        previousAbstract=abstractScene;previousCamera=camera\n        lab.abstractScene=abstractScene;lab.animate=animate;lab.cameraMotion=camera\n        if(cut) { lab.time+=4f;lab.reset(\"camera cut\");cut=false }\n        if(reload) {\n            val vertexSource = thisBox.getPropertyRaw(\"vertex\") as String\n            val fragmentSource = thisBox.getPropertyRaw(\"fragment\") as String\n            lab.reload(vertexSource,fragmentSource).onFailure { println(\"Keeping working shaders: ${it.message}\") }\n            reload=false\n        }\n        frame()\n    }\n}\n"
 - wait:
     frames: 12

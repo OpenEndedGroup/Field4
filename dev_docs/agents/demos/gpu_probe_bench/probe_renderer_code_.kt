@@ -1,6 +1,6 @@
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
-// `afield.four` has no headless mode: a compute-only dispatch still needs a Window for
+// Field 4 has no headless mode: a compute-only dispatch still needs a Window for
 // the device to exist, and it needs an awake display. So every box below is a child of
 // this one and resolves `renderer` from it.
 //

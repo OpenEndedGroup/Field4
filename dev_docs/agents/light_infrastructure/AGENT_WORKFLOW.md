@@ -115,10 +115,10 @@ CPU test cannot certify a live fluid/shader pipeline.
 
 ## Public extraction boundaries
 
-- `afield.stdlib.TileResidency`: bounded world tile identity, recycling and generations.
-- `afield.four.flow.TileAtlasLayout`: GPU atlas layout, with explicit halo responsibility.
-- `afield.four.targets.MotionItems`: stable object correspondence alongside `FrameHistory`.
-- `afield.four.flow.FlowShaders`: small grain/stroke/motion/tile shader functions.
+- `afield.graphics.render.TileResidency`: bounded world tile identity, recycling and generations.
+- `afield.simulation.flow.TileAtlasLayout`: GPU atlas layout, with explicit halo responsibility.
+- `afield.graphics.vulkan.targets.MotionItems`: stable object correspondence alongside `FrameHistory`.
+- `afield.simulation.flow.FlowShaders`: small grain/stroke/motion/tile shader functions.
 
 Keep game rules, lighting geometry and aesthetic tuning in the personal game. Keep one
 shader (or shader plus resource) per box, comments on inputs/push constants, and visible

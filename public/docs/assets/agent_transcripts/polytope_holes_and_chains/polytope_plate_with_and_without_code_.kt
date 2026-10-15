@@ -1,5 +1,5 @@
-import afield.stdlib.MeshView
-import afield.stdlib.Vec3
+import afield.geometry.mesh.MeshView
+import afield.math.linalg.Vec3
 
 // ***** CHANGE THIS LINE ***** the hole's half-width; 0 or more, less than 1.
 val hole = 0.45f
@@ -14,7 +14,7 @@ fun plate(withRing: Boolean): PolyhedralObject {
     val inner = listOf(
         Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
     )
-    // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+    // buildList, not `outer + inner`: a box has afield.geometry.path in scope, where
     // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points,
     // not eight.
     val points = buildList { addAll(outer); if (withRing) addAll(inner) }

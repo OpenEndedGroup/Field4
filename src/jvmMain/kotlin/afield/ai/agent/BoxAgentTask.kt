@@ -1,12 +1,34 @@
-package afield
+package afield.ai.agent
 
+import afield.data.table.div
+import afield.data.table.get
+import afield.data.table.minus
+import afield.data.table.plus
+import afield.data.table.rem
+import afield.data.table.times
+import afield.document.graph.box
+import afield.runtime.execution.plus
+import afield.runtime.lifecycle.Runloop
+import afield.runtime.lifecycle.plus
+import afield.runtime.lifecycle.rem
+import afield.ui.notation.with
+import afield.ui.output.history
+import afield.ui.output.transcript
+import afield.ui.visualization.typed
+
+import afield.audio.synth.*
+import afield.document.graph.Box
+import afield.graphics.vulkan.*
+import afield.media.stream.*
+import afield.media.video.*
+import afield.runtime.lifecycle.map
 import afield.ai.agent.AgentCheck
 import afield.ai.agent.AgentTaskRequest
 import afield.ai.agent.AgentTaskResult
 import afield.ai.agent.AgentTaskRunner
 import afield.ai.agent.FieldGraphTools
 import afield.ai.agent.InFieldAgentEvals
-import afield.ai.core.aiProviderStatus
+import afield.ai.models.aiProviderStatus
 import java.util.concurrent.CompletableFuture
 
 /**

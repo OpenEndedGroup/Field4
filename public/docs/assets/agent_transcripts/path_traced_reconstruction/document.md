@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["path_traced_reconstruction"] "properties" {"children" #{#afield/box "path_traced_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 321 "sha256" "79dab431bdab018f5a13ebcb55d1eaf22c276161949fb54c70dbe0d69aa149fa"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["path_traced_reconstruction"] "properties" {"children" #{#afield/box "path_traced_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 332 "sha256" "f6d44c51bceafe38b76c3155a6a00e129dbebbff1c01db27a846eea5bd4da524"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -39,16 +39,16 @@ start(renderer::run)
 <!-- field-box id="path_traced_reconstruction" index="1" -->
 
 ```edn [field-box id="path_traced_reconstruction" role="properties"]
-{"id" "path_traced_reconstruction" "index" 1 "name" "path traced reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "path traced reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_traced_reconstruction_code_.kt" "lines" 49 "characters" 2414 "sha256" "bbaf96dddae1044f975be69f6ca8e7eae8934ae843c0ce03d150a8fe889b4115"}]}
+{"id" "path_traced_reconstruction" "index" 1 "name" "path traced reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "path traced reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_traced_reconstruction_code_.kt" "lines" 49 "characters" 2447 "sha256" "763225dc87e42412e012ad27cf9398fb36558e9dfbe51bc41358e5ff4ebb90a4"}]}
 ```
 
 ```kotlin [field-property box="path_traced_reconstruction" name="code" path="path_traced_reconstruction_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.fabricated.*
-import afield.four.reconstruction.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector3f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.scene.fabricated.*
+import afield.media.reconstruction.*
+import afield.document.context.fromContextWithNameOrNull
+import afield.math.linalg.Vector3f
 
 prop<PathTracedReconstruction>(lab)
 fromContextWithNameOrNull<PathTracedReconstruction>("lab")?.close()

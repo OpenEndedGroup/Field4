@@ -1,6 +1,6 @@
 # Polytopes: topology first, coordinates later
 
-`afield.stdlib.polytope` builds polyhedra with Conway operators (`conway("kbD")`, `cube().kis()`)
+`afield.geometry.polytope` builds polyhedra with Conway operators (`conway("kbD")`, `cube().kis()`)
 and keeps track of which element of the input each output element came from. A polyhedron here is
 a ranked incidence topology first: vertices, edges and faces with identities, which of them touch,
 and an ordered boundary for every face. Coordinates are a separate layer on top, which you can
@@ -1318,7 +1318,7 @@ fun plate(withRing: Boolean): PolyhedralObject {
     val inner = [
         Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
     ]
-    // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+    // buildList, not `outer + inner`: a box has afield.geometry.path in scope, where
     // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points.
     val points = buildList { addAll(outer); if (withRing) addAll(inner) }
     val rings = if (withRing) [[0, 1, 2, 3], [4, 5, 6, 7]] else [[0, 1, 2, 3]]
@@ -1436,7 +1436,7 @@ Each of these starting points is a document you can open, edit and re-run:
 ## See also
 
 - [Polytopes reference](reference/polytopes.md) — every public declaration in
-  `afield.stdlib.polytope`, with the KDoc that lives beside it: the operator algebra and its
+  `afield.geometry.polytope`, with the KDoc that lives beside it: the operator algebra and its
   composition rules, the realization verbs and their diagnostics, the attribute and selector algebra,
   and the `FLine`/`TriMesh` adapters.
 - [Solvers reference](reference/solvers.md) — the Ceres constraint vocabulary behind `relax` and

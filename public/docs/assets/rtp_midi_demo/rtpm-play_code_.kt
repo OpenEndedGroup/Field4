@@ -1,4 +1,4 @@
-import afield.rtpmidi.*
+import afield.io.midi.rtp.*
 
 // Play an arpeggio from the peer session into the "Field" session; box 1 shows each note as it
 // arrives. Pointed at a Mac's session instead, these notes reach any DAW listening to it.

@@ -1,9 +1,9 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.fabricated.*
-import afield.four.reconstruction.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector3f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.scene.fabricated.*
+import afield.media.reconstruction.*
+import afield.document.context.fromContextWithNameOrNull
+import afield.math.linalg.Vector3f
 
 prop<PathTracedReconstruction>(lab)
 fromContextWithNameOrNull<PathTracedReconstruction>("lab")?.close()

@@ -4,7 +4,7 @@
 Emits tools/completion-corpus/scraped.tsv (label<TAB>base64(code with ‸ caret)<TAB>intendedMember).
 Each fixture drops a caret mid-member-access (keeps 2 chars after a `.`) and deletes the remainder
 of the line — simulating typing up to that point in real doc code. Consumed by
-afield.CompletionDocScrapeProbe (FIELD_TEST kotlin.completion-docscrape.probe).
+afield.runtime.completion.CompletionDocScrapeProbe (FIELD_TEST kotlin.completion-docscrape.probe).
 
 The ground truth is free and honest: for `expr.member` in code a human actually wrote and shipped in
 a doc, the member they wrote *is* the label. Nobody had to judge it.

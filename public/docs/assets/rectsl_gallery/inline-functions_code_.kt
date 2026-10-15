@@ -5,14 +5,14 @@
 // busy running this code and a nested compile on it would re-enter and deadlock.
 // See the "RectSL examples" docs page for the escape mechanism.
 
-import afield.rectsl.compileRectSL
-import afield.rectsl.rectMaterialShaderCode
-import afield.rectsl.writeFrameToMesh
-import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
-import afield.four.modules.Mesh
-import afield.four.modules.Module
-import afield.four.modules.parameters
-import afield.four.modules.pointer
+import afield.lang.rectsl.compileRectSL
+import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.writeFrameToMesh
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.graphics.render.Mesh
+import afield.graphics.render.Module
+import afield.graphics.render.parameters
+import afield.graphics.render.pointer
 
 val rectsl = """
 #rectsl
@@ -34,7 +34,7 @@ val rectsl = """
 ;
 """
 
-val engine = afield.KotlinInterface2(filePrefix = "INLINE_FN_VIEW_")
+val engine = afield.runtime.kotlin.KotlinInterface2(filePrefix = "INLINE_FN_VIEW_")
 val program = compileRectSL(rectsl, engine = engine).program!!
 val shader  = rectMaterialShaderCode(program)
 check(shader.ok) { shader.diagnostics.joinToString("\n") }
@@ -56,7 +56,7 @@ renderer += "rectsl" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.stdlib.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

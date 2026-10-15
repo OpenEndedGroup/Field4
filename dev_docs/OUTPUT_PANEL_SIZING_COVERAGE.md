@@ -60,7 +60,7 @@ change took a 302px panel to 38,148px, because full-width blocks were counted at
 - **the fill-frame population.** `h2-panel-sizing` exercises one fill frame; `output-area-basics`
   exercises none. The lazy-output frame and the value-viewer frame are fill frames by the same
   three-part test and are under no geometry assertion anywhere.
-  `src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt:952#fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch`
+  `src/jvmTest/kotlin/afield/animation/keyframes/KeyframeBrowserTest.kt:952#fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch`
   pins `keyframeBrowser`'s *markup*, that a non-positive width still spells `100%`, without
   standing up a browser, so it says nothing about what a panel then does with it.
 - **the screenshot-prep loop.** The regression cases photograph a box but assert nothing about the

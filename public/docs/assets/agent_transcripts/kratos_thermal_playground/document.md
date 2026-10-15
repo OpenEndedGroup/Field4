@@ -11,15 +11,15 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_thermal" index="0" -->
 
 ```edn [field-box id="kratos_thermal" role="properties"]
-{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 125 "characters" 7469 "sha256" "1ab9a34e13ebc30913dc0639c9e610a60e2d8b4d4f60dcd0a14180975716e845"}]}
+{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 125 "characters" 7527 "sha256" "f381d4b3e8cfa880fb50fd967645eeac874ff95013b2cb1924b9a103232778fb"}]}
 ```
 
 ```kotlin [field-property box="kratos_thermal" name="code" path="kratos_thermal_code_.kt"]
-import afield.frames
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.showMeshGrid
+import afield.runtime.lifecycle.frames
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 

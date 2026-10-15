@@ -1,6 +1,6 @@
 # StackSL cheatsheet
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`stacksl.kt`](reference/graphics.md#stacksl-kt). Start from [what's already in the box](reference/index.md).*
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`stacksl.kt`](reference/graphics.md#stackslbox-kt). Start from [what's already in the box](reference/index.md).*
 
 <div class="stacksl-reference" markdown>
 

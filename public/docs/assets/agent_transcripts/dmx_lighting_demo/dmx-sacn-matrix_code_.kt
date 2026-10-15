@@ -1,4 +1,4 @@
-import afield.dmx.*
+import afield.io.dmx.*
 
 // sACN (E1.31) out and back in, in one box: an image shown on a 16 x 8 matrix of RGBW fixtures.
 // 128 RGBW fixtures x 4 slots fill universe 10 exactly; the matrix is wired serpentine, as most are.

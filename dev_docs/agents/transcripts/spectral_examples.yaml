@@ -10,7 +10,7 @@ description: >
     3. mel spectrogram — two crossing chirps (one rising, one falling) collapsed per frame with
        Mel.filterBank(...), drawn with showHeatmap(...) as a cyan->orange heatmap tracing an X.
     4. resonator bank — the chirp + tones run through a log-spaced complex resonator filterbank
-       (afield.four.audio.resonate) instead of an FFT, drawn with showHeatmap(...) as a cyan->orange heatmap.
+       (afield.audio.engine.resonate) instead of an FFT, drawn with showHeatmap(...) as a cyan->orange heatmap.
     5. streaming features — SpectralCentroidFilter / SpectralFluxFilter / RmsFilter in a `then`
        chain over a synthesised chirp+onset stream, the three (normalized) traces via showSignals(...).
   No Window or Renderer: every box executes headless and paints into its own output display via
@@ -132,9 +132,9 @@ operations:
       frame: { x: 80.0, y: 1180.0, w: 310.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.audio.resonate
-          import afield.four.audio.resonatorAlphaHeuristics
-
+          import afield.audio.engine.resonate
+          import afield.audio.engine.resonatorAlphaHeuristics
+          
           val sampleRate = 8000f
           val n = 24000
           val f0 = 300.0; val f1 = 3000.0
@@ -146,7 +146,7 @@ operations:
                   0.35 * sin(2.0 * PI * 700.0 * t) +
                   0.30 * sin(2.0 * PI * 1800.0 * t)).toFloat()
           }
-
+          
           val numRes = 96
           val minHz = 120.0; val maxHz = 3900.0
           val freqs = FloatArray(numRes) { i ->
@@ -154,7 +154,7 @@ operations:
           }
           val alphas = resonatorAlphaHeuristics(freqs, sampleRate)
           val hop = 256
-
+          
           val flat = resonate(signal, sampleRate, freqs, alphas, betas = alphas, hopLength = hop)
           val slices = flat.size / (2 * numRes)
           fun ampAt(s: Int, kk: Int): Float {
@@ -164,12 +164,12 @@ operations:
           }
           var maxA = 1e-9f
           for (s in 0 until slices) for (kk in 0 until numRes) { val a = ampAt(s, kk); if (a > maxA) maxA = a }
-
+          
           // dB relative to the peak, as a [slice][resonator] matrix.
           val dB = Array(slices) { s ->
               DoubleArray(numRes) { kk -> 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4)) }
           }
-
+          
           println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
           showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
               transpose = true, flipY = true)

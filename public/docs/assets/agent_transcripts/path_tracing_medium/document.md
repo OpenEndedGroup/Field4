@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pt_renderer" index="0" -->
 
 ```edn [field-box id="pt_renderer" role="properties"]
-{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_medium"] "properties" {"children" #{#afield/box "pt_medium"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 216 "sha256" "2b12b11e18a24ddf4b4f160c4d1d141125cbcbb7c121734b6290ecf58ced8a17"}]}
+{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_medium"] "properties" {"children" #{#afield/box "pt_medium"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 227 "sha256" "bbe9d94bb2a2e391d3c4336da80695874b282380de49793185ec744399e877e0"}]}
 ```
 
 ```kotlin [field-property box="pt_renderer" name="code" path="pt_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,17 +31,17 @@ start(renderer::run)
 <!-- field-box id="pt_medium" index="1" -->
 
 ```edn [field-box id="pt_medium" role="properties"]
-{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 180.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 76 "characters" 3876 "sha256" "8645b08a3e3794bc7e08e00452e8372923a873a734ee59842a2e2e3c5ec6efae"}]}
+{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 180.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 76 "characters" 3923 "sha256" "0a90805c9c546a1185c8b2becffc3f1ef19b370fc8e57a16fa334ebf803f893d"}]}
 ```
 
 ```kotlin [field-property box="pt_medium" name="code" path="pt_medium_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector4f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector4f
 
 prop<PathTracingRenderer>(tracer)
 

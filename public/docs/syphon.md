@@ -2,7 +2,7 @@
 
 [Syphon](https://syphon.info) is how video applications on a Mac hand frames to each other without
 encoding them: Resolume, TouchDesigner, MadMapper, VDMX, Max, OBS (through its Syphon source) and
-many more publish and receive it. Field joins in through `afield.syphon`: a box can publish
+many more publish and receive it. Field joins in through `afield.io.syphon`: a box can publish
 pictures for any of those to receive, and can receive what they publish.
 
 Syphon is macOS-only, and Field reaches it through a small Objective-C library that is not built by
@@ -110,5 +110,5 @@ name in the third box to receive another application.
     values, then the probe publishes it and Field asserts them. Orientation is part of what it pins:
     row 0 is the top in both directions. Syphon's discovery rides on macOS distributed
     notifications, which arrive on the main run loop; Field's main thread runs Field's own loop, so
-    `afield.syphon` turns the run loop once per Field frame. Without that, Field's servers were seen
+    `afield.io.syphon` turns the run loop once per Field frame. Without that, Field's servers were seen
     only by clients that were already listening when they started.

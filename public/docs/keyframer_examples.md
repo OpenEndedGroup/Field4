@@ -2,9 +2,9 @@
 
 *Every `keyframer.kt` declaration used below is listed, with its KDoc, in the codebase reference:
 [`keyframer.kt`](reference/graphics.md#keyframer-kt). The two supporting types the examples lean on,
-`afield.four.buffers.Structure` and `afield.four.util.CameraPose`, are not: they live in
-`afield.four`, which the [reference](reference/index.md) leaves to
-[afield.four Graphics](afield_four_graphics.md).*
+`afield.graphics.vulkan.buffers.Structure` and `afield.graphics.vulkan.util.CameraPose`, are not: they live in
+Field 4, which the [reference](reference/index.md) leaves to
+[Field 4 Graphics](afield_four_graphics.md).*
 
 Live coding has a specific kind of loss built into it. You push sliders around for twenty minutes,
 arrive somewhere good, and then the thing you arrived at exists only as the current contents of a
@@ -41,8 +41,8 @@ a `radius` without colliding.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/capture_apply.png" wait="2.0" capture="box" open-outputs="true" w="900" h="620" padding="16"}
 :::static
-import afield.four.buffers.Structure
-import afield.stdlib.KeyframeScope
+import afield.graphics.vulkan.buffers.Structure
+import afield.animation.keyframes.KeyframeScope
 
 // Two independent uniform structures, as a glow pass and a blur pass would each have.
 val glow = Structure()
@@ -203,11 +203,11 @@ typed boundaries, interpolation and persistence.
 
     Besides a `Structure`, a scope can target a live module's uniform structures:
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`stdlib/keyframer.kt:820#fun target(module: ModulePointer, name: String) =`, `:824`, `:828`). All three need a live renderer. Every
+    siblings (`animation/keyframes/keyframer.kt:902#fun target(module: ModulePointer, name: String) =`, `:906`, `:910`). All three need a live renderer. Every
     fence on this page uses the plain `Structure` form instead.
 
     Each is a one-line wrapper over the lazily-resolved `target(name) { … }`
-    (`stdlib/keyframer.kt:702#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
+    (`animation/keyframes/keyframer.kt:784#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
     structure. That map is keyed by the **uniform block's name**
@@ -241,7 +241,7 @@ the entire frame is a `vec4 tint` in the shader's uniform block, and the only th
 that uniform is a keyframe.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.stdlib.KeyframeScope
+import afield.animation.keyframes.KeyframeScope
 
 var m = Mesh()
 var module = moduleHere()
@@ -252,7 +252,7 @@ renderer += module
 // Fully qualified, and it has to be: a uniform block makes moduleHere() generate a Kotlin class of the
 // same (capitalised) name straight into this box's preamble, and a declaration in the box beats
 // any import. The block here is `look`, so the trap would bite anything called `Look`.
-val camera = afield.four.util.Camera()
+val camera = afield.graphics.vulkan.util.Camera()
 camera.at = vec(0, 0, 7)
 camera.target = vec(0, 0, 0)
 
@@ -314,14 +314,14 @@ Each frame is a separate native Vulkan window capture. `t` is the only differenc
 runs, and everything that moves is a uniform a keyframe wrote.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t00.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true name="keyframer-strip-t00" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.stdlib.KeyframeScope
+import afield.animation.keyframes.KeyframeScope
 
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
 
-val camera = afield.four.util.Camera()
+val camera = afield.graphics.vulkan.util.Camera()
 
 // The same white fan as above — every colour on screen still comes from the tint alone.
 val N = 48
@@ -364,13 +364,13 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t33.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t33" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.stdlib.KeyframeScope
+import afield.animation.keyframes.KeyframeScope
 
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
-val camera = afield.four.util.Camera()
+val camera = afield.graphics.vulkan.util.Camera()
 val N = 48
 m.set(3 * N, 1 * N) {
     N {
@@ -400,13 +400,13 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t66.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t66" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.stdlib.KeyframeScope
+import afield.animation.keyframes.KeyframeScope
 
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
-val camera = afield.four.util.Camera()
+val camera = afield.graphics.vulkan.util.Camera()
 val N = 48
 m.set(3 * N, 1 * N) {
     N {
@@ -436,13 +436,13 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t10.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t10" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.stdlib.KeyframeScope
+import afield.animation.keyframes.KeyframeScope
 
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
-val camera = afield.four.util.Camera()
+val camera = afield.graphics.vulkan.util.Camera()
 val N = 48
 m.set(3 * N, 1 * N) {
     N {
@@ -501,9 +501,9 @@ at the same subject, those are very different moves:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/camera_screw.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="520" padding="16"}
 :::static
-import afield.four.util.CameraPose
-import afield.stdlib.KeyframeScope
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.util.CameraPose
+import afield.animation.keyframes.KeyframeScope
+import afield.math.linalg.Vector3f
 
 val scope = KeyframeScope()
 // Two cameras, both two units up, both looking at the origin, a quarter turn apart.
@@ -642,9 +642,9 @@ with no warning anywhere.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/persistence.png" wait="3.0" capture="box" open-outputs="true" w="960" h="760" padding="16"}
 :::static
-import afield.stdlib.KeyframeScope
-import afield.stdlib.stackSLString
-import afield.stdlib.linalg.Vector3f
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.stackSLString
+import afield.math.linalg.Vector3f
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-docs")
@@ -798,8 +798,8 @@ through. Without it the browser only reads.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/browser.png" wait="4.0" capture="box" open-outputs="true" w="960" h="560" padding="16"}
 :::static
-import afield.four.buffers.Structure
-import afield.stdlib.KeyframeScope
+import afield.graphics.vulkan.buffers.Structure
+import afield.animation.keyframes.KeyframeScope
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -846,11 +846,11 @@ fiddling becomes a diff you can commit.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/update_code.png" wait="2.0" capture="box" open-outputs="true" w="900" h="560" padding="16"}
 :::static
-import afield.stdlib.KeyframeScope
-import afield.stdlib.SourceBackedBlock
-import afield.stdlib.stackSLString
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Quaternionf
+import afield.animation.keyframes.KeyframeScope
+import afield.study.source.SourceBackedBlock
+import afield.animation.keyframes.stackSLString
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Quaternionf
 
 val scope = KeyframeScope()
 val key = scope.Key(mutableMapOf(
@@ -911,10 +911,10 @@ Two programs that differ only in *numbers* are the exception, and they are the c
 two keys are two looks for one patch. `codeBlend` turns that case on:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.KeyframeScope
-import afield.stdlib.planStackSLCodeBlend
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.planStackSLCodeBlend
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
@@ -982,7 +982,7 @@ value, so a moving literal becomes a call that reads the parameter out of a regi
 by an integer written into the text:
 
 ```diffstatic {data-lang=text}
-gain * afield.stdlib.kfMix(0.5f, 1.5f, afield.stdlib.keyframeBlendAmount(7, 0))
+gain * afield.animation.keyframes.kfMix(0.5f, 1.5f, afield.animation.keyframes.keyframeBlendAmount(7, 0))
 ```
 
 Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. One

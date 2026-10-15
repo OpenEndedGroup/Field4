@@ -1,7 +1,7 @@
 # Progressive path tracing
 
 [`PathTracingRenderer`](reference/renderers.md#pathtracingrenderer-kt-pathtracingrenderer) is a GPU
-path tracer for `afield.four`. It runs on ordinary
+path tracer for Field 4. It runs on ordinary
 Vulkan compute devices, including MoltenVK on macOS. When Field has enabled
 `VK_KHR_ray_query`, `AUTO` selects hardware triangle traversal. Both backends use
 the same lighting, material evaluation and accumulation code. Every type this page
@@ -26,7 +26,7 @@ The two opaque material studies opt into `indirectClamp = 10f`; the glass study 
 clamping disabled so its transmitted lighting and caustics are preserved.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 val tracer = PathTraceDemo.install(renderer,
     "public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
@@ -61,9 +61,9 @@ Opaque roughness zero uses a small finite roughness floor. Glass has a true spec
 reflection/refraction mode at zero roughness.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
 
 val scene = PathTraceScene()
 val paint = scene.material(PathTraceMaterial.plastic(0.7f, 0.08f, 0.02f))
@@ -99,7 +99,7 @@ keyboard controls. The tracer uses perspective projection and its own output asp
 ratio; `SuperProjection` orthographic blending and principal-point offsets are not used.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.util.keyCamera
+import afield.graphics.vulkan.util.keyCamera
 
 val camera = tracer.camera
 camera.at.set(0f, 2.6f, 8f)
@@ -157,7 +157,7 @@ motion blur, diffraction or a multi-element photographic lens.
 Load a static glTF 2.0 scene before creating the tracer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 val scene = PathTraceScene.fromGltf("/absolute/path/model.glb")
 val tracer = pathTracingHere(scene, env, camera = camera)
@@ -175,8 +175,8 @@ To add a model alongside other geometry, use `scene.importGltf`. Its result
 provides world-space bounds, a name-to-material-ID map and import warnings:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 
 val scene = PathTraceScene()
 val model = scene.importGltf("/absolute/path/model.gltf",
@@ -290,7 +290,7 @@ medium](#a-participating-medium) below, and the table there compares the two dir
 `fogDensity` remains the cheaper choice when you only need distance haze.
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.linalg.Vector3f
+import afield.math.linalg.Vector3f
 
 tracer.fogColor = Vector3f(0.25f, 0.35f, 0.5f)
 tracer.fogDensity = 0.1f
@@ -299,9 +299,9 @@ tracer.fogBackground = true
 ```
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/fog.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="fog study converged" embed=true hidden=true timeout="180" name="path-tracing-fog" alt="A row of PBR spheres and a checkerboard floor fading into blue-grey depth fog with increasing distance"}
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
 
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.3f, 0.3f, 0.3f))
@@ -521,7 +521,7 @@ Use `pathTracingHere` instead of the plain constructor to put material evaluatio
 in the current box's editable **compute** property:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 val tracer = pathTracingHere(scene, env, camera = camera, name = "study")
 tracer.blitToScreen()
@@ -934,7 +934,7 @@ alpha holds primary visibility coverage. RGB is premultiplied by alpha; `samples
 reports the sample count. Glass hits have coverage one, including their traced
 refraction; this alpha is not a transmission matte. Call it outside frame recording on Field's render thread.
 It waits for GPU readback and is intended for export and checks, not the frame loop.
-Create/install/close on that same thread, as with other `afield.four` resources.
+Create/install/close on that same thread, as with other Field 4 resources.
 `close()` detaches the passes immediately and defers destruction until in-flight
 frames have retired.
 

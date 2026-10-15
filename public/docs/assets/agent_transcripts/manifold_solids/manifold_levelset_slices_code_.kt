@@ -1,8 +1,8 @@
-import afield.graphics.FLine
-import afield.manifold.JoinType
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.MeshView
+import afield.geometry.path.FLine
+import afield.geometry.solid.manifold.JoinType
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.mesh.MeshView
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin

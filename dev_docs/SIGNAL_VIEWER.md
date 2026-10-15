@@ -2,7 +2,7 @@
 
 Since 2026-09-23 Field has **one** interactive viewer for anything drawn against a single x/time
 axis. The runtime is `src/commonMain/resources/signal-viewer.js`, drawn with Field's bundled
-Plotly. The HTML shell is `TimeViewerShell` (`src/jvmMain/kotlin/afield/stdlib/TimeViewer.kt`).
+Plotly. The HTML shell is `TimeViewerShell` (`src/jvmMain/kotlin/afield/ui/visualization/TimeViewer.kt`).
 Four public surfaces render through it, and their signatures did not change:
 
 | caller | source | where the data comes from |

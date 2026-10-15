@@ -252,7 +252,7 @@ _source_page_anchors: dict[str, Any] | None = None
 
 
 def source_page_anchors() -> dict[str, Any]:
-    """The basename -> {page, lines} map written by afield.docs.SourcePageGenerator, or empty."""
+    """The basename -> {page, lines} map written by afield.tools.docs.SourcePageGenerator, or empty."""
     global _source_page_anchors
     if _source_page_anchors is None:
         path = os.environ.get(SOURCE_PAGE_ANCHORS_ENV, "").strip()
@@ -3324,7 +3324,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     # default keeps every existing dough_dsp_sound.md fence hashing exactly as it did.
     audio_renderer = (
         first_attr(attrs, "audio-renderer", "audio_renderer", "audioRenderer")
-        or "afield.four.synth.DoughDspSoundDocs"
+        or "afield.audio.synth.DoughDspSoundDocs"
     ).strip()
     if not screenshot and not video and not audio:
         raise RuntimeError(f"{page_path}:{line_number} {runner_name} requires screenshot=\"...\", video=\"...\" and/or audio=\"...\"")
@@ -3542,7 +3542,7 @@ def wrap_runnable_code_for_language(*, code: str, language_key: str) -> str:
         wrapped = f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
 // FIELD_DOCS_EXPECT_SVG: false
-import afield.nano.nanoRunReportHtml
+import afield.lang.nano.nanoRunReportHtml
 
 val __nanoSource = {source_literal}
 
@@ -3565,7 +3565,7 @@ display(
         wrapped = f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
 // FIELD_DOCS_EXPECT_SVG: true
-import afield.docs.renderMorphoDocsSnippet
+import afield.tools.docs.renderMorphoDocsSnippet
 
 val __morphoSource = {source_literal}
 renderMorphoDocsSnippet(__morphoSource)
@@ -3578,7 +3578,7 @@ renderMorphoDocsSnippet(__morphoSource)
         wrapped = f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
 // FIELD_DOCS_EXPECT_SVG: {"true" if expects_svg else "false"}
-import afield.docs.renderForthDocsSnippet
+import afield.tools.docs.renderForthDocsSnippet
 
 val __forthSource = {source_literal}
 renderForthDocsSnippet(__forthSource)
@@ -3631,9 +3631,9 @@ def fabricate_docs_harness_code(*, scene: str, output_path: Path) -> str:
     output_literal = json.dumps(str(output_path))
     ready_literal = json.dumps(ready_message)
     return f"""
-import afield.four.Renderer
-import afield.four.fabricated.StandardRendererDocsHarness
-import afield.four.modules.fromContext
+import afield.graphics.vulkan.Renderer
+import afield.graphics.scene.fabricated.StandardRendererDocsHarness
+import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 
@@ -4070,7 +4070,7 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["audioSpec"] = options.audio_spec
         # Only when it is not the historic default, so existing fences keep their digest and
         # do not all re-render on this change.
-        if options.audio_renderer != "afield.four.synth.DoughDspSoundDocs":
+        if options.audio_renderer != "afield.audio.synth.DoughDspSoundDocs":
             payload["audioRenderer"] = options.audio_renderer
     return payload
 

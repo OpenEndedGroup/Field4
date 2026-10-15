@@ -11,13 +11,13 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="encodec_reconstruction_microscope" index="0" -->
 
 ```edn [field-box id="encodec_reconstruction_microscope" role="properties"]
-{"id" "encodec_reconstruction_microscope" "index" 0 "name" "EnCodec reconstruction microscope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "EnCodec reconstruction microscope" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "encodec_reconstruction_microscope_code_.kt" "lines" 10 "characters" 591 "sha256" "6b46d6ad6a34cf871e747df3ccac29d63a489c932aa934a6083f4315f3f9f17d"}]}
+{"id" "encodec_reconstruction_microscope" "index" 0 "name" "EnCodec reconstruction microscope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "EnCodec reconstruction microscope" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "encodec_reconstruction_microscope_code_.kt" "lines" 10 "characters" 613 "sha256" "22ffa97e153536c4946017e51f540fac063e2ecf70679cb3a5aad7999f243e99"}]}
 ```
 
 ```kotlin [field-property box="encodec_reconstruction_microscope" name="code" path="encodec_reconstruction_microscope_code_.kt"]
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
+import afield.ui.visualization.AudioVisualizer
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json

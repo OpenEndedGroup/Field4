@@ -7,7 +7,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py \
   --workspace dev_docs/agents/demos --document alife_script --command 'run one_agent'
 ```
 
-`afield.stdlib.alife_script` adds a per-agent behaviour layer to ALife. The nine `alife_*.kt` files
+`afield.simulation.agents`' `alife_script.kt` adds a per-agent behaviour layer to ALife. The nine `alife_*.kt` files
 already there advance a whole population with one `step(params)` call — `BoidFlock.step`,
 `PhysarumSwarm.step`. This layer lets an individual agent run a *program*: sequencing, waiting on
 simulation time, named phases, bounded concurrent sub-behaviours, and steering drives that are

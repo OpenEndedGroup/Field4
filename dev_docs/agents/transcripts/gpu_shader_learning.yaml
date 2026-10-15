@@ -10,19 +10,13 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing\
-        \ = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer\
-        \ {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\"\
-        )\nstart(renderer::run)\n"
+      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing\
-      \ = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer\
-      \ {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\"\
-      )\nstart(renderer::run)\n"
+    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
 - wait:
     frames: 3
 - create:
@@ -34,33 +28,7 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.neural.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
-        import org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<GpuShaderLearningView>(lab)\nfromContextWithNameOrNull<GpuShaderLearningView>(\"\
-        lab\")?.close()\ncheck(renderer.device.supportsCooperativeVectorTraining) {\n    \"GPU learning needs enabled\
-        \ cooperative-vector training. learned_from_module provides offline training.\"\n}\nval source=RenderToTexture(renderer)\
-        \ {\n    width=1920;height=1080;useDepth=false;format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher=moduleHere\
-        \ { source.apply();depthTest=false;depthWrite=false;blend=false }\nval mesh=Mesh(renderer,teacher)\nmesh.resize(3,0,teacher)\n\
-        mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\nteacher += \"fullscreen\" to mesh\n\
-        source += \"teacher\" to teacher\nlab=GpuShaderLearningView(renderer,source) { t -> mesh.push[\"state\"\
-        ]=vec(source.width,source.height,t,0) }.install()\nvar learn=true\nvar view=2\nvar reset=false\nvar save=false\n\
-        var iterations=8\ncontrolGroup(\"GPU shader learning\") {\n    checkbox(\"Learn on GPU\",initialValue=true)\
-        \ { learn=it }\n    slider(\"Updates per frame\",min=1.0,max=32.0,step=1.0,initialValue=8.0) { iterations=it.toInt()\
-        \ }\n    slider(\"0: Source · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { view=it.toInt()\
-        \ }\n    button(\"Reset model and optimizer\") { if(it)reset=true }\n    button(\"Save frozen weights\"\
-        ) { if(it)save=true }\n}\ndisplayOpen(\"GPU shader learning\")\nprintln(\"Edit fragment; training samples\
-        \ actual linear RGB. Freeze learning and choose Learned to stop the teacher pass. Compare is source / learned\
-        \ / error × 8.\")\nval owner=renderer\nframes {\n    var phase=0\n    var sourceHash=ShaderTraining.sourceDigest(source)\n\
-        \    while(true) {\n        val hash=ShaderTraining.sourceDigest(source)\n        if(hash!=sourceHash) {\
-        \ sourceHash=hash;reset=true;println(\"Teacher changed; restarting the fit.\") }\n        if(reset){lab.model.reset();reset=false}\n\
-        \        lab.learning=learn;lab.iterationsPerFrame=iterations;lab.view=view\n        lab.parameter=if(learn)(phase%13)/6f-1\
-        \ else kotlin.math.sin(phase*.018f)\n        if(save) {\n            save=false\n            runCatching\
-        \ {\n                val directory=File(\"build/shader-learning/gpu-${System.currentTimeMillis()}\")\n \
-        \               lab.model.save(directory,sourceHash,\"Fullscreen module; camera, textures and other controls\
-        \ fixed; normalized time varies\")\n                println(\"FROZEN MODEL SAVED: $directory — load weights.f16\
-        \ and weights.json with LearnedShader.\")\n            }.onFailure { println(\"Save failed: ${it.message}\"\
-        ) }\n        }\n        phase++;frame()\n    }\n}.end {\n    lab.close()\n    owner.cleanup+=Runnable {\n\
-        \        teacher.current.cleanup();source.imageViewArray.forEach { it.imageView.cleanup() }\n        source.colorImageRefs.forEach\
-        \ { it?.cleanup() };source.defaultSampler?.cleanup()\n    }\n}\n"
+      code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.shader.learning.*\nimport afield.document.context.fromContextWithNameOrNull\nimport org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<GpuShaderLearningView>(lab)\nfromContextWithNameOrNull<GpuShaderLearningView>(\"lab\")?.close()\ncheck(renderer.device.supportsCooperativeVectorTraining) {\n    \"GPU learning needs enabled cooperative-vector training. learned_from_module provides offline training.\"\n}\nval source=RenderToTexture(renderer) {\n    width=1920;height=1080;useDepth=false;format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher=moduleHere { source.apply();depthTest=false;depthWrite=false;blend=false }\nval mesh=Mesh(renderer,teacher)\nmesh.resize(3,0,teacher)\nmesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\nteacher += \"fullscreen\" to mesh\nsource += \"teacher\" to teacher\nlab=GpuShaderLearningView(renderer,source) { t -> mesh.push[\"state\"]=vec(source.width,source.height,t,0) }.install()\nvar learn=true\nvar view=2\nvar reset=false\nvar save=false\nvar iterations=8\ncontrolGroup(\"GPU shader learning\") {\n    checkbox(\"Learn on GPU\",initialValue=true) { learn=it }\n    slider(\"Updates per frame\",min=1.0,max=32.0,step=1.0,initialValue=8.0) { iterations=it.toInt() }\n    slider(\"0: Source · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { view=it.toInt() }\n    button(\"Reset model and optimizer\") { if(it)reset=true }\n    button(\"Save frozen weights\") { if(it)save=true }\n}\ndisplayOpen(\"GPU shader learning\")\nprintln(\"Edit fragment; training samples actual linear RGB. Freeze learning and choose Learned to stop the teacher pass. Compare is source / learned / error × 8.\")\nval owner=renderer\nframes {\n    var phase=0\n    var sourceHash=ShaderTraining.sourceDigest(source)\n    while(true) {\n        val hash=ShaderTraining.sourceDigest(source)\n        if(hash!=sourceHash) { sourceHash=hash;reset=true;println(\"Teacher changed; restarting the fit.\") }\n        if(reset){lab.model.reset();reset=false}\n        lab.learning=learn;lab.iterationsPerFrame=iterations;lab.view=view\n        lab.parameter=if(learn)(phase%13)/6f-1 else kotlin.math.sin(phase*.018f)\n        if(save) {\n            save=false\n            runCatching {\n                val directory=File(\"build/shader-learning/gpu-${System.currentTimeMillis()}\")\n                lab.model.save(directory,sourceHash,\"Fullscreen module; camera, textures and other controls fixed; normalized time varies\")\n                println(\"FROZEN MODEL SAVED: $directory — load weights.f16 and weights.json with LearnedShader.\")\n            }.onFailure { println(\"Save failed: ${it.message}\") }\n        }\n        phase++;frame()\n    }\n}.end {\n    lab.close()\n    owner.cleanup+=Runnable {\n        teacher.current.cleanup();source.imageViewArray.forEach { it.imageView.cleanup() }\n        source.colorImageRefs.forEach { it?.cleanup() };source.defaultSampler?.cleanup()\n    }\n}\n"
       vertex: "#version 460\nvoid main() {\n    vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n    gl_Position=vec4(p*2-1,0,1);\n\
         }\n"
       fragment: "#version 460\nlayout(push_constant) uniform P { vec4 state; } p;\nlayout(location=0) out vec4 color;\n\
@@ -77,31 +45,6 @@ operations:
     property: code
     type: code
     strand: scene
-    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.neural.*\nimport afield.four.modules.fromContextWithNameOrNull\n\
-      import org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<GpuShaderLearningView>(lab)\nfromContextWithNameOrNull<GpuShaderLearningView>(\"\
-      lab\")?.close()\ncheck(renderer.device.supportsCooperativeVectorTraining) {\n    \"GPU learning needs enabled\
-      \ cooperative-vector training. learned_from_module provides offline training.\"\n}\nval source=RenderToTexture(renderer)\
-      \ {\n    width=1920;height=1080;useDepth=false;format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher=moduleHere\
-      \ { source.apply();depthTest=false;depthWrite=false;blend=false }\nval mesh=Mesh(renderer,teacher)\nmesh.resize(3,0,teacher)\n\
-      mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\nteacher += \"fullscreen\" to mesh\n\
-      source += \"teacher\" to teacher\nlab=GpuShaderLearningView(renderer,source) { t -> mesh.push[\"state\"]=vec(source.width,source.height,t,0)\
-      \ }.install()\nvar learn=true\nvar view=2\nvar reset=false\nvar save=false\nvar iterations=8\ncontrolGroup(\"\
-      GPU shader learning\") {\n    checkbox(\"Learn on GPU\",initialValue=true) { learn=it }\n    slider(\"Updates\
-      \ per frame\",min=1.0,max=32.0,step=1.0,initialValue=8.0) { iterations=it.toInt() }\n    slider(\"0: Source\
-      \ · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { view=it.toInt() }\n    button(\"\
-      Reset model and optimizer\") { if(it)reset=true }\n    button(\"Save frozen weights\") { if(it)save=true }\n\
-      }\ndisplayOpen(\"GPU shader learning\")\nprintln(\"Edit fragment; training samples actual linear RGB. Freeze\
-      \ learning and choose Learned to stop the teacher pass. Compare is source / learned / error × 8.\")\nval owner=renderer\n\
-      frames {\n    var phase=0\n    var sourceHash=ShaderTraining.sourceDigest(source)\n    while(true) {\n   \
-      \     val hash=ShaderTraining.sourceDigest(source)\n        if(hash!=sourceHash) { sourceHash=hash;reset=true;println(\"\
-      Teacher changed; restarting the fit.\") }\n        if(reset){lab.model.reset();reset=false}\n        lab.learning=learn;lab.iterationsPerFrame=iterations;lab.view=view\n\
-      \        lab.parameter=if(learn)(phase%13)/6f-1 else kotlin.math.sin(phase*.018f)\n        if(save) {\n  \
-      \          save=false\n            runCatching {\n                val directory=File(\"build/shader-learning/gpu-${System.currentTimeMillis()}\"\
-      )\n                lab.model.save(directory,sourceHash,\"Fullscreen module; camera, textures and other controls\
-      \ fixed; normalized time varies\")\n                println(\"FROZEN MODEL SAVED: $directory — load weights.f16\
-      \ and weights.json with LearnedShader.\")\n            }.onFailure { println(\"Save failed: ${it.message}\"\
-      ) }\n        }\n        phase++;frame()\n    }\n}.end {\n    lab.close()\n    owner.cleanup+=Runnable {\n\
-      \        teacher.current.cleanup();source.imageViewArray.forEach { it.imageView.cleanup() }\n        source.colorImageRefs.forEach\
-      \ { it?.cleanup() };source.defaultSampler?.cleanup()\n    }\n}\n"
+    code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.shader.learning.*\nimport afield.document.context.fromContextWithNameOrNull\nimport org.lwjgl.vulkan.VK13.*\nimport java.io.File\n\nprop<GpuShaderLearningView>(lab)\nfromContextWithNameOrNull<GpuShaderLearningView>(\"lab\")?.close()\ncheck(renderer.device.supportsCooperativeVectorTraining) {\n    \"GPU learning needs enabled cooperative-vector training. learned_from_module provides offline training.\"\n}\nval source=RenderToTexture(renderer) {\n    width=1920;height=1080;useDepth=false;format=VK_FORMAT_R32G32B32A32_SFLOAT\n}\nval teacher=moduleHere { source.apply();depthTest=false;depthWrite=false;blend=false }\nval mesh=Mesh(renderer,teacher)\nmesh.resize(3,0,teacher)\nmesh.push.setMembers(teacher.current.fi.pushConstants.single().members)\nteacher += \"fullscreen\" to mesh\nsource += \"teacher\" to teacher\nlab=GpuShaderLearningView(renderer,source) { t -> mesh.push[\"state\"]=vec(source.width,source.height,t,0) }.install()\nvar learn=true\nvar view=2\nvar reset=false\nvar save=false\nvar iterations=8\ncontrolGroup(\"GPU shader learning\") {\n    checkbox(\"Learn on GPU\",initialValue=true) { learn=it }\n    slider(\"Updates per frame\",min=1.0,max=32.0,step=1.0,initialValue=8.0) { iterations=it.toInt() }\n    slider(\"0: Source · 1: Learned · 2: Compare\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { view=it.toInt() }\n    button(\"Reset model and optimizer\") { if(it)reset=true }\n    button(\"Save frozen weights\") { if(it)save=true }\n}\ndisplayOpen(\"GPU shader learning\")\nprintln(\"Edit fragment; training samples actual linear RGB. Freeze learning and choose Learned to stop the teacher pass. Compare is source / learned / error × 8.\")\nval owner=renderer\nframes {\n    var phase=0\n    var sourceHash=ShaderTraining.sourceDigest(source)\n    while(true) {\n        val hash=ShaderTraining.sourceDigest(source)\n        if(hash!=sourceHash) { sourceHash=hash;reset=true;println(\"Teacher changed; restarting the fit.\") }\n        if(reset){lab.model.reset();reset=false}\n        lab.learning=learn;lab.iterationsPerFrame=iterations;lab.view=view\n        lab.parameter=if(learn)(phase%13)/6f-1 else kotlin.math.sin(phase*.018f)\n        if(save) {\n            save=false\n            runCatching {\n                val directory=File(\"build/shader-learning/gpu-${System.currentTimeMillis()}\")\n                lab.model.save(directory,sourceHash,\"Fullscreen module; camera, textures and other controls fixed; normalized time varies\")\n                println(\"FROZEN MODEL SAVED: $directory — load weights.f16 and weights.json with LearnedShader.\")\n            }.onFailure { println(\"Save failed: ${it.message}\") }\n        }\n        phase++;frame()\n    }\n}.end {\n    lab.close()\n    owner.cleanup+=Runnable {\n        teacher.current.cleanup();source.imageViewArray.forEach { it.imageView.cleanup() }\n        source.colorImageRefs.forEach { it?.cleanup() };source.defaultSampler?.cleanup()\n    }\n}\n"
 - wait:
     frames: 12

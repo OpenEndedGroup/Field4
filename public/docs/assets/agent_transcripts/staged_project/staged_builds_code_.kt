@@ -40,8 +40,8 @@ val blockout = StudyBuildStage("blockout", "Blockout", "blockout-v1", setOf("lev
     c.file("blockout.obj").writeText(mesh.toObj("blockout"))
     val area = g.rooms.values.sumOf { it[2] * it[3] }
     // With Manifold installed, the pieces are also joined into one solid and measured.
-    val solid = if (!afield.manifold.ManifoldLibrary.isAvailable) null else afield.manifold.Solid.scope {
-        val joined = afield.manifold.Solid.union(pieces.map { p -> afield.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2]) })
+    val solid = if (!afield.geometry.solid.manifold.ManifoldLibrary.isAvailable) null else afield.geometry.solid.manifold.Solid.scope {
+        val joined = afield.geometry.solid.manifold.Solid.union(pieces.map { p -> afield.geometry.solid.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2]) })
         mapOf("status" to joined.status.toString(), "volume" to joined.volume)
     }
     val summary = "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +

@@ -1,5 +1,5 @@
 // Three calls, three different answers, and that is the whole point of the type.
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 prop<PathTracingRenderer>(tracer)
 

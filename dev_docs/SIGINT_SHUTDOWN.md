@@ -28,14 +28,14 @@ A minimal repro, independent of Field: `sh -c 'java Sig &'`, then `kill -INT` le
 
 ## What changed
 
-- `afield.InterruptSignal` (`src/jvmMain/kotlin/afield/internal/InterruptSignal.kt`) runs first
+- `afield.app.server.InterruptSignal` (`src/jvmMain/kotlin/afield/app/server/InterruptSignal.kt`) runs first
   in `Server.main`. It reads the current disposition the only way the JVM allows, by registering a
   handler and looking at what comes back. If SIGINT was ignored, it clears that with libc
   `signal(SIGINT, SIG_DFL)` through FFM and registers a handler that exits with 130, as Terminator
   does, so shutdown hooks run. A second SIGINT during shutdown halts at once. If SIGINT was not
   ignored, Terminator's handler goes straight back. Startup logs `SIGINT: RESTORED_FROM_IGNORED`
   on the `startup` channel when the repair was needed, and nothing when it was not.
-- `afield.DocumentShutdownFlush` adds an `afield-document-flush` shutdown hook. The autosave loop
+- `afield.document.persistence.DocumentShutdownFlush` adds an `afield-document-flush` shutdown hook. The autosave loop
   saves every ~5 s, so an edit made in the last few seconds before *any* signal was lost. The hook
   makes the loop's own save (same predicate) inline, with a 4 s budget. `SavingContext.save(…,
   inline = true)` runs the existing background body on the caller, because the misc pool it
@@ -74,7 +74,7 @@ Save on SIGINT: `field.sh` launch, then through the backdoor a new document, `ne
 
 ## Regression test
 
-`./gradlew jvmTest --tests afield.InterruptSignalTest --rerun` (about 5 s). It starts a child JVM
+`./gradlew jvmTest --tests afield.app.server.InterruptSignalTest --rerun` (about 5 s). It starts a child JVM
 the way `field.sh` does (`java … &` from `/bin/sh`) and signals it. The premise case: without
 `InterruptSignal.install()`, SIGINT is ignored. If that ever stops failing, the fix is no longer
 what makes the difference. The fix case: the child exits 130 and its shutdown hook runs. The

@@ -1,4 +1,4 @@
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 // The physics system. State3 is the SoA particle store; the simulation owns it and grows
 // it as things are added, so it starts empty.

@@ -1,7 +1,7 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neural.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.shader.learning.*
+import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK13.*
 import java.io.File
 

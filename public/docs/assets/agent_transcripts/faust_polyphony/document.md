@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="faust_polyphony_offline" index="0" -->
 
 ```edn [field-box id="faust_polyphony_offline" role="properties"]
-{"id" "faust_polyphony_offline" "index" 0 "name" "offline, with a plot" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, with a plot" "_tombstone" false "frame" #afield/rect [660.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_offline_code_.kt" "lines" 34 "characters" 1461 "sha256" "460fe59546df6a6787a804d33eeb6c2bf4887a51b1515b7b82345baa6d160a97"}]}
+{"id" "faust_polyphony_offline" "index" 0 "name" "offline, with a plot" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, with a plot" "_tombstone" false "frame" #afield/rect [660.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_offline_code_.kt" "lines" 34 "characters" 1462 "sha256" "c754aa042d85d649c6e63603fdd6eaedc7ee0e8ca0abb0c541589dffe5bd62e4"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_offline" name="code" path="faust_polyphony_offline_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The identical path with no audio device and no GPU: the same FaustVoiceBank, rendered in 128-frame
 // blocks exactly as the audio thread would render it, into a WAV player and a waveform.
@@ -56,11 +56,11 @@ println(
 <!-- field-box id="faust_polyphony_steal" index="1" -->
 
 ```edn [field-box id="faust_polyphony_steal" role="properties"]
-{"id" "faust_polyphony_steal" "index" 1 "name" "when it runs out of voices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "when it runs out of voices" "_tombstone" false "frame" #afield/rect [660.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_steal_code_.kt" "lines" 60 "characters" 3347 "sha256" "08e04448b97c271da6f45f6fc8ed1ff9e7a94d366e844d647ad2680e66d924f4"}]}
+{"id" "faust_polyphony_steal" "index" 1 "name" "when it runs out of voices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "when it runs out of voices" "_tombstone" false "frame" #afield/rect [660.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_steal_code_.kt" "lines" 60 "characters" 3350 "sha256" "54e43e6283d9d6449279ab1d28dd2e526fe89529f7148fc73c38c542279db857"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_steal" name="code" path="faust_polyphony_steal_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The one knob in this feature with an *audible* consequence, and the only way to know what it
 // does is to render the same passage twice.
@@ -113,7 +113,7 @@ for (frames in listOf(steal, 1L, 1440L).distinct()) {
     )
     display(
         "steal=" + frames,
-        afield.four.audio.WavFloatArrayWriter.encodeStereo16(r.left, r.right, r.sampleRate, 0.9f)
+        afield.audio.engine.WavFloatArrayWriter.encodeStereo16(r.left, r.right, r.sampleRate, 0.9f)
     )
 }
 println()
@@ -127,11 +127,11 @@ println("default prefers the note being on time. See FaustVoiceBank.stealRelease
 <!-- field-box id="faust_polyphony_play" index="2" -->
 
 ```edn [field-box id="faust_polyphony_play" role="properties"]
-{"id" "faust_polyphony_play" "index" 2 "name" "Faust instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust instrument" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_play_code_.kt" "lines" 41 "characters" 1943 "sha256" "a3abc66d845087f6db07c18901ab08b0662a0ca9211c91d39be457a6a64a2b9f"}]}
+{"id" "faust_polyphony_play" "index" 2 "name" "Faust instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust instrument" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_play_code_.kt" "lines" 41 "characters" 1944 "sha256" "4390aebf6694eb42513fccf19a0eda2600cfc2734300293f0d9b9875e600a320"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_play" name="code" path="faust_polyphony_play_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Eight instances of one compiled Faust program, allocated to notes by a pattern. Nothing is
 // recompiled per voice: a Faust wasm factory built with internal memory keeps its whole state at
@@ -179,11 +179,11 @@ inst
 <!-- field-box id="faust_polyphony_timing" index="3" -->
 
 ```edn [field-box id="faust_polyphony_timing" role="properties"]
-{"id" "faust_polyphony_timing" "index" 3 "name" "onsets, in samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "onsets, in samples" "_tombstone" false "frame" #afield/rect [660.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_timing_code_.kt" "lines" 70 "characters" 3888 "sha256" "e15a7d3f8ab464c247b6e0301471ee484ed4678eb7fabad3e6ac8d8ce9268467"}]}
+{"id" "faust_polyphony_timing" "index" 3 "name" "onsets, in samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "onsets, in samples" "_tombstone" false "frame" #afield/rect [660.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_timing_code_.kt" "lines" 70 "characters" 3891 "sha256" "697ff0796faae7b1ff39d64d0b157936e703e5d24cbdc40e5c71ceab6e51b5bc"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_timing" name="code" path="faust_polyphony_timing_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Where the notes actually landed, in samples, against where they were notated.
 //
@@ -247,7 +247,7 @@ if (onsets.size == notated.size) {
 // Player and plot on SEPARATE channels: display() replaces a channel rather than appending,
 // so both on "waveform" left only whichever went out last.
 displayOpen("audio")
-display("audio", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
+display("audio", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
 showSignals(
     "mono" to (0 until render.frames step 24).map { mono[it] },
     x = (0 until render.frames step 24).map { it.toDouble() / render.sampleRate },
@@ -260,11 +260,11 @@ showSignals(
 <!-- field-box id="faust_polyphony_refusal" index="4" -->
 
 ```edn [field-box id="faust_polyphony_refusal" role="properties"]
-{"id" "faust_polyphony_refusal" "index" 4 "name" "what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what it refuses" "_tombstone" false "frame" #afield/rect [80.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_refusal_code_.kt" "lines" 20 "characters" 1027 "sha256" "c0e4831a2519b757a4d77e367ee9d031ba0cf4486df940cb8a0b4732a044f2c1"}]}
+{"id" "faust_polyphony_refusal" "index" 4 "name" "what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what it refuses" "_tombstone" false "frame" #afield/rect [80.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_refusal_code_.kt" "lines" 20 "characters" 1028 "sha256" "187f3810850d903d82514cbdd3a02f1b2b7c14c863872c5f301fa216b320c93e"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_refusal" name="code" path="faust_polyphony_refusal_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // A polyphonic program has to declare `freq` and `gate`. Faust hands its whole declared interface
 // back as JSON, so Field can check — and the interesting question is what happens when it fails.
@@ -291,11 +291,11 @@ println(runCatching { FaustPolyControls.of(program) }.exceptionOrNull()?.message
 <!-- field-box id="faust_polyphony_chord" index="5" -->
 
 ```edn [field-box id="faust_polyphony_chord" role="properties"]
-{"id" "faust_polyphony_chord" "index" 5 "name" "three notes at once" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "three notes at once" "_tombstone" false "frame" #afield/rect [80.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_chord_code_.kt" "lines" 39 "characters" 2312 "sha256" "5b71950d50a1e17f806484a7a2fd4cbb64571c7a822a8dd8523cf51a4e373166"}]}
+{"id" "faust_polyphony_chord" "index" 5 "name" "three notes at once" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "three notes at once" "_tombstone" false "frame" #afield/rect [80.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_chord_code_.kt" "lines" 39 "characters" 2317 "sha256" "91811d98ed12eede4b3037d3b00a67b4520e127d8fe9cf8bccfa519c5f22188d"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_chord" name="code" path="faust_polyphony_chord_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The assertion that proves the feature rather than the plumbing.
 //
@@ -332,7 +332,7 @@ println("1 voice:    " + faustSpectrumPeaks(one.mono(), at, 32768, one.sampleRat
 println("steals:     4 voices " + poly.steals + ", 1 voice " + one.steals)
 println("concurrency: 4 voices " + poly.peakConcurrency + ", 1 voice " + one.peakConcurrency)
 
-display("chord", afield.four.audio.WavFloatArrayWriter.encodeStereo16(poly.left, poly.right, poly.sampleRate, 0.9f))
-display("one voice", afield.four.audio.WavFloatArrayWriter.encodeStereo16(one.left, one.right, one.sampleRate, 0.9f))
+display("chord", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(poly.left, poly.right, poly.sampleRate, 0.9f))
+display("one voice", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(one.left, one.right, one.sampleRate, 0.9f))
 ```
 

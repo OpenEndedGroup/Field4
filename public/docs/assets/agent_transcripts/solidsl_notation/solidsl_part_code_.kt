@@ -1,9 +1,9 @@
-import afield.solidsl.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
+import afield.lang.solidsl.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.geometry.mesh.signedVolume
 
 // ---- the three parameters to change ----------------------------------------------
 val boreRadius = 0.30   // Push toward 0.55 and the four bores break into each other and

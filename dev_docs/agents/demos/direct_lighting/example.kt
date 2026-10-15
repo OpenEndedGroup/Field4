@@ -1,11 +1,11 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.lighting.*
-import afield.four.fabricated.rtxdiSettings
-import afield.stdlib.linalg.Vector3f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.lighting.*
+import afield.graphics.scene.fabricated.rtxdiSettings
+import afield.math.linalg.Vector3f
 import kotlin.math.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.util.keyCamera
+import afield.document.context.fromContextWithNameOrNull
+import afield.graphics.vulkan.util.keyCamera
 
 prop<DirectLightingDemo>(lab)
 // Re-executing this box replaces the experiment at a frame boundary.

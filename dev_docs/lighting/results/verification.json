@@ -2,7 +2,7 @@
   "date": "2026-09-24",
   "standaloneChecks": [
     {
-      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --timeout 300",
+      "command": "run-jvm-main afield.graphics.render.lighting.DirectLightingSmoke --timeout 300",
       "ok": true,
       "exitCode": 0,
       "timedOut": false,
@@ -12,7 +12,7 @@
       ]
     },
     {
-      "command": "run-jvm-main afield.four.lighting.DirectLightingSmoke --arg=--fallback --timeout 300",
+      "command": "run-jvm-main afield.graphics.render.lighting.DirectLightingSmoke --arg=--fallback --timeout 300",
       "ok": true,
       "exitCode": 0,
       "timedOut": false,

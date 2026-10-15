@@ -19,19 +19,19 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window("IOSurface ring round-trip smoke")
               Renderer(window)
           }
-
+          
           println("iosurface ring renderer ready")
           start(renderer::run)
   - create:
@@ -40,28 +40,28 @@ operations:
       frame: { x: 320.0, y: 140.0, w: 350.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.Target
-          import afield.four.TexturePreviewCache
-          import afield.four.browser.*
-          import afield.four.stream.FieldRTTStreamer
-          import afield.four.texture.MetalIOSurface
-          import afield.stdlib.vec
+          import afield.graphics.vulkan.Target
+          import afield.graphics.render.TexturePreviewCache
+          import afield.media.browser.*
+          import afield.media.stream.FieldRTTStreamer
+          import afield.graphics.texture.MetalIOSurface
+          import afield.math.linalg.vec
           import org.lwjgl.system.MemoryUtil
           import org.lwjgl.vulkan.VK10.*
           import java.io.ByteArrayInputStream
           import java.util.Base64
           import java.util.concurrent.CopyOnWriteArrayList
           import javax.imageio.ImageIO
-
+          
           val device = renderer.device
           println("iosurface-ring driver=${device.physicalDevice.driverName} metalObjects=${device.supportsMetalObjects} externalMemoryHost=${device.supportsExternalMemoryHost}")
-
+          
           // BGRA bytes of this clear colour: B=223 G=128 R=32.
           val streamer = FieldRTTStreamer(renderer, dest = "127.0.0.1:59123", width = 64, height = 64, ringSize = 2, fps = 30)
           val ring = streamer.start()
           require(ring.size == 2) { "streamer did not start: ${ring.size} ring surfaces" }
           ring.forEach { it.parameters.clearColor = vec(0.125, 0.5, 0.875, 1.0) }
-
+          
           val releases = CopyOnWriteArrayList<BrowserFrameRelease>()
           var surface: MacExternalBrowserSurface? = null
           var ticks = 0
@@ -86,7 +86,7 @@ operations:
                           require(r in 28..36 && g in 124..132 && b in 219..227) { "ring slot $slot IOSurface holds $b,$g,$r, not the rendered colour" }
                       }
                       println("iosurface-ring stream PASS encoded=${streamer.framesEncoded}")
-
+          
                       val s = MacExternalBrowserSurface(
                           renderer,
                           ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2)

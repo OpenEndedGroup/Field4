@@ -1,10 +1,15 @@
 package afield.ai.agent
 
-import afield.Box
-import afield.SessionInformation
-import afield.ai.core.*
-import afield.stdlib.Kits
-import afield.stdlib.SourceStudy
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.ai.completion.*
+import afield.ai.conversation.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+import afield.ai.tools.*
+import afield.runtime.languages.*
+import afield.document.workspace.Kits
+import afield.study.source.SourceStudy
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 import java.nio.file.Files

@@ -37,7 +37,7 @@ REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
     "checkCompletionCorpusFixtures": (["checkCompletionCorpusFixtures"], {"AFIELD_HARVEST_WRITE": "1"}),
     # Counts written into prose as `N<!--count:key-->` (logging.md's lprintln call sites, ...).
     "citationGates": (
-        ["citationGates", "--tests", "afield.docs.ProseNumeralContractTest", "--rerun"],
+        ["citationGates", "--tests", "afield.tools.docs.ProseNumeralContractTest", "--rerun"],
         {"AFIELD_WRITE_DERIVED_COUNTS": "1"},
     ),
 }

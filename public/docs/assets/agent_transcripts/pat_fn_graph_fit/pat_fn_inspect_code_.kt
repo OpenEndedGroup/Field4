@@ -1,6 +1,6 @@
-import afield.stdlib.extractParameters
-import afield.stdlib.graphNode
-import afield.stdlib.graphText
+import afield.math.functions.extractParameters
+import afield.math.functions.graphNode
+import afield.math.functions.graphText
 
 // Each atom is a kernel: g = Gaussian, adsr = a full envelope. The numbers in the
 // text are the gesture; `cps` is how fast the pattern runs in seconds.

@@ -2,16 +2,16 @@
 //
 // A tool is an ordinary Kotlin class (which becomes the schema the model reads) plus an
 // ordinary Kotlin lambda (which becomes what happens when the model calls it). Register the
-// pair through afield.ai.core.AgentToolExtensions and the model can call it by name.
+// pair through afield.ai.tools.AgentToolExtensions and the model can call it by name.
 //
 // Nothing in Field has to be edited to add one: the registration goes the other way.
 //
 //   public/docs/aiFeatures.md      — "Give the AI a tool of your own"
 //   dev_docs/ai/AGENT_TOOL_EXTENSIONS.md — the design, and what is still not covered
 
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 

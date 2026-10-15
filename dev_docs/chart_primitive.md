@@ -1,12 +1,12 @@
 # `chart()` — the FLine plot primitive
 
-`afield.Chart` is to a plot what `afield.Table` is to a grid: build it, hand it to `Box.showChart`
+`afield.ui.visualization.Chart` is to a plot what `afield.ui.visualization.Table` is to a grid: build it, hand it to `Box.showChart`
 (or let a box's last expression be one), and it arrives on screen in the repo's style with no markup
 in the way. It implements `ToHTML`, so `display(channel, chart)`, `chart.h` and a returned `Chart`
 all render the same figure.
 
-Source: [`src/jvmMain/kotlin/afield/visualization/charts.kt`](../src/jvmMain/kotlin/afield/visualization/charts.kt),
-the DataFrame entry point in [`DataFrameCharts.kt`](../src/jvmMain/kotlin/afield/visualization/DataFrameCharts.kt).
+Source: [`src/jvmMain/kotlin/afield/ui/visualization/charts.kt`](../src/jvmMain/kotlin/afield/ui/visualization/charts.kt),
+the DataFrame entry point in [`DataFrameCharts.kt`](../src/jvmMain/kotlin/afield/ui/visualization/DataFrameCharts.kt).
 A loadable document is at [`dev_docs/agents/demos/chart_primitive/`](agents/demos/chart_primitive/) —
 open its `metadata.edn` in Field.
 
@@ -171,7 +171,7 @@ Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|")
 - **Marks.** `points`, `line`, `area`, `bars`, `histogram`, `boxes`, `rule`, `vrule`, `band`.
 - **`toFLines()`** lowers the whole figure to `List<FLine>` in pixel space; `plotRect()` reports the
   frame the derived insets landed on.
-- **`toHTML()`** goes through `afield.graphics.linesToHTML`, which is the markup `Box.lines` builds.
+- **`toHTML()`** goes through `afield.ui.visualization.linesToHTML`, which is the markup `Box.lines` builds.
 
 ### Labels are glyph outlines, and there are three traps
 
@@ -288,7 +288,7 @@ Two harnesses, deliberately split: `ChartTest` owns the arithmetic, `ChartGaller
 
 ```bash
 # 24 assertions: ticks, mapping, log refusals, loudness, expectations, clipping, wrapping
-./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
+./gradlew jvmTest --no-daemon --tests 'afield.ui.visualization.ChartTest'
 
 # six figures plus two grids rendered to real PNGs, with ink floors and two counterfactuals
 CHART_GALLERY_DIR=/tmp/chart-gallery-out \
@@ -346,7 +346,7 @@ Two consecutive `screenshot-box` calls on the same box sometimes works and somet
 ## Migrating a hand-roller
 
 `FunctionsPlotGallery` is ported: its private `niceTicks` and `fmt` are gone in favour of
-`afield.niceTicks` and `afield.tickLabels`, and its committed captures are regenerated. Two things
+`afield.ui.visualization.niceTicks` and `afield.ui.visualization.tickLabels`, and its committed captures are regenerated. Two things
 improved for free — the old copy never snapped its tick values (invisible only because `fmt` rounded
 to two decimals), and an axis that read "-1, -0.50, 0, 0.50, 1" now reads "-1, -0.5, 0, 0.5, 1".
 

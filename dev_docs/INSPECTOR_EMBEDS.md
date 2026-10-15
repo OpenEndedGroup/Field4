@@ -1,8 +1,8 @@
 # Inspector embeds: `tree()`, `column()`, `logs()`
 
-Renewed 2026-10-12 (nightly). Code: `src/jvmMain/kotlin/afield/server/browsing.kt` (model and
+Renewed 2026-10-12 (nightly). Code: `src/jvmMain/kotlin/afield/app/server/browsing.kt` (model and
 `__browsing__` protocol), `src/commonMain/resources/{tree,browser,logs}.html`, entry points in
-`afield/outputs.kt`. Tests: `src/jvmTest/kotlin/afield/server/InspectorTest.kt`. Demo:
+`afield/outputs.kt`. Tests: `src/jvmTest/kotlin/afield/app/server/InspectorTest.kt`. Demo:
 `dev_docs/agents/demos/browse_embeds/`. User docs: `public/docs/visualizers.md` (inspector section).
 
 ## Protocol (additive)

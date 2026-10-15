@@ -1,6 +1,6 @@
 name: polytope_holes_and_chains
 description: >
-  Three small boxes for the two things afield.stdlib.polytope gained on 2026-08-05: a face may have
+  Three small boxes for the two things afield.geometry.polytope gained on 2026-08-05: a face may have
   holes, and the whole Conway vocabulary chains. Box 1 takes the cubeWithWindow seed end to end —
   boundary rings, the two Euler characteristics, the triangles the window is cut out of, the four
   operations that refuse a holed face by name, and the polygonal FLines in the on-canvas viewer, where
@@ -93,12 +93,12 @@ operations:
       frame: { x: 80.0, y: 220.0, w: 430.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.MeshView
-          import afield.stdlib.Vec3
-
+          import afield.geometry.mesh.MeshView
+          import afield.math.linalg.Vec3
+          
           // ***** CHANGE THIS LINE ***** the hole's half-width; 0 or more, less than 1.
           val hole = 0.45f
-
+          
           // A single square face, built by hand, optionally with one inner ring. This is the whole of
           // the hole API from a caller's side: record the ring's edges as incidences of the same face,
           // then declare the ring with addFaceHole. Winding is a convention — outer counter-clockwise
@@ -109,12 +109,12 @@ operations:
               val inner = listOf(
                   Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
               )
-              // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+              // buildList, not `outer + inner`: a box has afield.geometry.path in scope, where
               // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points,
               // not eight.
               val points = buildList { addAll(outer); if (withRing) addAll(inner) }
               val rings = if (withRing) listOf(listOf(0, 1, 2, 3), listOf(4, 5, 6, 7)) else listOf(listOf(0, 1, 2, 3))
-
+          
               val builder = PolytopeTopologyBuilder(rank = 3)
               val vertices = points.map { builder.addElement(0) }
               val face = builder.addElement(2)
@@ -129,7 +129,7 @@ operations:
               builder.addIncidence(face, builder.addElement(3))
               return PolyhedralObject(builder.buildValidated(), Realization3(points))
           }
-
+          
           // cullBackFaces, deliberately: a rim triangle wound the wrong way would be *missing* here
           // exactly as it would be missing on a GPU, so this picture is a winding test as well as a
           // hole test. The wireframe is on so the eight rim triangles can be counted.
@@ -164,8 +164,8 @@ operations:
       frame: { x: 80.0, y: 360.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.MeshView
-
+          import afield.geometry.mesh.MeshView
+          
           // Until 2026-08-05 none of these compiled: the eight composites were declared on
           // PolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no
           // named function at all. Every operator is now on both receivers, so a chain reads the same
@@ -180,7 +180,7 @@ operations:
               "cube().ambo().meta()" to cube().ambo().meta(),
               "cube().ambo().bevel()" to cube().ambo().bevel(),
           )
-
+          
           val view = MeshView(wireframe = false, distance = 2.4)
           val cells = chains.map { (source, result) ->
               val topology = result.polyhedron.topology
@@ -194,7 +194,7 @@ operations:
               )
           }
           threeGrid(cells, channel = "chains", name = "chains", columns = 4, height = 440, cellWidth = 260, view = view)
-
+          
           // The composite is recorded as what you asked for; the history is what actually ran. And a
           // longer chain is just more of the same.
           val long = cube().ambo().bevel().kis().dual()

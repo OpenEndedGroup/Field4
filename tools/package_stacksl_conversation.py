@@ -36,7 +36,7 @@ CHAT_FILE = "stacksl_source_ai4_chat_history_.md"
 PROGRAM_FILE = "stacksl_source_stackSL_.stacksl"
 STUDY = "studies/stacksl_source"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", PROGRAM_FILE)
-TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/stacksl/study/StackSLStudyTools.kt"
+TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt"
 # The page's "adding a tool" example, as the FIELD_TEST stacksl.study.document-tool runs it.
 TOOL_EXAMPLE = ROOT / "src/jvmMain/kotlin/afield/examples/stacksl/StackSLDocumentToolSmoke.kt"
 # Screenshots of Field itself, taken by tools/capture_stacksl_conversation.py rather than built here.

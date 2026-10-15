@@ -176,7 +176,7 @@ stackSLEvolveStudio(evolution)
 
 ## How "close" is measured
 
-The default score is LPIPS, a learned perceptual distance (`Lpips.distance(a, b)` in [`afield.onnx`](reference/machine-learning.md)): both pictures go through the convolution stages of an image-recognition network, and the differences between their features are weighted by a layer trained on people's judgements of which images look alike. It compares edges, blobs and textures, not pixel values. The first time it runs on a machine Field builds the model, which takes about a minute.
+The default score is LPIPS, a learned perceptual distance (`Lpips.distance(a, b)` in [`afield.ai.inference.onnx`](reference/machine-learning.md)): both pictures go through the convolution stages of an image-recognition network, and the differences between their features are weighted by a layer trained on people's judgements of which images look alike. It compares edges, blobs and textures, not pixel values. The first time it runs on a machine Field builds the model, which takes about a minute.
 
 `metric = StackSLMetric.PIXEL` scores by average pixel error instead. Here are both on the bands target, 400 renders each:
 

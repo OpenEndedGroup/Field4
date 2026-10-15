@@ -70,9 +70,6 @@ println(1)
 """
 
 EDITABLE_LINES_SNIPPET = """\
-import afield.graphics.*
-import afield.stdlib.*
-
 val foo = fline {
     color = vec(0.2, 0.8, 1.0, 1.0)
     thickness = 2.0
@@ -84,9 +81,6 @@ lines(foo, editable = true)
 """
 
 STATIC_LINES_SNIPPET = """\
-import afield.graphics.*
-import afield.stdlib.*
-
 val staticLine = fline {
     color = vec(1.0, 0.55, 0.2, 1.0)
     thickness = 3.0
@@ -99,9 +93,6 @@ lines(staticLine, w = 360.0, h = 220.0, fitToSize = true)
 """
 
 SHOW_PLANE_INTERACTIVE_SNIPPET = """\
-import afield.graphics.*
-import afield.stdlib.*
-
 val ring = fline {
     color = vec(0.42, 0.78, 1.0, 1.0)
     thickness = 2.0
@@ -269,8 +260,8 @@ try {
 """
 
 CONTROLLER_CONTROL_GROUP_SNIPPET = """\
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector4f
+import afield.math.linalg.Vector2f
+import afield.math.linalg.Vector4f
 
 var gain = 0.35
 var enabled = true
@@ -629,7 +620,7 @@ display("main", \"\"\"
 \"\"\".trimIndent())
 """
 
-# `afield.morpho` is not in Field's REPL intro, so `MorphoCircuit` is an unresolved reference that the
+# `afield.lang.morpho` is not in Field's REPL intro, so `MorphoCircuit` is an unresolved reference that the
 # error panel can genuinely fix with an import (see COMPLETION_OWN_IMPORT_SNIPPET for the other half of
 # that property). The constructor is private, so the fixture only names the type.
 ERROR_FIX_IMPORT_SNIPPET = """\
@@ -650,7 +641,7 @@ if (!ed) return { ok: false, reason: "globalEditor missing" };
 const model = ed.getModel();
 if (!model) return { ok: false, reason: "editor has no model" };
 
-const FQN = "afield.morpho.MorphoCircuit";
+const FQN = "afield.lang.morpho.MorphoCircuit";
 const TARGET = "val c: MorphoCircuit? = null";
 
 const fixRows = () => Array.from(document.querySelectorAll(".field-fix-suggestions .field-fix-row"));
@@ -994,7 +985,7 @@ displayOpen("explorer")
 VIEWER_PANEL_SIZING_SNIPPET = r"""// A viewer that declares a size. `three` writes a pixel width on the iframe AND passes
 // frameWidth/frameHeight into the payload, which threejs_viewer.html republishes as
 // `afield-iframe-size`. The panel should end up at that size; today it opens at DEFAULT_W.
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 val f = FLine().moveTo(vec(0.0, 0.0, 0.0)).lineTo(vec(1.0, 0.6, 0.3))
 f.color = vec(0.4, 0.8, 1.0, 0.9)
 f.pointed = true
@@ -1252,8 +1243,8 @@ try {
 # first had found. This snippet opens the browser at `??` on purpose, so the regression starts from
 # the state that failed.
 KEYFRAME_BROWSER_DISCOVERY_SNIPPET = """\
-import afield.stdlib.KeyframeScope
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeScope
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("ui-regression-keyframe-discovery")
@@ -3327,7 +3318,7 @@ def backdoor_command_prefix() -> list[str]:
     return [sys.executable]
 
 
-# `afield.morpho` is not in Field's REPL intro, so the box's own `import` is what makes `MorphoCircuit`
+# `afield.lang.morpho` is not in Field's REPL intro, so the box's own `import` is what makes `MorphoCircuit`
 # resolve — the only place in the suite where that is true. It is also as close to the reported bug as
 # checked-in code gets: `MorphoCircuit.flines` is a top-level extension named exactly like the
 # `SentenceDiagram.flines` that went missing, reached through the same `fl` prefix, which collides with
@@ -3344,7 +3335,7 @@ def backdoor_command_prefix() -> list[str]:
 #     AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL=http://127.0.0.1:17969 \
 #       python3 tools/run_ui_regressions.py --port 9490 --id completion-box-own-import
 COMPLETION_OWN_IMPORT_SNIPPET = """\
-import afield.morpho.*
+import afield.lang.morpho.*
 val c: MorphoCircuit = TODO()
 c.fl
 c.sign
@@ -3601,7 +3592,7 @@ return result;
 """.replace("__MAX_PING_MS__", str(COMPLETION_KOTLINJS_MAX_PING_MS))
 
 
-# The live counterpart to the headless popup cover (afield.FieldSuggestPresentationTest, wired into
+# The live counterpart to the headless popup cover (afield.runtime.completion.FieldSuggestPresentationTest, wired into
 # `check`; see dev_docs/completion_popup_cover.md). That one stages fieldSuggest.js under node against
 # a canned server reply; this one asks the real editor, over a real payload, in a real browser — the
 # only place the whole hop is on the hook, CSS and Monaco and transport included.
@@ -3620,7 +3611,7 @@ return result;
 # KotlinCompletionSupport.classifyMetadata whichever engine produced the candidate, so this is about
 # presentation and grades K1 and AA alike. The `loaded` and non-empty checks are what keep it honest.
 COMPLETION_CATEGORY_HEADERS_SNIPPET = """\
-import afield.stdlib.noir.audioai.*
+import afield.audio.ai.*
 lenia
 fieldAudio
 """
@@ -3664,7 +3655,7 @@ def write_generated_file(relative: str, text: str) -> Path:
     return path
 
 
-MONACO_PROPERTY_NAMES_SOURCE = REPO_ROOT / "src/jsMain/kotlin/afield/BootstrapMonacoInit.kt"
+MONACO_PROPERTY_NAMES_SOURCE = REPO_ROOT / "src/jsMain/kotlin/afield/app/editor/BootstrapMonacoInit.kt"
 
 
 def monaco_property_names() -> list[str]:

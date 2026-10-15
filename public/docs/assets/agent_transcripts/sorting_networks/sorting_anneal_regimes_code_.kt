@@ -1,4 +1,4 @@
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 

@@ -180,12 +180,12 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.
 <!-- field-box id="spectral_resonator" index="4" -->
 
 ```edn [field-box id="spectral_resonator" role="properties"]
-{"id" "spectral_resonator" "index" 4 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 41 "characters" 1550 "sha256" "35f796728c7428a28503c902b97743af1abe54f61b14103a4ef8bc92160b329e"}]}
+{"id" "spectral_resonator" "index" 4 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 41 "characters" 1554 "sha256" "2d3dfa33caa047094bc211367adc23e0533b7cd15657524e7db17b09dc53cca7"}]}
 ```
 
 ```kotlin [field-property box="spectral_resonator" name="code" path="spectral_resonator_code_.kt"]
-import afield.four.audio.resonate
-import afield.four.audio.resonatorAlphaHeuristics
+import afield.audio.engine.resonate
+import afield.audio.engine.resonatorAlphaHeuristics
 
 val sampleRate = 8000f
 val n = 24000

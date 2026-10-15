@@ -1,4 +1,6 @@
-import afield.ai.core.*
+import afield.ai.completion.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
 val measured=aiTool("geometry.bounds3") {
     describe("Measure axis-aligned bounds of finite 3D points. Units are those of the input. No native dependencies or document edits.")
     val points by param<List<List<Double>>>("Non-empty list of xyz triples")

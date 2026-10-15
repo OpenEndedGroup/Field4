@@ -12,7 +12,7 @@ running it in an empty document creates and launches every box.
 
 Each stage is an ordinary box: edit its shader, reload it, and inspect the result. The
 fluid storage helper is another editable box. Small reusable functions are included
-from `afield.four.flow.FlowShaders`; the render targets, dispatch order, barriers,
+from `afield.simulation.flow.FlowShaders`; the render targets, dispatch order, barriers,
 lighting and artistic parameters remain in the graph.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_grain/flow.png" capture="native-window" native-wait-frames="24" embed=true hidden=true timeout="180" name="flow-grain-playground" alt="World-space grain curls around obstacles; thin velocity strokes cross the flow and a rotating white marker writes motion coordinates." macro-file="../../dev_docs/agents/transcripts/flow_grain.yaml" capture-box="flow_renderer"}
@@ -40,7 +40,7 @@ the buffers, textures and shader resources the graph registered.
 
 ## Resident world tiles
 
-`afield.stdlib.TileResidency` maps world tile coordinates onto a fixed number of slots.
+`afield.graphics.render.TileResidency` maps world tile coordinates onto a fixed number of slots.
 It floors negative coordinates correctly, retains overlapping tiles during movement,
 and increments a slot generation whenever the slot is recycled. A teleport costs the
 same bounded scan as ordinary movement. It does not allocate a larger world.
@@ -61,7 +61,7 @@ resident world coordinates before sampling a slot: modulo addressing alone accid
 joins opposite edges of the pool. The demo also tags each cell's contents with its
 generation, so a recycled tile cannot read fluid left by its previous occupant.
 
-`afield.four.flow.TileAtlasLayout` adds atlas coordinates and optional halo storage for
+`afield.simulation.flow.TileAtlasLayout` adds atlas coordinates and optional halo storage for
 texture-based solvers. A halo must be filled from a resident neighbour, or from your
 chosen outside boundary condition. The helper does not decide what an unloaded world
 means. The demo uses storage buffers and explicit neighbouring-cell lookup instead.
@@ -73,7 +73,7 @@ For a ready-made fixed-domain solver, see [Fabricate Renderer](fabricate_rendere
 
 ## Motion history for the camera and for objects
 
-Use the existing `afield.four.targets.FrameHistory` for camera history. Capture once per
+Use the existing `afield.graphics.vulkan.targets.FrameHistory` for camera history. Capture once per
 **rendered frame**, using `Renderer.frameCounter`, target dimensions and a scene epoch.
 A missed frame, resize, epoch change or explicit invalidation makes history unavailable.
 The packed buffer contains four matrices and a viewport vector: 68 floats.

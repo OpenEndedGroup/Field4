@@ -18,8 +18,8 @@ set for this is complete trash, we can't use it."
 
 ## Why this is bigger than a docs edit
 
-The three clips are not prose. They are rendered by `afield.four.synth.SoundPathMap`
-(`src/jvmMain/kotlin/afield/four/synth/SoundPathMap.kt`, `theBeat()` / `dryBeat()` /
+The three clips are not prose. They are rendered by `afield.audio.synth.SoundPathMap`
+(`src/jvmMain/kotlin/afield/audio/synth/SoundPathMap.kt`, `theBeat()` / `dryBeat()` /
 `throughSignalGraph` / `throughFaust` / `throughStandInVoice`), which renders
 `pat("bd ~ sd ~, hh*8")` through `patRenderStereo` → `patVoice`, the stand-in drum map in
 `PatSoundDocs.kt` (`enum class PatWave`, and the drum map KDoc: `sd`/`cp` mid-band noise, `hh` high

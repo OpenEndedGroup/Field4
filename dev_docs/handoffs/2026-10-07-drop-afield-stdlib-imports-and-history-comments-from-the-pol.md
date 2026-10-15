@@ -5,7 +5,7 @@
 - **Filed by:** human, 2026-10-07 00:13
 - **Close with:** `python tools/docs_notes.py handoff-close 6cc2b6de "what happened"`
 
-`public/docs/polytope_examples.md`: every runner fence starts with `import afield.stdlib.polytope.*`, and several also import `afield.stdlib.TriMesh`, `afield.stdlib.Vec3` or `afield.stdlib.MeshView` (DOCS_WRITING_RULES rule 7). Make the polytope package resolve in a box without the import, or fold it, then recapture.
+`public/docs/polytope_examples.md`: every runner fence starts with `import afield.geometry.polytope.*`, and several also import `afield.geometry.mesh.TriMesh`, `afield.math.linalg.Vec3` or `afield.geometry.mesh.MeshView` (DOCS_WRITING_RULES rule 7). Make the polytope package resolve in a box without the import, or fold it, then recapture.
 
 Fix these at the same time, since each needs a fence edit and a recapture:
 - The operator-chaining fence's comment says "Before the thirteen were named on both receivers, none of them compiled" (history in a fence). The spectral fence has "The three routes were prose pretending to be a table". The rank-4 fence and the face-with-a-hole fence carry comments about what the page claims ("Caught, not described"). Cut them.

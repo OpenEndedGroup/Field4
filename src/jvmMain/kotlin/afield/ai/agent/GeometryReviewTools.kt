@@ -1,12 +1,17 @@
 package afield.ai.agent
 
-import afield.ReadOnlyDocuments
-import afield.SessionInformation
-import afield.ai.core.*
-import afield.graphics.ThreeReviewInbox
-import afield.graphics.GeometryFinding
-import afield.graphics.geometryReviewSurfacesOwnedBy
-import afield.graphics.threeViewsOwnedBy
+import afield.app.server.ReadOnlyDocuments
+import afield.app.server.SessionInformation
+import afield.ai.completion.*
+import afield.ai.conversation.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+import afield.ai.tools.*
+import afield.runtime.languages.*
+import afield.graphics.three.ThreeReviewInbox
+import afield.ui.visualization.GeometryFinding
+import afield.ui.visualization.geometryReviewSurfacesOwnedBy
+import afield.graphics.three.threeViewsOwnedBy
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonIgnore
 import kotlinx.serialization.json.*
@@ -273,7 +278,7 @@ internal class GeometryReviewTools(
         val target = threeViewsOwnedBy(info.boxes.values + info.root).singleOrNull { it.uid == request.viewId }
             ?: error("No solid viewer with that ID in this document")
         require(request.parts.size <= 10000 && request.parts.map { it.partId }.toSet().size == request.parts.size) { "Supply at most 10000 distinct part IDs" }
-        val styles = request.parts.associate { it.partId to afield.graphics.ThreePartAppearance(it.color, request.unlit, request.xrayOpacity) }
+        val styles = request.parts.associate { it.partId to afield.graphics.three.ThreePartAppearance(it.color, request.unlit, request.xrayOpacity) }
         target.styleParts(request.expectedRevision, styles, request.replace)
         GeometryToolResult(true, "Updated part appearance; geometry is unchanged", mapOf("viewId" to target.uid, "revision" to request.expectedRevision, "styledParts" to styles.size))
     }

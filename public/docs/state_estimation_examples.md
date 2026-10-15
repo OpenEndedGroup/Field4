@@ -109,7 +109,7 @@ only the first is ever observed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_mackey_glass.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 
 fun diag(vararg values: Double): Matrix =
@@ -208,7 +208,7 @@ lets the estimate follow a trajectory that curves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_velocity_tracker.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 
 fun diag(vararg values: Double): Matrix =
@@ -353,7 +353,7 @@ and the cloud has to find it again from a population that had already settled.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_particle_filter.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import kotlin.random.Random
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode

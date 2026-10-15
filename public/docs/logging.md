@@ -53,11 +53,11 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/sinks.png" capture="box" w="860" h="220" wait="1.5" timeout="120" embed=true name="logging-sinks" alt="A Field box output panel labelled main, holding a three-column table titled 'what one sink saw', headed channel, tags, message. Three rows: info,mypage / 2 / a plain line; warning,mypage / 2 / something to look at; error,mypage,disk / 3 / three tags, and no hierarchy among them."}
 :::static
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogEvent
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lprintln
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogEvent
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lprintln
 
 // A sink is a fun interface, so a lambda will do. This one keeps only my own lines: the
 // dispatcher is global, and a live Field is logging its own frame rate the whole time.
@@ -119,7 +119,7 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/mute-is-exact.png" capture="box" w="860" h="260" wait="1.5" timeout="120" embed=true name="logging-mute-is-exact" alt="A Field box output panel labelled main, holding a two-column table titled 'ConsoleMute compares the whole channel string', headed channel string and isMuted. Five rows: info,boxes is true; boxes,info is false; info,boxes,extra is false; info,Boxes is false; boxes is false. A footnote lists the channels the mute set holds."}
 :::static
-import afield.ai.core.ConsoleMute
+import afield.ai.diagnostics.ConsoleMute
 
 // isMuted compares the WHOLE channel string against the mute set. Nothing is split.
 val spellings = ["info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "boxes"]
@@ -165,8 +165,8 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/filter-is-substring.png" capture="box" w="900" h="240" wait="2.0" timeout="120" embed=true name="logging-filter-is-substring" alt="A Field box output panel labelled main, holding a two-column table titled 'a LogStream filter of [kotlin] against three channels', headed channel emitted and pushed to the subscriber. Three rows: info,kotlin is true; info,kotlinjs is true; info,graphics is false. A footnote records that two of the three lines matched."}
 :::static
-import afield.logger.lprintln
-import afield.server.LogStream
+import afield.app.diagnostics.logging.lprintln
+import afield.app.server.LogStream
 
 // Subscribe with the real filter the log widget uses. sinceEpochMs keeps the existing
 // 20,000-record archive out of the replay, so what arrives is only what I emit below.
@@ -230,11 +230,11 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/mute-is-console-only.png" capture="box" w="900" h="220" wait="1.5" timeout="120" embed=true name="logging-mute-is-console-only" alt="A Field box output panel labelled main, holding a three-column table titled 'muting keeps a line off the console, not out of the layer', headed channel, muted on the console, and reached my sink. Two rows: info,boxes is muted true and reached true; info,mypage is muted false and reached true. A footnote notes that both lines arrived."}
 :::static
-import afield.ai.core.ConsoleMute
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lprintln
+import afield.ai.diagnostics.ConsoleMute
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lprintln
 
 val arrived = mutableSetOf<String>()
 val probe = LogSink { e -> if ("«logdoc»" in e.message) arrived += e.channel }
@@ -280,12 +280,12 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/blocks.png" capture="box" w="900" h="300" wait="1.5" timeout="120" embed=true name="logging-blocks" alt="A Field box output panel labelled main, holding a four-column table titled 'two nested lblocks, as the dispatcher saw them', headed depth, boundary, block and message. Six rows stepping down and back up: depth 0 BEGIN outer; depth 1 with no boundary, inside outer; depth 1 BEGIN inner; depth 2 with no boundary, inside inner; depth 1 END; depth 0 END. The two BEGIN rows carry short block ids that the two END rows repeat, and each END row's message is only its own full block id, since that is all an END event carries. A footnote shows the deepest line's raw indent as two tab-separated UUIDs."}
 :::static
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogEvent
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lblock
-import afield.logger.lprintln
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogEvent
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lblock
+import afield.app.diagnostics.logging.lprintln
 
 val all = mutableListOf<LogEvent>()
 val probe = LogSink { e -> all += e }
@@ -360,8 +360,8 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/stats.png" capture="box" w="900" h="320" wait="1.5" timeout="120" embed=true name="logging-stats" alt="A Field box output panel labelled main holding two stacked tables. The first, titled 'formatMillis keeps digits where they matter', has columns nanoseconds and formatted, with six rows running from 120,000 nanoseconds shown as 0.120ms up to 12,400,000,000 nanoseconds shown as 12.4s. The second, titled 'how a stats line is torn into colourable tokens', has columns fragment and treated as, and splits the line fps=61.2 upload=3.4MB net:102% dropped=0 into eleven fragments: the four keys with their separators and the three single spaces between them are plain text, while 61.2, 3.4MB, 102% and 0 are marked as numbers."}
 :::static
-import afield.logger.StatsHeatmap
-import afield.logger.formatMillis
+import afield.app.diagnostics.logging.StatsHeatmap
+import afield.app.diagnostics.logging.formatMillis
 
 val durations = [120_000L, 3_400_000L, 47_000_000L, 250_000_000L, 1_630_000_000L, 12_400_000_000L]
 val ladder = Table(
@@ -461,8 +461,8 @@ under `~/.afield/logs/` when their environment variables are set, and are wired 
 
 ## Reference
 
-The generic core is `afield.ai.core.Logging`: `LogEvent`, `LogSink`, `LogDispatcher`,
-`ConsoleMute`, `StdoutLog`. The entry points and the terminal live in `afield.logger`:
+The generic core is `afield.ai.diagnostics.Logging`: `LogEvent`, `LogSink`, `LogDispatcher`,
+`ConsoleMute`, `StdoutLog`. The entry points and the terminal live in `afield.app.diagnostics.logging`:
 `lprintln`, `lprint`, `lblock`, `indent`, `formatMillis`, `PinnedConsole`, `StatsHeatmap`,
-`SessionErrorLog`, `SaveReloadLog`. The web sink is `afield.server.LogStream`, which serves
+`SessionErrorLog`, `SaveReloadLog`. The web sink is `afield.app.server.LogStream`, which serves
 the log widget over the `__logs__` websocket handler.

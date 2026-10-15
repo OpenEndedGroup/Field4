@@ -11,14 +11,14 @@ brushes can have [hairs that move](paint_gestures.md).
 Field calls it through a small native library, which you build once (see
 [Building the library](#building-the-library)). The examples below are also in the
 [paint_canvas](agent_transcripts.md#paint_canvas) starting point, and the classes they use
-(`PaintCanvas`, `PaintBrush`, `Pencil`, `Tubes`, in `afield.paint`) each have their own KDoc.
+(`PaintCanvas`, `PaintBrush`, `Pencil`, `Tubes`, in `afield.graphics.paint`) each have their own KDoc.
 
 Here is a canvas, a brush and three strokes. The brush is loaded before the first stroke and again
 before the second. The third stroke is a zigzag with no reload, so the brush runs dry along it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/first.png" alt="a white canvas with three horizontal brushstrokes. The top one is a wavy band of deep blue with soft bristle-streaked edges. The middle one is the same shape in orange-yellow. The bottom is a zigzag of three passes in a lighter yellow: the first pass is solid, and the later passes thin out and break up towards their ends as the brush runs out of paint" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="first" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.6)
 val brush = canvas.brush(BrushKind.Filbert, width = 45.0)
@@ -57,7 +57,7 @@ From left to right: `Round`, `HogFlat`, `Filbert`, `Fan`, `Rigger` and `Badger`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/brushes.png" alt="six dark blue-black S-shaped vertical strokes side by side on white. The first three, round, hog flat and filbert, are solid bands: the round has soft edges, the hog flat has visible bristle grooves along its length, and the filbert has a rounded end. The fourth, the fan, splits into separate thin parallel lines with white showing between them. The fifth, the rigger, is a wobbly stroke with a mottled, dotted texture that breaks up at its lower end. The sixth, the badger blender, lays only a little paint at the top and fades to a pale wash halfway down" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="brushes" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 2.0)
 BrushKind.entries.forEachIndexed { i, kind ->
@@ -92,7 +92,7 @@ blue sits on top of it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/layers.png" alt="two demonstrations on one white canvas. Left: a horizontal black band crossed by three vertical white strokes. Over the black, the first white is a faint grey veil with the black showing through, the second is a pale grey, and the third hides the black almost completely. Right: two horizontal yellow bands, each crossed by a vertical blue stroke. Where the upper blue crosses the wet yellow it turns streaky green, with blue and yellow pulled through each other along the bristle lines. Where the lower blue crosses the dried yellow it stays a clean, solid blue" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="layers" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 2.0)
 val dark = canvas.brush(BrushKind.HogFlat, width = 70.0)
@@ -134,7 +134,7 @@ stroke carries some of the last one's colour and neighbouring strokes blend.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/flow.png" alt="a white canvas filled with a few hundred short, curved, thick brushstrokes that sweep together in swirling feather-like currents. Colours drift from warm yellow, orange and magenta at the top to violet, teal and blue at the bottom, and neighbouring strokes share and blend colours where they overlap. Relief lighting shows bristle ridges and the raised edges of each stroke" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="flow" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 val canvas = PaintCanvas(900, aspect = 1.4, seed = 4)
@@ -181,7 +181,7 @@ that is a fifth of a pixel at 900 pixels wide, so for drawing, give the canvas a
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/drawing.png" alt="a pencil drawing on white paper of a tall vase standing on a table edge. The vase's two sides are sketched in thin light grey lines that break off in places and leave its top open. Its right side is hatched with close diagonal strokes of a softer, darker pencil that crowd together towards the bottom. A straight ruled line of grainy black chalk runs across the full width for the table edge" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="drawing" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.5, sizeMm = 200.0)
 
@@ -228,7 +228,7 @@ triangle from four rough points, drawn by a `Searching` hand.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/areas.png" alt="three areas side by side on white. Left: a rectangle filled with short, dense diagonal strokes of blue paint, its lower half solid blue with small flecks of white showing between strokes, its upper half crossed by long horizontal strokes of pale straw yellow that have dragged through the wet blue and mixed into a greyish green, with ragged stroke ends overrunning the region's right edge. Middle: a rectangle of thousands of small red-orange dots, dense in the middle and thinning to scattered single dots at a soft edge. Right: a triangle drawn in thin dark brown-black brush lines, made of several separate strokes that overlap slightly, leave small gaps, and fade out at their ends; the base is a dashed run of short strokes" wait="15" capture="box" open-outputs="true" padding="20" requires="paint" name="areas" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 fun rect(x: Double, y: Double, w: Double, h: Double) =
     FLine().moveTo(x, y).lineTo(x + w, y).lineTo(x + w, y + h).lineTo(x, y + h).lineTo(x, y)
@@ -261,7 +261,7 @@ both. The tree's crown is `Body` strokes at 0.6, which mostly cover its drawing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/underdrawing.png" alt="a small landscape painted over a pencil drawing. The top two thirds is a sky of loose horizontal strokes of thin pale blue,, each with a slightly darker edge, and white paper showing between them. Below it, green grass in broad, ragged diagonal strokes, also thin enough to leave flecks of white. A grey pencil line traces the two hills along the horizon through the green and blue, and on the right a thin pencil line for a tree trunk rises through the grass to a dense, dark green crown painted in short opaque strokes" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="underdrawing" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.5, sizeMm = 250.0, seed = 3)
 
@@ -307,7 +307,7 @@ painting, glazes it lightly and cracks it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/aged.png" alt="seven wavy horizontal bands of oil paint on a red-brown primed canvas whose linen weave shows faintly. Each band is lead white mixed with a different tube, top to bottom: a soft grey-blue, a sage green, a pale cream yellow, a salmon, a dusty pink, a pale terracotta and a warm grey. Relief lighting picks out bristle ridges and the ragged ends of each band, and a network of fine dark hairline cracks runs across bands and ground alike, in irregular cells" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="aged" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.25, ground = PaintGround.Oil, sizeMm = 250.0, seed = 5)
 val brush = canvas.brush(BrushKind.Filbert, width = 70.0)
@@ -352,7 +352,7 @@ it and scrapes through that, then spatters a double-loaded brush. A low lamp fro
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/tools.png" alt="an oil canvas whose warm brown ground shows through a dark umber passage of broad, ragged horizontal strokes. A rag has wiped two lighter streaks across its upper half: the first wavy and marked by the creases of the cloth, the second straight, wider and paler, lifted almost to the ground. Lower left, a pale cream slab laid with a painting knife stands up in relief, with torn holes and ragged ends, crossed by two cleared vertical bands where the knife scraped it. Across the lower right, small round drops of red and blue paint are spattered over the dark paint, thinning out to the right" wait="20" capture="box" open-outputs="true" padding="20" requires="paint" name="tools" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.5, ground = PaintGround.Oil, sizeMm = 300.0, seed = 4)
 val passage = FLine().moveTo(60, 60).lineTo(940, 60).lineTo(940, 600).lineTo(60, 600).lineTo(60, 60)
@@ -388,7 +388,7 @@ ploughing aside most of the paint it passes over, and laying a thin film that la
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/configured.png" alt="five dark blue S-shaped strokes from the same hog flat brush on cream paper. The first is a solid band. The second, with 12 bristles, splits into separate streaks and runs out into thin lines at its lower end. The third, with 40 ragged bristles, is solid at the top and frays into a broken end. The fourth, which takes up and ploughs aside most of the paint, is striped light and dark along its length, with dark ridges at its edges. The fifth, laying a thin film that lasts, is paler and finely streaked all the way down" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="configured" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.6, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 300.0)
 val configs = [null, BrushConfig(bristles = 12), BrushConfig(bristles = 40, ragged = 1.0),

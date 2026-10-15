@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="dataviz_renderer" index="0" -->
 
 ```edn [field-box id="dataviz_renderer" role="properties"]
-{"id" "dataviz_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["dataviz_figure"] "properties" {"children" #{#afield/box "dataviz_figure"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_renderer_code_.kt" "lines" 14 "characters" 253 "sha256" "d517b9ba4734050ce0a0765e2eb427f89da9b9f223b8b352ca9659644f21aad1"}]}
+{"id" "dataviz_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["dataviz_figure"] "properties" {"children" #{#afield/box "dataviz_figure"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_renderer_code_.kt" "lines" 14 "characters" 264 "sha256" "9e035f5bf9ad548fae49aabd51811d3c2f8240790b0395208a2d358664fda1f2"}]}
 ```
 
 ```kotlin [field-property box="dataviz_renderer" name="code" path="dataviz_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -47,7 +47,7 @@ with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
 See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 
 ```edn [field-box id="dataviz_figure" role="properties"]
-{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 62 "characters" 1928 "sha256" "11f06834d358726f328e54e395772c59b0e1862f0d90d6eb48e04eacf6d8e2ea"}]}
+{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 62 "characters" 1946 "sha256" "0a3a13ce478378cc67d7be1b0666719d6c12f3966b4ec6b5a00f595430bb94b8"}]}
 ```
 
 ```kotlin [field-property box="dataviz_figure" name="code" path="dataviz_figure_code_.kt"]
@@ -57,10 +57,10 @@ See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 // and a bar chart bound to a data list (data / normalize / bars), animated in
 // with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
 // See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.rectMaterialShaderCode
-import afield.rectsl.writeFrameToMesh
-import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.writeFrameToMesh
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
@@ -101,7 +101,7 @@ renderer += "rectsl-dataviz" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.stdlib.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

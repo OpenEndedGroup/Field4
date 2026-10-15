@@ -1,11 +1,11 @@
-import afield.manifold.JoinType
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Section
-import afield.manifold.Solid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
-import afield.stdlib.MeshView
+import afield.geometry.solid.manifold.JoinType
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Section
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.geometry.mesh.signedVolume
+import afield.geometry.mesh.MeshView
 
 // ---- the two parameters to change ------------------------------------------------
 val bore = 3.0          // bore radius, mm. Push past 6.0 and the bosses break through the

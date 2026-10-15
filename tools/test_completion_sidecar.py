@@ -181,7 +181,7 @@ class RequiresSidecarAnnotationTest(unittest.TestCase):
         # The three tests whose job is the AA chain. Dropping the key would put them back to
         # running with no sidecar, which is how they stayed green for two days of a dead backend.
         root = Path(__file__).resolve().parent.parent / "src" / "jvmMain" / "kotlin" / "afield"
-        for relative in ("CompletionAaE2EProbe.kt", "CompletionLoweringProbe.kt",
+        for relative in ("runtime/completion/CompletionAaE2EProbe.kt", "runtime/completion/CompletionLoweringProbe.kt",
                          "examples/KotlinJsCompletionSpikeTest.kt"):
             with self.subTest(probe=relative):
                 text = (root / relative).read_text(encoding="utf-8")

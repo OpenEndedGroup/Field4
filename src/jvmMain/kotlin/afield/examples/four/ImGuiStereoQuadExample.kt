@@ -1,16 +1,19 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.imgui.ImGuiRenderToTexture
-import afield.four.modules.*
-import afield.four.targets.SideBySideStereoTarget
-import afield.four.texture.TextureSampler
-import afield.four.util.Window
-import afield.four.util.updateForever
-import afield.stdlib.fromViews
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.imgui.ImGuiRenderToTexture
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import afield.graphics.vulkan.targets.SideBySideStereoTarget
+import afield.graphics.texture.TextureSampler
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.updateForever
+import afield.graphics.shader.fromViews
 import imgui.ImGui
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_SRGB
 import kotlin.math.abs
 

@@ -93,15 +93,15 @@ operations:
         layout(set = 0, binding = 0) uniform sampler2D camera;
         void main() { uFragColor = vec4(texture(camera, ftc).rgb, 1.0); }
       code: |
-        import afield.python.NumpyShared
-
+        import afield.lang.python.NumpyShared
+        
         prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
-
+        
         var module = moduleHere { }
         var m = Mesh()
         module += m named "camera quad"
         renderer += module
-
+        
         // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
         m.set(4, 6) {
             pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
@@ -116,15 +116,15 @@ operations:
     property: code
     type: fragment
     code: |
-      import afield.python.NumpyShared
-
+      import afield.lang.python.NumpyShared
+      
       prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
-
+      
       var module = moduleHere { }
       var m = Mesh()
       module += m named "camera quad"
       renderer += module
-
+      
       // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
       m.set(4, 6) {
           pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
@@ -152,20 +152,20 @@ operations:
         layout(location = 0) out vec4 uFragColor;
         void main() { uFragColor = fcol; }
       code: |
-        import afield.python.NumpyShared
-
+        import afield.lang.python.NumpyShared
+        
         val tracks = NumpyShared.lines("tracks")
         val skeleton = NumpyShared.lines("skeleton")
-
+        
         var module = moduleHere { }
         var m = Mesh()
         module += m named "overlay"
         renderer += module
-
+        
         val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
-
+        
         fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
-
+        
         frames {
             while (frame()) {
                 val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
@@ -198,20 +198,20 @@ operations:
     property: code
     strand: overlay
     code: |
-      import afield.python.NumpyShared
-
+      import afield.lang.python.NumpyShared
+      
       val tracks = NumpyShared.lines("tracks")
       val skeleton = NumpyShared.lines("skeleton")
-
+      
       var module = moduleHere { }
       var m = Mesh()
       module += m named "overlay"
       renderer += module
-
+      
       val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
-
+      
       fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
-
+      
       frames {
           while (frame()) {
               val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +

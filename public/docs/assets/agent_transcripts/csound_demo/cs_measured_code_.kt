@@ -1,5 +1,5 @@
 // Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500

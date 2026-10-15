@@ -1,7 +1,7 @@
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.four.util.keyCamera
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.graphics.vulkan.util.keyCamera
+import afield.math.linalg.Vector3f
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.35f, 0.35f, 0.35f))
 val light = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))

@@ -8,7 +8,7 @@ behavior belongs with these files:
 - `src/commonMain/resources/edn-parser.js`: the supported EDN subset.
 - `src/commonMain/resources/offline.html`: layout and static styles.
 - `tools/sync_offline_assets.py`: authoritative distribution contents.
-- `src/jvmMain/kotlin/afield/Server.kt`, route
+- `src/jvmMain/kotlin/afield/app/server/Server.kt`, route
   `/api/import-offline-doc`: optional transfer into a running Field workspace.
 
 The renderer omits the root, tombstones, boxes without a nonblank name, and boxes

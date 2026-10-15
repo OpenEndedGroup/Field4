@@ -1,19 +1,19 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.imgui.ImGuiPanel
-import afield.four.imgui.ImGuiRenderToTexture
-import afield.four.modules.Mesh
-import afield.four.modules.Module
-import afield.four.modules.parameters
-import afield.four.modules.pointer
-import afield.four.targets.SideBySideStereoTarget
-import afield.four.texture.TextureSampler
-import afield.four.util.Window
-import afield.four.util.updateForever
-import afield.stdlib.fromViews
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.imgui.ImGuiPanel
+import afield.graphics.vulkan.imgui.ImGuiRenderToTexture
+import afield.graphics.render.Mesh
+import afield.graphics.render.Module
+import afield.graphics.render.parameters
+import afield.graphics.render.pointer
+import afield.graphics.vulkan.targets.SideBySideStereoTarget
+import afield.graphics.texture.TextureSampler
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.updateForever
+import afield.graphics.shader.fromViews
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import imgui.ImGui
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -233,7 +233,7 @@ class ImGuiVrPanelDemo(
     /**
      * Verification loop: aim the mock controller straight at the panel centre, render a warm-up of
      * frames, then grab the *live macOS window* with `screencapture` (the same tool doc.kt uses for
-     * afield.four window shots). We deliberately avoid the Vulkan swapchain readback here because that
+     * Field 4 window shots). We deliberately avoid the Vulkan swapchain readback here because that
      * path is Y-flipped for our blitted content; screencapture records exactly what is on screen.
      */
     fun runCapture(outputPath: String) {

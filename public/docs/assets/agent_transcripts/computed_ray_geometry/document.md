@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["computed_ray_geometry"] "properties" {"children" #{#afield/box "computed_ray_geometry"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 321 "sha256" "79dab431bdab018f5a13ebcb55d1eaf22c276161949fb54c70dbe0d69aa149fa"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["computed_ray_geometry"] "properties" {"children" #{#afield/box "computed_ray_geometry"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 332 "sha256" "f6d44c51bceafe38b76c3155a6a00e129dbebbff1c01db27a846eea5bd4da524"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -39,13 +39,13 @@ start(renderer::run)
 <!-- field-box id="computed_ray_geometry" index="1" -->
 
 ```edn [field-box id="computed_ray_geometry" role="properties"]
-{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 26 "characters" 1127 "sha256" "6e67a74c4e4d00e74356887fad4fec9b7f22411e402fc711bba68f80104938f3"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 30 "characters" 1768 "sha256" "25ae45ac65babc0545a50d58b73605a97867b88d479eae27c899c25880a9e579"}]}
+{"id" "computed_ray_geometry" "index" 1 "name" "computed ray geometry" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "computed ray geometry" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "computed_ray_geometry_code_.kt" "lines" 26 "characters" 1119 "sha256" "adf8c988f1c07937f7bbc155b6ac511ccef42a276dad96faf2f158ad82caf16b"} {"name" "compute" "language" "glsl" "path" "computed_ray_geometry_compute_.glsl" "lines" 30 "characters" 1768 "sha256" "25ae45ac65babc0545a50d58b73605a97867b88d479eae27c899c25880a9e579"}]}
 ```
 
 ```kotlin [field-property box="computed_ray_geometry" name="code" path="computed_ray_geometry_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.modules.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+
 
 prop<ClusterGeometryDemo>(lab)
 fromContextWithNameOrNull<ClusterGeometryDemo>("lab")?.close()

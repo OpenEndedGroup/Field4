@@ -1,11 +1,11 @@
 package afield.examples
 
-import afield.Box
-import afield.OperationTranscript
-import afield.SavingContext
-import afield.SessionInformation
-import afield.thisSessionInfo
-import afield.createWorkspaceProject
+import afield.document.graph.Box
+import afield.tools.automation.OperationTranscript
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.app.server.thisSessionInfo
+import afield.document.workspace.createWorkspaceProject
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap

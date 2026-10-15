@@ -1,4 +1,4 @@
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 // box 1's `inset_view`, in the top-right corner
 prop<LoadedTexture>(inset) = NumpyShared.image("inset").texture()

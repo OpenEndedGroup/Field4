@@ -1,13 +1,13 @@
 package afield.examples.stdlib
 
-import afield.Box
-import afield.SessionInformation
-import afield.graphics.FLine
-import afield.stdlib.Vec3
-import afield.stdlib.color
-import afield.stdlib.fline
-import afield.stdlib.saved
-import afield.stdlib.vec
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.geometry.path.FLine
+import afield.math.linalg.Vec3
+import afield.graphics.render.color
+import afield.graphics.render.fline
+import afield.document.properties.saved
+import afield.math.linalg.vec
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap

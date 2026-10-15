@@ -12,8 +12,8 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.four.util.Options
-        import afield.Rect
+        import afield.graphics.vulkan.util.Options
+        import afield.app.protocol.Rect
         prop<Window>(window)
         prop<Renderer>(renderer)
         Options.enableVR=false
@@ -40,13 +40,13 @@ operations:
       h: 150
     properties:
       code: |
-        import afield.controlGroup
-        import afield.displayOpen
-        import afield.four.neuralrendering.*
-        import afield.four.modules.fromContext
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.stdlib.linalg.Vector4f
-
+        import afield.ui.output.controlGroup
+        import afield.ui.output.displayOpen
+        import afield.graphics.render.neural.*
+        import afield.document.context.fromContext
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.math.linalg.Vector4f
+        
         val owner = fromContext<Renderer>()
         prop<OpenDlssNrStudy>(lab)
         fromContextWithNameOrNull<OpenDlssNrStudy>("lab")?.close()
@@ -187,11 +187,11 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.four.neuralrendering.OpenDlssNrStudy
-        import afield.four.modules.fromContext
+        import afield.graphics.render.neural.OpenDlssNrStudy
+        import afield.document.context.fromContext
         import java.nio.file.Path
         import kotlin.io.path.createDirectories
-
+        
         // Run beneath the live study box. The scene remains editable after recording.
         val study=fromContext<OpenDlssNrStudy>()
         check(study.availability.ready) {study.availability.reason}

@@ -27,7 +27,7 @@ branch around line 4935) passes `record-editor` only `--property --padding --dur
 
 The blank space comes from a deliberate choice in the runtime:
 
-- `src/jvmMain/kotlin/afield/docs/screenshot.kt:1541`: for `frameSynchronous && editorOnly` it
+- `src/jvmMain/kotlin/afield/tools/docs/screenshot.kt:1541`: for `frameSynchronous && editorOnly` it
   replaces the content-trimmed clip that `requestWindowScreenshot` returned (Main.kt
   `fitEditorPaneToContentAndNote` + `clipForRenderedEditorContent`, around `Main.kt:2557`) with
   `stableEditorVideoClip(...)`.

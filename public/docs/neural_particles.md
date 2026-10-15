@@ -527,7 +527,7 @@ tools/run_field_tests.py --id four.neighbour-grid.smoke        # neighbour sets 
 tools/run_field_tests.py --id four.shader-boids.smoke          # both rules vs a CPU brute force
 ```
 
-All four need a GPU and an awake display: `afield.four` has no headless mode, so even a
+All four need a GPU and an awake display: Field 4 has no headless mode, so even a
 compute-only dispatch needs a `Window` for the device to exist.
 
 ## Limits
@@ -543,7 +543,7 @@ compute-only dispatch needs a `Window` for the device to exist.
 ## See also
 
 [Flow matching](flow_matching.md) is the CPU half of tier one and worth reading first.
-[afield.four Graphics](afield_four_graphics.md) is the compute-then-draw shape both systems are
+[Field 4 Graphics](afield_four_graphics.md) is the compute-then-draw shape both systems are
 built on. The API is in [Machine learning](reference/machine-learning.md) and
 [Simulation](reference/simulation.md).
 

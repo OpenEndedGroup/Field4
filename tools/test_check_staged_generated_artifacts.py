@@ -29,13 +29,13 @@ def task_names(paths: list[str]) -> list[str]:
 class GeneratedArtifactSelectionTests(unittest.TestCase):
     def test_stdlib_change_selects_reference_and_kdoc_guards(self) -> None:
         self.assertEqual(
-            task_names(["src/jvmMain/kotlin/afield/stdlib/Controls.kt"]),
+            task_names(["src/jvmMain/kotlin/afield/ui/controls/Controls.kt"]),
             ["checkCodebaseReference", "checkKDocAttachment", "citationGates"],
         )
 
     def test_shader_macro_change_also_selects_completion_corpus_guard(self) -> None:
         self.assertEqual(
-            task_names(["src/jvmMain/kotlin/afield/stdlib/shaders.kt"]),
+            task_names(["src/jvmMain/kotlin/afield/graphics/shader/shaders.kt"]),
             [
                 "checkCodebaseReference",
                 "checkKDocAttachment",
@@ -46,20 +46,20 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
 
     def test_macro_producer_is_discovered_from_its_registration(self) -> None:
         self.assertEqual(
-            task_names(["src/jvmMain/kotlin/afield/four/modules/simplePLYSupport.kt"]),
+            task_names(["src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt"]),
             ["checkKDocAttachment", "checkCompletionCorpusFixtures", "citationGates"],
         )
 
     def test_ordinary_kotlin_source_does_not_become_a_corpus_input(self) -> None:
         self.assertEqual(
-            task_names(["src/jvmMain/kotlin/afield/graphics/FLine.kt"]),
-            ["checkKDocAttachment", "citationGates"],
+            task_names(["src/jvmMain/kotlin/afield/geometry/path/FLine.kt"]),
+            ["checkCodebaseReference", "checkKDocAttachment", "citationGates"],
         )
 
     def test_source_cited_by_close_node_contract_selects_citation_gate(self) -> None:
         self.assertEqual(
-            task_names(["src/jvmMain/kotlin/afield/graphics/someSkiko.kt"]),
-            ["checkKDocAttachment", "citationGates"],
+            task_names(["src/jvmMain/kotlin/afield/ui/visualization/someSkiko.kt"]),
+            ["checkCodebaseReference", "checkKDocAttachment", "citationGates"],
         )
 
     def test_cited_frontend_resource_is_discovered_from_the_pages(self) -> None:
@@ -139,7 +139,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         self.assertEqual(task_names(["README.md"]), [])
 
     def test_relevant_unstaged_output_blocks_worktree_based_check(self) -> None:
-        guards = guards_for_paths(["src/jvmMain/kotlin/afield/stdlib/Controls.kt"])
+        guards = guards_for_paths(["src/jvmMain/kotlin/afield/ui/controls/Controls.kt"])
         self.assertEqual(
             conflicting_unstaged_paths(
                 guards,
@@ -199,10 +199,10 @@ class ReferenceSourceRootsTests(unittest.TestCase):
         # 2026-09-17 evidence actually caught: +43 public symbols under `afield/four` went by
         # unguarded, and `afield/stacksl` was in neither branch of the old predicate.
         for root in (
-            "src/jvmMain/kotlin/afield/four/synth",
-            "src/jvmMain/kotlin/afield/four/physics",
-            "src/jvmMain/kotlin/afield/four/fabricated",
-            "src/jvmMain/kotlin/afield/stacksl",
+            "src/jvmMain/kotlin/afield/audio/synth",
+            "src/jvmMain/kotlin/afield/simulation/physics",
+            "src/jvmMain/kotlin/afield/graphics/scene/fabricated",
+            "src/jvmMain/kotlin/afield/lang/stacksl",
         ):
             with self.subTest(root=root):
                 self.assertIn(root, _reference_source_roots())
@@ -216,12 +216,12 @@ class ReferenceSourceRootsTests(unittest.TestCase):
         # The widening has to stay a widening to the generator's population, not to all of `src`.
         self.assertNotIn(
             "checkCodebaseReference",
-            task_names(["src/jvmMain/kotlin/afield/graphics/FLine.kt"]),
+            task_names(["src/jvmMain/kotlin/afield/app/server/Server.kt"]),
         )
         self.assertNotIn("src/jvmMain/kotlin/afield/graphics", _reference_source_roots())
 
     def test_non_kotlin_files_under_a_root_are_not_inputs(self) -> None:
-        self.assertFalse(_reference_input("src/jvmMain/kotlin/afield/stacksl/notes.txt"))
+        self.assertFalse(_reference_input("src/jvmMain/kotlin/afield/lang/stacksl/notes.txt"))
 
     def test_a_missing_generator_raises_instead_of_passing_vacuously(self) -> None:
         # The recorded soft spot is `if (!file.exists()) return`. This asserts the opposite:
@@ -300,7 +300,7 @@ class MergeSelectionTests(unittest.TestCase):
         self.assertEqual(
             task_names(
                 [
-                    "src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt",
+                    "src/jvmMain/kotlin/afield/audio/ai/RenderedAudioAnalysis.kt",
                     "public/docs/assets/agent_transcripts/audio_render_analysis/metadata.edn",
                 ]
             ),

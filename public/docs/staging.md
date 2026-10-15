@@ -59,7 +59,7 @@ The section ends with pages about making your own. [Rewriting Your Own Syntax](p
 
 ## Graphics, GPU and headsets
 
-- [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of this page.
+- [Field 4 Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of this page.
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle: scene graph, render planning, frame graph, post stack, glTF import, material response, shadows and ambient occlusion.
 - [Aperture Playground](aperture_playground.md) is the worked multi-pass example: light bands, reductions, aperture filters and a composite, each in its own box, with every shader stage in the document. It shows defocus spreading a line rather than just dimming it.
 - [Field Probes](field_probes.md) instruments live shaders, with the CPU read-back `fieldProbe` and the GPU-resident `fieldStats` both demonstrated on one compute-shader particle system.
@@ -67,7 +67,7 @@ The section ends with pages about making your own. [Rewriting Your Own Syntax](p
 - [Ray Tracing Examples](ray_tracing_examples.md) walks through `VK_KHR_ray_tracing_pipeline` programs, from a raygen shader writing into a storage image to procedural spheres reflecting a traced floor. They need a GPU and driver with hardware ray tracing; the [path tracer](path_tracing.md) has a compute backend for machines without it.
 - [Kotlin in the Head](kotlin_in_the_head.md) is the compile route into that headset and into an ordinary browser tab: a box whose Kotlin is cross-compiled to JavaScript in-process and shipped over Field's own WebSocket, so `data class`es, operator overloading and compile-time type checking carry over into a THREE.js scene, a Tone.js engine, or a native Metal shader.
 
-Not here yet: a guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership and shader reflection. Fabricate Renderer is the entry point for the fabricated layer above them, and afield.four Graphics for the layer below.
+Not here yet: a guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership and shader reflection. Fabricate Renderer is the entry point for the fabricated layer above them, and Field 4 Graphics for the layer below.
 
 ## AI and agents
 

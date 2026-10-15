@@ -1,5 +1,5 @@
-import afield.four.modules.computeMemoryBarrier
-import afield.four.modules.computeTask
+import afield.graphics.render.computeMemoryBarrier
+import afield.graphics.render.computeTask
 
 val L = sgL
 val N = L * L

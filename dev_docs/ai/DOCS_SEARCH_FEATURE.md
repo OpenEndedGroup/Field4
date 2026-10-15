@@ -20,13 +20,13 @@ server restart because the index is built once at startup.
 
 - `src/commonMain/resources/docs-search.html`: websocket session, query UI,
   provisional/final response replacement, reconnect, and keyboard handling.
-- `src/commonMain/kotlin/rpc.kt`: `DocsSearch_input(value, phase)` payload.
-- `src/jvmMain/kotlin/afield/ai/core/DocsSearchInstaller.kt`: handler,
+- `src/commonMain/kotlin/afield/app/protocol/rpc.kt`: `DocsSearch_input(value, phase)` payload.
+- `src/jvmMain/kotlin/afield/ai/tools/DocsSearchInstaller.kt`: handler,
   per-browser-session state, phase 1/20 replies, and the deliberately small
   Markdown-to-HTML formatter.
-- `src/jvmMain/kotlin/afield/ai/core/DocsSearchBridge.kt`: remote conversation,
+- `src/jvmMain/kotlin/afield/ai/tools/DocsSearchBridge.kt`: remote conversation,
   retrieval stores, streaming/non-streaming fallback, and model fallback.
-- `src/jvmMain/kotlin/afield/ai/core/completion/KotlinSourceIndex.kt`: exact
+- `src/jvmMain/kotlin/afield/runtime/completion/KotlinSourceIndex.kt`: exact
   indexed roots and startup synchronization.
 
 The authoritative behavioral details are KDoc on the bridge and installer.

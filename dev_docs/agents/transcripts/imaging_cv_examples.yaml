@@ -14,7 +14,7 @@ description: >
     4. features      — Harris and FAST corners on a synthetic square (their coordinates printed
                        against the known truth), plus houghLines recovering planted lines.
     5. morphology    — Otsu -> open/close -> connectedComponents (areas + centroids printed) ->
-                       distanceTransform, colour-mapped through afield.rectsl.Colormaps.
+                       distanceTransform, colour-mapped through afield.lang.rectsl.Colormaps.
     6. motion        — pyramidal Lucas-Kanade flow between two frames related by a known affine
                        warp, then findHomographyRansac fitted to the tracks and compared, in
                        pixels, to the transform that was planted.

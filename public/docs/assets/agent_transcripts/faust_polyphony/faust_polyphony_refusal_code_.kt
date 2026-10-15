@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // A polyphonic program has to declare `freq` and `gate`. Faust hands its whole declared interface
 // back as JSON, so Field can check — and the interesting question is what happens when it fails.

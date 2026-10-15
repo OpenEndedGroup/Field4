@@ -55,8 +55,7 @@ standard preamble, so you rarely type them yourself; a plain Kotlin file wants:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.stdlib.*        // vec, swizzles, invoke / %= / len
-import afield.stdlib.linalg.* // + - * / and the matrix/quaternion types
+import afield.math.linalg.* // vec, swizzles, operators, matrices and quaternions
 ```
 
 ## Vectors are arrows (and sometimes points)

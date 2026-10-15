@@ -1,6 +1,8 @@
-import afield.*
-import afield.ai.core.*
-import afield.stdlib.BoxStudies
+
+import afield.ai.completion.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
+import afield.study.source.BoxStudies
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption

@@ -1,4 +1,4 @@
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // Field controls that are also OSCQuery parameters, under /surface. Drag them here and every
 // listening remote sees the change; set them from a remote and the Field control moves.
