@@ -4369,6 +4369,20 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="slideshow-annotation-zoom",
+            description="A slideshow annotation starts on its note and ends on its target editor line after a pan and at canvas zoom 0.5 and 2.",
+            document=f"ui-regression-slideshow-zoom-{int(time.time())}",
+            commands=[
+                "new-box --name SlideTarget --alias slide_target --x 160 --y 160",
+                shell_join(["run", "@slide_target", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-target.kt")]),
+                "new-box --name SlideHost --alias slide_host --x 160 --y 420",
+                "connect @slide_host @slide_target",
+                shell_join(["run", "@slide_host", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="canvas-split",
             description="A 2x2 canvas split keeps boxes in their quadrant's pane, links scroll by row and column, clamps each pane to its quadrant, draws connections between panes where the boxes are seen, persists and bookmarks, moves and removes dividers by their handles, splits from the corner grip, and unsplits cleanly.",
             document=f"ui-regression-canvas-split-{int(time.time())}",
