@@ -237,7 +237,7 @@ expect:
   outputContains:
     - "frame "
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/animate.png" capture="box" execution="launch" open-outputs=true trim=true wait="4" wait-output=true wait-output-kind="display" timeout="300" embed=true name="clojure-animate" w="780" h="80" alt="A launched Clojure box with two output panels: one reading a frame number in the hundreds, the other a pale blue travelling sine wave."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/animate.png" capture="box" execution="launch" open-outputs=true trim=true wait="4" wait-output=true wait-output-kind="display" timeout="300" embed=true name="clojure-animate" w="780" h="80" alt="A launched Clojure box with two output panels: one reading the current frame number, the other a pale blue travelling sine wave."}
 :::static
 ;; Returning an animation is what launches it.
 (def n 160)
