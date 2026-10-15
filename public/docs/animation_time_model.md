@@ -60,9 +60,7 @@ val stopAfter = 4.5
 // clock, not against frameNumber, so it means the same thing live and under capture.
 fun dotX(elapsed: Double) = 110.0 + 760.0 * (0.5 - 0.5 * kotlin.math.cos(elapsed * 0.9))
 
-// A lambda, not a named `fun`: a named function that captures the script's implicit Box receiver —
-// which `lines(...)` needs, since it is a Box extension — is something K2 cannot currently codegen.
-val draw: (Double, Int, Boolean) -> Unit = { elapsed, frames, stopped ->
+fun draw(elapsed: Double, frames: Int, stopped: Boolean) {
     val accent = if (stopped) vec(1.0, 0.28, 0.30, 1.0) else vec(0.48, 0.85, 1.0, 1.0)
     val quiet = if (stopped) vec(1.0, 0.28, 0.30, 0.55) else vec(0.55, 0.62, 0.72, 0.7)
     val track = fline {
