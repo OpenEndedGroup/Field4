@@ -613,7 +613,7 @@ sending a message continues from the last revision.
 - The window's clock runs freely. When the model captures the window, it sees whatever moment the
   window is at; tool images are the exact frames.
 
-??? aside "How the sessions were recorded and tested"
+??? aside "Agents: how the sessions were recorded and tested"
 
     Each turn went through the `ai-assist` RPC that Field's chat panel sends; the prompts are in each
     document's `prompts/`. The person-side actions clicked the card's Adopt, Keep and Check in
