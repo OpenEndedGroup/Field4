@@ -8,72 +8,78 @@ import afield.audio.synth.PatQ
 import afield.audio.synth.splitmix64
 import afield.audio.synth.toUnitDouble
 
-/*
- Petri nets: places hold tokens, transitions move them, and the whole thing is a clock.
-
- This file is the model and the engine. It knows nothing about music — the only thing it borrows
- from `afield.audio.synth` is [PatQ], the exact rational used for time everywhere in Field, because
- duplicating a rational type would be worse than the import. `PetriMusic.kt` is what turns a net
- into a `PatPattern`; `PetriVisual.kt` is what draws one; `PetriNotation.kt` parses the `#petri`
- text form. Start here, though: everything else is a view onto these types.
-
- Read the surface from the outside in:
-
- 1. Build a net. Places are auto-declared on first mention, so a two-transition loop is four lines:
-
-        val net = petri {
-            place("kick", tokens = 1)
-            t("hit",  dur = cyc(1, 16), emit = "bd") { from("kick"); to("hats") }
-            t("back", dur = cyc(1, 16), emit = "sd") { from("hats"); to("kick") }
-        }
-
- 2. Run it. A [PetriRun] is a memoised, append-only trajectory — ask it for any instant and it
-    replays deterministically up to there:
-
-        net.run().stepsUntil(PatQ.of(4)).flatMap { it.firings }.forEach(::println)
-
- 3. Tokens carry colour, and colour can be anything — a note number, a sample name, a whole
-    `PatPattern`. That is what makes a net a song structure rather than a drum machine:
-
-        place("verse", colours = listOf(pat("bd*4")))
-        t("build", dur = cyc(4)) { from("verse"); from("hats"); to("chorus") { b -> ... } }
-
- Three timings, and why
- ----------------------
-
- - [PetriTiming.STEP] — **maximal step**. Every transition that is enabled at a grid tick fires,
-   all against the marking as it stood at the start of the tick, and produced tokens do not
-   become available until the tick is over. This is the drum-machine semantics, and the one that
-   matches `BooleanNetworkSequencing`'s notion of a step. Conflicts (two transitions wanting the
-   same token) are resolved greedily in [PetriConflict] order.
-
- - [PetriTiming.EVENT] — one transition per tick, the first in conflict order. Interleaving
-   semantics; useful when you want a net to *walk* rather than pulse.
-
- - [PetriTiming.TIMED] — firing takes time. A transition consumes its inputs at the instant it
-   starts and produces its outputs `duration` later, so a token can be *in flight*, and a
-   transition with `dur = cyc(4)` genuinely holds a four-cycle section open. Time advances to the
-   next instant at which something happens, not on a grid.
-
- In STEP and EVENT, `duration` does not affect token flow at all — it only sets how long the
- emitted event lasts. In all three, `delay` shifts the emitted event and nothing else, so you can
- nudge a hit late without perturbing the net's logic.
-
- Determinism, which is load-bearing
- ----------------------------------
-
- `PetriMusic.kt` presents a net as a `PatPattern`, and a `PatPattern` must be a *pure function of
- time* — the scheduler queries it cycle by cycle and every combinator in the language is free to
- query it again, out of order. That only works if the trajectory is reproducible, so:
-
- - tokens are consumed FIFO, oldest first, never "some matching token";
- - [PetriConflict.RANDOM] hashes `(seed, step index, transition name)` rather than pulling from a
-   stateful RNG, so the answer does not depend on how many times anything was asked;
- - [PetriRun] memoises, so replay is not merely reproducible but literally the same objects.
-
- A net with a genuinely non-deterministic policy has no honest pattern representation. That is
- what `PetriLive` is for.
-*/
+/**
+ * Petri nets: places hold tokens, transitions move them, and the whole thing is a clock. This file
+ * is the model and the engine, and the types the rest of the layer is a view onto.
+ *
+ * It knows nothing about music. The one thing it takes from `afield.audio.synth` is [PatQ], the
+ * exact rational Field uses for time everywhere. `PetriMusic.kt` turns a net into a `PatPattern`,
+ * `PetriVisual.kt` draws one, `PetriNotation.kt` parses the `#petri` text form, and
+ * `PetriStateSpace.kt` and `PetriAnalysis.kt` answer questions about one.
+ *
+ * Read the surface from the outside in. Build a net: places are auto-declared on first mention, so
+ * a two-transition loop is three calls.
+ *
+ * ```kotlin
+ * val net = petri {
+ *     place("kick", tokens = 1)
+ *     t("hit",  dur = cyc(1, 16), emit = "bd") { from("kick"); to("hats") }
+ *     t("back", dur = cyc(1, 16), emit = "sd") { from("hats"); to("kick") }
+ * }
+ * ```
+ *
+ * Run it. A [PetriRun] is a memoised, append-only trajectory: ask it for any instant and it replays
+ * deterministically up to there.
+ *
+ * ```kotlin
+ * net.run().stepsUntil(PatQ.of(4)).flatMap { it.firings }.forEach(::println)
+ * ```
+ *
+ * Tokens carry colour, and a colour can be anything: a note number, a sample name, a whole
+ * `PatPattern`. That is what makes a net a song structure rather than a drum machine. Colours are
+ * carried through a firing by default, so the pattern held in `verse` below is the colour of the
+ * token that reaches `chorus`, with no lambda anywhere.
+ *
+ * ```kotlin
+ * place("verse", pat("bd*4"))          // one token whose colour is a pattern
+ * t("build", dur = cyc(4)) { from("verse"); from("hats"); to("chorus") }
+ * ```
+ *
+ * #### Three timings, and why
+ *
+ * - [PetriTiming.STEP] — **maximal step**. Every transition that is enabled at a grid tick fires,
+ *   all against the marking as it stood at the start of the tick, and produced tokens do not
+ *   become available until the tick is over. This is the drum-machine semantics, and the same
+ *   synchronous step `BooleanNetworkSequencing.kt` sequences. Conflicts (two transitions wanting
+ *   the same token) are resolved greedily in [PetriConflict] order.
+ *
+ * - [PetriTiming.EVENT] — one transition per tick, the first in conflict order. Interleaving
+ *   semantics; useful when you want a net to *walk* rather than pulse.
+ *
+ * - [PetriTiming.TIMED] — firing takes time. A transition consumes its inputs at the instant it
+ *   starts and produces its outputs `duration` later, so a token can be *in flight*, and a
+ *   transition with `dur = cyc(4)` holds a four-cycle section open. Time advances to the next
+ *   instant at which something happens, not on a grid.
+ *
+ * In STEP and EVENT, `duration` does not affect token flow at all; it only sets how long the
+ * emitted event lasts. In all three, `delay` shifts the emitted event and nothing else, so you can
+ * nudge a hit late without perturbing the net's logic.
+ *
+ * #### Why the trajectory is reproducible
+ *
+ * `PetriMusic.kt` presents a net as a `PatPattern`, and a `PatPattern` has to be a *pure function of
+ * time*: the scheduler queries it cycle by cycle and every combinator in the language is free to
+ * query it again, out of order. That only works if the trajectory is reproducible, so
+ *
+ * - tokens are consumed FIFO, oldest first, never "some matching token";
+ * - [PetriConflict.RANDOM] hashes `(seed, step index, transition name)` rather than pulling from a
+ *   stateful RNG, so the answer does not depend on how many times anything was asked;
+ * - [PetriRun] memoises, so replay is not merely reproducible but literally the same objects.
+ *
+ * A net whose conflict policy is genuinely non-deterministic cannot be presented as a pattern at
+ * all. `PetriLive` performs one directly instead, rebuilding the run from the current marking
+ * whenever you interfere with it.
+ */
 
 // ── time ───────────────────────────────────────────────────────────────────────────────────
 

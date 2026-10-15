@@ -15,74 +15,85 @@ import afield.audio.synth.slowcat
 import afield.audio.synth.stack
 import afield.audio.synth.stretch
 
-/*
- The `#petri` text notation: a net you can retype while it is playing.
-
- The Kotlin DSL in `PetriNets.kt` is the complete surface — anything you can express, you can
- express there, including arbitrary lambdas. This file is the *terse* surface, and terseness is
- the point: live coding is editing, and editing a net is only pleasant if the whole net fits in
- view and one arc is one line.
-
-     val net = petri("""
-         #petri
-         !grid 1/16
-
-         kick : 1
-         kick -[ hit  @1/16 : bd ]-> hats
-         hats -[ back @1/16 : sd ]-> kick
-     """)
-
- One line, one arc
- -----------------
-
-     pre -[ name @dur key=value : emit => combinator ]-> post
-
- Both sides are `+`-joined lists of `weight*place`, and either may be empty — `-[ spawn ]-> p`
- is a source and `p -[ sink ]->` is a drain. A place is created the first time it is mentioned.
- A transition **may be named on more than one line**, which is how a transition with several
- inputs stays readable:
-
-     verse  -[ build ]-> chorus
-     energy -[ build ]-> chorus
-
- Prefixes on an input mark the two arcs that are not ordinary:
-
-     ~armed  -[ fill ]-> hats        // inhibitor: only while `armed` is empty
-     &clock  -[ tick ]-> bar         // read/test: needs a token, consumes none
-     2*hats  -[ roll ]-> fill        // weight: needs two
-
- Place declarations
- ------------------
-
-     kick   : 1              // one black token
-     dst    : 0 ^4           // empty, and bounded at four
-     verse  : "bd ~ sd ~"    // ONE token whose colour is that pattern — a section
-     label  : 'lead'         // one token coloured with the literal string
-     notes  : #60, #64, #67  // three numeric tokens
-
- The double-quote form is the interesting one, and the asymmetry is deliberate: a quoted string
- is a *pattern*, because a place holding a rhythm is what makes a net a song structure rather
- than a drum machine.
-
- Directives
- ----------
-
-     !timing step | event | timed
-     !grid 1/16
-     !conflict order | priority | round-robin | random
-     !seed 7
-
- Everything else
- ---------------
-
- `//` starts a comment. A leading `#petri` line is the editor's marker and is ignored here.
- Colour transforms after `=>` come from [PetriCombinators], a fixed vocabulary rather than
- compiled Kotlin — the notation stays fast to parse, and the cheatsheet stays finite and
- guardable. When you want a real lambda, that is what the Kotlin DSL is for.
-
- Errors are collected, not thrown at the first one: [petriParse] hands back everything it found so
- an editor can underline all of it at once. [petri] is the throwing convenience on top.
-*/
+/**
+ * The `#petri` text notation: a net you can retype while it is playing.
+ *
+ * The Kotlin DSL in `PetriNets.kt` is the complete surface; anything you can express, you can
+ * express there, including arbitrary lambdas. This file is the *terse* surface. Live coding is
+ * editing, and editing a net is only pleasant when the whole net fits in view and one arc is one
+ * line. For players, the whole notation is summarised on the
+ * [Petri notation cheatsheet](../petri_cheatsheet.md).
+ *
+ * ```petri
+ * #petri
+ * !grid 1/16
+ *
+ * kick : 1
+ * kick -[ hit  @1/16 : bd ]-> hats
+ * hats -[ back @1/16 : sd ]-> kick
+ * ```
+ *
+ * [petri] turns that text into a `PetriNet`; [petriParse] returns the net along with everything it
+ * has to say about the source.
+ *
+ * #### One line, one arc
+ *
+ * ```petri
+ * pre -[ name @dur key=value : emit => combinator ]-> post
+ * ```
+ *
+ * Both sides are `+`-joined lists of `weight*place`, and either may be empty: `-[ spawn ]-> p` is a
+ * source and `p -[ sink ]->` is a drain. A place is created the first time it is mentioned. A
+ * transition **may be named on more than one line**, which is how one with several inputs stays
+ * readable; its settings belong on the first of those lines, and a later line's are ignored with a
+ * warning.
+ *
+ * ```petri
+ * verse  -[ build ]-> chorus
+ * energy -[ build ]-> chorus
+ * ```
+ *
+ * Prefixes on an input mark the two arcs that are not ordinary.
+ *
+ * ```petri
+ * ~armed  -[ fill ]-> hats        // inhibitor: only while armed is empty
+ * &clock  -[ tick ]-> bar         // read/test: needs a token, consumes none
+ * 2*hats  -[ roll ]-> fill        // weight: needs two
+ * ```
+ *
+ * #### Place declarations
+ *
+ * ```petri
+ * kick   : 1              // one black token
+ * dst    : 0 ^4           // empty, and bounded at four
+ * verse  : "bd ~ sd ~"    // ONE token whose colour is that pattern — a section
+ * label  : 'lead'         // one token coloured with the literal string
+ * notes  : #60, #64, #67  // three numeric tokens
+ * ```
+ *
+ * The two kinds of quote differ: a double-quoted string is parsed as a *pattern* and a
+ * single-quoted one stays a string, because a place holding a rhythm is what makes a net a song
+ * structure rather than a drum machine.
+ *
+ * #### Directives
+ *
+ * ```petri
+ * !timing step | event | timed
+ * !grid 1/16
+ * !conflict order | priority | round-robin | random
+ * !seed 7
+ * ```
+ *
+ * #### Everything else
+ *
+ * `//` starts a comment. A leading `#petri` line is the editor's marker and is ignored here. Colour
+ * transforms after `=>` come from [PetriCombinators], a fixed vocabulary rather than compiled
+ * Kotlin, which keeps the notation quick to parse and the cheatsheet finite. When you want a real
+ * lambda, that is what the Kotlin DSL is for.
+ *
+ * Errors are collected rather than thrown at the first one: [petriParse] hands back everything it
+ * found, so an editor can underline all of it at once. [petri] is the throwing convenience on top.
+ */
 
 // ── diagnostics ────────────────────────────────────────────────────────────────────────────
 

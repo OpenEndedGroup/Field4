@@ -5,43 +5,43 @@ package afield.simulation.petri
 
 import afield.audio.synth.PatQ
 
-/*
- What the net can tell you about itself.
-
- Petri nets come with about fifty years of theory attached, and almost all of it answers questions
- a live coder actually has. Two of them are worth the code:
-
- **"How long is this?"** A *T-invariant* is a bag of firings that returns the net to the marking it
- started from. It is, precisely, a loop — and a net's minimal T-invariants are its natural musical
- periods, which is a strange and good thing to be able to compute. A net built from a five-step
- ring against a three-step ring does not have to be told its bar is fifteen; it knows.
-
- [tInvariants] answers this structurally, from the incidence matrix alone, with no notion of time
- or of the initial marking. [PetriRun.lasso] answers it empirically, by running the net until it
- repeats, and gives you a duration in cycles. The two agree — [PetriNet.checkLoopIsInvariant] is
- the assertion that they do, and it is worth keeping around because when it fails, the engine and
- the theory disagree and one of them is wrong.
-
- **"Is this about to wedge?"** A net that starves is silent, and finding out at the wrong moment is
- what makes live coding frightening. [willDeadlock] runs the net forward and tells you before you
- commit the change.
-
- The honest limits, stated once
- ------------------------------
-
- - Invariants are structural. They see arc weights and nothing else: **inhibitor and read arcs are
-   invisible to them**, because neither changes the marking and the incidence matrix is a record of
-   change. A net whose behaviour turns on an inhibitor arc will have invariants that describe a net
-   it is not. [usesTestArcs] is how you find out, and the analysis says so itself.
-
- - Recurrence is detected on [PetriMarking.signature], which compares colours by `toString`. Two
-   different patterns both render as `PatPattern(...)`, so a net that swaps one rhythm for another
-   looks, to the loop detector, like a net that did nothing. That is usually what you want from a
-   *structural* period and occasionally not what you want at all.
-
- - Everything here is bounded. A net with an unbounded place has infinitely many markings and no
-   loop to find; the answer is null rather than a hang.
-*/
+/**
+ * What a net can tell you about itself without being played: how long it is, and whether it is
+ * about to wedge.
+ *
+ * Petri nets come with about fifty years of theory attached, and much of it answers questions a live
+ * coder actually has. Two of them are worth the code.
+ *
+ * **"How long is this?"** A *T-invariant* is a bag of firings that returns the net to the marking it
+ * started from, which is precisely a loop, and a net's minimal T-invariants are its natural musical
+ * periods. A net built from a five-step ring against a three-step ring has two of them, of five
+ * firings and three, and how long the whole net takes to come back round is a separate question:
+ * fifteen steps here, which [PetriRun.lasso] finds by running it. [tInvariants] answers the
+ * structural question from the incidence matrix alone, with no notion of time or of the initial
+ * marking; [PetriNet.checkLoopIsInvariant] asserts that the loop the engine actually ran is itself a
+ * T-invariant (a combination of the minimal ones, in the polyrhythm case), so when it fails the
+ * engine and the algebra disagree and one of them has a bug.
+ *
+ * **"Is this about to wedge?"** A net that starves is silent, and finding out at the wrong moment is
+ * what makes live coding frightening. [willDeadlock] runs the net forward and tells you before you
+ * commit the change. For the stronger question — whether *any* interleaving can wedge, rather than
+ * the one this net's conflict policy chose — see `PetriStateSpace.kt`.
+ *
+ * #### Limits
+ *
+ * - Invariants are structural. They see arc weights and nothing else: **inhibitor and read arcs are
+ *   invisible to them**, because neither changes the marking and the incidence matrix is a record of
+ *   change. A net whose behaviour turns on an inhibitor arc has invariants that describe a net it is
+ *   not. [usesTestArcs] is how you find out, and [report] says so itself.
+ *
+ * - Recurrence is detected on [PetriMarking.signature], which compares colours by `toString`. Two
+ *   different patterns both render as `PatPattern(...)`, so a net that swaps one rhythm for another
+ *   looks, to the loop detector, like a net that did nothing. That is usually what you want from a
+ *   *structural* period and occasionally not what you want at all.
+ *
+ * - Everything here is bounded. A net with an unbounded place has infinitely many markings and no
+ *   loop to find; the answer is null rather than a hang.
+ */
 
 // ── the incidence matrix ───────────────────────────────────────────────────────────────────
 
