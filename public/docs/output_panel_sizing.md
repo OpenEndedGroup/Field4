@@ -254,8 +254,7 @@ where the 220px floor in the figure above comes from.
 With a fill frame, that would loop: the panel grows to the box, the prep pass grows the box to the
 panel, and the auto-size passes grow the panel to the new box, bounded only by the window-width
 clamp on `src/jsMain/kotlin/afield/app/client/Main.kt:1625#val disclosureWidth`. To prevent it, the prep pass
-has its own copy of the fill-frame test
-(`src/jsMain/kotlin/afield/app/client/Main.kt:1566#private fun isFillWidthIframe`):
+asks the same fill-frame test the panel sizer uses (`window.fieldIsFillWidthIframe`):
 
 - fill panels are excluded from `maxContentWidth`
   (`src/jsMain/kotlin/afield/app/client/Main.kt:1585#if (contentIsFillWidth) 0.0 else content.scrollWidth` and
