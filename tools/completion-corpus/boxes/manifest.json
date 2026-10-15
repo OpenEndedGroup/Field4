@@ -686,7 +686,7 @@
   {"doc": "syphon_gpu", "box": "syphon_gpu_renderer", "codeSha256": "8ea8aa6df10f8767", "codeLines": 11, "receivers": ["afield.document.graph.Box"], "preamble": "syphon_gpu__syphon_gpu_renderer.preamble.kt"},
   {"doc": "syphon_zero_copy_receive_smoke", "box": "syphon_zero_copy_renderer", "codeSha256": "35e4deb7c0f29519", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": "syphon_zero_copy_receive_smoke__syphon_zero_copy_renderer.preamble.kt"},
   {"doc": "syphon_zero_copy_receive_smoke", "box": "syphon_zero_copy_smoke", "codeSha256": "543aa46c0dbc1325", "codeLines": 80, "receivers": ["afield.document.graph.Box"], "preamble": "syphon_zero_copy_receive_smoke__syphon_zero_copy_smoke.preamble.kt"},
-  {"doc": "three_inspector_wall", "box": "three-inspector-wall", "codeSha256": "164fb180d0c345ae", "codeLines": 101, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "three_inspector_wall", "box": "three-inspector-wall", "codeSha256": "a817cc5ff0a3efa9", "codeLines": 101, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "threebox", "box": "tb_compute", "codeSha256": "607efe39ec560ee7", "codeLines": 25, "receivers": ["afield.document.graph.Box"], "preamble": "threebox__tb_compute.preamble.kt"},
   {"doc": "threebox", "box": "tb_draw", "codeSha256": "ce1a8ce83dbcb2fe", "codeLines": 9, "receivers": ["afield.document.graph.Box"], "preamble": "threebox__tb_draw.preamble.kt"},
   {"doc": "threebox", "box": "tb_renderer", "codeSha256": "273a8e0f35cda65e", "codeLines": 11, "receivers": ["afield.document.graph.Box"], "preamble": "threebox__tb_renderer.preamble.kt"},
