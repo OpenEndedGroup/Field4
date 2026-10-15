@@ -532,6 +532,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [gp](math.md#gaussianprocess-kt)
 - *linalg* — [Math](math.md#dualquaternionf-kt) · [Workspace](workspace.md#stdlib-kt)
     - [arena](math.md#arenageometry-kt)
+- [matrixprofile](math.md#matrixprofile-kt)
 - *optimization* — [Internal](internal.md#ffmceresbackend-kt) · [Math](math.md#leastsquares-kt) · [Solvers](solvers.md#architecturalgeometry-kt)
     - *ceres* — [Internal](internal.md#ffmceresbackend-kt) · [Solvers](solvers.md#architecturalgeometry-kt)
 - *statistics* — [Data](data.md#clustering-kt) · [Graphics](graphics.md#quantilewarp-kt) · [Math](math.md#correlations-kt)
@@ -626,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**31840 public symbols across 1441 source files**, 15835 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**31900 public symbols across 1443 source files**, 15890 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -637,7 +638,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 12 | 124 | 40 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
-| [Math](math.md) | 38 | 1874 | 1339 (71%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 40 | 1933 | 1393 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 967 | 408 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 288 | 6943 | 3418 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 740 | 369 (49%) | Turning a scene into pixels on a Vulkan device. |
@@ -648,7 +649,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 12 | 656 | 453 (69%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 610 | 404 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 48 | 1426 | 971 (68%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 48 | 1427 | 972 (68%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 42 | 1504 | 735 (48%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1311 | 717 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2086 | 1004 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -1383,6 +1384,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MarfVectors.kt](patterns.md#marfvectors-kt) | Patterns | 22 | 4 | `MarfSpace` instances for Field's generated linalg vectors, so a reader can emit a position, a colour or a set of material parameters instead of one number. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [MarkdownOutput.kt](visualization.md#markdownoutput-kt) | Visualization | 11 | 11 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Measuring dependence between two signals](../statistics_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>functions/<wbr></small> [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>matrixprofile/<wbr></small> [MatrixProfile.kt](math.md#matrixprofile-kt) | Math | 29 | 25 |  | [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [MavenClasspathManager.kt](workspace.md#mavenclasspathmanager-kt) | Workspace · internal | 10 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>osc/<wbr>query/<wbr></small> [Mdns.kt](networking.md#mdns-kt) | Networking | 9 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr>pressure/<wbr></small> [Mechanics.kt](simulation.md#mechanics-kt) | Simulation | 13 | 2 |  | [Pressure membranes](../pressure_membranes.md) |
@@ -1448,6 +1450,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>shader/<wbr></small> [MslEditorLanguage.kt](graphics.md#msleditorlanguage-kt) | Graphics | 5 | 2 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [MslLanguageSmokeTest.kt](examples.md#msllanguagesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>timecode/<wbr></small> [Mtc.kt](networking.md#mtc-kt) | Networking | 16 | 15 |  | [SMPTE Timecode: LTC and MIDI Time Code](../smpte_timecode.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>matrixprofile/<wbr></small> [MultiDimensional.kt](math.md#multidimensional-kt) | Math | 30 | 29 |  | [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [MultiPingPongRenderToTexture.kt](graphics.md#multipingpongrendertotexture-kt) | Graphics | 36 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [MusicTranscription.kt](audio-ai.md#musictranscription-kt) | Audio AI | 20 | 5 | Typed decoder for the versioned note document a multi-instrument transcription job leaves behind. | [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>nano/<wbr></small> [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 9 | Turns Nano assembly source text into a bytecode `ByteArray`: one pass over the lines emitting bytes, then a patch pass that fills in the labels the first pass left as placeholders. |  |
@@ -1629,7 +1632,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [PlaybackClock.kt](graphics.md#playbackclock-kt) | Graphics | 13 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [playlist.kt](workspace.md#playlist-kt) | Workspace | 5 | 5 | Playlist functionality for Field4 |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [playlist_example.kt](examples.md#playlist-example-kt) | Examples | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [plotly.kt](visualization.md#plotly-kt) | Visualization | 13 | 13 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Values over time: interpolants & keyframes](../interpolants_examples.md), [Springs, dampers, and a character with mass](../movement_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [plotly.kt](visualization.md#plotly-kt) | Visualization | 14 | 14 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md), [Values over time: interpolants & keyframes](../interpolants_examples.md), [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [PlyLoaderTest.kt](examples.md#plyloadertest-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [PlyLoaderUnitTest.kt](graphics.md#plyloaderunittest-kt) | Graphics | 4 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr>util/<wbr></small> [PngEncoder.kt](imaging.md#pngencoder-kt) | Imaging | 3 | 3 |  |  |
