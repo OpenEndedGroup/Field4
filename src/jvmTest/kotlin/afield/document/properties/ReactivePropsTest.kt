@@ -21,6 +21,7 @@ import afield.document.graph.needsResync
 import afield.runtime.lifecycle.ReactiveRuns
 import afield.runtime.lifecycle.Runloop
 import afield.runtime.lifecycle.map
+import afield.runtime.macros.MacroRegistry
 import afield.document.properties.MissingInheritedPropertyException
 import afield.document.properties.Reactive
 import afield.document.properties.ReactiveInheritance
@@ -230,7 +231,7 @@ class ReactivePropsTest {
     fun aDownDeclarationNeedsItsTypeAndToleratesSpacingAndDefaults() {
         val s = session("forms")
         val a = boxIn(s, "a", "propDown(gain)")
-        assertFailsWith<afield.macros.MacroRegistry.MacroExpansionProblem> {
+        assertFailsWith<MacroRegistry.MacroExpansionProblem> {
             a.macro_reactive_prop(listOf("(gain)"), Reactive.DOWN, "propDown")
         }
         assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
