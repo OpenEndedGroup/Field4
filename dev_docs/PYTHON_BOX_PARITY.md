@@ -31,10 +31,7 @@ gets and whether a Python box now gets it.
 - **No JVM test drives the controls path.** It needs JEP; the evidence is the backdoor run recorded
   in the worklog of branch `nightly/2026-10-15/1-python-box-parity` (slider moved to 7.5 and checkbox
   ticked from the page reached the Python callbacks; a re-run kept both).
-- **Docs captures** for the two new `python.md` fences were not regenerated in the nightly (the
-  shared Kotlin daemon was saturated); run
-  `FIELD_DOCS_RUNNER_MODE=always uv run --project . --group docs python tools/build_zensical_docs.py --page python.md`
-  on a machine with JEP.
+- **Docs captures** for the two new fences were generated with `--page python.md` (mode always) and inspected.
 
 Demo: `dev_docs/agents/transcripts/python_box_parity.yaml` and the saved document
 `dev_docs/agents/demos/python_box_parity/`.
