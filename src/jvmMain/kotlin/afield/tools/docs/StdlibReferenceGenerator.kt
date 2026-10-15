@@ -2184,7 +2184,7 @@ object StdlibReferenceGenerator {
                 }
                 val label = when {
                     links.size == 1 -> links.single()
-                    links.isNotEmpty() -> "$name — ${links.joinToString(" · ")}"
+                    links.isNotEmpty() -> "*$name* — ${links.joinToString(" · ")}"
                     path == "${prefix}math/linalg" -> "[$name](../linear_algebra_api.md)"
                     else -> name
                 }

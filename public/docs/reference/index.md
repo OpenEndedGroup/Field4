@@ -15,7 +15,7 @@ Explore Field's standard library by package. Follow a branch to its declarations
 ### ai
 
 - [learning](machine-learning.md#deepsets-kt)
-- retrieval — [Data](data.md#semanticsearchmanager-kt) · [Machine learning](machine-learning.md#relatedcontextdiscovery-kt)
+- *retrieval* — [Data](data.md#semanticsearchmanager-kt) · [Machine learning](machine-learning.md#relatedcontextdiscovery-kt)
 
 </div>
 
@@ -23,8 +23,8 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 ### animation
 
-- interpolation — [Graphics](graphics.md#keyframeinterpolants-kt) · [Math](math.md#interpolants-kt)
-- keyframes — [Graphics](graphics.md#keyframecodeblend-kt) · [Visualization](visualization.md#keyframebrowser-kt)
+- *interpolation* — [Graphics](graphics.md#keyframeinterpolants-kt) · [Math](math.md#interpolants-kt)
+- *keyframes* — [Graphics](graphics.md#keyframecodeblend-kt) · [Visualization](visualization.md#keyframebrowser-kt)
 - [motion](simulation.md#movement-kt)
 
 </div>
@@ -42,9 +42,9 @@ Explore Field's standard library by package. Follow a branch to its declarations
 ### audio
 
 - [ai](audio-ai.md#analysisoperations-kt)
-- analysis — [Audio](audio.md#essentiaanalysis-kt) · [Math](math.md#spectral-kt) · [Visualization](visualization.md#lorisvisualizer-kt)
+- *analysis* — [Audio](audio.md#essentiaanalysis-kt) · [Math](math.md#spectral-kt) · [Visualization](visualization.md#lorisvisualizer-kt)
 - [pd](synthesis.md#pdinstance-kt)
-- synth — [Audio](audio.md#abletonlinkaudio-kt) · [Patterns](patterns.md#beatlaunch-kt) · [Synthesis](synthesis.md#audioreturnvalue-kt)
+- *synth* — [Audio](audio.md#abletonlinkaudio-kt) · [Patterns](patterns.md#beatlaunch-kt) · [Synthesis](synthesis.md#audioreturnvalue-kt)
 
 </div>
 
@@ -54,7 +54,7 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 - [collections](workspace.md#stdlib-collections-kt)
 - [formats](data.md#jsonparsing-kt)
-- graph — [Data](data.md#dynamic-graph-field-kt) · [Graphics](graphics.md#fline-graph-connectivity-kt) · [Visualization](visualization.md#interactionnets-kt)
+- *graph* — [Data](data.md#dynamic-graph-field-kt) · [Graphics](graphics.md#fline-graph-connectivity-kt) · [Visualization](visualization.md#interactionnets-kt)
 - query
     - [datalog](languages.md#datalog-kt)
 - [sorting](data.md#sorting-networks-kt)
@@ -67,8 +67,8 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 - [context](workspace.md#contextresolution-kt)
 - [graph](workspace.md#boxes-kt)
-- properties — [Data](data.md#saved-kt) · [Workspace](workspace.md#propertybag-kt)
-- workspace — [Data](data.md#filemanager-kt) · [Workspace](workspace.md#kits-kt)
+- *properties* — [Data](data.md#saved-kt) · [Workspace](workspace.md#propertybag-kt)
+- *workspace* — [Data](data.md#filemanager-kt) · [Workspace](workspace.md#kits-kt)
 
 </div>
 
@@ -76,10 +76,10 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 ### geometry
 
-- mesh — [Graphics](graphics.md#mesh-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
-- path — [Graphics](graphics.md#fline-kt) · [Math](math.md#cubicbezier3d-kt)
+- *mesh* — [Graphics](graphics.md#mesh-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
+- *path* — [Graphics](graphics.md#fline-kt) · [Math](math.md#cubicbezier3d-kt)
 - [polytope](polytopes.md#attributes-kt)
-- spatial — [Graphics](graphics.md#bspot-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
+- *spatial* — [Graphics](graphics.md#bspot-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
 
 </div>
 
@@ -89,13 +89,13 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 - [color](graphics.md#colormaps-kt)
 - [interaction](graphics.md#pointing-kt)
-- render — [Graphics](graphics.md#accelerationstructure-kt) · [Simulation](simulation.md#tileresidency-kt)
+- *render* — [Graphics](graphics.md#accelerationstructure-kt) · [Simulation](simulation.md#tileresidency-kt)
 - scene
     - [fabricated](renderers.md#fabricatedirectlighting-kt)
 - [shader](graphics.md#introspection-kt)
 - [text](graphics.md#slugbuffer-kt)
 - vulkan
-    - buffers — [Graphics](graphics.md#dynamicbuffer-kt) · [Workspace](workspace.md#stdlib-buffers-kt)
+    - *buffers* — [Graphics](graphics.md#dynamicbuffer-kt) · [Workspace](workspace.md#stdlib-buffers-kt)
 
 </div>
 
@@ -103,7 +103,7 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 ### io
 
-- osc — [Audio](audio.md#osc-kt) · [Data](data.md#tuio-kt) · [Networking](networking.md#mdns-kt)
+- *osc* — [Audio](audio.md#osc-kt) · [Data](data.md#tuio-kt) · [Networking](networking.md#mdns-kt)
 - [process](data.md#jsonlineserver-kt)
 
 </div>
@@ -118,10 +118,10 @@ Explore Field's standard library by package. Follow a branch to its declarations
 - [lambda](visualization.md#lambdaterms-kt)
 - [morpho](languages.md#morphocircuit-kt)
 - [nano](languages.md#nanoassembler-kt)
-- python — [Data](data.md#numpy-kt) · [Languages](languages.md#numpyshared-kt)
+- *python* — [Data](data.md#numpy-kt) · [Languages](languages.md#numpyshared-kt)
 - [rectsl](languages.md#rectsl-kt)
-- remotejs — [Languages](languages.md#asta-kt) · [Workspace](workspace.md#stdlib-remotejs-kt)
-- stacksl — [Graphics](graphics.md#stackslbox-kt) · [Languages](languages.md#phasenoise-kt) · [Search](search.md#stackslevolution-kt)
+- *remotejs* — [Languages](languages.md#asta-kt) · [Workspace](workspace.md#stdlib-remotejs-kt)
+- *stacksl* — [Graphics](graphics.md#stackslbox-kt) · [Languages](languages.md#phasenoise-kt) · [Search](search.md#stackslevolution-kt)
 
 </div>
 
@@ -129,13 +129,13 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 ### math
 
-- autodiff — [Function](function.md#autodiff-fn-kt) · [Math](math.md#autodiff-kt)
+- *autodiff* — [Function](function.md#autodiff-fn-kt) · [Math](math.md#autodiff-kt)
 - [control](graphics.md#modelling-kt)
 - [estimation](math.md#pf-kt)
-- functions — [Function](function.md#fninterval-kt) · [Math](math.md#densedoubleops-kt)
-- linalg — [Math](math.md#dualquaternionf-kt) · [Workspace](workspace.md#stdlib-kt)
-- optimization — [Math](math.md#leastsquares-kt) · [Solvers](solvers.md#architecturalgeometry-kt)
-- statistics — [Data](data.md#clustering-kt) · [Graphics](graphics.md#quantilewarp-kt) · [Math](math.md#correlations-kt)
+- *functions* — [Function](function.md#fninterval-kt) · [Math](math.md#densedoubleops-kt)
+- *linalg* — [Math](math.md#dualquaternionf-kt) · [Workspace](workspace.md#stdlib-kt)
+- *optimization* — [Math](math.md#leastsquares-kt) · [Solvers](solvers.md#architecturalgeometry-kt)
+- *statistics* — [Data](data.md#clustering-kt) · [Graphics](graphics.md#quantilewarp-kt) · [Math](math.md#correlations-kt)
 - [units](math.md#units-kt)
 
 </div>
@@ -164,7 +164,7 @@ Explore Field's standard library by package. Follow a branch to its declarations
 ### simulation
 
 - [agents](alife.md#alife-kt)
-- automata — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
+- *automata* — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
 - [kratos](simulation.md#kratosdemo-kt)
 - [particles](machine-learning.md#neuralparticles-kt)
 - [physics](simulation.md#csvreader-kt)
@@ -177,7 +177,7 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 - [build](workspace.md#boxstudybuilds-kt)
 - [evidence](workspace.md#studyevidence-kt)
-- search — [Search](search.md#populationsearch-kt) · [Workspace](workspace.md#studyvariants-kt)
+- *search* — [Search](search.md#populationsearch-kt) · [Workspace](workspace.md#studyvariants-kt)
 - [source](workspace.md#livestudy-kt)
 - [ui](workspace.md#knobnames-kt)
 
@@ -187,9 +187,9 @@ Explore Field's standard library by package. Follow a branch to its declarations
 
 ### ui
 
-- controls — [Visualization](visualization.md#controllaw-kt) · [Workspace](workspace.md#effectiveparameter-kt)
-- output — [Graphics](graphics.md#shadertransitionnotes-kt) · [Visualization](visualization.md#liveoutputiframe-kt) · [Workspace](workspace.md#lastrunnotes-kt)
-- visualization — [Graphics](graphics.md#flineinspect-kt) · [Visualization](visualization.md#audiovisualizer-kt) · [Workspace](workspace.md#geometryreviewsurface-kt)
+- *controls* — [Visualization](visualization.md#controllaw-kt) · [Workspace](workspace.md#effectiveparameter-kt)
+- *output* — [Graphics](graphics.md#shadertransitionnotes-kt) · [Visualization](visualization.md#liveoutputiframe-kt) · [Workspace](workspace.md#lastrunnotes-kt)
+- *visualization* — [Graphics](graphics.md#flineinspect-kt) · [Visualization](visualization.md#audiovisualizer-kt) · [Workspace](workspace.md#geometryreviewsurface-kt)
 
 </div>
 
