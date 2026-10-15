@@ -225,8 +225,8 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
 
     /**
      * Register a callback for a custom link in the note HTML.
-     * Use in markdown as: <a href="#custom:linkName">Click me</a>
-     * or in markdown link syntax: [Click me](#custom:linkName)
+     * Use in markdown as: `<a href="#custom:linkName">Click me</a>`
+     * or in markdown link syntax: `[Click me](#custom:linkName)`
      * 
      * The callback receives a LinkCallbackContext with:
      * - here: the box hosting the slideshow

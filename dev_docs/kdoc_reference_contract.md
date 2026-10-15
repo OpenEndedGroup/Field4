@@ -233,11 +233,12 @@ not know they existed. The obvious move — annotate them — is the one move th
 | the symbol lookup ends in a **name-only** first-wins | `src/jvmMain/kotlin/afield/runtime/completion/KotlinSourceIndex.kt:302#fun getCompletionCategoryForSymbol` |
 
 So a `@file:` line added to publish a page can change — or delete — rows in a working programmer's
-autocomplete, and can do it for a declaration in a different package that merely shares a name. The
-measured cost of the near-miss is recorded on `EXCLUDE_PREFIXES`
-(`src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt:232#Excluding by path costs nothing`):
-eleven candidate files, 574 declaration names, 235 of them also declared elsewhere *and* present in
-real box code.
+autocomplete, and can do it for a declaration in a different package that merely shares a name.
+The complete JVM catalog therefore includes these files without changing their annotations.
+Documentation-only classification in
+`src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt:1054#internal fun isImplementation`
+dims recognizable implementation and verification helpers while retaining their links and source
+pages. It has no effect on completion visibility.
 
 The `Simulation` page was measured the same way in 2026-09, and the numbers are worth keeping
 because they say something the synth ones did not. Population: the **18** of that page's 26 files

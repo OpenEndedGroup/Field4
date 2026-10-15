@@ -402,6 +402,9 @@ nav:
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
       - Video: reference/video.md
+      - Lighting: reference/lighting.md
+      - Examples: reference/examples.md
+      - Internal: reference/internal.md
     # Directly under Reference since its hand-written companion, linear_algebra.md, moved to the
     # head of "Drawing From Data": this page is generated (tools/linalg-generator), so it stays.
     - Generated Vector API: linear_algebra_api.md

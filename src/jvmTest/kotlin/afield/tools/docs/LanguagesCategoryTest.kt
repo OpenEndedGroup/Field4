@@ -300,7 +300,7 @@ class LanguagesCategoryTest {
         )
 
         val roots = StdlibReferenceGenerator.sourceRoots()
-        assertTrue(roots.size >= 17, "SOURCE_ROOTS has shrunk to ${roots.size}, from 17")
+        assertTrue(roots.isNotEmpty(), "No source tree is being documented")
         val unrepresented = roots.filter { root ->
             val names = File(repoRoot(), root).walkTopDown()
                 .filter { it.isFile && it.extension == "kt" }.map { it.name }.toSet()
@@ -313,6 +313,37 @@ class LanguagesCategoryTest {
                 "committed page, so the generator is reading them and publishing nothing: " +
                 "$unrepresented"
         )
+    }
+
+    @Test
+    fun `every JVM Kotlin file appears exactly once in the catalog`() {
+        val repo = repoRoot()
+        val expected = File(repo, "src/jvmMain/kotlin").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .map { it.relativeTo(repo).invariantSeparatorsPath }.toSet()
+        val catalog = File(repo, "public/docs/reference/index.md").readText().replace("<wbr>", "")
+        val rows = Regex("""(?m)^\| <small class="reference-file-path[^"]*">([^<]+)</small> \[([^]]+\.kt)]""")
+            .findAll(catalog).map { it.groupValues[1] + it.groupValues[2] }.toList()
+        assertTrue(expected.size >= 315, "The independent source-tree census is unexpectedly small")
+        assertEquals(expected, rows.toSet(), "Every JVM Kotlin file must have a catalog row, including internals")
+        assertEquals(rows.size, rows.toSet().size, "A source file must not appear twice")
+    }
+
+    @Test
+    fun `internal presentation preserves callable batteries`() {
+        val repo = repoRoot()
+        fun check(path: String, internal: Boolean) {
+            val file = File(repo, "src/jvmMain/kotlin/afield/$path")
+            assertTrue(file.isFile, "Missing classification sentinel: $path")
+            assertEquals(internal, StdlibReferenceGenerator.isImplementation(
+                file.relativeTo(repo).invariantSeparatorsPath, file.readText()), path)
+        }
+        check("app/server/Server.kt", true)
+        check("runtime/kotlin/KotlinInterface.kt", true)
+        check("geometry/solid/manifold/Solid.kt", false)
+        check("geometry/solid/manifold/Section.kt", false)
+        check("graphics/vulkan/Renderer.kt", false)
+        check("ui/notation/Notation.kt", false)
     }
 
     // ---------------------------------------------------------------------------------------------

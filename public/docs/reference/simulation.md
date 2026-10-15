@@ -14,7 +14,7 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames and the Animation Loop](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-36 source file(s), 964 public symbol(s), 520 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+42 source file(s), 984 public symbol(s), 525 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -218,7 +218,7 @@ Thrown when TetGen refuses a surface, carrying its own explanation.
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">TetgenLibrary</span></code>](source/jvmMain/afield/geometry/mesh/tetgen/Tetgen/#L229)
 
-Where `libfield_tetgen_jvm` is, and whether it is there — the same shape as `afield.geometry.solid.manifold.ManifoldLibrary`, so "is this installed?" is answerable from a box.
+Where `libfield_tetgen_jvm` is, and whether it is there — the same shape as [`afield.geometry.solid.manifold.ManifoldLibrary`](internal.md#manifoldnative-kt-manifoldlibrary), so "is this installed?" is answerable from a box.
 
 | Declaration | Summary |
 | --- | --- |
@@ -255,6 +255,41 @@ A bounded, world-aligned rectangle of tiles, stored in reusable toroidal slots. 
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">invalidate</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/render/TileResidency/#L71) | Drop contents at the next move, preserving generation identities. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">moveTo</span><span class="p">(</span><span class="n">px</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">py</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/graphics/render/TileResidency/#L73) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">pack</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/graphics/render/TileResidency/#L108) | Four ints per slot: world tile x/y, generation, occupied. No Float precision loss. |
+
+## FlowShaders.kt { #flowshaders-kt }
+
+`src/jvmMain/kotlin/afield/simulation/flow/FlowShaders.kt` — [read the source](source/jvmMain/afield/simulation/flow/FlowShaders/)
+
+### FlowShaders { #flowshaders-kt-flowshaders }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">FlowShaders</span></code>](source/jvmMain/afield/simulation/flow/FlowShaders/#L7)
+
+Small shader functions; passes, resources and artistic controls remain editable boxes.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">source</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/flow/FlowShaders/#L9) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/flow/FlowShaders/#L18) | Explicitly register the packaged root, replacing a custom "flow" registration. Ordinary includes already have a built-in fallback, so documents need no setup call. |
+
+## TileAtlasLayout.kt { #tileatlaslayout-kt }
+
+`src/jvmMain/kotlin/afield/simulation/flow/TileAtlasLayout.kt` — [read the source](source/jvmMain/afield/simulation/flow/TileAtlasLayout/)
+
+### TileAtlasLayout { #tileatlaslayout-kt-tileatlaslayout }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">TileAtlasLayout</span><span class="p">(</span><span class="k">val</span> <span class="n">residency</span><span class="p">:</span> <span class="nc">TileResidency</span><span class="p">,</span> <span class="k">val</span> <span class="n">cellsPerTile</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">halo</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L6)
+
+GPU atlas addressing without ownership of textures or command scheduling.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stride</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L11) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">width</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L16) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">height</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L17) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">headers</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L18) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">updateHeaders</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L20) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pixelX</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L21) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pixelY</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/simulation/flow/TileAtlasLayout/#L25) |  |
 
 ## KratosDemo.kt { #kratosdemo-kt }
 
@@ -371,6 +406,10 @@ What a [`KratosLaunch`](simulation.md#kratoslaunch-kt-kratoslaunch) hands back: 
 | <code class="highlight"><span class="k">val</span> <span class="n">socket</span><span class="p">:</span> <span class="nc">Socket</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">process</span><span class="p">:</span> <span class="nc">Process</span><span class="o">?</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">release</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
+
+## KratosProtocol.kt { #kratosprotocol-kt }
+
+`src/jvmMain/kotlin/afield/simulation/kratos/KratosProtocol.kt` — [read the source](source/jvmMain/afield/simulation/kratos/KratosProtocol/)
 
 ## KratosSession.kt { #kratossession-kt }
 
@@ -1050,11 +1089,11 @@ The n-ary spelling of [`SimulationCSG`](simulation.md#simulationgeometry-kt-simu
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">ManifoldGeometry</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">solid</span><span class="p">:</span> <span class="nc">Solid</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SimulationGeometry</span></code>](source/jvmMain/afield/simulation/kratos/SimulationGeometry/#L240)
 
-Snapshot of the existing Manifold conversion. The caller retains ownership of `Solid`. Field's existing BVH supplies distances (negated to Kratos' positive-inside convention). Classification runs on the session executor. Triangle provenance is not invented here.
+Snapshot of the existing Manifold conversion. The caller retains ownership of [`Solid`](graphics.md#solid-kt-solid). Field's existing BVH supplies distances (negated to Kratos' positive-inside convention). Classification runs on the session executor. Triangle provenance is not invented here.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">surface</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code>](source/jvmMain/afield/simulation/kratos/SimulationGeometry/#L245) | The triangulation taken at construction. Later edits to the `Solid` are not seen. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">surface</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code>](source/jvmMain/afield/simulation/kratos/SimulationGeometry/#L245) | The triangulation taken at construction. Later edits to the [`Solid`](graphics.md#solid-kt-solid) are not seen. |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">workerData</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nc">BackgroundDomain</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/simulation/kratos/SimulationGeometry/#L254) | One little-endian double per node of `domain`: the distance to the surface, negated on the way out because Kratos counts distance positive inside. |
 
 ### BackgroundDomain { #simulationgeometry-kt-backgrounddomain }
@@ -1168,6 +1207,46 @@ What a `thermal.stationary` session returns.
 [<code class="highlight"><span class="k">typealias</span> <span class="nc">FlowResult</span> <span class="o">=</span> <span class="nc">SimulationResult</span></code>](source/jvmMain/afield/simulation/kratos/SimulationResult/#L539)
 
 What a `flow.embedded` session returns. See [`SimulationResult`](simulation.md#simulationresult-kt-simulationresult).
+
+## PetriEditorExtension.kt { #petrieditorextension-kt }
+
+`src/jvmMain/kotlin/afield/simulation/petri/PetriEditorExtension.kt` — [read the source](source/jvmMain/afield/simulation/petri/PetriEditorExtension/)
+
+### Top-level functions { #petrieditorextension-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">petriEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/petri/PetriEditorExtension/#L37) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">petriEditorExtensionHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/petri/PetriEditorExtension/#L39) |  |
+
+### PetriEditorExtension { #petrieditorextension-kt-petrieditorextension }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PetriEditorExtension</span></code>](source/jvmMain/afield/simulation/petri/PetriEditorExtension/#L5)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/petri/PetriEditorExtension/#L6) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/petri/PetriEditorExtension/#L15) | The Petri editor extension. The single source of truth is the static resource `src/commonMain/resources/petri.js`, which is served to the browser as the AMD module `bithero/petri` (see bootstrapMonaco.js) and read verbatim here so the node-probe smoke test exercises the exact code that ships. The file self-installs under bare `eval` (no AMD loader) and registers an AMD module when a Monaco loader is present. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/petri/PetriEditorExtension/#L24) |  |
+
+## PetriLayoutSolver.kt { #petrilayoutsolver-kt }
+
+`src/jvmMain/kotlin/afield/simulation/petri/PetriLayoutSolver.kt` — [read the source](source/jvmMain/afield/simulation/petri/PetriLayoutSolver/)
+
+## PetriSmokeTest.kt { #petrismoketest-kt }
+
+`src/jvmMain/kotlin/afield/simulation/petri/PetriSmokeTest.kt` — [read the source](source/jvmMain/afield/simulation/petri/PetriSmokeTest/)
+
+### PetriSmokeTest { #petrismoketest-kt-petrismoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PetriSmokeTest</span></code>](source/jvmMain/afield/simulation/petri/PetriSmokeTest/#L46)
+
+The whole stack, end to end, in one headless process: model, notation, analysis, the pattern bridge, the live runtime, the drawing, and — the part that matters most — **the sound**.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/petri/PetriSmokeTest/#L49) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="n">outputDir</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/simulation/petri/PetriSmokeTest/#L54) |  |
 
 ## CSVReader.kt { #csvreader-kt }
 
@@ -2072,7 +2151,7 @@ The three classical weights, plus the speed limit that keeps a flock finite.
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">ShaderBoids</span><span class="p">(</span><span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">GpuNeighbourGrid</span><span class="p">,</span> <span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">learned</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">ai</span><span class="p">.</span><span class="n">learning</span><span class="p">.</span><span class="nc">DeepSetsWeights</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">equivariant</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">ai</span><span class="p">.</span><span class="n">learning</span><span class="p">.</span><span class="nc">EquivariantWeights</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">BoidSettings</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/physics/ShaderBoids/#L200)
 
-Classical Reynolds boids, on the GPU, over a `GpuNeighbourGrid`.
+Classical Reynolds boids, on the GPU, over a [`GpuNeighbourGrid`](graphics.md#gpuneighbourgrid-kt-gpuneighbourgrid).
 
 | Declaration | Summary |
 | --- | --- |

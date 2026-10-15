@@ -10,7 +10,7 @@ id: docs.codebase-reference.generate
 runner: jvm-main
 entrypoint: afield.tools.docs.StdlibReferenceGenerator
 tags: [smoke, docs, reference, stdlib, verification]
-timeoutSec: 180
+timeoutSec: 360
 expect:
   exitCode: 0
   stdoutContains:
@@ -96,168 +96,8 @@ object StdlibReferenceGenerator {
     /** At most this many docs pages are linked from one source file's section. */
     private const val MAX_EVIDENCE_LINKS = 3
 
-    /**
-     * Source roots to document, relative to the repo. `afield.stdlib` is the live-coding standard
-     * library; `afield.ui.visualization` is the value-visualizer/plot surface a box reaches for next;
-     * `afield.audio.synth` is the audio stack — the second-largest body of box-facing API in the
-     * tree, and the one a box reaches for when it wants to make a sound rather than a picture.
-     *
-     * `afield.audio.synth` was outside this list until it was added deliberately, and the cost of
-     * that was concrete: `import afield.audio.synth.*` is in the default box preamble (`intro`, in
-     * `Boxes.kt`), so every name in that package is already in scope in every box, and none of them
-     * appeared here. Adding the root is one line; what it needed was the [CATEGORY_BLURBS] work
-     * beside it, because exactly one file in that package carried a `@file:CompletionCategory` and
-     * every other one would have landed in `uncategorised.md` — a worse reference than none. (The
-     * file count is deliberately not written here: nothing guards it, and the package is growing.)
-     *
-     * The ten roots after those three are Field's **small languages**, and they arrived by the same
-     * argument with one extra step. The languages are the most distinctive thing in this tree and
-     * none of them was here; `afield.data.query.datalog` had a prose page and an entry on
-     * `dev_docs/small_language_anatomy.md` while this reference did not know the package existed.
-     * The extra step is that a language package is only allowed in when it carries no
-     * `@file:CompletionCategory` of its own, so that publishing it needs no annotation anywhere —
-     * see [CATEGORY_BY_PATH] for how the label is assigned instead, and why it has to be.
-     *
-     * Membership is *derived*, not curated. A package is on this list because it is on one of the
-     * two language integration routes that `dev_docs/small_language_anatomy.md` documents:
-     *
-     * - **Route B**, a promoted main language — the language a *box* is written in. The list is
-     *   every package containing a call to
-     *   [afield.runtime.registerMainLanguageRuntime]: `morpho`, `nano`, `clojure`, `python`, `ml`
-     *   (FieldML), `remotejs` (which registers two ids, `remotejs` and `kotlinjs`), `forth`,
-     *   `datalog`.
-     * - **Route A with a Kotlin compiler behind it** — an embedded-region extension that appears
-     *   inside a Kotlin string, compiled on the JVM: `rectsl`, `stacksl`.
-     *
-     * `petri`, `solidsl`, `brief` and `macros` are all deliberately absent from *this list*, and not
-     * because they are uninteresting: each one already labels its own files
-     * (`Visualization`/`Audio`, `Graphics`, `Solvers`, `Workspace` respectively), so each has
-     * already answered the question of which page it belongs on, and moving it would mean editing
-     * annotations. `graphquery` is absent because it is a query notation over the reflective object
-     * graph rather than a language on either route — no `BoxExecution`, no editor extension.
-     *
-     * **This paragraph used to end "so each is already published under a category its own source
-     * chose", and that was false.** Choosing a page and appearing on one are different things: a
-     * file's label decides *which* page, and this list decides *whether* the file is read at all.
-     * Measured 2026-09-10 over all 18 committed pages, whole, with the section heading this
-     * generator emits (`## <basename> { #`) as the predicate: **26** files in `src/jvmMain` carry a
-     * file-level `@file:CompletionCategory` naming a category that has a page, and appear on no
-     * page — 9 in `solidsl`, 6 in `petri`, 4 in `onnx`, 2 each in `brief`, `manifold` and
-     * `afield.graphics`, 1 in `macros`. `Solid.kt` and `Section.kt` say `Graphics`, and
-     * `Solid` is the type `manifold.md`, `tetgen.md`, `mesh_examples.md` and `solid_notation.md` are
-     * all written about. The `Graphics` blurb's claim to cover "the small shading languages' host
-     * side" is, today, a promise the page does not keep — every `solidsl` file it refers to is one
-     * of the 26. (Two more, `ManifoldNative.kt` and this file, say `Internal` and are correctly
-     * absent; they are not in the 26.)
-     *
-     * That gap is **not fixed here**, deliberately: six more roots is a different change with a
-     * different diff, and the evidence links are corpus-global, so it wants its own night. It is
-     * recorded rather than left for the next reader to rediscover, which is what the false sentence
-     * prevented for as long as it stood.
-     *
-     * The three simulation roots — `afield.simulation.physics`, `afield.simulation.kratos` and `afield.geometry.mesh.tetgen` —
-     * were derived the same way, from a question rather than a taste: *which completion category
-     * does the source already carry that this reference publishes no page for?* Exactly two, and
-     * the larger was `Simulation`, chosen by eight files with nowhere to appear. Six of the eight
-     * are `afield.simulation.kratos`, the other two are `afield.geometry.mesh.tetgen`, so neither of those roots is a
-     * judgement call — the files had already voted and the reference was not listening.
-     * `afield.simulation.physics` is here by the [LANGUAGES] argument instead: it carries no category
-     * annotation of any kind, it is the largest unpublished body of box-facing API left in the
-     * tree (the Jolt binding, the SIMD Verlet solver, its colliders, wind, tearing and strands),
-     * and `public/docs/physics.md` is a whole page written about symbols this reference did not
-     * know existed. See [CATEGORY_BY_PATH] for how it is labelled without an annotation.
-     *
-     * The other completion category with no page at all is `Machine learning` — four files in
-     * `afield.ai.inference.onnx`, every one of them already annotated, so publishing it needs a root, two
-     * `EXCLUDE_PREFIXES` entries for its smoke tests and a blurb, and no [CATEGORY_BY_PATH] entry
-     * whatever. It is deliberately left for its own change rather than folded in here: it is a
-     * different subject with a different orientation problem, and two widenings in one diff make
-     * neither of them readable against the corpus-global evidence links.
-     *
-     * `afield.graphics.scene.fabricated` is the seventeenth root, added 2026-09-11, and it is the
-     * `afield.simulation.physics` argument again with the numbers larger in every term. It carries no
-     * `@file:CompletionCategory` in any of its 35 files — `grep` says so, which is why it appears
-     * in neither of the two gaps recorded above: the 26 are files that *chose* a category and were
-     * not read, and these 35 never chose one. It is 14735 lines, of which 9207 across 23 files are
-     * box-facing API. And where `physics` had one prose page written about symbols this reference
-     * did not know existed, this root has three: `public/docs/fabricate_renderer.md`,
-     * `public/docs/path_tracing.md` and `public/docs/afield_four_graphics.md`. The GPU path tracer
-     * those first two are largely about landed on 2026-09-10 with dense KDoc and, until this
-     * change, no row anywhere in `public/docs/reference/`.
-     *
-     * It is labelled [RENDERERS] by [CATEGORY_BY_PATH], and the spelling of that label is not a
-     * preference — see the constant.
-     */
-    private val SOURCE_ROOTS = listOf(
-        "src/jvmMain/kotlin/afield/ai/learning",
-        "src/jvmMain/kotlin/afield/ai/retrieval",
-        "src/jvmMain/kotlin/afield/animation/interpolation",
-        "src/jvmMain/kotlin/afield/animation/keyframes",
-        "src/jvmMain/kotlin/afield/animation/motion",
-        "src/jvmMain/kotlin/afield/app/diagnostics",
-        "src/jvmMain/kotlin/afield/audio/ai",
-        "src/jvmMain/kotlin/afield/audio/analysis",
-        "src/jvmMain/kotlin/afield/audio/pd",
-        "src/jvmMain/kotlin/afield/audio/synth",
-        "src/jvmMain/kotlin/afield/data/collections",
-        "src/jvmMain/kotlin/afield/data/formats",
-        "src/jvmMain/kotlin/afield/data/graph",
-        "src/jvmMain/kotlin/afield/data/query/datalog",
-        "src/jvmMain/kotlin/afield/data/sorting",
-        "src/jvmMain/kotlin/afield/document/context",
-        "src/jvmMain/kotlin/afield/document/graph",
-        "src/jvmMain/kotlin/afield/document/properties",
-        "src/jvmMain/kotlin/afield/document/workspace",
-        "src/jvmMain/kotlin/afield/geometry/mesh",
-        "src/jvmMain/kotlin/afield/geometry/path",
-        "src/jvmMain/kotlin/afield/geometry/polytope",
-        "src/jvmMain/kotlin/afield/geometry/spatial",
-        "src/jvmMain/kotlin/afield/graphics/color",
-        "src/jvmMain/kotlin/afield/graphics/interaction",
-        "src/jvmMain/kotlin/afield/graphics/render",
-        "src/jvmMain/kotlin/afield/graphics/scene/fabricated",
-        "src/jvmMain/kotlin/afield/graphics/shader",
-        "src/jvmMain/kotlin/afield/graphics/text",
-        "src/jvmMain/kotlin/afield/graphics/vulkan/buffers",
-        "src/jvmMain/kotlin/afield/io/osc",
-        "src/jvmMain/kotlin/afield/io/process",
-        "src/jvmMain/kotlin/afield/lang/clojure",
-        "src/jvmMain/kotlin/afield/lang/fieldml",
-        "src/jvmMain/kotlin/afield/lang/forth",
-        "src/jvmMain/kotlin/afield/lang/lambda",
-        "src/jvmMain/kotlin/afield/lang/morpho",
-        "src/jvmMain/kotlin/afield/lang/nano",
-        "src/jvmMain/kotlin/afield/lang/python",
-        "src/jvmMain/kotlin/afield/lang/rectsl",
-        "src/jvmMain/kotlin/afield/lang/remotejs",
-        "src/jvmMain/kotlin/afield/lang/stacksl",
-        "src/jvmMain/kotlin/afield/math/autodiff",
-        "src/jvmMain/kotlin/afield/math/control",
-        "src/jvmMain/kotlin/afield/math/estimation",
-        "src/jvmMain/kotlin/afield/math/functions",
-        "src/jvmMain/kotlin/afield/math/linalg",
-        "src/jvmMain/kotlin/afield/math/optimization",
-        "src/jvmMain/kotlin/afield/math/statistics",
-        "src/jvmMain/kotlin/afield/math/units",
-        "src/jvmMain/kotlin/afield/media/image",
-        "src/jvmMain/kotlin/afield/media/video",
-        "src/jvmMain/kotlin/afield/runtime/execution",
-        "src/jvmMain/kotlin/afield/runtime/languages",
-        "src/jvmMain/kotlin/afield/runtime/lifecycle",
-        "src/jvmMain/kotlin/afield/simulation/agents",
-        "src/jvmMain/kotlin/afield/simulation/automata",
-        "src/jvmMain/kotlin/afield/simulation/kratos",
-        "src/jvmMain/kotlin/afield/simulation/particles",
-        "src/jvmMain/kotlin/afield/simulation/physics",
-        "src/jvmMain/kotlin/afield/study/build",
-        "src/jvmMain/kotlin/afield/study/evidence",
-        "src/jvmMain/kotlin/afield/study/search",
-        "src/jvmMain/kotlin/afield/study/source",
-        "src/jvmMain/kotlin/afield/study/ui",
-        "src/jvmMain/kotlin/afield/ui/controls",
-        "src/jvmMain/kotlin/afield/ui/output",
-        "src/jvmMain/kotlin/afield/ui/visualization",
-    )
+    /** Every JVM Kotlin source file belongs in the catalog, including implementation and harnesses. */
+    private val SOURCE_ROOTS = listOf("src/jvmMain/kotlin")
 
     /**
      * [SOURCE_ROOTS], for the one other generator that has to agree with it.
@@ -269,118 +109,8 @@ object StdlibReferenceGenerator {
      */
     internal fun sourceRoots(): List<String> = SOURCE_ROOTS
 
-    /**
-     * Paths (repo-relative prefixes) skipped inside [SOURCE_ROOTS]. A whole file path is a valid
-     * prefix, and that is how single files are named here.
-     *
-     * `afield/stdlib/linalg` is machine-generated from the typed algebra model and already has its
-     * own, better reference at `linear_algebra_api.md`; duplicating ~1500 generated swizzle members
-     * here would drown every hand-written symbol in the section.
-     *
-     * The rest are the harnesses inside `afield.audio.synth` — smoke tests, docs figure galleries,
-     * the provenance audit, the compile-only cookbook, and two files with no public API at all.
-     * They are not reference material, and this is a purely reference-side statement of that.
-     *
-     * **Not [EXCLUDE_CATEGORIES], which was the first attempt and was wrong for a measured reason.**
-     * One `@file:CompletionCategory("Internal")` per file would have done both jobs, except that the
-     * label is read by [afield.runtime.completion.KotlinCompletionSupport.isHiddenCompletionCategory], on the strength
-     * of which `execution.kt` **drops the candidate from the completion popup**. And the label is
-     * not scoped to the declaration you meant: [KotlinSourceIndex] records every declaration in a
-     * file together with that file's category and applies **no visibility filter at all**, while
-     * [KotlinSourceIndex.getCompletionCategoryForSymbol] ends in a name-only
-     * `categories.firstOrNull()`. Measured on these eleven files: 574 declaration names between
-     * them, 235 of which are also declared elsewhere in the tree *and* appear in real box code.
-     * `SoundRenderPathDocs.kt` by itself contributes members named `audio`, `cps`, `cycles`,
-     * `pattern`, `voice` and `to` — so calling it `Internal` would put `audio`, the primary
-     * box-facing entry point of the entire Synthesis category, one first-wins lookup away from
-     * vanishing from the popup, and `to` with it. A documentation change must not be able to do that.
-     *
-     * Excluding by path costs nothing in exchange: these files carry no `@file:CompletionCategory`,
-     * exactly as they did before this package was published, so their completion behaviour is
-     * unchanged rather than merely believed to be unchanged.
-     *
-     * The three small-language entries at the end are the same statement about the same kind of
-     * file: one FIELD_TEST harness and two docs-figure generators. The bar applied to the rest of
-     * those packages was deliberately low — a lexer, a parser and a bytecode VM stay in, because on
-     * a page about languages the implementation *is* the subject — so the only files kept out are
-     * the ones whose whole reason to exist is a test run or a `.png`. `RectSLCoverage.kt` reads like
-     * a harness from its name and is not one: it is the closed-form coverage the soft rasterizer is
-     * measured against, and it is some of the best KDoc in the package.
-     *
-     * `afield.lang.stacksl.cpu` arrived after that paragraph was written and splits the same way. The
-     * interpreter itself — `GlslValue`, `GlslParser`, `GlslInterpreter`, `StackSLCpu` — is the
-     * subject and stays in. `StackSLCpuGallery.kt` calls itself "the oracle" and exists to run the
-     * 31 committed programs; `StackSLCpuContactSheet.kt` imports AWT to write a `.png`. Both are the
-     * test-run-or-a-picture case exactly, so they are named here rather than published.
-     *
-     * The three simulation roots contribute exactly **one** entry, and the interesting half of that
-     * is the files that were considered and kept:
-     *
-     * - `KratosProtocol.kt` is excluded, and it is the `PrettyPrint.kt` case rather than the
-     *   harness case: every one of its declarations is `internal` or `private`, so publishing it
-     *   emits a section heading with no rows under it. Nothing else in these three roots is empty.
-     * - `KratosDemo.kt` **stays**, although it does carry a FIELD_TEST runner, because it is not
-     *   "a runner and nothing more": alongside `KratosSmokeTest` and `KratosStructuralSmokeTest` it
-     *   declares `KratosDemo`, whose single function `body()` is what three committed operation
-     *   transcripts in `dev_docs/agents/transcripts/` import to build their geometry. Excluding the
-     *   file would leave a reader following those transcripts with nowhere to look the call up. The
-     *   price is two `main` rows on the page, which is cheaper than a dead end.
-     * - `KratosStudyFigure.kt` **stays**, and is not the docs-figure case its name suggests. It
-     *   writes no file and imports no AWT — it is a [afield.ui.visualization.RasterImage] library, and
-     *   `kratos_parameter_study.yaml` calls `KratosStudyFigure.landscape(…)` and `.convergence(…)`
-     *   from inside a box. A figure generator produces a picture nobody calls; this produces pixels
-     *   a box displays.
-     * - `KratosStudyRun.kt` stays for the same reason and by a wider margin: `KratosStudyDemo` is
-     *   the shared experiment definition that the verification run, the catalog smoke and the
-     *   loadable document all read their numbers from.
-     * - `afield.simulation.physics` contributes nothing at all. No file under it contains a FIELD_TEST
-     *   block, its one `java.awt` import is `java.awt.geom` path flattening in `Dyn4jScene.kt`
-     *   rather than image writing, and its one stray top-level `main` is a fourteen-line
-     *   "Example Usage" at the bottom of `CSVReader.kt` sitting under `MotionClip` and `Frame`,
-     *   which are real API. Deleting that `main` is a source change and does not belong in a
-     *   documentation commit, so it is published, honestly, as a `main` row.
-     *
-     * `afield.graphics.scene.fabricated` is the largest single contribution to this list — **12 of its 35
-     * files, 5528 of its 14735 lines** — and it is also the root where the *kept* half needed the
-     * most reading, because the file names sort the wrong way round. Three groups go, and the bar
-     * is the one already stated above: a test run, or a picture.
-     *
-     * - The six `*TestMain.kt` files are the cleanest case in the tree. Each is a single `object`
-     *   whose only member is `@JvmStatic fun main`, and whose body is `check(…)` assertions —
-     *   `FabricatePassGraphTestMain` walks an ordered pass list, `FabricateRenderPlanTestMain`
-     *   asserts a back-to-front transparent queue, and so on. Publishing them emits six headings
-     *   whose only row is `main`.
-     * - `PathTraceGltfGpuSmoke.kt` and `PathTraceTemporalGpuSmoke.kt` are the same statement about
-     *   GPU verification: every function in both ends in `check(…)` and a `println("PASS …")`.
-     *   `public/docs/path_tracing.md` does name `PathTraceTemporalGpuSmoke.runFog(renderer)`, but it
-     *   names it the way that page names `PathTraceTestMain` two lines earlier — as a check a reader
-     *   can run, which is the `KratosSmokeTest` case and not the `KratosDemo` one.
-     * - The four harnesses write image files and are driven from Python. `RayTracingDocsHarness.kt`
-     *   imports `javax.imageio` and ends in `targetFile.writeBytes`; `StandardRendererDocsHarness.kt`
-     *   imports `java.awt.image.BufferedImage` and writes into `public/docs/assets/`;
-     *   `RectSLGalleryHarness.kt` and `StackSLGalleryHarness.kt` render one `.png` per workspace
-     *   example and are called by `public/fabricate_docs_scenes.py`. All four are figure generators
-     *   for pages that already exist, which is the one thing this list is for.
-     *
-     * **`PathTraceGpuSmoke.kt` stays, and its name is the reason to say why in full.** It is the
-     * `KratosDemo.kt` carve-out by a wider margin than `KratosDemo` itself. The file declares two
-     * objects, and the second, `PathTraceDemo`, is what three committed operation transcripts in
-     * `dev_docs/agents/transcripts/` reach for: `path_tracing_materials.yaml` and
-     * `path_tracing_hidden_environment.yaml` both `import afield.graphics.scene.fabricated.PathTraceDemo` and
-     * call `PathTraceDemo.install(renderer, …)`, which is also the first code on
-     * `public/docs/path_tracing.md`. The smoke object itself is not private either —
-     * `path_tracing_material_shader_check.yaml` calls `PathTraceGpuSmoke.awaitSamples(tracer, 8)`,
-     * and `path_tracing.md` uses `PathTraceGpuSmoke.run(renderer)` as a box's `verify` lambda.
-     * Excluding the file on the strength of its name would leave a reader following any of those
-     * three transcripts with nowhere to look the call up.
-     *
-     * `PathTraceGlassDemo.kt` stays for the same reason and needs the same warning in the other
-     * direction: it is 37 lines and looks like a demo, but `path_tracing_glass.yaml` imports it and
-     * `path_tracing.md` documents `PathTraceGlassDemo.install(renderer, environmentPath)`. A file
-     * whose name ends in `Demo` is not automatically either thing; what settles it is whether
-     * anything outside the file calls it.
-     */
-    private val EXCLUDE_PREFIXES = listOf(
+    /** Known build/verification helpers remain listed, but are visually marked as implementation. */
+    private val IMPLEMENTATION_PREFIXES = listOf(
         "src/generatedLinalg/kotlin/afield/math/linalg/",
         "src/jvmMain/kotlin/afield/audio/synth/AbletonSetSmokeTest.kt",
         "src/jvmMain/kotlin/afield/audio/synth/DocsAudioProvenance.kt",
@@ -413,17 +143,6 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt",
         "src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuContactSheet.kt",
     )
-
-    /**
-     * Completion categories that are not part of the public surface. `Internal` is exactly the
-     * label the source uses for plumbing that completion should de-rank, so it has no place in a
-     * "what can I call?" reference.
-     *
-     * Nothing in `afield.audio.synth` uses it. See [EXCLUDE_PREFIXES] for why keeping a harness out
-     * of this reference is not the same statement as calling it internal, and what the difference
-     * was measured to cost.
-     */
-    private val EXCLUDE_CATEGORIES = setOf("Internal")
 
     /**
      * The category the small-language packages are published under, and the one label in this file
@@ -469,7 +188,7 @@ object StdlibReferenceGenerator {
      *
      * **This map is read by this generator and by nothing else, and that is the entire point.** The
      * alternative — annotating the files — was rejected for the reason spelled out at length in
-     * [EXCLUDE_PREFIXES]: `@file:CompletionCategory` is not inert. It is read by
+     * [IMPLEMENTATION_PREFIXES]: `@file:CompletionCategory` is not inert. It is read by
      * [afield.runtime.completion.KotlinCompletionSupport.isHiddenCompletionCategory], on the strength of which one
      * spelling of it removes candidates from the completion popup; [KotlinSourceIndex] records every
      * declaration in an annotated file under that file's label with no visibility filter; and
@@ -558,6 +277,28 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/runtime/lifecycle/" to "Workspace",
         "src/jvmMain/kotlin/afield/ui/controls/" to "Visualization",
         "src/jvmMain/kotlin/afield/ui/output/" to "Visualization",
+        "src/jvmMain/kotlin/afield/lang/lua/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/lang/brief/" to "Solvers",
+        "src/jvmMain/kotlin/afield/lang/solidsl/" to "Graphics",
+        "src/jvmMain/kotlin/afield/lang/lambda/" to "Function",
+        // Complete domain fallbacks, after the more specific package choices above.
+        "src/jvmMain/kotlin/afield/ai/" to "Machine learning",
+        "src/jvmMain/kotlin/afield/animation/" to "Graphics",
+        "src/jvmMain/kotlin/afield/app/" to "Workspace",
+        "src/jvmMain/kotlin/afield/audio/" to "Audio",
+        "src/jvmMain/kotlin/afield/data/" to "Data",
+        "src/jvmMain/kotlin/afield/document/" to "Workspace",
+        "src/jvmMain/kotlin/afield/examples/" to "Examples",
+        "src/jvmMain/kotlin/afield/geometry/" to "Graphics",
+        "src/jvmMain/kotlin/afield/graphics/" to "Graphics",
+        "src/jvmMain/kotlin/afield/io/" to "Networking",
+        "src/jvmMain/kotlin/afield/math/" to "Math",
+        "src/jvmMain/kotlin/afield/media/" to "Imaging",
+        "src/jvmMain/kotlin/afield/runtime/" to "Workspace",
+        "src/jvmMain/kotlin/afield/simulation/" to "Simulation",
+        "src/jvmMain/kotlin/afield/study/" to "Search",
+        "src/jvmMain/kotlin/afield/tools/" to "Workspace",
+        "src/jvmMain/kotlin/afield/ui/" to "Visualization",
     )
 
     /** The distinct categories [CATEGORY_BY_PATH] can assign — the set `LanguagesCategoryTest` checks. */
@@ -576,33 +317,8 @@ object StdlibReferenceGenerator {
      */
     internal fun categoryBlurb(category: String): String? = CATEGORY_BLURBS[category]
 
-    /**
-     * The package names of [SOURCE_ROOTS], as the pages name them in prose.
-     *
-     * Derived rather than written out, because the sentence "every public declaration in X and Y"
-     * appears on two generated pages and a third root was added after both were written.
-     *
-     * The small-language roots are named as a group rather than inline, because ten more
-     * back-quoted package names in the middle of the opening sentence of the reference is a list,
-     * not a sentence. The split is derived from [CATEGORY_BY_PATH] rather than declared twice: a
-     * root belongs to the group exactly when that map files it under [LANGUAGES].
-     */
-    private fun documentedPackages(): String {
-        fun names(roots: List<String>) =
-            roots.map { "`" + it.substringAfter("kotlin/").replace('/', '.') + "`" }
-        fun prose(names: List<String>) = when (names.size) {
-            0 -> ""
-            1 -> names.single()
-            else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
-        }
-        val (languageRoots, rest) = SOURCE_ROOTS.partition { root ->
-            CATEGORY_BY_PATH.any { (prefix, category) -> category == LANGUAGES && prefix == "$root/" }
-        }
-        val head = prose(names(rest))
-        if (languageRoots.isEmpty()) return head
-        return head + ", plus the ${languageRoots.size} small-language packages (" +
-            prose(names(languageRoots)) + ")"
-    }
+    /** Shared coverage description for the reference and KDoc worklist. */
+    private fun documentedPackages(): String = "all JVM Kotlin packages in `src/jvmMain/kotlin`"
 
     /**
      * The last-resort bucket for a file carrying no `@file:CompletionCategory`, and a *failure* —
@@ -740,6 +456,9 @@ object StdlibReferenceGenerator {
 
     /** Page order, and the prose that introduces each category page. */
     private val CATEGORY_BLURBS: Map<String, String> = linkedMapOf(
+        "Examples" to "Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.",
+        "Internal" to "Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.",
+        "Lighting" to "Light sources, fixtures and control protocols for working with physical and rendered lighting.",
         "Networking" to "OSC messages, discovery and query interfaces for connecting Field to other applications and devices.",
         "Video" to "Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output.",
         "Math" to "Numerics: signal processing in both domains, estimation and fitting, " +
@@ -1006,7 +725,7 @@ object StdlibReferenceGenerator {
             exitProcess(1)
         }
 
-        val documents = sources.map { readDocument(repo, it) }.filter { it.category !in EXCLUDE_CATEGORIES }
+        val documents = sources.map { readDocument(repo, it) }
         fileAnchors = documents.groupBy { it.category to slug(it.fileName) }.values.flatMap { group ->
             group.sortedBy { it.relativePath }.mapIndexed { index, doc ->
                 doc.relativePath to if (index == 0) slug(doc.fileName)
@@ -1124,6 +843,7 @@ object StdlibReferenceGenerator {
         val relativePath: String,
         val fileName: String,
         val category: String,
+        val implementation: Boolean,
         val overview: String?,
         val types: List<TypeEntry>,
         val topLevelFunctions: List<Symbol>,
@@ -1234,10 +954,6 @@ object StdlibReferenceGenerator {
             .map { File(repo, it) }
             .filter { it.isDirectory }
             .flatMap { root -> root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
-            .filter { file ->
-                val rel = repo.toPath().relativize(file.toPath()).toString().replace('\\', '/')
-                EXCLUDE_PREFIXES.none { rel.startsWith(it) }
-            }
             .sortedBy { it.absolutePath }
 
     private fun readDocument(repo: File, file: File): SourceDocument {
@@ -1292,6 +1008,7 @@ object StdlibReferenceGenerator {
             relativePath = rel,
             fileName = file.name,
             category = fileCategory(text) ?: inferredCategory(rel),
+            implementation = isImplementation(rel, text),
             overview = overview?.first,
             types = types,
             topLevelFunctions = functions,
@@ -1332,6 +1049,21 @@ object StdlibReferenceGenerator {
     private fun fileCategory(text: String): String? =
         Regex("""(?m)^\s*@file:(?:[\w.]+\.)?CompletionCategory\s*\(\s*"([^"]+)"""")
             .find(text)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }
+
+    /** Conservative presentation hint; public renderers, textures, audio and language APIs stay prominent. */
+    internal fun isImplementation(relativePath: String, text: String): Boolean {
+        if (fileCategory(text) == "Internal") return true
+        if (IMPLEMENTATION_PREFIXES.any { relativePath.startsWith(it) }) return true
+        val plumbing = listOf(
+            "app/server/", "app/protocol/", "app/commands/",
+            "runtime/kotlin/", "runtime/completion/",
+            "document/persistence/", "document/history/", "tools/",
+        )
+        if (plumbing.any { relativePath.startsWith("src/jvmMain/kotlin/afield/$it") }) return true
+        val name = relativePath.substringAfterLast('/').removeSuffix(".kt")
+        return name.endsWith("SmokeTest") || name.endsWith("TestMain") ||
+            name.endsWith("DocsHarness") || name.endsWith("GpuSmoke")
+    }
 
     /** Last-resort bucket for a file that carries no `@file:CompletionCategory`. */
     private fun inferredCategory(relativePath: String): String =
@@ -2163,7 +1895,7 @@ object StdlibReferenceGenerator {
 
     /** A package tree whose destinations come from the files actually emitted on category pages. */
     private fun renderPackageMap(documents: List<SourceDocument>): String = buildString {
-        val roots = SOURCE_ROOTS.sorted()
+        val roots = documents.map { it.relativePath.substringBeforeLast('/') }.distinct().sorted()
         val prefix = "src/jvmMain/kotlin/afield/"
         appendLine("<div class=\"reference-map\" markdown=\"1\">")
         appendLine()
@@ -2188,7 +1920,9 @@ object StdlibReferenceGenerator {
                     path == "${prefix}math/linalg" -> "[$name](../linear_algebra_api.md)"
                     else -> name
                 }
-                appendLine("${"    ".repeat(depth)}- $label")
+                val rendered = if (destinations.isNotEmpty() && destinations.values.flatten().all { it.implementation })
+                    "<span class=\"reference-internal\">$label</span>" else label
+                appendLine("${"    ".repeat(depth)}- $rendered")
                 val descendants = children.filter { it != path }
                 if (descendants.isNotEmpty()) branch(descendants, "$path/", depth + 1)
             }
@@ -2198,7 +1932,11 @@ object StdlibReferenceGenerator {
             appendLine()
             appendLine("### $group")
             appendLine()
-            branch(paths, "$prefix$group/", 0)
+            val direct = documents.filter { it.relativePath.substringBeforeLast('/') == "$prefix$group" }
+            direct.groupBy { it.category }.toSortedMap().forEach { (category, files) ->
+                appendLine("- [$category](${slug(category)}.md#${fileAnchor(files.first())})")
+            }
+            branch(paths.filter { it != "$prefix$group" }, "$prefix$group/", 0)
             appendLine()
             appendLine("</div>")
             appendLine()
@@ -2219,7 +1957,7 @@ object StdlibReferenceGenerator {
         appendLine("# What's already in the box")
         appendLine()
         appendLine(
-            "Explore Field's standard library by package. Follow a branch to its declarations " +
+            "Explore Field's JVM codebase by package. Follow a branch to its declarations " +
                 "and the documentation that sits next to them in the source. Where a package spans " +
                 "several reference pages, each page is linked separately."
         )
@@ -2232,10 +1970,9 @@ object StdlibReferenceGenerator {
         appendLine(
             "**$total public symbols across ${documents.size} source files**, $documented of them " +
                 "(${documented * 100 / total}%) carrying a KDoc summary. Pages are grouped by the " +
-                "`@file:CompletionCategory` label the source itself carries, which is the same grouping " +
-                "the editor's autocomplete uses. [$LANGUAGES](${slug(LANGUAGES)}.md) is the exception: " +
-                "no file in the small-language packages carries that annotation, so those files are " +
-                "grouped by source path instead."
+                "source's `@file:CompletionCategory` where present, with package-based categories " +
+                "for unannotated files. Public visibility describes Kotlin access; it does not " +
+                "necessarily mean an API intended for box code."
         )
         appendLine()
         appendLine(
@@ -2259,6 +1996,10 @@ object StdlibReferenceGenerator {
         appendLine()
         appendLine("## Every file")
         appendLine()
+        appendLine("Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without public declarations. " +
+            "Dimmed entries are identifiable internal plumbing or build/test harnesses; they remain linked and searchable. " +
+            "Low-level APIs that a box can use, such as renderers and textures, retain full emphasis.")
+        appendLine()
         appendLine("<div class=\"codebase-reference\" markdown>")
         appendLine()
         appendLine("| File | Category | Symbols | Documented | What it is | Used in |")
@@ -2268,7 +2009,8 @@ object StdlibReferenceGenerator {
             val sourceDirectory = doc.relativePath.substringBeforeLast('/') + "/"
             val sourcePath = escapeCell(sourceDirectory.replace("&", "&amp;")
                 .replace("<", "&lt;").replace(">", "&gt;")).replace("/", "/<wbr>")
-            val fileCell = "<small class=\"reference-file-path\">$sourcePath</small> $link"
+            val style = if (doc.implementation) " reference-internal" else ""
+            val fileCell = "<small class=\"reference-file-path$style\">$sourcePath</small> $link"
             // linkify before stripLinks: `linkify` is what turns a KDoc `[Symbol]` into either a link
             // or inline code, and without it the raw brackets reach the page. `stripLinks` then flattens
             // the resolved ones, because this column is a one-line gist sitting between two columns
@@ -2279,38 +2021,19 @@ object StdlibReferenceGenerator {
                 .orEmpty()
             val examples = evidenceLinks(doc, evidence).orEmpty()
             appendLine(
-                "| $fileCell | ${doc.category} | ${doc.symbolCount()} | ${doc.documentedCount()} | " +
+                "| $fileCell | ${doc.category}${if (doc.implementation) " · internal" else ""} | ${doc.symbolCount()} | ${doc.documentedCount()} | " +
                     "${escapeCell(gist)} | $examples |"
             )
         }
         appendLine()
         appendLine("</div>")
         appendLine()
-        appendLine("## What is not here")
+        appendLine("## Scope")
         appendLine()
-        appendLine(
-            "- **The generated vector algebra** (`afield.math.linalg`) has its own page: " +
-                "[Generated vector API reference](../linear_algebra_api.md), with " +
-                "[Linear algebra in Field](../linear_algebra.md) for the intuition."
-        )
-        appendLine(
-            "- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are " +
-                "plumbing, and are excluded."
-        )
-        appendLine(
-            "- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit " +
-                "and the compile-only synth cookbook — are excluded by path. They run in `check` " +
-                "and are worth reading, but they are build machinery rather than API."
-        )
-        appendLine(
-            "- **Graphics, rendering and the small languages beyond their host side** live in " +
-                "Field 4, `afield.lang.rectsl` and `afield.lang.stacksl`; start from " +
-                "[Field 4 Graphics](../afield_four_graphics.md), the " +
-                "[RectSL cheatsheet](../rectsl_cheatsheet.md) and the " +
-                "[StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.audio.synth`, the audio " +
-                "half of Field 4, **is** here; read it alongside [Sound: from a pattern to " +
-                "something you can hear](../sound.md)."
-        )
+        appendLine("This catalog covers the JVM Kotlin source tree. Shared protocol and browser source sets, " +
+            "private personal code and generated vector algebra are separate from that inventory. " +
+            "The generated `afield.math.linalg` API has its own " +
+            "[reference](../linear_algebra_api.md), with [Linear algebra in Field](../linear_algebra.md) for the intuition.")
         appendLine()
         appendLine("## How to read a symbol you find here")
         appendLine()
@@ -2319,8 +2042,8 @@ object StdlibReferenceGenerator {
                 "[completion documentation panel](../completion_doc_browser.md) shows the same KDoc " +
                 "with every resolvable `[Symbol]` reference turned into a link you can follow, plus " +
                 "a jump straight to the definition's line in the source. This reference and that " +
-                "panel read the same declarations through the same parser, so anything listed here " +
-                "resolves there."
+                "panel read declarations through the same parser. Entries marked internal here may " +
+                "be hidden from autocomplete; use their source links to inspect the implementation."
         )
         appendLine()
         appendLine(

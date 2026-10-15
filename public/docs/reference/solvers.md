@@ -4,9 +4,307 @@
 
 Nonlinear least squares, aimed at geometry. A constraint vocabulary — planarity, colinearity, fixed distances, perpendicularity, dihedral angles, panel areas, positions held hard or held softly — assembled into a program, compiled once and solved by Ceres across a foreign-function bridge; the architectural layer above it for gridshells and panel families; and the reuse-oriented half that re-solves the same program every frame while a user drags. Residuals you cannot express in the vocabulary can be written in Kotlin and differentiated exactly by Ceres through the expression VM. These entry points need the native Ceres library present, and nothing here draws — a solve returns points, and drawing them is your business. Start from `CeresGeometry.kt`, which is the vocabulary everything else is written in; `ArchitecturalGeometry.kt` is the layer most calls go through.
 
-4 source file(s), 657 public symbol(s), 270 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+7 source file(s), 766 public symbol(s), 331 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## Brief.kt { #brief-kt }
+
+`src/jvmMain/kotlin/afield/lang/brief/Brief.kt` — [read the source](source/jvmMain/afield/lang/brief/Brief/)
+
+### Brief { #brief-kt-brief }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">Brief</span></code>](source/jvmMain/afield/lang/brief/Brief/#L61)
+
+Brief: a weighted constraint notation.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TAG</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L63) | The first-line tag that marks a `#brief` embedded region. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">ID</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L66) | The language id, shared by the editor extension and the Monaco language. |
+
+### BriefSeverity { #brief-kt-briefseverity }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BriefSeverity</span></code>](source/jvmMain/afield/lang/brief/Brief/#L73)
+
+Constants: `ERROR`, `WARNING`.
+
+### BriefDiagnostic { #brief-kt-briefdiagnostic }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefDiagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">BriefSeverity</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">span</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">hint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L83)
+
+One located complaint about a program.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">BriefSeverity</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">span</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">format</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L92) | `3:8 error: unknown line 'spien' — did you mean 'spine'?`, the form a box prints. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L99) |  |
+
+### BriefException { #brief-kt-briefexception }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">BriefException</span><span class="p">(</span><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDiagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L108)
+
+Thrown by `compileBrief` when a program has errors, carrying all of them rather than the first.
+
+### BriefStrength { #brief-kt-briefstrength }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BriefStrength</span><span class="p">(</span><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L134)
+
+The strength ladder: four words that are names for four numbers, three decades apart.
+
+Constants: `WHISPER`, `PREFER`, `INSIST`, `DEMAND`.
+
+### BriefSpan { #brief-kt-briefspan }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefSpan</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L161)
+
+Where something is, for a diagnostic. 1-based, counting the source as handed to the compiler.
+
+### BriefName { #brief-kt-briefname }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefName</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L164)
+
+A name as written, with where it was written — so an unresolved name can point at itself.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L165) |  |
+
+### BriefElementKind { #brief-kt-briefelementkind }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BriefElementKind</span><span class="p">(</span><span class="k">val</span> <span class="n">noun</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L169)
+
+The kinds of thing a brief can declare. The resolver keys its namespaces on this.
+
+Constants: `POINT`, `LINE`, `PLANE`, `PANEL`.
+
+### BriefDeclaration { #brief-kt-briefdeclaration }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">BriefDeclaration</span></code>](source/jvmMain/afield/lang/brief/Brief/#L177)
+
+A declaration statement.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">BriefName</span></code>](source/jvmMain/afield/lang/brief/Brief/#L178) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">BriefElementKind</span></code>](source/jvmMain/afield/lang/brief/Brief/#L179) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Point</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefDeclaration</span></code>](source/jvmMain/afield/lang/brief/Brief/#L181) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Line</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefDeclaration</span></code>](source/jvmMain/afield/lang/brief/Brief/#L185) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Plane</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefDeclaration</span></code>](source/jvmMain/afield/lang/brief/Brief/#L189) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Panel</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefDeclaration</span></code>](source/jvmMain/afield/lang/brief/Brief/#L198) |  |
+
+### BriefComparison { #brief-kt-briefcomparison }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BriefComparison</span><span class="p">(</span><span class="k">val</span> <span class="n">symbol</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L210)
+
+The comparison in an equation.
+
+Constants: `EQ`, `AT_LEAST`, `AT_MOST`.
+
+### BriefTerm { #brief-kt-briefterm }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">BriefTerm</span></code>](source/jvmMain/afield/lang/brief/Brief/#L219)
+
+The left or right of an equation.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span></code>](source/jvmMain/afield/lang/brief/Brief/#L220) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Literal</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">radians</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefTerm</span></code>](source/jvmMain/afield/lang/brief/Brief/#L222) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Property</span><span class="p">(</span><span class="k">val</span> <span class="n">element</span><span class="p">:</span> <span class="nc">BriefName</span><span class="p">,</span> <span class="k">val</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefTerm</span></code>](source/jvmMain/afield/lang/brief/Brief/#L225) | `spine.length`, `roof.area`, `ridge.z`. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Call</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefName</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefTerm</span></code>](source/jvmMain/afield/lang/brief/Brief/#L228) | `angle(spine, ridge)`, `distance(a, b)`, `dihedral(edge, a, b)`. |
+
+### BriefRelation { #brief-kt-briefrelation }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">BriefRelation</span></code>](source/jvmMain/afield/lang/brief/Brief/#L232)
+
+The relation half of a constraint statement.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span></code>](source/jvmMain/afield/lang/brief/Brief/#L233) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Equation</span><span class="p">(</span><span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">BriefTerm</span><span class="p">,</span> <span class="k">val</span> <span class="n">comparison</span><span class="p">:</span> <span class="nc">BriefComparison</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">BriefTerm</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefRelation</span></code>](source/jvmMain/afield/lang/brief/Brief/#L236) | `left <cmp> right` — a relation over properties. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Predicate</span><span class="p">(</span><span class="k">val</span> <span class="n">verb</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">subjects</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefName</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">objects</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefName</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">number</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">vector</span><span class="p">:</span> <span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BriefRelation</span></code>](source/jvmMain/afield/lang/brief/Brief/#L249) | `subjects verb objects…` — a relation over elements. |
+
+### BriefConstraint { #brief-kt-briefconstraint }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefConstraint</span><span class="p">(</span><span class="k">val</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">strengthWritten</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">relation</span><span class="p">:</span> <span class="nc">BriefRelation</span><span class="p">,</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L261)
+
+One `strength relation` line. `strengthWritten` is null when the statement took the default.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">strengthWritten</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">relation</span><span class="p">:</span> <span class="nc">BriefRelation</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L268) | The source line, reconstructed enough for a residual report to name the statement. |
+
+### BriefSettle { #brief-kt-briefsettle }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefSettle</span><span class="p">(</span><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L322)
+
+A `settle` directive: the whole-cloud prior weight, or null for "none".
+
+### BriefRobust { #brief-kt-briefrobust }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefRobust</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">BriefSpan</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L335)
+
+A `robust` directive: the loss every residual is wrapped in.
+
+### BriefVerbs { #brief-kt-briefverbs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BriefVerbs</span></code>](source/jvmMain/afield/lang/brief/Brief/#L350)
+
+Every reserved word in the notation, grouped the way a diagnostic wants to talk about them.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="k">infix</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L352) | Verbs that come *after* their subjects: `spine parallel ridge`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L359) | Verbs that come *first*: `fix west east`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L362) | Words that introduce a declaration. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">directives</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L365) | Words that introduce a directive. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">losses</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L368) | The robust-loss kinds `robust` accepts, mapped to `RobustLoss.Kind`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">functions</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L371) | Function names usable as an equation term. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">properties</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L374) | Properties reachable with `element.property`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">glue</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L377) | Glue words that are reserved but carry no relation of their own. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">strengths</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L382) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">all</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/Brief/#L385) | Everything a program may not use as a name. |
+
+### BriefSyntax { #brief-kt-briefsyntax }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefSyntax</span><span class="p">(</span><span class="k">val</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDeclaration</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefConstraint</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">settle</span><span class="p">:</span> <span class="nc">BriefSettle</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">robust</span><span class="p">:</span> <span class="nc">BriefRobust</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDiagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/Brief/#L508)
+
+The parsed, *unresolved* program: declarations, constraints and directives in source order.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">declarations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDeclaration</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefConstraint</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">settle</span><span class="p">:</span> <span class="nc">BriefSettle</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">robust</span><span class="p">:</span> <span class="nc">BriefRobust</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDiagnostic</span><span class="p">&gt;</span></code> |  |
+
+## BriefEditorExtension.kt { #briefeditorextension-kt }
+
+`src/jvmMain/kotlin/afield/lang/brief/BriefEditorExtension.kt` — [read the source](source/jvmMain/afield/lang/brief/BriefEditorExtension/)
+
+### Top-level functions { #briefeditorextension-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">briefEditorExtensionJavascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/BriefEditorExtension/#L48) |  |
+
+### BriefEditorExtension { #briefeditorextension-kt-briefeditorextension }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BriefEditorExtension</span></code>](source/jvmMain/afield/lang/brief/BriefEditorExtension/#L15)
+
+The Brief editor extension, as bytes.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/BriefEditorExtension/#L16) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">javascript</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/BriefEditorExtension/#L18) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">declaredVocabulary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/BriefEditorExtension/#L35) | The vocabulary the `.js` declares, scraped out of it. |
+
+## BriefLowering.kt { #brieflowering-kt }
+
+Resolution and lowering: a [`BriefSyntax`](solvers.md#brief-kt-briefsyntax) becomes a [`BriefProgram`](solvers.md#brieflowering-kt-briefprogram), and a [`BriefProgram`](solvers.md#brieflowering-kt-briefprogram) becomes an
+`afield.math.optimization.ceres.GeometryModel` solved through the real Ceres backend.
+
+The two halves are separated because they fail differently. Resolution is where a *reader* is wrong
+— a misspelling, a plane used where a line was wanted, two statements that cannot both hold — and
+every failure there is a located [`BriefDiagnostic`](solvers.md#brief-kt-briefdiagnostic). Lowering is where the *implementation* would be
+wrong, and by then every name has been checked, so it throws `error()` on anything that gets
+through: an exception from this file is a bug in this file, never in the brief.
+
+`src/jvmMain/kotlin/afield/lang/brief/BriefLowering.kt` — [read the source](source/jvmMain/afield/lang/brief/BriefLowering/)
+
+### Top-level functions { #brieflowering-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">compileBrief</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">BriefProgram</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L89) | Compile a brief. A pure function of text: no `Box`, no output, no server, no native library. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">checkBrief</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L98) | `compileBrief` without the throw: the diagnostics, whether or not the program is usable. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BriefProgram</span><span class="p">.</span><span class="nf">toGeometryModel</span><span class="p">(</span><span class="n">bindings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vector3f</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GeometryModel</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L624) | Build the `GeometryModel` this brief describes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">settleOptions</span><span class="p">(</span><span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">400</span><span class="p">)</span><span class="p">:</span> <span class="nc">SolveOptions</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L966) | What a brief means by "solve it": run it out, not to the interactive default. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BriefProgram</span><span class="p">.</span><span class="nf">solve</span><span class="p">(</span><span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">400</span><span class="p">,</span> <span class="n">bindings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vector3f</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="nf">settleOptions</span><span class="p">(</span><span class="n">iterations</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">BriefSolution</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L982) | Solve the brief through the real Ceres backend and measure every statement. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">BriefProgram</span><span class="p">.</span><span class="nf">openSession</span><span class="p">(</span><span class="n">bindings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vector3f</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">BriefStrength</span><span class="p">.</span><span class="nc">INSIST</span><span class="p">.</span><span class="n">weight</span><span class="p">)</span><span class="p">:</span> <span class="nc">BriefSession</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1334) | Open a [`BriefSession`](solvers.md#brieflowering-kt-briefsession) over this program — the transition from "what has to be true" to "and now let me push on it". |
+
+### BriefProgram { #brieflowering-kt-briefprogram }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">BriefProgram</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">syntax</span><span class="p">:</span> <span class="nc">BriefSyntax</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDiagnostic</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">inventedPoints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">seeds</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">anchors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AxisAnchor</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L56)
+
+A resolved brief: a checked syntax tree, a point order, and the list of points the notation invented because a relation named them before anything declared them.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">syntax</span><span class="p">:</span> <span class="nc">BriefSyntax</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDiagnostic</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Every point, in the order they became parameters — declared first, then invented. |
+| <code class="highlight"><span class="k">val</span> <span class="n">inventedPoints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Points a relation named that nothing declared, seeded on the golden-angle circle. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">constraintCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L70) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">warnings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefDiagnostic</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L72) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">statementLabels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L75) | The statement labels, in source order — the names a residual report uses. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L77) |  |
+
+### BriefResidual { #brieflowering-kt-briefresidual }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BriefResidual</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">residual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L901)
+
+One statement's own residual, in its own units, measured from the solved geometry.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">residual</span><span class="p">:</span> <span class="nc">Double</span></code> | The statement's residual in its natural units, or NaN where there is no independent one. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">cost</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L909) | What the statement contributes to the objective, `strength * residual²`. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L911) |  |
+
+### BriefSolution { #brieflowering-kt-briefsolution }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">BriefSolution</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">totalCost</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">residuals</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefResidual</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L924)
+
+A solved brief: the geometry, and every statement's residual measured back off it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">totalCost</span><span class="p">:</span> <span class="nc">Double</span></code> | Ceres's own final cost, or NaN when metrics were not requested. |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">residuals</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefResidual</span><span class="p">&gt;</span></code> |  |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L931) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">worst</span><span class="p">:</span> <span class="nc">BriefResidual</span><span class="o">?</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L935) | The statement with the largest weighted cost — "what is still fighting". |
+| [<code class="highlight"><span class="k">val</span> <span class="n">statedCost</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L938) | The sum of `strength * residual²` over the statements the author wrote. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="n">limit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L941) | A readable dump: the points, then the statements worst-first. |
+
+### BriefSession { #brieflowering-kt-briefsession }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">BriefSession</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">BriefProgram</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">session</span><span class="p">:</span> <span class="nc">GeometrySolveSession</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">refs</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">PointRef</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1276)
+
+A brief held open for interaction: the compiled model, a live point cloud, and the gesture verbs addressed **by the names the brief used**.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">BriefProgram</span></code> |  |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1283) | The current position of a named point. Overwritten by every solve. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">positions</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1286) | Every named point's current position, hidden anchors excluded. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">drag</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">BriefStrength</span><span class="p">.</span><span class="nc">INSIST</span><span class="p">.</span><span class="n">weight</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1302) | Pull a named point towards `target` at `strength` and re-solve — one frame of a gesture. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">release</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1306) | End a gesture: drop the point's prior back to resting and settle. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pin</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1309) | Hold a point where it is now, re-asserted before every solve — stronger than a heavy prior. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">unpin</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1311) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">solve</span><span class="p">(</span><span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1314) | Re-solve from the current state. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BriefResidual</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1317) | Every statement's residual, measured off the current geometry the way [`BriefSolution`](solvers.md#brieflowering-kt-briefsolution) does. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/brief/BriefLowering/#L1322) |  |
 
 ## ArchitecturalGeometry.kt { #architecturalgeometry-kt }
 
