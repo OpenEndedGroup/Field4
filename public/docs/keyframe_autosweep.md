@@ -420,9 +420,10 @@ four boxes: a renderer, the rig, the sweep and the morning box. Replace the rig 
 to start a real sweep against it. Its entry in
 [Agent transcripts](agent_transcripts.md#keyframe_autosweep) lists what each box does.
 
-??? aside "Tests"
-    Two suites stand behind this page. `afield.animation.keyframes.KeyframeSweepTest` is CPU-only and pins the provenance
-    contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
+??? aside "Agents: the tests behind this page"
+
+    Two suites stand behind this page. `afield.animation.keyframes.KeyframeSweepTest` is CPU-only
+    and pins the provenance contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
     distribution; `tools/run_field_tests.py --id keyframe.sweep.smoke` runs a real six-render sweep on a
     GPU and pins that the picture actually follows the blend. Which claim belongs to which, and the gap
     between them, is in `dev_docs/KEYFRAME_SWEEP_AGREEMENT.md`.
