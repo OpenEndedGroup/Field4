@@ -15,8 +15,10 @@ what you are looking at and never the document itself.
 - **Reset Canvas Zoom** in the command palette returns to 100%, keeping the centre of the window
   where it is.
 - **`alt/option-H`** (**Reset View** in the command palette, and a button at the top of the bookmarks
-  panel) also returns to 100%, and closes every output panel. Use it when a panel has grown to fill
-  the window: the wheel and pinch then go to the panel, so you cannot zoom or scroll away from it.
+  panel) also returns to 100%, and closes every output panel.
+
+Over an output panel, the wheel scrolls the panel while it has room to scroll that way and pans
+the canvas once it does not; a pinch zooms the canvas unless the panel's content uses it.
 
 ## Splitting the canvas
 

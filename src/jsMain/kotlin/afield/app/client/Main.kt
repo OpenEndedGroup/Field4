@@ -2696,6 +2696,29 @@ private fun releaseCanvasDragLatch() {
     updateCanvasPanLatchClass()
 }
 
+/** Whether some element from [target] up to and including [area] can still scroll by (dx, dy). */
+private fun canScrollWithin(target: HTMLElement, area: HTMLElement, dx: Double, dy: Double): Boolean {
+    var node: HTMLElement? = target
+    while (node != null) {
+        val style = window.getComputedStyle(node)
+        val scrollsY = style.overflowY == "auto" || style.overflowY == "scroll"
+        val scrollsX = style.overflowX == "auto" || style.overflowX == "scroll"
+        if (scrollsY && dy != 0.0) {
+            val top = node.scrollTop
+            val max = node.scrollHeight - node.clientHeight
+            if ((dy < 0 && top > 0) || (dy > 0 && top < max - 1)) return true
+        }
+        if (scrollsX && dx != 0.0) {
+            val left = node.scrollLeft
+            val max = node.scrollWidth - node.clientWidth
+            if ((dx < 0 && left > 0) || (dx > 0 && left < max - 1)) return true
+        }
+        if (node == area) break
+        node = node.parentElement as? HTMLElement
+    }
+    return false
+}
+
 private fun installCanvasPanLatch() {
     val capture = json("capture" to true, "passive" to false)
 
@@ -6966,9 +6989,12 @@ suspend fun main() {
 
     mainViewport.onwheel = onwheel@{ event ->
 
-        // todo, should read "has outputArea_content as parent"
+        // Over an output panel the wheel belongs to the panel only if something there takes it: its
+        // content handled the event, or an element between the target and the panel can still
+        // scroll that way. Otherwise a panel that fills the window would trap pan and zoom.
         val target = event.target as? HTMLElement
-        if (target != null && target.asDynamic().closest(".outputArea") != null) {
+        val area = target?.closest(".outputArea") as? HTMLElement
+        if (area != null && (event.defaultPrevented || (!(event.ctrlKey || event.metaKey) && canScrollWithin(target, area, event.deltaX, event.deltaY)))) {
             return@onwheel null
         }
 
