@@ -212,8 +212,9 @@ fun Box.showSignals(
     fun shape(values: List<Number>): List<Number> {
         if (!normalize) return values
         val ds = values.map { it.toDouble() }
-        val lo = ds.minOrNull() ?: 0.0
-        val hi = ds.maxOrNull() ?: 1.0
+        // NaN marks a gap; it must not decide the range, or every point normalizes to NaN.
+        val lo = ds.filter { !it.isNaN() }.minOrNull() ?: 0.0
+        val hi = ds.filter { !it.isNaN() }.maxOrNull() ?: 1.0
         val span = (hi - lo).takeIf { it > 1e-12 } ?: 1.0
         return ds.map { (it - lo) / span }
     }
@@ -228,7 +229,7 @@ fun Box.showSignals(
             }
         }
         if (marks.isNotEmpty()) {
-            val allY = series.flatMap { shape(it.second).map { n -> n.toDouble() } }
+            val allY = series.flatMap { shape(it.second).map { n -> n.toDouble() } }.filter { !it.isNaN() }
             val ymin = allY.minOrNull() ?: 0.0
             val ymax = allY.maxOrNull() ?: 1.0
             marks.forEach { (label, mx) ->

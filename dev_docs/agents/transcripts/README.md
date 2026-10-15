@@ -135,6 +135,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
   grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
   gate, the loot rule as a qualified source, and a corpus box that builds seeded variants with the same stages.
+- `matrix_profile.yaml` — the matrix profile page's four boxes (`public/docs/matrix_profile.md`): motifs in a random walk, a malformed beat as a discord, `multiMatrixProfile` finding a gesture and its two channels out of four, and `contrastProfile` finding the shape only the positive examples share.
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
 - `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
 - `gesture_paint_replay.yaml` — a pen gesture pad's take (pressure and tilt kept) baked into x/y/pressure lanes and painted from them with `PaintCanvas.gesture(x, y, pressureLane = ...)`; a second box paints one take four ways to show what the recording drops.

@@ -152,6 +152,8 @@ nav:
       # which already called itself that page's frequency-domain companion. The filename stays
       # spectral_examples.md so its inbound links and transcript keep working.
       - Signal Examples: spectral_examples.md
+      # After the signal toolkit: the matrix profile asks what in a signal repeats and what is unique.
+      - "Motifs & Discords: the Matrix Profile": matrix_profile.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a
