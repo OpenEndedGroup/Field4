@@ -832,6 +832,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "history-lens-selection"
         action.label = "Show History Lens for Line / Selection"
+        action.keys = "alt+shift+h"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "navigation"
