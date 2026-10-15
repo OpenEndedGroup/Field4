@@ -520,4 +520,4 @@ variables are bound nowhere else. A predicate used at two different arities. Neg
 aggregation inside a recursive cycle, which it reports with the cycle named rather than picking an
 evaluation order.
 
-**Source.** `src/jvmMain/kotlin/afield/datalog/`.
+**Source.** `src/jvmMain/kotlin/afield/data/query/datalog/`.
