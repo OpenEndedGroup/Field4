@@ -108,7 +108,24 @@ data class CanonicalDiagnostics(
      * other numbers on this record are not to be trusted.
      */
     val degenerateFaces: List<ElementId>,
-)
+    /**
+     * Signed volume enclosed by the faces, by the divergence theorem over a centroid fan of each face.
+     * Negative means the embedding has turned inside out.
+     */
+    val signedVolume: Double = 0.0,
+    /**
+     * Pairs of faces whose surfaces cross, counted between triangles of the faces' centroid fans that
+     * share no corner. Non-zero means the surface passes through itself: tangency and planarity can
+     * still all be satisfied, and a `Solid` made from it still reports `NO_ERROR`.
+     */
+    val selfIntersectingFacePairs: Int = 0,
+) {
+    /**
+     * Whether this is an embedding of a solid at all: positive volume and a surface that does not pass
+     * through itself. Read it before the canonical figures, which can all be excellent when it is false.
+     */
+    val isEmbedded: Boolean get() = signedVolume > 0.0 && selfIntersectingFacePairs == 0
+}
 
 /**
  * Which iteration drives the embedding toward the canonical conditions.
@@ -567,7 +584,73 @@ fun PolyhedralObject.canonicalDiagnostics(): CanonicalDiagnostics {
         dihedralAngleMean = if (dihedrals.isEmpty()) 0.0 else dihedrals.average(),
         dihedralAngleSpread = (dihedrals.maxOrNull() ?: 0.0) - (dihedrals.minOrNull() ?: 0.0),
         degenerateFaces = degenerate,
+        signedVolume = fanSignedVolume(x, problem.faceCycles),
+        selfIntersectingFacePairs = crossingFacePairs(x, problem.faceCycles),
     )
+}
+
+/** One centroid-fan triangle of a face, as three points, plus the corner indices it touches. */
+private class FanTriangle(val face: Int, val a: DoubleArray, val b: DoubleArray, val c: DoubleArray, val corners: IntArray)
+
+private fun corner(x: DoubleArray, i: Int) = doubleArrayOf(x[3 * i], x[3 * i + 1], x[3 * i + 2])
+
+private fun fanTriangles(x: DoubleArray, faces: List<IntArray>): List<FanTriangle> = buildList {
+    faces.forEachIndexed { f, cycle ->
+        val centre = DoubleArray(3)
+        cycle.forEach { for (axis in 0..2) centre[axis] += x[3 * it + axis] / cycle.size }
+        for (k in cycle.indices) {
+            val i = cycle[k]
+            val j = cycle[(k + 1) % cycle.size]
+            add(FanTriangle(f, centre, corner(x, i), corner(x, j), intArrayOf(i, j)))
+        }
+    }
+}
+
+private fun fanSignedVolume(x: DoubleArray, faces: List<IntArray>): Double =
+    fanTriangles(x, faces).sumOf { t ->
+        val (a, b, c) = Triple(t.a, t.b, t.c)
+        (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6.0
+    }
+
+/** Face pairs with a crossing between fan triangles that share no corner and are not of one face. */
+private fun crossingFacePairs(x: DoubleArray, faces: List<IntArray>): Int {
+    val tris = fanTriangles(x, faces)
+    val crossing = HashSet<Long>()
+    for (p in tris.indices) for (q in p + 1 until tris.size) {
+        val s = tris[p]
+        val t = tris[q]
+        if (s.face == t.face || s.corners.any { it in t.corners }) continue
+        val key = minOf(s.face, t.face).toLong() shl 32 or maxOf(s.face, t.face).toLong()
+        if (key in crossing) continue
+        if (trianglesCross(s, t)) crossing += key
+    }
+    return crossing.size
+}
+
+private fun trianglesCross(s: FanTriangle, t: FanTriangle): Boolean {
+    val sEdges = listOf(s.a to s.b, s.b to s.c, s.c to s.a)
+    val tEdges = listOf(t.a to t.b, t.b to t.c, t.c to t.a)
+    return sEdges.any { (p, q) -> segmentHitsTriangle(p, q, t) } || tEdges.any { (p, q) -> segmentHitsTriangle(p, q, s) }
+}
+
+/** Möller–Trumbore, with the segment's own parameter kept strictly inside (0, 1). */
+private fun segmentHitsTriangle(p: DoubleArray, q: DoubleArray, t: FanTriangle): Boolean {
+    val d = DoubleArray(3) { q[it] - p[it] }
+    val e1 = DoubleArray(3) { t.b[it] - t.a[it] }
+    val e2 = DoubleArray(3) { t.c[it] - t.a[it] }
+    val h = doubleArrayOf(d[1] * e2[2] - d[2] * e2[1], d[2] * e2[0] - d[0] * e2[2], d[0] * e2[1] - d[1] * e2[0])
+    val det = e1[0] * h[0] + e1[1] * h[1] + e1[2] * h[2]
+    val scale = max(1e-30, sqrt(d.sumOf { it * it }) * sqrt(e1.sumOf { it * it }) * sqrt(e2.sumOf { it * it }))
+    if (abs(det) < 1e-12 * scale) return false
+    val inv = 1.0 / det
+    val sv = DoubleArray(3) { p[it] - t.a[it] }
+    val u = inv * (sv[0] * h[0] + sv[1] * h[1] + sv[2] * h[2])
+    if (u <= 1e-9 || u >= 1.0 - 1e-9) return false
+    val qv = doubleArrayOf(sv[1] * e1[2] - sv[2] * e1[1], sv[2] * e1[0] - sv[0] * e1[2], sv[0] * e1[1] - sv[1] * e1[0])
+    val v = inv * (d[0] * qv[0] + d[1] * qv[1] + d[2] * qv[2])
+    if (v <= 1e-9 || u + v >= 1.0 - 1e-9) return false
+    val along = inv * (e2[0] * qv[0] + e2[1] * qv[1] + e2[2] * qv[2])
+    return along > 1e-9 && along < 1.0 - 1e-9
 }
 
 // ==============================================================================================

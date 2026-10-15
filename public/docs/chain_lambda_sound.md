@@ -180,9 +180,9 @@ differ only in where the strikes fall.
 
 ## The reduction as pitch
 
-A rule emits an event when it fires, and `Lambda.rules` declares a six-word vocabulary for them:
-`beta`, `duplicate`, `branch`, `prune`, `erase`, `annihilate`. Map those to six degrees of a minor
-pentatonic and a reduction becomes a tune whose notes are its rule sequence.
+A rule emits an event when it fires. A closed term emits four kinds of event, `beta`, `branch`,
+`prune` and `annihilate`; map those to four degrees of a minor pentatonic and a reduction becomes a
+tune whose notes are its rule sequence.
 
 ```diffstatic {data-lang=kotlin}
 val notes = LambdaSoundDocs.trace("erase-argument").melody
@@ -196,15 +196,6 @@ interaction net cannot simply drop a wire.
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/erase-rule-melody.wav" audio-spec="erase-rule-melody" audio-renderer="afield.audio.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-melody-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("erase-rule-melody").
 ```
-
-!!! note "Two of the six degrees are silent on every closed term"
-
-    `duplicate` comes only from `dup-var`, `dup-const` and `dup-root`, and `erase` only from
-    `erase-var`, `erase-const` and `erase-root`. All six need a nullary atom on the non-principal
-    side: a *free* `VAR`, a `CONST`, or the `ROOT` itself. A closed term compiled by
-    `LambdaTerms.compile` has no free variable, no constant at all, and one `ROOT` whose principal
-    port faces the answer. So the whole corpus only ever reaches four of the six kinds, and
-    `LambdaSoundDocs.KINDS_UNREACHABLE_ON_CLOSED_TERMS` names the other two.
 
 ## Where each piece is documented
 

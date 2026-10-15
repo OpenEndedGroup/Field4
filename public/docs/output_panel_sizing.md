@@ -145,7 +145,7 @@ overflow a narrow one.
 This example puts two frames in one box. Their content is identical, and only the width each
 declares differs. Both carry `data-afield-autosize="off"`, so neither reports a size of its own.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/output_panel_sizing/fill-vs-fixed.png" capture="box" open-outputs="true" wait="3.0" w="1040" h="160" padding="18" timeout="120" embed=true name="output-panel-sizing-fill-vs-fixed" alt="A Field box roughly 1040 points wide holding two open output panels, one above the other. The upper panel, titled 'no width of its own', spans the full width of the box and its dark blue frame fills it edge to edge. The lower panel, titled '640 pixels wide', is visibly narrower — a little under two thirds of the box — and stops well short of the box's right edge. Both frames are far taller than the 66 pixels their markup declares."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/output_panel_sizing/fill-vs-fixed.png" capture="box" open-outputs="true" wait="3.0" w="1040" h="160" padding="18" timeout="120" embed=true name="output-panel-sizing-fill-vs-fixed" alt="A Field box roughly 1040 points wide holding two open output panels, one above the other. The upper panel, titled 'no width of its own', spans the full width of the box and its dark blue frame fills it edge to edge. The lower panel, titled '640 pixels wide', is visibly narrower — a little under two thirds of the box — and stops well short of the box's right edge. Both frames are the 66 pixels their markup declares."}
 // Two frames whose ONLY difference is the width each declares. Both are
 // data-afield-autosize="off", so iframe_autosize.js returns early in both and
 // neither will ever dispatch afield-iframe-size.
@@ -179,13 +179,6 @@ displayOpen("640 pixels wide")
 
 The upper panel is the whole width of the box because nothing in it had a width; the lower panel is
 640 pixels plus the content padding because something in it did.
-
-Both frames in that picture are about two hundred pixels tall, though their markup says 66. That is the
-[screenshot-prep pass](#the-screenshot-pass-is-a-second-sizer), which floors *any* panel containing
-an iframe at 220 pixels
-(`src/jsMain/kotlin/afield/app/client/Main.kt:1548#content.querySelector("iframe") != null -> 220.0`) on
-`src/jsMain/kotlin/afield/app/client/Main.kt:1514#private fun fitOutputDisclosuresForScreenshot`, before the
-picture is taken, so a panel in a docs figure can differ from the one you see in Field.
 
 ## Height is measured from the content edge
 
@@ -248,14 +241,13 @@ docs runner or the screenshot API is about to photograph a box, so that a figure
 content rather than to whatever width the box was dragged to. It works in the opposite direction
 from everything above: it measures the panels and then grows
 `box.style.width` to fit them (`src/jsMain/kotlin/afield/app/client/Main.kt:1652#if (desiredWidth > currentWidth + 2.0)`).
-Its height sibling `fitOutputDisclosuresForScreenshot` overwrites panel heights outright, which is
-where the 220px floor in the figure above comes from.
+Its height sibling `fitOutputDisclosuresForScreenshot` sets panel heights too, but leaves alone a
+panel whose frames all state their own height.
 
 With a fill frame, that would loop: the panel grows to the box, the prep pass grows the box to the
 panel, and the auto-size passes grow the panel to the new box, bounded only by the window-width
 clamp on `src/jsMain/kotlin/afield/app/client/Main.kt:1625#val disclosureWidth`. To prevent it, the prep pass
-has its own copy of the fill-frame test
-(`src/jsMain/kotlin/afield/app/client/Main.kt:1566#private fun isFillWidthIframe`):
+asks the same fill-frame test the panel sizer uses (`window.fieldIsFillWidthIframe`):
 
 - fill panels are excluded from `maxContentWidth`
   (`src/jsMain/kotlin/afield/app/client/Main.kt:1585#if (contentIsFillWidth) 0.0 else content.scrollWidth` and
@@ -266,12 +258,6 @@ has its own copy of the fill-frame test
   Writing it would *shrink* a fill panel to whatever the other panels needed, and because the
   auto-size passes keep running after the prep pass and put the width back, the panel would end up
   wider than the clip already measured, cropping the right-hand column of a table out of the figure.
-
-??? aside "Agents: the two fill-frame tests differ"
-    The JS version routes the inline width through `hasConcreteCssSize`; the Kotlin version at
-    `src/jsMain/kotlin/afield/app/client/Main.kt:1566#private fun isFillWidthIframe` accepts empty, `auto`, or
-    a `%` suffix and nothing else. They agree on every width Field emits, and would disagree about
-    `width:fit-content` or `width:0`.
 
 ## A dragged panel stops listening
 
@@ -301,8 +287,8 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
     `tools/run_ui_regressions.py#id="output-panel-shrink"` drives one panel through a capped
     `<pre>`, tall, fill, short and wide content, a re-rendered paragraph, rapid alternation, the
     window cap, a zoomed canvas and a drag, and checks the width and height after each.
-    The lazy-output and value-viewer frames are not under any geometry check, and the two
-    `isFillWidthIframe` copies are never compared. The full census is in
+    `tools/run_ui_regressions.py#id="value-viewer-panel-sizing"` opens a value from a `.h` listing
+    into the output area and checks the same two things for the value-viewer frame. The full census is in
     [OUTPUT_PANEL_SIZING_COVERAGE.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md).
 
 ## See also

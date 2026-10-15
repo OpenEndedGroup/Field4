@@ -74,13 +74,6 @@ In RectSL it reads:
 ;
 ```
 
-!!! note "Why the line moves with `linear`"
-
-    A quoted track such as `'( 0=-8  4=8 ) ->x` eases in and out by default. The CPU rasterizer
-    takes one sample per pixel centre and counts a centre exactly on an edge as inside, so an eased
-    edge that lands on a centre draws a line one pixel wider than it is. `linear` keeps the edges
-    off the centres in this scene.
-
 The second panel is the rig in its sent colours. The third is the same rig lit only by what the
 receiver decoded from the two universes that came back. The wall is 16 units by 8, which gives one
 fixture per unit, and the frame is drawn at 16 pixels per unit, so each fixture stands for a
