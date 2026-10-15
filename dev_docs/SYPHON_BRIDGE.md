@@ -1,4 +1,4 @@
-# Syphon bridge (afield.syphon, native/field-syphon)
+# Syphon bridge (afield.io.syphon, native/field-syphon)
 
 User page: `public/docs/syphon.md`. Starting points: `syphon_bridge` (CPU), `syphon_gpu` (renderer).
 
@@ -8,7 +8,7 @@ User page: `public/docs/syphon.md`. Starting points: `syphon_bridge` (CPU), `syp
   `libfield_syphon.dylib` (flat C ABI, `field_syphon.h`, rpath `@loader_path`) and
   `field_syphon_probe` (out-of-process test peer). Uses `xcrun --sdk macosx` with Xcode's
   DEVELOPER_DIR: the CommandLineTools SDK on this machine has no Foundation headers.
-- `afield.syphon`: `SyphonNative` (FFM), `syphonServer`/`syphonClient`, `SyphonGpuPublisher`
+- `afield.io.syphon`: `SyphonNative` (FFM), `syphonServer`/`syphonClient`, `SyphonGpuPublisher`
   (`followOnGpu`), `SyphonTexture` (`SyphonClient.texture()`).
 
 ## Traps (measured)

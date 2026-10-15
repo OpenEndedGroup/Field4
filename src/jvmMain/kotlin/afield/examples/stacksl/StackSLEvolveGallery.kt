@@ -1,29 +1,34 @@
 package afield.examples.stacksl
 
-import afield.stacksl.cpu.CpuRaster
-import afield.stacksl.cpu.StackSLCpu
-import afield.stdlib.DEFAULT_FITNESS_DIM
-import afield.stdlib.Evaluation
-import afield.stdlib.Img
-import afield.stdlib.PopulationSearch
-import afield.stdlib.RasterStructure
-import afield.stdlib.SearchRun
-import afield.stdlib.Selection
-import afield.stdlib.StackSLGenome
-import afield.stdlib.StackSLImageObjective
-import afield.stdlib.StackSLMetric
-import afield.stdlib.StackSLPalette
-import afield.stdlib.StackSLProgram
-import afield.stdlib.StackSLScoreCache
-import afield.stdlib.StackSLLayout
-import afield.stdlib.StackSLTarget
-import afield.stdlib.StackSLTargets
-import afield.stdlib.StackSLWordKind
-import afield.stdlib.danglingValuesOf
-import afield.stdlib.montage
-import afield.stdlib.savePng
-import afield.stdlib.toImg
-import afield.stdlib.upscaleNearest
+import afield.lang.stacksl.cpu.CpuRaster
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.evolution.DEFAULT_FITNESS_DIM
+import afield.study.search.Evaluation
+import afield.media.image.Img
+import afield.study.search.PopulationSearch
+import afield.lang.stacksl.evolution.RasterStructure
+import afield.study.search.SearchRun
+import afield.study.search.Selection
+import afield.lang.stacksl.evolution.StackSLGenome
+import afield.lang.stacksl.evolution.StackSLImageObjective
+import afield.lang.stacksl.evolution.StackSLMetric
+import afield.lang.stacksl.evolution.StackSLPalette
+import afield.lang.stacksl.evolution.StackSLProgram
+import afield.lang.stacksl.evolution.StackSLScoreCache
+import afield.lang.stacksl.evolution.StackSLLayout
+import afield.lang.stacksl.evolution.StackSLTarget
+import afield.lang.stacksl.evolution.StackSLTargets
+import afield.lang.stacksl.evolution.StackSLWordKind
+import afield.lang.stacksl.evolution.danglingValuesOf
+import afield.media.image.montage
+import afield.media.image.savePng
+import afield.simulation.automata.savePng
+import afield.graphics.text.toImg
+import afield.lang.stacksl.evolution.toImg
+import afield.media.image.toImg
+import afield.simulation.agents.toImg
+import afield.simulation.automata.toImg
+import afield.media.image.upscaleNearest
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -238,7 +243,7 @@ object StackSLEvolveGallery {
 
         check(
             runCatching {
-                PopulationSearch.evolve(StackSLGenome(), afield.stdlib.objectiveOf { 0.0 }, 40, selection = Selection.LEXICASE)
+                PopulationSearch.evolve(StackSLGenome(), afield.study.search.objectiveOf { 0.0 }, 40, selection = Selection.LEXICASE)
             }.isFailure,
             "premise: PopulationSearch refuses LEXICASE over an objective with no cases"
         )

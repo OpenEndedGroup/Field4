@@ -32,13 +32,13 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="muscriptor_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="muscriptor_visualizer_gallery" role="properties"]
-{"id" "muscriptor_visualizer_gallery" "index" 1 "name" "2 · synchronized instrument piano roll" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized instrument piano roll" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_visualizer_gallery_code_.kt" "lines" 12 "characters" 868 "sha256" "6517a2ee8cd442fa87c13e972d0d9bdda00ad3f776f7d7851edbd99b1f50119e"}]}
+{"id" "muscriptor_visualizer_gallery" "index" 1 "name" "2 · synchronized instrument piano roll" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized instrument piano roll" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_visualizer_gallery_code_.kt" "lines" 12 "characters" 890 "sha256" "3920675e7a0ee4cea683a9b4bc0f07ce721ad8e5c1ad1a945c8f21675770966a"}]}
 ```
 
 ```kotlin [field-property box="muscriptor_visualizer_gallery" name="code" path="muscriptor_visualizer_gallery_code_.kt"]
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
+import afield.ui.visualization.AudioVisualizer
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json
@@ -55,11 +55,11 @@ display("transcription", source + analysisPreviewVisualizationHtml(preview, widt
 <!-- field-box id="transcribe_field_render" index="2" -->
 
 ```edn [field-box id="transcribe_field_render" role="properties"]
-{"id" "transcribe_field_render" "index" 2 "name" "3 · submit, monitor, audition, download MIDI" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, audition, download MIDI" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "transcribe_field_render_code_.kt" "lines" 65 "characters" 3364 "sha256" "678fdd5228b442e899f7b61bd1b9f9c2191f8f797cb9d3180cdf2923f3e61c77"}]}
+{"id" "transcribe_field_render" "index" 2 "name" "3 · submit, monitor, audition, download MIDI" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, audition, download MIDI" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "transcribe_field_render_code_.kt" "lines" 65 "characters" 3374 "sha256" "04d502024c1c13f175fd1cf702e687354b7c6a7d34e0b36a8a1e9c7e1ead9474"}]}
 ```
 
 ```kotlin [field-property box="transcribe_field_render" name="code" path="transcribe_field_render_code_.kt"]
-import afield.stdlib.AudioVisualizerOptions
+import afield.ui.visualization.AudioVisualizerOptions
 import java.nio.file.Path
 
 val client = FieldAudioClient()

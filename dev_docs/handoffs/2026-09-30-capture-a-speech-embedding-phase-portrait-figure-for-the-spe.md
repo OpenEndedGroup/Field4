@@ -32,7 +32,7 @@ decision on model-free fixtures or runtime and capture-system work to get real o
 - `dev_docs/agents/transcripts/audio_ai_speech_embeddings.yaml:26-83`: box "2 · model-free
   synchronized MDS gallery" already builds `AnalysisPreview` fixtures (labelled
   "synthetic calibration") and renders them with the real `speechEmbeddingPreviewDashboardHtml`
-  (`src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpeechEmbeddingVisualization.kt:140`) on one
+  (`src/jvmMain/kotlin/afield/audio/ai/SpeechEmbeddingVisualization.kt:140`) on one
   shared `syncGroup`. This box could become a `diffstatic_runner` fence with `screenshot=` almost
   unchanged, following the pattern of `public/docs/audio_ai_analysis.md:33`.
 - The same transcript's box 3 (`:84` onward) is the real `near_drowning` path. It needs the

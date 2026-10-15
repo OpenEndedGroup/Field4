@@ -1,5 +1,5 @@
-import afield.stdlib.Functions
-import afield.stdlib.FnGradientMode
+import afield.math.functions.Functions
+import afield.math.autodiff.FnGradientMode
 
 // Field's Fn is a closure over Double, so it cannot be differentiated by overloading its
 // arithmetic. But every Fn the stdlib builds carries an inspectable graph, and

@@ -1,10 +1,10 @@
-import afield.stdlib.FlowCoupling
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.contourComponents
-import afield.stdlib.flowMatch
+import afield.ai.learning.FlowCoupling
+import afield.ai.learning.FlowMatchOptions
+import afield.ai.learning.contourComponents
+import afield.ai.learning.flowMatch
 
-prop<afield.stdlib.FlowMatchExport>(fieldA)
-prop<afield.stdlib.FlowMatchExport>(fieldB)
+prop<afield.simulation.particles.FlowMatchExport>(fieldA)
+prop<afield.simulation.particles.FlowMatchExport>(fieldB)
 
 val LETTERS = "C" to "S"
 val N = 512

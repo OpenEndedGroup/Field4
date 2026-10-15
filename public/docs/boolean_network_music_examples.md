@@ -16,7 +16,7 @@ Take a small attractor, map rising edges to pitches, and render the result as a 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/noteprocess_roll.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
+import afield.audio.synth.*
 
 data class Candidate(val seed: Int, val net: BooleanNetwork, val attr: Attractor)
 
@@ -71,7 +71,7 @@ The same 24 steps as sound. Each note plays the Tidal `arpy` sample, pitched the
 sample, by playback speed, so C3 is the sample as recorded and C2 an octave down at half speed. The
 period-6 attractor is a figure that comes round every 1.5 seconds, four times.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/attractor-roll.wav" audio-spec="attractor-roll" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-attractor-roll-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/attractor-roll.wav" audio-spec="attractor-roll" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-attractor-roll-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("attractor-roll"): the fence's notes, through real Dirt-Samples.
 ```
 
@@ -81,7 +81,7 @@ The same timing layer can carry Dirt sample labels instead of note names. Swap t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/dirt_token_roll.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
+import afield.audio.synth.*
 
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)
 val attr = net.findAttractors().maxByOrNull { it.period }!!
@@ -122,7 +122,7 @@ And the tokens played. The attractor has two states, so kick and hat alternate, 
 quarter-second step, for eight seconds. There is one `perc` hit at the very start, from the lane
 that was on at step zero and never again.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/dirt-tokens.wav" audio-spec="dirt-tokens" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-dirt-tokens-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/dirt-tokens.wav" audio-spec="dirt-tokens" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-dirt-tokens-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("dirt-tokens"): the fence's notes, through real Dirt-Samples.
 ```
 
@@ -132,7 +132,7 @@ This example braids three Boolean attractors at different temporal resolutions: 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/braided_rhythm.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
+import afield.audio.synth.*
 
 fun <T> Iterator<T>.collectAll(): List<T> {
     val out = mutableListOf<T>()
@@ -229,7 +229,7 @@ Played through Dirt-Samples, the kick and snare carry the rhythm for the whole e
 shimmer is a wash rather than a ticking hat, because in Dirt-Samples `hh:1` to `hh:4` are a crash and
 three long hits.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/braid.wav" audio-spec="braid" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-braid-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/braid.wav" audio-spec="braid" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-braid-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("braid"): the fence's notes, through real Dirt-Samples.
 ```
 
@@ -239,7 +239,7 @@ The driven scheduling helpers let something outside the network write into its s
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/oscillator_driven.png" wait="1.0" capture="box"}
 :::static
-import afield.four.synth.*
+import afield.audio.synth.*
 
 fun <T> Iterator<T>.collectAll(): List<T> {
     val out = mutableListOf<T>()
@@ -317,7 +317,7 @@ Heard, the forced lane is the quiet `click`, and the network's
 answer comes in bursts of kick, snare, clap and hat that repeat every 1.5 seconds, twelve steps,
 the oscillator's period. Each cycle has a gap of about half a second in which nothing fires.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/driven.wav" audio-spec="driven" audio-renderer="afield.four.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-driven-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_network_music_examples/driven.wav" audio-spec="driven" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-network-driven-audio"}
 // Offline-rendered by BooleanNetworkSoundDocs.renderWav("driven"): the fence's notes, through real Dirt-Samples.
 ```
 
@@ -326,7 +326,7 @@ the oscillator's period. Each cycle has a gap of about half a second in which no
 `respondAhead(...)` clocks the network in real time and calls back with `BooleanNetworkStep` values, enough to drive a `DirtSamplePlayer` directly. It does not start anything itself: it builds a `BooleanNetworkResponseSpec`, and a registered return-value handler launches that spec when it turns up as the box's last expression. So the responder runs because the fence *ends* with it, and the job it starts belongs to the box. Stop the box and the sound stops.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.synth.*
+import afield.audio.synth.*
 
 val clock = musicClock().reset(started = true)
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)

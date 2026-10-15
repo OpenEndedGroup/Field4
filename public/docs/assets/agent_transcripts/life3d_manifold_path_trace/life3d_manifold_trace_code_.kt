@@ -1,20 +1,20 @@
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.IntVolume
-import afield.stdlib.LIFE3D_BLOB
-import afield.stdlib.asDensityField
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.marchBounds
-import afield.stdlib.step
-import afield.stdlib.toMesh
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.simulation.automata.IntVolume
+import afield.simulation.automata.LIFE3D_BLOB
+import afield.simulation.automata.asDensityField
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
+import afield.simulation.automata.marchBounds
+import afield.simulation.automata.step
+import afield.simulation.automata.toMesh
 import java.io.File
 import kotlin.random.Random
 
@@ -110,7 +110,7 @@ val floor = scene.material(PathTraceMaterial.plastic(0.30f, 0.31f, 0.33f, 0.5f))
 // Centre the volume on the origin and scale it into view: the field is in voxels.
 val centre = Vector3f(n / 2f, n / 2f, n / 2f)
 val scale = 2.4f / n
-val placement = afield.stdlib.linalg.Matrix4f()
+val placement = afield.math.linalg.Matrix4f()
     .scale(scale, scale, scale)
     .translate(-centre.x, -centre.y, -centre.z)
 

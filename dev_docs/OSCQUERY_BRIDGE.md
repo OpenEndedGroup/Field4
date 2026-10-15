@@ -1,4 +1,4 @@
-# OSCQuery bridge (`afield.oscquery`)
+# OSCQuery bridge (`afield.io.osc.query`)
 
 User page: `public/docs/oscquery.md`. Demo: `public/docs/assets/oscquery_demo/`.
 
@@ -10,7 +10,7 @@ User page: `public/docs/oscquery.md`. Demo: `public/docs/assets/oscquery_demo/`.
 | `OscQueryServer.kt` | Namespace + Ktor/Netty HTTP on its own port (JSON tree, attribute queries, `HOST_INFO`), WebSocket at `/` on the same port (`LISTEN`/`IGNORE`, `PATH_ADDED/REMOVED/CHANGED`, binary OSC in and out), raw `DatagramSocket` for OSC UDP. |
 | `Mdns.kt` | Dependency-free mDNS responder (shares 5353 via SO_REUSEADDR/SO_REUSEPORT) + legacy-unicast browse. |
 | `OscQueryRemote.kt` | Client on JDK `java.net.http` (HTTP + WebSocket); sets go out as UDP OSC to `HOST_INFO.OSC_PORT`. |
-| `OscQueryBox.kt` | `Box.oscQuery`, `oscQueryRemote`, `oscQueryMirror`, `oscQueryDiscover`; callbacks on the main Runloop (same drain pattern as `afield.mqtt`), params owned `ReleasePolicy.KEYED`. |
+| `OscQueryBox.kt` | `Box.oscQuery`, `oscQueryRemote`, `oscQueryMirror`, `oscQueryDiscover`; callbacks on the main Runloop (same drain pattern as `afield.io.mqtt`), params owned `ReleasePolicy.KEYED`. |
 
 ## Decisions
 
@@ -26,7 +26,7 @@ User page: `public/docs/oscquery.md`. Demo: `public/docs/assets/oscquery_demo/`.
 
 ## Tests
 
-`src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`: JSON shape over real HTTP (JDK
+`src/jvmTest/kotlin/afield/io/osc/query/OscQueryRoundTripTest.kt`: JSON shape over real HTTP (JDK
 client), UDP set via JavaOSC reaching the callback (coercion, clipping, read-only ignored), a raw
 JDK WebSocket LISTEN client receiving Field-side and OSC-side changes plus `PATH_ADDED`, `IGNORE`,
 `OscQueryRemote` mirroring a server, codec and mDNS wire round-trips, and live DNS-SD discovery

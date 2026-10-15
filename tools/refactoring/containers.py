@@ -358,7 +358,7 @@ def yaml_units(text: str, properties: set[str]) -> Extraction:
         raise ContainerError(f'invalid YAML{location}: {getattr(error, "problem", type(error).__name__)}') from error
     seen = set()
 
-    def scalar_unit(node, identity):
+    def scalar_unit(node, identity, box_context):
         if not isinstance(node, ScalarNode) or node.tag != 'tag:yaml.org,2002:str':
             result.findings.append(issue('unsupported-yaml-code', identity))
             return
@@ -377,9 +377,9 @@ def yaml_units(text: str, properties: set[str]) -> Extraction:
                     return rendered
             # Quoted/flow/folded scalar: a JSON string is also a lossless YAML string.
             return quoted(value)
-        result.units.append(Unit(identity, node.value, start, end, encode))
+        result.units.append(Unit(identity, node.value, start, end, encode, box_context=box_context))
 
-    def walk(node, path='yaml', depth=0):
+    def walk(node, path='yaml', depth=0, box_context=False):
         if node is None:
             return
         if depth > 100 or id(node) in seen:
@@ -402,12 +402,16 @@ def yaml_units(text: str, properties: set[str]) -> Extraction:
                     if id(value) in seen:
                         raise ContainerError('aliased YAML code requires review')
                     seen.add(id(value))
-                    scalar_unit(value, f'{path}/{key}')
+                    scalar_unit(value, f'{path}/{key}', box_context)
                 else:
-                    walk(value, f'{path}/{key}', depth + 1)
+                    # These transcript operations execute or edit a saved box property.
+                    # Arbitrary YAML code does not inherit Field's automatic imports.
+                    box_operation = key in ('create', 'edit', 'run', 'launch', 'execute') and isinstance(value, MappingNode) and any(
+                        isinstance(k, ScalarNode) and k.value == 'box' for k, _ in value.value)
+                    walk(value, f'{path}/{key}', depth + 1, box_context or box_operation)
         elif isinstance(node, SequenceNode):
             for i, child in enumerate(node.value):
-                walk(child, f'{path}/{i}', depth + 1)
+                walk(child, f'{path}/{i}', depth + 1, box_context)
     walk(root)
     return result
 

@@ -34,7 +34,7 @@ property.
 EDIT EITHER NUMBER AND RE-RUN THIS BOX, then re-run the box below.
 
 ```edn [field-box id="fieldml-macro-parameter" role="properties"]
-{"id" "fieldml-macro-parameter" "index" 1 "name" "prop — a live, inheritable parameter" "parents" ["root" "fieldml-macro-root"] "children" ["fieldml-macro-drawing"] "properties" {"children" #{#afield/box "fieldml-macro-drawing"} "parents" #{#afield/box "root" #afield/box "fieldml-macro-root"} "name" "prop — a live, inheritable parameter" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-macro-parameter_code_.kt" "lines" 27 "characters" 1128 "sha256" "21847ba6b9cd1bb847294119011ccbbeaff6d75882a255eafcd1a3da0ce96a08"}]}
+{"id" "fieldml-macro-parameter" "index" 1 "name" "prop — a live, inheritable parameter" "parents" ["root" "fieldml-macro-root"] "children" ["fieldml-macro-drawing"] "properties" {"children" #{#afield/box "fieldml-macro-drawing"} "parents" #{#afield/box "root" #afield/box "fieldml-macro-root"} "name" "prop — a live, inheritable parameter" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-macro-parameter_code_.kt" "lines" 27 "characters" 1146 "sha256" "00dc1734c8f6e7aeadf43660fef33e798e7c3d8d5a667c2b7ef02a1896c6c424"}]}
 ```
 
 ```kotlin [field-property box="fieldml-macro-parameter" name="code" path="fieldml-macro-parameter_code_.kt"]
@@ -55,7 +55,7 @@ let _ = setProp "turns" 4
 // this box does not change it, because the slot is no longer empty.
 let firstRun =
   once "firstRunAt" (fun ignored ->
-    hostClass "afield.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds"
+    hostClass "afield.runtime.lifecycle.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds"
   )
 
 {

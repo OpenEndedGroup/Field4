@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sg_renderer" index="0" -->
 
 ```edn [field-box id="sg_renderer" role="properties"]
-{"id" "sg_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sg_update"] "properties" {"children" #{#afield/box "sg_update"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_renderer_code_.kt" "lines" 14 "characters" 422 "sha256" "a562d47728e84765b6dc8e3df9c4adffb2b2feb93261ebbd60f6afedf995817c"}]}
+{"id" "sg_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sg_update"] "properties" {"children" #{#afield/box "sg_update"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_renderer_code_.kt" "lines" 14 "characters" 433 "sha256" "7b323609f10d46640e7fe545cd91c82a5df5f870ed059fc45bb1c7ddd78c4355"}]}
 ```
 
 ```kotlin [field-property box="sg_renderer" name="code" path="sg_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -36,7 +36,7 @@ start(renderer::run)
 <!-- field-box id="sg_update" index="1" -->
 
 ```edn [field-box id="sg_update" role="properties"]
-{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 81 "characters" 2130 "sha256" "2f37f71d5e9956c485d968d3cbdf58d384923914ec9b458d460699546062963e"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 96 "characters" 3163 "sha256" "bba7f2186bde40cc3a204eecafe003ad8dbf220cde8ae09eee655e475566a2aa"}]}
+{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 81 "characters" 2130 "sha256" "2f37f71d5e9956c485d968d3cbdf58d384923914ec9b458d460699546062963e"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 96 "characters" 3169 "sha256" "9f28fcb00f56b8c061175b5f7acfa78b97863ee0d5ed33730d9836419a38bb89"}]}
 ```
 
 ```glsl [field-property box="sg_update" name="compute" path="sg_update_compute_.glsl"]
@@ -124,8 +124,8 @@ void main() {
 ```
 
 ```kotlin [field-property box="sg_update" name="code" path="sg_update_code_.kt"]
-import afield.four.modules.computeMemoryBarrier
-import afield.four.modules.computeTask
+import afield.graphics.render.computeMemoryBarrier
+import afield.graphics.render.computeTask
 
 val L = 128
 val N = L * L
@@ -227,7 +227,7 @@ println("update launched L=" + L + " N=" + N + " groups=" + groups)
 <!-- field-box id="sg_measure" index="2" -->
 
 ```edn [field-box id="sg_measure" role="properties"]
-{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [670.0 40.0 330.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 37 "characters" 902 "sha256" "93f4b4399393367312771380d909f55e43ef0dc2df3087fc25bb9bb7c1266bd2"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 28 "characters" 860 "sha256" "8e939596bc25c2b90ccf30c175244996df59da4a1f52da55deef4d38b5027e9d"}]}
+{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [670.0 40.0 330.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 37 "characters" 902 "sha256" "93f4b4399393367312771380d909f55e43ef0dc2df3087fc25bb9bb7c1266bd2"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 28 "characters" 866 "sha256" "f21ff4155dff1cc284e440152ef527eb539e59da5b4fbcc06597ce7b25491609"}]}
 ```
 
 ```glsl [field-property box="sg_measure" name="compute" path="sg_measure_compute_.glsl"]
@@ -271,8 +271,8 @@ void main() {
 ```
 
 ```kotlin [field-property box="sg_measure" name="code" path="sg_measure_code_.kt"]
-import afield.four.modules.computeMemoryBarrier
-import afield.four.modules.computeTask
+import afield.graphics.render.computeMemoryBarrier
+import afield.graphics.render.computeTask
 
 val L = sgL
 val N = L * L

@@ -1,21 +1,21 @@
 package afield.examples.stdlib
 
-import afield.stdlib.DynamicEdgeList
-import afield.stdlib.DynamicGraphSystem
-import afield.stdlib.DynamicPointState
-import afield.stdlib.GraphPathSetResult
-import afield.stdlib.PointGraph
-import afield.stdlib.Vec3
-import afield.stdlib.Vec3AlphaEventHypergraphCollapseSystem
-import afield.stdlib.Vec3BreathingAnisotropicKnnSystem
-import afield.stdlib.Vec3FlowlineAdvectionGraphSystem
-import afield.stdlib.Vec3LocalTangentTriangulationSystem
-import afield.stdlib.Vec3PersistentProximityHysteresisSystem
-import afield.stdlib.Vec3SignalRoutingGraphSystem
-import afield.stdlib.Vec3SpatialHash
-import afield.stdlib.Vec4
-import afield.stdlib.graphAnchoredGreedyThenDiameterCover
-import afield.stdlib.stepDynamicGraphWithExponentialDecay
+import afield.data.graph.DynamicEdgeList
+import afield.data.graph.DynamicGraphSystem
+import afield.data.graph.DynamicPointState
+import afield.data.graph.GraphPathSetResult
+import afield.data.graph.PointGraph
+import afield.math.linalg.Vec3
+import afield.data.graph.Vec3AlphaEventHypergraphCollapseSystem
+import afield.data.graph.Vec3BreathingAnisotropicKnnSystem
+import afield.data.graph.Vec3FlowlineAdvectionGraphSystem
+import afield.data.graph.Vec3LocalTangentTriangulationSystem
+import afield.data.graph.Vec3PersistentProximityHysteresisSystem
+import afield.data.graph.Vec3SignalRoutingGraphSystem
+import afield.data.graph.Vec3SpatialHash
+import afield.math.linalg.Vec4
+import afield.data.graph.graphAnchoredGreedyThenDiameterCover
+import afield.data.graph.stepDynamicGraphWithExponentialDecay
 
 /**
  * Helper to convert external data into the dynamic graph state used by the examples.

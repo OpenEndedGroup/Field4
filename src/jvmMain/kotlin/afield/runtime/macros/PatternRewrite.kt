@@ -1,0 +1,1072 @@
+package afield.runtime.macros
+
+import org.jetbrains.kotlin.com.intellij.psi.PsiComment
+import org.jetbrains.kotlin.com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtArrayAccessExpression
+import org.jetbrains.kotlin.psi.KtBinaryExpression
+import org.jetbrains.kotlin.psi.KtBlockExpression
+import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtConstantExpression
+import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtEscapeStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
+import org.jetbrains.kotlin.psi.KtParenthesizedExpression
+import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtPrefixExpression
+import org.jetbrains.kotlin.psi.KtQualifiedExpression
+import org.jetbrains.kotlin.psi.KtSimpleNameStringTemplateEntry
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+import org.jetbrains.kotlin.psi.KtSuperExpression
+import org.jetbrains.kotlin.psi.KtThisExpression
+import org.jetbrains.kotlin.psi.KtTypeReference
+import org.jetbrains.kotlin.psi.KtValueArgument
+import org.jetbrains.kotlin.psi.KtValueArgumentList
+import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
+import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
+
+/**
+ * A structural source-to-source rewriter that runs as a preprocessor in front of `kotlinc`,
+ * bootstrapped on the existing PSI-based macro pass (see [afield.runtime.kotlin.KotlinScriptEngine.applyMacros]).
+ *
+ * Users author rules directly in a live box with the [rewrite]/[from]/[to]/[where]/[provide]/[ai]
+ * DSL:
+ * ```
+ * rewrite { x: Expr, y: Expr ->
+ *     from { max(x, y) }
+ *     where { distinct(x, y) }              // optional structural guard
+ *     to { if (x >= y) x else y }
+ * }
+ * max(p, q + 1)          // becomes: if (p >= (q + 1)) p else (q + 1)
+ * ```
+ *
+ * The core insight: pattern and replacement bodies never need to *type-check* — only to parse. PSI
+ * parsing runs no name resolution, so `from { max(x, y) }` parses into a valid [KtCallExpression]
+ * even though nothing resolves. This whole layer therefore stays on stateless PSI: no K2 Analysis
+ * API, no compiler sessions, safe to re-run per keystroke.
+ *
+ * Phasing (see [expand]):
+ *  1. Parse the source once, **collect** every top-level `rewrite {}` into a [PatternRule], and
+ *     blank the `rewrite {}` blocks out of the source (so `kotlinc` never sees the erased DSL, and
+ *     so the pattern body `max(x, y)` is not itself rewritten — the "quote barrier").
+ *  2. **Fixpoint**: parse the stripped text, find every outermost non-overlapping structural match
+ *     whose guard holds, splice paren-guarded + hygienically-renamed replacements, and accumulate
+ *     any `provide {}` (keyed preamble) and `ai(…)` (cached attic) side contributions; re-parse,
+ *     repeat until stable or the iteration cap trips.
+ *
+ * The side contributions are returned as *data* in [ExpandResult] — [expand] performs no side
+ * effects, which keeps it pure and testable; the caller ([afield.runtime.kotlin.KotlinInterface2.applyMacros])
+ * routes them through the existing preamble/attic machinery.
+ *
+ * Hygiene: names the `to {}` side *introduces* (locals, params, etc. — not carried in from a
+ * metavariable) are gensym'd so they cannot capture or shadow the user code spliced in at a
+ * metavar. Metavar captures are already hygienic (verbatim user code) and are never renamed.
+ * `provide {}` declarations are deliberately *not* gensym'd — they define stable box-level names.
+ *
+ * Explicitly **deferred** (do not build here): variadic holes (`f($args...)`) and procedural
+ * unquote (`to { emit(simplify(x)) }` running Kotlin at expansion time).
+ */
+object PatternRewrite {
+
+    /** A collected rule: pattern PSI, replacement PSI, metavar declarations, guard, and side clauses. */
+    data class PatternRule(
+        val pattern: KtElement,
+        val repl: KtElement,
+        val metavars: Map<String, MetaKind>,
+        val guard: Guard,
+        /** `provide {}` body (keyed preamble contribution), or null. */
+        val provide: KtElement?,
+        /** `ai("…")` prompt template (cached attic request), or null. */
+        val aiPrompt: KtStringTemplateExpression?,
+        /** Rendered pattern text, for diagnostics. */
+        val patternText: String,
+        /** The rule's name if declared as `rule("name") { … }`, else null (anonymous `rewrite {}`).
+         *  A `strategy {}` block refers to rules by this name; anonymous rules cannot be referenced. */
+        val name: String? = null,
+    )
+
+    /** A structural guard over captured metavariables (see [where] / [distinct] / [isLiteral] …). */
+    sealed interface Guard {
+        object Always : Guard
+        data class Pred(val name: String, val args: List<String>) : Guard
+        data class Not(val g: Guard) : Guard
+        data class And(val l: Guard, val r: Guard) : Guard
+        data class Or(val l: Guard, val r: Guard) : Guard
+    }
+
+    /** A cached AI generation request produced by an `ai("…")` clause when its rule fires. */
+    data class AiRequest(
+        /** Stable content-derived cache key (identifies the `@rw-ai:<key>` attic block). */
+        val key: String,
+        /** The concrete (metavar-substituted) prompt sent to the model. */
+        val prompt: String,
+        /** The rule's `to {}` text, for context about what symbols the generated code must define. */
+        val toText: String,
+    )
+
+    /** The result of [expand]: rewritten text plus side contributions for the caller to route. */
+    data class ExpandResult(
+        val text: String,
+        /** Keyed preamble segments, ready for `applyInsertToPreamble` (already `/*start*/…/*end*/`-wrapped). */
+        val preambleBlocks: List<String>,
+        /** Cached-AI requests, deduped by key. */
+        val aiRequests: List<AiRequest>,
+        /** Source text of each `rewrite {}` block declared *locally* in [expand]'s `source`. The caller
+         *  persists these so descendant boxes can inherit them as ambient rules (see the `ambientRuleSources`
+         *  parameter of [expand]). */
+        val localRuleSources: List<String> = emptyList(),
+    )
+
+    private data class Match(
+        val start: Int,
+        val end: Int,
+        val replacement: String,
+        val rule: PatternRule,
+        val preambleBlock: String? = null,
+        val aiRequest: AiRequest? = null,
+    )
+
+    private data class Collected(
+        val rules: List<PatternRule>,
+        val deletions: List<IntRange>,
+        /** Source text of each collected `rewrite {}` block (for ambient-rule persistence). */
+        val ruleSources: List<String>,
+        /** Raw PSI of each top-level `strategy {}` block's single body expression, in declaration
+         *  order. Validated + parsed into a [Strat] only once the named-rule set is known (in
+         *  [expand]); multiple blocks compose left-to-right (implicit [Strat.Seq]). */
+        val strategyExprs: List<KtElement> = emptyList(),
+    )
+
+    /**
+     * A controllable term-rewriting strategy: a small Stratego/ELAN-style control program parsed
+     * from a `strategy {}` block and interpreted over the whole-file source text (see
+     * [StrategyRunner]). Leaves name rules; combinators compose them. A strategy either *succeeds*
+     * (yielding a possibly-changed source) or *fails* (does not apply) — the latter is what makes
+     * [Choice] and fail-fast [Seq] meaningful. Everything is spliced/re-parsed on PSI, exactly like
+     * the default fixpoint path.
+     */
+    sealed interface Strat {
+        /** Fire rule [ruleName] at every outermost non-overlapping site, one pass. Fails if none. */
+        data class RuleRef(val ruleName: String) : Strat
+        /** Fire [ruleName] at the single first (outermost, document-order) site — at most once. */
+        data class Once(val ruleName: String) : Strat
+        /** Fire [ruleName] at the single outermost (shallowest) match site. */
+        data class TopDown(val ruleName: String) : Strat
+        /** Fire [ruleName] at the single innermost (deepest) match site — differs from [TopDown] on
+         *  nested matches (`f(f(a))`: top picks the outer call, bottom the inner). */
+        data class BottomUp(val ruleName: String) : Strat
+        /** Run [s] once; on failure fall back to identity. Never fails. (`try` is a Kotlin keyword,
+         *  so the surface spelling is `attempt`.) */
+        data class Attempt(val s: Strat) : Strat
+        /** Iterate [s] to a fixpoint (or at most [max] times if non-null). Never fails. */
+        data class Repeat(val s: Strat, val max: Int?) : Strat
+        /** Run each of [list] in order, each on the previous result; fail-fast (`a then b`). */
+        data class Seq(val list: List<Strat>) : Strat
+        /** Run the first alternative in [list] that succeeds; fail if none do. */
+        data class Choice(val list: List<Strat>) : Strat
+        /** A malformed / unresolved strategy — carries the diagnostic already emitted; fail-closed. */
+        data class Invalid(val why: String) : Strat
+    }
+
+    /**
+     * Expand every `rewrite {}` rule in [source]. [parse] turns text into a [KtFile] (the caller
+     * supplies the PSI environment — the REPL's project in production, or a standalone parser in
+     * tests). [onDiagnostic] receives a human-readable message on a guard-vocabulary error or if the
+     * iteration cap is hit; when the cap is hit, expansion stops and the best-effort-expanded text so
+     * far is returned (never hangs, never throws into the box).
+     */
+    fun expand(
+        source: String,
+        parse: (String) -> KtFile,
+        maxIterations: Int = 64,
+        evalUnquote: ((String) -> String?)? = null,
+        ambientRuleSources: List<String> = emptyList(),
+        onDiagnostic: (String) -> Unit = {},
+    ): ExpandResult {
+        val collected = collect(parse(source), onDiagnostic)
+
+        // Ambient rules inherited from ancestor boxes: collected (so they apply here) but NOT blanked
+        // from — their `rewrite {}` blocks live in the ancestors' source, not this one. Local rules
+        // come first so a box can override an inherited rule (declaration-order, first-match-wins).
+        val ambientRules = ambientRuleSources.flatMap { collect(parse(it), onDiagnostic).rules }
+        val rules = collected.rules + ambientRules
+
+        // Always strip the local `rewrite {}` blocks from the emitted source — even a malformed or
+        // rejected block is erased DSL that must never reach the compiler.
+        var text = blankOut(source, collected.deletions)
+        if (rules.isEmpty()) return ExpandResult(text, emptyList(), emptyList(), collected.ruleSources)
+        val gensym = GensymScope()
+        val preambleBlocks = mutableListOf<String>()
+        val aiRequests = mutableListOf<AiRequest>()
+
+        fun result() = ExpandResult(
+            text,
+            preambleBlocks.distinct(),
+            aiRequests.distinctBy { it.key },
+            collected.ruleSources,
+        )
+
+        // A local `strategy {}` block switches from the global fixpoint to controlled term rewriting.
+        // (Strategy is box-local control — ambient strategies are not inherited; ambient *rules*
+        // still are, so a strategy can name a rule declared in an ancestor.) With no strategy block
+        // the loop below is byte-for-byte the historical global fixpoint.
+        if (collected.strategyExprs.isNotEmpty()) {
+            val named = LinkedHashMap<String, PatternRule>()
+            rules.forEach { r -> r.name?.let { named.putIfAbsent(it, r) } }   // first declaration wins
+            val program = parseStrategy(collected.strategyExprs, named.keys, onDiagnostic)
+            val runner = StrategyRunner(named, parse, gensym, evalUnquote, preambleBlocks, aiRequests,
+                onDiagnostic, maxIterations)
+            // Fail-closed: an invalid strategy performs NO rewriting (never a surprising partial one).
+            runner.eval(program, text)?.let { text = it }
+            return result()
+        }
+
+        var iteration = 0
+        while (true) {
+            val matches = findMatches(parse(text), rules, gensym, evalUnquote)
+            if (matches.isEmpty()) return result()
+            if (iteration >= maxIterations) {
+                val sample = matches.first()
+                onDiagnostic(
+                    "pattern-rewrite did not converge after $maxIterations iterations — a non-confluent " +
+                            "rule set (e.g. a→b, b→a)? last firing rule `${sample.rule.patternText}` at " +
+                            "offset ${sample.start}..${sample.end}. Stopping; rules applied so far are kept."
+                )
+                return result()
+            }
+            matches.forEach { m ->
+                m.preambleBlock?.let { preambleBlocks += it }
+                m.aiRequest?.let { aiRequests += it }
+            }
+            text = applyEdits(text, matches)
+            iteration++
+        }
+    }
+
+    // ---- collection (phase 1) -------------------------------------------------------------------
+
+    private fun collect(file: KtFile, onDiagnostic: (String) -> Unit): Collected {
+        val rules = mutableListOf<PatternRule>()
+        val deletions = mutableListOf<IntRange>()
+        val ruleSources = mutableListOf<String>()
+        val strategyExprs = mutableListOf<KtElement>()
+
+        file.collectDescendantsOfType<KtCallExpression>()
+            .filter { it.calleeName() in RULE_OR_STRATEGY_CALLS }
+            .filter { call -> !call.isQualifiedCall() }                 // not somebody's .rewrite {} method
+            .filter { call -> !call.isNestedInRuleOrStrategy() }        // quote barrier: outermost only
+            .forEach { call ->
+                when (call.calleeName()) {
+                    // A `strategy {}` control block: keep its single body expression (validated +
+                    // parsed against the named-rule set later, in `expand`), and blank the block out.
+                    "strategy" -> {
+                        val body = call.lambdaArguments.firstOrNull()?.getLambdaExpression()?.bodyExpression
+                        val expr = body?.singleMeaningfulStatement()
+                        if (expr == null) {
+                            onDiagnostic("strategy {} ignored — expected exactly one strategy expression, " +
+                                    "e.g. `strategy { repeat(topdown(\"myRule\")) }`")
+                        } else {
+                            strategyExprs += expr
+                        }
+                        deletions += call.textRange.startOffset until call.textRange.endOffset
+                    }
+                    // A named rule `rule("name") { … }` or an anonymous `rewrite { … }`. Both collect
+                    // off the trailing lambda; a named rule also carries its (string-literal) name so
+                    // a strategy can refer to it.
+                    else -> {
+                        val name = if (call.calleeName() == "rule") {
+                            call.valueArguments.firstOrNull()?.getArgumentExpression()
+                                ?.let { stringLiteralValue(it) }
+                                ?: run {
+                                    onDiagnostic("rule(...) ignored — first argument must be a string-literal " +
+                                            "name, e.g. `rule(\"negate\") { … }`")
+                                    null
+                                }
+                        } else null
+                        val rule = call.toPatternRule(onDiagnostic)?.copy(name = name)
+                        // A `rule(...)` with no valid name is erased DSL but is not a usable rule.
+                        if (rule != null && !(call.calleeName() == "rule" && name == null)) rules += rule
+                        ruleSources += call.text
+                        // Blank the whole call regardless (a malformed one is still erased DSL that
+                        // must not reach the compiler).
+                        deletions += call.textRange.startOffset until call.textRange.endOffset
+                    }
+                }
+            }
+
+        return Collected(rules, deletions, ruleSources, strategyExprs)
+    }
+
+    /** Callee names the collector recognises as top-level erased DSL forms. */
+    private val RULE_OR_STRATEGY_CALLS = setOf("rewrite", "rule", "strategy")
+
+    /** The plain content of a literal string (`"foo"` ⇒ `foo`), or null if it has interpolation. */
+    private fun stringLiteralValue(expr: KtExpression): String? {
+        val tmpl = expr as? KtStringTemplateExpression ?: return null
+        val sb = StringBuilder()
+        for (e in tmpl.entries) {
+            when (e) {
+                is KtLiteralStringTemplateEntry -> sb.append(e.text)
+                is KtEscapeStringTemplateEntry -> sb.append(e.unescapedValue)
+                else -> return null   // interpolation ⇒ not a plain literal name
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun KtCallExpression.toPatternRule(onDiagnostic: (String) -> Unit): PatternRule? {
+        // A malformed rule must never be silently dropped (that hides bugs) nor silently degenerate
+        // into a too-permissive pattern (that runs away): reject with a clear diagnostic instead.
+        fun reject(why: String): PatternRule? {
+            onDiagnostic("rewrite rule ignored — $why: `${text.replace(Regex("\\s+"), " ").take(120)}`")
+            return null
+        }
+
+        val lambda = lambdaArguments.firstOrNull()?.getLambdaExpression()
+            ?: return reject("expected a trailing lambda `rewrite { … }`")
+        val metavars = lambda.valueParameters.mapNotNull { p: KtParameter ->
+            val name = p.name ?: return@mapNotNull null
+            name to metaKindOf(p.typeReference?.text)
+        }.toMap()
+
+        val body = lambda.bodyExpression ?: return reject("empty rule body")
+        val fromBody = body.callBody("from") ?: return reject("missing `from { … }`")
+        val toBody = body.callBody("to") ?: return reject("missing `to { … }`")
+
+        // A `from`/`to` that did not parse cleanly — e.g. an unsupported expression operator like
+        // `|`, which leniently degenerates to a bare metavar and matches everything — is rejected
+        // rather than left to run away. (`||` is a real operator and parses fine.)
+        if (PsiTreeUtil.hasErrorElements(fromBody)) return reject("`from { … }` did not parse (unsupported syntax, e.g. `|`?)")
+        if (PsiTreeUtil.hasErrorElements(toBody)) return reject("`to { … }` did not parse")
+
+        val patternEl = fromBody.singleMeaningfulStatement() ?: return reject("`from { … }` must contain exactly one expression")
+        val replEl = toBody.singleMeaningfulStatement() ?: return reject("`to { … }` must contain exactly one expression")
+
+        // A pattern that is a lone metavariable matches *every* expression — including the
+        // replacement it produces — so it never converges. Almost always a mis-parsed pattern.
+        if ((patternEl.unwrapParens() as? KtNameReferenceExpression)?.getReferencedName() in metavars) {
+            return reject("pattern is a single metavariable `${patternEl.text}`, which matches every expression")
+        }
+
+        val guard = (body.callBody("where")?.singleMeaningfulStatement() as? KtExpression)
+            ?.let { parseGuard(it, metavars.keys, onDiagnostic) }
+            ?: Guard.Always
+
+        // `provide { … }` keeps its whole block (may declare several bindings).
+        val provide = body.callBody("provide")
+
+        // `ai("…")` takes a string prompt argument, not a lambda.
+        val aiPrompt = body.statements.filterIsInstance<KtCallExpression>()
+            .firstOrNull { it.calleeName() == "ai" }
+            ?.valueArguments?.firstOrNull()?.getArgumentExpression() as? KtStringTemplateExpression
+
+        return PatternRule(patternEl, replEl, metavars, guard, provide, aiPrompt, patternEl.text)
+    }
+
+    /** The single statement inside a `name { … }` call's trailing lambda, or null if absent/multi. */
+    private fun KtBlockExpression.callBody(name: String): KtBlockExpression? =
+        statements
+            .filterIsInstance<KtCallExpression>()
+            .firstOrNull { it.calleeName() == name }
+            ?.lambdaArguments?.firstOrNull()?.getLambdaExpression()?.bodyExpression
+
+    private fun KtBlockExpression.singleMeaningfulStatement(): KtElement? =
+        statements.singleOrNull()
+
+    private fun KtCallExpression.calleeName(): String? =
+        (calleeExpression as? KtNameReferenceExpression)?.getReferencedName()
+
+    /**
+     * The rule DSL is always written unqualified — `rewrite { x: Expr -> … }`. A *qualified*
+     * call such as `paramSet.rewrite { normalize(0f..1f) }` is an unrelated method that merely
+     * shares the name, so it must be neither collected as a rule nor blanked out of the source.
+     *
+     * Without this the collector matched on the callee name alone and deleted the whole call,
+     * so any `receiver.rewrite { … }` in user code silently vanished before compilation — and
+     * the *following* line was then mis-parsed against the wrong receiver, producing an error
+     * that pointed nowhere near the real cause.
+     */
+    private fun KtCallExpression.isQualifiedCall(): Boolean {
+        val owner = parent
+        return owner is KtQualifiedExpression && owner.selectorExpression === this
+    }
+
+    private fun KtCallExpression.isNestedInRuleOrStrategy(): Boolean {
+        var p = parent
+        while (p != null) {
+            // A `rewrite`/`rule` ancestor is a quote barrier (the block body is quasiquoted data, not
+            // a live declaration). `strategy` is included for symmetry so a nested erased form inside
+            // one is never independently collected.
+            if (p is KtCallExpression && p.calleeName() in RULE_OR_STRATEGY_CALLS) return true
+            p = p.parent
+        }
+        return false
+    }
+
+    private fun metaKindOf(typeText: String?): MetaKind = when (typeText?.substringAfterLast('.')?.trim()) {
+        "Ident" -> Ident
+        "Stmt" -> Stmt
+        "TypeRef" -> TypeRef
+        "Vararg" -> Vararg
+        else -> Expr
+    }
+
+    /** Captured bindings: scalar metavars, plus variadic metavars that bind a run of arguments. */
+    private class Bindings {
+        val scalar = HashMap<String, PsiElement>()
+        val variadic = HashMap<String, List<KtValueArgument>>()
+    }
+
+    // ---- guard parsing + evaluation -------------------------------------------------------------
+
+    private val guardPredicates = setOf("distinct", "identical", "isLiteral", "isIdentifier", "isCall", "isCallTo")
+
+    private fun parseGuard(expr: KtExpression, metavars: Set<String>, onDiagnostic: (String) -> Unit): Guard {
+        return when (val e = expr.stripParens()) {
+            is KtBinaryExpression -> when (e.operationReference.text) {
+                "&&" -> Guard.And(
+                    parseGuard(e.left ?: return fail(e, onDiagnostic), metavars, onDiagnostic),
+                    parseGuard(e.right ?: return fail(e, onDiagnostic), metavars, onDiagnostic),
+                )
+                "||" -> Guard.Or(
+                    parseGuard(e.left ?: return fail(e, onDiagnostic), metavars, onDiagnostic),
+                    parseGuard(e.right ?: return fail(e, onDiagnostic), metavars, onDiagnostic),
+                )
+                else -> fail(e, onDiagnostic)
+            }
+
+            is KtPrefixExpression ->
+                if (e.operationReference.text == "!")
+                    Guard.Not(parseGuard(e.baseExpression ?: return fail(e, onDiagnostic), metavars, onDiagnostic))
+                else fail(e, onDiagnostic)
+
+            is KtCallExpression -> {
+                val name = e.calleeName()
+                if (name == null || name !in guardPredicates) {
+                    onDiagnostic("unknown guard predicate `$name` — known: $guardPredicates. Rule will never fire.")
+                    return Guard.Not(Guard.Always)
+                }
+                val args = e.valueArguments.mapNotNull { it.getArgumentExpression()?.text }
+                // Only bare-identifier args are expected to be metavariables; string-literal args
+                // (e.g. the "name" of isCallTo) are legitimately not.
+                args.filter { it.matches(Regex("[A-Za-z_]\\w*")) && it !in metavars }.forEach {
+                    onDiagnostic("guard `$name` references `$it`, which is not a declared metavariable")
+                }
+                Guard.Pred(name, args)
+            }
+
+            else -> fail(e, onDiagnostic)
+        }
+    }
+
+    private fun fail(e: KtElement, onDiagnostic: (String) -> Unit): Guard {
+        onDiagnostic("unrecognized guard `${e.text}` — use distinct/identical/isLiteral/isIdentifier/isCall with && || !")
+        return Guard.Not(Guard.Always)   // fail-closed: the rule never fires
+    }
+
+    private fun evalGuard(g: Guard, binds: Map<String, PsiElement>): Boolean = when (g) {
+        Guard.Always -> true
+        is Guard.Not -> !evalGuard(g.g, binds)
+        is Guard.And -> evalGuard(g.l, binds) && evalGuard(g.r, binds)
+        is Guard.Or -> evalGuard(g.l, binds) || evalGuard(g.r, binds)
+        is Guard.Pred -> evalPredicate(g.name, g.args, binds)
+    }
+
+    private fun evalPredicate(name: String, args: List<String>, binds: Map<String, PsiElement>): Boolean {
+        fun cap(i: Int): PsiElement? = args.getOrNull(i)?.let { binds[it] }
+        return when (name) {
+            "distinct" -> {
+                val caps = args.mapNotNull { binds[it] }
+                caps.indices.all { i -> (i + 1 until caps.size).all { j -> !structurallyEqual(caps[i], caps[j]) } }
+            }
+            "identical" -> {
+                val a = cap(0); val b = cap(1)
+                a != null && b != null && structurallyEqual(a, b)
+            }
+            "isLiteral" -> cap(0).let { it is KtConstantExpression || it is KtStringTemplateExpression }
+            "isIdentifier" -> cap(0) is KtNameReferenceExpression
+            "isCall" -> cap(0)?.unwrapParens() is KtCallExpression
+            "isCallTo" -> {
+                val target = cap(0)?.unwrapParens() as? KtCallExpression
+                val wanted = args.getOrNull(1)?.trim()?.removeSurrounding("\"")
+                target != null && wanted != null && target.calleeName() == wanted
+            }
+            else -> false
+        }
+    }
+
+    // ---- matching (phase 2) ---------------------------------------------------------------------
+
+    private fun findMatches(
+        file: KtFile,
+        rules: List<PatternRule>,
+        gensym: GensymScope,
+        evalUnquote: ((String) -> String?)?,
+    ): List<Match> {
+        val out = mutableListOf<Match>()
+
+        fun visit(element: PsiElement) {
+            // Never start a match at a parenthesized wrapper: recurse into it so the inner
+            // expression is matched with its own (tighter) range, preserving the user's parens in
+            // the surrounding context. Matching modulo parens still happens inside `structuralMatch`.
+            if (element is KtElement && element !is KtParenthesizedExpression) {
+                for (rule in rules) {
+                    val binds = Bindings()
+                    if (Matcher(rule.metavars).match(rule.pattern, element, binds) && evalGuard(rule.guard, binds.scalar)) {
+                        out += buildMatch(element, rule, binds, gensym, evalUnquote)
+                        return   // outermost-wins: do not descend into a matched subtree this round
+                    }
+                }
+            }
+            var child = element.firstChild
+            while (child != null) {
+                visit(child)
+                child = child.nextSibling
+            }
+        }
+
+        visit(file)
+        return out
+    }
+
+    private fun buildMatch(
+        element: KtElement,
+        rule: PatternRule,
+        binds: Bindings,
+        gensym: GensymScope,
+        evalUnquote: ((String) -> String?)?,
+    ): Match {
+        val replacement = substitute(rule.repl, binds, rule.metavars, gensym, hygiene = true, evalUnquote = evalUnquote)
+
+        val preambleBlock = rule.provide?.let {
+            keyedPreambleBlock(substitute(it, binds, rule.metavars, gensym, hygiene = false))
+        }
+
+        val aiRequest = rule.aiPrompt?.let { template ->
+            val prompt = substitutePrompt(template, binds.scalar)
+            AiRequest(stableKey(prompt), prompt, rule.repl.text)
+        }
+
+        return Match(
+            element.textRange.startOffset,
+            element.textRange.endOffset,
+            replacement,
+            rule,
+            preambleBlock,
+            aiRequest,
+        )
+    }
+
+    /**
+     * Structural comparison of a pattern node against a target node. Compares by element type, skips
+     * trivia, captures at metavars, and enforces non-linearity (a repeated metavar must bind
+     * structurally equal subtrees). Matching is modulo redundant parentheses.
+     */
+    private class Matcher(val metavars: Map<String, MetaKind>) {
+
+        fun match(p: PsiElement, t: PsiElement, binds: Bindings): Boolean {
+            val pp = p.unwrapParens()
+            val tt = t.unwrapParens()
+
+            val holeName = (pp as? KtNameReferenceExpression)?.getReferencedName()
+            if (holeName != null && holeName in metavars) {
+                val prior = binds.scalar[holeName]
+                return if (prior == null) {
+                    if (!kindAllows(metavars.getValue(holeName), tt)) false
+                    else { binds.scalar[holeName] = tt; true }
+                } else {
+                    structurallyEqual(prior, tt)
+                }
+            }
+
+            // Variadic holes live in argument lists: `f(args)` / `f(x, rest)`. When the pattern's
+            // arg list contains a Vararg hole, match by segment (fixed prefix + one variadic run +
+            // fixed suffix) instead of the fixed-arity element zip below.
+            if (pp is KtValueArgumentList && tt is KtValueArgumentList &&
+                pp.arguments.any { variadicHoleName(it) != null }
+            ) {
+                return matchArgList(pp.arguments, tt.arguments, binds)
+            }
+
+            if (pp.node?.elementType != tt.node?.elementType) return false
+
+            val pc = pp.meaningfulChildren()
+            val tc = tt.meaningfulChildren()
+            if (pc.isEmpty() && tc.isEmpty()) return pp.text == tt.text   // leaf: literal / operator / keyword
+            return pc.size == tc.size && pc.zip(tc).all { (a, b) -> match(a, b, binds) }
+        }
+
+        /** The Vararg-metavar name a pattern argument is a hole for, or null. */
+        private fun variadicHoleName(arg: KtValueArgument): String? {
+            val name = (arg.getArgumentExpression()?.unwrapParens() as? KtNameReferenceExpression)?.getReferencedName()
+            return if (name != null && metavars[name] == Vararg) name else null
+        }
+
+        /** Segment-match a pattern arg list with (at most one) variadic hole against a target arg list. */
+        private fun matchArgList(pArgs: List<KtValueArgument>, tArgs: List<KtValueArgument>, binds: Bindings): Boolean {
+            val vIdx = pArgs.indexOfFirst { variadicHoleName(it) != null }
+            if (pArgs.drop(vIdx + 1).any { variadicHoleName(it) != null }) return false   // v1: one variadic only
+            val prefix = pArgs.subList(0, vIdx)
+            val suffix = pArgs.subList(vIdx + 1, pArgs.size)
+            if (tArgs.size < prefix.size + suffix.size) return false
+
+            for (i in prefix.indices) if (!match(prefix[i], tArgs[i], binds)) return false
+            for (i in suffix.indices) if (!match(suffix[i], tArgs[tArgs.size - suffix.size + i], binds)) return false
+
+            val name = variadicHoleName(pArgs[vIdx])!!
+            val mid = tArgs.subList(prefix.size, tArgs.size - suffix.size).toList()
+            val prior = binds.variadic[name]
+            return if (prior != null) {
+                prior.size == mid.size && mid.indices.all { structurallyEqual(prior[it], mid[it]) }
+            } else {
+                binds.variadic[name] = mid; true
+            }
+        }
+
+        private fun kindAllows(kind: MetaKind, node: PsiElement): Boolean = when (kind) {
+            Expr -> node is KtExpression
+            Ident -> node is KtNameReferenceExpression
+            Stmt -> node is KtExpression || node is KtDeclaration
+            TypeRef -> node is KtTypeReference
+            Vararg -> false   // a variadic hole only matches inside an argument list (see matchArgList)
+        }
+    }
+
+    private fun structurallyEqual(a: PsiElement, b: PsiElement): Boolean =
+        Matcher(emptyMap()).match(a, b, Bindings())
+
+    // ---- strategy sublanguage: parse (phase 1b) -------------------------------------------------
+
+    /**
+     * Parse the collected `strategy {}` body expression(s) into a [Strat] program, validating every
+     * rule reference against [ruleNames]. Multiple strategy blocks compose left-to-right as an
+     * implicit [Strat.Seq]. Any malformed node or unknown rule name is reported via [onDiagnostic]
+     * and collapses the WHOLE program to [Strat.Invalid] — a strategy is fail-closed as a unit, so a
+     * typo never silently rewrites with a partially-understood program.
+     */
+    private fun parseStrategy(
+        exprs: List<KtElement>,
+        ruleNames: Set<String>,
+        onDiagnostic: (String) -> Unit,
+    ): Strat {
+        val parsed = exprs.map { parseStrat(it as? KtExpression, ruleNames, onDiagnostic) }
+        val program = if (parsed.size == 1) parsed.single() else Strat.Seq(parsed)
+        val bad = firstInvalid(program)
+        return if (bad != null) Strat.Invalid(bad.why) else program
+    }
+
+    /** Depth-first search for the first [Strat.Invalid] in a program (fail-closed detection). */
+    private fun firstInvalid(s: Strat): Strat.Invalid? = when (s) {
+        is Strat.Invalid -> s
+        is Strat.Attempt -> firstInvalid(s.s)
+        is Strat.Repeat -> firstInvalid(s.s)
+        is Strat.Seq -> s.list.firstNotNullOfOrNull { firstInvalid(it) }
+        is Strat.Choice -> s.list.firstNotNullOfOrNull { firstInvalid(it) }
+        is Strat.RuleRef, is Strat.Once, is Strat.TopDown, is Strat.BottomUp -> null
+    }
+
+    private fun parseStrat(expr: KtExpression?, ruleNames: Set<String>, onDiagnostic: (String) -> Unit): Strat {
+        fun bad(why: String): Strat { onDiagnostic("strategy {} rejected — $why"); return Strat.Invalid(why) }
+
+        // A rule reference (string literal `"name"` or bare identifier `name`), validated.
+        fun ref(nameExpr: KtExpression?, ctor: (String) -> Strat): Strat {
+            val name = nameExpr?.let { resolveRuleName(it) }
+                ?: return bad("expected a rule name (string literal or identifier), got `${nameExpr?.text}`")
+            if (name !in ruleNames) return bad("unknown rule name `$name` — declared rules: $ruleNames")
+            return ctor(name)
+        }
+
+        val e = expr?.stripParens() ?: return bad("empty strategy expression")
+        return when (e) {
+            // `a then b` — an infix chain flattens into one sequence (fail-fast).
+            is KtBinaryExpression -> if (e.operationReference.text == "then") {
+                Strat.Seq(flattenThen(e, ruleNames, onDiagnostic))
+            } else bad("unknown strategy operator `${e.operationReference.text}` — only `then` is infix")
+
+            is KtCallExpression -> {
+                val args = e.valueArguments.mapNotNull { it.getArgumentExpression() }
+                when (e.calleeName()) {
+                    "once" -> ref(args.getOrNull(0)) { Strat.Once(it) }
+                    "topdown" -> ref(args.getOrNull(0)) { Strat.TopDown(it) }
+                    "bottomup" -> ref(args.getOrNull(0)) { Strat.BottomUp(it) }
+                    "attempt" -> Strat.Attempt(parseStrat(args.getOrNull(0), ruleNames, onDiagnostic))
+                    "repeat" -> {
+                        val inner = parseStrat(args.getOrNull(0), ruleNames, onDiagnostic)
+                        val max = args.getOrNull(1)?.let { n ->
+                            (n as? KtConstantExpression)?.text?.trim()?.toIntOrNull()
+                                ?: return bad("repeat(…, n): second argument must be an integer literal, got `${n.text}`")
+                        }
+                        Strat.Repeat(inner, max)
+                    }
+                    "seq" -> Strat.Seq(args.map { parseStrat(it, ruleNames, onDiagnostic) })
+                    "choice" -> Strat.Choice(args.map { parseStrat(it, ruleNames, onDiagnostic) })
+                    // A call whose callee is itself a rule name is a stray `name()` — accept it as a
+                    // bare reference only if the callee resolves to a known rule; otherwise reject.
+                    else -> ref(e.calleeExpression) { Strat.RuleRef(it) }
+                }
+            }
+
+            // Bare leaves: `"negate"` or `negate` ⇒ fire the whole rule (all outermost sites, one pass).
+            is KtStringTemplateExpression, is KtNameReferenceExpression -> ref(e) { Strat.RuleRef(it) }
+
+            else -> bad("unrecognized strategy expression `${e.text}`")
+        }
+    }
+
+    /** Flatten a left-associative `a then b then c` chain into `[a, b, c]`. */
+    private fun flattenThen(e: KtBinaryExpression, ruleNames: Set<String>, onDiagnostic: (String) -> Unit): List<Strat> {
+        val out = mutableListOf<Strat>()
+        fun walk(x: KtExpression?) {
+            val s = x?.stripParens()
+            if (s is KtBinaryExpression && s.operationReference.text == "then") {
+                walk(s.left); walk(s.right)
+            } else out += parseStrat(x, ruleNames, onDiagnostic)
+        }
+        walk(e.left); walk(e.right)
+        return out
+    }
+
+    /** A rule name from a string literal (`"n"`) or a bare identifier (`n`), else null. */
+    private fun resolveRuleName(expr: KtExpression): String? =
+        stringLiteralValue(expr) ?: (expr.stripParens() as? KtNameReferenceExpression)?.getReferencedName()
+
+    // ---- strategy sublanguage: interpret (phase 2b) ---------------------------------------------
+
+    /**
+     * Interprets a [Strat] program over whole-file source text. Every step re-parses, matches on
+     * PSI, splices, and (for `bottomup`) picks the deepest site — reusing the exact matcher,
+     * substitution, hygiene, guard and side-contribution machinery of the default fixpoint path. A
+     * step returns the new text on success or `null` on failure (no applicable rewrite); that
+     * `null` is what powers fail-fast [Strat.Seq] and first-success [Strat.Choice].
+     */
+    private class StrategyRunner(
+        val named: Map<String, PatternRule>,
+        val parse: (String) -> KtFile,
+        val gensym: GensymScope,
+        val evalUnquote: ((String) -> String?)?,
+        val preambleBlocks: MutableList<String>,
+        val aiRequests: MutableList<AiRequest>,
+        val onDiagnostic: (String) -> Unit,
+        val maxIterations: Int,
+    ) {
+        fun eval(s: Strat, text: String): String? = when (s) {
+            is Strat.Invalid -> null   // already diagnosed at parse time; fail-closed
+            is Strat.RuleRef -> firePass(text, named.getValue(s.ruleName))
+            is Strat.Once -> fireSingle(text, named.getValue(s.ruleName), deepest = false)
+            is Strat.TopDown -> fireSingle(text, named.getValue(s.ruleName), deepest = false)
+            is Strat.BottomUp -> fireSingle(text, named.getValue(s.ruleName), deepest = true)
+            is Strat.Attempt -> eval(s.s, text) ?: text
+            is Strat.Seq -> {
+                var cur = text
+                for (step in s.list) { cur = eval(step, cur) ?: return null }
+                cur
+            }
+            is Strat.Choice -> s.list.firstNotNullOfOrNull { eval(it, text) }
+            is Strat.Repeat -> {
+                var cur = text
+                var n = 0
+                while (s.max == null || n < s.max) {
+                    if (n >= maxIterations) {
+                        onDiagnostic("strategy repeat did not converge after $maxIterations iterations " +
+                                "— stopping; rewrites applied so far are kept.")
+                        break
+                    }
+                    val next = eval(s.s, cur) ?: break        // step failed ⇒ fixpoint reached
+                    if (next == cur) break                    // no textual progress ⇒ fixpoint reached
+                    cur = next
+                    n++
+                }
+                cur   // repeat never fails (0 iterations ⇒ identity success)
+            }
+        }
+
+        /** Fire [rule] at every outermost non-overlapping site in one pass. Null if none matched. */
+        private fun firePass(text: String, rule: PatternRule): String? {
+            val matches = findMatches(parse(text), listOf(rule), gensym, evalUnquote)
+            return if (matches.isEmpty()) null else apply(text, matches)
+        }
+
+        /** Fire [rule] at a single site — the deepest match if [deepest], else the outermost. */
+        private fun fireSingle(text: String, rule: PatternRule, deepest: Boolean): String? {
+            val match = if (deepest) {
+                findDeepestMatch(parse(text), rule, gensym, evalUnquote)
+            } else {
+                findMatches(parse(text), listOf(rule), gensym, evalUnquote).firstOrNull()
+            } ?: return null
+            return apply(text, listOf(match))
+        }
+
+        private fun apply(text: String, matches: List<Match>): String {
+            matches.forEach { m ->
+                m.preambleBlock?.let { preambleBlocks += it }
+                m.aiRequest?.let { aiRequests += it }
+            }
+            return applyEdits(text, matches)
+        }
+    }
+
+    /**
+     * The single deepest (most nested) match of [rule] anywhere in [file], or null. Unlike
+     * [findMatches] this does NOT stop at the outermost hit — it descends fully and keeps the match
+     * with the greatest ancestor depth (ties: earliest in document order), so `bottomup` can rewrite
+     * an inner `f(a)` before the surrounding `f(f(a))`.
+     */
+    private fun findDeepestMatch(
+        file: KtFile,
+        rule: PatternRule,
+        gensym: GensymScope,
+        evalUnquote: ((String) -> String?)?,
+    ): Match? {
+        var best: KtElement? = null
+        var bestDepth = -1
+
+        fun depthOf(e: PsiElement): Int {
+            var d = 0
+            var p = e.parent
+            while (p != null) { d++; p = p.parent }
+            return d
+        }
+
+        fun visit(element: PsiElement) {
+            if (element is KtElement && element !is KtParenthesizedExpression) {
+                val binds = Bindings()
+                if (Matcher(rule.metavars).match(rule.pattern, element, binds) && evalGuard(rule.guard, binds.scalar)) {
+                    val d = depthOf(element)
+                    if (d > bestDepth) { bestDepth = d; best = element }
+                    // Do NOT return: keep descending so a nested match can win on depth.
+                }
+            }
+            var child = element.firstChild
+            while (child != null) { visit(child); child = child.nextSibling }
+        }
+
+        visit(file)
+        val el = best ?: return null
+        val binds = Bindings()
+        Matcher(rule.metavars).match(rule.pattern, el, binds)   // re-bind captures for the chosen node
+        return buildMatch(el, rule, binds, gensym, evalUnquote)
+    }
+
+    // ---- substitution + hygiene (phase 2) -------------------------------------------------------
+
+    /** Deterministic per-expansion fresh-name generator (see hygiene note on [PatternRewrite]). */
+    private class GensymScope {
+        private var counter = 0
+        fun fresh(name: String): String = "${name}__hyg${counter++}"
+    }
+
+    /**
+     * Render the replacement [repl] as text, splicing each bound metavar's captured text in at its
+     * reference offset and (when [hygiene]) gensym-renaming any names the replacement introduces.
+     * All edits are applied right-to-left so earlier offsets stay valid. Non-atomic expression
+     * captures are paren-guarded so text splicing cannot silently change precedence (`x` binds
+     * `a + b`, `to = x * 2` ⇒ `(a + b) * 2`, never `a + b * 2`).
+     */
+    private fun substitute(
+        repl: PsiElement,
+        binds: Bindings,
+        metavars: Map<String, MetaKind>,
+        gensym: GensymScope,
+        hygiene: Boolean,
+        evalUnquote: ((String) -> String?)? = null,
+    ): String {
+        val base = repl.textRange.startOffset
+        val edits = mutableListOf<Triple<Int, Int, String>>()   // start, end, text (relative to `base`)
+
+        // Procedural unquote: `unquote { … }` regions run Kotlin at expansion time. Metavar captures
+        // are bound as `String` vals (their source text); the block's result is spliced. The regions
+        // are a substitution barrier — the ordinary metavar/gensym splices below skip inside them,
+        // because the unquote handles its own metavars via the eval snippet.
+        val unquoteCalls = repl.collectDescendantsOfType<KtCallExpression>()
+            .filter { (it.calleeExpression as? KtNameReferenceExpression)?.getReferencedName() == "unquote" }
+        val unquoteRanges = unquoteCalls.map { it.textRange.startOffset until it.textRange.endOffset }
+        fun insideUnquote(offset: Int) = unquoteRanges.any { offset in it }
+        unquoteCalls.forEach { call ->
+            val body = call.lambdaArguments.firstOrNull()?.getLambdaExpression()?.bodyExpression?.text
+                ?: return@forEach
+            val spliced = when {
+                // Editor preview: we don't run user code, so leave a well-typed placeholder. `TODO()`
+                // has type Nothing, so it fits any expected type — the analyzer stays quiet instead
+                // of choking on the erased generic `unquote {}`.
+                evalUnquote == null -> "TODO()"
+                // Execute: run the block; on failure emit a clear compiling stand-in (Nothing type)
+                // rather than the raw `unquote {}` (which the compiler can't make sense of).
+                else -> evalUnquote(buildUnquoteSnippet(binds.scalar, body))
+                    ?: "error(\"rewrite unquote {} failed to evaluate — see log\")"
+            }
+            edits += Triple(call.textRange.startOffset - base, call.textRange.endOffset - base, spliced)
+        }
+
+        // Declaration name identifiers. A metavar in a *declaration-name* position (e.g. the `n` of
+        // `var Box.n by …` in a `provide {}`) is substituted with its capture. Otherwise, under
+        // hygiene, the introduced name is gensym'd so it cannot shadow/capture a spliced metavar —
+        // a fresh name unique to this expansion.
+        val renames = HashMap<String, String>()
+        repl.forEachDescendantOfType<KtNamedDeclaration> { decl ->
+            // Skip anonymous nodes like the KtFunctionLiteral of a lambda (a KtNamedDeclaration with
+            // no nameIdentifier) — processing it would burn a fresh-name counter value for nothing.
+            val id = decl.nameIdentifier ?: return@forEachDescendantOfType
+            if (insideUnquote(id.textRange.startOffset)) return@forEachDescendantOfType
+            val name = decl.name ?: return@forEachDescendantOfType
+            val text = when {
+                binds.scalar.containsKey(name) -> renderCapture(binds.scalar.getValue(name))   // metavar-named decl
+                hygiene -> renames.getOrPut(name) { gensym.fresh(name) }                       // hygienic rename
+                else -> return@forEachDescendantOfType                                          // box-level name, kept
+            }
+            edits += Triple(id.textRange.startOffset - base, id.textRange.endOffset - base, text)
+        }
+
+        repl.forEachDescendantOfType<KtNameReferenceExpression> { ref ->
+            if (insideUnquote(ref.textRange.startOffset)) return@forEachDescendantOfType
+            val name = ref.getReferencedName()
+            val text = when {
+                binds.scalar.containsKey(name) -> renderCapture(binds.scalar.getValue(name))          // scalar hole
+                binds.variadic.containsKey(name) -> binds.variadic.getValue(name).joinToString(", ") { it.text }  // variadic run
+                name in renames -> renames.getValue(name)                                             // gensym'd local ref
+                else -> return@forEachDescendantOfType                                                // free reference, untouched
+            }
+            edits += Triple(ref.textRange.startOffset - base, ref.textRange.endOffset - base, text)
+        }
+
+        var out = repl.text
+        edits.sortedByDescending { it.first }.forEach { (start, end, text) -> out = out.replaceRange(start, end, text) }
+        return out
+    }
+
+    /** Substitute captured metavariables into an `ai("…")` prompt, yielding the concrete prompt text. */
+    private fun substitutePrompt(template: KtStringTemplateExpression, binds: Map<String, PsiElement>): String =
+        template.entries.joinToString("") { entry ->
+            when (entry) {
+                is KtLiteralStringTemplateEntry -> entry.text
+                is KtEscapeStringTemplateEntry -> entry.unescapedValue
+                is KtSimpleNameStringTemplateEntry -> {
+                    val name = (entry.expression as? KtNameReferenceExpression)?.getReferencedName()
+                    if (name != null && binds.containsKey(name)) binds.getValue(name).text else entry.text
+                }
+                is KtBlockStringTemplateEntry -> {
+                    val name = (entry.expression as? KtNameReferenceExpression)?.getReferencedName()
+                    if (name != null && binds.containsKey(name)) binds.getValue(name).text else entry.text
+                }
+                else -> entry.text
+            }
+        }
+
+    private fun renderCapture(capture: PsiElement): String {
+        val text = capture.text
+        return if (capture is KtExpression && !capture.isAtomic()) "($text)" else text
+    }
+
+    /** An expression that can be substituted without parens without changing precedence. */
+    private fun KtExpression.isAtomic(): Boolean = when (this) {
+        is KtNameReferenceExpression,
+        is KtConstantExpression,
+        is KtCallExpression,
+        is KtQualifiedExpression,     // a.b / a?.b
+        is KtArrayAccessExpression,   // a[i]
+        is KtParenthesizedExpression, // already grouped
+        is KtStringTemplateExpression,
+        is KtThisExpression,
+        is KtSuperExpression -> true
+        else -> false
+    }
+
+    // ---- keyed contributions (stable ids) -------------------------------------------------------
+
+    /** A stable, content-derived key (safe inside a `/*…*/` comment — hex only). */
+    fun stableKey(content: String): String = "rw-" + Integer.toHexString(content.hashCode())
+
+    // ---- procedural unquote (eval at expansion time) --------------------------------------------
+
+    /**
+     * Build the Kotlin snippet an `unquote { … }` block evaluates to. Each scalar metavar is bound
+     * as a `String` val holding its captured *source text*, so the block can manipulate captures as
+     * strings (`unquote { x.reversed() }`, `unquote { simplify(x) }`, …); the block's result is
+     * `toString()`-ed and spliced.
+     */
+    fun buildUnquoteSnippet(scalarBinds: Map<String, PsiElement>, blockBody: String): String {
+        val decls = scalarBinds.entries.joinToString("\n") { (name, el) ->
+            "    val $name: String = ${kotlinStringLiteral(el.text)}"
+        }
+        return "run {\n$decls\n    $blockBody\n}.toString()"
+    }
+
+    private fun kotlinStringLiteral(s: String): String =
+        "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
+            .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
+
+    /**
+     * Wrap a preamble contribution as a single deduplicating segment: a `/*start*/…/*end*/` block
+     * carrying a leading `/*prefix*/` key. This is the "stack mark" idempotency mechanism — the
+     * key (not the text) is the identity, so `applyInsertToPreamble`/`checkPreambleAndExecute`
+     * replace-in-place and only re-execute when the content under the key changes.
+     */
+    private fun keyedPreambleBlock(text: String): String =
+        "/*start*/\n/*${stableKey(text)}*/\n${text.trim()}\n/*end*/"
+
+    // ---- cached-AI attic helpers (pure; caller does the model call + box I/O) --------------------
+
+    private fun aiBlockHeader(key: String): String = "// @rw-ai:$key"
+    private fun aiBlockFooter(key: String): String = "// @rw-ai-end:$key"
+
+    /** True iff [attic] already contains a cached block for [key] (a cache hit — skip generation). */
+    fun atticHasAiBlock(attic: String, key: String): Boolean = attic.contains(aiBlockHeader(key))
+
+    /** Append a generated block for [key] to [attic], returning the new attic text. */
+    fun appendAiBlock(attic: String, key: String, prompt: String, code: String): String {
+        val block = buildString {
+            append(aiBlockHeader(key)).append(" | prompt: ").append(prompt.replace("\n", " ")).append('\n')
+            append(code.trim()).append('\n')
+            append(aiBlockFooter(key))
+        }
+        return if (attic.isBlank()) block else "${attic.trimEnd()}\n\n$block"
+    }
+
+    // ---- helpers --------------------------------------------------------------------------------
+
+    private fun PsiElement.unwrapParens(): PsiElement {
+        var e = this
+        while (e is KtParenthesizedExpression) e = e.expression ?: return e
+        return e
+    }
+
+    private fun KtExpression.stripParens(): KtExpression {
+        var e: KtExpression = this
+        while (e is KtParenthesizedExpression) e = e.expression ?: return e
+        return e
+    }
+
+    /** Children in AST order (leaves included: operators, keywords) with whitespace/comments dropped. */
+    private fun PsiElement.meaningfulChildren(): List<PsiElement> {
+        val out = mutableListOf<PsiElement>()
+        var child = firstChild
+        while (child != null) {
+            if (child !is PsiWhiteSpace && child !is PsiComment) out += child
+            child = child.nextSibling
+        }
+        return out
+    }
+
+    /** Replace each range with as many newlines as it spanned, keeping downstream line numbers stable. */
+    private fun blankOut(source: String, ranges: List<IntRange>): String {
+        var out = source
+        ranges.sortedByDescending { it.first }.forEach { range ->
+            val slice = out.substring(range.first, range.last + 1)
+            val newlines = "\n".repeat(slice.count { it == '\n' })
+            out = out.replaceRange(range.first, range.last + 1, newlines)
+        }
+        return out
+    }
+
+    private fun applyEdits(text: String, matches: List<Match>): String {
+        var out = text
+        matches.sortedByDescending { it.start }.forEach { out = out.replaceRange(it.start, it.end, it.replacement) }
+        return out
+    }
+}

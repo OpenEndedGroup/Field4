@@ -29,7 +29,7 @@ libs/dataframe-plugin.jar filter=lfs diff=lfs merge=lfs -text
 
 # jextract output for the Steam Audio bindings: 77 files of FFM accessors, regenerated rather
 # than edited. Keep them out of the language stats and collapsed in diffs and reviews.
-src/jvmMain/java/afield/four/audio/steamaudio/raw/** linguist-generated=true
+src/jvmMain/java/afield/audio/spatial/steamaudio/raw/** linguist-generated=true
 
 # Mermaid's generated bundle includes upstream template strings with significant trailing spaces.
 src/jsMain/resources/mermaid/* whitespace=-blank-at-eol linguist-generated=true

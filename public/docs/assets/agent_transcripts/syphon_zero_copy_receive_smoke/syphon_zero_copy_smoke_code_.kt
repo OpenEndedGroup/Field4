@@ -1,5 +1,5 @@
-import afield.syphon.*
-import afield.four.TexturePreviewCache
+import afield.io.syphon.*
+import afield.graphics.render.TexturePreviewCache
 import org.lwjgl.vulkan.VK10.*
 import java.io.ByteArrayInputStream
 import java.util.Base64

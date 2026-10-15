@@ -31,12 +31,12 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_spectral" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_spectral" role="properties"]
-{"id" "analyse_near_drowning_spectral" "index" 1 "name" "3 · import, submit, monitor, project near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, project near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_spectral_code_.kt" "lines" 82 "characters" 3854 "sha256" "fb826a29f343239de357046bdd8480a255fcae80df8b338ee5d1efd3b437bbb4"}]}
+{"id" "analyse_near_drowning_spectral" "index" 1 "name" "3 · import, submit, monitor, project near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, project near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_spectral_code_.kt" "lines" 82 "characters" 3879 "sha256" "d74a956cf9294be5cf1570abfadfeaacb38e16798638ca873e728186d5f017cc"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_spectral" name="code" path="analyse_near_drowning_spectral_code_.kt"]
-import afield.Box
-import afield.stdlib.AudioVisualizerOptions
+import afield.document.graph.Box
+import afield.ui.visualization.AudioVisualizerOptions
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -124,13 +124,13 @@ client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
 <!-- field-box id="spectral_embedding_visualizer_gallery" index="2" -->
 
 ```edn [field-box id="spectral_embedding_visualizer_gallery" role="properties"]
-{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached spectral projections" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached spectral projections" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 13 "characters" 987 "sha256" "d7b5c81cd160b394ded875b3c5a470ce75723442c40e98be71d5f1e5a76a2f4a"}]}
+{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached spectral projections" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached spectral projections" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 13 "characters" 1009 "sha256" "2601bfcaa867db1aaae9ddb34884b6ddeb42c1d21be7751d4378c9ec11a6b998"}]}
 ```
 
 ```kotlin [field-property box="spectral_embedding_visualizer_gallery" name="code" path="spectral_embedding_visualizer_gallery_code_.kt"]
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
+import afield.ui.visualization.AudioVisualizer
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json

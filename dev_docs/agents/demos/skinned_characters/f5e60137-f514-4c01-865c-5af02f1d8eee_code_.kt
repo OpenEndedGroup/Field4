@@ -1,5 +1,5 @@
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 
 // The window and renderer that box 4 needs.
 //
@@ -8,7 +8,7 @@ import afield.Rect
 // and path_tracing_medium each have exactly one box declaring `prop<Renderer>(renderer)`. This
 // demo did not, so box 4 only ran under `field_backdoor.py --graphics-context`, where the agent's
 // own context box supplied a Renderer by type. Opened the ordinary way -- `./field.sh` on this
-// document -- box 4 failed with "must pass in a value for context parameter afield.four.Renderer".
+// document -- box 4 failed with "must pass in a value for context parameter afield.graphics.vulkan.Renderer".
 //
 // `prop<Renderer>(renderer)` publishes it to this box's children, which is why box 4 is connected
 // beneath this one and can now say `renderer` by name.

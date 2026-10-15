@@ -1,4 +1,4 @@
-import afield.syphon.*
+import afield.io.syphon.*
 
 run {
 if (!Syphon.isAvailable) {

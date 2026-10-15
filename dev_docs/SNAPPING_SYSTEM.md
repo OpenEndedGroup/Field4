@@ -3,8 +3,8 @@
 The user workflow is documented in `public/docs/snapping.md`. The complete algorithmic contract —
 Caps Lock state, candidate and apply thresholds, axis independence, resize behavior, guides, and
 complexity — is colocated on `BoxSnappingSystem` in
-`src/jsMain/kotlin/afield/BoxSnapping.kt`. Drag and resize integration lives in
-`src/jsMain/kotlin/afield/Main.kt`.
+`src/jsMain/kotlin/afield/app/canvas/BoxSnapping.kt`. Drag and resize integration lives in
+`src/jsMain/kotlin/afield/app/client/Main.kt`.
 
 There is no named snapping case in `tools/run_ui_regressions.py`; the public video is a checked-in
 asset rather than a docs-runner capture. Treat both as verification gaps when changing this code.

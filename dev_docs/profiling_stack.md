@@ -236,16 +236,16 @@ docs branch.
 
 | | |
 |---|---|
-| the wire types | `src/commonMain/kotlin/profiling.kt` |
-| the collector and the ring | `src/jvmMain/kotlin/afield/CoroutineProfiling.kt` |
-| the only dispatch hook | `src/jvmMain/kotlin/afield/Phased.kt` — `CoroutineProfiles.resume` |
-| JFR recording, parsing, source lookup | `src/jvmMain/kotlin/afield/JvmProfileCapture.kt` |
-| the renderer's own span timer | `src/jvmMain/kotlin/afield/four/Renderer.kt` — `object CPUSpan` |
+| the wire types | `src/commonMain/kotlin/afield/app/protocol/profiling.kt` |
+| the collector and the ring | `src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt` |
+| the only dispatch hook | `src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt` — `CoroutineProfiles.resume` |
+| JFR recording, parsing, source lookup | `src/jvmMain/kotlin/afield/app/diagnostics/JvmProfileCapture.kt` |
+| the renderer's own span timer | `src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt` — `object CPUSpan` |
 | the panel | `src/commonMain/resources/profilingTimeline.js` |
 | brushing, hotspots and heat lines | `src/commonMain/resources/profileTimelineModel.js` |
 | the Monaco gutter | `src/commonMain/resources/lineHeatmap.js` |
-| the Inspector's renderer card | `src/jvmMain/kotlin/afield/server/rendererBrowsing.kt` |
-| behaviour, as tests | `src/jvmTest/kotlin/afield/CoroutineProfilingTest.kt` |
+| the Inspector's renderer card | `src/jvmMain/kotlin/afield/app/server/rendererBrowsing.kt` |
+| behaviour, as tests | `src/jvmTest/kotlin/afield/app/diagnostics/CoroutineProfilingTest.kt` |
 | a browser regression over the gutter stripes | `tools/ui_regressions/profiling-stacks.js` |
 
 Three of those tests are worth knowing by name, because between them they pin the three

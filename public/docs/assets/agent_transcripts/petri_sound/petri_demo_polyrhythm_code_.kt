@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Two independent rings, one five long and one three long, sharing a clock. Nothing in
 // this source says "fifteen" — that is a property of the net, and the net can tell you.

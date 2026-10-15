@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="inverse" index="0" -->
 
 ```edn [field-box id="inverse" role="properties"]
-{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 71 "characters" 3258 "sha256" "fd63c39182f8ca197c132f176fb446cfb30a19bb4d7f5db6164a1c43005ddd9e"}]}
+{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 71 "characters" 3270 "sha256" "1c856fa9438c2965d7e2904d41dbbe22fb73b91f46f273abea5b2f9af4030132"}]}
 ```
 
 ```kotlin [field-property box="inverse" name="code" path="inverse_code_.kt"]
-import afield.solidsl.*
-import afield.stdlib.MeshView
+import afield.lang.solidsl.*
+import afield.geometry.mesh.MeshView
 
 // ---- the problem ---------------------------------------------------------------------
 // Somebody hands you a bag of points with a signed distance at each. What shape is it?
@@ -93,15 +93,15 @@ showMesh(
 <!-- field-box id="gradient" index="1" -->
 
 ```edn [field-box id="gradient" role="properties"]
-{"id" "gradient" "index" 1 "name" "1 - A solid, and its exact gradient" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A solid, and its exact gradient" "_tombstone" false "frame" #afield/rect [60.0 60.0 534.2 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gradient_code_.kt" "lines" 72 "characters" 3607 "sha256" "b816cb0bcf6874371cafb56b95fc8611f21353ade1bbb4592dfbba561287abcc"}]}
+{"id" "gradient" "index" 1 "name" "1 - A solid, and its exact gradient" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A solid, and its exact gradient" "_tombstone" false "frame" #afield/rect [60.0 60.0 534.2 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gradient_code_.kt" "lines" 72 "characters" 3617 "sha256" "6d4b7c1e176d45fbedd3b7d0d8905b9d571f2eadcde9d5ffe813dcaa46b2f5f4"}]}
 ```
 
 ```kotlin [field-property box="gradient" name="code" path="gradient_code_.kt"]
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // ---- the shape, written once, as a value ------------------------------------------
 // A ball blended onto a rod. Change a number and everything below follows, because a
-// SolidExpr is a value rather than a closure — which is the whole of afield.solidsl.
+// SolidExpr is a value rather than a closure — which is the whole of afield.lang.solidsl.
 val part = smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), k = 0.18)
 // -------------------------------------------------------------------------------------
 
@@ -176,11 +176,11 @@ part.gradientNotes().forEach { println("  - $it") }
 <!-- field-box id="refusals" index="2" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 60 "characters" 3490 "sha256" "e86c851feb04e0542f0d6656e44d9934d114a395b5acd5b0873482e0b6aec8ae"}]}
+{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 60 "characters" 3495 "sha256" "b43c5e13f30f662475f1c3445167b6f55e6c7cc9304b3e9361ad516ea8f44124"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val body = cuboid(1.0, 1.0, 0.4) - cylinder(1.2, 0.3).at(0.3, 0.0, 0.0)
 

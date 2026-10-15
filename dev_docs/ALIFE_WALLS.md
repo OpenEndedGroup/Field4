@@ -228,9 +228,9 @@ Each of these is a gap, with the reason it is open.
 
 ## Reading the code
 
-- `src/jvmMain/kotlin/afield/stdlib/alife_walls.kt` — obstacles, the swept primitive, the nav grid,
+- `src/jvmMain/kotlin/afield/simulation/agents/alife_walls.kt` — obstacles, the swept primitive, the nav grid,
   `ScalarField`.
-- `src/jvmMain/kotlin/afield/stdlib/alife_script.kt` — the world's obstacle layer, the swept
+- `src/jvmMain/kotlin/afield/simulation/agents/alife_script.kt` — the world's obstacle layer, the swept
   integrator, and the `avoidWalls` / `cling` / `route` / `gradient` drives.
 - `src/jvmMain/kotlin/afield/examples/stdlib/AlifeWallsGallery.kt` — the harness.
 - `dev_docs/agents/demos/alife_walls/` — the loadable demo.

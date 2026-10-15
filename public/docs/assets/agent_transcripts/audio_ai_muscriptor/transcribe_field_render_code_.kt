@@ -1,4 +1,4 @@
-import afield.stdlib.AudioVisualizerOptions
+import afield.ui.visualization.AudioVisualizerOptions
 import java.nio.file.Path
 
 val client = FieldAudioClient()

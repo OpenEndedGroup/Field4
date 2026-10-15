@@ -3,7 +3,7 @@
 `ParallelGeometryPool` lets worker-owned geometry buffers drive one draw or compute
 dispatch per writer. Its authoritative phase, lifetime, ordering, liveness, cleanup,
 and push-constant rules are documented beside the implementation in
-[`ParallelGeometryPool.kt`](../src/jvmMain/kotlin/afield/four/buffers/ParallelGeometryPool.kt).
+[`ParallelGeometryPool.kt`](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/ParallelGeometryPool.kt).
 
 The minimal shape is:
 

@@ -1,4 +1,4 @@
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 
 val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")

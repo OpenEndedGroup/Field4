@@ -1,11 +1,11 @@
 package afield.examples
 
-import afield.Box
-import afield.RunningState
-import afield.remotejs.KotlinJsHeadProfiles
-import afield.remotejs.KotlinJsHeadResponse
-import afield.remotejs.KotlinJsLaunchTracker
-import afield.remotejs.kotlinJsLifecycleName
+import afield.document.graph.Box
+import afield.document.graph.RunningState
+import afield.lang.remotejs.KotlinJsHeadProfiles
+import afield.lang.remotejs.KotlinJsHeadResponse
+import afield.lang.remotejs.KotlinJsLaunchTracker
+import afield.lang.remotejs.kotlinJsLifecycleName
 
 /*
 FIELD_TEST

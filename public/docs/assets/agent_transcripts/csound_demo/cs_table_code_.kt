@@ -1,5 +1,5 @@
 // A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 giWave  ftgen  1, 0, 4096, 10, 1
 instr Play
   asig  poscil  0.3, 220, giWave

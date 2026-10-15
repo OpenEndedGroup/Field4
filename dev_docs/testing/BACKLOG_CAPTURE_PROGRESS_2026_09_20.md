@@ -30,7 +30,7 @@ including new budget-forwarding and no-retry-on-terminal-response checks.
 
 The first JVM gate failed **before running tests** because the reused Gradle process
 could not start `uv`. `./gradlew --no-daemon jvmTest --tests
-afield.four.WindowCaptureQueueTest` passed in 59 seconds using a fresh build process
+afield.graphics.vulkan.WindowCaptureQueueTest` passed in 59 seconds using a fresh build process
 and the same caches. An existing `CpuSkinnerTest.kt:173` unnecessary-safe-call
 warning was emitted; it was not changed as part of this repair.
 

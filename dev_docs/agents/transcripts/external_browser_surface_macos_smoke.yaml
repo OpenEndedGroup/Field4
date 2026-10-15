@@ -13,19 +13,19 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window("External browser surface macOS smoke")
               Renderer(window)
           }
-
+          
           println("external browser surface renderer ready")
           start(renderer::run)
   - create:
@@ -34,18 +34,18 @@ operations:
       frame: { x: 320.0, y: 140.0, w: 350.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.Target
-          import afield.four.TexturePreviewCache
-          import afield.four.browser.*
-          import afield.four.targets.RenderToTexture
-          import afield.four.texture.MetalIOSurface
-          import afield.stdlib.vec
+          import afield.graphics.vulkan.Target
+          import afield.graphics.render.TexturePreviewCache
+          import afield.media.browser.*
+          import afield.graphics.vulkan.targets.RenderToTexture
+          import afield.graphics.texture.MetalIOSurface
+          import afield.math.linalg.vec
           import org.lwjgl.vulkan.VK10.*
           import java.io.ByteArrayInputStream
           import java.util.Base64
           import java.util.concurrent.CopyOnWriteArrayList
           import javax.imageio.ImageIO
-
+          
           val releases = CopyOnWriteArrayList<BrowserFrameRelease>()
           val source = RenderToTexture(renderer) {
               width = 64
@@ -61,7 +61,7 @@ operations:
               renderer,
               ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2)
           ) { releases.add(it) }
-
+          
           val ioSurfaceRef = source.colorImageRefs.first()!!.exportMetalIOSurfaceRef()
           val ioSurfaceId = MetalIOSurface.ioSurfaceId(ioSurfaceRef)
           require(ioSurfaceId != 0L) { "MoltenVK did not export an IOSurface" }
@@ -80,11 +80,11 @@ operations:
                   )
               ) == BrowserFrameOfferResult.ACCEPTED
           )
-
+          
           renderer.renderList.others["external-browser-macos-smoke-source"] = source
           renderer.renderList.others["external-browser-macos-smoke-copy"] =
               Target { command, _ -> surface.prepareSampledImagesFor(command) }
-
+          
           var ticks = 0
           loop {
               ticks++

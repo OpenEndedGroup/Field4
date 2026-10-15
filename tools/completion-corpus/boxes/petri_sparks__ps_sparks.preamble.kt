@@ -1,12 +1,15 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.petri.PetriRun
-import afield.petri.PetriNet
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.simulation.petri.PetriRun
+import afield.simulation.petri.PetriNet
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:Bursts:Bursts*/
@@ -17,7 +20,7 @@ class Bursts(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var b by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var b by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun BurstsByteSize(): Long = 16L
 fun BurstsLayoutMembers(): List<Introspected.Member> =
@@ -30,8 +33,8 @@ fun BufferParameters.asBursts(): Bursts =
     buffer.asBursts()
 /*end*/
 /*graphics-pc-structure:bursts*/ var Structure.bursts by Structure.FromStructure<Any>()
-/*graphics-pc-binding:bursts*/ var Mesh.bursts by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:bursts*/ var MeshGroup.bursts by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:bursts*/ var Mesh.bursts by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:bursts*/ var MeshGroup.bursts by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Float>()
 /*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()

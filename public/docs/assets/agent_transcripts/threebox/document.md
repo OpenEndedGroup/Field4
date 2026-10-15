@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tb_renderer" index="0" -->
 
 ```edn [field-box id="tb_renderer" role="properties"]
-{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "cce6bf0ac8d8e5636e37d3a3298738dd70f5c6e6086bc4a0a02ac4f3a33650aa"}]}
+{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 11 "characters" 266 "sha256" "93f966e8792950c56252d1bbacac93a357c34c29b928062d570684d94393c978"}]}
 ```
 
 ```kotlin [field-property box="tb_renderer" name="code" path="tb_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false

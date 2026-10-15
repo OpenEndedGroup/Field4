@@ -11,18 +11,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_flow" index="0" -->
 
 ```edn [field-box id="kratos_flow" role="properties"]
-{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 169 "characters" 9417 "sha256" "27bcc85378ed013e20217836c3b0fc14d7849ecd7e8bc70065bc03a3dba1ecc1"}]}
+{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 169 "characters" 9496 "sha256" "01e8357dec0a03d8d047011a58b26249de46f2099926f1aed7bae76fbd780ead"}]}
 ```
 
 ```kotlin [field-property box="kratos_flow" name="code" path="kratos_flow_code_.kt"]
-import afield.frames
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshRenderer
-import afield.stdlib.MeshView
-import afield.stdlib.TriMesh
-import afield.stdlib.showMeshGrid
-import afield.stdlib.tubeMesh
+import afield.runtime.lifecycle.frames
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshRenderer
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.showMeshGrid
+import afield.geometry.mesh.tubeMesh
 import java.util.concurrent.atomic.AtomicReference
 
 // Launch (Alt-R). Drag a slider to reshape the body — that part is instant.

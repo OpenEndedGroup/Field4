@@ -1,6 +1,6 @@
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyChoice
 
 // Three empty channels. Describe the function you want in this box's AI4 chat.
 with(Functions) {

@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_materials"] "properties" {"children" #{#afield/box "path_trace_materials"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 208 "sha256" "b6c2bd22807c33e2c2e4d8717a315d29f7748bf5fc921acfae8e2aad2e0a0ec1"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_materials"] "properties" {"children" #{#afield/box "path_trace_materials"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 219 "sha256" "9c1f4775efdc0df7175c2b6ee2bcf7bda2d78cce64864e565119faeac51ef21f"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,12 +31,12 @@ start(renderer::run)
 <!-- field-box id="path_trace_materials" index="1" -->
 
 ```edn [field-box id="path_trace_materials" role="properties"]
-{"id" "path_trace_materials" "index" 1 "name" "progressive material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "progressive material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_materials_code_.kt" "lines" 17 "characters" 795 "sha256" "f65605bc2aae0f65a1a908ec3251132601392512f73335890baeee5a511790a4"}]}
+{"id" "path_trace_materials" "index" 1 "name" "progressive material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "progressive material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_materials_code_.kt" "lines" 17 "characters" 815 "sha256" "9e131d54d6c05a81c5936c368f2200badb56e56bdae535e35cde326ad1e270ac"}]}
 ```
 
 ```kotlin [field-property box="path_trace_materials" name="code" path="path_trace_materials_code_.kt"]
-import afield.four.fabricated.PathTraceDemo
-import afield.four.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.PathTraceDemo
+import afield.graphics.scene.fabricated.PathTracingRenderer
 import java.io.File
 prop<PathTracingRenderer>(tracer)
 tracer = PathTraceDemo.install(renderer, width=1280, height=720,

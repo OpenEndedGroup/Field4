@@ -1,4 +1,3 @@
-import afield.stdlib.*
 var dla = ShaderDlaSystem() {
     width = 1024
     height = 1024

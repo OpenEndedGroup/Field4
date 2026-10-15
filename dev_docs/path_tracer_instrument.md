@@ -17,7 +17,7 @@ hidden-environment demo. Four were printf loops — `frames { repeat(180) { fram
 is the camera doing. The fifth hand-rolled an integrator hot reload.
 
 That is the whole specification. The four loops are now
-[`PathTraceConvergence`](../src/jvmMain/kotlin/afield/four/fabricated/PathTraceInstrument.kt) and a
+[`PathTraceConvergence`](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceInstrument.kt) and a
 value printer; the fifth is `PathTracingRenderer.reloadIntegrator`.
 
 ## What the status quo already did
@@ -36,7 +36,7 @@ hand-written adapter would have *replaced* something that worked.
 `.h` showed nothing. 376 bytes, of which ~330 is the `value-viz` wrapper `<div>`. The payload:
 
 ```
-PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3
 ```
 
 `PathTracingRenderer` is not a data class, so `ValueVisualizer.visualizeBuiltIn` fell to
@@ -58,7 +58,7 @@ two guarded prose numerals; see below.)
 ## The fact that is not a property
 
 Reflection cannot reach this one
-(`src/jvmMain/kotlin/afield/four/fabricated/PathTracingRenderer.kt:437#private fun updateFrame`:
+(`src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTracingRenderer.kt:437#private fun updateFrame`:
 the vector is `val up`, a local inside a private method, so there is no `KProperty1` for
 `H2Reflect.properties` to enumerate — and `PathTraceInstrumentTest.kt` has to reconstruct it from
 `camera.right` and `camera.forward` to test it at all).

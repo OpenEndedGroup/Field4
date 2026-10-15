@@ -5,24 +5,24 @@
 // This box calls the real thing -- `KotlinSourceIndex.getCompletionCategoryForSymbol`, with the real
 // `declaredIn` the sidecar recorded -- and puts the real `CommonMemberPrior.rankOf` next to it.
 //
-// What you should notice is that for `afield.graphics.FLine` the index says NOTHING (`declines`), and
+// What you should notice is that for `afield.geometry.path.FLine` the index says NOTHING (`declines`), and
 // that is the fix working: FLine.kt carries no `@file:CompletionCategory`, so rather than borrowing the
 // category of an unrelated namesake -- which is how `FLine.moveTo` came to be filed under **Math** and
 // rendered in a foreign section -- it declines, and the popup's category comes one step later in
-// `KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.graphics` -> Graphics.
+// `KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.geometry.path` -> Graphics.
 // That last step is `internal`, so a box cannot call it; the corpus measurement in
 // FieldSuggestPresentationTest can, and its numbers are quoted at the bottom.
 //
 // Change RECEIVER and re-run: `java.lang.Math` is a type nobody here can annotate -- no prior, and the
 // index declines rather than borrowing -- which is exactly the population the deferred decision was
-// about. `afield.stdlib.TriMesh` is another Field type.
+// about. `afield.geometry.mesh.TriMesh` is another Field type.
 
-import afield.CommonMemberPrior
-import afield.ai.KotlinSourceIndex
+import afield.runtime.completion.CommonMemberPrior
+import afield.runtime.completion.KotlinSourceIndex
 import java.io.File
 import java.util.zip.GZIPInputStream
 
-val RECEIVER = "afield.graphics.FLine"
+val RECEIVER = "afield.geometry.path.FLine"
 
 // Field's working directory is the checkout it was started from; walk up to its root.
 // Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`

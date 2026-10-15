@@ -1,5 +1,5 @@
-let Img = hostClass "afield.stdlib.Img"
-let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+let Img = hostClass "afield.media.image.Img"
+let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
 // The whole picture is this function. Change 11.0 to change the ring
 // spacing; change "viridis" below to "magma" or "coolwarm".

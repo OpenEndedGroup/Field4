@@ -23,7 +23,7 @@ A property is saved with the document only if its name is in Box.ioPersistentPro
 and `rings` is not by default: add it, and give it its starting text the first time.
 
 ```edn [field-box id="rings_study" role="properties"]
-{"id" "rings_study" "index" 0 "name" "rings" "parents" ["root"] "children" ["rings_change" "rings_try"] "properties" {"children" #{#afield/box "rings_change" #afield/box "rings_try"} "parents" #{#afield/box "root"} "name" "rings" "_tombstone" false "frame" #afield/rect [40.0 40.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_study_code_.kt" "lines" 24 "characters" 1541 "sha256" "531fe3b6a59e6ffae5bb78d310e96a3c28c9b8ceb72a1e0ec3309aad7eb39b58"}]}
+{"id" "rings_study" "index" 0 "name" "rings" "parents" ["root"] "children" ["rings_change" "rings_try"] "properties" {"children" #{#afield/box "rings_change" #afield/box "rings_try"} "parents" #{#afield/box "root"} "name" "rings" "_tombstone" false "frame" #afield/rect [40.0 40.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_study_code_.kt" "lines" 24 "characters" 1546 "sha256" "f24f9bf3369954a675ab383943bd89ee9437a1b2117b51c0e03515c6a998dabb"}]}
 ```
 
 ```kotlin [field-property box="rings_study" name="code" path="rings_study_code_.kt"]
@@ -46,7 +46,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
         val i = (y * w + x) * 4
         px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
     }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
+    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
 })
 
 registerStudyTools("Rings", rings, about = "The source is three numbers: ring count, ink brightness, warmth 0..1.")

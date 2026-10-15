@@ -1,9 +1,9 @@
 package afield.examples.graphics
 
-import afield.graphics.FLine
-import afield.graphics.FLineSideways
-import afield.stdlib.Vec4
-import afield.stdlib.vec
+import afield.geometry.path.FLine
+import afield.geometry.path.FLineSideways
+import afield.math.linalg.Vec4
+import afield.math.linalg.vec
 import kotlin.math.abs
 
 /*

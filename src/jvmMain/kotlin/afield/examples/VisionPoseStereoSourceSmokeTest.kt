@@ -1,14 +1,14 @@
 package afield.examples
 
-import afield.four.targets.OpenXRHmdTarget
-import afield.four.util.Options
-import afield.graphics.VISION_POSE_CHANNEL
-import afield.graphics.VISION_POSE_VERSION
-import afield.graphics.VisionPoseStereoSource
-import afield.graphics.VisionPoseStream
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector4f
+import afield.graphics.vulkan.targets.OpenXRHmdTarget
+import afield.graphics.vulkan.util.Options
+import afield.graphics.visionos.VISION_POSE_CHANNEL
+import afield.graphics.visionos.VISION_POSE_VERSION
+import afield.graphics.visionos.VisionPoseStereoSource
+import afield.graphics.visionos.VisionPoseStream
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector4f
 import kotlin.math.abs
 
 /*

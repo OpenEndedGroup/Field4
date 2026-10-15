@@ -1,15 +1,15 @@
 package afield.ai.agent
 
-import afield.Box
-import afield.BoxOutputLog
-import afield.SessionInformation
-import afield.ai.core.IdeChatHelpers
-import afield.ai.core.InstructionMode
-import afield.ai.core.KOTLIN_SCRIPT
-import afield.ai.core.ScriptedLlmBridge
-import afield.ai.core.ToolExecutionContext
-import afield.ai.core.buildDynamicInstructions
-import afield.server.agentRouteRefusal
+import afield.document.graph.Box
+import afield.app.diagnostics.BoxOutputLog
+import afield.app.server.SessionInformation
+import afield.ai.conversation.IdeChatHelpers
+import afield.ai.conversation.InstructionMode
+import afield.runtime.languages.KOTLIN_SCRIPT
+import afield.ai.models.ScriptedLlmBridge
+import afield.ai.tools.ToolExecutionContext
+import afield.ai.conversation.buildDynamicInstructions
+import afield.app.server.agentRouteRefusal
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -167,7 +167,7 @@ class Ai4ChatGraphWiringTest {
     @Test
     fun printedValueHtmlIsLoggedAsText() {
         val uid = "viz-" + System.nanoTime()
-        BoxOutputLog.observeOutput(afield.Output(uid = uid, line = 1, kind = "normal", frame = 0,
+        BoxOutputLog.observeOutput(afield.app.protocol.Output(uid = uid, line = 1, kind = "normal", frame = 0,
             html = "<div style='font-size: 12px; line-height: 1.4'><span>[</span><span>1</span>, <span>8</span><span>]</span></div>"))
         assertEquals("[1, 8]", BoxOutputLog.since(uid, 0).entries.single().text)
     }

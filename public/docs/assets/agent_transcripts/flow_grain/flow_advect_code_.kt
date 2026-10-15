@@ -1,8 +1,8 @@
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.buffers.VulkanBuffer
-import afield.four.modules.computeMemoryBarrier
-import afield.four.modules.graphicsMemoryBarrier
-import afield.four.modules.computeTask
+import afield.document.context.fromContextWithNameOrNull
+import afield.graphics.vulkan.buffers.VulkanBuffer
+import afield.graphics.render.computeMemoryBarrier
+import afield.graphics.render.graphicsMemoryBarrier
+import afield.graphics.render.computeTask
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
 val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
@@ -10,9 +10,9 @@ val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
 val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
 val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
 val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-val flowSimulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!
+val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
 val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
 
 var module = computeModuleHere {}

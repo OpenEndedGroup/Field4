@@ -1,5 +1,5 @@
-import afield.graphics.*
-import afield.stdlib.*
+
+
 
 three(name="idle-rendering", width=760, height=500) {
     camera(yaw=15.0, pitch=20.0, distance=3.0)

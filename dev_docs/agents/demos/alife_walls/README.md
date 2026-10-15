@@ -7,7 +7,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py \
   --workspace dev_docs/agents/demos --document alife_walls --command 'run hit_a_wall'
 ```
 
-`afield.stdlib.alife_walls` gives `alife_script.kt`'s `ScriptWorld` an environment. Before it, the
+`afield.simulation.agents`' `alife_walls.kt` gives `alife_script.kt`'s `ScriptWorld` an environment. Before it, the
 world was a bare rectangle: the only spatial thing an agent could say was `avoidEdges(margin)`, and
 everything else it could steer around was another agent. Now there are obstacles, the collision
 that stops an agent crossing one is *swept* rather than discrete, and `route()` plans a way round

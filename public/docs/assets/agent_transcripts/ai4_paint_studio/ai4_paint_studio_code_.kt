@@ -5,7 +5,7 @@
 // before it; /branches and /branch switch between versions. /canvas, /palette, /tools and /gallery show
 // the easel, the tube paints, the kept tools and the hung paintings.
 // Needs the paint library: ./gradlew buildPaintNative.
-import afield.paint.*
+import afield.graphics.paint.*
 import java.io.File
 import java.util.Base64
 

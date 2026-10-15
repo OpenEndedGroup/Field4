@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The identical path with no audio device and no GPU: the same FaustVoiceBank, rendered in 128-frame
 // blocks exactly as the audio thread would render it, into a WAV player and a waveform.

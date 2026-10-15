@@ -85,7 +85,7 @@ same numbers is a promise the library makes in `tables.kt`'s own KDoc.
 
 | what | result |
 | --- | --- |
-| `jvmTest --tests afield.{Chart,Table,Heatmap,PairDisplay}Test` | 74 tests, 0 failures, 0 errors (ChartTest 24 → 27) |
+| `jvmTest --tests afield.ui.visualization.{Chart,Table,Heatmap,PairDisplay}Test` | 74 tests, 0 failures, 0 errors (ChartTest 24 → 27) |
 | `run_field_tests.py --id visualization.chart-gallery` | PASS, 4560 ms; palette line reads 29.32 against a floor of 25.0 |
 | `checkCodebaseReference` | ok — 11939 symbols across 17 pages, after `generateCodebaseReference` |
 | `checkKDocAttachment` | ok — 1311 files, 17686 blocks (17685 + the one added here) |

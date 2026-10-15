@@ -13,16 +13,16 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 350.0, h: 100.0 }
       properties:
         code: |
-          import afield.Rect
-          import afield.four.util.Options
-
+          import afield.app.protocol.Rect
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.enableVR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window(
                   "YouTube · Vulkan kaleidoscope",
@@ -30,7 +30,7 @@ operations:
               )
               Renderer(window)
           }
-
+          
           println("YouTube kaleidoscope renderer ready")
           start(renderer::run)
   - create:
@@ -39,14 +39,14 @@ operations:
       frame: { x: 430.0, y: 40.0, w: 380.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.Target
-          import afield.four.browser.FieldUiBrowserTexture
-          import afield.four.browser.PuppetBrowserKaleidoscope
+          import afield.graphics.vulkan.Target
+          import afield.media.browser.FieldUiBrowserTexture
+          import afield.media.browser.PuppetBrowserKaleidoscope
           import java.util.concurrent.atomic.AtomicBoolean
           import java.util.concurrent.atomic.AtomicLong
-
-          prop<afield.four.browser.PuppetBrowser>(browserControl)
-
+          
+          prop<afield.media.browser.PuppetBrowser>(browserControl)
+          
           val browser = FieldUiBrowserTexture(
               renderer = renderer,
               url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
@@ -56,10 +56,10 @@ operations:
               cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
           )
           browserControl = browser
-
+          
           renderer.renderList.preTargets["youtube-kaleidoscope-upload"] =
               Target { command, _ -> browser.prepareSampledImagesFor(command) }
-
+          
           val shards = PuppetBrowserKaleidoscope(
               renderer = renderer,
               browser = browser,
@@ -71,20 +71,20 @@ operations:
           shards.facets = 5.0f
           shards.chroma = 1.0f
           shards.build()
-
+          
           val requestInFlight = AtomicBoolean(false)
           val playbackConfirmed = AtomicBoolean(false)
           val nextAttempt = AtomicLong(0L)
           var announced = false
           var audibleAnnounced = false
           var frameNumber = 0L
-
+          
           loop {
               if (!announced && browser.pageReady) {
                   announced = true
                   println("Kaleidoscope online: ${shards.triangleCount} independently animated Vulkan triangles")
               }
-
+          
               // A userGesture JavaScript evaluation first accepts Google's EU consent page, then
               // retries until the real HTMLVideoElement is advancing. Navigation during consent
               // deliberately looks like a failed attempt; the next one runs in the new document.

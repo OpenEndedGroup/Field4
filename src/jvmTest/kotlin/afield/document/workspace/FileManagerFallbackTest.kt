@@ -1,0 +1,149 @@
+package afield.document.workspace
+
+import afield.data.collections.get
+import afield.data.collections.invoke
+import afield.data.collections.times
+import afield.data.graph.main
+import afield.document.graph.minusAssign
+import afield.document.graph.plusAssign
+import afield.document.properties.compareTo
+import afield.graphics.render.rangeTo
+import afield.io.osc.main
+import afield.math.autodiff.compareTo
+import afield.math.autodiff.div
+import afield.math.autodiff.minus
+import afield.math.autodiff.plus
+import afield.math.autodiff.times
+import afield.math.control.main
+import afield.math.linalg.invoke
+import afield.math.linalg.remAssign
+import afield.math.linalg.set
+import afield.math.linalg.times
+import afield.math.statistics.main
+import afield.math.units.div
+import afield.math.units.minus
+import afield.math.units.plus
+import afield.math.units.times
+import afield.runtime.lifecycle.cached
+import afield.simulation.automata.main
+
+import afield.graphics.vulkan.buffers.add
+import afield.simulation.automata.history
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import java.io.File
+import java.nio.file.Files
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.test.*
+
+class FileManagerFallbackTest {
+    @Test fun precedenceReplacementRemovalAndHistory() {
+        val temp = Files.createTempDirectory("file-fallback").toFile().canonicalFile
+        val name = "helper-${temp.name}.bin"
+        val searchName = "fallback_test_${System.nanoTime()}"
+        try {
+            val document = File(temp, "doc").apply { mkdirs() }
+            val project = File(temp, "_projects/p").apply { mkdirs() }
+            File(project, "contents.edn").writeText("{:documents [\"doc\"]}")
+            val root = Box("root")
+            val session = SessionInformation(document.absolutePath, "doc", ConcurrentHashMap(), root)
+            root.inside = session
+            session.boxes[root.id] = root
+            val manager = FileManager.forSession(session)
+            val target = File(temp, "installed/helper")
+            val local = File(document, "files/$name")
+            FileManager.addFile(name, target)
+            assertEquals(local, manager.file(name)) // missing helper is not a cached answer
+            target.parentFile.mkdirs()
+            target.writeText("helper")
+            assertEquals(target, manager.file(name))
+            val history = root.getPropertyRaw(FILE_MANAGER_ACCESS_HISTORY_PROPERTY) as List<*>
+            assertEquals("file:$name", (history.last() as Map<*, *>)["source"])
+            assertEquals(local, manager.file("%document/$name"))
+            assertFailsWith<IllegalStateException> { manager.file("**/$name") }
+
+            val replacement = File(temp, "replacement").apply { writeText("replacement") }
+            FileManager.addFile(name, replacement.toPath())
+            assertEquals(replacement, manager.file(name))
+            val search = File(temp, "search").apply { mkdirs() }
+            FileManager.add(searchName, search, search = true)
+            val searchCopy = File(search, name).apply { writeText("search") }
+            assertEquals(searchCopy, manager.file(name))
+            val projectCopy = File(project, "files/$name").apply { parentFile.mkdirs(); writeText("project") }
+            assertEquals(projectCopy, manager.file(name))
+            local.writeText("document")
+            assertEquals(local, manager.file(name))
+            local.delete(); projectCopy.delete(); searchCopy.delete()
+            assertEquals(replacement, manager.file(name))
+            replacement.delete()
+            assertEquals(local, manager.file(name))
+            replacement.mkdir() // a directory cannot supply an exact-file fallback
+            assertEquals(local, manager.file(name))
+            replacement.delete(); replacement.writeText("restored")
+            assertEquals(replacement, manager.file(name))
+            assertTrue(FileManager.removeFile(name))
+            assertEquals(local, manager.file(name))
+            assertTrue(replacement.exists())
+            assertFalse(FileManager.removeFile(name))
+            for (invalid in listOf("", "../helper", "a/b", "a\\b", "%document", "*.bin", ".", "..")) {
+                assertFailsWith<IllegalArgumentException>(invalid) { FileManager.addFile(invalid, target) }
+            }
+        } finally {
+            FileManager.removeFile(name)
+            FileManager.remove(searchName)
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test fun helperLocationComesFromLoadedCodeAndCanPrecedeBuild() {
+        val temp = Files.createTempDirectory("helper-installation").toFile()
+        try {
+            val buildScript = File(temp, "native/field-slug/build.sh").apply { parentFile.mkdirs(); writeText("") }
+            val expected = File(buildScript.parentFile, "build/field-slug").toPath()
+            assertEquals(expected, bundledSlugExecutable(File(temp, "build/classes/kotlin/jvm/main").toPath()))
+            assertEquals(expected, bundledSlugExecutable(File(temp, "build/libs/field.jar").toPath()))
+            buildScript.delete()
+            assertNull(bundledSlugExecutable(temp.toPath()))
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test fun bundledDocsLocationIsIndependentOfTheDocumentAndWorkingDirectory() {
+        val temp = Files.createTempDirectory("docs-installation").toFile()
+        try {
+            val docs = File(temp, "public/docs").apply { mkdirs() }
+            File(docs, "index.md").writeText("# Documentation")
+            File(docs, "assets").mkdir()
+            assertEquals(docs.toPath(), bundledDocsDirectory(File(temp, "build/classes/kotlin/jvm/main").toPath()))
+            assertEquals(docs.toPath(), bundledDocsDirectory(File(temp, "build/libs/field.jar").toPath()))
+            File(docs, "index.md").delete()
+            assertNull(bundledDocsDirectory(temp.toPath()))
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test fun bundledDocsMappingResolvesAndRecordsAnAsset() {
+        val temp = Files.createTempDirectory("docs-asset").toFile()
+        val original = FileManager["docs"]
+        try {
+            val docs = File(temp, "public/docs").apply { mkdirs() }
+            val asset = File(docs, "assets/example.wav").apply { parentFile.mkdirs(); writeText("fixture") }
+            FileManager.add("docs", docs)
+            val document = File(temp, "elsewhere/document").apply { mkdirs() }
+            val root = Box("root")
+            val session = SessionInformation(document.absolutePath, "document", ConcurrentHashMap(), root)
+            root.inside = session
+            session.boxes[root.id] = root
+            val manager = FileManager.forSession(session)
+            assertEquals(asset.toPath(), manager.path("%docs/assets/example.wav"))
+            assertFailsWith<IllegalArgumentException> { manager.path("%docs/../outside.wav") }
+            val history = root.getPropertyRaw(FILE_MANAGER_ACCESS_HISTORY_PROPERTY) as List<*>
+            assertEquals("%docs", (history.last() as Map<*, *>)["source"])
+        } finally {
+            if (original == null) FileManager.remove("docs") else FileManager.add("docs", original)
+            temp.deleteRecursively()
+        }
+    }
+}

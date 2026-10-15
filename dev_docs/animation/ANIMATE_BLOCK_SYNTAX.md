@@ -13,11 +13,11 @@ alone does not launch it.
 The complete contract is colocated with:
 
 - `Frames`, `frames`, `loop`, `eachFrame`, and `Box.launchFrames` in
-  `src/jvmMain/kotlin/afield/Phased.kt`;
+  `src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt`;
 - `start`, `animate`, `Box.begin`, and `Box.end` in
-  `src/jvmMain/kotlin/afield/stdlib/stdlib.kt`;
+  `src/jvmMain/kotlin/afield/math/linalg/stdlib.kt`;
 - the `Frames` handler in
-  `src/jvmMain/kotlin/afield/ReturnValueRegistry.kt`.
+  `src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt`.
 
 Within a `Frames` receiver, `frameNumber` counts completed `frame()` calls,
 `delay(ms)` suspends and then calls `frame()`, and suspend `end()` cancels the

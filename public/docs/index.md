@@ -15,7 +15,7 @@ Finally, this documentation site itself is largely a _living document_ — both 
 ## Starting places
 
 In a hurry, see [the first drawing](first_steps.md), then open **Start here: a moving drawing** on Welcome.
-Change a number, launch, inspect, stop and reopen your saved copy. 
+Change a number, launch, inspect, stop and reopen your saved copy.
 
 Field's code is AGPL-3.0-or-later; [your code, AI and local history](privacy.md) explains the
 local services and optional external providers.

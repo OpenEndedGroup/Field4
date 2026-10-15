@@ -14,7 +14,7 @@ Work:
 1. Make each of these transcripts (and the sibling `audio_ai_codec`, `audio_ai_corpus_microscope`,
    `audio_ai_muscriptor`, `audio_ai_spectral_embeddings`) a welcome-screen starting point, and link
    it from its page.
-2. The runner fences on these pages import `afield.stdlib.*` / `afield.stdlib.noir.audioai.*`
+2. The runner fences on these pages import `afield.stdlib.*` / `afield.audio.ai.*`
    (rule 7). Make the Audio AI API available from the box preamble, or fold the imports, then
    update the fences (rank-carets pins their bytes) and recapture.
 3. The analysis page's figure is drawn from synthetic sine data. Decide whether a real capture

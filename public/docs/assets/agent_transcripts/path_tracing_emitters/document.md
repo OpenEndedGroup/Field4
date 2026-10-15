@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pt_renderer" index="0" -->
 
 ```edn [field-box id="pt_renderer" role="properties"]
-{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_emitters"] "properties" {"children" #{#afield/box "pt_emitters"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 212 "sha256" "a27b9916860ed84fb3ab64c59102141d5a6485bb30f0e5e871b509f0049f3bac"}]}
+{"id" "pt_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["pt_emitters"] "properties" {"children" #{#afield/box "pt_emitters"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_renderer_code_.kt" "lines" 9 "characters" 223 "sha256" "2927f242427dd13e12a1f4a58de9015b66fcf514e74e6d813eebf37516b46036"}]}
 ```
 
 ```kotlin [field-property box="pt_renderer" name="code" path="pt_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,17 +31,17 @@ start(renderer::run)
 <!-- field-box id="pt_emitters" index="1" -->
 
 ```edn [field-box id="pt_emitters" role="properties"]
-{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 180.0 380.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 53 "characters" 2677 "sha256" "595a8711ed424dcb264ac617006457d39d96c812757c9325231318a0a55e52de"}]}
+{"id" "pt_emitters" "index" 1 "name" "emitter sampling, on and off" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "emitter sampling, on and off" "_tombstone" false "frame" #afield/rect [320.0 180.0 380.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_emitters_code_.kt" "lines" 53 "characters" 2724 "sha256" "a39dbc36279be44c82c503e97622c666cc5f585d9184972fdac69369a6235786"}]}
 ```
 
 ```kotlin [field-property box="pt_emitters" name="code" path="pt_emitters_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector4f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector4f
 
 prop<PathTracingRenderer>(tracer)
 

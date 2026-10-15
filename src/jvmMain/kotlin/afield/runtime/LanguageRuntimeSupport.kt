@@ -1,14 +1,14 @@
 package afield.runtime
 
-import afield.Box
-import afield.BoxExecution
-import afield.KotlinExecution
-import afield.remotejs.code_language
-import afield.logger.lblock
-import afield.inMain
-import afield.notify
-import afield.offline
-import afield.sessions
+import afield.document.graph.Box
+import afield.runtime.execution.BoxExecution
+import afield.runtime.execution.KotlinExecution
+import afield.lang.remotejs.code_language
+import afield.app.diagnostics.logging.lblock
+import afield.runtime.lifecycle.inMain
+import afield.app.notifications.notify
+import afield.document.graph.offline
+import afield.app.server.sessions
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly

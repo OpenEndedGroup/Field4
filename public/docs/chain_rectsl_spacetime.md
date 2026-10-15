@@ -71,10 +71,16 @@ one returns.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rectsl_spacetime/readout.png" wait="12" capture="box" open-outputs="true" w="1120" h="340" padding="18" timeout="240" name="chain-rectsl-readout" embed=true alt="A table: one RectSL scene with both rects lowered and zero channel disagreement; then four rows showing marching cubes leaving the unpadded volume open with two boundary loops while the level set closes it, and both closing the padded volume; and one component"}
 :::static
-import afield.manifold.Solid
-import afield.rectsl.compileRectSL
-import afield.rectsl.toAdField
-import afield.stdlib.*
+import afield.geometry.solid.manifold.Solid
+import afield.lang.rectsl.compileRectSL
+import afield.lang.rectsl.toAdField
+import afield.geometry.mesh.boundsOf
+import afield.geometry.mesh.diagnose
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.geometry.mesh.marchingCubes
+import afield.geometry.mesh.sampledField3D
+import afield.math.linalg.vec
 
 val source = """
 #rectsl
@@ -146,9 +152,9 @@ disagreement between the autodiff channels and `Fn.eval` was `${field.worstChann
 | the volume ends | marcher | triangles | closed | detail |
 |---|---|---|---|---|
 | at the first and last frame | `marchingCubes` | ${cutMarch.triangleCount} | **${cutMarch.isWatertight()}** | ${cutMarch.diagnose().boundaryLoops.size} boundary loops |
-| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)} |
+| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)} |
 | one empty slice beyond each | `marchingCubes` | ${closedMarch.triangleCount} | **${closedMarch.isWatertight()}** | genus ${closedMarch.genus()} |
-| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${"%.3f".format(closedSolid.volume)} |
+| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${"%.3f".format(closedSolid.volume)} |
 
 `decompose()` finds **${parts.size}** component, because the bar passes over the square at some
 frame and two shapes that touch on screen are one solid in space-time.

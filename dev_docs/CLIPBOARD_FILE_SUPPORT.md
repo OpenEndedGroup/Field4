@@ -1,7 +1,7 @@
 # Box copy and paste through the browser clipboard
 
 The clipboard implementation is owned by
-[`commands.kt`](../src/jsMain/kotlin/afield/commands.kt):
+[`commands.kt`](../src/jsMain/kotlin/afield/app/client/commands.kt):
 
 - `copySelectedBoxesToClipboard()` asks the server to serialize the selection and
   always writes EDN as `text/plain`.
@@ -16,7 +16,7 @@ The clipboard implementation is owned by
 
 The precise fallback and routing contract is documented as KDoc beside those
 functions. Serialization and id remapping live in the `copy-boxes` and `paste-boxes`
-handlers in [`Server.kt`](../src/jvmMain/kotlin/afield/Server.kt).
+handlers in [`Server.kt`](../src/jvmMain/kotlin/afield/app/server/Server.kt).
 
 ## What must be tested manually
 

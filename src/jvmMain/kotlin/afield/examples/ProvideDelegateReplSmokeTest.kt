@@ -1,6 +1,6 @@
 package afield.examples
 
-import afield.KotlinInterface2
+import afield.runtime.kotlin.KotlinInterface2
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.script.experimental.api.ScriptDiagnostic
@@ -54,7 +54,7 @@ expect:
  * [PROVIDER_DECL]'s anonymous `ReadWriteProperty` is such a call (the setter of `v`), which is
  * why that interface failed and `ReadOnlyProperty`, with no setter to call, did not. Wither now
  * checks the callee's name and parent before asking. Local functions called as statements failed
- * the same way; `afield.ReplSnippetDeclarationsSmokeTest` cases LF1–LF9 cover those.
+ * the same way; `afield.runtime.kotlin.ReplSnippetDeclarationsSmokeTest` cases LF1–LF9 cover those.
  *
  * House style, applied deliberately:
  *  - **asserts its own premise first** — [assertReplItselfWorks] proves plain evaluation and the

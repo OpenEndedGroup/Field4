@@ -1,7 +1,7 @@
 // {{ tone }}
 // A tiny chord arpeggio played through a reverb, scheduled on the Transport.
 // Tone is installed as the global `Tone` in the RemoteAR head; every name below is
-// bound by afield.graphics.ToneKotlinJs and grounded against the vendored Tone.js.
+// bound by afield.audio.tone.ToneKotlinJs and grounded against the vendored Tone.js.
 onStart {
     val synth = Tone.PolySynth()
     val reverb = Tone.Reverb(2.5)

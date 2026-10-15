@@ -14,7 +14,7 @@ TryStackSLVariants finished (1925 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/3b74d305936b4f8a31a0.jpg)
 <<ai>>

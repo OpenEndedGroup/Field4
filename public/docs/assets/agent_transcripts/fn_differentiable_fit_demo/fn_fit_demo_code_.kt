@@ -1,5 +1,5 @@
-import afield.stdlib.Functions
-import afield.stdlib.fitBest
+import afield.math.functions.Functions
+import afield.math.functions.fitBest
 
 with(Functions) {
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)

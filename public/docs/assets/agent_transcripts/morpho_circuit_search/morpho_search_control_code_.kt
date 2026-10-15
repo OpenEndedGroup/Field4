@@ -1,4 +1,4 @@
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // The whole layer in four lines: a problem is an oracle plus a width family plus a
 // grammar, and a driver turns a budget into a program. Nothing about addition is supplied

@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.globalPlaywriteContext
-import afield.playwrightDispatcher
+import afield.app.server.globalPlaywriteContext
+import afield.app.server.playwrightDispatcher
 
 /** Browser regression helper; uses the same dedicated dispatcher as Field screenshot capture. */
 object ProfilingPanelWorkout {

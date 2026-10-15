@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Two processes and a critical section each. The only difference between these two nets
 // is an inhibitor arc — "not while the other one is in there".

@@ -22,6 +22,6 @@ it. The scene box's study card shows the clip as a filmstrip, holds the window a
 slider for every number (the window follows as you drag), its history, and — when the model offers
 variants — each with **Adopt**.
 
-The study tools ship with Field (`afield.rectsl.study`): any box under a RectSL root has them in its
+The study tools ship with Field (`afield.lang.rectsl.study`): any box under a RectSL root has them in its
 AI4 chat, and `RectSLStudyGuide` returns the working guide and searches the words guide. For agents:
 read [AGENTS.md](AGENTS.md).

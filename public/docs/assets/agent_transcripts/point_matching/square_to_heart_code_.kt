@@ -35,6 +35,6 @@ loop {
             splat(px, imageWidth / 4, square[i], partner[i], t, colour[i])
             splat(px, 3 * imageWidth / 4, square[i], heart[i], t, colour[i])
         }
-        display("morph", afield.util.PngEncoder.encode(px, imageWidth, imageHeight))
+        display("morph", afield.media.image.util.PngEncoder.encode(px, imageWidth, imageHeight))
     }
 }

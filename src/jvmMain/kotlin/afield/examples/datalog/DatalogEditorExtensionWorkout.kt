@@ -1,10 +1,10 @@
 package afield.examples.datalog
 
-import afield.datalog.DatalogEditorExtension
-import afield.datalog.DatalogExecution
-import afield.datalog.DatalogParser
-import afield.datalog.dlBoxRelationSchema
-import afield.util.NodeTool
+import afield.data.query.datalog.DatalogEditorExtension
+import afield.data.query.datalog.DatalogExecution
+import afield.data.query.datalog.DatalogParser
+import afield.data.query.datalog.dlBoxRelationSchema
+import afield.media.image.util.NodeTool
 import java.nio.file.Files
 import kotlin.io.path.writeText
 
@@ -188,7 +188,7 @@ object DatalogEditorExtensionWorkout {
         const analyzeProgram = proof.analyzeProgram;
 
         const text = `
-        import afield.datalog.*
+        import afield.data.query.datalog.*
         val d = Datalog()
         d.add(${"\"\"\""}
         #datalog

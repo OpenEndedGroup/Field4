@@ -89,7 +89,7 @@
                 "payload": {
                   "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
                   "property": "code",
-                  "value": "val candidate = afield.stdlib.FunctionStudy.compileStudy(java.io.File(\"/tmp/function-study-lag-compatible.kt\").readText())\nprintln(\"compatible candidate: channels=\" + candidate.channels.size + \" hold=\" + candidate.channels.map { it(1630.0) })\n",
+                  "value": "val candidate = afield.math.functions.FunctionStudy.compileStudy(java.io.File(\"/tmp/function-study-lag-compatible.kt\").readText())\nprintln(\"compatible candidate: channels=\" + candidate.channels.size + \" hold=\" + candidate.channels.map { it(1630.0) })\n",
                   "syncSequence": 1
                 }
               }
@@ -148,7 +148,7 @@
           "payload": {
             "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",
             "property": "code",
-            "value": "val candidate = afield.stdlib.FunctionStudy.compileStudy(java.io.File(\"/tmp/function-study-lag-compatible.kt\").readText())\nprintln(\"compatible candidate: channels=\" + candidate.channels.size + \" hold=\" + candidate.channels.map { it(1630.0) })\n",
+            "value": "val candidate = afield.math.functions.FunctionStudy.compileStudy(java.io.File(\"/tmp/function-study-lag-compatible.kt\").readText())\nprintln(\"compatible candidate: channels=\" + candidate.channels.size + \" hold=\" + candidate.channels.map { it(1630.0) })\n",
             "syncSequence": 1
           },
           "uid": "847c4abe-95dc-4847-8dd3-8c4d37dd574d",

@@ -1,4 +1,4 @@
-import afield.four.modules.fromContextWithNameOrNull
+import afield.document.context.fromContextWithNameOrNull
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
 val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!

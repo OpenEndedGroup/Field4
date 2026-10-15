@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.four.physics.Cloth
-import afield.four.physics.SimdVerlet
-import afield.four.physics.addCloth
-import afield.graphics.FLine
-import afield.stdlib.vec
+import afield.simulation.physics.Cloth
+import afield.simulation.physics.SimdVerlet
+import afield.simulation.physics.addCloth
+import afield.geometry.path.FLine
+import afield.math.linalg.vec
 
 /**
  * Demo of [Cloth] — the reusable grid-cloth builder over `SimdVerlet`'s 4-slot distance
@@ -127,7 +127,7 @@ object ClothSimulationExample {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        println("Cloth Simulation Example - demonstrating afield.four.physics.Cloth")
+        println("Cloth Simulation Example - demonstrating afield.simulation.physics.Cloth")
         println("Running simulation for 100 frames...")
 
         val simulation = createInteractiveClothSimulation(

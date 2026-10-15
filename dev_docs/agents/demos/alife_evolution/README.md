@@ -23,11 +23,11 @@ hard*. Change `LifeRuleGenome(radius = 2)` to `LifeRuleGenome()` and watch the m
 almost nothing. A control arm that nearly wins is telling you the problem is easy, not that the
 search is good.
 
-The engine is `src/jvmMain/kotlin/afield/stdlib/PopulationSearch.kt`
+The engine is `src/jvmMain/kotlin/afield/study/search/PopulationSearch.kt`
 ([reference](../../../../public/docs/reference/search.md)); the genomes and fitnesses are
-`src/jvmMain/kotlin/afield/stdlib/alife_evolve.kt`
+`src/jvmMain/kotlin/afield/simulation/agents/alife_evolve.kt`
 ([reference](../../../../public/docs/reference/alife.md)). The measurements behind every number
-above are in `src/jvmTest/kotlin/afield/stdlib/PopulationSearchTest.kt` — a bit-string genome and
+above are in `src/jvmTest/kotlin/afield/study/search/PopulationSearchTest.kt` — a bit-string genome and
 OneMax, where the optimum and the expected best of *n* draws are closed forms — and in the
 FIELD_TEST `stdlib.alife.evolve.gallery`
 (`src/jvmMain/kotlin/afield/examples/stdlib/AlifeEvolveGallery.kt`), 52 checks, which asserts every

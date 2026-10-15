@@ -1,9 +1,9 @@
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogEvent
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lblock
-import afield.logger.lprintln
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogEvent
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lblock
+import afield.app.diagnostics.logging.lprintln
 
 // lblock brackets a scope with a BEGIN and an END event sharing a blockId, so a
 // consumer can fold what is between them.

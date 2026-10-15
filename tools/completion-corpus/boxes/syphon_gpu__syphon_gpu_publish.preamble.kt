@@ -1,11 +1,14 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.targets.RenderToTexture
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.vulkan.targets.RenderToTexture
 var Box.syphonTarget by Inheritance<RenderToTexture>() /**/
 val Once.syphonTarget by Onceing<RenderToTexture>() /**/
 val Why.syphonTarget by Whying() /**/

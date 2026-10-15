@@ -5,7 +5,7 @@
 // Note the `Close` row: `FLine.Node.end` THROWS on a Close (it is Node(0) and stores no point of
 // its own), so the adapter reads the last stored point and a Close honestly carries blanks.
 
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val f = FLine()
     .moveTo(0.15, 0.2)

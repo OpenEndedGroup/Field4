@@ -1,5 +1,5 @@
-import afield.Box
-import afield.stdlib.AudioVisualizerOptions
+import afield.document.graph.Box
+import afield.ui.visualization.AudioVisualizerOptions
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture

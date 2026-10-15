@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.CodeUseSemanticAnalyzeRequest
-import afield.CodeUseTelemetryService
+import afield.app.diagnostics.CodeUseSemanticAnalyzeRequest
+import afield.app.diagnostics.CodeUseTelemetryService
 import java.nio.file.Files
 import java.sql.DriverManager
 
@@ -101,15 +101,15 @@ object CodeUseTelemetrySmokeTest {
         val importOnlyId = CodeUseTelemetryService.newSnippetKey()
         val importOnlySource = """
             import afield.*
-            import afield.nano.*
+            import afield.lang.nano.*
             import afield.stdlib.*
-            import afield.four.synth.*
-            import afield.stdlib.Vec2
-            import afield.stdlib.Vec3
-            import afield.stdlib.Vec4
-            import afield.stdlib.Quat
-            import afield.Box
-            import afield.four.util.*
+            import afield.audio.synth.*
+            import afield.math.linalg.Vec2
+            import afield.math.linalg.Vec3
+            import afield.math.linalg.Vec4
+            import afield.math.linalg.Quat
+            import afield.document.graph.Box
+            import afield.graphics.vulkan.util.*
             import afield.graphics.*
         """.trimIndent()
         CodeUseTelemetryService.recordCompileResult(
@@ -198,7 +198,7 @@ object CodeUseTelemetrySmokeTest {
             "Missing runtime exception failure row: $failures"
         }
 
-        val telemetrySource = java.nio.file.Paths.get("src/jvmMain/kotlin/afield/CodeUseTelemetryService.kt")
+        val telemetrySource = java.nio.file.Paths.get("src/jvmMain/kotlin/afield/app/diagnostics/CodeUseTelemetryService.kt")
         val summaryLine = Files.readAllLines(telemetrySource).indexOfFirst { it.contains("fun summary()") } + 1
         require(summaryLine > 0) { "Could not locate CodeUseTelemetryService.summary source line" }
         val (target, callers) = CodeUseTelemetryService.callersForSourceLine(
@@ -281,7 +281,7 @@ object CodeUseTelemetrySmokeTest {
         println("CodeUseTelemetrySmokeTest ok")
     }
 
-    private fun waitForSummary(predicate: (afield.CodeUseSummary) -> Boolean): afield.CodeUseSummary {
+    private fun waitForSummary(predicate: (afield.app.diagnostics.CodeUseSummary) -> Boolean): afield.app.diagnostics.CodeUseSummary {
         val deadline = System.currentTimeMillis() + 5_000
         var latest = CodeUseTelemetryService.summary()
         while (System.currentTimeMillis() < deadline) {
@@ -292,7 +292,7 @@ object CodeUseTelemetrySmokeTest {
         error("Timed out waiting for code-use telemetry writes: $latest")
     }
 
-    private fun waitForSymbols(predicate: (List<afield.CodeUseSymbolRow>) -> Boolean): List<afield.CodeUseSymbolRow> {
+    private fun waitForSymbols(predicate: (List<afield.app.diagnostics.CodeUseSymbolRow>) -> Boolean): List<afield.app.diagnostics.CodeUseSymbolRow> {
         val deadline = System.currentTimeMillis() + 5_000
         var latest = CodeUseTelemetryService.symbols(50)
         while (System.currentTimeMillis() < deadline) {

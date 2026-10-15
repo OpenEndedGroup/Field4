@@ -128,7 +128,7 @@ are compiled by nothing. The only thing in the tree that reacted was the corpus-
 `tools/test_demo_build_scripts.py`, which reports that a demo arrived and nothing about whether it
 is checked.
 
-`src/jvmTest/kotlin/afield/docs/AgentDemoRegistrationTest.kt` now asserts the missing half —
+`src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt` now asserts the missing half —
 every demo document maps to a registered transcript or sits in a named `UNVERIFIED` list with its
 reason and its fix — and `skinned_characters` is the one entry on that list. Writing the transcript
 is the fix; it belongs in `COMPILE_ONLY`, because its boxes open a Window and a Renderer.

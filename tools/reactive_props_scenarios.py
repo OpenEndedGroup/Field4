@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live scenarios for `propUp` / `propDown` / `propUpDown` (afield.ReactiveRuns).
+"""Live scenarios for `propUp` / `propDown` / `propUpDown` (afield.runtime.lifecycle.ReactiveRuns).
 
 Each scenario builds boxes in a fresh document through `tools/field_backdoor.py`, runs one of them,
 and then runs a *check* box: Kotlin that reads `ReactiveRuns.recentEvents()` (every start, end,
@@ -30,7 +30,7 @@ BACKDOOR = ROOT / "tools" / "field_backdoor.py"
 
 # Shared by every check box: the event log without its sequence numbers, and assertions on it.
 CHECK_PRELUDE = r'''
-val ev = afield.ReactiveRuns.recentEvents().map { it.substringAfter(' ') }
+val ev = afield.runtime.lifecycle.ReactiveRuns.recentEvents().map { it.substringAfter(' ') }
 val evText = ev.joinToString("\n")
 fun at(e: String): Int = ev.indexOf(e).also { check(it >= 0) { "missing event '$e' in:\n$evText" } }
 fun before(a: String, b: String) = check(at(a) < at(b)) { "'$a' should come before '$b' in:\n$evText" }
@@ -38,7 +38,7 @@ fun times(prefix: String) = ev.count { it.startsWith(prefix) }
 fun none(prefix: String) = check(times(prefix) == 0) { "expected no '$prefix' in:\n$evText" }
 fun result(box: String) = thisBox.named(box).getPropertyRaw("result")
 fun expectResult(box: String, v: Any) = check(result(box) == v) { "result of $box was ${result(box)}, expected $v\n$evText" }
-check(afield.ReactiveRuns.isQuiet()) { "a cascade is still running:\n$evText" }
+check(afield.runtime.lifecycle.ReactiveRuns.isQuiet()) { "a cascade is still running:\n$evText" }
 '''
 
 
@@ -93,7 +93,7 @@ class Scenario:
         return self.run("ctl", code)
 
     def clear(self) -> "Scenario":
-        return self.ctl("afield.ReactiveRuns.clearEvents()")
+        return self.ctl("afield.runtime.lifecycle.ReactiveRuns.clearEvents()")
 
     def sleep(self, seconds: float) -> "Scenario":
         self.steps.append(Step(f"sleep {seconds}"))
@@ -149,7 +149,7 @@ def fieldml_up_supplier(s: Scenario):
     s.steps.append(Step("set @" + s.p("A") + " mainLanguage fieldml"))
     s.connect("M", "A").connect("A", "B")
     s.ctl("afield.runtime.refreshMainLanguageRuntimes(thisBox.inside.boxes.values)")
-    s.ctl(f'val m = thisBox.named("{s.p("M")}"); val a = thisBox.named("{s.p("A")}"); val b = thisBox.named("{s.p("B")}"); check(a.ke is afield.ml.FieldMLExecution && b.ke is afield.ml.FieldMLExecution) {{ "language root=${{m.getPropertyRaw("mainLanguage")}}, A=${{a.ke::class}}, B=${{b.ke::class}}" }}')
+    s.ctl(f'val m = thisBox.named("{s.p("M")}"); val a = thisBox.named("{s.p("A")}"); val b = thisBox.named("{s.p("B")}"); check(a.ke is afield.lang.fieldml.FieldMLExecution && b.ke is afield.lang.fieldml.FieldMLExecution) {{ "language root=${{m.getPropertyRaw("mainLanguage")}}, A=${{a.ke::class}}, B=${{b.ke::class}}" }}')
     s.clear()
     s.code("A", 'setPropUp "n" 4')
     s.run("B", 'let v = propUp "n"\nsetProp "result" v')
@@ -168,7 +168,7 @@ def fieldml_down_reader(s: Scenario):
     s.steps.append(Step("set @" + s.p("A") + " mainLanguage fieldml"))
     s.connect("M", "A").connect("A", "B")
     s.ctl("afield.runtime.refreshMainLanguageRuntimes(thisBox.inside.boxes.values)")
-    s.ctl(f'val m = thisBox.named("{s.p("M")}"); val a = thisBox.named("{s.p("A")}"); val b = thisBox.named("{s.p("B")}"); check(a.ke is afield.ml.FieldMLExecution && b.ke is afield.ml.FieldMLExecution) {{ "language root=${{m.getPropertyRaw("mainLanguage")}}, A=${{a.ke::class}}, B=${{b.ke::class}}" }}')
+    s.ctl(f'val m = thisBox.named("{s.p("M")}"); val a = thisBox.named("{s.p("A")}"); val b = thisBox.named("{s.p("B")}"); check(a.ke is afield.lang.fieldml.FieldMLExecution && b.ke is afield.lang.fieldml.FieldMLExecution) {{ "language root=${{m.getPropertyRaw("mainLanguage")}}, A=${{a.ke::class}}, B=${{b.ke::class}}" }}')
     s.code("A", 'setPropDown "n" 1')
     s.run("A", 'setPropDown "n" 1')
     s.code("B", 'let v = propDown "n"\nsetProp "result" v')
@@ -242,7 +242,7 @@ def up_from_preamble(s: Scenario):
     s.run("B", "propUp<Int>(b)\nb = a + 1")
     s.run("C", "setPropertyRaw(\"result\", b + 1)")
     s.ctl(f'thisBox.named("{s.p("A")}").removePropertyRaw("a")\nthisBox.named("{s.p("B")}").removePropertyRaw("b")\n'
-          'afield.ReactiveRuns.clearEvents()')
+          'afield.runtime.lifecycle.ReactiveRuns.clearEvents()')
     s.run("C", "setPropertyRaw(\"result\", b + 1)")
     s.check('''
 expectResult(C, 3)
@@ -454,7 +454,7 @@ def up_rerun_held_during_pull(s: Scenario):
     s.code("A", "propUp<Int>(a)\na = 2")
     s.run("T", "var fired = false\nframes { while (frame()) { if (!fired && " + go + '.getPropertyRaw("go") == true) {\n'
                "fired = true\nval t = " + target + "\nafield.thisSessionInfo.set(t.inside)\n"
-               'afield.handle(afield.Message("execute-all").payload(afield.Execute(t.id, "code", 0, t.getPropertyRaw("code") as String, false)))\n'
+               'afield.app.protocol.handle(afield.app.protocol.Message("execute-all").payload(afield.app.protocol.Execute(t.id, "code", 0, t.getPropertyRaw("code") as String, false)))\n'
                "} } }", launch=True)
     s.clear()
     s.run("B", go + '.setPropertyRaw("go", true)\npropUp<Int>(a)\nsetPropertyRaw("result", a)' + RUNS)
@@ -583,7 +583,7 @@ def up_down_no_double_run(s: Scenario):
     s.code("A", "propUpDown<Int>(x)\nx = 1")
     s.run("B", "propUpDown<Int>(x)\nsetPropertyRaw(\"result\", x)")
     s.sleep(1.5)
-    s.ctl('check(afield.ReactiveRuns.recentEvents().none { it.contains("cascade") }) { afield.ReactiveRuns.recentEvents().joinToString("\\n") }')
+    s.ctl('check(afield.runtime.lifecycle.ReactiveRuns.recentEvents().none { it.contains("cascade") }) { afield.runtime.lifecycle.ReactiveRuns.recentEvents().joinToString("\\n") }')
     s.run("A", "propUpDown<Int>(x)\nx = 2")
     s.sleep(3.0)
     s.check('''
@@ -821,10 +821,10 @@ def diagnose(s: Scenario, port: int) -> str:
     code = (
         'val sb = StringBuilder()\n'
         'sb.append("events:\\n")\n'
-        'afield.ReactiveRuns.recentEvents().forEach { sb.append(it).append("\\n") }\n'
-        'sb.append("quiet=" + afield.ReactiveRuns.isQuiet() + "\\nboxes:\\n")\n'
+        'afield.runtime.lifecycle.ReactiveRuns.recentEvents().forEach { sb.append(it).append("\\n") }\n'
+        'sb.append("quiet=" + afield.runtime.lifecycle.ReactiveRuns.isQuiet() + "\\nboxes:\\n")\n'
         'thisBox.root.children.forEach { b ->\n'
-        '  sb.append(b.name + " running=" + afield.ReactiveRuns.isRunning(b) + " states=" + b.currentRunningStates + '
+        '  sb.append(b.name + " running=" + afield.runtime.lifecycle.ReactiveRuns.isRunning(b) + " states=" + b.currentRunningStates + '
         '" result=" + b.getPropertyRaw("result") + " reports=" + b.getPropertyRaw("_executionReports") + "\\n")\n'
         '}\n'
         f'java.io.File("{out}").writeText(sb.toString())'

@@ -2,7 +2,7 @@
 
 The Python template-server prototype was retired from the repository in October 2026.
 Field's existing remote-template client remains: its contract is documented beside
-`templateServers` and `templating()` in `src/jvmMain/kotlin/afield/server/templating.kt`.
+`templateServers` and `templating()` in `src/jvmMain/kotlin/afield/app/server/templating.kt`.
 The configuration below requires a separately provided compatible service.
 
 ## Configure Field

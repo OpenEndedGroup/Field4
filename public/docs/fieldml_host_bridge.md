@@ -9,8 +9,8 @@ From a FieldML box you can call a Kotlin method with any number of arguments, po
 This box is written in FieldML, and the drawing is done by Kotlin. A FieldML function of `(x, y)` is handed to `Img.generate`, which rasterises it; the result goes through Field's `colormap` extension and out through `showImg`.
 
 ```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_host_bridge/generated_field.png" wait="2.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-host-bridge-field" w="760" h="560" alt="a 240 by 240 raster in the viridis colourmap: concentric rings around a bright yellow centre, the rings shading out through green to deep indigo and back to teal, each ring pinched into lobes above and below the centre"}
-let Img = hostClass "afield.stdlib.Img"
-let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+let Img = hostClass "afield.media.image.Img"
+let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
 // The whole picture is this function. x and y are Ints; the result is one
 // sample. Kotlin calls it once per pixel.
@@ -38,7 +38,7 @@ The last two steps show the two ways to call a Kotlin extension function. `color
 `hostCall name arguments target` calls a method. The target comes last, so it can sit at the end of a pipe:
 
 ```diffstatic {data-lang=fieldml}
-let Img = hostClass "afield.stdlib.Img"
+let Img = hostClass "afield.media.image.Img"
 let img = hostNew (4, 4, 1, [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5]) Img
 
 img |> hostCall "index" (1, 0, 0)
@@ -95,7 +95,7 @@ A function taking no arguments (`Runnable`) is written `fun ignored -> …`.
 A value that comes from Kotlin keeps its JVM class, and the type checker uses it. Here `img.width` is an `Int`:
 
 ```diffstatic {data-lang=fieldml}
-let Img = hostClass "afield.stdlib.Img"
+let Img = hostClass "afield.media.image.Img"
 let img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img
 
 // Int, inferred from Img.getWidth() — not Host, and no cast anywhere.
@@ -104,7 +104,7 @@ img.width * img.height + img.channels
 
 So:
 
-- `thisBox` is a `Box`, `fline` is an `FLine`, `hostClass "afield.stdlib.Img"` is a `Class<Img>`, and `hostGet "Companion"` on it is an `Img.Companion`;
+- `thisBox` is a `Box`, `fline` is an `FLine`, `hostClass "afield.media.image.Img"` is a `Class<Img>`, and `hostGet "Companion"` on it is an `Img.Companion`;
 - dot access on a host value reads a JVM member, so `img.width` is an `Int`;
 - a member or an overload that does not exist is a type error, reported where the name was written, rather than a crash on the first run — misspell `hostGet "widht"` and the box says `Box has no member 'widht'` before it runs;
 - completion offers the members of a typed receiver: inside `img |> hostGet "wi` the list is `width`, and it says `Int`.
@@ -125,7 +125,7 @@ hostInput |> hostGet "whatever" |> head
   so convert it with hostAsList
 ```
 
-Two host types whose classes are both *known* and unrelated do not unify either: `if true then img else fline` is `Img is not FLine (afield.stdlib.Img and afield.graphics.FLine are unrelated)`. Two where one is assignable from the other do, so a `Vector2f` reaches a parameter declared as its read-only `Vector2fc` interface.
+Two host types whose classes are both *known* and unrelated do not unify either: `if true then img else fline` is `Img is not FLine (afield.media.image.Img and afield.geometry.path.FLine are unrelated)`. Two where one is assignable from the other do, so a `Vector2f` reaches a parameter declared as its read-only `Vector2fc` interface.
 
 `hostAsList` turns a host value into a FieldML list: it converts a JVM `List`, `Set`, array or `Map`, which is also how you walk `Box.parents`. The rest of the `hostAs…` family turns a value into a scalar:
 
@@ -139,9 +139,9 @@ hostStaticCall "max" ([5, 1, 9, 3], fun a b -> b - a) Collections
 
 `hostAsInt`, `hostAsFloat`, `hostAsBool` and `hostAsString` read a scalar out; `hostAs "SomeClass"` is a checked cast to a class, and doubles as the way FieldML names one.
 
-## Reaching `afield.four`
+## Reaching Field 4
 
-`afield.four` is Field's Vulkan layer. A small complete scene (a window, a compute shader over particles, a draw pass) can be written in FieldML statement for statement, including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin receiver lambda and whose `vec4s` only exists inside it, and the per-frame builders. Imports have no FieldML counterpart because FieldML names every class in full. Several of the calls such a scene makes are source macros, covered next.
+Field 4 is Field's Vulkan layer. A small complete scene (a window, a compute shader over particles, a draw pass) can be written in FieldML statement for statement, including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin receiver lambda and whose `vec4s` only exists inside it, and the per-frame builders. Imports have no FieldML counterpart because FieldML names every class in full. Several of the calls such a scene makes are source macros, covered next.
 
 ## Source macros
 
@@ -192,7 +192,7 @@ Two more things to know:
 Field's animation helpers, `eachFrame { … }`, `loop { … }`, `forever { … }` and `animate { … }`, take a `suspend Frames.() -> Unit`, and a FieldML function can fill it. Write it with one parameter, the `Frames`, and start it with `launchFrames`:
 
 ```diffstatic {data-lang=fieldml}
-let Phased = hostClass "afield.PhasedKt"
+let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
 
 // `f` is a Frames, typed off the JVM signature -- so `f.frameNumber` is checked
 // here, not on the first frame.
@@ -218,7 +218,7 @@ These are four frames of the spinning-triangle demo [below](#open-it), a second 
 To pass arguments by name, and leave out the ones with Kotlin defaults, write a record where a tuple would go. A positional call cannot skip a parameter, so named arguments are the only way to use a default:
 
 ```diffstatic {data-lang=fieldml}
-let Img = hostClass "afield.stdlib.Img"
+let Img = hostClass "afield.media.image.Img"
 let img = hostNew {width = 2, height = 2, channels = 3, data = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]} Img
 
 // Img.index(x, y, c = 0) -- `c` is left to Kotlin, which is something no
@@ -299,7 +299,7 @@ Things to change:
 
 </div>
 
-On a machine with a GPU, the `afield.four` demo builds a scene from FieldML. One box finds the `Renderer` above it, builds a shader module from two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }`, attaches a three-vertex mesh, and registers it with the render target. Connect it to whichever box owns your renderer.
+On a machine with a GPU, the Field 4 demo builds a scene from FieldML. One box finds the `Renderer` above it, builds a shader module from two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }`, attaches a three-vertex mesh, and registers it with the render target. Connect it to whichever box owns your renderer.
 
 [Open ↗](offline.html?file=assets/fieldml_afield_four_demo/metadata.edn), or open the [`fieldml_afield_four_demo`](agent_transcripts.md#fieldml_afield_four_demo) starting point from the welcome screen.
 
@@ -360,7 +360,7 @@ The lambda demo is about callback parameter types: a warp with no `hostAs` in it
 
 ## Where to look
 
-The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. The macro layer is `afield.ml.FieldMLMacroLayer`: expansion, the callee extraction, and the ledger of which macro is reachable how. `afield.stdlib.inheritedPropertyRaw` is the walk `prop` and Kotlin's `Inheritance` delegate share. The design notes are in `dev_docs/FIELDML_HOST_BRIDGE.md`.
+The reflection lives in `afield.lang.fieldml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.lang.fieldml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. The macro layer is `afield.lang.fieldml.FieldMLMacroLayer`: expansion, the callee extraction, and the ledger of which macro is reachable how. `afield.document.properties.inheritedPropertyRaw` is the walk `prop` and Kotlin's `Inheritance` delegate share. The design notes are in `dev_docs/FIELDML_HOST_BRIDGE.md`.
 
 ??? aside "Which test holds which claim"
     `FieldMLHostBridgeTest` has one test per capability. `FieldMLHostSurfaceCoverageTest` is the
@@ -369,4 +369,4 @@ The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring,
     parameters and the cases that stay untyped. `FieldMLSuspendCallbackTest` is the per-frame
     surface: every test in it asserts that the closure *ran*, not that a proxy exists.
     `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations, and `FieldMLSourceMacroTest`
-    holds the macro ledger to the live contents of `afield.macros.MacroRegistry` in both directions.
+    holds the macro ledger to the live contents of `afield.runtime.macros.MacroRegistry` in both directions.

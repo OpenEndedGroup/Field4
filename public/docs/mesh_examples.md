@@ -6,7 +6,7 @@ with a surface** is another. Ask a mesh whether it is closed, subdivide it, smoo
 deflating it, decimate it to a budget, measure its volume, shoot a ray at it, write it out for
 another program to read.
 
-`afield.stdlib` carries a CPU triangle-mesh family for that, built around a single value type,
+`afield.geometry.mesh` carries a CPU triangle-mesh family for that, built around a single value type,
 `TriMesh`. It generates primitives, marches an SDF into a surface, works out a mesh's topology,
 subdivides it (Loop), smooths it (Laplacian and Taubin), decimates it (QEM), welds it, measures its
 curvature, raycasts it through a BVH, reads and writes OBJ and STL, and takes a convex hull. All of
@@ -34,7 +34,7 @@ Flat `FloatArray`s (`positions` is `3 * vertexCount` floats, `indices` is `3 * t
 with optional per-vertex `normals`, `uvs` and `colors`. Three choices in that shape change how the
 type behaves:
 
-- **Flat arrays, not a list of vertex objects.** `Vec3` in `afield.stdlib.linalg` is *mutable*, and a
+- **Flat arrays, not a list of vertex objects.** `Vec3` in `afield.math.linalg` is *mutable*, and a
   mesh built out of mutable vectors is an aliasing bug waiting to happen: transform one vertex twice
   because two triangles share it and the surface tears. So `TriMesh` stores floats and every accessor
   (`position(i)`, `faceNormal(t)`, `triangle(t)`) hands back a **fresh** `Vec3` that cannot write
@@ -511,7 +511,7 @@ showMeshGrid(
 ```
 
 ??? aside "How a Voronoi face finds its corners"
-    Face membership in [`voronoi.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/voronoi.kt)
+    Face membership in [`voronoi.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/spatial/voronoi.kt)
     is combinatorial rather than metric: a corner records which three planes produced it, and a
     face's polygon is exactly the corners recording that plane. That matters around a
     near-cospherical site cluster, where the genuine corners sit closer together than any usable
@@ -671,7 +671,7 @@ Define a solid by a scalar field and extract its surface with marching cubes.
 | Entry point | Behavior |
 | --- | --- |
 | `ScalarField3D` | A scalar function of x, y and z. Negative values represent the inside when it is used as a signed-distance field; marching cubes extracts an iso-surface from it. |
-| `fun boundsOf(a: Vec3, b: Vec3): AxisAlignedBoundingBox3D` | An [`AxisAlignedBoundingBox3D`](reference/math.md#linalg-kt-axisalignedboundingbox3d) from two corners, sorted so `min <= max` on every axis. [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun boundsOf(a: Vec3, b: Vec3): AxisAlignedBoundingBox3D` | An [`AxisAlignedBoundingBox3D`](reference/math.md#linalg-spatial-kt-axisalignedboundingbox3d) from two corners, sorted so `min <= max` on every axis. [API](reference/graphics.md#mesh-sdf-kt). |
 | `fun boundsAround(center: Vec3 = Vec3(0f, 0f, 0f), radius: Number = 1.0): AxisAlignedBoundingBox3D` | A cube of side `2 * radius` centred on `center` — the usual march window for a centred shape. [API](reference/graphics.md#mesh-sdf-kt). |
 | `fun bounds(): AxisAlignedBoundingBox3D` | Bounds of the whole hierarchy — the mesh's AABB, for free. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun sdfSphere(radius: Number = 1.0, center: Vec3 = Vec3(0f, 0f, 0f)): ScalarField3D` | A sphere of `radius` centred on `center`. Exact signed distance. [API](reference/graphics.md#mesh-sdf-kt). |
@@ -798,7 +798,7 @@ Convert a mesh for display, renderer upload or further Field drawing.
 | `fun VoronoiCell3.toTriMesh(shrink: Double = 1.0, fanFromCentroid: Boolean = true, healToConvexHull: Boolean = true): TriMesh` | One 3D Voronoi cell's polygonal faces, triangulated into a closed [`TriMesh`](reference/graphics.md#mesh-kt-trimesh). [API](reference/graphics.md#mesh-field-kt). |
 | `fun VoronoiLattice.toTriMesh(shrink: Double = 0.92, boundedOnly: Boolean = false): TriMesh` | Every cell of a 3D Voronoi lattice as one [`TriMesh`](reference/graphics.md#mesh-kt-trimesh), one connected component per cell. [API](reference/graphics.md#mesh-field-kt). |
 | `fun TriMesh.toCapturedMesh(label: String = "TriMesh", creaseAngleDegrees: Double = 35.0): VisionGeometryPreview.CapturedMesh` | Pack this mesh into the 16-float-per-vertex layout `VisionGeometryPreview`'s rasterizer consumes, so the whole shaded / depth-buffered / wireframed renderer applies to a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh) for free. [API](reference/graphics.md#mesh-field-kt). |
-| `fun TriMesh.coloredByScalar(values: DoubleArray, colormap: String = "viridis", low: Double? = null, high: Double? = null, percentile: Double = 0.02): TriMesh` | Per-vertex colours from a per-vertex scalar, through the same [`afield.Colormaps`](reference/visualization.md#colormaps-kt-colormaps) tables RectSL's charts and `Img.colormap` use — so a curvature field, a distance field and a bar chart in the same document are coloured by one source of truth. [API](reference/graphics.md#mesh-field-kt). |
+| `fun TriMesh.coloredByScalar(values: DoubleArray, colormap: String = "viridis", low: Double? = null, high: Double? = null, percentile: Double = 0.02): TriMesh` | Per-vertex colours from a per-vertex scalar, through the same [`afield.graphics.color.Colormaps`](reference/graphics.md#colormaps-kt-colormaps) tables RectSL's charts and `Img.colormap` use — so a curvature field, a distance field and a bar chart in the same document are coloured by one source of truth. [API](reference/graphics.md#mesh-field-kt). |
 | `MeshView` | How to draw a [`TriMesh`](reference/graphics.md#mesh-kt-trimesh) in a preview: where the camera stands and what the frame looks like. [API](reference/graphics.md#mesh-field-kt). |
 | `fun TriMesh.renderPng(view: MeshView = MeshView(), caption: String? = null, title: String? = null): ByteArray` | This mesh rasterised to PNG bytes: perspective, z-buffer, two-light lambert shading over the per-vertex colours, and a depth-tested wireframe. [API](reference/graphics.md#mesh-field-kt). |
 | `fun TriMesh.renderPixels(view: MeshView = MeshView()): VisionGeometryPreview.Raster` | This mesh's raster as ARGB ints plus its size — for compositing several meshes into one figure. [API](reference/graphics.md#mesh-field-kt). |
@@ -817,14 +817,14 @@ Convert a mesh for display, renderer upload or further Field drawing.
 </div>
 
 Source:
-`src/jvmMain/kotlin/afield/stdlib/mesh.kt`,
-`src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt`,
-`src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt`,
-`src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt`,
-`src/jvmMain/kotlin/afield/stdlib/mesh_process.kt`,
-`src/jvmMain/kotlin/afield/stdlib/mesh_measure.kt`,
-`src/jvmMain/kotlin/afield/stdlib/mesh_io.kt`,
-`src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`.
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh.kt`,
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt`,
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh_generate.kt`,
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh_sdf.kt`,
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh_process.kt`,
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh_measure.kt`,
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh_io.kt`,
+`src/jvmMain/kotlin/afield/geometry/mesh/mesh_field.kt`.
 Developer notes, including the measurements behind the Voronoi fix:
 `dev_docs/MESH_GEOMETRY.md`.
 

@@ -1,14 +1,14 @@
 package afield.examples
 
-import afield.ai.SemanticRetrievalQueryRequest
-import afield.ai.SemanticRetrievalService
-import afield.ai.core.GlslIncludeLibraryIndex
+import afield.ai.retrieval.SemanticRetrievalQueryRequest
+import afield.ai.retrieval.SemanticRetrievalService
+import afield.ai.tools.GlslIncludeLibraryIndex
 
 /**
  * A/B eyeball harness for the local docs-search retrieval path.
  *
  * Runs a fixed (or command-line supplied) set of queries through exactly what the
- * rewritten [afield.ai.core.DocsSearchBridge] uses for grounding — the native
+ * rewritten [afield.ai.tools.DocsSearchBridge] uses for grounding — the native
  * Lucene hybrid index ([SemanticRetrievalService]) plus the local GLSL include
  * manifest ([GlslIncludeLibraryIndex]) — and prints the ranked hits. **No LLM is
  * called**, so it costs nothing and needs no API key: it lets you judge retrieval

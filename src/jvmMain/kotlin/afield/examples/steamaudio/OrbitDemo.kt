@@ -1,19 +1,19 @@
 package afield.examples.steamaudio
 
-import afield.four.audio.steamaudio.AirAbsorptionModel
-import afield.four.audio.steamaudio.AudioBuffer
-import afield.four.audio.steamaudio.AudioSettings
-import afield.four.audio.steamaudio.BinauralEffect
-import afield.four.audio.steamaudio.BinauralEffectParams
-import afield.four.audio.steamaudio.DirectEffect
-import afield.four.audio.steamaudio.DirectEffectFlags
-import afield.four.audio.steamaudio.DirectEffectParams
-import afield.four.audio.steamaudio.DistanceAttenuationModel
-import afield.four.audio.steamaudio.Hrtf
-import afield.four.audio.steamaudio.HrtfInterpolation
-import afield.four.audio.steamaudio.SteamAudio
-import afield.four.audio.steamaudio.SteamAudioContext
-import afield.four.audio.steamaudio.Vector3
+import afield.audio.spatial.steamaudio.AirAbsorptionModel
+import afield.audio.spatial.steamaudio.AudioBuffer
+import afield.audio.spatial.steamaudio.AudioSettings
+import afield.audio.spatial.steamaudio.BinauralEffect
+import afield.audio.spatial.steamaudio.BinauralEffectParams
+import afield.audio.spatial.steamaudio.DirectEffect
+import afield.audio.spatial.steamaudio.DirectEffectFlags
+import afield.audio.spatial.steamaudio.DirectEffectParams
+import afield.audio.spatial.steamaudio.DistanceAttenuationModel
+import afield.audio.spatial.steamaudio.Hrtf
+import afield.audio.spatial.steamaudio.HrtfInterpolation
+import afield.audio.spatial.steamaudio.SteamAudio
+import afield.audio.spatial.steamaudio.SteamAudioContext
+import afield.audio.spatial.steamaudio.Vector3
 import java.lang.foreign.Arena
 import java.nio.file.Files
 import java.nio.file.Path
@@ -62,7 +62,7 @@ fun main() {
     SteamAudioContext(
         logCallback = { level, message -> println("  [steamaudio/$level] ${message.trim()}") },
     ).use { context ->
-        println("  loaded native library from ${afield.four.audio.steamaudio.SteamAudioNatives.loadedFrom}")
+        println("  loaded native library from ${afield.audio.spatial.steamaudio.SteamAudioNatives.loadedFrom}")
 
         // Arena for everything that lives for the whole render. Allocating here, once, is what
         // keeps the render loop below free of allocation.

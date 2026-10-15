@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rp_renderer" index="0" -->
 
 ```edn [field-box id="rp_renderer" role="properties"]
-{"id" "rp_renderer" "index" 0 "name" "frame history renderer" "parents" ["root"] "children" ["rp_bundle"] "properties" {"children" #{#afield/box "rp_bundle"} "parents" #{#afield/box "root"} "name" "frame history renderer" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_renderer_code_.kt" "lines" 10 "characters" 248 "sha256" "aa209cdda55609d779460ce6d29a6a33fab2d5f30684d071ad313d1f560d4d92"}]}
+{"id" "rp_renderer" "index" 0 "name" "frame history renderer" "parents" ["root"] "children" ["rp_bundle"] "properties" {"children" #{#afield/box "rp_bundle"} "parents" #{#afield/box "root"} "name" "frame history renderer" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_renderer_code_.kt" "lines" 10 "characters" 259 "sha256" "f5f6fcebe96a04d8606b2f66b781a1251c91b4f3547f9f8b43bc1c64b306d93c"}]}
 ```
 
 ```kotlin [field-property box="rp_renderer" name="code" path="rp_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -35,18 +35,18 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
+`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 
 ```edn [field-box id="rp_bundle" role="properties"]
-{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 49 "characters" 2260 "sha256" "d23634963a5de11f7026f5785c40c01021bd56ab2146e7059c8a1a4481290b2a"}]}
+{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 49 "characters" 2306 "sha256" "df7383f739d4e9ec8d0c5800675221668fcd0b4f19e48a253dad9d0c6815a051"}]}
 ```
 
 ```kotlin [field-property box="rp_bundle" name="code" path="rp_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -77,7 +77,7 @@ once.bundle {
     // Silhouette edges, so there is something for a reprojection to be right or wrong about.
     // The handles go into `balls` in row-major order, ix outer and iz inner, which is the
     // order the animation box relies on to recover (ix, iz) from an index.
-    val handles = mutableListOf<afield.four.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
+    val handles = mutableListOf<afield.graphics.scene.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
     for (ix in -2..2) for (iz in -2..2) {
         handles.add(
             b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)
@@ -98,17 +98,17 @@ println("bundle ready: " + bundle.postStack.names() + ", " + balls.size + " ball
 <!-- field-box id="rp_chain" index="2" -->
 
 ```edn [field-box id="rp_chain" role="properties"]
-{"id" "rp_chain" "index" 2 "name" "reprojected accumulation" "parents" ["root" "rp_bundle"] "children" ["rp_modes"] "properties" {"children" #{#afield/box "rp_modes"} "parents" #{#afield/box "root" #afield/box "rp_bundle"} "name" "reprojected accumulation" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_chain_code_.kt" "lines" 108 "characters" 6330 "sha256" "62d4d78b861eaabd8fea47f1ff518de8b7f791c99b99422eae2bb89de9f10321"}]}
+{"id" "rp_chain" "index" 2 "name" "reprojected accumulation" "parents" ["root" "rp_bundle"] "children" ["rp_modes"] "properties" {"children" #{#afield/box "rp_modes"} "parents" #{#afield/box "root" #afield/box "rp_bundle"} "name" "reprojected accumulation" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_chain_code_.kt" "lines" 108 "characters" 6368 "sha256" "b51d39285bb8829303295e4c1f07f0ca450151f5d38db400e3b315d117845c5e"}]}
 ```
 
 ```kotlin [field-property box="rp_chain" name="code" path="rp_chain_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.addPassChain
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.addPassChain
+import afield.math.linalg.Matrix4f
 import kotlin.math.sin
 
-prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(chain)
 
 // `persistent` says WHAT last frame's pixels were. `frameHistory` says WHERE they were.
 // `temporalAccumulate` declares both, and that composition is the whole point: without the

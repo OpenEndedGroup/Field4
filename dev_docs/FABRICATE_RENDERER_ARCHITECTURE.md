@@ -1,7 +1,7 @@
 # Fabricate renderer architecture
 
 Fabricate is the higher-level scene, render-planning, and pass-graph layer over
-`afield.four`. Public usage lives in `public/docs/fabricate_renderer.md`; exact
+Field 4. Public usage lives in `public/docs/fabricate_renderer.md`; exact
 API behavior belongs in the KDoc of the files below.
 
 ## Code map
@@ -53,8 +53,8 @@ and registered textured g-buffer variants. Reloading goes through
 
 ```bash
 ./gradlew compileKotlinJvm
-uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.four.fabricated.FabricateSceneTestMain'
-uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.four.fabricated.FabricateRenderPlanTestMain'
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.graphics.scene.fabricated.FabricateSceneTestMain'
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'run-jvm-main afield.graphics.scene.fabricated.FabricateRenderPlanTestMain'
 ```
 
 Rendered behavior is exercised by the `FIELD_TEST` examples in

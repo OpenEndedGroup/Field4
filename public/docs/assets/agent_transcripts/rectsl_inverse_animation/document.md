@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_inverse_fit" index="0" -->
 
 ```edn [field-box id="rectsl_inverse_fit" role="properties"]
-{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 67 "characters" 2481 "sha256" "c77c40d3a3cfbd87f4cb054f444af59d4d05daca5114046d8fb098799b93e115"}]}
+{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 67 "characters" 2486 "sha256" "65ce3766d31b6b4139cbb2aa2890da8a18edb7bfe01c79fce2259194e7166749"}]}
 ```
 
 ```kotlin [field-property box="rectsl_inverse_fit" name="code" path="rectsl_inverse_fit_code_.kt"]
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 val duration = 4.0
 
@@ -89,11 +89,11 @@ display("figure", RectSLFitFigure.render(
 <!-- field-box id="rectsl_free_param_word" index="1" -->
 
 ```edn [field-box id="rectsl_free_param_word" role="properties"]
-{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 60 "characters" 1982 "sha256" "972b88a35de26fd8a85cce35cf70e004045b94d190c956623a8cafcbc9add0ca"}]}
+{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 60 "characters" 1987 "sha256" "4812063cebf37e3d6fd359f399eade817ec7b5fa04bd55d8af281e50889ee93f"}]}
 ```
 
 ```kotlin [field-property box="rectsl_free_param_word" name="code" path="rectsl_free_param_word_code_.kt"]
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
 // constant it is now, so the scene plays as written.

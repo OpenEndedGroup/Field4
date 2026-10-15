@@ -37,9 +37,9 @@ change). Both go beyond one page's prose, so this handoff blocks the page.
   (AGENTS.md section 3, `dev_docs/lighting/NEURAL_TOOLS.md`). It must not be synthesized.
 - The page's "held-out source excerpt" is an MJQ track ("Skating", per the file name), not
   Mancini. The prose never says so, and a reader hearing the result needs to know it.
-- Field-side API: `src/jvmMain/kotlin/afield/stdlib/noir/audioai/UnderfitOperations.kt`
+- Field-side API: `src/jvmMain/kotlin/afield/audio/ai/UnderfitOperations.kt`
   (`underfitCandidates`, `UnderfitLoraCheckpoint`), covered by
-  `src/jvmTest/kotlin/afield/stdlib/noir/audioai/UnderfitOperationsTest.kt`. `field_audio_ai.md`
+  `src/jvmTest/kotlin/afield/audio/ai/UnderfitOperationsTest.kt`. `field_audio_ai.md`
   (around its `underfitCandidates` example) already documents the API, so it would survive losing
   this page.
 - The page is linked from `public/zensical.yml` (Audio AI nav) and from

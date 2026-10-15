@@ -1,6 +1,6 @@
 name: alife_script
 description: |
-  **Giving one agent a program.** `afield.stdlib.alife_script` adds a per-agent behaviour layer to
+  **Giving one agent a program.** `afield.simulation.agents`' `alife_script.kt` adds a per-agent behaviour layer to
   ALife. The nine `alife_*.kt` files already there advance a whole population with one `step(params)`
   call — `BoidFlock.step`, `PhysarumSwarm.step` — and this layer lets an *individual* agent run a
   program: sequencing, waiting on simulation time, named phases, bounded concurrent sub-behaviours,

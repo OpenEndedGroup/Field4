@@ -1,4 +1,4 @@
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 val duration = 4.0
 

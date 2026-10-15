@@ -14,12 +14,12 @@ generated table in `dev_docs/GUARD_CORPORA.md` alone, because another branch tha
 
 | file | what |
 | --- | --- |
-| `src/jvmMain/kotlin/afield/lua/LuaNative.kt` | `LuaLibrary` (locate: `-Dafield.lua.library`, `AFIELD_LUA_LIBRARY`, Homebrew `/opt/homebrew/lib`, `/usr/local/lib`, Linux lib dirs; `describe()` says `brew install luajit`) and `LuaNative`: FFM downcalls for ~35 functions of the Lua 5.1 C API, and one upcall stub (`dispatchStub`) for every Kotlin function. No wrapper library. |
-| `src/jvmMain/kotlin/afield/lua/LuaState.kt` | one `lua_State`: lock, marshalling, `run`/`load`/`call`, `runGuarded` (budget + line recording), `tick`, `callGuarded`, `close`. |
+| `src/jvmMain/kotlin/afield/lang/lua/LuaNative.kt` | `LuaLibrary` (locate: `-Dafield.lua.library`, `AFIELD_LUA_LIBRARY`, Homebrew `/opt/homebrew/lib`, `/usr/local/lib`, Linux lib dirs; `describe()` says `brew install luajit`) and `LuaNative`: FFM downcalls for ~35 functions of the Lua 5.1 C API, and one upcall stub (`dispatchStub`) for every Kotlin function. No wrapper library. |
+| `src/jvmMain/kotlin/afield/lang/lua/LuaState.kt` | one `lua_State`: lock, marshalling, `run`/`load`/`call`, `runGuarded` (budget + line recording), `tick`, `callGuarded`, `close`. |
 | `src/jvmMain/resources/afield/lua/prelude.lua` | the Lua half of the API (`print`, `display`, `box` proxies, `field.named`, `line`/`lines`, `slider`/`checkbox`, `spawn`/`wait`, the guard/recorder hook, the message handler, completion). |
-| `src/jvmMain/kotlin/afield/lua/LuaLanguage.kt` | `LuaExecution` (main language `lua`, code_language `Lua` → Monaco's stock `lua` grammar), the box handlers, line notes via `LastRunNotes`, completion. |
+| `src/jvmMain/kotlin/afield/lang/lua/LuaLanguage.kt` | `LuaExecution` (main language `lua`, code_language `Lua` → Monaco's stock `lua` grammar), the box handlers, line notes via `LastRunNotes`, completion. |
 | `src/jvmTest/kotlin/afield/lua/` | `LuaStateTest` (13), `LuaBoxTest` (12) and `LuaCatalogTest` (2), every native test an `Assume` on `LuaLibrary.isAvailable`, so without LuaJIT they are *skipped*, not passed. 27/27 passed, 0 skipped on 2026-09-30. |
-| `src/jvmMain/kotlin/afield/lua/LuaCatalog.kt`, `src/jvmMain/resources/afield/lua/lua-stdlib.txt`, `lua-field.txt` | completion signatures: 146 Lua 5.1/LuaJIT functions and 34 Field ones, one `signature \| doc` a line. `LuaCatalogTest` holds both to a live state with the prelude in both directions (180 live = 180 catalogued). |
+| `src/jvmMain/kotlin/afield/lang/lua/LuaCatalog.kt`, `src/jvmMain/resources/afield/lua/lua-stdlib.txt`, `lua-field.txt` | completion signatures: 146 Lua 5.1/LuaJIT functions and 34 Field ones, one `signature \| doc` a line. `LuaCatalogTest` holds both to a live state with the prelude in both directions (180 live = 180 catalogued). |
 | `tools/field_languages.py`, `tools/build_zensical_docs.py` | `lua` needs a language root; `requires="luajit"` is a docs native prerequisite. |
 
 ## Lifecycle
@@ -110,7 +110,7 @@ for 4–8 lines) and lost their first letter (`box` read `ox`). Both were genera
 - A line note is drawn at the foot of the editor pane, screenshot prep makes the pane 840–1200 CSS px,
   and the clip keeps the note (a note is part of what the editor shows). Every Lua run leaves a note,
   so every Lua editor figure was pane-sized; any language whose runs leave notes would be. Fix:
-  `fitEditorPaneToContentAndNote` in `src/jsMain/kotlin/afield/Main.kt`, on the `editorOnly` capture
+  `fitEditorPaneToContentAndNote` in `src/jsMain/kotlin/afield/app/client/Main.kt`, on the `editorOnly` capture
   path only and only when a note is visible, shortens the pane to text + output zones + note + 36 px and
   relayouts Monaco before clipping — `ui.editorHeight(px)` done automatically. Live: pane 1200 → 327
   CSS px, figure 2440 → 702 px. `EditorCaptureHeightTest` holds every committed editor figure to

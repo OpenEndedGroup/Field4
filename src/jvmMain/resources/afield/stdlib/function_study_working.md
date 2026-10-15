@@ -54,10 +54,10 @@ It does not recompile the study or generate/execute another exporter.
 ## Actual Kotlin contract
 
 ```kotlin
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyEvent
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyEvent
+import afield.math.functions.StudyChoice
 import kotlin.math.*
 
 with(Functions) {

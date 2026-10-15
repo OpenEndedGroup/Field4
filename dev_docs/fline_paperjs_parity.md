@@ -1,9 +1,9 @@
 # FLine against Paper.js, Skia and p5: the 2026-10-12 audit
 
-What `afield.graphics.FLine` offers for the operations a 2D path library is judged on, where it
+What `afield.geometry.path.FLine` offers for the operations a 2D path library is judged on, where it
 sat before this pass, and what is still missing. New API lives in
-`src/jvmMain/kotlin/afield/graphics/FLineMeasure.kt`; its tests in
-`src/jvmTest/kotlin/afield/graphics/FLineMeasureTest.kt`; the user-facing sections are
+`src/jvmMain/kotlin/afield/geometry/path/FLineMeasure.kt`; its tests in
+`src/jvmTest/kotlin/afield/geometry/path/FLineMeasureTest.kt`; the user-facing sections are
 "Measuring along a line", "Trimming and splitting by distance" and "Crossings, bounds and
 orientation" in `public/docs/fline_examples.md`; the demo is
 `dev_docs/agents/transcripts/fline_measure.yaml` (registered `EXECUTE`).

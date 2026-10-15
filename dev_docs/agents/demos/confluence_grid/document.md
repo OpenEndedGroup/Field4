@@ -23,7 +23,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="8b9d6031-73d8-4a82-95db-b40acfdd2806" name="code" path="8b9d6031-73d8-4a82-95db-b40acfdd2806_code_.kt"]
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 // A 5x4 confluence grid in 3D. Row = term, column = scheduler, all twenty reducing together.
 //

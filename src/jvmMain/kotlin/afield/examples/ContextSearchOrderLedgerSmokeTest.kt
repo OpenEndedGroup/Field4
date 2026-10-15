@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.OperationTranscript
-import afield.Box
-import afield.SavingContext
-import afield.SessionInformation
-import afield.thisSessionInfo
+import afield.tools.automation.OperationTranscript
+import afield.document.graph.Box
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -23,7 +23,7 @@ expect:
     - "ContextSearchOrderLedgerSmokeTest ok"
 */
 /**
- * The whole search order of `fromContext` (afield.four.modules, Mesh.kt), staged live, one box per
+ * The whole search order of `fromContext` (afield.document.context), staged live, one box per
  * step, asserted in both directions.
  *
  * bafa9ee5f dropped step 3 — this box's own top-level (`ki`) variables — from the default search,
@@ -79,7 +79,7 @@ object ContextSearchOrderLedgerSmokeTest {
      * uses, and it is the same bag `fromContext` step 2 walks.
      */
     private const val OWN_PROPERTY_CODE = """import java.util.concurrent.atomic.AtomicInteger
-import afield.four.modules.fromContext
+import afield.document.context.fromContext
 thisBox.setPropertyRaw("owned_by_me", AtomicInteger(11))
 val found = runCatching { fromContext<AtomicInteger>() }
 println("own-property PASS found=" + (found.getOrNull()?.get()?.toString() ?: "absent"))
@@ -91,7 +91,7 @@ println("own-property PASS found=" + (found.getOrNull()?.get()?.toString() ?: "a
      * succeed by accident and now needs the opt-in said out loud.
      */
     private const val OWN_VARIABLE_CODE = """import java.util.concurrent.atomic.AtomicInteger
-import afield.four.modules.fromContext
+import afield.document.context.fromContext
 val mine_only = AtomicInteger(22)
 val byDefault = runCatching { fromContext<AtomicInteger>() }
 println("own-variable PASS default=" + (byDefault.getOrNull()?.get()?.toString() ?: "absent"))
@@ -236,15 +236,15 @@ ${pass(OWN_VARIABLE_CODE, "pass2").trimEnd().prependIndent("        ")}
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "context-search-order-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "context-search-order-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("ContextSearchOrderLedgerSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("ContextSearchOrderLedgerSmokeTest: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 
     private fun stripHtml(html: String): String =

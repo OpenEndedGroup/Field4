@@ -52,8 +52,8 @@ It does reproduce and remove a concrete cause of the same false-stall symptom.
 
 ## Verification
 
-- `./gradlew --no-daemon jvmTest --tests afield.NativeCaptureTargetTest --tests
-  afield.four.WindowCaptureQueueTest`: **12 passed**, tree-write guard passed,
+- `./gradlew --no-daemon jvmTest --tests afield.media.capture.NativeCaptureTargetTest --tests
+  afield.graphics.vulkan.WindowCaptureQueueTest`: **12 passed**, tree-write guard passed,
   2m 38s. Includes nearest-parent selection, cyclic graphs, ambiguity, unknown uid,
   duplicate window bindings, and identical box ids in separate documents.
 - Focused Python suites: **106 passed**, including RPC uid forwarding and the docs

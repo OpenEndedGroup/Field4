@@ -5645,7 +5645,7 @@ body.mode-editor-only .field-toast {
     display: none !important;
 }
 
-/* Drawing layer (src/jsMain/kotlin/afield/drawingLayer.kt): an Excalidraw scene over the canvas.
+/* Drawing layer (src/jsMain/kotlin/afield/app/canvas/drawingLayer.kt): an Excalidraw scene over the canvas.
    Inactive, it is visible but inert and shows none of Excalidraw's UI. */
 .field-drawing-layer {
     position: fixed;

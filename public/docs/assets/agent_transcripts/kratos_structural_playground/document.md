@@ -11,18 +11,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_structural" index="0" -->
 
 ```edn [field-box id="kratos_structural" role="properties"]
-{"id" "kratos_structural" "index" 0 "name" "Kratos structural playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos structural playground" "_tombstone" false "frame" #afield/rect [60.0 220.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_structural_code_.kt" "lines" 225 "characters" 12151 "sha256" "485a0531fe89b215678c6557376b6638439947318944529db8a24d04f44f49bd"}]}
+{"id" "kratos_structural" "index" 0 "name" "Kratos structural playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos structural playground" "_tombstone" false "frame" #afield/rect [60.0 220.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_structural_code_.kt" "lines" 225 "characters" 12244 "sha256" "1ac0d3eec5cc2857e297e7d89291192b6f7c9d00ec0a82b481398bff3c9c7af9"}]}
 ```
 
 ```kotlin [field-property box="kratos_structural" name="code" path="kratos_structural_code_.kt"]
-import afield.frames
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.TriMesh
-import afield.stdlib.showMeshGrid
-import afield.tetgen.Tetgen
-import afield.tetgen.TetgenLibrary
+import afield.runtime.lifecycle.frames
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.showMeshGrid
+import afield.geometry.mesh.tetgen.Tetgen
+import afield.geometry.mesh.tetgen.TetgenLibrary
 import java.util.concurrent.atomic.AtomicReference
 
 // Launch (Alt-R). Drag a slider to reshape the bracket — that part is instant.

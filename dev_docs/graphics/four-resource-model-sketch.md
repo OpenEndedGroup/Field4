@@ -360,14 +360,14 @@ and whether argument snapshots merit a public builder or an internal repair to
 
 Local links refer to the worktree's baseline files; symbols are the durable anchors.
 
-- [Module](../../src/jvmMain/kotlin/afield/four/modules/Module.kt): `Parameters.textures`, `textureArrays`, `TexturePointer`, `TextureArrayPointer`, `ModulePointer.reload`, reflected layout/linking, and the render-time descriptor loop.
-- [ComputeModule](../../src/jvmMain/kotlin/afield/four/modules/ComputeModule.kt) and [MeshModule](../../src/jvmMain/kotlin/afield/four/modules/MeshModule.kt): corresponding texture/layout paths.
-- [DescriptorSetLayout](../../src/jvmMain/kotlin/afield/four/device/DescriptorSetLayout.kt): current push-descriptor/count/indexing checks; ordinary table layouts would be a separate configuration.
-- [Device](../../src/jvmMain/kotlin/afield/four/device/Device.kt): enabled address/indexing/timeline features and currently disabled update-after-bind bits.
-- [Renderer](../../src/jvmMain/kotlin/afield/four/Renderer.kt): queue serialization, recording workers, completion callbacks, `submit`, `submitCompute`, `cleanupStack`.
-- [Queue](../../src/jvmMain/kotlin/afield/four/device/Queue.kt), [Semaphore](../../src/jvmMain/kotlin/afield/four/device/Semaphore.kt), [OpenXRHmdTarget](../../src/jvmMain/kotlin/afield/four/targets/OpenXRHmdTarget.kt): other submission and ownership boundaries.
-- [VulkanBuffer](../../src/jvmMain/kotlin/afield/four/buffers/VulkanBuffer.kt), [FrameBufferGroup](../../src/jvmMain/kotlin/afield/four/buffers/FrameBufferGroup.kt), [Structure](../../src/jvmMain/kotlin/afield/four/buffers/Structure.kt), [AutoDisposer](../../src/jvmMain/kotlin/afield/four/util/AutoDisposer.kt): native generations, address resolution, transfer dependencies and disposal.
-- [ShaderAbi](../../src/jvmMain/kotlin/afield/four/modules/ShaderAbi.kt): reflection-based reload compatibility.
+- [Module](../../src/jvmMain/kotlin/afield/graphics/render/Module.kt): `Parameters.textures`, `textureArrays`, `TexturePointer`, `TextureArrayPointer`, `ModulePointer.reload`, reflected layout/linking, and the render-time descriptor loop.
+- [ComputeModule](../../src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt) and [MeshModule](../../src/jvmMain/kotlin/afield/graphics/render/MeshModule.kt): corresponding texture/layout paths.
+- [DescriptorSetLayout](../../src/jvmMain/kotlin/afield/graphics/vulkan/device/DescriptorSetLayout.kt): current push-descriptor/count/indexing checks; ordinary table layouts would be a separate configuration.
+- [Device](../../src/jvmMain/kotlin/afield/graphics/vulkan/device/Device.kt): enabled address/indexing/timeline features and currently disabled update-after-bind bits.
+- [Renderer](../../src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt): queue serialization, recording workers, completion callbacks, `submit`, `submitCompute`, `cleanupStack`.
+- [Queue](../../src/jvmMain/kotlin/afield/graphics/vulkan/device/Queue.kt), [Semaphore](../../src/jvmMain/kotlin/afield/graphics/vulkan/device/Semaphore.kt), [OpenXRHmdTarget](../../src/jvmMain/kotlin/afield/graphics/vulkan/targets/OpenXRHmdTarget.kt): other submission and ownership boundaries.
+- [VulkanBuffer](../../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/VulkanBuffer.kt), [FrameBufferGroup](../../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/FrameBufferGroup.kt), [Structure](../../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/Structure.kt), [AutoDisposer](../../src/jvmMain/kotlin/afield/graphics/vulkan/util/AutoDisposer.kt): native generations, address resolution, transfer dependencies and disposal.
+- [ShaderAbi](../../src/jvmMain/kotlin/afield/graphics/shader/ShaderAbi.kt): reflection-based reload compatibility.
 - [Canonical lesson index](../../public/docs/assets/canonical_graphics/LESSONS.md): conventional triangle, buffer-reference particles, texturing, multi-texture, and ping-pong lessons.
 - [NoGraphicsAPI Vulkan contract](https://github.com/sebbbi/NoGraphicsAPI/blob/e025cc12793ce7d77ba35298860f36eb64a62b45/docs/vulkan-support.md): architectural reference; its new-extension backend is not adopted here.
 

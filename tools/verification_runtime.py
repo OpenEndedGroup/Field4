@@ -485,7 +485,9 @@ def run_with_watchdog(
     backdoor client names its session log `…-pid<PID>-….jsonl`, so the PID is an exact
     key where "newest log that happens to contain an error" is only a guess.
     """
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdout_file, tempfile.TemporaryFile(
+    with tempfile.TemporaryDirectory(prefix="field-watchdog-") as output_directory, (
+        Path(output_directory) / "stdout"
+    ).open("w+", encoding="utf-8") as stdout_file, tempfile.TemporaryFile(
         mode="w+", encoding="utf-8"
     ) as stderr_file:
         popen_kwargs: dict[str, object] = {
@@ -523,9 +525,13 @@ def run_with_watchdog(
                 if completion_probe is not None and completion_seen_at is None:
                     stdout_size = os.fstat(stdout_file.fileno()).st_size
                     if stdout_size != last_stdout_size:
-                        stdout_file.seek(0)
-                        partial_stdout = stdout_file.read()
-                        stdout_file.seek(0, os.SEEK_END)
+                        # The child inherits stdout's file offset. Seeking that descriptor
+                        # can make a concurrent write overwrite the beginning of its JSON.
+                        # A separately opened reader has its own offset on every platform.
+                        with (Path(output_directory) / "stdout").open(
+                            encoding="utf-8", errors="replace"
+                        ) as snapshot:
+                            partial_stdout = snapshot.read()
                         last_stdout_size = stdout_size
                         if completion_probe(partial_stdout):
                             completion_seen_at = now

@@ -62,7 +62,7 @@ const PROXIMITY_SCORE = new Map([
 // `recency`, up to ~62 — lives in `localStorage`, i.e. zero for a new user, zero in a fresh profile, and
 // zero in every test. So the base sits ABOVE CATEGORY_WEIGHT's ceiling of 28, so a called-out member
 // clears an otherwise uncategorised page, and BELOW recency's, so what someone demonstrably uses still
-// wins. Kept in step with `afield.CommonMemberPrior.BASE`/`STEP`, which FieldSuggestPresentationTest
+// wins. Kept in step with `afield.runtime.completion.CommonMemberPrior.BASE`/`STEP`, which FieldSuggestPresentationTest
 // asserts against these two literals.
 const COMMON_MEMBER_BASE = 40;
 const COMMON_MEMBER_STEP = 2;
@@ -190,7 +190,7 @@ const requestWithReply = (
 
 // ---- Line notes ---------------------------------------------------------------------------------
 // What a box's program shows at one line — a sentence and, when a language can draw it, a picture of
-// that line's partial evaluation (afield.stdlib.LineNotes on the server: a StackSL stage, a RectSL
+// that line's partial evaluation (afield.ui.output.LineNotes on the server: a StackSL stage, a RectSL
 // scene built up to the line). Any language whose runtime registers a provider gets them, here in the
 // completion popup and, through bootstrapMonaco.js, in the notes beside the cursor.
 const LINE_NOTE_TIMEOUT_MS = 5000;

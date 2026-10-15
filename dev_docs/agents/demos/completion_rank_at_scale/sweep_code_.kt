@@ -6,7 +6,7 @@
 // 578 carets through it. Nothing in the repository is touched.
 //
 // It needs the spec the test drops. If the box tells you it is missing, run once:
-//   ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'
+//   ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 
 import java.io.File
 
@@ -29,7 +29,7 @@ val spec = File(repo, "build/completion-corpus/rank-spec.json")
 
 val report = if (!spec.exists()) {
     "no spec at ${spec.path}\n\nrun once, then re-run me:\n" +
-        "  ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'"
+        "  ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'"
 } else {
     val process = ProcessBuilder("python3", "tools/rank_weight_lab.py")
         .directory(repo).redirectErrorStream(true).start()

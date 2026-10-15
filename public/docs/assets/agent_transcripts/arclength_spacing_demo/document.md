@@ -18,7 +18,7 @@ Same two curves, ticked instead of dashed, so you can see the spacing itself rat
 than its effect on a dash.
 
 ```edn [field-box id="arclength_ticks" role="properties"]
-{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 96 "characters" 3912 "sha256" "65eb2bd52e29a5d90612ca2ae74b844489b18642ae816dd9730daadcaeb6c3ab"}]}
+{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 96 "characters" 3930 "sha256" "0137f42409d56319eba86507c3bf27c639e38fe4f1988c7cc438874a35e1339a"}]}
 ```
 
 ```kotlin [field-property box="arclength_ticks" name="code" path="arclength_ticks_code_.kt"]
@@ -98,7 +98,7 @@ val report = { name: String, line: FLine ->
     val a = line.nodes[0].to
     val b = n.to
     val ptSeg = { p: Vec3 ->
-        field.graphics.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
+        afield.geometry.path.java2d.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
     }
     val flatness = kotlin.math.sqrt(maxOf(ptSeg(n.c1), ptSeg(n.c2)))
     val mid = vec(
@@ -108,7 +108,7 @@ val report = { name: String, line: FLine ->
     )
     val chordMid = vec(0.5 * (a.x + b.x), 0.5 * (a.y + b.y), 0.5 * (a.z + b.z))
     val skew = mid.distance(chordMid)
-    val leaves = afield.graphics.PathFlattener(line, 0.01f).mappings.size
+    val leaves = afield.geometry.path.PathFlattener(line, 0.01f).mappings.size
     "%-22s flatness %8.3f   skew %8.3f   leaves %5d".format(name, flatness, skew, leaves)
 }
 

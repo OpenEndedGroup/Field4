@@ -16,7 +16,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("afield.stdlib.linalg.codegen.MainKt")
+    mainClass.set("afield.math.linalg.codegen.MainKt")
 }
 
 val generatedRoot = rootProject.layout.projectDirectory.dir("src/generatedLinalg/kotlin")

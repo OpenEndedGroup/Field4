@@ -1,6 +1,6 @@
-import afield.petri.PetriNet
-import afield.petri.PetriRun
-import afield.petri.petri
+import afield.simulation.petri.PetriNet
+import afield.simulation.petri.PetriRun
+import afield.simulation.petri.petri
 
 // Inherited by the box below, which is all it takes for the particles to hear the net.
 prop<PetriNet>(sparkNet)

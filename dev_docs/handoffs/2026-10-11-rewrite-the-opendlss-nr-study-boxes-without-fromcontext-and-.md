@@ -6,8 +6,8 @@
 - **Close with:** `python tools/docs_notes.py handoff-close be52bc6a "what happened"`
 
 `public/docs/open_dlss_nr.md` shows the two study boxes (cube study and ink study) and the record box with
-`val owner = fromContext<Renderer>()`, `import afield.four.modules.fromContext`, and
-`import afield.stdlib.linalg.Vector4f` (DOCS_WRITING_RULES 7). The boxes sit beneath the renderer, so they
+`val owner = fromContext<Renderer>()`, `import afield.document.context.fromContext`, and
+`import afield.math.linalg.Vector4f` (DOCS_WRITING_RULES 7). The boxes sit beneath the renderer, so they
 should use the preamble's `renderer`; the stdlib import should go. The study fences also print the
 full 30-line control setup unfolded (rule 8). Rewrite the fences together with the downloadable
 assets (`assets/opendlssnr/study.kt`, `cubes.kt`, `record.kt`) and the transcripts

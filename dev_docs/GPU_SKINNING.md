@@ -170,11 +170,11 @@ Both of these limits are published for readers, alongside the other nine the tre
 timed out from a subject that is broken — run a **trusted control** in the same invocation.
 
 **`MeshInstance.applyToMesh` cannot be called from a `main`.** Its buffers come from
-`defaultBuffer { … }.buffer` (`src/jvmMain/kotlin/afield/four/buffers/magic.kt:237#buffer`), which
-allocates through `src/jvmMain/kotlin/afield/four/buffers/VulkanBuffer.kt:102#renderer` — a
+`defaultBuffer { … }.buffer` (`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:237#buffer`), which
+allocates through `src/jvmMain/kotlin/afield/graphics/vulkan/buffers/VulkanBuffer.kt:102#renderer` — a
 constructor parameter defaulting to `fromContext()`. Inside a box that resolves; from a `main` —
 which is where every smoke and the evidence renderer live — it throws
-`Cannot invoke "afield.Box.getProperties()"`. `GpuSkinner` therefore owns its own vertex and index
+`Cannot invoke "afield.document.graph.Box.getProperties()"`. `GpuSkinner` therefore owns its own vertex and index
 buffers with an explicit renderer, which it wants anyway: it uploads geometry **once**.
 
 **A `CpuSkinner` and a `GpuSkinner` on the same `MeshInstance` fight.** `CpuSkinner.pose` rewrites

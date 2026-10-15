@@ -304,7 +304,7 @@ clock too, which is why the drag here is driven by the step count and not by `no
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/cloth_loop.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="960" h="120" embed=true name="animation-cloth-loop" alt="a wireframe cloth of 20 by 10 particles hanging from five red pins along its top edge, drawn as cyan constraint segments with pale dots at the particles and short green velocity whiskers; an invisible hand drags its bottom-right corner in a slow loop, and the sheet stretches, swings and folds after it while the caption counts frames upward"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 // The physics system. State3 is the SoA particle store; the simulation owns it and grows it as
 // things are added, so it starts empty.
@@ -587,7 +587,7 @@ write an animation.
 
 ### The Runloop
 
-`Runloop.start()`, in [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt), is the whole scheduler:
+`Runloop.start()`, in [`src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt), is the whole scheduler:
 
 ```diffstatic {data-lang=kotlin}
 while (true) {
@@ -987,17 +987,16 @@ Every public name in `Phased.kt`, grouped by what it is for.
 
 | what | file |
 | --- | --- |
-| `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Phased.kt) |
-| the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt) |
-| `animate`, `start` | [`src/jvmMain/kotlin/afield/stdlib/stdlib.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/stdlib.kt) — listed in [Workspace](reference/workspace.md) |
-| what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ReturnValueRegistry.kt) |
-| stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Boxes.kt) |
-| the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt) |
-| the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/FramesSemanticsTest.kt) |
+| `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) |
+| the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) |
+| `animate`, `start` | [`src/jvmMain/kotlin/afield/math/linalg/stdlib.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/linalg/stdlib.kt) — listed in [Workspace](reference/workspace.md) |
+| what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt) |
+| stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/document/graph/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/document/graph/Boxes.kt) |
+| the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt) |
+| the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt) |
 
-`Phased.kt` is not part of the [codebase reference](reference/index.md): that is generated from
-`afield.stdlib`, `afield.visualization` and `afield.four.synth`, and `Phased.kt` sits in `afield`
-itself, one layer below. This page is its reference instead.
+The [codebase reference](reference/index.md) lists every declaration in `Phased.kt` under
+[Workspace](reference/workspace.md#phased-kt); this page explains how they fit together.
 
 To see it running, open the [`frames_lifecycle`](agent_transcripts.md#frames_lifecycle) starting
 point from the welcome screen. Its four boxes start, stop, re-run and clean up a frame loop.

@@ -38,7 +38,7 @@ pagination, rejected capture requests and the sight-disabled eval context.
 ## Verification
 
 Run the focused JVM checks with `./gradlew jvmTest --tests afield.ai.agent.GeometryReviewToolsTest
---tests afield.graphics.ThreeReviewTest --tests afield.ai.agent.Ai4ChatGraphWiringTest` (23 tests).
+--tests afield.graphics.three.ThreeReviewTest --tests afield.ai.agent.Ai4ChatGraphWiringTest` (23 tests).
 
 Run the actual viewer path with `uv run --project . --group backdoor python
 tools/verify_ai4_geometry_review.py`. It creates its own named document in the checkout's automation

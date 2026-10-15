@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Plot the production-Kotlin CSVs from GaussianProcessFiguresTest; no GP maths lives here.
 
-FIELD_GP_FIGURE_DATA="$PWD/build/gp-figure-data" ./gradlew jvmTest --tests afield.stdlib.GaussianProcessFiguresTest --rerun-tasks
+FIELD_GP_FIGURE_DATA="$PWD/build/gp-figure-data" ./gradlew jvmTest --tests afield.math.gp.GaussianProcessFiguresTest --rerun-tasks
 python tools/gp/render_figures.py build/gp-figure-data public/docs/assets/gaussian_processes
 Requires numpy and matplotlib. These are numerical figures, not captures of the Field UI.
 """

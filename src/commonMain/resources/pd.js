@@ -1,7 +1,7 @@
 define("bithero/pd", ["require", "vs/editor/editor.api"], function (require, monacoModule) {
     "use strict";
 
-    // Pure Data patch text, as a Pd box (afield.pd.PdExecution) holds it: `#N`/`#X` statements,
+    // Pure Data patch text, as a Pd box (afield.audio.pd.PdExecution) holds it: `#N`/`#X` statements,
     // message lines that are sent one at a time, and `//` comments. No `@word` inside a rule
     // regex -- Monarch reads that as an attribute reference and throws while compiling.
     var monaco = monacoModule && monacoModule.default ? monacoModule.default : monacoModule;

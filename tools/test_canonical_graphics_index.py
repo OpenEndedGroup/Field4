@@ -1,6 +1,6 @@
 """Guard the generated lesson index for the `canonical_graphics` example corpus.
 
-The corpus is the tree's best set of known-good `afield.four` graphics code, and every file
+The corpus is the tree's best set of known-good Field 4 graphics code, and every file
 in it is named by box uid. `public/docs/assets/canonical_graphics/LESSONS.md` is what makes
 it reachable by lesson name and by API symbol, and it is generated — so it decays silently
 the first time somebody edits a box without rerunning the generator. This is the check that

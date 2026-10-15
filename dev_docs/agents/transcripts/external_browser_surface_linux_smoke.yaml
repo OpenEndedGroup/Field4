@@ -17,19 +17,19 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window("External browser surface Linux smoke")
               Renderer(window)
           }
-
+          
           println("external browser surface renderer ready")
           start(renderer::run)
   - create:
@@ -38,13 +38,13 @@ operations:
       frame: { x: 320.0, y: 140.0, w: 350.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.Target
-          import afield.four.TexturePreviewCache
-          import afield.four.browser.*
-          import afield.four.targets.RenderToTexture
-          import afield.four.texture.LinuxDmaBufExport
-          import afield.four.texture.image_layout_transition
-          import afield.stdlib.vec
+          import afield.graphics.vulkan.Target
+          import afield.graphics.render.TexturePreviewCache
+          import afield.media.browser.*
+          import afield.graphics.vulkan.targets.RenderToTexture
+          import afield.graphics.texture.LinuxDmaBufExport
+          import afield.graphics.texture.image_layout_transition
+          import afield.math.linalg.vec
           import org.lwjgl.system.MemoryStack
           import org.lwjgl.vulkan.EXTQueueFamilyForeign.VK_QUEUE_FAMILY_FOREIGN_EXT
           import org.lwjgl.vulkan.VK10.*
@@ -55,11 +55,11 @@ operations:
           import java.util.Base64
           import java.util.concurrent.CopyOnWriteArrayList
           import javax.imageio.ImageIO
-
+          
           require(renderer.device.supportsDmaBufImport) {
               "this device does not expose the dma-buf import extension set"
           }
-
+          
           val releases = CopyOnWriteArrayList<BrowserFrameRelease>()
           val source = RenderToTexture(renderer) {
               width = 64
@@ -75,7 +75,7 @@ operations:
               renderer,
               ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2)
           ) { releases.add(it) }
-
+          
           val producerImage = source.colorImageRefs.first()!!
           fun exportedHandle(): ExternalBrowserImageHandle.LinuxDmaBuf {
               val exported = LinuxDmaBufExport.handle(producerImage)
@@ -91,7 +91,7 @@ operations:
                   modifier = exported.modifier
               )
           }
-
+          
           val handle = exportedHandle()
           println(
               "external-browser-linux modifier=0x${handle.modifier.toString(16)} " +
@@ -110,7 +110,7 @@ operations:
                   )
               ) == BrowserFrameOfferResult.ACCEPTED
           )
-
+          
           // The producer half: render once, then release the allocation to the foreign queue family
           // exactly as an external compositor would, and never touch it again. Self-disabling so the
           // render list needs no mutation while the renderer is walking it.
@@ -143,7 +143,7 @@ operations:
           }
           renderer.renderList.others["external-browser-linux-smoke-copy"] =
               Target { command, _ -> surface.prepareSampledImagesFor(command) }
-
+          
           fun residentPixel(): Triple<Int, Int, Int> {
               val html: String = TexturePreviewCache.capture(
                   renderer,
@@ -160,14 +160,14 @@ operations:
               val argb = decoded.getRGB(32, 32)
               return Triple((argb ushr 16) and 255, (argb ushr 8) and 255, argb and 255)
           }
-
+          
           fun presented(frameId: Long): BrowserFrameRelease? =
               releases.firstOrNull { it.frameId == frameId }?.also {
                   require(it.reason == BrowserFrameReleaseReason.PRESENTED) {
                       "browser frame release failed: $it"
                   }
               }
-
+          
           var ticks = 0
           var phase = 0
           loop {
@@ -187,7 +187,7 @@ operations:
                           frame()
                       }
                   }
-
+          
                   // The steady-state path, and the one Electron actually spends its time in: a slot
                   // announces its handle once per stream and every later paint omits it, leaving the
                   // receiver to copy from the import it cached.
@@ -209,7 +209,7 @@ operations:
                       phase = 2
                       frame()
                   }
-
+          
                   2 -> {
                       val release = presented(2L)
                       if (release == null) frame() else {
@@ -222,7 +222,7 @@ operations:
                           frame()
                       }
                   }
-
+          
                   // The other half of the fd contract: a frame the mailbox rejects must have its
                   // receiver-local fd closed, or a misbehaving producer exhausts Field's descriptor
                   // table.
@@ -257,7 +257,7 @@ operations:
                           "a rejected dma-buf leaked fd $rejectedFd, still open on $exportedTarget"
                       }
                       println("external-browser-linux rejected fd $rejectedFd ($exportedTarget) was closed")
-
+          
                       println("external-browser-linux PASS")
                       end()
                   }

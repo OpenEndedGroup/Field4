@@ -5,7 +5,7 @@ The user-facing instructions and examples are in [Patchy from Kotlin](../public/
 
 ## Embedded editor
 
-`Box.patchyWeb()` in `src/jvmMain/kotlin/afield/PatchyWeb.kt` opens a Field output containing
+`Box.patchyWeb()` in `src/jvmMain/kotlin/afield/app/server/PatchyWeb.kt` opens a Field output containing
 `/patchy-field.html`, which embeds the optional WebAssembly site from `/patchy/`. The site is
 served only when `AFIELD_PATCHY_WEB_ROOT` names a build directory or the installed
 `~/.field4/patchy-web/site` exists. Field supplies the cross-origin isolation headers required

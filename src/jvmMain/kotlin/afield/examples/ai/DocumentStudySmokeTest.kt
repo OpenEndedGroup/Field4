@@ -1,15 +1,15 @@
 package afield.examples.ai
 
-import afield.Box
-import afield.OperationTranscript
-import afield.SavingContext
-import afield.SessionInformation
-import afield.ai.core.DocumentToolRegistry
-import afield.ai.core.ToolExecutionContext
-import afield.ai.core.ToolRegistry
-import afield.ai.core.aiToolMapper
-import afield.stdlib.StudyReport
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.tools.automation.OperationTranscript
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.ai.tools.DocumentToolRegistry
+import afield.ai.tools.ToolExecutionContext
+import afield.ai.tools.ToolRegistry
+import afield.ai.tools.aiToolMapper
+import afield.study.evidence.StudyReport
+import afield.app.server.thisSessionInfo
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -33,7 +33,7 @@ expect:
 /**
  * A document defines a study as capable as a library one, from box code alone.
  *
- * The box's code builds a [afield.stdlib.SourceFramesStudy] of its own `swatch` property — a
+ * The box's code builds a [afield.study.source.SourceFramesStudy] of its own `swatch` property — a
  * five-line CPU painter as its frames, the default plain-number knobs — and hands it to
  * `registerStudyTools("Swatch", …)`. That is the whole study. The harness then drives the ten
  * standard verbs the way an agent does, through [ToolRegistry.executeByName] over the document's
@@ -53,7 +53,7 @@ object DocumentStudySmokeTest {
                     val u = (i % w + 0.5f) / w
                     px[i * 4] = c[0] * u; px[i * 4 + 1] = c[1]; px[i * 4 + 2] = c[2]; px[i * 4 + 3] = 1f
                 }
-                afield.stacksl.cpu.CpuRaster(w, h, px)
+                afield.lang.stacksl.cpu.CpuRaster(w, h, px)
             },
             directory = java.io.File(thisBox.inside.filename, "studies/" + thisBox.id + "/swatch"))
         registerStudyTools("Swatch", swatch, about = "The source is three numbers: red, green and blue, each 0..1; red fades in left to right.")
@@ -180,11 +180,11 @@ ${CODE.trimEnd().prependIndent("          ")}
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "document-study-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "document-study-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }

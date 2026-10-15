@@ -37,7 +37,7 @@ def _kotlin_source(path: str) -> bool:
     return _under(path, "src") and path.endswith(".kt")
 
 
-_REFERENCE_GENERATOR_REL = "src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt"
+_REFERENCE_GENERATOR_REL = "src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt"
 _SOURCE_ROOTS_DECL = re.compile(r"private val SOURCE_ROOTS = listOf\((.*?)\n    \)", re.DOTALL)
 _KOTLIN_STRING = re.compile(r'"([^"\n]+)"')
 
@@ -57,7 +57,7 @@ def _reference_source_roots() -> tuple[str, ...]:
 
     Derived, never copied. This predicate used to name two roots —
     ``afield/stdlib`` and ``afield/visualization`` — while
-    :data:`afield.docs.StdlibReferenceGenerator.SOURCE_ROOTS` named seventeen. Measured over
+    :data:`afield.tools.docs.StdlibReferenceGenerator.SOURCE_ROOTS` named seventeen. Measured over
     ``git ls-files`` in this worktree on 2026-09-18: **402** tracked ``.kt`` files sit under the
     generator's roots and the old two-root predicate selected **170** of them, so **232 (58%)** of
     the generator's own input set could be staged with the staleness guard never firing. Three
@@ -143,15 +143,15 @@ def _completion_input(path: str) -> bool:
         _under(path, "public/docs/assets/agent_transcripts")
         or _under(path, "templates")
         or _under(path, "tools/completion-corpus/boxes")
-        or _under(path, "src/jvmMain/kotlin/afield/macros")
+        or _under(path, "src/jvmMain/kotlin/afield/runtime/macros")
         or path
         in {
-            "src/jvmMain/kotlin/afield/CompletionCorpus.kt",
-            "src/jvmMain/kotlin/afield/CompletionCorpusHarvest.kt",
-            "src/jvmMain/kotlin/afield/KotlinInterface.kt",
-            "src/jvmMain/kotlin/afield/KotlinInterface2.kt",
-            "src/jvmMain/kotlin/afield/KotlinScriptEngine.kt",
-            "src/jvmMain/kotlin/afield/stdlib/shaders.kt",
+            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt",
+            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt",
+            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt",
+            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt",
+            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt",
+            "src/jvmMain/kotlin/afield/graphics/shader/shaders.kt",
         }
         or _macro_producer(path)
     )
@@ -195,13 +195,13 @@ def _macro_producer(path: str) -> bool:
 
 
 _CITATION_TEST_SOURCES = {
-    "src/jvmTest/kotlin/afield/docs/CitationContractTest.kt",
-    "src/jvmTest/kotlin/afield/docs/CitationGuard.kt",
-    "src/jvmTest/kotlin/afield/docs/DocsFenceTreatmentTest.kt",
-    "src/jvmTest/kotlin/afield/docs/DocsGatesWiringTest.kt",
-    "src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt",
-    "src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt",
-    "src/jvmTest/kotlin/afield/server/ServerSurfaceLedgerTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/CitationContractTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/CitationGuard.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/DocsFenceTreatmentTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/DocsGatesWiringTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/SmallLanguageAnatomyTest.kt",
+    "src/jvmTest/kotlin/afield/geometry/path/CloseNodeCitationDriftTest.kt",
+    "src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt",
 }
 _CITATION_EXTENSIONS = "kt|js|md|py|kts|html|swift|glsl|json|yml|yaml"
 _CITATION_LEDGER_PATH = re.compile(
@@ -220,8 +220,8 @@ _CLOSE_NODE_PATH = re.compile(
 def _citation_input_paths() -> frozenset[str]:
     """Read the citation registries instead of maintaining a second source-path list here."""
     repo = Path(__file__).resolve().parents[1]
-    contract_source = repo / "src/jvmTest/kotlin/afield/docs/CitationContractTest.kt"
-    close_source = repo / "src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt"
+    contract_source = repo / "src/jvmTest/kotlin/afield/tools/docs/CitationContractTest.kt"
+    close_source = repo / "src/jvmTest/kotlin/afield/geometry/path/CloseNodeCitationDriftTest.kt"
 
     guarded_pages = set(_GUARDED_PAGE.findall(contract_source.read_text()))
     guarded_pages.add("dev_docs/fline_close_nodes.md")
@@ -259,7 +259,7 @@ def _citation_input_paths() -> frozenset[str]:
     return frozenset(resolved)
 
 
-_PERSONAL_BOUNDARY_REL = "src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt"
+_PERSONAL_BOUNDARY_REL = "src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt"
 _SCAN_ROOTS_DECL = re.compile(r"private val SCAN_ROOTS = listOf\((.*?)\n\s*\)", re.DOTALL)
 _SCAN_EXTENSIONS_DECL = re.compile(r"private val SCAN_EXTENSIONS = setOf\((.*?)\)", re.DOTALL)
 

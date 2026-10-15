@@ -1,5 +1,5 @@
-import afield.rectsl.*
-import afield.stdlib.Functions
+import afield.lang.rectsl.*
+import afield.math.functions.Functions
 import kotlin.math.PI
 
 // A dart running right at unit speed while climbing at an unknown rate. Its heading is

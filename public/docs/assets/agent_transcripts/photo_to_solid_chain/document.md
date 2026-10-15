@@ -11,13 +11,13 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="photo_levelset" index="0" -->
 
 ```edn [field-box id="photo_levelset" role="properties"]
-{"id" "photo_levelset" "index" 0 "name" "the same solid, marched — and is parallel = true reproducible?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, marched — and is parallel = true reproducible?" "_tombstone" false "frame" #afield/rect [60.0 3100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_levelset_code_.kt" "lines" 44 "characters" 2354 "sha256" "a65313cc59eec340b2edcd66a9543b2462d2fe8a0b545912574215a02a66de79"}]}
+{"id" "photo_levelset" "index" 0 "name" "the same solid, marched — and is parallel = true reproducible?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, marched — and is parallel = true reproducible?" "_tombstone" false "frame" #afield/rect [60.0 3100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_levelset_code_.kt" "lines" 44 "characters" 2384 "sha256" "c304598b66556aad27cbbf42c7f6fbcacae7052b9fa0101910a7c85495585f84"}]}
 ```
 
 ```kotlin [field-property box="photo_levelset" name="code" path="photo_levelset_code_.kt"]
 import afield.examples.chain.PhotoToSolidChain
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 // Two independent constructions of the same object: the grid triangulation, and a marched
 // level set of the same depth field. Compared against EACH OTHER, not against a constant.
@@ -101,13 +101,13 @@ showImgGrid(
 <!-- field-box id="photo_boolean" index="2" -->
 
 ```edn [field-box id="photo_boolean" role="properties"]
-{"id" "photo_boolean" "index" 2 "name" "mounted in a frame, and what the Boolean owes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mounted in a frame, and what the Boolean owes" "_tombstone" false "frame" #afield/rect [60.0 2100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_boolean_code_.kt" "lines" 33 "characters" 1652 "sha256" "0301ac42623cd277a75ba0582e005b8f763b27e64e6d6b403c60019435504e88"}]}
+{"id" "photo_boolean" "index" 2 "name" "mounted in a frame, and what the Boolean owes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mounted in a frame, and what the Boolean owes" "_tombstone" false "frame" #afield/rect [60.0 2100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_boolean_code_.kt" "lines" 33 "characters" 1682 "sha256" "75e62fae4428626983e01e068ae808c68a5010ae34decb040446d6816397e75d"}]}
 ```
 
 ```kotlin [field-property box="photo_boolean" name="code" path="photo_boolean_code_.kt"]
 import afield.examples.chain.PhotoToSolidChain
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 val mount = PhotoToSolidChain.mount()
 println(mount.summary())

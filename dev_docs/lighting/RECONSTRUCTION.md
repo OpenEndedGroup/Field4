@@ -82,7 +82,7 @@ only when a new compatible pipeline is committed. Changed layouts require new in
 `ReconstructionSmoke` evaluates bypass, DLAA, Quality and Performance at 1920×1080 with ray tracing
 disabled, checks a known +4-pixel translation (expected -4 motion), records raw input/motion, timings,
 two scenes and optional comparison clips, then exercises reset and 960×540 recreation.
-Run through the backdoor's `run-jvm-main afield.four.reconstruction.ReconstructionSmoke --arg=--clip`.
+Run through the backdoor's `run-jvm-main afield.media.reconstruction.ReconstructionSmoke --arg=--clip`.
 
 The 1080p GPU run completed with exit 0, `RECONSTRUCTION CHECK DONE`, and **zero VUIDs**. It includes
 four modes × two scenes × 120 consecutive frames, valid and failed shader reloads (syntax and changed

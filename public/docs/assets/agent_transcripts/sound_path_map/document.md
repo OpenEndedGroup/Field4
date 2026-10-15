@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sound_map_paths" index="0" -->
 
 ```edn [field-box id="sound_map_paths" role="properties"]
-{"id" "sound_map_paths" "index" 0 "name" "1 · The map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · The map" "_tombstone" false "frame" #afield/rect [60.0 60.0 520.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_map_paths_code_.kt" "lines" 16 "characters" 912 "sha256" "f8943f451f49a8573e08b515210857d492139d0d60d1855bab6241a49bc33bae"}]}
+{"id" "sound_map_paths" "index" 0 "name" "1 · The map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · The map" "_tombstone" false "frame" #afield/rect [60.0 60.0 520.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_map_paths_code_.kt" "lines" 16 "characters" 913 "sha256" "902e3fea277dffbda4583be3251b136d46d1c1b6bba5d59b9d84e6ea1a68f2cf"}]}
 ```
 
 ```kotlin [field-property box="sound_map_paths" name="code" path="sound_map_paths_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The map, printed from the code rather than from a page: what makes samples, what carries
 // them out, what brings them in, and which of them meet the one `render` seam.
@@ -38,11 +38,11 @@ println("no published page mentions: ${SoundPathMap.PATHS.filter { it.page == nu
 <!-- field-box id="sound_map_compare" index="1" -->
 
 ```edn [field-box id="sound_map_compare" role="properties"]
-{"id" "sound_map_compare" "index" 1 "name" "2 · One buffer, three paths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · One buffer, three paths" "_tombstone" false "frame" #afield/rect [60.0 240.0 520.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_map_compare_code_.kt" "lines" 14 "characters" 727 "sha256" "abd3d46564a85d76e51ce17c7bcefe223f7a73b8da3561dd69b8a389a6779fb1"}]}
+{"id" "sound_map_compare" "index" 1 "name" "2 · One buffer, three paths" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · One buffer, three paths" "_tombstone" false "frame" #afield/rect [60.0 240.0 520.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_map_compare_code_.kt" "lines" 14 "characters" 728 "sha256" "70ed4acb2303a2f0d63c078abe900aac49d041605a455230df8071709ab3284d"}]}
 ```
 
 ```kotlin [field-property box="sound_map_compare" name="code" path="sound_map_compare_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // One buffer, three paths. The dry beat is a real kick, snare and closed hat from Tidal's
 // Dirt-Samples, mixed offline by patRenderStereoDirt. Then it is lowpassed at 900 Hz twice:

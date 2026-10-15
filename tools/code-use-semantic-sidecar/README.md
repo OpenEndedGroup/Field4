@@ -72,3 +72,15 @@ Implementation notes:
 - Field-style snippets are wrapped in a synthetic function before analysis so
   statement-oriented box code can be resolved by the regular Kotlin source
   analysis APIs.
+
+### Concrete and generic extension receivers
+
+After building Field's JVM classpath, the focused receiver corpus checks that `List<Int>`
+does not offer `List<Vec3>.convexHull`, that a vector list still does, and that free generic
+`Iterable<T>` extensions such as `map` remain available. An empty expected member means
+that the prefixed query must return no candidates.
+
+```sh
+./gradlew -p tools/code-use-semantic-sidecar runSpike \
+  -PspikeArgs="--workspace $PWD --corpus tools/completion-corpus/receiver-fixtures.tsv --classpath-file build/reports/runJvm-classpath.txt --require-all"
+```

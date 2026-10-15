@@ -1,12 +1,12 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.device.CommandBuffer
-import afield.four.device.Fence
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.targets.PingPongRenderToTexture
-import afield.four.texture.HasImageView
-import afield.four.vision.opticalFlow
-import afield.stdlib.linalg.Vector2f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.vulkan.device.Fence
+import afield.document.context.fromContextWithNameOrNull
+import afield.graphics.vulkan.targets.PingPongRenderToTexture
+import afield.graphics.texture.HasImageView
+import afield.media.vision.opticalFlow
+import afield.math.linalg.Vector2f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
@@ -29,7 +29,7 @@ prop<HasImageView>(previousImage) = history.previousImageView
 prop<HasImageView>(currentImage) = history.latestImageView
 // The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade everywhere else.
 // Fully qualified: prop<T> finds T's import in a classpath index that lists classes, not interfaces.
-prop<afield.four.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)
+prop<afield.media.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)
 println("Optical flow backend: ${flow.backend}")
 prop<RenderToTexture>(motion) = flow.output
 

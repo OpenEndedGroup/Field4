@@ -1,12 +1,54 @@
 import os
+import json
 import shlex
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
-from tools.verification_runtime import field_instance_problem, verification_lock, waive_execution_verdict
+from tools.verification_runtime import field_instance_problem, run_with_watchdog, verification_lock, waive_execution_verdict
+
+
+class WatchdogOutputTests(unittest.TestCase):
+    def test_completion_polling_preserves_chunked_json_and_child_file_offset(self) -> None:
+        expected = json.dumps({"ok": True, "stdout": "x" * 20000})
+        script = (
+            "import sys,time\n"
+            f"text = {expected!r}\n"
+            "sys.stdout.write(text[:1]); sys.stdout.flush(); time.sleep(0.4)\n"
+            "sys.stdout.write(text[1:10000]); sys.stdout.flush(); time.sleep(0.4)\n"
+            "sys.stdout.write(text[10000:]); sys.stdout.flush()\n"
+        )
+        real_popen = subprocess.Popen
+        snapshots = []
+
+        def start(*args, **kwargs):
+            output = kwargs["stdout"]
+            process = real_popen(*args, **kwargs)
+            original_seek = output.seek
+
+            def seek(*seek_args, **seek_kwargs):
+                self.assertIsNotNone(process.poll(), "reader moved a live child's stdout offset")
+                return original_seek(*seek_args, **seek_kwargs)
+
+            output.seek = seek
+            return process
+
+        def complete(text):
+            snapshots.append(text)
+            return text == expected
+
+        with patch("tools.verification_runtime.subprocess.Popen", side_effect=start):
+            result, _, timed_out = run_with_watchdog(
+                [sys.executable, "-c", script], cwd=Path.cwd(), timeout=5,
+                completion_probe=complete,
+            )
+        self.assertFalse(timed_out)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, expected)
+        self.assertTrue(any(0 < len(text) < len(expected) for text in snapshots))
 
 
 class VerificationLockTests(unittest.TestCase):

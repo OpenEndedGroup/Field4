@@ -1,6 +1,6 @@
 package afield.examples
 
-import afield.ai.core.OpenAiIdeCodexBridge
+import afield.ai.models.OpenAiIdeCodexBridge
 
 /*
 FIELD_TEST

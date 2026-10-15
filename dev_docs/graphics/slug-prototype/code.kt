@@ -1,11 +1,14 @@
-import afield.RunScope
-import afield.ReleasePolicy
-import afield.four.modules.*
-import afield.graphics.FLine
-import afield.graphics.slug.*
-import afield.stdlib.linalg.*
+import afield.runtime.lifecycle.RunScope
+import afield.runtime.lifecycle.ReleasePolicy
+
+
+
+
+import afield.geometry.path.FLine
+import afield.graphics.text.slug.*
+
 import org.lwjgl.vulkan.VK10.*
-import afield.stdlib.file
+import afield.document.workspace.file
 
 name = "5e. Slug filled paths"
 // Build the optional helper once: bash native/field-slug/build.sh

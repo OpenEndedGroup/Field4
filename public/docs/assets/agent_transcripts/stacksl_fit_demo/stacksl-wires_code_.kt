@@ -8,8 +8,8 @@
 // Read the table below against the program above it. Wire #0 is the `3.0` you can see; wires
 // #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
 
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLWires
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLWires
 
 run {
 

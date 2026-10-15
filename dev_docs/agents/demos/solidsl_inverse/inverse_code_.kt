@@ -1,5 +1,5 @@
-import afield.solidsl.*
-import afield.stdlib.MeshView
+import afield.lang.solidsl.*
+import afield.geometry.mesh.MeshView
 
 // ---- the problem ---------------------------------------------------------------------
 // Somebody hands you a bag of points with a signed distance at each. What shape is it?

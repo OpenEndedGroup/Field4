@@ -129,7 +129,7 @@ transport if working in ordinary Field coordinates. A point's z coordinate is pr
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.stdlib.loadStippleTransport
+import afield.geometry.spatial.loadStippleTransport
 
 val field = loadStippleTransport("public/docs/assets/stipple_transport/two-images.json")
 val canonical = field.sourceParticles(400, seed = 44) // retain once

@@ -4,7 +4,7 @@
 //
 // This is the single source of truth for the Datalog editor extension. It is served as a
 // static AMD module (loaded via bithero/datalog in bootstrapMonaco.js) in the browser, and
-// is also read verbatim by afield.datalog.DatalogEditorExtension for the node-probe smoke
+// is also read verbatim by afield.data.query.datalog.DatalogEditorExtension for the node-probe smoke
 // test. The wrapper below supports both worlds: it registers an AMD module when a Monaco
 // loader is present, and otherwise self-installs immediately (as it does under bare eval).
 //
@@ -21,13 +21,13 @@
   const triple = '"""';
   const headerRe = /^(?:[ \t]*(?:\r?\n|$))*[ \t]*#datalog\b[^\n]*(?:\r?\n|$)/i;
 
-  // Kept in step with afield.datalog.DatalogParser by DatalogEditorExtensionWorkout: the editor
+  // Kept in step with afield.data.query.datalog.DatalogParser by DatalogEditorExtensionWorkout: the editor
   // is JavaScript in a browser and the parser is Kotlin on a server, so the lists cannot be
   // shared at run time — but they can be compared at build time.
   const aggregateOps = ["collect", "count", "max", "mean", "min", "sum"];
   const functionWords = ["abs", "atan2", "cat", "ceil", "contains", "cos", "endsWith", "exp", "floor", "hypot", "indexOf", "int", "len", "log", "lower", "max", "min", "not", "num", "pow", "round", "sign", "sin", "split", "sqrt", "startsWith", "str", "substr", "tan", "trim", "upper"];
   const directiveWords = ["boxes", "facts", "help", "program", "relations", "reset", "why", "whynot"];
-  // The relations afield.datalog's box bridge defines, offered once a program has said #boxes.
+  // The relations afield.data.query.datalog's box bridge defines, offered once a program has said #boxes.
   const boxRelations = [
     ["box", "box(Id) — every live box in the document"],
     ["name", "name(Id, Name) — a box's display name"],

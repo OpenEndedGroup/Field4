@@ -37,16 +37,16 @@ in.**
 
 | path | what it is | needs | offline? | shares `render`? | page |
 | --- | --- | --- | --- | --- | --- |
-| `pat-stand-in` | a pattern's events through a very small voice: one oscillator, one one-pole lowpass, one decay envelope, per event. `fun patRenderStereo` in `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` offline; `patSynth` live | nothing | both | **yes** | [Sound](sound.md) |
-| `dirt-samples` | the same events as real Tidal one-shots. `fun patRenderStereoDirt` in `src/jvmMain/kotlin/afield/four/synth/DirtRender.kt` offline; `DirtSamplePlayer` live | the Dirt-Samples quark, or the pinned subset `./gradlew fetchDocsDirtSamples` downloads | both | live half only | [Sound](sound.md) |
-| `signal-graph` | Field's own DSP graph — `abstract class Signal` in `src/jvmMain/kotlin/afield/four/synth/Signal.kt`, plus the oscillators, filters and the DoughDSP ports | nothing | both | **yes** | [DoughDSP](dough_dsp_sound.md) |
-| `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
-| `faust-poly` | the same program played as an *instrument*: N instances of one compiled module, allocated to notes by a pattern, each note landing on the sample it was scheduled for. `class FaustVoiceBank` in `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` | nothing — as `faust` | both | **yes** | [Faust](faust.md) |
-| `pure-data` | a Pure Data patch — inline text in the box, or a `.pd` file — in a libpd instance of its own, pulled a block at a time. `class PdNode` in `src/jvmMain/kotlin/afield/pd/PdInstance.kt` | libpd, built once by `./gradlew buildLibpdNative` | both | **yes** | [Pure Data](pure_data.md) |
-| `csound` | a Csound orchestra and score, as a box language or from Kotlin. `class CsoundNode` in `src/jvmMain/kotlin/afield/csound/CsoundInstance.kt` pulls blocks live; `CsoundInstance.renderOffline` renders to a buffer | libcsound, built with `./gradlew buildCsoundNative` or installed separately | both | **yes** | [Csound](csound.md) |
-| `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt`, wrapped onto the shared `render` call by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
-| `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | both | **yes** | [A pattern in space](pat_spatial.md) |
-| `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
+| `pat-stand-in` | a pattern's events through a very small voice: one oscillator, one one-pole lowpass, one decay envelope, per event. `fun patRenderStereo` in `src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt` offline; `patSynth` live | nothing | both | **yes** | [Sound](sound.md) |
+| `dirt-samples` | the same events as real Tidal one-shots. `fun patRenderStereoDirt` in `src/jvmMain/kotlin/afield/audio/synth/DirtRender.kt` offline; `DirtSamplePlayer` live | the Dirt-Samples quark, or the pinned subset `./gradlew fetchDocsDirtSamples` downloads | both | live half only | [Sound](sound.md) |
+| `signal-graph` | Field's own DSP graph — `abstract class Signal` in `src/jvmMain/kotlin/afield/audio/synth/Signal.kt`, plus the oscillators, filters and the DoughDSP ports | nothing | both | **yes** | [DoughDSP](dough_dsp_sound.md) |
+| `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
+| `faust-poly` | the same program played as an *instrument*: N instances of one compiled module, allocated to notes by a pattern, each note landing on the sample it was scheduled for. `class FaustVoiceBank` in `src/jvmMain/kotlin/afield/audio/synth/FaustPoly.kt` | nothing — as `faust` | both | **yes** | [Faust](faust.md) |
+| `pure-data` | a Pure Data patch — inline text in the box, or a `.pd` file — in a libpd instance of its own, pulled a block at a time. `class PdNode` in `src/jvmMain/kotlin/afield/audio/pd/PdInstance.kt` | libpd, built once by `./gradlew buildLibpdNative` | both | **yes** | [Pure Data](pure_data.md) |
+| `csound` | a Csound orchestra and score, as a box language or from Kotlin. `class CsoundNode` in `src/jvmMain/kotlin/afield/audio/csound/CsoundInstance.kt` pulls blocks live; `CsoundInstance.renderOffline` renders to a buffer | libcsound, built with `./gradlew buildCsoundNative` or installed separately | both | **yes** | [Csound](csound.md) |
+| `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/audio/synth/Dough.kt`, wrapped onto the shared `render` call by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
+| `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/audio/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | both | **yes** | [A pattern in space](pat_spatial.md) |
+| `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 
 Four of those ten are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
 `pat-spatial`. The first two are what [Sound](sound.md) covers, with the fallback behaviour and the
@@ -65,11 +65,11 @@ the others'. The way back in is `link-audio-in`, below.
 
 | path | what it is | needs | page |
 | --- | --- | --- | --- |
-| `box-audio` | **the default.** Return `audio(signal)` from a box; one engine thread pulls blocks until the box stops. `internal interface Renderer` in `src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt` | an output device | — |
-| `wav-file` | a 16-bit PCM `.wav` on disk. `fun writeStereo16` in `src/jvmMain/kotlin/afield/four/audio/WavFloatArrayWriter.kt` | nothing | [Sound](sound.md) |
-| `box-output-player` | samples encoded to a WAV in memory, base64'd into a `data:` URI, shown as an `<audio>` element in the box's output. `fun renderSamplesHtml` in `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt` | nothing | [Visualizers](visualizers.md) |
-| `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt` | an output device | — |
-| `link-audio-out` | the engine's output mirrored into Ableton Link Audio, tempo-locked, so another app on the network hears it. `fun enableAudioOutput` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
+| `box-audio` | **the default.** Return `audio(signal)` from a box; one engine thread pulls blocks until the box stops. `internal interface Renderer` in `src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt` | an output device | — |
+| `wav-file` | a 16-bit PCM `.wav` on disk. `fun writeStereo16` in `src/jvmMain/kotlin/afield/audio/engine/WavFloatArrayWriter.kt` | nothing | [Sound](sound.md) |
+| `box-output-player` | samples encoded to a WAV in memory, base64'd into a `data:` URI, shown as an `<audio>` element in the box's output. `fun renderSamplesHtml` in `src/jvmMain/kotlin/afield/ui/visualization/AudioVisualizer.kt` | nothing | [Visualizers](visualizers.md) |
+| `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/audio/engine/SimpleSpatialAudio.kt` | an output device | — |
+| `link-audio-out` | the engine's output mirrored into Ableton Link Audio, tempo-locked, so another app on the network hears it. `fun enableAudioOutput` in `src/jvmMain/kotlin/afield/audio/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
 
 ??? aside "Where the clips on this site come from"
 
@@ -114,10 +114,10 @@ Soft library rather than an output device. A test or a docs build can use it.
 
 | path | what it is | needs | page |
 | --- | --- | --- | --- |
-| `device-input` | OpenAL capture as a `Signal`, so a microphone is just another node. `fun stereoInput()` in `src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt` | an input device + OS permission | — |
-| `link-audio-in` | another application's output as a `Signal`. `fun stereoInput(channelName…)` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
-| `video-audio` | a file decoded by FFmpeg and played through a **third** OpenAL context, kept in step by its own playback clock. `class AudioDecoder` in `src/jvmMain/kotlin/afield/four/texture/video/AudioDecoder.kt` | the bundled FFmpeg | [`dev_docs/AUDIO_OPTIONS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/AUDIO_OPTIONS.md) |
-| `wav-file-in` | a `.wav` off disk as `FloatArray`s — the counterpart of `wav-file`. `WavFloatArrayLoader` in `src/jvmMain/kotlin/afield/four/audio/WavFloatArrayLoader.kt` | nothing | — |
+| `device-input` | OpenAL capture as a `Signal`, so a microphone is just another node. `fun stereoInput()` in `src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt` | an input device + OS permission | — |
+| `link-audio-in` | another application's output as a `Signal`. `fun stereoInput(channelName…)` in `src/jvmMain/kotlin/afield/audio/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
+| `video-audio` | a file decoded by FFmpeg and played through a **third** OpenAL context, kept in step by its own playback clock. `class AudioDecoder` in `src/jvmMain/kotlin/afield/graphics/texture/video/AudioDecoder.kt` | the bundled FFmpeg | [`dev_docs/AUDIO_OPTIONS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/AUDIO_OPTIONS.md) |
+| `wav-file-in` | a `.wav` off disk as `FloatArray`s — the counterpart of `wav-file`. `WavFloatArrayLoader` in `src/jvmMain/kotlin/afield/audio/engine/WavFloatArrayLoader.kt` | nothing | — |
 
 Link Audio is how `sonic-pi` and Field reach each other without a virtual cable. The two directions
 are not equally well tested. **Field → Sonic Pi** is: Field publishes a channel through
@@ -168,7 +168,7 @@ offline as well. Like `faust-poly`, it opens no device and encodes no WAV.
 
 `AudioPatchSpec` is what every box that makes a noise returns. The paths with "—" in the page
 column (`box-audio`, `dough-engine`, `spatial-openal`, `device-input`, `wav-file-in`) have no
-page of their own; this page and [`afield.four.synth` in the generated reference](reference/synthesis.md)
+page of their own; this page and [`afield.audio.synth` in the generated reference](reference/synthesis.md)
 are their documentation.
 
 ---
@@ -182,21 +182,21 @@ one-shots by `patRenderStereoDirt`: a kick, a hard snare and a closed hi-hat out
 [tidalcycles/Dirt-Samples](https://github.com/tidalcycles/Dirt-Samples). Then a 900 Hz lowpass from
 two different paths.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_path_map/same-input-dry.wav" audio-spec="same-input-dry" audio-renderer="afield.four.synth.SoundPathMap" requires="dirt-samples" embed=true hidden=true name="sound-path-map-dry"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_path_map/same-input-dry.wav" audio-spec="same-input-dry" audio-renderer="afield.audio.synth.SoundPathMap" requires="dirt-samples" embed=true hidden=true name="sound-path-map-dry"}
 // SoundPathMap.dryBeat()
 // patRenderStereoDirt(pat("bd ~ sd ~, hh*8") with gain(0.9), 4, 2.0, DirtRender.requirePinnedLibrary(), strict = true)
 ```
 
 **Path: `dirt-samples`, unfiltered.** This exact buffer is the input to both figures below.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_path_map/same-input-signal-graph.wav" audio-spec="same-input-signal-graph" audio-renderer="afield.four.synth.SoundPathMap" requires="dirt-samples" embed=true hidden=true name="sound-path-map-signal-graph"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_path_map/same-input-signal-graph.wav" audio-spec="same-input-signal-graph" audio-renderer="afield.audio.synth.SoundPathMap" requires="dirt-samples" embed=true hidden=true name="sound-path-map-signal-graph"}
 // SoundPathMap.throughSignalGraph(SoundPathMap.dryBeat())
 // BufferSignal(dry) through ChamberlinLowpass(cutoff = Param(900f))
 ```
 
 **Path: `signal-graph`.** The buffer above, through `ChamberlinLowpass` at 900 Hz.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_path_map/same-input-faust.wav" audio-spec="same-input-faust" audio-renderer="afield.four.synth.SoundPathMap" requires="dirt-samples" embed=true hidden=true name="sound-path-map-faust"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_path_map/same-input-faust.wav" audio-spec="same-input-faust" audio-renderer="afield.audio.synth.SoundPathMap" requires="dirt-samples" embed=true hidden=true name="sound-path-map-faust"}
 // SoundPathMap.throughFaust(SoundPathMap.dryBeat())
 // process = fi.lowpass(1, 900), fi.lowpass(1, 900);  — compiled at runtime, no audio device
 ```

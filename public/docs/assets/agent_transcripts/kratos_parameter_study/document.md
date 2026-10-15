@@ -11,18 +11,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_study" index="0" -->
 
 ```edn [field-box id="kratos_study" role="properties"]
-{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 201 "characters" 10155 "sha256" "9d39eb0c1dd1af4c57d4b7d9d7d6781d28b306a70e08eaf51fae918791a5094a"}]}
+{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 201 "characters" 10240 "sha256" "cd5f76a0978444acf2e204dc42eb314c3d8c6aef57a8a97f5246c4c476a1b9b9"}]}
 ```
 
 ```kotlin [field-property box="kratos_study" name="code" path="kratos_study_code_.kt"]
-import afield.frames
-import afield.markdown
-import afield.mdEscape
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshRenderer
-import afield.stdlib.MeshView
-import afield.stdlib.showMeshGrid
+import afield.runtime.lifecycle.frames
+import afield.ui.output.markdown
+import afield.ui.output.mdEscape
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshRenderer
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference

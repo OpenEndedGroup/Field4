@@ -9,7 +9,7 @@ circle with six unknown numbers (an amplitude, a phase and a centre on each axis
 `fitParameters` solves for them. The box draws the figure beside it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" alt="an output panel labelled figure holding three stacked strips on a dark grid. The first, TARGET 3 WAYPOINTS, shows three empty white squares: upper left, upper right, and one below centre. The second, SEED WORST MISS 7.72M, adds a blurred orange blob sitting near the middle and touching none of them. The third, FITTED WORST MISS 4.7E-15M, replaces it with a trail of teal squares sweeping in an arc from the upper left, down through the bottom centre and back up to the upper right, passing through all three white squares on the way" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 val duration = 4.0
 
@@ -113,7 +113,7 @@ call stops with a residual near 0.1: much better than where it started, and stil
     parameters.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" alt="an output panel labelled fit, holding two blocks of results for the same track. At the default 300 iterations the solved gain is 3.8945617454461527 and the bias -7.738554034635415, taking the residual from 3.605551275463989 down to 0.11693799822760528. At 2000 iterations the gain is 3.999999999999997 and the bias -7.999999999999994, and the residual is 2.8951074449790722E-15. The last line prints the fitted IR with those numbers substituted in" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 // A sweep that follows the clock, times gain, plus bias: the same track as the scene below.
 val track = BinaryDoubleTrack(
@@ -153,7 +153,7 @@ span and misses both waypoints. The solved band lands on `gain=4.0, bias=-8.0`, 
 `t·gain + bias` through both waypoints.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" alt="an output panel labelled before / after, with two strips, and a fit panel below. The authored strip, in orange and headed gain 1.0, bias 0.0, worst miss 5.00M, holds a short bar that reaches the right-hand white waypoint square and leaves the left one untouched. The solved strip, in teal and headed gain 3.999999999999997, bias -7.999999999999994, worst miss 3.1E-15M, holds a long stepped bar spanning the strip and passing through both squares. Beneath them the text lists the IR before and after, the free parameters, and a residual falling from 3.605551275463989 to 2.8951074449790722E-15, with x at 1.0 and x at 3.0 landing on -4 and 4 to fifteen decimal places" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
 // constant it is now, so the scene plays as written.
@@ -253,7 +253,7 @@ compared, rewritten and turned into GLSL. Each operation has three implementatio
 | --- | --- | --- |
 | `eval:` | `(Double) -> Double` | the CPU sampler |
 | `glsl:` | a shader expression | [the SDF backend](rectsl_cheatsheet.md) |
-| `fn:` | an `afield.stdlib.Functions.Fn` transform | [the exact gradient](autodiff_examples.md) |
+| `fn:` | an `afield.math.functions.Functions.Fn` transform | [the exact gradient](autodiff_examples.md) |
 
 `Fn` is Field's own function type, and Field can differentiate an `Fn` exactly. Turning a track into
 an `Fn` (lowering it) is what lets a fit take its gradient.

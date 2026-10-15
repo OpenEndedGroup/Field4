@@ -48,7 +48,7 @@ infrastructure.
 
 *Updated 2026-08-11:* the registration side is factored out too, and the cell is no longer empty in the
 public tree. `AgentToolExtensions` is the seam — core no longer names any cluster — and
-`afield.four.modules.GeometryAgentTools` is a second, public tool surface built on it, over the
+`afield.graphics.render.GeometryAgentTools` is a second, public tool surface built on it, over the
 geometry-from-disk loaders. Two tools, no change to `afield.ai.core`. Filling this slot for a cluster
 that already has a model and figures is now a small job, and `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md` is
 the checklist for it — including the two things the seam does *not* do (nested request objects,

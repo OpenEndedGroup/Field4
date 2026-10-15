@@ -7,18 +7,18 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         "code": |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = true
-
+          
           once.renderer {
               window = Window("Field \u2014 StackSL gallery")
               Renderer(window)
           }
-
+          
           start(renderer::run)
   - create:
       box: "uv-coordinates"
@@ -882,34 +882,34 @@ operations:
           // other, and swaps them every frame; `blitToScreen` puts the newest in the window.
           //
           // [[property stackSL]]
-
-          import afield.four.targets.PingPongRenderToTexture
-
-          prop<afield.four.targets.PingPongRenderToTexture>(target)
-          prop<afield.four.texture.HasImageView>(source)
-
+          
+          import afield.graphics.vulkan.targets.PingPongRenderToTexture
+          
+          prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
+          prop<afield.graphics.texture.HasImageView>(source)
+          
           // `once`, so re-running the box keeps the images and the trails already in them.
           once.target {
               PingPongRenderToTexture(renderer) { useDepth = false }
           }
           source = target.otherImageView
-
+          
           val module = moduleHere { target.apply() }
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
           target += "fullscreen" to module
-
+          
           // The fragment reads the program's time from `pc.params.x`. It advances per frame
           // drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
           // two frames), so the trails are as long as in the clip at any window frame rate.
           val first = renderer.frameCounter
           m.params = { vec((renderer.frameCounter - first) * 1.667 / 48, 0.0, 0.0, 0.0) }
-
+          
           // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
           // `stackSL` is null when no box up the graph has one; bind the empty program then.
           module.program = stackSL ?: ""
-
+          
           // Every box in this gallery draws the whole window, so they all register under one
           // name: launching a box replaces whichever one the window was showing.
           target.blitToScreen(name = "stacksl-gallery")
@@ -1834,34 +1834,34 @@ operations:
           // other, and swaps them every frame; `blitToScreen` puts the newest in the window.
           //
           // [[property stackSL]]
-
-          import afield.four.targets.PingPongRenderToTexture
-
-          prop<afield.four.targets.PingPongRenderToTexture>(target)
-          prop<afield.four.texture.HasImageView>(source)
-
+          
+          import afield.graphics.vulkan.targets.PingPongRenderToTexture
+          
+          prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
+          prop<afield.graphics.texture.HasImageView>(source)
+          
           // `once`, so re-running the box keeps the images and the trails already in them.
           once.target {
               PingPongRenderToTexture(renderer) { useDepth = false }
           }
           source = target.otherImageView
-
+          
           val module = moduleHere { target.apply() }
           val m = Mesh()
           module += m named "fullscreen"
           m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
           target += "fullscreen" to module
-
+          
           // The fragment reads the program's time from `pc.params.x`. It advances per frame
           // drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
           // two frames), so the trails are as long as in the clip at any window frame rate.
           val first = renderer.frameCounter
           m.params = { vec((renderer.frameCounter - first) * 1.0 / 48, 0.0, 0.0, 0.0) }
-
+          
           // Bind this box's StackSL source into the `program` slot (compiles + hot-reloads).
           // `stackSL` is null when no box up the graph has one; bind the empty program then.
           module.program = stackSL ?: ""
-
+          
           // Every box in this gallery draws the whole window, so they all register under one
           // name: launching a box replaces whichever one the window was showing.
           target.blitToScreen(name = "stacksl-gallery")

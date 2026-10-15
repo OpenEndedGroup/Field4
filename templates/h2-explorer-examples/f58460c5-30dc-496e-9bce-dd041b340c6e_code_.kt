@@ -4,7 +4,7 @@
 //
 // Scroll it. The explorer streams windows over the socket rather than sending 512 rows at once.
 
-import afield.stdlib.Functions
+import afield.math.functions.Functions
 
 val wobble = Functions.fn(Functions.Domain(0.0, 6.283185), "sin+ripple") {
     kotlin.math.sin(it) + 0.15 * kotlin.math.sin(it * 7)

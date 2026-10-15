@@ -5,9 +5,9 @@
 // not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
 // A permanent false alarm teaches you to stop reading the alarm.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-junk-vs-damage")

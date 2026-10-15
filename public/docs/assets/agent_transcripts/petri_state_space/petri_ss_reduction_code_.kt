@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 fun philosophers(n: Int) = petri {
     conflict = PetriConflict.ORDER

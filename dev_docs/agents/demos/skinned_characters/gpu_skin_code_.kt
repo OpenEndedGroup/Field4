@@ -1,6 +1,6 @@
-import afield.four.modules.CpuSkinner
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.CpuSkinner
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // The same deformation, on the GPU, through Field's OWN glTF module and its OWN bundled shaders.
 //

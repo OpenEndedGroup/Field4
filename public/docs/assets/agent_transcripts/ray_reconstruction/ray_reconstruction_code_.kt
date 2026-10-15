@@ -1,7 +1,7 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.reconstruction.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.media.reconstruction.*
+import afield.document.context.fromContextWithNameOrNull
 
 prop<RayReconstructionDemo>(lab)
 fromContextWithNameOrNull<RayReconstructionDemo>("lab")?.close()

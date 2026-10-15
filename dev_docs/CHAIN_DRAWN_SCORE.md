@@ -16,7 +16,7 @@ notation { drawnScore() }                         // marks in the root box's `dr
   -> DrawnScoreDocs.listen(audio, notes)          // onsetPeaks + YIN, against the drawing
 ```
 
-* `src/jvmMain/kotlin/afield/four/synth/NotationPatterns.kt` — `NotationSpace.notes(glideStep,
+* `src/jvmMain/kotlin/afield/audio/synth/NotationPatterns.kt` — `NotationSpace.notes(glideStep,
   levelTolerance)` and `toPattern(...)`. Rectangles/ellipses/diamonds: one note, centre pitch. Level
   stroke/line (ends within 0.5 semitone): one held note. Moving stroke/line: cut with `vertical(t)`
   every `glideStep` beats (a glissando becomes a run of short notes; the voice holds one pitch per
@@ -25,7 +25,7 @@ notation { drawnScore() }                         // marks in the root box's `dr
   becomes `gain` where a stroke recorded one. Code-drawn strokes record none —
   `Notation.kt:512#"simulatePressure" to JsonPrimitive(true)` writes an empty `pressures` array — so
   this chain's headless score does not exercise pressure->velocity.
-* `src/jvmMain/kotlin/afield/four/synth/DrawnScoreDocs.kt` — the score (`NotationBuilder.drawnScore()`,
+* `src/jvmMain/kotlin/afield/audio/synth/DrawnScoreDocs.kt` — the score (`NotationBuilder.drawnScore()`,
   shared by box code and renderer), `headless { }` (an ephemeral `SessionInformation`, restoring the
   thread's `thisSessionInfo`), `renderWav("drawn-score", path)`, `listen(...)`, and the
   `synth.drawn.score` FIELD_TEST.

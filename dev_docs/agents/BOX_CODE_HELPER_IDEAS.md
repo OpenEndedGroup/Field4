@@ -43,13 +43,13 @@ the transcript that showed each pattern is in brackets. New proposals go under *
   `RollingPearson(w)`. [statistics_examples]
 - `markdownAppend("channel", line)`, with a maximum size that trims the earliest lines. [frames_lifecycle]
 - **Bug, fixed 2026-10-07:** `prop<>` dropped the box's own imports, forcing
-  `prop<afield.four.fabricated.StandardRenderer.Bundle>`; six transcripts now use the short name.
+  `prop<afield.graphics.scene.fabricated.StandardRenderer.Bundle>`; six transcripts now use the short name.
   [four_simulation_chain]
 
 ## Declined
 
 - `m.dispatch(N)` reading `local_size_x`: too much magic. [spin_glass, pattern_particles]
-- `addPassChain` attaching and presenting itself; `afield.four.fabricated` as a default import.
+- `addPassChain` attaching and presenting itself; `afield.graphics.scene.fabricated` as a default import.
   [four_simulation_chain]
 - `m.set { }` sizing itself from what it appends: boxes barely use vertex attributes now; data
   lives in SSBOs. [afield_four_traditional_triangle]

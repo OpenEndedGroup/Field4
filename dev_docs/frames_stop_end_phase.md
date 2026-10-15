@@ -33,7 +33,7 @@ call sites on 2026-08-28; the epoch arithmetic below is otherwise unchanged._
 
 `Frames.atEnd` — what `.end { }` appends to — is reached from exactly one place:
 `Frames.frame()`'s `catch`, when the pending `yield()` throws a cancellation
-(`src/jvmMain/kotlin/afield/Phased.kt:80-108`). It runs the block on a fresh job in a
+(`src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt:80-108`). It runs the block on a fresh job in a
 `NonCancellable` scope, and brackets it with `onAtEndStart` / `onAtEndFinish`.
 
 Both launchers install an `onAtEndStart` that registers that end job with the box:
@@ -63,7 +63,7 @@ alone, so the end job registers and `atEnd` runs normally.
 ## The evidence
 
 _As originally measured, before the fix in [What was done](#what-was-done)._
-`src/jvmTest/kotlin/afield/StreamProcessStopLeakTest.kt` and the two lifecycle cases
+`src/jvmTest/kotlin/afield/media/stream/StreamProcessStopLeakTest.kt` and the two lifecycle cases
 in `FramesSemanticsTest`. All asserted **then-current** behaviour, so they would fail
 if it was ever fixed, and name this file when they do — which is exactly what
 happened to the third row.
@@ -143,7 +143,7 @@ guarantee it fails to keep. Not an emergency; not nothing.
 
 `Server.stop` (`Server.kt:4825-4832`) carries this comment:
 
-> If this box owns an afield.four Renderer (e.g. the agent graphics-context box),
+> If this box owns a Field 4 Renderer (e.g. the agent graphics-context box),
 > cancelling its jobs above never disposes the native window/surface. Do that now.
 
 — and calls `disposeBoxRenderer(box)` explicitly, *outside* the end phase. Somebody

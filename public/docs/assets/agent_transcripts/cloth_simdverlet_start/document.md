@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="cloth_start" index="0" -->
 
 ```edn [field-box id="cloth_start" role="properties"]
-{"id" "cloth_start" "index" 0 "name" "20 x 10 cloth in a SimdVerlet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "20 x 10 cloth in a SimdVerlet" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloth_start_code_.kt" "lines" 50 "characters" 2343 "sha256" "1ca4f931131718247c302863e61059d5b3d983d158242919cf653580dcf05463"}]}
+{"id" "cloth_start" "index" 0 "name" "20 x 10 cloth in a SimdVerlet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "20 x 10 cloth in a SimdVerlet" "_tombstone" false "frame" #afield/rect [80.0 80.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cloth_start_code_.kt" "lines" 50 "characters" 2349 "sha256" "86650c792a169a1710b4848a9c316034c9f97804b1cdc32122dc283cb7f2ee89"}]}
 ```
 
 ```kotlin [field-property box="cloth_start" name="code" path="cloth_start_code_.kt"]
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 // The physics system. State3 is the SoA particle store; the simulation owns it and grows
 // it as things are added, so it starts empty.

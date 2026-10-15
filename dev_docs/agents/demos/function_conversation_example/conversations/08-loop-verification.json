@@ -30,8 +30,8 @@
   "lookup": {
     "symbol": "String.file",
     "kind": "val",
-    "locationHint": "src/jvmMain/kotlin/afield/stdlib/FileManager.kt:465",
-    "filePath": "src/jvmMain/kotlin/afield/stdlib/FileManager.kt",
+    "locationHint": "src/jvmMain/kotlin/afield/document/workspace/FileManager.kt:465",
+    "filePath": "src/jvmMain/kotlin/afield/document/workspace/FileManager.kt",
     "fileId": null,
     "line": 465,
     "definitionLine": "val String.file: File",

@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["photo_mount_trace"] "properties" {"children" #{#afield/box "photo_mount_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 218 "sha256" "404e4cf711b0b112a27d48dff027acff33570d440178b677fb1aa915b8c21b59"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["photo_mount_trace"] "properties" {"children" #{#afield/box "photo_mount_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 229 "sha256" "75e65219ac8e9ef9abef18fe8efe486cc69d41755fd269186b95d66e186deb92"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,14 +31,14 @@ start(renderer::run)
 <!-- field-box id="photo_mount_trace" index="1" -->
 
 ```edn [field-box id="photo_mount_trace" role="properties"]
-{"id" "photo_mount_trace" "index" 1 "name" "photo_mount_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "photo_mount_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_mount_trace_code_.kt" "lines" 35 "characters" 1553 "sha256" "fd62627bf9d4f49fbc3a8e128f93f58d8d6962c192d1b6f0b4e36edba20f7969"}]}
+{"id" "photo_mount_trace" "index" 1 "name" "photo_mount_path_trace" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "photo_mount_path_trace" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_mount_trace_code_.kt" "lines" 35 "characters" 1587 "sha256" "15004fd95499856989cb0ea388575288eb75663330892137956a380497c77a89"}]}
 ```
 
 ```kotlin [field-property box="photo_mount_trace" name="code" path="photo_mount_trace_code_.kt"]
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.manifold.*
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.*
+import afield.math.linalg.Vector3f
 import afield.examples.chain.PhotoToSolidChain
 import java.io.File
 prop<PathTracingRenderer>(tracer)

@@ -1,11 +1,11 @@
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassInput
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassInput
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.addPassChain
 
-prop<afield.four.fabricated.FabricateBuiltChain>(sdf)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(sdf)
 
 // The mask: a disc and a bar, in every channel. A chain head that synthesises its own
 // input is self-contained however the chains before it ended up looking.

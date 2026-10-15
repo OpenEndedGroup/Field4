@@ -11,12 +11,12 @@
 // pixel depends on a parameter through coverage.
 //
 // The gradient flows through the emitted GLSL itself, interpreted node by node on
-// `afield.stdlib`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
+// `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
-import afield.stacksl.cpu.CpuRaster
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
+import afield.lang.stacksl.cpu.CpuRaster
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 import kotlin.math.abs
 
 run {

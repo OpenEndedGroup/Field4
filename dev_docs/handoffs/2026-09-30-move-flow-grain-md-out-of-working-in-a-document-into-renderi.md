@@ -22,9 +22,9 @@ a page edit.
 
 - `public/zensical.yml:65` lists `Flow Grain and Motion: flow_grain.md` under
   `Working in a Document`, between `simulation_clock.md` and `profiling_timeline.md`.
-- The page is an afield.four render graph. It uses numbered stage boxes, a fluid storage
-  helper, RTT with a motion attachment (`afield.four.targets.FrameHistory`), GLSL includes
-  (`flow/grain.glsl`, `flow/strokes.glsl`, ...), `afield.four.flow.TileAtlasLayout`, and a
+- The page is an Field 4 render graph. It uses numbered stage boxes, a fluid storage
+  helper, RTT with a motion attachment (`afield.graphics.vulkan.targets.FrameHistory`), GLSL includes
+  (`flow/grain.glsl`, `flow/strokes.glsl`, ...), `afield.simulation.flow.TileAtlasLayout`, and a
   `capture="native-window"` capture (`public/docs/flow_grain.md:17`). Nothing on the page is
   about working in a document.
 - There is a precedent at `public/zensical.yml:210-216`. `aperture_playground.md` was moved
@@ -45,7 +45,7 @@ for the same reason as the page above." The filename stays the same.
 Alternatives:
 - Put it under `Chains Across Subsystems` (`public/zensical.yml:257`). The note says "graphics
   chain demo", but the pages in that section each carry one object across three or four
-  subsystems and check each hop's output. flow_grain lives inside one subsystem (afield.four)
+  subsystems and check each hop's output. flow_grain lives inside one subsystem (Field 4)
   and has no hop checks, so it would stretch that section's definition.
 - Put it after `GPU State` / `Field Probes`, since it uses feedback state and profiling.
 

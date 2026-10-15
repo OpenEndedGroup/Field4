@@ -1,8 +1,8 @@
 # FLine exact booleans and offsets (2026-10-13)
 
 Follow-up to `fline_paperjs_parity.md`, which listed "exact (non-flattening) boolean ops" and
-"offsetting with exact cubic output" as not done. Code: `src/jvmMain/kotlin/afield/graphics/FLineExact.kt`.
-Tests (these print the tables below): `src/jvmTest/kotlin/afield/graphics/FLineExactBooleanTest.kt` and
+"offsetting with exact cubic output" as not done. Code: `src/jvmMain/kotlin/afield/geometry/path/FLineExact.kt`.
+Tests (these print the tables below): `src/jvmTest/kotlin/afield/geometry/path/FLineExactBooleanTest.kt` and
 `FLineExactOffsetTest.kt`. User docs: "Exact booleans and offsets" in `public/docs/fline_examples.md`.
 Demo: `dev_docs/agents/transcripts/fline_exact_booleans.yaml` (registered `EXECUTE`). Before/after
 renders through `lines()`: `dev_docs/assets/fline_exact/booleans.png`, `offsets.png`.

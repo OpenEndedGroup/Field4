@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="loris_spectral_whirlpool" index="0" -->
 
 ```edn [field-box id="loris_spectral_whirlpool" role="properties"]
-{"id" "loris_spectral_whirlpool" "index" 0 "name" "4 · a spectral whirlpool in seconds 6–9" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · a spectral whirlpool in seconds 6–9" "_tombstone" false "frame" #afield/rect [1120.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_spectral_whirlpool_code_.kt" "lines" 39 "characters" 1719 "sha256" "277a9896bb928649cbbdd28ce7f269d162b6be7f18baa0fda900a19d91551306"}]}
+{"id" "loris_spectral_whirlpool" "index" 0 "name" "4 · a spectral whirlpool in seconds 6–9" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · a spectral whirlpool in seconds 6–9" "_tombstone" false "frame" #afield/rect [1120.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_spectral_whirlpool_code_.kt" "lines" 39 "characters" 1731 "sha256" "148a0f4b221f76e519acfb56cbf097cc20e69489b79e7466118d2b105e39568b"}]}
 ```
 
 ```kotlin [field-property box="loris_spectral_whirlpool" name="code" path="loris_spectral_whirlpool_code_.kt"]
-import afield.stdlib.path
+import afield.document.workspace.path
 import kotlin.math.PI
 import kotlin.math.pow
 import kotlin.math.sin
@@ -61,11 +61,11 @@ client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav"
 <!-- field-box id="loris_edit_partials" index="1" -->
 
 ```edn [field-box id="loris_edit_partials" role="properties"]
-{"id" "loris_edit_partials" "index" 1 "name" "2 · select tracks, remove noise, lower frequencies" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · select tracks, remove noise, lower frequencies" "_tombstone" false "frame" #afield/rect [1120.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_edit_partials_code_.kt" "lines" 26 "characters" 1181 "sha256" "b09926f8ffd9974c25fc087b4735839a93bd7521824e4a752a8755662745e2d5"}]}
+{"id" "loris_edit_partials" "index" 1 "name" "2 · select tracks, remove noise, lower frequencies" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · select tracks, remove noise, lower frequencies" "_tombstone" false "frame" #afield/rect [1120.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_edit_partials_code_.kt" "lines" 26 "characters" 1193 "sha256" "7a7c0131a76966f83e310da0560c3f51db9ac69032d095fbdfed3075fb2576c2"}]}
 ```
 
 ```kotlin [field-property box="loris_edit_partials" name="code" path="loris_edit_partials_code_.kt"]
-import afield.stdlib.path
+import afield.document.workspace.path
 
 val client = LorisClient()
 val minimumTrackSeconds = 0.03
@@ -98,11 +98,11 @@ client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav"
 <!-- field-box id="loris_two_resolutions" index="2" -->
 
 ```edn [field-box id="loris_two_resolutions" role="properties"]
-{"id" "loris_two_resolutions" "index" 2 "name" "3 · independent fine-time and fine-frequency passes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · independent fine-time and fine-frequency passes" "_tombstone" false "frame" #afield/rect [40.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_two_resolutions_code_.kt" "lines" 21 "characters" 954 "sha256" "c311f1b7be73db7fe93e9f8786d5fa176324e7f460107d8a13e0d9f509f32562"}]}
+{"id" "loris_two_resolutions" "index" 2 "name" "3 · independent fine-time and fine-frequency passes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · independent fine-time and fine-frequency passes" "_tombstone" false "frame" #afield/rect [40.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_two_resolutions_code_.kt" "lines" 21 "characters" 966 "sha256" "5916183a2cec09d9587eade0bf5fa9d626bb94550bf8832c31736002c6bcaea1"}]}
 ```
 
 ```kotlin [field-property box="loris_two_resolutions" name="code" path="loris_two_resolutions_code_.kt"]
-import afield.stdlib.path
+import afield.document.workspace.path
 import java.util.concurrent.CompletableFuture
 
 val client = LorisClient()
@@ -130,14 +130,14 @@ CompletableFuture.allOf(*passes.toTypedArray()).exceptionally { error ->
 <!-- field-box id="loris_source_and_partials" index="3" -->
 
 ```edn [field-box id="loris_source_and_partials" role="properties"]
-{"id" "loris_source_and_partials" "index" 3 "name" "1 · source, analyze, partials and reconstruction" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · source, analyze, partials and reconstruction" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_source_and_partials_code_.kt" "lines" 24 "characters" 1114 "sha256" "ad884809ae492c1627af9a9d4c5ba32d52cd295f9b5b585642742c574ab48b6a"}]}
+{"id" "loris_source_and_partials" "index" 3 "name" "1 · source, analyze, partials and reconstruction" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · source, analyze, partials and reconstruction" "_tombstone" false "frame" #afield/rect [40.0 40.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_source_and_partials_code_.kt" "lines" 24 "characters" 1148 "sha256" "c6303a4c63519208e3994992854ad3b10194732542a0561f3b42a062e50f097a"}]}
 ```
 
 ```kotlin [field-property box="loris_source_and_partials" name="code" path="loris_source_and_partials_code_.kt"]
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
-import afield.stdlib.path
+import afield.ui.visualization.AudioVisualizer
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.audio.engine.WavFloatArrayLoader
+import afield.document.workspace.path
 
 val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 val sync = "loris-source-study"
@@ -165,11 +165,11 @@ client.analyzeWavAsync(path,
 <!-- field-box id="loris_label_align_morph" index="4" -->
 
 ```edn [field-box id="loris_label_align_morph" role="properties"]
-{"id" "loris_label_align_morph" "index" 4 "name" "5 · label, align and morph two phrases" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · label, align and morph two phrases" "_tombstone" false "frame" #afield/rect [40.0 4400.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_label_align_morph_code_.kt" "lines" 22 "characters" 1155 "sha256" "0da62ded1f51d07b03110c3af656642e450281fcdbf7888343f4ff44f5f9aaca"}]}
+{"id" "loris_label_align_morph" "index" 4 "name" "5 · label, align and morph two phrases" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · label, align and morph two phrases" "_tombstone" false "frame" #afield/rect [40.0 4400.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_label_align_morph_code_.kt" "lines" 22 "characters" 1167 "sha256" "6bfdf5d4bea0dbb65a383a37e6bc290fab729787461be39c5951a6c739e520ca"}]}
 ```
 
 ```kotlin [field-property box="loris_label_align_morph" name="code" path="loris_label_align_morph_code_.kt"]
-import afield.stdlib.path
+import afield.document.workspace.path
 
 val client = LorisClient()
 client.analyzeWavAsync(

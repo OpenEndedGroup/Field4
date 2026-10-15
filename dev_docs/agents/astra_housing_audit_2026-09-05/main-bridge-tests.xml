@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="AstraBridgeContractTest[jvm]" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-05T14:29:44.354Z" hostname="mi2-2.local" time="1.066">
   <properties/>
-  <testcase name="accessErrorPreservesCompletedTurnAndNeverSubstitutesModel[jvm]" classname="afield.ai.core.AstraBridgeContractTest" time="0.852"/>
-  <testcase name="toolImagesAndCallIdentityReachTheActualSdkRequest[jvm]" classname="afield.ai.core.AstraBridgeContractTest" time="0.209"/>
-  <testcase name="directOpenAiDefaultsKeepOtherProvidersAndExplicitChoices[jvm]" classname="afield.ai.core.AstraBridgeContractTest" time="0.0"/>
+  <testcase name="accessErrorPreservesCompletedTurnAndNeverSubstitutesModel[jvm]" classname="afield.ai.models.AstraBridgeContractTest" time="0.852"/>
+  <testcase name="toolImagesAndCallIdentityReachTheActualSdkRequest[jvm]" classname="afield.ai.models.AstraBridgeContractTest" time="0.209"/>
+  <testcase name="directOpenAiDefaultsKeepOtherProvidersAndExplicitChoices[jvm]" classname="afield.ai.models.AstraBridgeContractTest" time="0.0"/>
   <system-out><![CDATA[?[90m?[3m[info,ai.bridge]?[0m Initialized OpenAiIdeCodexBridge(model=gpt-6-astra)
 ?[90m?[3m[info,ai.bridge]?[0m convId=conv_test fileKey=test inputChars=13 maxOutputTokens=20480 attachments=0 images=0
 ?[90m?[3m[info,ai.toolio]?[0m log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-05T142944-608158Z-c801977c.jsonl

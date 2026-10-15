@@ -16,16 +16,16 @@ operations:
       frame: { x: 60.0, y: 220.0, w: 400.0, h: 100.0 }
       properties:
         code: |
-          import afield.frames
-          import afield.kratos.*
-          import afield.manifold.ManifoldLibrary
-          import afield.stdlib.MeshView
-          import afield.stdlib.TriMesh
-          import afield.stdlib.showMeshGrid
-          import afield.tetgen.Tetgen
-          import afield.tetgen.TetgenLibrary
+          import afield.runtime.lifecycle.frames
+          import afield.simulation.kratos.*
+          import afield.geometry.solid.manifold.ManifoldLibrary
+          import afield.geometry.mesh.MeshView
+          import afield.geometry.mesh.TriMesh
+          import afield.geometry.mesh.showMeshGrid
+          import afield.geometry.mesh.tetgen.Tetgen
+          import afield.geometry.mesh.tetgen.TetgenLibrary
           import java.util.concurrent.atomic.AtomicReference
-
+          
           // Launch (Alt-R). Drag a slider to reshape the bracket — that part is instant.
           // Press Solve to mesh and run Kratos; a solve is seconds, so it is a button.
           // Install once: uv sync --project optional/kratos --frozen
@@ -33,7 +33,7 @@ operations:
           //    -t field-kratos:10.4.0 optional/kratos)
           //   plus: python3 tools/build_tetgen_native.py
           // SI units: metres, newtons, pascals. +Y is up, which is also the mesh viewer's up.
-
+          
           // arm length, element size, element order, tip load (kN), deflection exaggeration
           val settings = AtomicReference(listOf(0.24, 0.025, 2.0, 3.0, 300.0))
           // "compare" on launch, not "solve": the first thing this box should put on screen is both
@@ -54,7 +54,7 @@ operations:
               button("Cancel") { if (it) action.set("cancel") }
           }
           displayOpen("controls")
-
+          
           fun safe(value: Any?): String =
               value.toString().replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
           // Diagnostics arrive as full-precision doubles; a status line wants three figures.
@@ -65,7 +65,7 @@ operations:
               display("status", "<div id='kratos-structural-status' style='padding:12px;max-width:820px'>$text</div>")
               displayOpen("status")
           }
-
+          
           // Steel, and a bracket 60 mm square in section, standing in +Y because that is the mesh
           // viewer's up. The re-entrant corner where the arm meets the post is the whole reason
           // this route is body-fitted: a level set rounds that edge by ~0.4 of a background cell at
@@ -75,7 +75,7 @@ operations:
           fun bracket(arm: Double): SimulationGeometry = SimulationCSG("bracket",
               SimulationBox("post", SimulationBounds(0.0, 0.0, 0.0, SECTION, POST, SECTION)),
               SimulationBox("arm", SimulationBounds(0.0, POST-SECTION, 0.0, arm, POST, SECTION)))
-
+          
           fun loads(arm: Double, kilonewtons: Double) = StructuralParameters(
               youngModulus = 2.1e11, poissonRatio = 0.3, density = 7850.0,
               gravity = Triple(0.0, -9.81, 0.0),
@@ -83,9 +83,9 @@ operations:
               clamp = SimulationBounds(-1.0, -1e-6, -1.0, 1.0, 1e-6, 1.0),
               loadRegion = SimulationBounds(arm-1e-6, -1.0, -1.0, arm+1e-6, 1.0, 1.0),
               load = Triple(0.0, -1000.0 * kilonewtons, 0.0))
-
+          
           status("Checking the optional environment…")
-
+          
           frames {
               if (!ManifoldLibrary.isAvailable) {
                   status("Manifold unavailable: ${safe(ManifoldLibrary.describe())}"); return@frames
@@ -109,12 +109,12 @@ operations:
               var drawnFor = Triple(-1.0, -1, 0)
               var resultText = "Meshing…"
               var previous = ""
-
+          
               try {
                   while (true) {
                       val values = settings.get()
                       val command = action.getAndSet("")
-
+          
                       // Geometry preview is Manifold only and costs nothing, so it follows the
                       // slider. Meshing and solving do not.
                       if (values[0] != shownGeometry) {
@@ -128,7 +128,7 @@ operations:
                       if (Pair(values[0], values[1]) != shape) {
                           shape = Pair(values[0], values[1]); results.clear()
                       }
-
+          
                       when (command) {
                           "cancel" -> {
                               session?.cancel(); pending = null; queue.clear()
@@ -137,7 +137,7 @@ operations:
                           "solve" -> queue.addLast(values[2].toInt())
                           "compare" -> { queue.clear(); queue.addLast(1); queue.addLast(2) }
                       }
-
+          
                       if (pending == null && queue.isNotEmpty()) {
                           val order = queue.removeFirst()
                           val key = Triple(values[0], values[1], order)
@@ -163,7 +163,7 @@ operations:
                           resultText = "Solving $cells tetrahedra at order $order" +
                               (if (queue.isEmpty()) "…" else " (${queue.size} more queued)…")
                       }
-
+          
                       val ready = pending
                       if (ready != null && ready.isDone) {
                           pending = null
@@ -174,7 +174,7 @@ operations:
                               resultText = "Solve failed: ${safe(failure.cause?.message ?: failure.message)}"
                           }
                       }
-
+          
                       // Redraw when the set of results changes or the exaggeration slider moves, so
                       // the scale is a display control and never costs a solve.
                       val stamp = Triple(values[4], results.size, results.keys.sum())
@@ -193,7 +193,7 @@ operations:
                                        columns=panels.size, cellWidth=340,
                                        view=MeshView(yawDegrees=-28.0, pitchDegrees=12.0, wireframe=false))
                           displayOpen("stress")
-
+          
                           val newest = results.values.last()
                           val d = newest.diagnostics
                           val comparison = listOf(4, 10).mapNotNull { w ->
@@ -222,7 +222,7 @@ operations:
                               "stress ${num(d["stressRecoveryMs"], 0)} ms<br>" +
                               "<b>Same load, same element size: $comparison</b>$ratio</span>"
                       }
-
+          
                       val worker = session
                       val head = if (worker == null) "<b>no session</b>" else
                           "<b>${worker.state}</b> · ${worker.formulation} · revision ${worker.revision}<br>" +

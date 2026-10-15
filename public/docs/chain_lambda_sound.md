@@ -1,9 +1,9 @@
 # A λ-term you can hear
 
 This page reduces a λ-term step by step and turns the reduction into a rhythm you can listen to.
-[`lambdaterms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt) parses the term and
+[`lambdaterms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt) parses the term and
 compiles it to an interaction net, and the `Reducer` in
-[`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/interactionnets.kt) fires one reaction at a time, reporting each as a `ReductionStep`.
+[`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/interactionnets.kt) fires one reaction at a time, reporting each as a `ReductionStep`.
 [`LambdaSoundDocs`](reference/patterns.md#lambdasounddocs-kt-lambdasounddocs) records those steps
 as a time series. `patCondense`, which runs the mini-notation parser backwards, finds the shortest
 notation that plays the resulting step mask, and `patRenderStereo` plays it.
@@ -20,7 +20,7 @@ keeps sharing correct. The box below reduces it and plots the size of the net af
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term"}
 :::static
-import afield.four.synth.LambdaSoundDocs
+import afield.audio.synth.LambdaSoundDocs
 
 // trace() compiles, reduces and records; it does not relax the layout, because nothing is
 // watching. The answer it read back is checked against the plain normal-order evaluator below.
@@ -71,7 +71,7 @@ all four schedulers and fails if any term breaks either rule.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: three terms at four spellings each, two at three, four at two and thirteen at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests"}
 :::static
-import afield.four.synth.LambdaSoundDocs
+import afield.audio.synth.LambdaSoundDocs
 
 // Both of these throw rather than return false. Reaching the next line is the measurement:
 // stepCountIsScheduleInvariant names the term and the counts if any term breaks it, and
@@ -128,7 +128,7 @@ and draws where its β-steps fall.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true alt="Four coloured piano-roll lanes of one cycle each, all with eight strikes in twenty-six slots but in visibly different places: FIRST_FOUND ends with four strikes packed against the right edge, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs across the middle, and RIGHTMOST_BY_ID spreads its last four out singly. Below, a table giving all four schedulers the same twenty-six reactions and eight betas against four different condensed notations and compressions of 0.43, 0.61, 0.57 and 0.65, all four signed for by the search"}
 :::static
-import afield.four.synth.LambdaSoundDocs
+import afield.audio.synth.LambdaSoundDocs
 
 // The same term the two clips below play, under each of the four reproducible schedulers.
 // answerIsScheduleInvariant checks all four against the plain normal-order evaluator, so the
@@ -172,13 +172,13 @@ atom.
 
 Here is FIRST_FOUND's bar, three cycles at 0.4 cycles per second:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/exp-first-found.wav" audio-spec="exp-first-found" audio-renderer="afield.four.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-first-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/exp-first-found.wav" audio-spec="exp-first-found" audio-renderer="afield.audio.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-first-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("exp-first-found").
 ```
 
 And RIGHTMOST_BY_ID's, same term, same twenty-six reactions, same eight β-steps, same answer:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/exp-rightmost.wav" audio-spec="exp-rightmost" audio-renderer="afield.four.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-rightmost-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/exp-rightmost.wav" audio-spec="exp-rightmost" audio-renderer="afield.audio.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-rightmost-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("exp-rightmost").
 ```
 
@@ -200,7 +200,7 @@ val notes = LambdaSoundDocs.trace("erase-argument").melody
 reactions are `prune`, taking the discarded multiplication apart agent by agent, because an
 interaction net cannot simply drop a wire.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/erase-rule-melody.wav" audio-spec="erase-rule-melody" audio-renderer="afield.four.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-melody-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/erase-rule-melody.wav" audio-spec="erase-rule-melody" audio-renderer="afield.audio.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-melody-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("erase-rule-melody").
 ```
 

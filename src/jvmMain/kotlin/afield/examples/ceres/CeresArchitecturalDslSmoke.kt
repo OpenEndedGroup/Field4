@@ -1,13 +1,13 @@
 package afield.examples.ceres
 
-import afield.stdlib.ceres.AxisSet
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointRef
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.ceres.geometryModel
+import afield.math.optimization.ceres.AxisSet
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointRef
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.Vec3
+import afield.math.optimization.ceres.geometryModel
 import kotlin.math.abs
-import afield.stdlib.linalg.Vector3f
+import afield.math.linalg.Vector3f
 
 fun main() {
     lateinit var liftedCorner: PointRef

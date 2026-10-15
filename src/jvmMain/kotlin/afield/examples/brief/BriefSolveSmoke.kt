@@ -1,13 +1,13 @@
 package afield.examples.brief
 
-import afield.brief.BriefException
-import afield.brief.checkBrief
-import afield.brief.compileBrief
-import afield.brief.BriefStrength
-import afield.brief.openSession
-import afield.brief.solve
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.linalg.Vector3f
+import afield.lang.brief.BriefException
+import afield.lang.brief.checkBrief
+import afield.lang.brief.compileBrief
+import afield.lang.brief.BriefStrength
+import afield.lang.brief.openSession
+import afield.lang.brief.solve
+import afield.math.optimization.ceres.Vec3
+import afield.math.linalg.Vector3f
 import kotlin.math.abs
 
 /**

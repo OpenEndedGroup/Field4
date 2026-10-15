@@ -1,5 +1,5 @@
-import afield.petri.*
-import afield.four.synth.*
+import afield.simulation.petri.*
+import afield.audio.synth.*
 
 // A token's colour can be anything, including a whole PatPattern. So a place is a
 // *section*, one circulating token is "which section is sounding", and the net enforces

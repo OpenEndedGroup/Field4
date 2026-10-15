@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="imgui_vr_renderer" index="0" -->
 
 ```edn [field-box id="imgui_vr_renderer" role="properties"]
-{"id" "imgui_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["imgui_vr_panel"] "properties" {"children" #{#afield/box "imgui_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_renderer_code_.kt" "lines" 14 "characters" 241 "sha256" "d2064d03c2114a4503c04ef314fc55ee0014752e13806df525cdf028c8489067"}]}
+{"id" "imgui_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["imgui_vr_panel"] "properties" {"children" #{#afield/box "imgui_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_renderer_code_.kt" "lines" 14 "characters" 252 "sha256" "719fbd4aeeadb0cbb67eaea63960664a2c1bdfa88c7af809300f2cc8d50446ab"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_renderer" name="code" path="imgui_vr_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -51,7 +51,7 @@ Move the mouse to aim the ray; left-click to press. To bind the panel to a hand 
 of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
 
 ```edn [field-box id="imgui_vr_panel" role="properties"]
-{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 21 "characters" 1041 "sha256" "119444758149f9fe39b98faaeca292cfdf504f7adc447bfcc97ccaa1ccd74611"}]}
+{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 21 "characters" 1052 "sha256" "341e526f3feb4862fcf67af4a143c45038ab84a6e3fc8d891618328437b115c8"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_panel" name="code" path="imgui_vr_panel_code_.kt"]
@@ -65,7 +65,7 @@ of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see I
 //
 // Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
 // of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
-import afield.four.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.targets.SideBySideStereoTarget
 import afield.examples.four.ImGuiVrPanelDemo
 
 val sbs = SideBySideStereoTarget(renderer)

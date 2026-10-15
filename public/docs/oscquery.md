@@ -6,7 +6,7 @@ parameters as JSON over HTTP, announces itself on the local network, and pushes 
 anyone listening. TouchDesigner (the *OSCQuery* COMP), Max (`oscquery` packages), Chataigne, VDMX,
 ossia score and the python and JavaScript libraries all speak it.
 
-`afield.oscquery` does it in both directions. A box can publish parameters that those tools
+`afield.io.osc.query` does it in both directions. A box can publish parameters that those tools
 list, show as controls and set. A box can also open another program's OSCQuery service and read,
 set and follow its parameters.
 
@@ -19,7 +19,7 @@ This box publishes a filter cutoff, an on/off switch and a scene menu, and keeps
 variable that other programs can set:
 
 ```diffstatic {data-lang=kotlin}
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 var cutoff = 1000.0
 var on = true
@@ -43,7 +43,7 @@ What another program reads is plain JSON. Any HTTP client sees it, including one
 one asks for a free port, so it does not collide with a service already on 9020:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/served_json.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="oscquery-served-json" alt="The JSON the service returns for /synth/cutoff on one line: FULL_PATH /synth/cutoff, TYPE f, ACCESS 3, VALUE [1000.0], RANGE min 20.0 max 20000.0, DESCRIPTION filter cutoff in Hz"}
-import afield.oscquery.*
+import afield.io.osc.query.*
 import java.net.URI
 import java.net.http.*
 
@@ -98,7 +98,7 @@ analysis results.
 parameters, under one prefix:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/published_controls.png" capture="box" open-outputs="true" embed=true w="760" h="120" wait="2.0" timeout="90" name="oscquery-published-controls" alt="The box's controls channel with a GAIN slider at 0.5 and an unchecked MUTE checkbox, and below it the two paths the service now lists for them, /surface/gain and /surface/mute"}
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 var gain = 0.5
 var mute = false
@@ -137,7 +137,7 @@ again.
 Pointed at Field's own service, a remote lists what the publishing box above declared:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/oscquery/remote_list.png" embed=true w="760" h="50" wait="2.0" timeout="90" name="oscquery-remote-list" alt="Three parameters read back by the remote: /scene of type s with no range, /synth/cutoff of type f with range 20.0 to 20000.0, and /synth/on of type T with no range"}
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 val q = oscQuery("My piece", httpPort = 0)
 q.float("/synth/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { }
@@ -198,6 +198,6 @@ this machine only. `OscQueryServices.closeAll()` stops every service and remote 
     Three fences are captured by the docs runner: the JSON fetched over loopback HTTP from inside a
     box, the published controls with the paths the service lists for them, and the parameter list
     a remote reads back from Field's own service. The rest are static. The behaviour is covered by
-    `src/jvmTest/kotlin/afield/oscquery/OscQueryRoundTripTest.kt`, over real loopback HTTP, UDP and
+    `src/jvmTest/kotlin/afield/io/osc/query/OscQueryRoundTripTest.kt`, over real loopback HTTP, UDP and
     WebSocket. `dev_docs/OSCQUERY_BRIDGE.md` records what was tested against other
     implementations.

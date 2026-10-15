@@ -1,8 +1,8 @@
-import afield.four.modules.GltfSupport
-import afield.four.modules.GpuSkinner
-import afield.four.modules.GpuSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.GpuSkinner
+import afield.graphics.scene.GpuSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // Sixty-four characters, one mesh, one draw call, all of them animating -- and not one vertex is
 // re-uploaded after setup. Box 4 above is the CPU skinner: it rewrites the packed vertex buffer
@@ -14,7 +14,7 @@ val count = 64
 // `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
 // This box is connected beneath it, so the bare name resolves -- RUN BOX 0 FIRST. Before box 0
 // has run there is no Renderer anywhere and this box fails with "must pass in a value for
-// context parameter afield.four.Renderer", which is the same footgun box 4 documents.
+// context parameter afield.graphics.vulkan.Renderer", which is the same footgun box 4 documents.
 val model = GltfSupport.loadGltfBasic(
     RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
 )

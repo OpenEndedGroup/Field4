@@ -1,4 +1,4 @@
-import kotlin.math.*
+
 
 // A closed curve with three dials: how far it wobbles, where the wobble starts, and how much
 // it is squashed sideways. One setting of the dials is the target; pretend we cannot see it.

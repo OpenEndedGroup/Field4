@@ -1,9 +1,9 @@
 # A photograph, closed and mounted
 
-This page turns one photograph into a printable object. `afield.onnx` runs the Depth Anything V2
+This page turns one photograph into a printable object. `afield.ai.inference.onnx` runs the Depth Anything V2
 Small model, which predicts how far away everything in a still image is. Field's imaging functions
 normalise and smooth that prediction, its mesh functions turn it into triangles, and
-`afield.manifold` closes and combines the result as a solid. The
+`afield.geometry.solid.manifold` closes and combines the result as a solid. The
 [photo_to_solid_chain](agent_transcripts.md#photo_to_solid_chain) starting point has the whole
 route as a document you can open.
 
@@ -173,7 +173,7 @@ route changes; only the photograph does.
 ## Where the code is
 
 * `reliefMesh` and `Img.toReliefMesh` are in
-  [`mesh_generate.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt).
+  [`mesh_generate.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/mesh/mesh_generate.kt).
 * The whole route as one program is
   [`PhotoToSolidChain.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt).
 * The [photo_to_solid_chain](agent_transcripts.md#photo_to_solid_chain) starting point is the same

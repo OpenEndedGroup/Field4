@@ -35,8 +35,8 @@ Data structure representing a decoded frame with:
 ## Usage
 
 ```kotlin
-import afield.four.texture.video.VideoTexture
-import afield.four.Renderer
+import afield.graphics.texture.video.VideoTexture
+import afield.graphics.vulkan.Renderer
 
 // Create video texture
 val videoTexture = VideoTexture(renderer)

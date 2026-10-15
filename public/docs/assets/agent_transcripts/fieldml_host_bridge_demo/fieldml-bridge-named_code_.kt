@@ -5,8 +5,8 @@
 // you -- so this goes through Kotlin's own reflection, and naming the arguments
 // is what makes the defaults reachable: a positional call has no way to say
 // which parameter it is skipping.
-let Img = hostClass "afield.stdlib.Img"
-let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+let Img = hostClass "afield.media.image.Img"
+let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
 let img = hostNew {width = 2, height = 2, channels = 3, data = [
   0.0, 0.0, 0.0,  0.0, 0.0, 0.0,

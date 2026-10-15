@@ -5,14 +5,14 @@
 // plus a StackSL-compiled material fragment. Edit `rectsl` and re-run to change
 // it live. See the "RectSL examples" docs page for the language.
 
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.rectMaterialShaderCode
-import afield.rectsl.writeFrameToMesh
-import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
-import afield.four.modules.Mesh
-import afield.four.modules.Module
-import afield.four.modules.parameters
-import afield.four.modules.pointer
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.writeFrameToMesh
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.graphics.render.Mesh
+import afield.graphics.render.Module
+import afield.graphics.render.parameters
+import afield.graphics.render.pointer
 
 val rectsl = """
 #rectsl
@@ -69,7 +69,7 @@ renderer += "rectsl" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.stdlib.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // One oscillator, continuous phase, stepped frequency. The amplitude never moves, so the RMS
 // envelope is flat and there is no attack anywhere except the entry from silence.

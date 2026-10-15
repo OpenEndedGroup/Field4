@@ -1,7 +1,7 @@
 # Datalog in Field·4
 
-`afield.datalog` is a small deductive database: facts, rules, recursion, stratified negation and
-aggregation, with the live box graph available as base relations. It sits next to `afield.graphquery`
+`afield.data.query.datalog` is a small deductive database: facts, rules, recursion, stratified negation and
+aggregation, with the live box graph available as base relations. It sits next to `afield.data.query.graph`
 and answers the questions that one cannot — anything recursive, or anything that needs a join.
 
 Sources live in `src/jvmMain/kotlin/afield/datalog/`:
@@ -19,7 +19,7 @@ Sources live in `src/jvmMain/kotlin/afield/datalog/`:
 
 ## From Kotlin, in any box
 
-`afield.datalog.*` is in `intro`, so nothing needs importing.
+`afield.data.query.datalog.*` is in `intro`, so nothing needs importing.
 
 ```kotlin
 val d = Datalog()
@@ -56,7 +56,7 @@ a bare `ad4e` followed by a minus. Joining through `name/2` is usually what you 
 
 ## Any object graph
 
-`Datalog.addObjectGraph(root, pattern)` walks with `afield.graphquery` and emits `slot/1`,
+`Datalog.addObjectGraph(root, pattern)` walks with `afield.data.query.graph` and emits `slot/1`,
 `link/3`, `segment/2`, `depth/2`, `at/2`, `value/2`, `type/2`, `writable/1`. `dlObjectGraphRules`
 carries `alias`, `reaches`, `unreached` and `leaf` as source you can `add`.
 
@@ -216,7 +216,7 @@ Two bugs the captures found, which no unit test had:
 | what | command |
 | --- | --- |
 | engine semantics, incl. semi-naive vs BFS | `uv run --project . --group backdoor python tools/run_field_tests.py --id datalog.core.smoke` |
-| box graph + box language | `./gradlew --no-daemon jvmTest --tests "afield.datalog.*"` |
+| box graph + box language | `./gradlew --no-daemon jvmTest --tests "afield.data.query.datalog.*"` |
 | the editor extension, under node, against a mock Monaco | `uv run --project . --group backdoor python tools/run_field_tests.py --id datalog.editor-extension.workout` |
 
 `datalog.core.smoke` is a `jvm-main` FIELD_TEST, which it can only be because the engine touches no
@@ -246,7 +246,7 @@ against ten other implementations including `DatalogExecution`. So for every non
 takes a different route entirely — it sends an `execute-all` message through the server's normal
 handling and then polls for `is-running` to go false — which is why it works cold.
 
-It is a transcript-layer gap affecting every non-Kotlin box language, not a `afield.datalog` one,
+It is a transcript-layer gap affecting every non-Kotlin box language, not a `afield.data.query.datalog` one,
 and is recorded rather than fixed.
 
 ## Documentation

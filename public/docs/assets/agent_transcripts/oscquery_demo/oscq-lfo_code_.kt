@@ -1,4 +1,4 @@
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // A value Field changes by itself: every listener (box 4's slider, TouchDesigner) follows it.
 val q = oscQuery("Field demo")

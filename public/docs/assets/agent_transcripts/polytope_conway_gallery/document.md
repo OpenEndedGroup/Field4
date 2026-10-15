@@ -66,11 +66,11 @@ println(expressions.joinToString("\n") { source ->
 <!-- field-box id="polytope_realization_relax" index="1" -->
 
 ```edn [field-box id="polytope_realization_relax" role="properties"]
-{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 56 "characters" 2293 "sha256" "c08ba65b1ece128588cc094f7ca2222719e9ef57ba74616f38f8978fc22165a0"}]}
+{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 56 "characters" 2298 "sha256" "212c46f459f6a33226a5e2e7e5a61a47056db1fa7f16171c5e988780934ce6a1"}]}
 ```
 
 ```kotlin [field-property box="polytope_realization_relax" name="code" path="polytope_realization_relax_code_.kt"]
-import afield.stdlib.Vec3
+import afield.math.linalg.Vec3
 import kotlin.random.Random
 
 // A real Conway output, then every vertex jittered. The topology is not touched: the

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build `field_tetgen_jvm` — TetGen behind a flat C ABI — on macOS, Linux or Windows.
 
-TetGen turns the closed triangle surface `afield.manifold.Solid.toTriMesh()` produces into a
+TetGen turns the closed triangle surface `afield.geometry.solid.manifold.Solid.toTriMesh()` produces into a
 conforming tetrahedral mesh, preserving the surface's sharp edges exactly. That last property is
 why it is here rather than a level-set remesher; `dev_docs/TETGEN.md` has the measurement.
 

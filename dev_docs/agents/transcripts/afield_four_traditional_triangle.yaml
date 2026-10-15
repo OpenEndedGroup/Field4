@@ -1,5 +1,5 @@
 name: afield_four_traditional_triangle
-description: Create one afield.four graphics box that draws a traditional triangle using the backdoor graphics context parent.
+description: Create one Field 4 graphics box that draws a traditional triangle using the backdoor graphics context parent.
 operations:
   - create:
       box: agent_four_traditional_triangle

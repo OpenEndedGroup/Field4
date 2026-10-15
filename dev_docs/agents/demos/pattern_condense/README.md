@@ -62,9 +62,9 @@ the piano roll and then the markdown table both to `main`, so the figure was nev
 
 ## Where the mechanism is
 
-`src/jvmMain/kotlin/afield/four/synth/PatCondense.kt` — the search, its candidate grammar, and the
+`src/jvmMain/kotlin/afield/audio/synth/PatCondense.kt` — the search, its candidate grammar, and the
 four bounds it runs under (`PatCondensation.limits` prints which of them a run used).
-`src/jvmTest/kotlin/afield/four/synth/PatCondenseTest.kt` carries the measurements, and
+`src/jvmTest/kotlin/afield/audio/synth/PatCondenseTest.kt` carries the measurements, and
 `public/docs/pattern_language.md` has the reader-facing section.
 
 Two things the search will not do, and says so instead of guessing. A pattern that changes at random

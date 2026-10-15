@@ -20,7 +20,7 @@ CaptureRenderWindowRequest finished (23 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'RectSL window', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'RectSL window', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/ba131a3060f4d2d86219.jpg)
 <<ai>>
@@ -35,7 +35,7 @@ _r4-cd474f3c0916 → r5-137717e37043: before | after | difference, per time_
 ![tool image](images/b5c5db936197ebcab542.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'RectSL window', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'RectSL window', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/2e8a966c1a4f13c210a9.jpg)
 <<ai>>

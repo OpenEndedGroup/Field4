@@ -334,6 +334,15 @@ class Narrowings(unittest.TestCase):
         self.assertEqual(ca.strip_inline("an _emphasised_ word"), "an emphasised word")
         self.assertEqual(ca.strip_inline("a **bold** one"), "a bold one")
 
+    def test_file_overview_must_precede_the_first_declaration(self):
+        checker = load("check_kdoc_mirror")
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "Example.kt"
+            source.write_text("package example\nfun first() {}\n/**\n * Member note.\n */\n\nfun second() {}\n")
+            self.assertIsNone(checker.file_overview(source))
+            source.write_text("package example\n/**\n * File overview.\n */\n\nfun first() {}\n")
+            self.assertEqual(["File overview."], checker.file_overview(source))
+
     def test_argument_is_only_a_label_when_it_is_an_argument_for_something(self):
         sv = load("score_voice")
         # 2026-09-21: ten of the twelve `the argument` in public/docs are a call's

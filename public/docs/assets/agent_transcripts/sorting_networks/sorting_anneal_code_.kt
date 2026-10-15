@@ -1,5 +1,5 @@
-import afield.darkMode
-import afield.graphics.FLine
+import afield.ui.visualization.darkMode
+import afield.geometry.path.FLine
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 

@@ -1,5 +1,5 @@
 {
-  "entrypoint": "afield.four.reconstruction.NeuralToolsFallbackSmoke",
+  "entrypoint": "afield.media.reconstruction.NeuralToolsFallbackSmoke",
   "exitCode": 0,
   "completionMarker": "NEURAL TOOLS FALLBACK CHECK DONE",
   "vulkanValidationErrors": 0,

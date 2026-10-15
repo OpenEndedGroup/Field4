@@ -73,7 +73,7 @@ A room is [x, y, w, h] in cells. A door is [x, y, side]: an opening from cell (x
 to its neighbour on side "e" (east) or "s" (south). Loot is [x, y, path budget].
 
 ```edn [field-box id="staged_level" role="properties"]
-{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [40.0 700.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 134 "characters" 8030 "sha256" "58c743a298e16cb33cf8062df3051746088249198338e3879da1babbe4fdd0c4"}]}
+{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [40.0 700.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 134 "characters" 8032 "sha256" "cde4f3f9b65fb431b1c51e0eceb5b25e512eca765d5557e536c1743d0142fc6f"}]}
 ```
 
 ```kotlin [field-property box="staged_level" name="code" path="staged_level_code_.kt"]
@@ -196,7 +196,7 @@ thisBox.properties["levelPlan"] = plan
 aiTool("level.inspect") {
     describe("Read the level: rooms [x, y, w, h], doors [x, y, side] (side e or s opens to the east or south neighbour), the spawn [x, y] " +
         "and loot [x, y, path budget], with the revision to quote to level.edit. Changes nothing.")
-    effects(afield.ai.core.ToolEffect.READ_DOCUMENT)
+    effects(afield.ai.tools.ToolEffect.READ_DOCUMENT)
     action { mapOf("revision" to plan.currentId(), "level" to json.readTree(plan.revision().source),
         "editedOutsideTools" to (plan.liveSource() != plan.revision().source)) }
 }
@@ -205,7 +205,7 @@ aiTool("level.edit") {
         "{op: removeRoom|removeDoor|removeLoot, id} removes one; {op: spawn, at: [x, y]} moves the spawn. Quote the revision from level.inspect. " +
         "An edit that leaves rooms overlapping, a door not between two rooms, or the spawn or loot outside a room is refused and changes nothing. " +
         "Every build of the level goes stale; rebuild it.")
-    effects(afield.ai.core.ToolEffect.MUTATE_DOCUMENT)
+    effects(afield.ai.tools.ToolEffect.MUTATE_DOCUMENT)
     val expectedRevision by param<String>("revision from level.inspect")
     val operations by param<List<Map<String, Any?>>>("the operations")
     val description by param<String>("what the edit is for", default = "")
@@ -225,7 +225,7 @@ Three stages derived from the level: blockout, traversal and placement.
 Each reads the level as it was when its build started, and reports what it measured.
 
 ```edn [field-box id="staged_builds" role="properties"]
-{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 191 "characters" 12151 "sha256" "675cef523b9d295b0cea243af563252d2844b2ab4fb00523133cdb37af6bcb73"}]}
+{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 191 "characters" 12211 "sha256" "1b35edb1714897f768ce193b0c291a14a6c40d941806e06f26b6b24c51a6af27"}]}
 ```
 
 ```kotlin [field-property box="staged_builds" name="code" path="staged_builds_code_.kt"]
@@ -271,8 +271,8 @@ val blockout = StudyBuildStage("blockout", "Blockout", "blockout-v1", setOf("lev
     c.file("blockout.obj").writeText(mesh.toObj("blockout"))
     val area = g.rooms.values.sumOf { it[2] * it[3] }
     // With Manifold installed, the pieces are also joined into one solid and measured.
-    val solid = if (!afield.manifold.ManifoldLibrary.isAvailable) null else afield.manifold.Solid.scope {
-        val joined = afield.manifold.Solid.union(pieces.map { p -> afield.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2]) })
+    val solid = if (!afield.geometry.solid.manifold.ManifoldLibrary.isAvailable) null else afield.geometry.solid.manifold.Solid.scope {
+        val joined = afield.geometry.solid.manifold.Solid.union(pieces.map { p -> afield.geometry.solid.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2]) })
         mapOf("status" to joined.status.toString(), "volume" to joined.volume)
     }
     val summary = "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +

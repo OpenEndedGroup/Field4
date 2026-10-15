@@ -1,13 +1,13 @@
-import afield.stdlib.FlowCoupling
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.flowMatch
-import afield.stdlib.contourComponents
-import afield.stdlib.mixtureSource
+import afield.ai.learning.FlowCoupling
+import afield.ai.learning.FlowMatchOptions
+import afield.ai.learning.flowMatch
+import afield.ai.learning.contourComponents
+import afield.ai.learning.mixtureSource
 
 // Written out in full because `prop<>` rewrites the box's code and the rewrite does not
 // carry the snippet's own imports — the same trap the `four_simulation_chain` bundle box
 // documents.
-prop<afield.stdlib.FlowMatchExport>(neuralExport)
+prop<afield.simulation.particles.FlowMatchExport>(neuralExport)
 
 // A word, not a letter — and only because the source has the word's topology. A
 // standard Gaussian cannot become five disjoint outlines: it measures a chamfer of

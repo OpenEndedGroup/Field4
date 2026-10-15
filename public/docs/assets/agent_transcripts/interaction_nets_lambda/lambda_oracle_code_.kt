@@ -57,6 +57,6 @@ println("  de Bruijn key of Church two: " + LambdaTerms.deBruijnKey(LambdaTerms.
 println("  substitution avoids capture: " +
     LambdaTerms.format(LambdaTerms.substitute(LambdaTerms.parse("\\y. x y"), "x", LambdaTerms.parse("y"))))
 
-// Try it: add a term to `LambdaTerms.corpus()` in `src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt`.
+// Try it: add a term to `LambdaTerms.corpus()` in `src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt`.
 // `stdlib.lambda-terms.smoke` asserts the corpus by the SET OF ITS NAMES, so a new entry fails that
 // test until you name it there too — which is the point. A corpus that can shrink is not a corpus.

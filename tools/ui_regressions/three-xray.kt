@@ -1,5 +1,5 @@
-import afield.graphics.*
-import afield.stdlib.*
+
+
 
 fun sheet(z: Float, half: Float, rgb: FloatArray) = TriMesh(
     floatArrayOf(-half,-40f,z, half,-40f,z, half,40f,z, -half,40f,z),

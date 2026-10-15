@@ -2,8 +2,8 @@
 // `#brief` regions embedded in Kotlin, plus a standalone "brief" Monaco language so a loose .brief
 // file highlights too.
 //
-// Brief is a weighted constraint notation that lowers to `afield.stdlib.ceres.ConstraintScope` — see
-// `dev_docs/brief_notation.md` and `src/jvmMain/kotlin/afield/brief/Brief.kt`. This file is the single
+// Brief is a weighted constraint notation that lowers to `afield.math.optimization.ceres.ConstraintScope` — see
+// `dev_docs/brief_notation.md` and `src/jvmMain/kotlin/afield/lang/brief/Brief.kt`. This file is the single
 // source of truth for the browser side; `BriefEditorExtension.javascript()` reads it verbatim off the
 // classpath so the node probe in `BriefEditorExtensionWorkout` exercises exactly the bytes that ship.
 //

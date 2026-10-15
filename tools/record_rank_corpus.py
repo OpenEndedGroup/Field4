@@ -8,7 +8,7 @@ thing in this tree that measured a *visible* rank was a hand-cut 7-case fixture
 anything — `dev_docs/completion_aa_sidecar.md` has said so for ten days: widen first, then rebalance.
 
 This is the widening. It drives every caret in a corpus TSV through the **real** completion server —
-the code-use semantic sidecar's own `/complete`, the same endpoint `afield.AaCompletionClient` POSTs to
+the code-use semantic sidecar's own `/complete`, the same endpoint `afield.runtime.completion.AaCompletionClient` POSTs to
 per keystroke, with the same request shape and the same `limit` — and records what came back, verbatim.
 
     ./gradlew -p tools/code-use-semantic-sidecar run --args="--port 9481 --workspace $PWD"
@@ -26,7 +26,7 @@ Gzipped, line-oriented, tab-separated, with an interned row table:
 
 Interned because the row vocabulary repeats enormously across cases — every `String` receiver in the
 corpus ships the same 299 rows — and line-oriented because the consumer,
-`afield.FieldSuggestPresentationTest`, has no JSON library on its test classpath and already
+`afield.runtime.completion.FieldSuggestPresentationTest`, has no JSON library on its test classpath and already
 hand-writes the probe spec for the 7-case fixture. Measured on the first full recording: 8.6 MB of
 raw payload becomes 355 KB on disk, a 24× saving, and 96% of that is the interning rather than the
 gzip.

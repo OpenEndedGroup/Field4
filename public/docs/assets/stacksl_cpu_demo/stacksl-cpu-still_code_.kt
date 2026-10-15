@@ -9,7 +9,7 @@
 // to do — it IS what the CPU is about to do, and it is byte for byte what a GPU would be handed.
 // The CPU backend has no opinion about any StackSL word; it only knows GLSL.
 
-import afield.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLCpu
 
 run {
 

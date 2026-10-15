@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="renderer" index="0" -->
 
 ```edn [field-box id="renderer" role="properties"]
-{"id" "renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["uv-coordinates" "fbm-palette" "soft-ring" "kaleido-twist" "polar-sigmoid" "posterize-shaper" "fm-palette" "definitions" "subroutine-ridges" "oklab-shift" "ryb-paint" "grade-fields" "auto-before" "auto-after" "feedback-trails" "phasor-noise" "radial-waves" "mirror-tiles" "tiled-grid" "hard-threshold" "custom-palette" "sigmoid-punch" "twist-swirl" "spiral-flow" "value-noise" "sample-hold" "word-reference" "stripe-bands" "tonemap-grade" "local-marks" "diffusion-feedback"] "properties" {"children" #{#afield/box "uv-coordinates" #afield/box "fbm-palette" #afield/box "soft-ring" #afield/box "kaleido-twist" #afield/box "polar-sigmoid" #afield/box "posterize-shaper" #afield/box "fm-palette" #afield/box "definitions" #afield/box "subroutine-ridges" #afield/box "oklab-shift" #afield/box "ryb-paint" #afield/box "grade-fields" #afield/box "auto-before" #afield/box "auto-after" #afield/box "feedback-trails" #afield/box "phasor-noise" #afield/box "radial-waves" #afield/box "mirror-tiles" #afield/box "tiled-grid" #afield/box "hard-threshold" #afield/box "custom-palette" #afield/box "sigmoid-punch" #afield/box "twist-swirl" #afield/box "spiral-flow" #afield/box "value-noise" #afield/box "sample-hold" #afield/box "word-reference" #afield/box "stripe-bands" #afield/box "tonemap-grade" #afield/box "local-marks" #afield/box "diffusion-feedback"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "renderer_code_.kt" "lines" 13 "characters" 219 "sha256" "8b081dc30a65b381b229f1cf8ce73b95e2934f2a15a85badab6930d20d6954f2"}]}
+{"id" "renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["uv-coordinates" "fbm-palette" "soft-ring" "kaleido-twist" "polar-sigmoid" "posterize-shaper" "fm-palette" "definitions" "subroutine-ridges" "oklab-shift" "ryb-paint" "grade-fields" "auto-before" "auto-after" "feedback-trails" "phasor-noise" "radial-waves" "mirror-tiles" "tiled-grid" "hard-threshold" "custom-palette" "sigmoid-punch" "twist-swirl" "spiral-flow" "value-noise" "sample-hold" "word-reference" "stripe-bands" "tonemap-grade" "local-marks" "diffusion-feedback"] "properties" {"children" #{#afield/box "uv-coordinates" #afield/box "fbm-palette" #afield/box "soft-ring" #afield/box "kaleido-twist" #afield/box "polar-sigmoid" #afield/box "posterize-shaper" #afield/box "fm-palette" #afield/box "definitions" #afield/box "subroutine-ridges" #afield/box "oklab-shift" #afield/box "ryb-paint" #afield/box "grade-fields" #afield/box "auto-before" #afield/box "auto-after" #afield/box "feedback-trails" #afield/box "phasor-noise" #afield/box "radial-waves" #afield/box "mirror-tiles" #afield/box "tiled-grid" #afield/box "hard-threshold" #afield/box "custom-palette" #afield/box "sigmoid-punch" #afield/box "twist-swirl" #afield/box "spiral-flow" #afield/box "value-noise" #afield/box "sample-hold" #afield/box "word-reference" #afield/box "stripe-bands" #afield/box "tonemap-grade" #afield/box "local-marks" #afield/box "diffusion-feedback"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "renderer_code_.kt" "lines" 13 "characters" 230 "sha256" "e45a2fd654dc7f2bfbe5f9efab4b2ae6f391a0a51afe65caac1ab6642cbd3e02"}]}
 ```
 
 ```kotlin [field-property box="renderer" name="code" path="renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -991,7 +991,7 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 [[property stackSL]]
 
 ```edn [field-box id="diffusion-feedback" role="properties"]
-{"id" "diffusion-feedback" "index" 13 "name" "diffusion-feedback" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "diffusion-feedback" "_tombstone" false "frame" #afield/rect [1120.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion-feedback_code_.kt" "lines" 40 "characters" 1825 "sha256" "4f62deae04b891df8e73627d8b1016d2d0d7e1f5ab6897cdd188e680ab8975f1"} {"name" "fragment" "language" "glsl" "path" "diffusion-feedback_fragment_.glsl" "lines" 23 "characters" 696 "sha256" "b3bd19fe34573fcd02d2e805818e25da08311388465d75194e06acd6d7fe923c"} {"name" "stackSL" "language" "stacksl" "path" "diffusion-feedback_stackSL_.stacksl" "lines" 5 "characters" 71 "sha256" "e18e980bfc936cea82a4cb965734f8ef26df1c511987a5b6cb8ff21e6c5de88b"} {"name" "vertex" "language" "glsl" "path" "diffusion-feedback_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "diffusion-feedback" "index" 13 "name" "diffusion-feedback" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "diffusion-feedback" "_tombstone" false "frame" #afield/rect [1120.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion-feedback_code_.kt" "lines" 40 "characters" 1851 "sha256" "b13fa5a07dbd7fc14272c458bf45a217583c1029322a07ff191e6598a92463be"} {"name" "fragment" "language" "glsl" "path" "diffusion-feedback_fragment_.glsl" "lines" 23 "characters" 696 "sha256" "b3bd19fe34573fcd02d2e805818e25da08311388465d75194e06acd6d7fe923c"} {"name" "stackSL" "language" "stacksl" "path" "diffusion-feedback_stackSL_.stacksl" "lines" 5 "characters" 71 "sha256" "e18e980bfc936cea82a4cb965734f8ef26df1c511987a5b6cb8ff21e6c5de88b"} {"name" "vertex" "language" "glsl" "path" "diffusion-feedback_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="diffusion-feedback" name="code" path="diffusion-feedback_code_.kt"]
@@ -1005,10 +1005,10 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 //
 // [[property stackSL]]
 
-import afield.four.targets.PingPongRenderToTexture
+import afield.graphics.vulkan.targets.PingPongRenderToTexture
 
-prop<afield.four.targets.PingPongRenderToTexture>(target)
-prop<afield.four.texture.HasImageView>(source)
+prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
+prop<afield.graphics.texture.HasImageView>(source)
 
 // `once`, so re-running the box keeps the images and the trails already in them.
 once.target {
@@ -1910,7 +1910,7 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 [[property stackSL]]
 
 ```edn [field-box id="feedback-trails" role="properties"]
-{"id" "feedback-trails" "index" 24 "name" "feedback-trails" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "feedback-trails" "_tombstone" false "frame" #afield/rect [1120.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback-trails_code_.kt" "lines" 40 "characters" 1827 "sha256" "3d9dc6c745b56ea405901f5e58659862317c6177e7241f3fbc8ce4474e374fb2"} {"name" "fragment" "language" "glsl" "path" "feedback-trails_fragment_.glsl" "lines" 23 "characters" 696 "sha256" "b3bd19fe34573fcd02d2e805818e25da08311388465d75194e06acd6d7fe923c"} {"name" "stackSL" "language" "stacksl" "path" "feedback-trails_stackSL_.stacksl" "lines" 5 "characters" 95 "sha256" "fc9d5528c51ed054d52c4b83e6c1c459e479f2c27d310105dea5c25bc3eba6e4"} {"name" "vertex" "language" "glsl" "path" "feedback-trails_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "feedback-trails" "index" 24 "name" "feedback-trails" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "feedback-trails" "_tombstone" false "frame" #afield/rect [1120.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback-trails_code_.kt" "lines" 40 "characters" 1853 "sha256" "f05afcdc2d9fbee37880a8260aa3b7ec8cdcacde7f9f4a21dee78aa8c292901c"} {"name" "fragment" "language" "glsl" "path" "feedback-trails_fragment_.glsl" "lines" 23 "characters" 696 "sha256" "b3bd19fe34573fcd02d2e805818e25da08311388465d75194e06acd6d7fe923c"} {"name" "stackSL" "language" "stacksl" "path" "feedback-trails_stackSL_.stacksl" "lines" 5 "characters" 95 "sha256" "fc9d5528c51ed054d52c4b83e6c1c459e479f2c27d310105dea5c25bc3eba6e4"} {"name" "vertex" "language" "glsl" "path" "feedback-trails_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="feedback-trails" name="code" path="feedback-trails_code_.kt"]
@@ -1924,10 +1924,10 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 //
 // [[property stackSL]]
 
-import afield.four.targets.PingPongRenderToTexture
+import afield.graphics.vulkan.targets.PingPongRenderToTexture
 
-prop<afield.four.targets.PingPongRenderToTexture>(target)
-prop<afield.four.texture.HasImageView>(source)
+prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
+prop<afield.graphics.texture.HasImageView>(source)
 
 // `once`, so re-running the box keeps the images and the trails already in them.
 once.target {

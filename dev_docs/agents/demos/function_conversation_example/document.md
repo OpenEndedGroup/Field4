@@ -23,10 +23,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="function_source" name="code" path="function_source_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyEvent
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyEvent
+import afield.math.functions.StudyChoice
 import kotlin.math.PI
 
 with(Functions) {
@@ -155,17 +155,18 @@ with(Functions) {
 ```
 
 ```kotlin [field-property box="function_tools" name="code" path="function_tools_code_.kt"]
-import afield.ai.core.*
-import afield.displayClear
-import afield.displayOpen
-import afield.stdlib.FunctionStudy
-import afield.stdlib.StudyReport
-import afield.stdlib.StudySourceEdit
-import afield.stdlib.FileManager
-import afield.stdlib.SignalChannel
-import afield.stdlib.SignalViewer
-import afield.stdlib.SignalViewerOptions
-import afield.stdlib.named
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.ui.output.displayClear
+import afield.ui.output.displayOpen
+import afield.math.functions.FunctionStudy
+import afield.study.evidence.StudyReport
+import afield.math.functions.StudySourceEdit
+import afield.document.workspace.FileManager
+import afield.ui.visualization.SignalChannel
+import afield.ui.visualization.SignalViewer
+import afield.ui.visualization.SignalViewerOptions
+import afield.document.graph.named
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import kotlinx.coroutines.runBlocking
@@ -191,8 +192,8 @@ val studio = (properties["_functionStudy"] as? FunctionStudy) ?: FunctionStudy(
                 true
             }
         }
-        if (afield.Runloop.isMainThread) publish()
-        else runBlocking { withContext(afield.Runloop.runLoop.main) { publish() } }
+        if (afield.runtime.lifecycle.Runloop.isMainThread) publish()
+        else runBlocking { withContext(afield.runtime.lifecycle.Runloop.runLoop.main) { publish() } }
     }
 ).also { properties["_functionStudy"] = it; it.resume() }
 
@@ -223,7 +224,7 @@ data class InspectFunctionStudy(val revision: String = "current")
 data class EditFunctionStudy(
     val expectedRevision: String,
     val expectedSourceHash: String,
-    @JsonPropertyDescription("Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.")
+    @JsonPropertyDescription("Complete Kotlin source with imports. Last expression returns afield.math.functions.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.")
     val source: String,
     val description: String,
     val previewStartSeconds: Double = 0.0,

@@ -26,5 +26,5 @@ The harness never runs the `_code_.kt` boxes, so nothing in the docs build check
 them; open a copy of this workspace in Field, launch `renderer`, then launch a box.
 `metadata.edn` also carries an inline copy of every sidecar, which the offline viewer
 shows. After editing a sidecar, refresh those copies through Field's own EDN codec
-with `afield.SavingContext().refreshInlineFilesFromDisk("<path to this directory>")`
+with `afield.document.persistence.SavingContext().refreshInlineFilesFromDisk("<path to this directory>")`
 rather than by hand.
