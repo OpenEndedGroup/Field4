@@ -204,7 +204,7 @@ typealias RectSLRasterizer = StudyFrames<RectSLDrawable>
  * [RectSLStudyShader.fragment] shades — the three built-in materials in Kotlin, a StackSL material
  * through the StackSL GLSL interpreter — and decoded to linear light at the end, as the GPU's bytes
  * are. It needs no graphics context, so tests and headless runs see the scene the window shows, a
- * few levels apart at rectangle edges (it samples one point per pixel; the GPU's edge rule differs).
+ * few levels apart at rectangle edges (it samples one point per pixel, with a top-left fill rule like the GPU's).
  */
 object CpuRectSLRasterizer : RectSLRasterizer {
     override val description = "CPU reference (afield.lang.rectsl.study): exact geometry, one sample per pixel; launch the window for the GPU"
@@ -261,9 +261,9 @@ void main() {
                 if (row < quad.minY || row > quad.maxY) continue
                 for (col in quad.minX..quad.maxX) {
                     val cx = col + 0.5
-                    // Two triangles, (0 1 2) and (0 2 3), as the index buffer draws them; a centre on
-                    // their shared diagonal belongs to the first, so nothing is blended twice.
-                    val w = barycentric(quad, 0, 1, 2, cx, cy) ?: barycentric(quad, 0, 2, 3, cx, cy, excludeAB = true) ?: continue
+                    // Two triangles, (0 1 2) and (0 2 3), as the index buffer draws them. The half-open
+                    // edge rule in barycentric gives a centre on their shared diagonal to exactly one.
+                    val w = barycentric(quad, 0, 1, 2, cx, cy) ?: barycentric(quad, 0, 2, 3, cx, cy) ?: continue
                     val (a, b, c, weights) = w
                     val u = CORNER_U[a] * weights[0] + CORNER_U[b] * weights[1] + CORNER_U[c] * weights[2]
                     val vv = CORNER_V[a] * weights[0] + CORNER_V[b] * weights[1] + CORNER_V[c] * weights[2]
@@ -289,18 +289,30 @@ void main() {
 
     /**
      * Barycentric weights of (px, py) in triangle (a, b, c) of [quad], or null outside it; either
-     * winding. With [excludeAB], a point on edge a–b is outside — the quad's diagonal, which the first
-     * triangle already drew.
+     * winding. A point exactly on an edge counts only if that edge faces left, or straight up (a
+     * half-open, top-left fill rule), so a rectangle covers as many pixels as it is wide wherever its
+     * edges land, and an edge two triangles share belongs to exactly one of them.
      */
-    private fun barycentric(quad: Quad, a: Int, b: Int, c: Int, px: Double, py: Double, excludeAB: Boolean = false): Weights? {
+    private fun barycentric(quad: Quad, a: Int, b: Int, c: Int, px: Double, py: Double): Weights? {
         val ax = quad.x[a]; val ay = quad.y[a]; val bx = quad.x[b]; val by = quad.y[b]; val cx = quad.x[c]; val cy = quad.y[c]
         val area = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
         if (kotlin.math.abs(area) < 1e-12) return null
         val w0 = ((bx - px) * (cy - py) - (by - py) * (cx - px)) / area
         val w1 = ((cx - px) * (ay - py) - (cy - py) * (ax - px)) / area
         val w2 = 1.0 - w0 - w1
-        if (w0 < 0 || w1 < 0 || w2 < 0 || (excludeAB && w2 == 0.0)) return null
+        if (w0 < 0 || w1 < 0 || w2 < 0) return null
+        if (w0 == 0.0 && !ownsEdge(bx, by, cx, cy, ax, ay)) return null
+        if (w1 == 0.0 && !ownsEdge(cx, cy, ax, ay, bx, by)) return null
+        if (w2 == 0.0 && !ownsEdge(ax, ay, bx, by, cx, cy)) return null
         return Weights(a, b, c, doubleArrayOf(w0, w1, w2))
+    }
+
+    /** Whether edge p–q, opposite r, faces left or straight up (y grows downward), and so owns its points. */
+    private fun ownsEdge(px: Double, py: Double, qx: Double, qy: Double, rx: Double, ry: Double): Boolean {
+        var nx = qy - py
+        var ny = -(qx - px)
+        if (nx * (rx - px) + ny * (ry - py) > 0) { nx = -nx; ny = -ny }
+        return nx < 0 || (nx == 0.0 && ny < 0)
     }
 
     private fun shade(quad: Quad, colour: DoubleArray, u: Double, v: Double, time: Double,
