@@ -1219,7 +1219,7 @@ bridge does its own repair.
 
 </div>
 
-??? aside "How these figures are captured"
+??? aside "Agents: how these figures are captured"
     The numbers the figures above carry are asserted in
     `src/jvmTest/kotlin/afield/geometry/spatial/SpatialGeometryTest.kt`, including the Apollonius circle
     centres and the marcher's negation invariant, with a control arm confirming that a
@@ -1402,5 +1402,6 @@ Convert graphs, cells or clusters into Field drawings and interactive views.
 
 </div>
 
-Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`, `dirichlet.kt`, `voronoi.kt`,
-`clustering.kt`, `spatial_field.kt`, and the JTS-backed corner of `graph_connectivity.kt`.
+Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`,
+`afield/geometry/spatial/voronoi.kt` and `spatial_field.kt`, `afield/math/statistics/dirichlet.kt`
+and `clustering.kt`, and the JTS-backed corner of `afield/data/graph/graph_connectivity.kt`.
