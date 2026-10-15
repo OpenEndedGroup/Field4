@@ -247,14 +247,19 @@ fun registerFramesReturnValue() {
         returnValue.atEnd = {
             original()
         }
+        // `a + b` forwards up to three end phases to these hooks: report "ending" once per stop and
+        // drop the end fence only when the last of them has finished.
+        val activeEndPhases = HashSet<Job>()
         returnValue.onAtEndStart = onAtEndStart@{ endJob ->
+            // The end phase registers against the epoch *now*, not `launchEpoch`: stop bumps the
+            // epoch and it is stop's cancellation that creates this job. See registerEndPhaseJob.
+            if (!inside.registerEndPhaseJob(endJob)) return@onAtEndStart
+            val first = synchronized(activeEndPhases) { activeEndPhases.isEmpty().also { activeEndPhases.add(endJob) } }
+            if (!first) return@onAtEndStart
             val endingGeneration = inside.runGeneration[strand] ?: (generation + 1)
             returnValue.shouldCancelAtEnd = {
                 inside.runGeneration[strand] != endingGeneration
             }
-            // The end phase registers against the epoch *now*, not `launchEpoch`: stop bumps the
-            // epoch and it is stop's cancellation that creates this job. See registerEndPhaseJob.
-            if (!inside.registerEndPhaseJob(endJob)) return@onAtEndStart
             // Only claim the running state if a newer launch has not already taken this strand. A
             // stop followed immediately by a relaunch — what the docs capture's `restartTarget`
             // does — runs this end phase alongside the new launch, and reporting the *old*
@@ -267,8 +272,9 @@ fun registerFramesReturnValue() {
             }
         }
         returnValue.onAtEndFinish = { endJob ->
-            returnValue.shouldCancelAtEnd = { false }
             inside.jobs.remove(endJob)
+            val last = synchronized(activeEndPhases) { activeEndPhases.remove(endJob) && activeEndPhases.isEmpty() }
+            if (last) returnValue.shouldCancelAtEnd = { false }
         }
         inMain(Box.boxContextElement(inside) + ProfileOrigin(inside, strand) + ReturnValueRegistry.currentRunElement()) {
             Box.withBoxContext(inside) {
