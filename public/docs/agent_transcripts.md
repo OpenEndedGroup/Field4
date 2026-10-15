@@ -57,7 +57,8 @@ the box's `// {{ marker }}` selects.
 
 None of the three proves a picture is *right*; that is what the docs captures and the gallery
 FIELD_TESTs are for. What all three prove is that the code in these files still compiles and runs
-against today's stdlib, and the copy the welcome screen opens is the one the yaml produces today.
+against today's stdlib. A separate check makes sure the copy the welcome screen opens is the one
+the yaml produces today.
 
 The saved documents under `dev_docs/agents/demos/` each have a transcript here too, so their box
 Kotlin is compiled on every build.
