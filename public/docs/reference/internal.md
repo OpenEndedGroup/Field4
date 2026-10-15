@@ -114,23 +114,23 @@ Implementation details explicitly marked Internal by their source. They remain a
 
 ### ManifoldLibrary { #manifoldnative-kt-manifoldlibrary }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ManifoldLibrary</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L781)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ManifoldLibrary</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L766)
 
 Where `libmanifoldc` is, and what to do when it is not there.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L790) | `libmanifoldc.dylib` / `.so` / `manifoldc.dll`, chosen for the platform actually running. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L798) | Every path `resolvedPath` tries, in order — quoted in the "not installed" error. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L819) | The first path that exists, or `null`. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L823) | `true` when [`Solid`](graphics.md#solid-kt-solid) and [`Section`](graphics.md#section-kt-section) will work. Cheap enough to branch on in a box. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">reportedVersion</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L834) | The upstream version, read off the `.dylib`/`.so` filename that the SO-versioned symlink points at — `libmanifoldc.3.5.2.dylib` reports `3.5.2`. |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;INSTALL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L842) | What to tell someone who has not got it, in the package manager they are likely to have. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L851) | One line for a box or a smoke test to print: what was found, or why not. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L775) | `libmanifoldc.dylib` / `.so` / `manifoldc.dll`, chosen for the platform actually running. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L783) | Every path `resolvedPath` tries, in order — quoted in the "not installed" error. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L804) | The first path that exists, or `null`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L808) | `true` when [`Solid`](graphics.md#solid-kt-solid) and [`Section`](graphics.md#section-kt-section) will work. Cheap enough to branch on in a box. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">reportedVersion</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L819) | The upstream version, read off the `.dylib`/`.so` filename that the SO-versioned symlink points at — `libmanifoldc.3.5.2.dylib` reports `3.5.2`. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;INSTALL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L827) | What to tell someone who has not got it, in the package manager they are likely to have. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L836) | One line for a box or a smoke test to print: what was found, or why not. |
 
 ### ManifoldStatus { #manifoldnative-kt-manifoldstatus }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">ManifoldStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L864)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">ManifoldStatus</span><span class="p">(</span><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L849)
 
 `ManifoldError`, the status a [`Solid`](graphics.md#solid-kt-solid) carries when an operation could not produce a valid solid.
 
@@ -138,11 +138,11 @@ Constants: `NO_ERROR`, `NON_FINITE_VERTEX`, `NOT_MANIFOLD`, `VERTEX_INDEX_OUT_OF
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L883) | `true` for everything except `NO_ERROR`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L868) | `true` for everything except `NO_ERROR`. |
 
 ### BooleanOp { #manifoldnative-kt-booleanop }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BooleanOp</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L892)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BooleanOp</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L877)
 
 `ManifoldOpType`, the operation `Solid.batchBoolean` and `Section.batchBoolean` apply.
 
@@ -150,7 +150,7 @@ Constants: `UNION`, `DIFFERENCE`, `INTERSECTION`.
 
 ### JoinType { #manifoldnative-kt-jointype }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">JoinType</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L901)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">JoinType</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L886)
 
 `ManifoldJoinType` — how `Section.offset` treats a convex corner.
 
@@ -158,7 +158,7 @@ Constants: `SQUARE`, `ROUND`, `MITER`, `BEVEL`.
 
 ### FillRule { #manifoldnative-kt-fillrule }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">FillRule</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L910)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">FillRule</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L895)
 
 `ManifoldFillRule` — how a set of contours decides what is inside, when they overlap or nest.
 
@@ -166,7 +166,7 @@ Constants: `EVEN_ODD`, `NON_ZERO`, `POSITIVE`, `NEGATIVE`.
 
 ### RayHit { #manifoldnative-kt-rayhit }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayHit</span><span class="p">(</span><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L913)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayHit</span><span class="p">(</span><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L898)
 
 One intersection from `Solid.raycast`.
 
