@@ -133,7 +133,7 @@ ui.eval("""
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
 
-1. splits the code into **fragments** (on `//%-` lines),
+1. splits the code into **fragments** (on `//%-` lines, and before a `moduleHere` that follows a shader seed),
 2. **macro-expands** each fragment (rewriting some calls and injecting generated glue),
 3. prepends a **preamble** gathered from the box *and its parents* in the graph,
 4. compiles and evaluates the fragment,
@@ -457,7 +457,7 @@ once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { myMaterial.exampleFragmentShader }
 ```
 
-`once.vertex` runs at *runtime*, though, and `moduleHere` reads the property at *expansion time*. Getting that order right is what the next section is about.
+`once.vertex` runs at *runtime* and `moduleHere` reads the property at *expansion time*, so Field starts a new fragment before a top-level `moduleHere` that follows a `once.vertex` or `once.fragment`, as if you had written the `//%-` described next.
 
 ---
 
@@ -473,27 +473,12 @@ useThe(a)
 
 Fragments are **partially-editable chunks**, and they run in order with **expand → compile → evaluate interleaved per fragment**: fragment N+1 is macro-expanded only *after* fragment N has finished running. Between fragments, the preamble/setup blocks are re-run too.
 
-That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The usual case is seeding a shader for `moduleHere`:
+That ordering matters because macro expansion is not pure (see **Macros** above): a later
+fragment's macro can read state an earlier fragment set at runtime. Seeding a shader before
+`moduleHere` is the common case, and Field inserts that break for you; the DataFrame case below
+needs it written.
 
-```diffstatic {data-lang=kotlin}
-once.vertex   { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { myMaterial.exampleFragmentShader }
-
-//%-
-
-val module = moduleHere {           // reads the box's vertex/fragment PROPERTIES
-    blend = true
-    depthTest = false
-    primitiveType = triangles
-}
-```
-
-What happens in each case:
-
-- **Without** the `//%-`, both are one compilation unit. All of its macros expand first, then it runs. So `moduleHere` expands — reading the box's shaders, finding none, seeding the **default `in vec3 pos`** shader and generating accessors for *that* — *before* `once.vertex` has ever run. The result: the module uses the wrong shader (and, for RectSL, the mesh's vertex attributes won't match the shader's inputs).
-- **With** the `//%-`, fragment 1 runs first: `once.vertex`/`once.fragment` set the box's real shader source. Then fragment 2 is expanded, and `moduleHere` now sees the shader you supplied and generates the correct accessors and module.
-
-So `//%-` is how you set some state and then run a macro that reads it. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
+A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 

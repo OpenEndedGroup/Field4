@@ -615,9 +615,7 @@ class Ai4CodeToolProviders(
             runBlocking {
                 Box.withBoxContext(target) {
                     val lines = source.trimEnd().lines()
-                    val breaks = lines.mapIndexedNotNull { index, line ->
-                        if (afield.runtime.macros.isFragmentBreak(line)) index else null
-                    } + lines.size
+                    val breaks = afield.runtime.macros.fragmentBreakIndices(lines)
 
                     var at = 0
                     var lineCounter = 0
