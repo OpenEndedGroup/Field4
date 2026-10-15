@@ -11,7 +11,7 @@ Project site and user documentation: https://openendedgroup.com/field4
 
 ## Status
 
-Field 4 is in active development but is usable for real work, teaching and exploration.
+Field 4 is in active development but is usable for real work, teaching and inspiration.
 
 ## Requirements
 
