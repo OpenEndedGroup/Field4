@@ -2,7 +2,202 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # What's already in the box
 
-A browsable map of Field's standard library: every public declaration in `afield.ai.learning`, `afield.ai.retrieval`, `afield.animation.interpolation`, `afield.animation.keyframes`, `afield.animation.motion`, `afield.app.diagnostics`, `afield.audio.ai`, `afield.audio.analysis`, `afield.audio.pd`, `afield.audio.synth`, `afield.data.collections`, `afield.data.formats`, `afield.data.graph`, `afield.data.sorting`, `afield.document.context`, `afield.document.graph`, `afield.document.properties`, `afield.document.workspace`, `afield.geometry.mesh`, `afield.geometry.path`, `afield.geometry.polytope`, `afield.geometry.spatial`, `afield.graphics.color`, `afield.graphics.interaction`, `afield.graphics.render`, `afield.graphics.scene.fabricated`, `afield.graphics.shader`, `afield.graphics.text`, `afield.graphics.vulkan.buffers`, `afield.io.osc`, `afield.io.process`, `afield.lang.lambda`, `afield.math.autodiff`, `afield.math.control`, `afield.math.estimation`, `afield.math.functions`, `afield.math.linalg`, `afield.math.optimization`, `afield.math.statistics`, `afield.math.units`, `afield.media.image`, `afield.media.video`, `afield.runtime.execution`, `afield.runtime.languages`, `afield.runtime.lifecycle`, `afield.simulation.agents`, `afield.simulation.automata`, `afield.simulation.kratos`, `afield.simulation.particles`, `afield.simulation.physics`, `afield.study.build`, `afield.study.evidence`, `afield.study.search`, `afield.study.source`, `afield.study.ui`, `afield.ui.controls`, `afield.ui.output` and `afield.ui.visualization`, plus the 10 small-language packages (`afield.data.query.datalog`, `afield.lang.clojure`, `afield.lang.fieldml`, `afield.lang.forth`, `afield.lang.morpho`, `afield.lang.nano`, `afield.lang.python`, `afield.lang.rectsl`, `afield.lang.remotejs` and `afield.lang.stacksl`), with the KDoc that sits next to it in the source.
+Explore Field's standard library by package. Follow a branch to its declarations and the documentation that sits next to them in the source. Where a package spans several reference pages, each page is linked separately.
+
+<div class="reference-map" markdown="1">
+
+<div class="reference-map-root">afield</div>
+
+<div class="reference-map-branches" markdown="1">
+
+<div class="reference-map-group" markdown="1">
+
+### ai
+
+- [learning](machine-learning.md#deepsets-kt)
+- retrieval — [Data](data.md#semanticsearchmanager-kt) · [Machine learning](machine-learning.md#relatedcontextdiscovery-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### animation
+
+- interpolation — [Graphics](graphics.md#keyframeinterpolants-kt) · [Math](math.md#interpolants-kt)
+- keyframes — [Graphics](graphics.md#keyframecodeblend-kt) · [Visualization](visualization.md#keyframebrowser-kt)
+- [motion](simulation.md#movement-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### app
+
+- [diagnostics](workspace.md#boxoutputlog-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### audio
+
+- [ai](audio-ai.md#analysisoperations-kt)
+- analysis — [Audio](audio.md#essentiaanalysis-kt) · [Math](math.md#spectral-kt) · [Visualization](visualization.md#lorisvisualizer-kt)
+- [pd](synthesis.md#pdinstance-kt)
+- synth — [Audio](audio.md#abletonlinkaudio-kt) · [Patterns](patterns.md#beatlaunch-kt) · [Synthesis](synthesis.md#audioreturnvalue-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### data
+
+- [collections](workspace.md#stdlib-collections-kt)
+- [formats](data.md#jsonparsing-kt)
+- graph — [Data](data.md#dynamic-graph-field-kt) · [Graphics](graphics.md#fline-graph-connectivity-kt) · [Visualization](visualization.md#interactionnets-kt)
+- query
+    - [datalog](languages.md#datalog-kt)
+- [sorting](data.md#sorting-networks-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### document
+
+- [context](workspace.md#contextresolution-kt)
+- [graph](workspace.md#boxes-kt)
+- properties — [Data](data.md#saved-kt) · [Workspace](workspace.md#propertybag-kt)
+- workspace — [Data](data.md#filemanager-kt) · [Workspace](workspace.md#kits-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### geometry
+
+- mesh — [Graphics](graphics.md#mesh-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
+- path — [Graphics](graphics.md#fline-kt) · [Math](math.md#cubicbezier3d-kt)
+- [polytope](polytopes.md#attributes-kt)
+- spatial — [Graphics](graphics.md#bspot-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### graphics
+
+- [color](graphics.md#colormaps-kt)
+- [interaction](graphics.md#pointing-kt)
+- render — [Graphics](graphics.md#accelerationstructure-kt) · [Simulation](simulation.md#tileresidency-kt)
+- scene
+    - [fabricated](renderers.md#fabricatedirectlighting-kt)
+- [shader](graphics.md#introspection-kt)
+- [text](graphics.md#slugbuffer-kt)
+- vulkan
+    - buffers — [Graphics](graphics.md#dynamicbuffer-kt) · [Workspace](workspace.md#stdlib-buffers-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### io
+
+- osc — [Audio](audio.md#osc-kt) · [Data](data.md#tuio-kt) · [Networking](networking.md#mdns-kt)
+- [process](data.md#jsonlineserver-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### lang
+
+- [clojure](languages.md#clojureinterface-kt)
+- [fieldml](languages.md#fieldmlcompiler-kt)
+- [forth](languages.md#forthinterface-kt)
+- [lambda](visualization.md#lambdaterms-kt)
+- [morpho](languages.md#morphocircuit-kt)
+- [nano](languages.md#nanoassembler-kt)
+- python — [Data](data.md#numpy-kt) · [Languages](languages.md#numpyshared-kt)
+- [rectsl](languages.md#rectsl-kt)
+- remotejs — [Languages](languages.md#asta-kt) · [Workspace](workspace.md#stdlib-remotejs-kt)
+- stacksl — [Graphics](graphics.md#stackslbox-kt) · [Languages](languages.md#phasenoise-kt) · [Search](search.md#stackslevolution-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### math
+
+- autodiff — [Function](function.md#autodiff-fn-kt) · [Math](math.md#autodiff-kt)
+- [control](graphics.md#modelling-kt)
+- [estimation](math.md#pf-kt)
+- functions — [Function](function.md#fninterval-kt) · [Math](math.md#densedoubleops-kt)
+- linalg — [Math](math.md#dualquaternionf-kt) · [Workspace](workspace.md#stdlib-kt)
+- optimization — [Math](math.md#leastsquares-kt) · [Solvers](solvers.md#architecturalgeometry-kt)
+- statistics — [Data](data.md#clustering-kt) · [Graphics](graphics.md#quantilewarp-kt) · [Math](math.md#correlations-kt)
+- [units](math.md#units-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### media
+
+- [image](imaging.md#imaging-kt)
+- [video](video.md#sharedgpuslot-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### runtime
+
+- [execution](workspace.md#executionverdict-kt)
+- [languages](workspace.md#languageroots-kt)
+- [lifecycle](workspace.md#lifecycleledger-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### simulation
+
+- [agents](alife.md#alife-kt)
+- automata — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
+- [kratos](simulation.md#kratosdemo-kt)
+- [particles](machine-learning.md#neuralparticles-kt)
+- [physics](simulation.md#csvreader-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### study
+
+- [build](workspace.md#boxstudybuilds-kt)
+- [evidence](workspace.md#studyevidence-kt)
+- search — [Search](search.md#populationsearch-kt) · [Workspace](workspace.md#studyvariants-kt)
+- [source](workspace.md#livestudy-kt)
+- [ui](workspace.md#knobnames-kt)
+
+</div>
+
+<div class="reference-map-group" markdown="1">
+
+### ui
+
+- controls — [Visualization](visualization.md#controllaw-kt) · [Workspace](workspace.md#effectiveparameter-kt)
+- output — [Graphics](graphics.md#shadertransitionnotes-kt) · [Visualization](visualization.md#liveoutputiframe-kt) · [Workspace](workspace.md#lastrunnotes-kt)
+- visualization — [Graphics](graphics.md#flineinspect-kt) · [Visualization](visualization.md#audiovisualizer-kt) · [Workspace](workspace.md#geometryreviewsurface-kt)
+
+</div>
+
+</div>
+
+</div>
+
+## Reference pages
 
 **21310 public symbols across 689 source files**, 11296 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 

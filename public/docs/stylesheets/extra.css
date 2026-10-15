@@ -1730,3 +1730,72 @@ html .md-typeset details.aside > :last-child {
 .md-typeset .pat-mini p + p {
     color: var(--mono-text-faint);
 }
+
+/* Package hierarchy on the generated reference index: native links and list semantics. */
+.md-typeset .reference-map {
+    margin: 1.8rem 0 2.4rem;
+    color: var(--md-default-fg-color);
+}
+.md-typeset .reference-map-root {
+    padding: 0 0 .65rem;
+    border-bottom: 1px solid var(--mono-border);
+    font-family: var(--md-code-font);
+    font-size: 1.05rem;
+}
+.md-typeset .reference-map-branches {
+    columns: 3 13rem;
+    column-gap: 1.6rem;
+}
+.md-typeset .reference-map-group {
+    break-inside: avoid;
+    padding: .8rem 0 .4rem;
+}
+.md-typeset .reference-map h3 {
+    margin: 0 0 .5rem;
+    font-family: var(--md-code-font);
+    font-size: .8rem;
+    font-weight: 600;
+}
+.md-typeset .reference-map ul {
+    margin: 0 0 0 .3rem;
+    padding: 0;
+    list-style: none;
+}
+.md-typeset .reference-map li {
+    position: relative;
+    margin: 0;
+    padding: .2rem 0 .2rem .85rem;
+    border-left: 1px solid var(--mono-border);
+    font-size: .67rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+.md-typeset .reference-map li::before {
+    position: absolute;
+    top: .72rem;
+    left: 0;
+    width: .5rem;
+    border-top: 1px solid var(--mono-border);
+    content: "";
+}
+.md-typeset .reference-map li:last-child {
+    border-left-color: transparent;
+}
+.md-typeset .reference-map li:last-child::after {
+    position: absolute;
+    top: 0;
+    left: -1px;
+    height: .72rem;
+    border-left: 1px solid var(--mono-border);
+    content: "";
+}
+.md-typeset .reference-map a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--mono-border);
+    text-underline-offset: .18em;
+}
+.md-typeset .reference-map a:hover,
+.md-typeset .reference-map a:focus-visible {
+    text-decoration-color: currentColor;
+}

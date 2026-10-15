@@ -2161,6 +2161,54 @@ object StdlibReferenceGenerator {
         appendLine()
     }
 
+    /** A package tree whose destinations come from the files actually emitted on category pages. */
+    private fun renderPackageMap(documents: List<SourceDocument>): String = buildString {
+        val roots = SOURCE_ROOTS.sorted()
+        val prefix = "src/jvmMain/kotlin/afield/"
+        appendLine("<div class=\"reference-map\" markdown=\"1\">")
+        appendLine()
+        appendLine("<div class=\"reference-map-root\">afield</div>")
+        appendLine()
+        appendLine("<div class=\"reference-map-branches\" markdown=\"1\">")
+        appendLine()
+        fun branch(paths: List<String>, parent: String, depth: Int) {
+            paths.groupBy { it.removePrefix(parent).substringBefore('/') }.forEach { (name, children) ->
+                val path = parent + name
+                val destinations = if (path in roots) documents
+                    .filter { it.relativePath.startsWith("$path/") }
+                    .groupBy { it.category }.toSortedMap() else emptyMap()
+                val links = destinations.map { (category, files) ->
+                    val first = files.minBy { it.relativePath }
+                    val label = if (destinations.size == 1) name else category
+                    "[$label](${slug(category)}.md#${fileAnchor(first)})"
+                }
+                val label = when {
+                    links.size == 1 -> links.single()
+                    links.isNotEmpty() -> "$name — ${links.joinToString(" · ")}"
+                    path == "${prefix}math/linalg" -> "[$name](../linear_algebra_api.md)"
+                    else -> name
+                }
+                appendLine("${"    ".repeat(depth)}- $label")
+                val descendants = children.filter { it != path }
+                if (descendants.isNotEmpty()) branch(descendants, "$path/", depth + 1)
+            }
+        }
+        roots.groupBy { it.removePrefix(prefix).substringBefore('/') }.forEach { (group, paths) ->
+            appendLine("<div class=\"reference-map-group\" markdown=\"1\">")
+            appendLine()
+            appendLine("### $group")
+            appendLine()
+            branch(paths, "$prefix$group/", 0)
+            appendLine()
+            appendLine("</div>")
+            appendLine()
+        }
+        appendLine("</div>")
+        appendLine()
+        appendLine("</div>")
+        appendLine()
+    }
+
     private fun renderIndexPage(
         categories: List<String>,
         documents: List<SourceDocument>,
@@ -2171,9 +2219,13 @@ object StdlibReferenceGenerator {
         appendLine("# What's already in the box")
         appendLine()
         appendLine(
-            "A browsable map of Field's standard library: every public declaration in " +
-                "${documentedPackages()}, with the KDoc that sits next to it in the source."
+            "Explore Field's standard library by package. Follow a branch to its declarations " +
+                "and the documentation that sits next to them in the source. Where a package spans " +
+                "several reference pages, each page is linked separately."
         )
+        appendLine()
+        append(renderPackageMap(documents))
+        appendLine("## Reference pages")
         appendLine()
         val total = documents.sumOf { it.symbolCount() }
         val documented = documents.sumOf { it.documentedCount() }
