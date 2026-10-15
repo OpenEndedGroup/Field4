@@ -615,7 +615,7 @@ consistently-oriented but inside-out solid looks completely normal in a render (
 unchanged and the rasterizer flips inward normals rather than shading them black) and reports a
 negative volume. `fixWinding()` is the fix.
 
-??? aside "Where the pictures and counts come from"
+??? aside "Agents: where the pictures and counts come from"
 
     Each figure is a box's own output area, captured by the docs build running the fence above it.
     The ToyCar figure reads the committed `assets/fabricate_demo/ToyCar.glb`; replace that file and
@@ -623,7 +623,8 @@ negative volume. `fixWinding()` is the fix.
     `src/jvmTest/kotlin/afield/geometry/mesh/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
     behaviour they rest on.
 
-??? aside "Forcing these captures to re-run"
+??? aside "Agents: forcing these captures to re-run"
+
     A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
     machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
     `afield.graphics.scene`, not `afield.geometry.mesh`, so editing *it* does not invalidate these captures on its own.
