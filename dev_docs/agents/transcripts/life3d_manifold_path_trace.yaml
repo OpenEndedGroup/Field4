@@ -78,9 +78,8 @@ operations:
           repeat(generations) { volume = volume.step(LIFE3D_BLOB); populations += volume.population() }
           println("LIFE3D_BLOB populations: ${populations.joinToString(" -> ")}")
           
-          // smoothRadius = 0 marches the raw occupancy. A radius-1 blur is the usual choice and is
-          // the wrong one here: this rule leaves filaments and isolated cells, and a 27-voxel
-          // average over those never reaches an iso of 0.5, so the surface comes back empty.
+          // smoothRadius = 0 marches the raw occupancy, which is why the clusters are faceted at
+          // the voxel scale: this rule leaves filaments and isolated cells that a blur would erase.
           val field = volume.asDensityField(smoothRadius = 0, iso = iso)
           val bounds = volume.marchBounds()
           

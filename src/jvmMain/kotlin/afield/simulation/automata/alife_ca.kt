@@ -838,14 +838,27 @@ fun IntVolume.stepTimes(rule: LifeRule3D, generations: Int): IntVolume {
  * lets the *shape* the rule made be the thing you see. It also removes isolated single voxels, which
  * otherwise contribute a tiny closed shell each and dominate the triangle count.
  *
- * @param smoothRadius box-blur radius in voxels; 0 marches the raw occupancy
+ * A sparse volume — filaments and isolated cells, as `LIFE3D_BLOB` leaves after a few generations —
+ * can blur to a field that never reaches [iso] anywhere, which would march to an empty surface. When
+ * that happens the radius is reduced, down to 0 if need be, until some voxel reaches [iso] again, so
+ * a volume with live cells never comes back empty.
+ *
+ * @param smoothRadius box-blur radius in voxels; 0 marches the raw occupancy. This is the largest
+ *   radius used: see above for when a smaller one is taken.
  * @param iso the smoothed-occupancy level taken as the surface
  */
 fun IntVolume.asDensityField(smoothRadius: Int = 1, iso: Double = 0.5): ScalarField3D {
     require(smoothRadius >= 0) { "smoothRadius must be >= 0, got $smoothRadius" }
     val src = FloatArray(size) { if (cells[it] != 0) 1f else 0f }
-    val smooth = if (smoothRadius == 0) src else boxBlur3D(src, width, height, depth, smoothRadius)
     val level = iso.toFloat()
+    var radius = smoothRadius
+    var smooth = if (radius == 0) src else boxBlur3D(src, width, height, depth, radius)
+    // Blurring a sparse volume can leave no voxel at the iso level; step the radius down rather
+    // than return a field that marches to nothing.
+    while (radius > 0 && smooth.none { it >= level }) {
+        radius--
+        smooth = if (radius == 0) src else boxBlur3D(src, width, height, depth, radius)
+    }
     return { p ->
         // Trilinear sample in voxel coordinates; outside the volume is empty.
         val fx = p.x; val fy = p.y; val fz = p.z

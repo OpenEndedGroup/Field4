@@ -105,24 +105,30 @@ class Life3dSolidTest {
     }
 
     /**
-     * The trap the page carries a callout about: a radius-one blur over filaments and isolated cells
-     * never reaches an iso of 0.5, so the surface comes back empty from both marchers with no error.
+     * A radius-one blur over filaments and isolated cells never reaches an iso of 0.5. It used to
+     * march to an empty surface with no error; asDensityField now steps the radius down instead.
      */
     @Test
-    fun `a radius-one blur marches this volume to nothing and radius zero does not`() {
+    fun `a sparse volume never blurs to an empty surface`() {
         val volume = pageVolume()
         val blurred = volume.asDensityField(smoothRadius = 1, iso = 0.5)
         val raw = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         val bounds = volume.marchBounds()
-        assertEquals(
-            0,
-            marchingCubes(blurred, bounds, resolution = 110, positiveOutside = false).triangleCount,
-            "a radius-one blur is expected to leave nothing above the iso for this rule",
-        )
-        assertTrue(
-            marchingCubes(raw, bounds, resolution = 110, positiveOutside = false).triangleCount > 1000,
-            "the raw occupancy should march to a real surface",
-        )
+        val fromBlurred = marchingCubes(blurred, bounds, resolution = 110, positiveOutside = false).triangleCount
+        val fromRaw = marchingCubes(raw, bounds, resolution = 110, positiveOutside = false).triangleCount
+        assertTrue(fromRaw > 1000, "the raw occupancy should march to a real surface")
+        assertEquals(fromRaw, fromBlurred, "a blur that reaches no voxel should fall back to the raw occupancy")
+    }
+
+    @Test
+    fun `a dense volume keeps its blur`() {
+        val volume = IntVolume(12, 12, 12, IntArray(12 * 12 * 12))
+        for (z in 2 until 10) for (y in 2 until 10) for (x in 2 until 10) volume[x, y, z] = 1
+        val bounds = volume.marchBounds()
+        val blurred = marchingCubes(volume.asDensityField(smoothRadius = 1), bounds, resolution = 48, positiveOutside = false)
+        val raw = marchingCubes(volume.asDensityField(smoothRadius = 0), bounds, resolution = 48, positiveOutside = false)
+        assertTrue(blurred.triangleCount > 0)
+        assertTrue(blurred.triangleCount != raw.triangleCount, "a cube of live cells should still be blurred")
     }
 
     @Test
