@@ -1,2 +1,1 @@
-val inherited = fromContextWithNameOrNull<String>("agent_context_value")
-println("child inherited: $inherited")
+println("child inherited: $greeting")
