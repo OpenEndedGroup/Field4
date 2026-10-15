@@ -11,14 +11,14 @@ the transcript that showed each pattern is in brackets. New proposals go under *
   [keyframer_worked_example, mesh_geometry_examples]
 - **Rectangles and circles:** `FLine.rect(x, y, w, h)`, the free `rect(x, y, w, h)`, and
   `FLine.circle(cx, cy, r)` (four cubics; `segments =` for a polygon), all in
-  `stdlib/StandardDrawing.kt`. `circle` was added 2026-10-07. [keyframer_worked_example, frames_lifecycle]
+  `graphics/render/StandardDrawing.kt`. `circle` was added 2026-10-07. [keyframer_worked_example, frames_lifecycle]
 - **Mouse drags:** `mouse.onDrag("left", name) { ev -> ... }` needs no `onDown` beside it, and
   `ev.uv` is the position as a fraction of the window (both 2026-10-07). [four_simulation_chain]
 - **Meshes inside the module block:** `renderer += moduleHere { +Mesh("my mesh") { set(3, 3) { ... } } }`
   (2026-10-07; `Parameters.Mesh` and `unaryPlus`, attached after the module is built). The
   triangle starting point uses it. [afield_four_traditional_triangle]
 - **Labels from names:** `showMeshGrid(cube, ball)` labels its panels "cube" and "ball". Any function
-  annotated `@LabelsArgumentsFromSource` gets the same rewrite (`macros/LabelledArguments.kt`).
+  annotated `@LabelsArgumentsFromSource` gets the same rewrite (`runtime/macros/LabelledArguments.kt`).
 - **Reading a structure by name:** `structure["radius"]` (`Structure.get`) returns the binding
   if there is one and the plain value otherwise, which is what `s.bindings["radius"]?.invoke()`
   writes out by hand. [keyframer_worked_example]
@@ -41,7 +41,10 @@ the transcript that showed each pattern is in brackets. New proposals go under *
   `randomPoints(48, seed = 31, bounds = ...)`. [mesh_geometry_examples]
 - `StatsDependence.all(x, y)` with `caption()`, `permutationNull(x, y, reps, seed) { a, b -> ... }`,
   `RollingPearson(w)`. [statistics_examples]
-- `markdownAppend("channel", line)`, with a maximum size that trims the earliest lines. [frames_lifecycle]
+- `markdownAppend("channel", line)`, with a maximum size that trims the earliest lines.
+  Implementation follow-up: add the bounded append operation beside `Box.markdown` in
+  `ui/output/MarkdownOutput.kt`; verify cancellation and rerun ordering before replacing the
+  cleanup example's per-launch `notes` list. [frames_lifecycle]
 - **Bug, fixed 2026-10-07:** `prop<>` dropped the box's own imports, forcing
   `prop<afield.graphics.scene.fabricated.StandardRenderer.Bundle>`; six transcripts now use the short name.
   [four_simulation_chain]
@@ -59,7 +62,11 @@ the transcript that showed each pattern is in brackets. New proposals go under *
 
 ## Open
 
-(none yet)
+- **Table layout in the formatter:** preserve authored row groups in
+  `dataFrameOf("name", "age")("Alice", 15, ...)` literals. The second rehearsal keeps each
+  name/age pair on one line after reviewing the mechanical formatting result. This is a
+  formatting convention to review, alongside the existing assignment/lambda layout rules.
+  [dataframe_typed_columns]
 
 ## Found along the way (not helpers)
 
