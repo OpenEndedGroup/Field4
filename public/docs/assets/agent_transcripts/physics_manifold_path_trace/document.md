@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="physics_manifold_trace" index="1" -->
 
 ```edn [field-box id="physics_manifold_trace" role="properties"]
-{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 130 "characters" 5789 "sha256" "76dfd2b1efa773200afa3a78146f9231e621b7ccdcc2cbdebb5588262e48b26b"}]}
+{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 128 "characters" 5602 "sha256" "e294ed5267f51f6c4c7b84d0e5d05717c0715ad6f900af41ae01392a2e234680"}]}
 ```
 
 ```kotlin [field-property box="physics_manifold_trace" name="code" path="physics_manifold_trace_code_.kt"]
@@ -67,8 +67,8 @@ val settleFrames = 300  // physics frames before the geometry is taken
 // ---------------------------------------------------------------------------------
 
 // ---- stage one: the physics ----------------------------------------------------
-// Gravity is +y in SimdVerlet, which is why the sphere sits BELOW the sheet at y = 0.8
-// and the floor's legal side is above a plane whose normal is -y.
+// +y is up, as in the path tracer: gravity is negative, the sphere sits below the sheet,
+// and the floor is a plane whose normal is +y.
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 val cloth = sim.addCloth(
     width = side,
@@ -80,20 +80,18 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 val world = sim.addColliders(
-    SphereCollider(0f, 0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
-    PlaneCollider(0f, -1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
+    SphereCollider(0f, -0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
+    PlaneCollider(0f, 1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
 )
 repeat(settleFrames) {
-    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 9.8f, iterations = 16)
+    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = -9.8f, iterations = 16)
 }
 println("${cloth.count} particles, ${world.contacts} contacts on the last frame")
 
 // ---- stage two: 364 rods, one batched union ------------------------------------
-// The path tracer has +y up and SimdVerlet has +y down, so read the physics out with y
-// negated once, here, rather than flipping the camera and the floor to match it.
 fun at(col: Int, row: Int): Triple<Double, Double, Double> {
     val p = cloth.position(col, row)
-    return Triple(p.x.toDouble(), -p.y.toDouble(), p.z.toDouble())
+    return Triple(p.x.toDouble(), p.y.toDouble(), p.z.toDouble())
 }
 
 val struts = buildList {

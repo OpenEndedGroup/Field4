@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 208 "characters" 8891 "sha256" "2dfbf554fd98adc43632b25f0d89d9d1d7b6c1dc619a79809aa8ad3b6777f8db"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 208 "characters" 8855 "sha256" "087708d27656dcbe85a0ee9f1f9f72d4d8c1275d08e7242f2c5776e15c7f965f"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
@@ -129,7 +129,7 @@ val innerBounds = boundsOf(
 // level set closes it against the box.
 val unpadded = sampledField3D(inner, nx, ny, nt, innerBounds)
 val cutMarch = marchingCubes(unpadded, innerBounds, resolution = 140)
-val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12, parallel = false)
+val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12)
 println()
 println("with the volume ending exactly at the first and last frame:")
 println("  marchingCubes: ${cutMarch.triangleCount} triangles, " +
@@ -159,7 +159,7 @@ println("and with one empty slice each side:")
 println("  marchingCubes: ${marched.triangleCount} triangles, " +
     "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
 
-val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12, parallel = false)
+val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
 println("  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
     "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}")
 
