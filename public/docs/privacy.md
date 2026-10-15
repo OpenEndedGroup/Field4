@@ -7,7 +7,7 @@ libraries you load can make their own network requests.
 ## What stays on your machine
 
 Your documents and their backups live in your workspace. Field also keeps local settings, caches
-and diagnostic logs. **Local code-use history** (called "code-use telemetry" in some status messages) is an
+and diagnostic logs. **Local code-use history** is an
 on-by-default SQLite history of compiled and executed code: full source snapshots, document and
 box names, compile diagnostics, exceptions, timings and launch events. Field and its AI tools use it to
 find related code and to look into failures. It is not an upload to OpenEndedGroup or an audience analytics feed.
