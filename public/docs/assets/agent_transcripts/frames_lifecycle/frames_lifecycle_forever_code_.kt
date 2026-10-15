@@ -1,11 +1,8 @@
 // An animate { } with no end condition. It runs until you press stop, or until you
 // re-run this box. The running indicator on the box stays lit the whole time.
 val started = AnimationClock.nowSeconds()
-/*
-Trail length and resolution are a bandwidth decision, not a taste one: every redraw
-serialises the whole trail to SVG and pushes it down the output socket. 8 s at 0.06
-is ~130 points; 12 s at 0.02 is ~600, enough to saturate the connection.
-*/
+// Each redraw sends the whole trail as SVG. Keep its duration and sample count bounded.
+// At these settings it carries about 130 points.
 val trailSeconds = 8.0
 val trailStep = 0.06
 var nextDraw = 0.0
@@ -18,11 +15,7 @@ fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
 }
 
 fun border(rgba: Vec4) = fline {
-    moveTo(8.0, 8.0)
-    lineTo(552.0, 8.0)
-    lineTo(552.0, 312.0)
-    lineTo(8.0, 312.0)
-    close()
+    rect(8.0, 8.0, 544.0, 304.0)
     color = rgba
     thickness = 1.2
     stroked = true
@@ -35,12 +28,9 @@ fun atY(s: Double) = 160.0 + 120.0 * kotlin.math.sin(s * 1.7)
 val draw: (Double) -> Unit = { t ->
     val trail = fline {
         var s = kotlin.math.max(0.0, t - trailSeconds)
-        var first = true
+        breakNext() // The first sample starts the trail; later samples extend it.
         while (s <= t) {
-            if (first) {
-                moveTo(atX(s), atY(s))
-                first = false
-            } else lineTo(atX(s), atY(s))
+            lineTo(atX(s), atY(s))
             s += trailStep
         }
         color = vec(0.30, 0.52, 0.68, 0.55)

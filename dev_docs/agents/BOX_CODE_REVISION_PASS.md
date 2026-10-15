@@ -38,6 +38,9 @@ The [first rehearsal](box_code_revision_pilot/README.md) records three review ou
 runtime evidence, including an Alt-Enter declaration/assignment comparison. It also records
 the limits of the current census and the verification needed before a larger pass.
 
+The [second rehearsal](box_code_revision_batch_2/README.md) applies existing drawing helpers,
+revises lifecycle and fragment comments, and records a formatter repair discovered by replay.
+
 ## Imports
 
 A box is compiled with `intro` (`Boxes.kt`) prepended, so most imports agents write add nothing.

@@ -167,6 +167,25 @@ class KotlinFormatterCommentTest {
     }
 
     @Test
+    fun fragmentBreaksSeparateCommentRuns() {
+        val code = "// first\n// second\n// third\n//%- schema ready\n// query\n// again\n// below\nval p = people"
+        assertEquals(
+            "/*\nfirst\nsecond\nthird\n*/\n//%- schema ready\n/*\nquery\nagain\nbelow\n*/\nval p = people",
+            blockifyLineCommentRuns(code),
+        )
+    }
+
+    @Test
+    fun fragmentBreaksBesideProseSurviveFormattingTwice() {
+        for (marker in listOf("//%-", "// %-", "//%- schema ready")) {
+            val code = "val people = load()\n// Read the loaded schema.\n// Reload the preamble.\n// Then compile the query.\n$marker\nval p = people.cast<Peach>()\n"
+            val once = formatKotlinCode(code)
+            assertEquals(1, once.lines().count(::isFragmentBreak), marker)
+            assertEquals(once, formatKotlinCode(once), marker)
+        }
+    }
+
+    @Test
     fun spacedFragmentBreaksAreStillBreaks() {
         assertTrue(isFragmentBreak("// %-"))
         assertTrue(isFragmentBreak("  /* %- */"))

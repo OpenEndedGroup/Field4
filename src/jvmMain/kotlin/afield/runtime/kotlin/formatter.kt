@@ -25,6 +25,7 @@ import afield.media.stream.*
 import afield.media.video.*
 import afield.runtime.lifecycle.end
 import afield.runtime.lifecycle.map
+import afield.runtime.macros.isFragmentBreak
 import afield.tools.docs.format
 import afield.ui.output.templates.filter
 import org.jetbrains.ktfmt.format.FileType
@@ -213,6 +214,9 @@ fun blockifyLineCommentRuns(code: String): String {
         .filter { it.tokenType == KtTokens.EOL_COMMENT }
         .sortedBy { it.startOffset }
         .mapNotNull { comment ->
+            // Fragment markers are execution boundaries. Leave them as line comments,
+            // separating prose runs on either side so the splitter still sees them.
+            if (isFragmentBreak(comment.text)) return@mapNotNull null
             val start = comment.startOffset
             val lineStart = code.lastIndexOf('\n', start - 1) + 1
             val indent = code.substring(lineStart, start)

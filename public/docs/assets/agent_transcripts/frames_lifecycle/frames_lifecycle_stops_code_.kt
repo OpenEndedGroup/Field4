@@ -1,8 +1,5 @@
-/*
-The same loop, with an end condition and a cleanup block. Watch it for six seconds:
-the disc travels, the bar fills, and then everything freezes and turns red. Nothing
-after that is the animation — it is the last frame the .end { } block painted.
-*/
+// After six seconds, end() cancels this animation. Its .end block paints the red
+// final frame before the loop stops.
 val started = AnimationClock.nowSeconds()
 val stopAfter = 6.0
 var nextDraw = 0.0
@@ -18,11 +15,7 @@ val draw: (Double, Boolean) -> Unit = { elapsed, stopped ->
     val accent = if (stopped) vec(1.0, 0.28, 0.30, 1.0) else vec(0.48, 0.85, 1.0, 1.0)
     val quiet = if (stopped) vec(1.0, 0.28, 0.30, 0.55) else vec(0.55, 0.62, 0.72, 0.7)
     val border = fline {
-        moveTo(6.0, 6.0)
-        lineTo(594.0, 6.0)
-        lineTo(594.0, 244.0)
-        lineTo(6.0, 244.0)
-        close()
+        rect(6.0, 6.0, 588.0, 238.0)
         color = quiet
         thickness = 1.4
         stroked = true
@@ -35,11 +28,7 @@ val draw: (Double, Boolean) -> Unit = { elapsed, stopped ->
         thickness = 1.4
     }
     val gutter = fline {
-        moveTo(60.0, 165.0)
-        lineTo(540.0, 165.0)
-        lineTo(540.0, 205.0)
-        lineTo(60.0, 205.0)
-        close()
+        rect(60.0, 165.0, 480.0, 40.0)
         color = quiet
         thickness = 1.0
         stroked = true
@@ -48,11 +37,7 @@ val draw: (Double, Boolean) -> Unit = { elapsed, stopped ->
     // How far through the six seconds we are. It fills, and then it stops filling.
     val progress = fline {
         val w = 480.0 * (elapsed / stopAfter).coerceIn(0.0, 1.0)
-        moveTo(60.0, 165.0)
-        lineTo(60.0 + w, 165.0)
-        lineTo(60.0 + w, 205.0)
-        lineTo(60.0, 205.0)
-        close()
+        rect(60.0, 165.0, w, 40.0)
         color = accent
         filled = true
         stroked = false
