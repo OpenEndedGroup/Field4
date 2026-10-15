@@ -160,7 +160,7 @@ is closed with the repair and full verification results.
 The initial compile and runtime rehearsals accepted GraalVM 25.0.2 despite the 25.4.4.1.1 pin.
 Gradle's vendor/Java-major specification admitted both builds; plain wrapper calls omitted the
 cached pin path, and the build only warned about a mismatch. Both supported property flag forms
-were verified to work; flag syntax was not the cause.
+selected the pinned JDK in live Gradle probes.
 
 The wrappers now discover the cached exact pin. Field compile/test/run checks reject a mismatched
 JDK. A bare `./gradlew verifyFieldToolchain compileKotlinJvm --info` passed and reported

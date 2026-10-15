@@ -2454,6 +2454,7 @@ tasks.register<Exec>("fieldAudioModelSmoke") {
 }
 
 tasks.named("check") {
+    dependsOn("verifyFieldToolchain")
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")
     dependsOn("checkSourcePartition")
