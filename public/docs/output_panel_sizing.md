@@ -267,7 +267,7 @@ has its own copy of the fill-frame test
   auto-size passes keep running after the prep pass and put the width back, the panel would end up
   wider than the clip already measured, cropping the right-hand column of a table out of the figure.
 
-??? aside "The two fill-frame tests differ"
+??? aside "Agents: the two fill-frame tests differ"
     The JS version routes the inline width through `hasConcreteCssSize`; the Kotlin version at
     `src/jsMain/kotlin/afield/app/client/Main.kt:1566#private fun isFillWidthIframe` accepts empty, `auto`, or
     a `%` suffix and nothing else. They agree on every width Field emits, and would disagree about
@@ -294,7 +294,7 @@ grip over an iframe still counts: a mouse event inside an iframe never reaches t
 panel. The three functions that resize the box themselves, `applyOpen`, `primeAutoSizeForOpen` and
 `applyClosed`, mark `selfResizeUntil` so that their own resizing is not mistaken for a drag.
 
-??? aside "What the regression suite checks"
+??? aside "Agents: what the regression suite checks"
     `tools/run_ui_regressions.py:3651#id="h2-panel-sizing"` opens a real box in a browser at
     `--w 1040 --h 200`, waits for the auto-size passes to settle, and checks that the panel tracks
     the box's width without overhanging it, and that the frame inside keeps its declared height.
