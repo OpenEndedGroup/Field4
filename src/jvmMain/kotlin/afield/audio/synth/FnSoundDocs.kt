@@ -135,20 +135,14 @@ object FnSoundDocs {
 
     /**
      * One analysis frame: the samples it read, `[firstSample, lastSample]`, the time the analysis
-     * attributes its value to, and what it recovered — `NaN` for a YIN frame that was not voiced.
-     *
-     * [supportCenterSeconds] is the centre of the samples the estimate actually *compared*. For an
-     * RMS frame that is [centerSeconds]. For a YIN frame it is not: `PatF0Frame.centerSample` is the
-     * middle of `window + tauMax` samples, but the difference function at the lag YIN picked, `tau`,
-     * only reads `window + tau` of them, so for any pitch above `minHz` the estimate is really about
-     * an instant `(tauMax - tau) / 2` samples earlier than the one it is attributed to.
+     * attributes its value to, and what it recovered — `NaN` for a YIN frame that was not voiced. A
+     * YIN frame's time is `PatF0Frame.measuredCenterSample`, the centre of the samples it compared.
      */
     data class Frame(
         val firstSample: Int,
         val lastSample: Int,
         val centerSeconds: Double,
         val recovered: Double,
-        val supportCenterSeconds: Double = centerSeconds,
     )
 
     /** Analyse samples that were read back from a `.wav`. */
@@ -158,16 +152,10 @@ object FnSoundDocs {
             Frame(first, first + RMS_WINDOW - 1, (first + (RMS_WINDOW - 1) / 2.0) / SR, sqrt(2.0) * rms / LOUDNESS_GAIN)
         }
         Encoding.PITCH -> {
-            val tauMax = (SR / PITCH_MIN_HZ).toInt()
             patF0Frames(samples, SR, PITCH_MIN_HZ, PITCH_MAX_HZ).map { f ->
                 val voiced = f.voiced && f.hz > 0.0
                 val value = if (voiced) ln(f.hz / PITCH_BASE_HZ) / ln(2.0) else Double.NaN
-                val window = f.spanSamples - tauMax
-                val tau = if (voiced) SR / f.hz else tauMax.toDouble()
-                Frame(
-                    f.startSample, f.startSample + f.spanSamples - 1, f.centerSample.toDouble() / SR, value,
-                    supportCenterSeconds = (f.startSample + (window + tau - 1.0) / 2.0) / SR,
-                )
+                Frame(f.startSample, f.startSample + f.spanSamples - 1, f.measuredCenterSample.toDouble() / SR, value)
             }
         }
     }
@@ -202,14 +190,10 @@ object FnSoundDocs {
         val bestLagSamples: Int
         val rmsErrorAtBestLag: Double
 
-        /** [bestLagSamples], measured from each frame's [Frame.supportCenterSeconds] instead. */
-        val bestLagFromSupportSamples: Int
-
         init {
             val (lag, r) = bestLag { it.centerSeconds }
             bestLagSamples = lag
             rmsErrorAtBestLag = r
-            bestLagFromSupportSamples = bestLag { it.supportCenterSeconds }.first
         }
 
         private fun bestLag(time: (Frame) -> Double): Pair<Int, Double> {
@@ -284,7 +268,7 @@ object FnSoundDocs {
             "${encoding.name.lowercase().padEnd(8)} ${route.name.lowercase().padEnd(10)} " +
                 "frames=${measured.size}/${frames.size} max|e|=${"%.5f".format(maxAbsError)} " +
                 "rms=${"%.5f".format(rmsError)} at=${"%.4f".format(maxErrorAtSeconds)} lag=$bestLagSamples " +
-                "rms@lag=${"%.5f".format(rmsErrorAtBestLag)} supportLag=$bestLagFromSupportSamples " +
+                "rms@lag=${"%.5f".format(rmsErrorAtBestLag)} " +
                 "inside=$insideCount/${measured.size} worstOutside=${"%.2e".format(worstOutside)} " +
                 "blip=${"%.3f".format(blip.survival)}"
     }
@@ -334,8 +318,8 @@ object FnSoundDocs {
         // The structural claims the page makes, checked here so the smoke fails when one stops holding.
         check(trip(Encoding.LOUDNESS, Route.PER_SAMPLE).bestLagSamples == 0) { "FnSignal is no longer on time" }
         check(trip(Encoding.LOUDNESS, Route.PER_BLOCK).bestLagSamples == BLOCK) { "Param { } is no longer one block late" }
-        check(abs(trip(Encoding.PITCH, Route.PER_SAMPLE).bestLagFromSupportSamples) <= 3) {
-            "re-centring YIN frames on the samples they compared no longer removes their lag"
+        check(abs(trip(Encoding.PITCH, Route.PER_SAMPLE).bestLagSamples) <= 3) {
+            "YIN frames are no longer reported at the instant they measured"
         }
         check(trips.all { it.measured.isNotEmpty() && it.insideCount > 0 }) { "a trip measured nothing" }
 

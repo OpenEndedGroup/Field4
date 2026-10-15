@@ -63,15 +63,14 @@ class FnSoundRoundTripTest {
     }
 
     @Test
-    fun yinAttributesItsEstimateLateAndTheSupportCentreAccountsForIt() {
+    fun yinReportsItsEstimateAtTheInstantItMeasured() {
         val sample = trip(Encoding.PITCH, Route.PER_SAMPLE)
         val block = trip(Encoding.PITCH, Route.PER_BLOCK)
         assertEquals(1120, sample.measured.size)
         assertEquals(sample.frames.size, sample.measured.size)
-        assertTrue(sample.bestLagSamples in 40..55, "lag ${sample.bestLagSamples} [47]")
-        assertTrue(abs(sample.bestLagFromSupportSamples) <= 3, "support lag ${sample.bestLagFromSupportSamples} [1]")
-        assertTrue(block.bestLagFromSupportSamples - sample.bestLagFromSupportSamples in 124..134,
-            "block route adds ${block.bestLagFromSupportSamples - sample.bestLagFromSupportSamples} [130]")
+        assertTrue(abs(sample.bestLagSamples) <= 3, "lag ${sample.bestLagSamples} [1]")
+        assertTrue(block.bestLagSamples - sample.bestLagSamples in 124..134,
+            "block route adds ${block.bestLagSamples - sample.bestLagSamples} [130]")
         assertTrue(sample.rmsError < 0.005, "rms ${sample.rmsError} [0.00397]")
         assertEquals(sample.measured.size, sample.insideCount)
         assertEquals(block.measured.size, block.insideCount)
