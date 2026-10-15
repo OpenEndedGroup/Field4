@@ -1122,6 +1122,68 @@ try {
 }
 """
 
+VALUE_VIEWER_PANEL_SIZING_SNIPPET = """\
+val values = (1..400).map { it * 3 }
+display("values", values.h)
+displayOpen("values")
+"""
+
+# The value-viewer frame (`upsertLazyValueViewer` in Outputs.kt) is a fill frame whose width lives in
+# a CSS class, so it takes the bounding-rect fallback; this is the geometry check it never had.
+VALUE_VIEWER_PANEL_SIZING_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) { const value = predicate(); if (value) return value; await delay(100); }
+  return predicate();
+};
+try {
+  const box = [...document.querySelectorAll(".box")]
+    .find((candidate) => String(candidate.textContent || "").includes("ValueViewerPanelSizingRegression"))
+    || [...document.querySelectorAll(".box")].at(-1);
+  if (!box) return { ok: false, reason: "box not found", errors };
+  const link = await waitFor(() => box.querySelector("a[data-afield-view-src]"), 12000);
+  if (!link) return { ok: false, reason: "the .h output offered no output-area viewer link", errors };
+  window.afieldOpenLazyValueInOutputArea(link);
+  const frame = await waitFor(() => box.querySelector("iframe.value-viz-output-viewer-frame"), 12000);
+  if (!frame) return { ok: false, reason: "value-viewer iframe never appeared", errors };
+  const panel = frame.closest(".disclosure");
+  await waitFor(() => {
+    const width = frame.getBoundingClientRect().width;
+    return width > 0 && Math.abs(panel.getBoundingClientRect().width - box.getBoundingClientRect().width) < 40;
+  }, 12000);
+  await delay(400);
+  const boxRect = box.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  const result = {
+    boxWidth: Math.round(boxRect.width),
+    panelWidth: Math.round(panelRect.width),
+    frameWidth: Math.round(frameRect.width),
+    frameHeight: Math.round(frameRect.height),
+    panelOverflowRight: Math.round(panelRect.right - boxRect.right),
+    fillFrame: typeof window.fieldIsFillWidthIframe === "function" && window.fieldIsFillWidthIframe(frame),
+    errors,
+  };
+  result.panelTracksBox = result.panelWidth >= result.boxWidth - 24 && result.panelOverflowRight <= 2;
+  // LAZY_VIEWER_HEIGHT_PX in Outputs.kt; a frame that sized to itself opened as a one-line sliver.
+  result.frameHasHeight = result.frameHeight >= 200;
+  result.ok = result.fillFrame && result.panelTracksBox && result.frameHasHeight && result.errors.length === 0;
+  if (!result.ok) {
+    result.reason = !result.fillFrame ? "the value-viewer frame is not recognised as a fill frame"
+      : !result.panelTracksBox ? `panel ${result.panelWidth}px does not track box ${result.boxWidth}px`
+      : !result.frameHasHeight ? `frame is a ${result.frameHeight}px sliver`
+      : "unexpected value-viewer geometry";
+  }
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 H2_DOMAIN_EXPLORER_SNIPPET = """\
 data class Trail(val id: Int, val x: Double, val y: Double, val label: String, val closed: Boolean)
 
@@ -3725,6 +3787,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "output_area_basics_js": write_generated_file("output-area-basics.js", OUTPUT_AREA_BASICS_JS),
         "h2_panel_sizing_snippet": write_generated_file("h2-panel-sizing.kt", H2_PANEL_SIZING_SNIPPET),
         "h2_panel_sizing_js": write_generated_file("h2-panel-sizing.js", H2_PANEL_SIZING_JS),
+        "value_viewer_panel_sizing_snippet": write_generated_file("value-viewer-panel-sizing.kt", VALUE_VIEWER_PANEL_SIZING_SNIPPET),
+        "value_viewer_panel_sizing_js": write_generated_file("value-viewer-panel-sizing.js", VALUE_VIEWER_PANEL_SIZING_JS),
         "viewer_panel_sizing_snippet": write_generated_file("viewer-panel-sizing.kt", VIEWER_PANEL_SIZING_SNIPPET),
         "viewer_panel_sizing_js": write_generated_file("viewer-panel-sizing.js", VIEWER_PANEL_SIZING_JS),
         "h2_domain_explorer_snippet": write_generated_file("h2-domain-explorer.kt", H2_DOMAIN_EXPLORER_SNIPPET),
@@ -3992,6 +4056,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["h2_panel_sizing_snippet"]), "--timeout", timeout_text]),
                 "sleep 1.5",
                 shell_join(["page-eval", "--body", "--file", str(files["h2_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="value-viewer-panel-sizing",
+            description="A value opened into the output area from a .h listing is a fill frame: its panel takes the box's width and the frame keeps its height.",
+            commands=[
+                "new-box --name ValueViewerPanelSizingRegression --w 1040 --h 200",
+                shell_join(["run", "@last", "--file", str(files["value_viewer_panel_sizing_snippet"]), "--timeout", timeout_text]),
+                "sleep 1.5",
+                shell_join(["page-eval", "--body", "--file", str(files["value_viewer_panel_sizing_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),

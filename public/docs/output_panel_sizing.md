@@ -267,12 +267,6 @@ has its own copy of the fill-frame test
   auto-size passes keep running after the prep pass and put the width back, the panel would end up
   wider than the clip already measured, cropping the right-hand column of a table out of the figure.
 
-??? aside "Agents: the two fill-frame tests differ"
-    The JS version routes the inline width through `hasConcreteCssSize`; the Kotlin version at
-    `src/jsMain/kotlin/afield/app/client/Main.kt:1566#private fun isFillWidthIframe` accepts empty, `auto`, or
-    a `%` suffix and nothing else. They agree on every width Field emits, and would disagree about
-    `width:fit-content` or `width:0`.
-
 ## A dragged panel stops listening
 
 None of the above applies to a panel a person has resized. `rememberSize` sets `userSized`
@@ -301,8 +295,8 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
     `tools/run_ui_regressions.py#id="output-panel-shrink"` drives one panel through a capped
     `<pre>`, tall, fill, short and wide content, a re-rendered paragraph, rapid alternation, the
     window cap, a zoomed canvas and a drag, and checks the width and height after each.
-    The lazy-output and value-viewer frames are not under any geometry check, and the two
-    `isFillWidthIframe` copies are never compared. The full census is in
+    `tools/run_ui_regressions.py#id="value-viewer-panel-sizing"` opens a value from a `.h` listing
+    into the output area and checks the same two things for the value-viewer frame. The full census is in
     [OUTPUT_PANEL_SIZING_COVERAGE.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md).
 
 ## See also

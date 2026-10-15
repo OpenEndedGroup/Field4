@@ -1731,13 +1731,14 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
 // that loop from the outside: the box chases the panel it just widened, and a `.h2` docs figure grew
 // until it hit the window-width cap. A fill frame is as wide as it is told to be; only content with
 // a width of its own gets to move the box.
+/**
+ * Whether [element] is an iframe that fills its panel's width: `outputareas2.js`'s own test, so the
+ * panel sizer and the screenshot preparation can never disagree. No output area has been built when
+ * it is missing, so there is no iframe to ask about.
+ */
 private fun isFillWidthIframe(element: Element): Boolean {
-    if (element.tagName.uppercase() != "IFRAME") return false
-    if ((element.getAttribute("data-afield-autosize") ?: "").trim().lowercase() != "off") return false
-    val html = element as? HTMLElement ?: return false
-    if (dataAttributePixelsOrZero(html, "data-afield-intrinsic-width") > 0.0) return false
-    val inline = html.style.width.trim().lowercase()
-    return inline.isEmpty() || inline == "auto" || inline.endsWith("%")
+    val test = window.asDynamic().fieldIsFillWidthIframe ?: return false
+    return test(element) == true
 }
 
 private fun containsFillWidthIframe(element: Element): Boolean =
