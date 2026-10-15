@@ -45,7 +45,7 @@ markdown("readout", """
 | of those, β | ${t.betas} |
 | rules fired | ${t.ruleTally.entries.joinToString(", ") { "`${it.key}` x${it.value}" }} |
 | read back as | `${t.printed}` |
-| left standing | ${t.remainingNodes} agents, ${t.trailingActivePairs} active pair |
+| left standing | ${t.remainingNodes} agents, ${t.trailingReduciblePairs} pairs a rule covers |
 """, width = 1080)
 :::endfold
 ```
@@ -54,13 +54,6 @@ markdown("readout", """
 The lower trace is how many reactions were available at each moment, which is how much choice the
 scheduler had. It stays small throughout: only a handful of pairs are ready to react at any time,
 and the scheduler's job is to pick among them.
-
-!!! note "A normal form still has an active pair in it"
-
-    The last row above says one, and it says one for every term in the corpus under every
-    scheduler. `ROOT`'s principal port faces the answer's principal port, and nothing in
-    `Lambda.rules` covers `ROOT ⟂ LAM`. A reduction has finished when no rule matches, so a
-    termination check written as `net.activePairs().isEmpty()` never fires.
 
 ## The scheduler does not change how long it takes
 

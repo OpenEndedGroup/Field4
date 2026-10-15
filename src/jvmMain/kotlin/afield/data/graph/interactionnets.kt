@@ -659,8 +659,9 @@ class Net internal constructor(
      * [ActivePair.canonicalKey].
      *
      * The list is a snapshot, so it is safe to iterate while you rewrite — but every rewrite invalidates it, since
-     * a reaction usually creates and destroys pairs. An empty list means the net is in normal form and a [Reducer]
-     * will stop. Order follows edge creation order, which is why the scheduler exists.
+     * a reaction usually creates and destroys pairs. Order follows edge creation order, which is why the scheduler
+     * exists. It includes pairs no rule covers (a λ net's `ROOT` facing its answer is one), so ask [isNormal] or
+     * [reduciblePairs], not whether this is empty, to know whether a reduction has finished.
      */
     fun activePairs(): List<ActivePair> {
         val seen = LinkedHashSet<Pair<String, String>>()
@@ -676,6 +677,12 @@ class Net internal constructor(
         }
         return pairs
     }
+
+    /** The [activePairs] some rule in [rules] covers: the places a [Reducer] could fire next. */
+    fun reduciblePairs(rules: RuleBook): List<ActivePair> = activePairs().filter { rules.find(it.left, it.right) != null }
+
+    /** Whether no rule in [rules] matches anywhere in the net — what "reduction has finished" means. */
+    fun isNormal(rules: RuleBook): Boolean = activePairs().none { rules.find(it.left, it.right) != null }
 
     internal fun absorb(fragment: NetFragment, placement: Placement): FragmentEmbed {
         val mapping = LinkedHashMap<NodeRef, Node>()
