@@ -363,12 +363,9 @@ fun TextLayout.toPointFLine(
  *
  * In particular, do **not** call `flatShaded()` on the way into `Box.showMesh` / `Box.showMeshGrid` /
  * `toHTML()`. `flatShaded()` un-welds every triangle into its own three vertices (`V = E = 3F`), so the
- * copy is no longer topologically anything — and those sinks each compute `topology()` on the mesh they
- * are handed and then *state the answer as fact in the figure caption* (`mesh_field.kt:383-393`,
- * `:466-481`, `:582-592`). Hand one a flat-shaded copy and the caption reads
- * `χ=F · open (F boundary loop(s))` about a mesh that is genuinely closed. Measure and render the
- * welded mesh; reach for `flatShaded()` only when something downstream truly needs one vertex per
- * corner.
+ * copy triples the vertex count and the sinks have to weld it back by position before their figure
+ * caption can report its topology. Reach for `flatShaded()` only when something downstream truly
+ * needs one vertex per corner.
  */
 fun TextLayout.toMesh(
     depth: Number = typeface.size * 0.25,

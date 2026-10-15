@@ -2619,7 +2619,7 @@ fun installAi4() {
                             CodeUseQueryResult(
                                 success = summary.enabled,
                                 kind = "summary",
-                                message = if (summary.enabled) "Code-use telemetry is enabled." else summary.message,
+                                message = if (summary.enabled) "Local code-use history is enabled." else summary.message,
                                 summary = summary
                             )
                         }

@@ -103,17 +103,30 @@ class PathTraceScene {
     internal val triangles = mutableListOf<Triangle>()
     fun material(value: PathTraceMaterial): Int = materials.size.also { materials += value }
 
+    /** Triangles [triangle] skipped for zero area or a non-finite coordinate, over this scene's life. */
+    var degenerateCount: Int = 0
+        private set
+
+    /**
+     * Append one triangle. A zero-area triangle, or one with a non-finite coordinate, is skipped and
+     * counted in [degenerateCount] rather than aborting the scene — Manifold's Booleans leave a few
+     * such slivers. A missing or zero-length vertex normal falls back to the face normal.
+     */
     fun triangle(a: Vector3f, b: Vector3f, c: Vector3f, material: Int,
                  na: Vector3f? = null, nb: Vector3f? = null, nc: Vector3f? = null): PathTraceScene {
         require(material in materials.indices) { "Unknown material $material" }
         val p = listOf(a, b, c).map(::Vector3f)
-        require(p.all { it.x.isFinite() && it.y.isFinite() && it.z.isFinite() })
         val face = Vector3f(b).sub(a).cross(Vector3f(c).sub(a))
-        require(face.lengthSquared() > 1e-16f) { "Degenerate triangle" }
+        if (!p.all { it.x.isFinite() && it.y.isFinite() && it.z.isFinite() } ||
+            !(face.lengthSquared() > 1e-16f) || !face.lengthSquared().isFinite()) {
+            degenerateCount++
+            return this
+        }
         face.normalize()
-        val normals = listOf(na ?: face, nb ?: face, nc ?: face).map { Vector3f(it) }
-        require(normals.all { it.lengthSquared().isFinite() && it.lengthSquared() > 1e-16f })
-        triangles += Triangle(p, normals.map { it.normalize() }, material)
+        val normals = listOf(na, nb, nc).map { n ->
+            if (n != null && n.lengthSquared().isFinite() && n.lengthSquared() > 1e-16f) Vector3f(n).normalize() else Vector3f(face)
+        }
+        triangles += Triangle(p, normals, material)
         return this
     }
 

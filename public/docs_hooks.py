@@ -1766,9 +1766,16 @@ class RunnerState:
             return
 
         if self._http_health_ok(self.backdoor_port):
+            refusal = self._foreign_field_refusal()
+            if refusal is not None:
+                raise RuntimeError(
+                    f"Field docs runner needs a runner-owned Field server for {reason}, but {refusal}. "
+                    "The runner does not shut down a Field it did not start: stop it yourself, or "
+                    "choose a fresh FIELD_DOCS_RUNNER_PORT (unset, the runner picks a free port)."
+                )
             LOG.warning(
                 "Field docs runner needs a fresh runner-owned Field server for %s; "
-                "requesting shutdown of existing server on port %s",
+                "requesting shutdown of this checkout's automation Field on port %s",
                 reason,
                 self.backdoor_port,
             )
@@ -1786,6 +1793,35 @@ class RunnerState:
                 )
 
         self._ensure_shared_field_server()
+
+    def _foreign_field_refusal(self) -> str | None:
+        """Why the Field on the runner's port must not be shut down, or ``None`` when it may be.
+
+        Only a Field this checkout's automation started -- same checkout, serving the runner's own
+        automation workspace -- is the runner's to replace. Anything else (the Field someone is
+        working in, another worktree's) is refused, naming its PID and workspace.
+        """
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        info = field_instance_info(self.backdoor_port, ctx)
+        pids = ", ".join(str(pid) for pid in self._listener_pids()) or "unknown"
+        where = f"the Field on port {self.backdoor_port} (PID {pids})"
+        if info is None:
+            return f"{where} does not report its identity"
+        try:
+            same_checkout = Path(str(info.get("repoRoot"))).resolve() == self.repo_root.resolve()
+            expected_workspace = Path(
+                os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(self.repo_root))
+            ).resolve()
+            same_workspace = Path(str(info.get("workspace"))).resolve() == expected_workspace
+        except (OSError, TypeError, ValueError):
+            return f"{where} reported an unreadable identity"
+        if not same_checkout:
+            return f"{where} belongs to {info.get('repoRoot')}"
+        if not same_workspace:
+            return f"{where} serves workspace {info.get('workspace')}, not the runner's {expected_workspace}"
+        return None
 
     def _stop_shared_field_server(self) -> None:
         if not self._shared_field_started_by_runner:

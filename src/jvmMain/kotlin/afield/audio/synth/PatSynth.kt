@@ -407,9 +407,18 @@ class PatSynthLaunch internal constructor(
     /** A tap on this launch's own output, fed from the audio thread. */
     val tap: StereoScope = StereoScope(bank)
 
+    /** `System.nanoTime()` of the audio engine's last pull through [generateStereo]; 0 before any. */
+    @Volatile
+    private var lastEnginePullNanos = 0L
+
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
+        lastEnginePullNanos = System.nanoTime()
         tap.render(outL, outR, numFrames, ctx)
     }
+
+    /** Whether an audio engine has pulled this launch in the last half second. */
+    val pulledByEngine: Boolean
+        get() = lastEnginePullNanos != 0L && System.nanoTime() - lastEnginePullNanos < ENGINE_PULL_WINDOW_NANOS
 
     private val offlineContext = SynthContext(bank.sampleRate.toFloat(), OFFLINE_BLOCK)
     private val offlineL = FloatArray(OFFLINE_BLOCK)
@@ -425,12 +434,13 @@ class PatSynthLaunch internal constructor(
      * audio; the only thing missing is a speaker. That is what a headless documentation build does,
      * and what a test does.
      *
-     * Do not call it while the engine is also rendering this launch. Both would advance the voices
-     * and the sound would run at double speed, which is the same hazard as sampling a synth graph
-     * from the Runloop. [FieldAudioEngine.outputActive] is how a box decides which it is doing.
+     * While an audio engine is pulling this launch ([pulledByEngine]) it does nothing: both would
+     * advance the voices and the sound would run at double speed. So a box can return the launch
+     * and call this every frame, and the tap fills either way.
      */
     fun advanceOffline(frames: Int) {
         require(frames >= 0) { "frames must be >= 0, got $frames" }
+        if (pulledByEngine) return
         var left = frames
         while (left > 0) {
             val n = minOf(OFFLINE_BLOCK, left)
@@ -453,6 +463,9 @@ class PatSynthLaunch internal constructor(
     private companion object {
         /** Chunk [advanceOffline] works in. Larger than any engine buffer, so one frame is one call. */
         const val OFFLINE_BLOCK = 2048
+
+        /** How recent an engine pull must be for [advanceOffline] to stand aside. */
+        const val ENGINE_PULL_WINDOW_NANOS = 500_000_000L
     }
 }
 

@@ -44,10 +44,9 @@ expect:
  *     `mem` sizes catch the second — and this suite exists in the shape it does because
  *     `manifold_slice` returns `ManifoldPolygons*`, not `ManifoldCrossSection*`, and getting that
  *     wrong aborted the process inside libc++ with no Java stack at all.
- *  2. **The upcall contract.** A Kotlin lambda is called by Manifold's own TBB threads. This runs a
- *     level set both ways and asserts they agree exactly, which is the only real check that the
- *     parallel path is not racing, and runs one that throws to prove the exception comes back out as
- *     an exception rather than taking the VM down.
+ *  2. **The upcall contract.** A Kotlin lambda is called back from Manifold's C++ frames. This runs a
+ *     level set twice and asserts the runs agree exactly, and runs one that throws to prove the
+ *     exception comes back out as an exception rather than taking the VM down.
  *  3. **Disagreement with Field's own geometry.** Volume, genus and watertightness are computed
  *     independently by `afield.geometry.mesh`'s mesh family on the [TriMesh] that comes back, so the bridge
  *     is checked by two implementations that share no code.
@@ -278,7 +277,7 @@ object ManifoldSmokeTest {
     }
 
     private fun theLevelSetUpcallWorksBothWays() {
-        section("a Kotlin lambda as a level set, on Manifold's threads and on ours")
+        section("a Kotlin lambda as a level set")
         val bounds = boundsAround(radius = 1.3)
         val threads = java.util.concurrent.ConcurrentHashMap<String, Int>()
         val sphere: (Double, Double, Double) -> Double = { x, y, z ->
@@ -286,34 +285,19 @@ object ManifoldSmokeTest {
             1.0 - sqrt(x * x + y * y + z * z)
         }
 
-        threads.clear()
-        val parallelStart = System.nanoTime()
-        val parallel = Solid.levelSet(bounds, edgeLength = 0.04, field = sphere)
-        val parallelMs = (System.nanoTime() - parallelStart) / 1e6
-        val parallelThreads = threads.size
-
-        threads.clear()
-        val seqStart = System.nanoTime()
-        val sequential = Solid.levelSet(bounds, edgeLength = 0.04, parallel = false, field = sphere)
-        val seqMs = (System.nanoTime() - seqStart) / 1e6
+        val first = Solid.levelSet(bounds, edgeLength = 0.04, field = sphere)
         val seqThreads = threads.size
+        val second = Solid.levelSet(bounds, edgeLength = 0.04, field = sphere)
 
-        parallel.use { p ->
-            sequential.use { s ->
+        first.use { p ->
+            second.use { s ->
                 near("a marched unit sphere has volume 4/3 pi", p.volume, 4.0 / 3.0 * PI, 5e-3)
                 equal("and it is a valid manifold", p.status, ManifoldStatus.NO_ERROR)
                 equal("and genus 0", p.genus, 0)
-                // The real point: the parallel path must not be racing. Same field, same bounds, same
-                // edge length -> bit-identical mesh, or the threads are interfering.
-                equal("parallel and sequential agree on the triangle count", p.triangleCount, s.triangleCount)
+                // Same field, same bounds, same edge length -> bit-identical mesh.
+                equal("two runs agree on the triangle count", p.triangleCount, s.triangleCount)
                 exact("and on the volume, to the last bit", p.volume, s.volume)
-                truth("the parallel run really used more than one thread (saw $parallelThreads)", parallelThreads > 1)
-                truth("the sequential run used exactly one (saw $seqThreads)", seqThreads == 1)
-                println(
-                    "      parallel ${"%.1f".format(parallelMs)} ms on $parallelThreads threads, " +
-                        "sequential ${"%.1f".format(seqMs)} ms on $seqThreads " +
-                        "(${"%.2f".format(seqMs / parallelMs)}x)",
-                )
+                truth("the field was called from exactly one thread (saw $seqThreads)", seqThreads == 1)
             }
         }
 

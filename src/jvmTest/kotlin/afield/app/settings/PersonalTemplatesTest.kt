@@ -46,9 +46,10 @@ class PersonalTemplatesTest {
             document(bundled,"common","BundledWinner")
             document(personal,"common","HiddenCollision")
             val source = document(personal,"private-starter","UniquePersonalNeedle")
-            assertEquals(setOf("common","private-starter","checkout-starter"), templateStartingPoints().map { it.filename }.toSet())
+            assertEquals(setOf("common","common-personal","private-starter","checkout-starter"), templateStartingPoints().map { it.filename }.toSet())
             assertEquals(listOf("private-starter"), searchTemplateStartingPoints("UniquePersonalNeedle").documents.map { it.filename })
-            assertTrue(searchTemplateStartingPoints("HiddenCollision").documents.isEmpty())
+            // A personal template named like a bundled one is still listed and searchable, under a suffix.
+            assertEquals(listOf("common-personal"), searchTemplateStartingPoints("HiddenCollision").documents.map { it.filename })
             assertEquals(listOf("checkout-starter"),searchTemplateStartingPoints("CheckoutPersonalNeedle").documents.map{it.filename})
             assertEquals("template", searchTemplateStartingPoints("UniquePersonalNeedle").documents.single().kind)
             val copy = openStartingPointIntoWorkspace(workspace.path,"private-starter")
@@ -60,6 +61,8 @@ class PersonalTemplatesTest {
             assertEquals("private-starter-2",openStartingPointIntoWorkspace(workspace.path,"private-starter").filename)
             openStartingPointIntoWorkspace(workspace.path,"common")
             assertEquals("BundledWinner",File(workspace,"common/files/pinned.txt").readText())
+            assertEquals("common-personal", openStartingPointIntoWorkspace(workspace.path,"common-personal").filename)
+            assertEquals("HiddenCollision",File(workspace,"common-personal/files/pinned.txt").readText())
             assertFailsWith<IllegalArgumentException> { openStartingPointIntoWorkspace(workspace.path,"../private-starter") }
             System.setProperty(properties[0],File(root,"no-bundled").path)
             assertTrue(templateStartingPoints().any { it.filename=="private-starter" })

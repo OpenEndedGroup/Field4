@@ -92,7 +92,7 @@ val innerBounds = boundsOf(
 // level set closes it against the box.
 val unpadded = sampledField3D(inner, nx, ny, nt, innerBounds)
 val cutMarch = marchingCubes(unpadded, innerBounds, resolution = 140)
-val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12, parallel = false)
+val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12)
 println()
 println("with the volume ending exactly at the first and last frame:")
 println("  marchingCubes: ${cutMarch.triangleCount} triangles, " +
@@ -122,7 +122,7 @@ println("and with one empty slice each side:")
 println("  marchingCubes: ${marched.triangleCount} triangles, " +
     "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
 
-val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12, parallel = false)
+val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
 println("  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
     "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}")
 

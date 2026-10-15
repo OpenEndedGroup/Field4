@@ -42,11 +42,10 @@ The mode controls how much Field work happens:
 | `strict` | Invalidate captures when the runner code or a transcript changes (via a digest), then re-run those. | You changed capture/runner logic and want stale captures caught. |
 | `always` | Regenerate every screenshot and video, ignoring the cache. | A full recapture, or when you don't trust the cache. |
 
-The runner owns `FIELD_DOCS_RUNNER_PORT` outright. In every mode except
-`never` it insists on a server it started itself, so if something is already
-answering on that port it posts a shutdown request to it, waits, and gives up
-with "Stop the stale Field process" if it is still there. Aim a build at the
-Field you are working in and you lose that session.
+In every mode except `never` the runner insists on a Field it started itself. If a
+Field it did not start is answering on `FIELD_DOCS_RUNNER_PORT`, the build stops and
+names that Field's PID and workspace rather than shutting it down; unset the
+variable and the runner picks a free port.
 
 Handy flags for `tools/build_zensical_docs.py`:
 

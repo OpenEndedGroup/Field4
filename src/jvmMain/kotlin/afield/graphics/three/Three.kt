@@ -20,8 +20,8 @@ import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.TriMesh
 import afield.math.linalg.Vec4
 import afield.geometry.mesh.boundsArray
+import afield.geometry.mesh.surfaceTopology
 import afield.geometry.mesh.signedVolume
-import afield.geometry.mesh.topology
 import kotlin.math.abs
 
 /**
@@ -495,7 +495,7 @@ fun TriMesh.toThreeBounds(): ThreeBounds {
  */
 fun TriMesh.threeFacts(): String {
     val b = boundsArray()
-    val topo = topology()
+    val topo = surfaceTopology()
     return buildString {
         append(
             "%d verts · %d tris · extent %.3f × %.3f × %.3f".format(

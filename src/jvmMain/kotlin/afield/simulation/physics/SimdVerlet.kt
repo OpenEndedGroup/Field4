@@ -343,6 +343,9 @@ class SimdVerlet(
      * [constraintEdits] (tearing). Everything up to integration is force space; the last two
      * stages are the only ones that touch positions directly.
      *
+     * @param gravity added to every particle's y acceleration. Pass it negative (`-9.8f`) for a
+     *   +y-up world, which is what the renderers and the path tracer use; positive suits a y-down
+     *   screen layout.
      * @param accumulateForces optional bulk force pass invoked as `(state, dt)` after gravity and
      *   the per-particle generators but before the constraint solve, so its contribution feeds the
      *   solve and integration. This is the hook for the generated bulk kernels, e.g.

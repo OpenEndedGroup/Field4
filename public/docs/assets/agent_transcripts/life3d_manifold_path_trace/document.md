@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="life3d_manifold_trace" index="1" -->
 
 ```edn [field-box id="life3d_manifold_trace" role="properties"]
-{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 177 "characters" 8263 "sha256" "4152428fac56adc9781df29e6c5c6ed5af2aaaed259511faf53a03b9eb06ebba"}]}
+{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 159 "characters" 7297 "sha256" "7e6b28285af210598fd364ff2f713a47448e6e403453c82221c006c3634209d1"}]}
 ```
 
 ```kotlin [field-property box="life3d_manifold_trace" name="code" path="life3d_manifold_trace_code_.kt"]
@@ -83,9 +83,8 @@ val populations = mutableListOf(volume.population())
 repeat(generations) { volume = volume.step(LIFE3D_BLOB); populations += volume.population() }
 println("LIFE3D_BLOB populations: ${populations.joinToString(" -> ")}")
 
-// smoothRadius = 0 marches the raw occupancy. A radius-1 blur is the usual choice and is
-// the wrong one here: this rule leaves filaments and isolated cells, and a 27-voxel
-// average over those never reaches an iso of 0.5, so the surface comes back empty.
+// smoothRadius = 0 marches the raw occupancy, which is why the clusters are faceted at
+// the voxel scale: this rule leaves filaments and isolated cells that a blur would erase.
 val field = volume.asDensityField(smoothRadius = 0, iso = iso)
 val bounds = volume.marchBounds()
 
@@ -96,31 +95,14 @@ println("Field's marchingCubes: ${marched.triangleCount} triangles, " +
 
 // Manifold's convention is positive inside, which is what asDensityField already gives, so
 // this is levelSet rather than levelSetOf: the latter negates for Field's SDF family.
-// A fresh Vec3 per sample, because `field` is called from Manifold's own worker threads.
-//
-// parallel = false, and that is the whole reason the census below is a number worth
-// printing: the parallel path is faster and not reproducible. The two runs underneath say
-// so rather than the comment doing it alone.
-fun march(parallel: Boolean): Pair<Solid, Double> {
-    val t0 = System.nanoTime()
-    val solid = Solid.levelSet(bounds, edgeLength = edgeLength, parallel = parallel) { x, y, z ->
-        field(vec(x, y, z)).toDouble()
-    }
-    return solid to (System.nanoTime() - t0) / 1e6
+val t0 = System.nanoTime()
+val whole = Solid.levelSet(bounds, edgeLength = edgeLength) { x, y, z ->
+    field(vec(x, y, z)).toDouble()
 }
-
-val (whole, sequentialMs) = march(parallel = false)
+val levelSetMs = (System.nanoTime() - t0) / 1e6
 println("Manifold's levelSet:   ${whole.triangleCount} triangles, status ${whole.status}, " +
     "genus ${whole.genus}, volume ${"%.4f".format(whole.volume)}, " +
-    "${"%.0f".format(sequentialMs)} ms sequential")
-repeat(2) { attempt ->
-    val (parallelSolid, ms) = march(parallel = true)
-    val components = Solid.scope { parallelSolid.decompose().size }
-    println("  the same field with parallel = true, run ${attempt + 1}: " +
-        "${parallelSolid.triangleCount} triangles, ${components} components, " +
-        "volume ${"%.4f".format(parallelSolid.volume)}, ${"%.0f".format(ms)} ms")
-    parallelSolid.close()
-}
+    "${"%.0f".format(levelSetMs)} ms")
 
 // ---- stage three: the census ---------------------------------------------------
 // The two genus numbers disagree, and the reason is components rather than holes: Field's

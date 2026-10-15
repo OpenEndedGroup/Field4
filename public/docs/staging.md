@@ -90,4 +90,4 @@ Neither section is a worked example. The reference is for looking something up; 
 
 The pictures and videos on these pages come from running each page's code in Field when the docs are built, so an example pasted into a box gives the same result.
 
-[Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. Read what it says about ports before you start a build: the runner shuts down whatever Field is answering on its port, including the one you are working in. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.
+[Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.

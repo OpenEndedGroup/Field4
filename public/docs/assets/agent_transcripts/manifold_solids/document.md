@@ -166,7 +166,7 @@ part.close()
 <!-- field-box id="manifold_levelset_slices" index="1" -->
 
 ```edn [field-box id="manifold_levelset_slices" role="properties"]
-{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 125 "characters" 5520 "sha256" "cff7472fc110f2ae4845405d83998eba516f9385a3f198e5ff048479323597a7"}]}
+{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 123 "characters" 5303 "sha256" "b0f3b01e645a6254a4baf7f341842c6e1ae66673de5c117641746557cd499d5d"}]}
 ```
 
 ```kotlin [field-property box="manifold_levelset_slices" name="code" path="manifold_levelset_slices_code_.kt"]
@@ -224,11 +224,9 @@ val bounds = boundsOf(
     vec(majorRadius + minorRadius + 2, majorRadius + minorRadius + 2, minorRadius + 2),
 )
 
-// The upcall. `field` is called by Manifold's own worker threads — measured at ~2x the
-// sequential path on this machine — which is why it must be thread-safe, and is: it reads
-// three captured doubles and allocates nothing. Pass parallel = false for one that is not.
+// The upcall: Manifold's marcher calls `field` back for every sample.
 val start = System.nanoTime()
-val solid = Solid.levelSet(bounds, edgeLength = 1.1, parallel = true, field = ::field)
+val solid = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
 val marchMs = (System.nanoTime() - start) / 1e6
 
 println("level set: ${"%.0f".format(marchMs)} ms")

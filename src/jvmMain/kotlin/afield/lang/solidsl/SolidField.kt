@@ -36,13 +36,11 @@ import kotlin.math.sqrt
  *
  * `mesh_sdf.kt` is explicit that a [ScalarField3D] "must **read** the vector it is handed and not
  * write to it", and its own combinators capture a single scratch [Vec3] to transform into. That makes
- * them fast and single-threaded, which is why `Solid.levelSetOf` defaults to `parallel = false`.
+ * them fast and single-threaded.
  *
  * This lowering does not do that. Internally it builds a tree of [Field3] — a `fun interface` over
  * three primitive `Double`s, so there is no boxing and nothing to alias — and only wraps a [Vec3] at
- * the very top, in [toScalarField]. So the field is re-entrant, and [toLevelSetField] hands Manifold
- * a lambda it can call from ten threads at once. Measured on this machine that is worth about 2x on
- * every level-set fallback in the package.
+ * the very top, in [toScalarField]. So the field is re-entrant and safe to call from any thread.
  */
 
 /**
@@ -75,10 +73,8 @@ fun SolidExpr.toScalarField(): ScalarField3D {
  * This shape's field in the sign convention Manifold's `levelSet` wants — **positive inside** — and
  * over primitive doubles, so no [Vec3] is ever constructed.
  *
- * `Solid.levelSetOf` exists to flip the sign for a [ScalarField3D], and it defaults to
- * `parallel = false` because a `ScalarField3D` may not be re-entrant. This one is, so
- * `Solid.levelSet(bounds, edge, parallel = true, field = expr.toLevelSetField()::at)` is both correct
- * and about twice as fast.
+ * `Solid.levelSetOf` exists to flip the sign for a [ScalarField3D]; this one is already flipped, so
+ * pass it straight to `Solid.levelSet(bounds, edge, field = expr.toLevelSetField()::at)`.
  */
 fun SolidExpr.toLevelSetField(): Field3 {
     val f = toField3()

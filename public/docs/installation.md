@@ -218,9 +218,8 @@ document files. Opening one makes an editable copy in the current workspace. The
 is left alone, and copies you made earlier are not updated. Opening a copy does not run its boxes.
 
 To keep your templates somewhere else, start Field with
-`-Dafield.personalTemplates.dir=/path/to/templates`. When two templates share a name, a bundled
-one wins, then one in `src/personal`, then one in your own directory, so give yours distinctive
-names. Git ignores `src/personal`, so back those templates up yourself.
+`-Dafield.personalTemplates.dir=/path/to/templates`. A template named like a bundled one is listed with
+`-checkout` (from `src/personal`) or `-personal` (from your own directory) after its name. Git ignores `src/personal`, so back those templates up yourself.
 
 ## Browser or server-only use
 
