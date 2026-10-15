@@ -660,6 +660,8 @@ def _capture_last_value_inplace(mod: ast.Module, capture_name: str) -> bool:
     return True
 
 ${PythonLineNotes.SOURCE}
+${PythonErrors.SOURCE}
+_field_last_error = None
 
 def _looks_like_top_level_await_syntax(err: SyntaxError) -> bool:
     msg = (getattr(err, "msg", "") or str(err)).lower()
@@ -695,10 +697,16 @@ async def aexec_with_return(code: str, globals: dict, locals=isolatedNamespace, 
             out = await out
         return out
     except Exception as e:
+        global _field_last_error
+        _field_last_error = _field_error_location(e, filename)
         if debug:
             _dbg("Exception in aexec_with_return; traceback follows:")
             traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
         raise
+
+def _field_record_error(e, filename):
+    global _field_last_error
+    _field_last_error = _field_error_location(e, filename)
 
 # ---------- smart sync/async wrapper with tracking ----------
 def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, debug: bool = False, source_id: str | None = None, _line_notes=_field_line_notes):
@@ -739,6 +747,7 @@ def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, de
             if _looks_like_top_level_await_syntax(syn):
                 if debug: _dbg("Detected TLA → returning Task for async execution")
                 return asyncio.create_task(aexec_with_return(code, globals, locals, debug=debug, filename=filename))
+            _field_record_error(syn, filename)
             raise
         except Exception as e:
             if debug:
@@ -751,6 +760,7 @@ def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, de
             with _line_notes.bind(globals, note_name):
                 eval(code_obj, globals, locals)
         except Exception as e:
+            _field_record_error(e, filename)
             if debug:
                 _dbg("Exception during sync fast-path exec; traceback follows:")
                 traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
@@ -930,6 +940,45 @@ def clear_output(wait=False, channel=None):
         OutputsKt.displayClear(box, channel)
     else:
         OutputsKt.displayClearAll(box)
+
+# ---------------------------
+# Controls: the same slider and checkbox a Kotlin box gets (outputs.kt), with a Python callback
+# ---------------------------
+# The callable stays on this side, in _field_controls, under an id; Kotlin holds only the id, and
+# PythonInterface.invokePythonControl calls back in on the interpreter's own thread. Works as a
+# call, slider("gain", on_change=f), or as a decorator, @slider("gain").
+_field_controls = {}
+
+def _field_control_call(cid, value):
+    fn = _field_controls.get(cid)
+    if fn is not None:
+        fn(value)
+
+def _field_control(kind, register, on_change):
+    from afield.python import PythonInterface
+    def install(fn):
+        box = PythonInterface.thisBox
+        if box is None:
+            raise RuntimeError(kind + "(...) needs to run inside a Python box")
+        cid = kind + "-" + secrets.token_hex(8)
+        _field_controls[cid] = fn
+        register(box, cid)
+        PythonInterface.hasHadOutput = True
+        return fn
+    return install if on_change is None else install(on_change)
+
+def slider(label, on_change=None, min=0.0, max=1.0, step=0.01, value=None, channel="controls"):
+    ""${'"'}A slider in the box's output; `on_change(value)` runs on every move. Also a decorator.""${'"'}
+    from afield.python import PythonInterface
+    start = (min + max) / 2 if value is None else value
+    return _field_control("slider", lambda box, cid: PythonInterface.pythonSlider(
+        box, cid, str(label), float(min), float(max), float(step), float(start), str(channel)), on_change)
+
+def checkbox(label, on_change=None, value=False, channel="controls"):
+    ""${'"'}A checkbox in the box's output; `on_change(checked)` runs on every toggle. Also a decorator.""${'"'}
+    from afield.python import PythonInterface
+    return _field_control("checkbox", lambda box, cid: PythonInterface.pythonCheckbox(
+        box, cid, str(label), bool(value), str(channel)), on_change)
 
 # ---------------------------
 # FileUpload widget
@@ -1248,6 +1297,7 @@ _orig_print(" python interpreter has finished starting up ")
                 thisBox = inside
                 thisLineOffset = execute.line
                 if (PythonLineNotes.enabled) runCatching { takePythonLineNotes(i, inside) }
+                runCatching { i.exec("_field_last_error = None") }
 //                i.exec("_ret = _exec_with_return2(_code, globals(), locals=_local_storage_, source_id='${inside.id}')")
                 i.exec("_ret = _exec_with_return2(_code, globals(), locals=globals(), source_id='${inside.id}')")
                 val ret = i.getValue("_ret")
@@ -1306,9 +1356,12 @@ _orig_print(" python interpreter has finished starting up ")
                 runCatching { recordPythonLineNotes(interpreter(inside), inside, execute) }
                 j.printStackTrace()
                 hasHadOutput = true
-                val n = j.message!!
+                val n = j.message ?: j.toString()
+                val located = lastErrorLocation(inside, execute)
                 val f = syntaxError.find(n)
-                if (f != null) {
+                if (located != null) {
+                    inside.error(located.second, "code", located.first)
+                } else if (f != null) {
                     inside.error(f.groupValues[1] + ":" + f.groupValues[2], "code", f.groupValues[3].toInt())
                 } else {
                     val f2 = otherError.find(n)
@@ -1402,6 +1455,21 @@ _orig_print(" python interpreter has finished starting up ")
             afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, produced)
         }.onFailure { lprintln("warning,python", "could not record line notes: $it") }
     }
+
+    /**
+     * The box line and message of the error the last run raised, as `_field_error_location`
+     * ([PythonErrors]) recorded it, or null when it recorded nothing (an error outside the cell's
+     * own compile and run, which the JEP-message patterns below still handle).
+     */
+    private fun lastErrorLocation(inside: Box, execute: Execute): Pair<Int, String>? = runCatching {
+        val i = interpreter(inside)
+        i.exec("_field_last_error_json = None if _field_last_error is None else __import__('json').dumps(_field_last_error)")
+        val json = i.getValue("_field_last_error_json") as? String ?: return null
+        val row = kotlinx.serialization.json.Json.parseToJsonElement(json) as kotlinx.serialization.json.JsonArray
+        val cells = row.map { (it as kotlinx.serialization.json.JsonPrimitive).content }
+        val dropped = if (execute.code.lineSequence().firstOrNull()?.isBlank() == true) 1 else 0
+        PythonErrors.boxLine(cells[0].toInt(), execute.line, dropped) to PythonErrors.describe(cells[1], cells[2])
+    }.getOrNull()
 
     private fun hackJepThreadContext() {
 
@@ -1612,6 +1680,39 @@ class PythonInterface {
 
         @JvmField
         var hasHadOutput = false
+
+        /** `slider(...)` from Python: [Box.slider], whose callback calls back into Python by [id]. */
+        @JvmStatic
+        fun pythonSlider(box: Box, id: String, label: String, min: Double, max: Double, step: Double, initial: Double, channel: String) {
+            box.slider(label, min, max, step, initial, channel) { v -> invokePythonControl(box, id, v) }
+        }
+
+        /** `checkbox(...)` from Python: [Box.checkbox], calling back into Python by [id]. */
+        @JvmStatic
+        fun pythonCheckbox(box: Box, id: String, label: String, initial: Boolean, channel: String) {
+            box.checkbox(label, initial, channel) { v -> invokePythonControl(box, id, v) }
+        }
+
+        /**
+         * Run the Python callback registered under [id] with [value], on the main thread (where the
+         * interpreter lives) and with [box] as `thisBox`, so its `print` and `display` land in the
+         * box that made the control. An exception goes to the box's error output, as from a run.
+         */
+        fun invokePythonControl(box: Box, id: String, value: Any) {
+            inMain {
+                val previous = thisBox
+                try {
+                    val i = globalInterpreter ?: return@inMain
+                    thisBox = box
+                    i.set("_field_control_value", value)
+                    i.exec("_field_control_call('$id', _field_control_value)")
+                } catch (j: JepException) {
+                    box.error(truncateOutput(j.message ?: j.toString()))
+                } finally {
+                    thisBox = previous
+                }
+            }
+        }
 
         /** The resolved venv path (if any), exposed so startup code can configure sys.prefix etc. */
         var resolvedVenvPath: String? = null
