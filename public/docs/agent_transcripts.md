@@ -57,12 +57,14 @@ the box's `// {{ marker }}` selects.
 
 None of the three proves a picture is *right*; that is what the docs captures and the gallery
 FIELD_TESTs are for. What all three prove is that the code in these files still compiles and runs
-against today's stdlib. A second guard, `checkAgentTranscripts`, materializes every transcript into
-a document and compares it byte-for-byte against the committed starting points, so the copy the
-welcome screen opens is the one the yaml produces today.
+against today's stdlib, and the copy the welcome screen opens is the one the yaml produces today.
 
 The saved documents under `dev_docs/agents/demos/` each have a transcript here too, so their box
 Kotlin is compiled on every build.
+
+??? aside "Agents: the starting-point guard"
+    `checkAgentTranscripts` materializes every transcript into a document and compares it
+    byte-for-byte against the committed starting points.
 
 ??? aside "Why the demos are registered here"
     Box code goes through the K2 REPL against a different import set from `jvmMain`, so no Gradle
@@ -2157,7 +2159,7 @@ importable from Python, and `fig.show()` landing in the box. The root stays Kotl
 swaps the execution of a root's **children**, never of the root; its `mainLanguage` property is what
 makes the four boxes below Python. This one has a prerequisite the
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
-started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
+started*, or the four cells stay Kotlin and fail to compile. [Python in Field](python.md) has the recipe.
 
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells**, because
 they are not Kotlin, so CI checks one box of five. Run against a real interpreter, the cells print
@@ -2579,7 +2581,7 @@ shaders are box properties with `{{ mega.all }}` interpolated into them, so the 
 and the LOD policy are all editable with `alt/option-r` rather than buried in Kotlin. Flip
 `showResidentLevel` in the fragment shader to watch residency directly: red is the base level, green
 is a full source frame, and flying at the wall turns it green ahead of you. The library is
-`afield/four/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
+`afield/graphics/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
 
 Needs a graphics parent, so replay `graphics_renderer_launch` first, and point the `folder(…)` line
 at images of your own — which together are why this one ships no starting point.
@@ -2592,7 +2594,7 @@ to exist; the whole `GpuProbe` idiom on one screen; the pressure-projection chai
 actually runs — divergence, twelve Jacobi sweeps, project — graded cell by cell against a closed
 form written in Kotlin; and a deliberate half-dispatch, so a reader can watch the sentinel fire and
 read what it says. Every assertion prints the measured value beside the floor it is compared
-against. The library is `afield/four/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
+against. The library is `afield/graphics/vulkan/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
 
 Registered `COMPILE_ONLY` — box 1 opens a window — so what CI holds is that all four box bodies
 still compile against Field's real K2 import set. The numbers are asserted separately, by the
