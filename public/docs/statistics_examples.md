@@ -4,8 +4,8 @@
 [Math](reference/math.md) and [Data](reference/data.md).*
 
 You have two streams of numbers and want to know whether they are related. Field's tools for that
-live in `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
-`afield/stdlib/quantilewarp.kt`, and this page works through all three. Each dependence coefficient
+live in `afield/math/statistics/stats.kt`, `afield/math/statistics/correlations.kt` and
+`afield/math/statistics/quantilewarp.kt` (package `afield.math.statistics`), and this page works through all three. Each dependence coefficient
 answers a slightly different version of the question, so the page shows which one to use for which
 kind of relationship.
 
@@ -302,7 +302,10 @@ looking, then use something else to describe what you found.
     on this page is a tie-free case. Every other coefficient here refuses a constant outright:
     `pearson`, `spearman` and `kendallTauB` return NaN, and `distanceCorrelation` returns 0.0.
 
-    **Recorded xi values on tied `x` from before 2026-07-30 are wrong**, not merely different:
+
+??? aside "Agents: xi values recorded before 2026-07-30"
+
+    Recorded xi values on tied `x` from before 2026-07-30 are wrong, not merely different:
     x-ties then broke by input index, which scored how nearly `y` was a function of the order the
     samples arrived in. [`dev_docs/stdlib_behaviour_changes.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/stdlib_behaviour_changes.md) owns that history and the
     `chatterjeeXi` KDoc points at it.
