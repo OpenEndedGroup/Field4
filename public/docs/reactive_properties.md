@@ -121,8 +121,7 @@ A, in that order, each once.
 - **Cycles fail.** If A's read pulls B and B's read needs A, the read fails and the message names
   the cycle.
 
-While a pull runs, other boxes' `frames {}` loops keep advancing, but a native graphics window shows
-no new frames until the pull returns. A supplier that blocks the thread (`Thread.sleep`, a busy loop)
+While a pull runs, other boxes' `frames {}` loops and a native graphics window keep advancing. A supplier that blocks the thread (`Thread.sleep`, a busy loop)
 blocks everything for as long as it blocks.
 
 `propUpDown` is both: a missing value runs its supplier, and a changed one reruns its readers.
