@@ -897,6 +897,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         }
                         target.setPropertyRaw("_tombstone", true)
                         root.disconnect(target)
+                        ReactiveRuns.forgetDown(target)
                     }
                     // Stop what the deleted boxes were running, dispose any renderer they own, and
                     // release their K2 compilation state; a deleted box is never re-run.

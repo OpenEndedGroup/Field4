@@ -9,6 +9,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 private var Box.reactiveTestDown: Int? by ReactiveInheritance<Int?>(Reactive.DOWN)
@@ -184,6 +185,35 @@ class ReactivePropsTest {
         assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, "unchanged value noted")
         ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
         assertTrue(ReactiveRuns.recentEvents().any { it.contains("changed a.gain") }, ReactiveRuns.recentEvents().joinToString("\n"))
+    }
+
+    @Test
+    fun aDownDeclarationEditedOutOfTheCodeIsForgotten() {
+        val s = session("edited")
+        val a = boxIn(s, "a", "propDown<Double>(gain)\ngain = 1.0")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(a, "gain"))
+        a.setPropertyRaw("code", "prop<Double>(gain)\ngain = 1.0")
+        ReactiveRuns.clearEvents()
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, ReactiveRuns.recentEvents().joinToString("\n"))
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
+    }
+
+    @Test
+    fun aDeletedBoxsDownDeclarationIsForgotten() {
+        val s = session("deleted")
+        val a = boxIn(s, "a", "propUpDown<Double>(gain)")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.UP_DOWN, "propUpDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(a, "gain"))
+        a.setPropertyRaw("_tombstone", true)
+        ReactiveRuns.clearEvents()
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") })
+        val b = boxIn(s, "b", "propDown<Double>(gain)")
+        b.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        ReactiveRuns.forgetDown(b)
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"))
     }
 
     @Test
