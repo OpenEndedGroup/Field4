@@ -203,7 +203,7 @@ its own filter darkens the sound.
 The direction is not in this signal at all: Steam Audio adds it afterwards. Changing `az` leaves the
 mono source exactly as it was.
 
-??? aside "What the clip renderer checks"
+??? aside "Agents: what the clip renderer checks"
     `run_field_tests.py --id synth.pat-spatial.sound` renders both clips and measures the
     un-normalised buffers. Dough mixes to stereo, so every event is sent `pan/0`, which puts the whole
     signal in the left channel; that channel is copied as the mono source, and the right channel is
@@ -278,4 +278,4 @@ to schedule the render thread; if it is near the elapsed time, the work does not
 
 - [Making a sound in Field](sound_paths.md) compares this with every other sound path.
 - [Pattern language](pattern_language.md) covers `pat`, `with` and mini-notation.
-- The full API is in [`afield.audio.synth` in the generated reference](reference/patterns.md#patspatial-kt).
+- The full API is in [`PatSpatial.kt` in the generated reference](reference/patterns.md#patspatial-kt).
