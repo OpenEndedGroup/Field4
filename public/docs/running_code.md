@@ -283,9 +283,6 @@ loop — and keeps them all. Two calls with the *same* type and keys share one v
 `"left"` to keep them apart. `cached` needs no `prop` first, and its value is not visible to child
 boxes: return it into a `prop` if children should see it.
 
-`T` should be a library type. A class declared in the box's own code is a new class each time the
-box compiles, so a `cached` of it never finds the previous value.
-
 ### `aside`: code an ordinary run skips
 
 `once` and `cached` run their block on the first full run. Sometimes you want the opposite: code

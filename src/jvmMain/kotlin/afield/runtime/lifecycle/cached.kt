@@ -65,9 +65,9 @@ import kotlin.reflect.KClass
  * a fresh one rather than returning a dead one. Retiring the box (delete, document close) closes
  * everything. A value is closed at most once, even when it registered itself with the run scope.
  *
- * `T` should be a library type. A class declared in the box's own code is a new class each time
- * the box compiles, so it never hits, and the stale value (a different type) is only closed when
- * the box retires.
+ * A class declared in the box's own code is a new class each time the box compiles, so a value of
+ * it cannot be handed back after a recompile. When that happens the previous value is closed at
+ * once and the box's output says why, rather than the miss passing silently.
  *
  * A plain inline function, not a macro: `T` is reified, so nothing about the call site needs
  * rewriting. Called outside any box (no `Box.context`), use the [Box] receiver form explicitly.
@@ -97,6 +97,7 @@ object BoxCache {
     internal fun <T : Any> lookup(box: Box, type: KClass<T>, keys: List<Any?>, make: () -> T): T {
         val scope = RunScope.currentFor(box)
         val evicted = ArrayList<Entry>()
+        var recompiled = false
         synchronized(boxes) {
             val entries = boxes.getOrPut(box) { ArrayList() }
             entries.firstOrNull { it.type == type && it.keys == keys }?.let {
@@ -108,8 +109,22 @@ object BoxCache {
                 entries.remove(it)
                 evicted.add(it)
             }
+            // The same class name under a different KClass is the previous compile's copy of a class
+            // declared in the box's own code: it can never hit again, so close it now, not at retire.
+            entries.filter { it.type != type && it.type.java.name == type.java.name }.forEach {
+                entries.remove(it)
+                evicted.add(it)
+                recompiled = true
+            }
         }
         evicted.forEach { it.close() }
+        if (recompiled) {
+            box.output.println(
+                "cached<${type.simpleName}>: ${type.simpleName} is declared in this box's code, so every " +
+                    "compile makes a new class and the previous value cannot be reused; it was closed and " +
+                    "a new one made. Cache a library type, or declare the class outside the box, to keep it."
+            )
+        }
 
         val parent = box.runScopes.parent
         var made: Entry? = null
