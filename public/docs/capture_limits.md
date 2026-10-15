@@ -62,11 +62,11 @@ checks on, because automation cannot know which picture you intended.
 ### Why it happens
 
 `displayOpen(channel)` does not open a panel. It sends an `output-control` message *to a client*
-(`afield/outputs.kt`). With no client connected there is nobody to receive it, so the panel is never
+(`afield/ui/output/outputs.kt`). With no client connected there is nobody to receive it, so the panel is never
 created, and the box collapses to its handle.
 
 The capture then clips to whatever the box's element measures on the page
-(`getBoundingClientRect`, in the prep script inside `afield/docs/screenshot.kt`). A collapsed box
+(`getBoundingClientRect`, in the prep script inside `afield/tools/docs/screenshot.kt`). A collapsed box
 measures 24 × 24 logical pixels, and at this display's 2× scale that is a 48 × 48 PNG.
 
 So do not look for "48 × 48". **The clip is the box's own rectangle**, so its size is whatever that
@@ -128,7 +128,7 @@ own swapchain image straight to a file. It needs no screen recording permission,
 the window, and works headless.
 
 One budget, 15 seconds by default, covers renderer readiness, settling *and* the copy; it is not
-a fresh allowance per stage (`afield/docs/doc.kt`). When it expires you get "Timed out waiting for
+a fresh allowance per stage (`afield/tools/docs/doc.kt`). When it expires you get "Timed out waiting for
 native renderer" and no information about which stage ate it.
 
 Here is how per-frame work on one scene affects this path:
@@ -167,7 +167,7 @@ docs fence that asks for `capture="native-window"` together with `video=` is acc
 to the browser recorder, and silently records the wrong window
 (`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`). No published page does this today.
 
-A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/docs/doc.kt`, raises
+A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/tools/docs/doc.kt`, raises
 the GLFW window and records its rectangle with macOS `screencapture`. Its only caller is the
 `render_clip` comment command in the same file, which neither the backdoor nor the docs fence
 harness reaches.
@@ -218,18 +218,18 @@ Some practical points:
 
 ---
 
-## Where each limit is written down
+??? aside "Agents: where each limit is written down"
 
-| limit | recorded in |
-|---|---|
-| outputs closed with no client → a box-handle-sized capture, `ok: true` | `dev_docs/MARF_DEMO.md`, `dev_docs/OUTPUT_PANEL_SIZING.md`, `dev_docs/path_tracer_instrument.md` |
-| stale selection blurs a box capture; repeats are flaky | `dev_docs/chart_primitive.md` |
-| neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
-| box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
-| per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
-| `applyToMesh` throws from a `main` | `dev_docs/GPU_SKINNING.md` |
-| no native-window video on any agent-facing path | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, [Pattern → particles](chain_pattern_particles.md) |
-| `screencapture` needs permission; the swapchain copy does not | `dev_docs/imgui_vr_panel.md` |
-| a static capture cannot click | `dev_docs/three_inspector.md` |
-| captures with a build prerequisite, and host-gated captures | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, `dev_docs/NVFLOW_BINDINGS.md` |
-| a capture that can no longer be recreated, and must not be faked | `dev_docs/docs_capture_staleness.md` |
+    | limit | recorded in |
+    |---|---|
+    | outputs closed with no client → a box-handle-sized capture, `ok: true` | `dev_docs/MARF_DEMO.md`, `dev_docs/OUTPUT_PANEL_SIZING.md`, `dev_docs/path_tracer_instrument.md` |
+    | stale selection blurs a box capture; repeats are flaky | `dev_docs/chart_primitive.md` |
+    | neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
+    | box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
+    | per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
+    | `applyToMesh` throws from a `main` | `dev_docs/GPU_SKINNING.md` |
+    | no native-window video on any agent-facing path | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, [Pattern → particles](chain_pattern_particles.md) |
+    | `screencapture` needs permission; the swapchain copy does not | `dev_docs/imgui_vr_panel.md` |
+    | a static capture cannot click | `dev_docs/three_inspector.md` |
+    | captures with a build prerequisite, and host-gated captures | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, `dev_docs/NVFLOW_BINDINGS.md` |
+    | a capture that can no longer be recreated, and must not be faked | `dev_docs/docs_capture_staleness.md` |
