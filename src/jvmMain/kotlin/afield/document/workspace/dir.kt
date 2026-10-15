@@ -966,7 +966,8 @@ fun templatesStartingPointsDir(): File? {
 }
 
 /** Personal templates use the ordinary welcome/copy path and never need to enter a source checkout.
- * Bundled names take precedence so search, preview and copy always resolve the same document. */
+ * Bundled names take precedence, so search, preview and copy always resolve the same document; a
+ * shadowed personal template is listed under a suffixed name by [documentTemplateCandidates]. */
 internal fun documentTemplateRoots(): List<File> = listOfNotNull(
     templatesStartingPointsDir(),
     File(System.getProperty("user.dir"), "src/personal/templates").takeIf { it.isDirectory },
@@ -981,9 +982,30 @@ fun personalTemplatesDir(): File = File(System.getProperty("afield.personalTempl
     ?: System.getenv("AFIELD_PERSONAL_TEMPLATES_DIR")?.takeIf { it.isNotBlank() }
     ?: File(System.getProperty("user.home"), ".afield/templates").path)
 
-internal fun documentTemplateCandidates(): List<WelcomeDirCandidate> = documentTemplateRoots()
-    .flatMap { welcomeDirCandidates(it.absolutePath, emptyList()) }
-    .distinctBy { it.filename }
+/**
+ * Every template in [documentTemplateRoots]. A name already taken by an earlier root — a personal
+ * template called the same as a bundled one — is listed too, as `<name>-checkout` (from
+ * `src/personal/templates`) or `<name>-personal` (from [personalTemplatesDir]), rather than vanishing.
+ */
+internal fun documentTemplateCandidates(): List<WelcomeDirCandidate> {
+    val bundled = templatesStartingPointsDir()?.canonicalPath
+    val checkout = File(System.getProperty("user.dir"), "src/personal/templates").canonicalPath
+    val taken = HashSet<String>()
+    val out = ArrayList<WelcomeDirCandidate>()
+    for (root in documentTemplateRoots()) {
+        val label = when (root.canonicalPath) {
+            bundled -> null
+            checkout -> "checkout"
+            else -> "personal"
+        }
+        for (candidate in welcomeDirCandidates(root.absolutePath, emptyList())) {
+            val name = if (candidate.filename !in taken || label == null) candidate.filename
+                else "${candidate.filename}-$label"
+            if (taken.add(name)) out += candidate.copy(filename = name)
+        }
+    }
+    return out
+}
 
 /** Welcome cards for the bundled document templates, tagged `kind = "template"`. Empty when none. */
 fun templateStartingPoints(): List<WelcomeEntry> {
@@ -1010,7 +1032,8 @@ fun searchTemplateStartingPoints(
         maxMatchesPerDocument = maxMatchesPerDocument,
         maxScanMillis = maxScanMillis,
         cancellationCheck = cancellationCheck,
-        additionalDocuments = candidates.map { it.dir }
+        additionalDocuments = candidates.map { it.dir },
+        documentNames = candidates.filter { it.filename != it.dir.name }.associate { it.dir.canonicalPath to it.filename },
     )
     return response.copy(documents = response.documents.map { it.copy(kind = "template") })
 }
@@ -1297,7 +1320,9 @@ private fun searchWorkspaceIncludingDocuments(
     maxMatchesPerDocument: Int,
     maxScanMillis: Long,
     cancellationCheck: () -> Unit,
-    additionalDocuments: List<File>
+    additionalDocuments: List<File>,
+    /** Listed names for [additionalDocuments] that differ from their directory's, by canonical path. */
+    documentNames: Map<String, String> = emptyMap(),
 ): WorkspaceSearchResponse {
     val query = rawQuery.trim()
     if (query.isBlank()) {
@@ -1401,7 +1426,7 @@ private fun searchWorkspaceIncludingDocuments(
             totalMatches += combined.size
             val modifiedAt = metadataFile.lastModified()
             results += WorkspaceSearchResult(
-                filename = dir.name,
+                filename = documentNames[dir.canonicalPath] ?: dir.name,
                 numBoxes = scan.summary.numBoxes,
                 lastModifiedEpochMs = modifiedAt,
                 lastModifiedAgoMs = now - modifiedAt,
@@ -1633,6 +1658,7 @@ fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumen
             dir.toPath().startsWith(root.canonicalFile.toPath()) && dir.isDirectory &&
                 (File(dir, SavingContext.METADATA_EDN).isFile || File(dir, SavingContext.METADATA_JSON).isFile)
         }?.second
+        ?: documentTemplateCandidates().firstOrNull { it.filename == cleanName }?.dir
         ?: throw IllegalArgumentException("starting point not found")
 
     // Pick a workspace name that does not collide (name, name-2, name-3, …).
