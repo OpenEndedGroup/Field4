@@ -1643,9 +1643,7 @@ class KotlinExecution : BoxExecution {
                     }
 
                     val lines = request.normalizedCode.lines()
-                    val breaks = lines.mapIndexedNotNull { index, line ->
-                        if (afield.runtime.macros.isFragmentBreak(line)) index else null
-                    } + lines.size
+                    val breaks = afield.runtime.macros.fragmentBreakIndices(lines)
 
                     var at = 0
                     var lineCounter = 0
@@ -3309,9 +3307,7 @@ class KotlinExecution : BoxExecution {
         val lines = allCode.lines()
         if (line !in 1..lines.size) return null
 
-        val breaks = lines.mapIndexedNotNull { index, rawLine ->
-            if (afield.runtime.macros.isFragmentBreak(rawLine)) index else null
-        } + lines.size
+        val breaks = afield.runtime.macros.fragmentBreakIndices(lines)
 
         var at = 0
         for (breakIndex in breaks) {

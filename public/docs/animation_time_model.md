@@ -60,9 +60,7 @@ val stopAfter = 4.5
 // clock, not against frameNumber, so it means the same thing live and under capture.
 fun dotX(elapsed: Double) = 110.0 + 760.0 * (0.5 - 0.5 * kotlin.math.cos(elapsed * 0.9))
 
-// A lambda, not a named `fun`: a named function that captures the script's implicit Box receiver —
-// which `lines(...)` needs, since it is a Box extension — is something K2 cannot currently codegen.
-val draw: (Double, Int, Boolean) -> Unit = { elapsed, frames, stopped ->
+fun draw(elapsed: Double, frames: Int, stopped: Boolean) {
     val accent = if (stopped) vec(1.0, 0.28, 0.30, 1.0) else vec(0.48, 0.85, 1.0, 1.0)
     val quiet = if (stopped) vec(1.0, 0.28, 0.30, 0.55) else vec(0.55, 0.62, 0.72, 0.7)
     val track = fline {
@@ -746,8 +744,8 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
     so a child is fenced exactly as the parent is and a re-run stops each child in its own right
     rather than only via the parent's `finally`.
 
-    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
-    through the same hook pair, so the box can report `"ending"` more than once for one stop.
+    All three end phases of `(a.end + b.end).end` route through the same hook pair, and the launcher
+    counts them, so the box reports `"ending"` once per stop.
     [`dev_docs/frames_stop_end_phase.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/frames_stop_end_phase.md) records the rest.
 
 ### How a stop reaches the body
@@ -909,7 +907,6 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | Name | What it is |
 | --- | --- |
 | `type Frames` | A frame-based animation: a suspend `body`, a `frameNumber`, and the hooks a launcher installs on it. |
-| `type EndedException` | A bare `Throwable` subclass declared alongside `Frames`. Nothing in the tree throws or catches it. |
 | `type Framer` | The `CoroutineDispatcher` whose queue-drain *is* the frame boundary. `Runloop.runLoop.main` is one. |
 | `type GeneratorScope` | The receiver inside `generator { }` — it exists to provide `yield`. |
 | `type Generator` | A pull-driven coroutine: `start()`, then `next(input)` per step. |
@@ -944,9 +941,9 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | `frames` | The lowest level: the body runs once and calls `frame()` itself. |
 | `eachFrame` | Advance, then run the body, while `frame()` returns true. `animate { }` is an alias for this. |
 | `loop` | Run the body, then advance — unless the body advanced already. |
-| `forever` | `loop`, but the body returns a `Boolean` and `false` ends it. No callers in the tree. |
+| `forever` | `loop`, but the body returns a `Boolean` and `false` ends it. |
 | `Frames.end` | Chain a cleanup block onto `atEnd`. Written `.end { }`, and distinct from the `end()` member. |
-| `Frames.plus` | Run two frame programs in parallel under one parent, forwarding the parent's stop fences to both children. No callers in the tree. |
+| `Frames.plus` | Run two frame programs in parallel under one parent, forwarding the parent's stop fences to both children. |
 | `Box.launchFrames` | Launch a `Frames` on the Runloop against a box, without returning it. Two overloads. |
 | `then` | Sequence two plain suspend lambdas into one. |
 

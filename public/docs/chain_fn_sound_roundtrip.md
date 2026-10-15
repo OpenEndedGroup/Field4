@@ -119,20 +119,20 @@ than a sample grid. Nearly every loudness frame lands inside. The few that do no
 one 16-bit step. Every pitch frame lands inside, but a YIN frame reads nearly three times as many
 samples as an RMS frame here, and a wider window has a wider range to land in.
 
-## Two delays, measured to the sample
+## Delays, measured to the sample
 
 The harness also asks what delay best aligns each recovered curve with the function, searching two
 blocks either way at one-sample resolution. The box below plays both encodings through both
 bridges and zooms in on the narrow bump.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/delays.png" wait="12" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="240" name="chain-fn-delays" embed=true alt="A two-lane time-axis viewer zoomed to thirty milliseconds around the narrow bump. In the top lane the curve read back from the per-sample render sits on the function; in the lower lane the curve read back from the per-block Param render is visibly shifted to the right of it. Below, a table of the four trips giving each one's RMS error, the delay that best aligns it in samples, the RMS error at that delay, and, for pitch, the delay measured from the centre of the samples YIN compared"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/delays.png" wait="12" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="240" name="chain-fn-delays" embed=true alt="A two-lane time-axis viewer zoomed to thirty milliseconds around the narrow bump. In the top lane the curve read back from the per-sample render sits on the function; in the lower lane the curve read back from the per-block Param render is visibly shifted to the right of it. Below, a table of the four trips giving each one's RMS error, the delay that best aligns it in samples, and the RMS error at that delay"}
 :::static
 import afield.audio.synth.FnSoundDocs
 import afield.audio.synth.FnSoundDocs.Encoding
 import afield.audio.synth.FnSoundDocs.Route
 
-// Two encodings through two bridges. bestLagSamples reads f at each frame's reported centre minus
-// a lag; bestLagFromSupportSamples does the same from the centre of the samples the frame compared.
+// Two encodings through two bridges. bestLagSamples reads f at each frame's reported time minus
+// the lag that best aligns the two.
 val trips = Encoding.values().flatMap { e -> Route.values().map { r -> FnSoundDocs.roundTrip(e, r) } }
 fun trip(e: Encoding, r: Route) = trips.single { it.encoding == e && it.route == r }
 
@@ -148,14 +148,13 @@ displaySignal(viewer, "viewer", SignalViewerOptions(width = 1100, laneHeight = 1
 
 val rows = trips.joinToString("\n") { t ->
     "| ${t.encoding.name.lowercase()} | ${if (t.route == Route.PER_SAMPLE) "`toSignal()`" else "`Param { }`"} | " +
-        "${"%.5f".format(t.rmsError)} | ${t.bestLagSamples} | ${"%.5f".format(t.rmsErrorAtBestLag)} | " +
-        (if (t.encoding == Encoding.PITCH) "${t.bestLagFromSupportSamples}" else "—") + " |"
+        "${"%.5f".format(t.rmsError)} | ${t.bestLagSamples} | ${"%.5f".format(t.rmsErrorAtBestLag)} |"
 }
 markdown("delays", """
 One audio block is ${FnSoundDocs.BLOCK} samples, ${"%.2f".format(1000.0 * FnSoundDocs.BLOCK / FnSoundDocs.SR)} ms.
 
-| encoding | bridge | RMS error | best delay, samples | RMS error at that delay | delay from the compared samples |
-|---|---|---|---|---|---|
+| encoding | bridge | RMS error | best delay, samples | RMS error at that delay |
+|---|---|---|---|---|
 $rows
 """, width = 1080)
 :::endfold
@@ -167,20 +166,10 @@ error. That is the ramp described above, and it is why a sharp feature driven th
 arrives a block after it was asked for. `Param` is built for control values set once a block, and
 it does that job. It is the wrong bridge for a function whose shape you mean to hear.
 
-The second delay is in the analysis. `PatF0Frame.centerSample` is the middle of the samples a YIN
-frame spans, `window + tauMax`, but the difference function at the lag YIN chose, `tau`, compares only
-`window + tau` of them. So for any pitch above the lowest the detector was told about, the estimate
-belongs to an instant `(tauMax − tau) / 2` samples earlier than the one it is reported at. Re-centre
-each frame on the samples it compared and the pitch delay through `toSignal()` falls to within a
-sample or two of zero. Through `Param { }`, what is left is one block again. The two delays add.
-
-!!! note "Reading a pitch track against time"
-
-    `patF0Frames` attributes each estimate a little late, by an amount that depends on the pitch:
-    nothing at `minHz`, and up to half of `tauMax` well above it. Telling the detector the true
-    register keeps `tauMax` small and the bias with it. When
-    timing matters to the sample, centre a frame at
-    `startSample + (spanSamples − tauMax + sampleRate / hz) / 2`, the way `FnSoundDocs` does.
+The analysis adds no delay of its own. Each pitch frame is reported at
+`PatF0Frame.measuredCenterSample`, the centre of the samples YIN compared at the lag it chose, so
+through `toSignal()` the pitch delay is within a sample or two of zero. Through `Param { }` it is one
+block again.
 
 ## Where each piece is documented
 

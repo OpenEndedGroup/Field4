@@ -103,6 +103,7 @@ import afield.app.protocol.SetVisibleLayers
 import afield.app.protocol.Set_animated_rect
 import afield.app.protocol.Set_rect
 import afield.app.protocol.Set_rects
+import afield.app.protocol.Rect
 import afield.app.protocol.Set_string
 import afield.app.protocol.SharedUiIntent
 import afield.app.protocol.SlideShowCommand
@@ -587,6 +588,14 @@ class SessionInformation(
      */
     val readOnly: Boolean = ReadOnlyDocuments.global
 ) {
+    /** The latest `viewport` a browser reported for this document; see [Box.viewport]. */
+    @Volatile
+    var viewport: Rect? = null
+
+    /** The latest per-pane visible world rects a browser reported; see [Box.viewports]. */
+    @Volatile
+    var viewports: List<Rect> = emptyList()
+
     /**
      * Keep this document's windows and running boxes when its last client leaves; see
      * `AgentOpenDocument.keepRunning`. Set by an automation client that asked for it.
@@ -2881,6 +2890,7 @@ class Server {
             handlers["set-viewport"] = mutableSetOf({ message, reply ->
                 val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
                 try {
+                    thisSessionInfo.get().viewport = set.value
                     thisSessionInfo.get().boxes.forEach {
                         it.value.viewport = set.value
                     }
@@ -2890,6 +2900,12 @@ class Server {
                     // this is fine, we're just early on the set-viewport
                     Handled.yes
                 }
+            })
+
+            handlers["set-viewports"] = mutableSetOf({ message, reply ->
+                val set = Json.decodeFromJsonElement<Set_rects>(message.payload!!)
+                thisSessionInfo.get()?.viewports = set.values.map { it.value }
+                Handled.yes
             })
 
             handlers["set-rect"] = mutableSetOf({ message, reply ->

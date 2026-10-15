@@ -150,9 +150,8 @@ object LambdaSoundDocs {
     /**
      * One reaction, as the recorder saw it — the unit of the time series this page plots and plays.
      *
-     * [activePairs] is counted **after** the reaction and includes pairs no rule covers, which is
-     * why [reduciblePairs] is a separate number rather than the same one: a normal form still has
-     * an active pair in it (see [Trace.trailingActivePairs]).
+     * [activePairs] is counted **after** the reaction and includes pairs no rule covers (the `ROOT`
+     * facing the answer), which is why [reduciblePairs] is a separate number.
      */
     class Beat(
         /** 1-based reaction index. */
@@ -213,14 +212,8 @@ object LambdaSoundDocs {
         /** Agents left standing. */
         val remainingNodes: Int get() = net.nodes.size
 
-        /**
-         * Active pairs in the *final* net.
-         *
-         * Not zero, and that is the point: `ROOT` faces the normal form principal to principal and
-         * no rule covers `ROOT ⟂ LAM`. A normal form here is "no rule matches", not "nothing is
-         * touching".
-         */
-        val trailingActivePairs: Int get() = net.activePairs().size
+        /** Pairs a rule still covers in the *final* net: zero, when the reduction finished. */
+        val trailingReduciblePairs: Int get() = net.reduciblePairs(Lambda.rules()).size
 
         /** One slot per reaction, true where the reaction was a β. The bar this page condenses. */
         val betaMask: List<Boolean> get() = beats.map { it.rule == "beta-linear" }
@@ -722,16 +715,12 @@ object LambdaSoundDocs {
             "event kinds seen: $kinds — $KINDS_UNREACHABLE_ON_CLOSED_TERMS are unreachable on closed terms",
         )
 
-        // A normal form still has an active pair in it, and no scheduler makes that go away.
+        // Every reduction ends in a normal form: no rule matches anywhere.
         all.forEach { t ->
-            check(t.trailingActivePairs >= 1) {
-                "${t.name}/${t.order.name} ended with no active pair at all, which the ROOT should prevent"
+            check(t.trailingReduciblePairs == 0 && t.net.isNormal(Lambda.rules())) {
+                "${t.name}/${t.order.name} stopped with ${t.trailingReduciblePairs} pair(s) a rule still covers"
             }
         }
-        println(
-            "trailing active pairs (ROOT against the answer): " +
-                all.map { it.trailingActivePairs }.distinct().sorted(),
-        )
 
         println()
         println("the four terms this page draws:")

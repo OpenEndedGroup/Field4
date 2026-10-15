@@ -425,6 +425,8 @@ object LoadingTracker {
         notify("finished loading \u2014 press <b>?</b> for help", "setup")
         updateEmptyDocumentWelcome()
         send(Message("replay-output-areas"))
+        // The start-up report can arrive before the server has the document; say it again now.
+        sendViewportsToServer()
     }
 
     fun isFinished(): Boolean = finished
@@ -2342,16 +2344,7 @@ private fun applyViewportTranslation(
     updateBackgroundGrid(mainTranslation[0], mainTranslation[1], panning = panning)
 
     if (syncServer) {
-        // `viewport` keeps its meaning from before panes: the main pane's translation from its own
-        // corner and its size, so the world it shows at zoom 1 is (-x, -y, w, h). Unsplit the
-        // corner is the window's and nothing changed.
-        val main = CanvasCamera.main
-        val r = main.rect
-        send(
-            Message("set-viewport").payload(
-                Set_rect(uid = "root", property = "viewport", value = Rect(main.tx - r.x, main.ty - r.y, r.w, r.h))
-            )
-        )
+        sendViewportsToServer()
     }
 
     drawingLayerViewportChanged()
@@ -2360,6 +2353,25 @@ private fun applyViewportTranslation(
     if (refreshSpatial && spatialNavActive) {
         refreshSpatialNavTargets()
     }
+}
+
+/**
+ * Tell the server what the canvas shows. `viewport` keeps its meaning from before panes and zoom:
+ * the main pane shows the world rect `(-x, -y, w, h)`, now in world units at any zoom. `viewports`
+ * is every pane's visible world rect `(x, y, w, h)`, in pane order, the main (bottom-right) pane last.
+ */
+internal fun sendViewportsToServer() {
+    val v = CanvasCamera.main.visibleWorldRect()
+    send(
+        Message("set-viewport").payload(
+            Set_rect(uid = "root", property = "viewport", value = Rect(-v.x, -v.y, v.w, v.h))
+        )
+    )
+    send(
+        Message("set-viewports").payload(
+            Set_rects(CanvasCamera.panes.map { Set_rect(uid = "root", property = "viewports", value = it.visibleWorldRect()) })
+        )
+    )
 }
 
 /** Moves the main pane's camera, for callers outside this file (bookmark restore). */
@@ -2682,6 +2694,29 @@ private fun releaseCanvasDragLatch() {
     if (!canvasDragLatched) return
     canvasDragLatched = false
     updateCanvasPanLatchClass()
+}
+
+/** Whether some element from [target] up to and including [area] can still scroll by (dx, dy). */
+private fun canScrollWithin(target: HTMLElement, area: HTMLElement, dx: Double, dy: Double): Boolean {
+    var node: HTMLElement? = target
+    while (node != null) {
+        val style = window.getComputedStyle(node)
+        val scrollsY = style.overflowY == "auto" || style.overflowY == "scroll"
+        val scrollsX = style.overflowX == "auto" || style.overflowX == "scroll"
+        if (scrollsY && dy != 0.0) {
+            val top = node.scrollTop
+            val max = node.scrollHeight - node.clientHeight
+            if ((dy < 0 && top > 0) || (dy > 0 && top < max - 1)) return true
+        }
+        if (scrollsX && dx != 0.0) {
+            val left = node.scrollLeft
+            val max = node.scrollWidth - node.clientWidth
+            if ((dx < 0 && left > 0) || (dx > 0 && left < max - 1)) return true
+        }
+        if (node == area) break
+        node = node.parentElement as? HTMLElement
+    }
+    return false
 }
 
 private fun installCanvasPanLatch() {
@@ -6954,9 +6989,12 @@ suspend fun main() {
 
     mainViewport.onwheel = onwheel@{ event ->
 
-        // todo, should read "has outputArea_content as parent"
+        // Over an output panel the wheel belongs to the panel only if something there takes it: its
+        // content handled the event, or an element between the target and the panel can still
+        // scroll that way. Otherwise a panel that fills the window would trap pan and zoom.
         val target = event.target as? HTMLElement
-        if (target != null && target.asDynamic().closest(".outputArea") != null) {
+        val area = target?.closest(".outputArea") as? HTMLElement
+        if (area != null && (event.defaultPrevented || (!(event.ctrlKey || event.metaKey) && canScrollWithin(target, area, event.deltaX, event.deltaY)))) {
             return@onwheel null
         }
 
@@ -7737,15 +7775,7 @@ suspend fun main() {
         true
     }
 
-    send(
-        Message("set-viewport").payload(
-            Set_rect(
-                uid = "root",
-                property = "viewport",
-                Rect(0.0, 0.0, CanvasCamera.main.rect.w, CanvasCamera.main.rect.h)
-            )
-        )
-    )
+    sendViewportsToServer()
 
     registerMouseBug()
 

@@ -110,7 +110,7 @@ suspend fun standardExecutionPractice(
 ): List<ResultValue?> {
 
     var lines = s.lines()
-    var breaks = lines.mapIndexedNotNull { index, line -> if (isFragmentBreak(line)) index else null } + lines.size
+    var breaks = fragmentBreakIndices(lines)
 
     var at = 0
     var ll = 0
@@ -692,5 +692,48 @@ data class Insert(
  * as one fragment with no error to say so.
  */
 fun isFragmentBreak(line: String): Boolean = FRAGMENT_BREAK.containsMatchIn(line)
+
+/**
+ * Where a box's code splits into fragments, as line indices, ending with `lines.size`: every
+ * [isFragmentBreak] line, plus an **implicit** break before a top-level line that calls `moduleHere`
+ * when an earlier top-level `once.vertex { }` / `once.fragment { }` (or another shader stage) sits in
+ * the same fragment. `moduleHere` reads the box's shaders while it *expands*, and `once.vertex` only
+ * sets them when it *runs*, so without the break the module would be built on the default shaders.
+ */
+fun fragmentBreakIndices(lines: List<String>): List<Int> {
+    val breaks = ArrayList<Int>()
+    var depth = 0
+    var inRawString = false
+    var seededShader = false
+    for ((index, line) in lines.withIndex()) {
+        if (isFragmentBreak(line)) {
+            breaks += index
+            seededShader = false
+        } else if (depth == 0 && !inRawString) {
+            if (seededShader && MODULE_HERE_CALL.containsMatchIn(line)) {
+                breaks += index
+                seededShader = false
+            }
+            if (ONCE_SHADER_STAGE.containsMatchIn(line)) seededShader = true
+        }
+        // Track brace depth outside raw strings, so GLSL inside a """ block does not count.
+        var i = 0
+        while (i < line.length) {
+            if (line.startsWith("\"\"\"", i)) { inRawString = !inRawString; i += 3; continue }
+            if (!inRawString) {
+                when (line[i]) {
+                    '/' -> if (i + 1 < line.length && line[i + 1] == '/') break
+                    '{' -> depth++
+                    '}' -> depth = (depth - 1).coerceAtLeast(0)
+                }
+            }
+            i++
+        }
+    }
+    return breaks + lines.size
+}
+
+private val ONCE_SHADER_STAGE = Regex("""^\s*once\.(vertex_fragment|vertex|fragment|task|mesh)\b""")
+private val MODULE_HERE_CALL = Regex("""^\s*(?:val\s+\w+\s*=\s*)?moduleHere\b""")
 
 private val FRAGMENT_BREAK = Regex("""^\s*(?://\s*%-|/\*\s*%-\s*\*/)""")
