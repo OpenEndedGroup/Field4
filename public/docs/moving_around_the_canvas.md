@@ -178,6 +178,17 @@ check("false" in linked) { "the labels pane was not relinked: " + linked }
 ui.pause(1500)
 ```
 
+### What box code sees
+
+A box reads what the canvas shows from two properties, both in world units at any zoom.
+`viewport` is the main (bottom-right) pane, the world rect `(-x, -y, w, h)`, and
+`onViewportChange` callbacks fire when it moves. `viewports` lists every pane's visible world rect
+`(x, y, w, h)`, main pane last.
+
+```diffstatic {data-lang=kotlin}
+viewports.forEach { println("${it.x}, ${it.y}: ${it.w} × ${it.h}") }
+```
+
 ## Stepping between boxes
 
 With a box selected, tap `Cmd` twice and hold it down on the second tap: Field outlines the box you
@@ -431,8 +442,6 @@ are hidden, deleted, or drawn at zero size are not candidates.
 - a slot with no saved zoom restores the pan position at whatever zoom you are at now
 - there are nine slots and the numbering is fixed
 - restoring a slot you have not set yet shows a notification and leaves the view alone
-- box code that reads `viewport`, or reacts to it with `onViewportChange`, sees the bottom-right
-  pane of a split canvas only
 
 ## Related features
 

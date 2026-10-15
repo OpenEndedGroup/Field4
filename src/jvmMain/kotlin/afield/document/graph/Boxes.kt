@@ -419,7 +419,25 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
-    var viewport by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
+    private val viewportDelegation = Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
+
+    /**
+     * What the canvas's main pane shows: the world rect `(-x, -y, w, h)`, in world units at any
+     * zoom. Sent by the browser; [onViewportChange] callbacks fire when it moves. A box that has not
+     * been told yet (made after the document loaded) reads its document's latest value.
+     */
+    var viewport: Rect
+        get() = (getPropertyRaw("viewport") as? Rect)
+            ?: (if (isInsideInitialized()) inside.viewport else null)
+            ?: Rect(0.0, 0.0, 0.0, 0.0)
+        set(value) = viewportDelegation.setValue(this, ::viewport, value)
+
+    /**
+     * Every pane's visible world rect `(x, y, w, h)` on a split canvas, the main (bottom-right) pane
+     * last; a single rect when the canvas is not split, and empty before a browser has reported.
+     */
+    val viewports: List<Rect>
+        get() = if (isInsideInitialized()) inside.viewports else emptyList()
     var name by Delegation<String>(defaultValue = { "" }, hook = ::onNameChange)
     /** No `code` property on an untouched box is distinct from an explicitly empty script. */
     var code by Delegation<String?>()
