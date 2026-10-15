@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mp_contrast" index="0" -->
 
 ```edn [field-box id="mp_contrast" role="properties"]
-{"id" "mp_contrast" "index" 0 "name" "4 - contrast profile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - contrast profile" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_contrast_code_.kt" "lines" 16 "characters" 800 "sha256" "af4f5f93f2df4a06182d5a8b19bdf64603b20eba2ccf18ce7be6b7f91f355ac3"}]}
+{"id" "mp_contrast" "index" 0 "name" "4 - contrast profile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - contrast profile" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_contrast_code_.kt" "lines" 21 "characters" 967 "sha256" "64202d7404524787e411166adc66e5cdb15401cac52233171439cc97e0c5ff75"}]}
 ```
 
 ```kotlin [field-property box="mp_contrast" name="code" path="mp_contrast_code_.kt"]
@@ -27,10 +27,15 @@ fun example(withStep: Boolean) = 600 { i ->
 }.toDoubleArray()
 
 val cp = contrastProfile(listOf(example(true), example(true)), listOf(example(false), example(false)), m = 40)
-showSignals("positives" to cp.positive.toList(), "contrast" to cp.profile, channel = "main", normalize = true)
+val platos = cp.platos(2)
+val plato = platos.first()
 
-val plato = cp.platos(1).first()
-markdown("info", "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}")
+showSignals(
+    "positives" to cp.positive.toList(), "contrast" to cp.profile,
+    regions = platos.map { SignalRegion("plato", it.index, it.index + cp.m, "#ffe066") },
+    title = "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}",
+    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+)
 ```
 
 ## 2. 1 - motifs
@@ -38,7 +43,7 @@ markdown("info", "plato in example ${plato.example} at ${plato.offset}, contrast
 <!-- field-box id="mp_motifs" index="1" -->
 
 ```edn [field-box id="mp_motifs" role="properties"]
-{"id" "mp_motifs" "index" 1 "name" "1 - motifs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - motifs" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_motifs_code_.kt" "lines" 14 "characters" 624 "sha256" "68cf1fcd51ee8c21e941a294c23a6f2b13007ea51f4c0e9451145dc2dc7f6c0c"}]}
+{"id" "mp_motifs" "index" 1 "name" "1 - motifs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - motifs" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_motifs_code_.kt" "lines" 18 "characters" 766 "sha256" "a9fa432767deed6dd25354a6513df339e9ee9dac183a7bfe8112f241de10f8cc"}]}
 ```
 
 ```kotlin [field-property box="mp_motifs" name="code" path="mp_motifs_code_.kt"]
@@ -52,10 +57,14 @@ val series = 3000 { level += rnd.nextGaussian() * 0.1; level }.toMutableList()
 for (at in listOf(500, 1400, 2500)) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 val mp = matrixProfile(series, m = 60)
-showSignals("series" to series, "matrix profile" to mp.profile, channel = "main", normalize = true)
-
 val motif = mp.motifs(1).first()
-markdown("info", "motif at ${motif.indices}, pair distance ${"%.2f".format(motif.pairDistance)}")
+
+showSignals(
+    "series" to series, "matrix profile" to mp.profile,
+    regions = motif.indices.map { SignalRegion("motif", it, it + mp.m, "#8fff9a") },
+    title = "motif at ${motif.indices}, pair distance ${"%.2f".format(motif.pairDistance)}",
+    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+)
 ```
 
 ## 3. 3 - several channels (mSTAMP)
@@ -63,7 +72,7 @@ markdown("info", "motif at ${motif.indices}, pair distance ${"%.2f".format(motif
 <!-- field-box id="mp_multidimensional" index="2" -->
 
 ```edn [field-box id="mp_multidimensional" role="properties"]
-{"id" "mp_multidimensional" "index" 2 "name" "3 - several channels (mSTAMP)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - several channels (mSTAMP)" "_tombstone" false "frame" #afield/rect [60.0 1460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_multidimensional_code_.kt" "lines" 16 "characters" 690 "sha256" "16a4d855177d883466f71243882a1a9391f98a40e7b048285fb752652157c327"}]}
+{"id" "mp_multidimensional" "index" 2 "name" "3 - several channels (mSTAMP)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - several channels (mSTAMP)" "_tombstone" false "frame" #afield/rect [60.0 1460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_multidimensional_code_.kt" "lines" 20 "characters" 833 "sha256" "878e93d42d473322dbf8df3d7d69faa4186744bd51414033932f86fd96e64820"}]}
 ```
 
 ```kotlin [field-property box="mp_multidimensional" name="code" path="mp_multidimensional_code_.kt"]
@@ -79,10 +88,14 @@ for (at in listOf(300, 1000)) for (k in 0 until 40) {
 }
 
 val mmp = multiMatrixProfile(channels, m = 40)
-showSignals(*Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) }, channel = "main")
-
 val motif = mmp.motifs(k = 2, count = 1).first()
-markdown("info", "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}")
+
+showSignals(
+    *Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) },
+    regions = motif.indices.map { SignalRegion("motif", it, it + mmp.m, "#8fff9a") },
+    title = "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}",
+    channel = "main", width = 1000, height = 420, floatingLegend = true,
+)
 ```
 
 ## 4. 2 - discords
@@ -90,7 +103,7 @@ markdown("info", "two-channel motif at ${motif.indices}, channels ${motif.channe
 <!-- field-box id="mp_discords" index="3" -->
 
 ```edn [field-box id="mp_discords" role="properties"]
-{"id" "mp_discords" "index" 3 "name" "2 - discords" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - discords" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_discords_code_.kt" "lines" 17 "characters" 756 "sha256" "a63f1961181a2cf3cb18a52b8577e45d1a268852a33f85542f6a693d7584a8ba"}]}
+{"id" "mp_discords" "index" 3 "name" "2 - discords" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - discords" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_discords_code_.kt" "lines" 21 "characters" 908 "sha256" "efefd915dc65f14ecc99d88573b8390fbae84afbd69a0ccf402b729cd2ad5733"}]}
 ```
 
 ```kotlin [field-property box="mp_discords" name="code" path="mp_discords_code_.kt"]
@@ -107,9 +120,13 @@ val beats = (40 * 80) { i ->
 }
 
 val mp = matrixProfile(beats, m = 80)
-showSignals("beats" to beats, "matrix profile" to mp.profile, channel = "main", normalize = true)
-
 val discord = mp.discords(1).first()
-markdown("info", "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}")
+
+showSignals(
+    "beats" to beats, "matrix profile" to mp.profile,
+    regions = listOf(SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")),
+    title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
+    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+)
 ```
 

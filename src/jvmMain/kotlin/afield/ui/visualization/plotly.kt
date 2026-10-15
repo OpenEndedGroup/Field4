@@ -43,6 +43,9 @@ import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.ViolinPoints
 import space.kscience.plotly.models.XAnchor
 import space.kscience.plotly.models.YAnchor
+import space.kscience.plotly.models.ShapeLayer
+import space.kscience.plotly.models.ShapeType
+import space.kscience.dataforge.meta.asValue
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -178,6 +181,9 @@ fun violin(vararg data: List<Number>): Plot {
     }.darkMode()
 }
 
+/** A labelled x-span for [showSignals]' `regions`: a translucent band from [from] to [to]. */
+data class SignalRegion(val label: String, val from: Number, val to: Number, val color: String = "#ffe066")
+
 /** Cyan/orange-led dark-mode palette for signal traces (leads cyan, then orange). */
 val signalPalette: List<String> = listOf("#7ad9ff", "#ff9e4a", "#8fff9a", "#ffe066", "#c58cff", "#ff7a9e")
 
@@ -194,6 +200,12 @@ val signalPalette: List<String> = listOf("#7ad9ff", "#ff9e4a", "#8fff9a", "#ffe0
  *   rolloff, or a regime boundary), spanning the full y-range, drawn in [markColor].
  * - [normalize]: min-max each series into `[0,1]` — use when the signals live on very different
  *   scales (e.g. a centroid in Hz alongside an RMS in `[0,1]`) and you only care about their shape.
+ * - [regions]: translucent bands over x-spans, each labelled at the top — where a detector fired,
+ *   where a motif occurs. Drawn under the traces.
+ * - [width] / [height]: the figure size in CSS pixels; the default is Plotly's 700 × 450.
+ * - [floatingLegend]: put the legend inside the plot's upper left on a translucent dark panel
+ *   instead of outside its right edge, so a wide figure is all data area. It can cover data
+ *   there, which is why it is not the default; use it when the upper left is quiet.
  *
  * The plot is already displayed on return; the [Plot] is returned only for further tweaking (do not
  * `display` it again).
@@ -208,6 +220,10 @@ fun Box.showSignals(
     marks: List<Pair<String, Number>> = emptyList(),
     markColor: String = "#ffe066",
     normalize: Boolean = false,
+    regions: List<SignalRegion> = emptyList(),
+    width: Int? = null,
+    height: Int? = null,
+    floatingLegend: Boolean = false,
 ): Plot {
     fun shape(values: List<Number>): List<Number> {
         if (!normalize) return values
@@ -247,8 +263,47 @@ fun Box.showSignals(
             title?.let { this.title = it }
             xaxis { xTitle?.let { this.title = it } }
             yaxis { yTitle?.let { this.title = it } }
+            width?.let { this.width = it }
+            height?.let { this.height = it }
+            for (r in regions) {
+                figure {
+                    type = ShapeType.rect
+                    layer = ShapeLayer.below
+                    xref = "x"
+                    yref = "paper"
+                    x0 = r.from.asValue()
+                    x1 = r.to.asValue()
+                    y0 = 0.asValue()
+                    y1 = 1.asValue()
+                    fillcolor(r.color)
+                    opacity = 0.28
+                    line { this.width = 0 }
+                }
+                annotation {
+                    text = r.label
+                    xref = "x"
+                    yref = "paper"
+                    this.x = ((r.from.toDouble() + r.to.toDouble()) / 2).asValue()
+                    y = 1.0.asValue()
+                    yanchor = YAnchor.bottom
+                    showarrow = false
+                    font { color(r.color); size = 12 }
+                }
+            }
         }
     }.darkMode()
+    if (floatingLegend) plot.layout {
+        legend {
+            xanchor = XAnchor.left
+            yanchor = YAnchor.top
+            this.x = 0.01
+            y = 0.99
+            bgcolor("rgba(17,17,17,0.92)")
+            bordercolor("rgba(170,170,170,0.35)")
+            borderwidth = 1
+        }
+        margin { r = 16 }
+    }
     display(channel, plot)
     return plot
 }

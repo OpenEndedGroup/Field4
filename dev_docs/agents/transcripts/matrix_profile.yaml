@@ -22,10 +22,14 @@ operations:
           for (at in listOf(500, 1400, 2500)) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
           val mp = matrixProfile(series, m = 60)
-          showSignals("series" to series, "matrix profile" to mp.profile, channel = "main", normalize = true)
-
           val motif = mp.motifs(1).first()
-          markdown("info", "motif at ${motif.indices}, pair distance ${"%.2f".format(motif.pairDistance)}")
+
+          showSignals(
+              "series" to series, "matrix profile" to mp.profile,
+              regions = motif.indices.map { SignalRegion("motif", it, it + mp.m, "#8fff9a") },
+              title = "motif at ${motif.indices}, pair distance ${"%.2f".format(motif.pairDistance)}",
+              channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+          )
   - create:
       box: mp_discords
       name: 2 - discords
@@ -45,10 +49,14 @@ operations:
           }
 
           val mp = matrixProfile(beats, m = 80)
-          showSignals("beats" to beats, "matrix profile" to mp.profile, channel = "main", normalize = true)
-
           val discord = mp.discords(1).first()
-          markdown("info", "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}")
+
+          showSignals(
+              "beats" to beats, "matrix profile" to mp.profile,
+              regions = listOf(SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")),
+              title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
+              channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+          )
   - create:
       box: mp_multidimensional
       name: 3 - several channels (mSTAMP)
@@ -67,10 +75,14 @@ operations:
           }
 
           val mmp = multiMatrixProfile(channels, m = 40)
-          showSignals(*Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) }, channel = "main")
-
           val motif = mmp.motifs(k = 2, count = 1).first()
-          markdown("info", "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}")
+
+          showSignals(
+              *Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) },
+              regions = motif.indices.map { SignalRegion("motif", it, it + mmp.m, "#8fff9a") },
+              title = "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}",
+              channel = "main", width = 1000, height = 420, floatingLegend = true,
+          )
   - create:
       box: mp_contrast
       name: 4 - contrast profile
@@ -89,10 +101,15 @@ operations:
           }.toDoubleArray()
 
           val cp = contrastProfile(listOf(example(true), example(true)), listOf(example(false), example(false)), m = 40)
-          showSignals("positives" to cp.positive.toList(), "contrast" to cp.profile, channel = "main", normalize = true)
+          val platos = cp.platos(2)
+          val plato = platos.first()
 
-          val plato = cp.platos(1).first()
-          markdown("info", "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}")
+          showSignals(
+              "positives" to cp.positive.toList(), "contrast" to cp.profile,
+              regions = platos.map { SignalRegion("plato", it.index, it.index + cp.m, "#ffe066") },
+              title = "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}",
+              channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+          )
   - execute:
       box: mp_motifs
   - execute:

@@ -10,7 +10,12 @@ fun example(withStep: Boolean) = 600 { i ->
 }.toDoubleArray()
 
 val cp = contrastProfile(listOf(example(true), example(true)), listOf(example(false), example(false)), m = 40)
-showSignals("positives" to cp.positive.toList(), "contrast" to cp.profile, channel = "main", normalize = true)
+val platos = cp.platos(2)
+val plato = platos.first()
 
-val plato = cp.platos(1).first()
-markdown("info", "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}")
+showSignals(
+    "positives" to cp.positive.toList(), "contrast" to cp.profile,
+    regions = platos.map { SignalRegion("plato", it.index, it.index + cp.m, "#ffe066") },
+    title = "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}",
+    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+)

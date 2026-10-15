@@ -10,7 +10,11 @@ for (at in listOf(300, 1000)) for (k in 0 until 40) {
 }
 
 val mmp = multiMatrixProfile(channels, m = 40)
-showSignals(*Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) }, channel = "main")
-
 val motif = mmp.motifs(k = 2, count = 1).first()
-markdown("info", "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}")
+
+showSignals(
+    *Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) },
+    regions = motif.indices.map { SignalRegion("motif", it, it + mmp.m, "#8fff9a") },
+    title = "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}",
+    channel = "main", width = 1000, height = 420, floatingLegend = true,
+)

@@ -34,7 +34,7 @@ expect:
   outputContains:
     - "motif at"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/motifs.png" alt="two traces over 3000 samples: a wandering random walk, and the matrix profile, which dips close to zero at three places; a line of text names the three places the motif starts" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" open-outputs="true" padding="20" name="mp-motifs"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/motifs.png" alt="two traces over 3000 samples: a wandering random walk, and the matrix profile, which dips close to zero at the three shaded motif bands; the title names where the motif starts" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-motifs"}
 :::static
 import afield.math.matrixprofile.*
 import kotlin.math.*
@@ -46,10 +46,14 @@ val series = 3000 { level += rnd.nextGaussian() * 0.1; level }.toMutableList()
 for (at in listOf(500, 1400, 2500)) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 val mp = matrixProfile(series, m = 60)
-showSignals("series" to series, "matrix profile" to mp.profile, channel = "main", normalize = true)
-
 val motif = mp.motifs(1).first()
-markdown("info", "motif at ${motif.indices}, pair distance ${"%.2f".format(motif.pairDistance)}")
+
+showSignals(
+    "series" to series, "matrix profile" to mp.profile,
+    regions = motif.indices.map { SignalRegion("motif", it, it + mp.m, "#8fff9a") },
+    title = "motif at ${motif.indices}, pair distance ${"%.2f".format(motif.pairDistance)}",
+    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+)
 ```
 
 ![a random walk and its matrix profile, which dips close to zero at three places](assets/matrix_profile/motifs.png)
@@ -57,6 +61,9 @@ markdown("info", "motif at ${motif.indices}, pair distance ${"%.2f".format(motif
 The profile drops towards zero at the three wiggles, since each has two close twins. None of them
 is easy to pick out of the walk by eye: each sits on whatever level the walk has wandered to, and
 z-normalization takes the level away.
+
+The shaded bands are `showSignals(..., regions = ...)`: one `SignalRegion(label, from, to)` per
+occurrence, which is how to mark anything found in a signal on its plot.
 
 ## Discords
 
@@ -73,7 +80,7 @@ expect:
   outputContains:
     - "discord at"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/discords.png" alt="a regular train of pulses with one beat whose pulse is doubled, and below it the matrix profile, low and flat everywhere except a single tall peak over that beat" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" open-outputs="true" padding="20" name="mp-discords"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/discords.png" alt="a regular train of pulses with one beat whose pulse is doubled, and below it the matrix profile, low and flat everywhere except a single tall peak over the shaded discord band" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-discords"}
 :::static
 import afield.math.matrixprofile.*
 import kotlin.math.*
@@ -88,10 +95,14 @@ val beats = (40 * 80) { i ->
 }
 
 val mp = matrixProfile(beats, m = 80)
-showSignals("beats" to beats, "matrix profile" to mp.profile, channel = "main", normalize = true)
-
 val discord = mp.discords(1).first()
-markdown("info", "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}")
+
+showSignals(
+    "beats" to beats, "matrix profile" to mp.profile,
+    regions = listOf(SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")),
+    title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
+    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+)
 ```
 
 ![a pulse train and its matrix profile, flat except for one peak over the malformed beat](assets/matrix_profile/discords.png)
@@ -176,7 +187,7 @@ expect:
   outputContains:
     - "channels [1, 3]"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/multidimensional.png" alt="four profiles over the same 1500 samples: the one- and two-channel profiles dip sharply at two places, the three- and four-channel profiles do not; a line of text says the two-channel motif is in channels 1 and 3 at two places" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" open-outputs="true" padding="20" name="mp-multidimensional"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/multidimensional.png" alt="four profiles over the same 1500 samples: the one- and two-channel profiles dip sharply at two places, the three- and four-channel profiles much less; the two shaded motif bands are in channels 1 and 3, as the title says" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-multidimensional"}
 :::static
 import afield.math.matrixprofile.*
 import kotlin.math.*
@@ -190,10 +201,14 @@ for (at in listOf(300, 1000)) for (k in 0 until 40) {
 }
 
 val mmp = multiMatrixProfile(channels, m = 40)
-showSignals(*Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) }, channel = "main")
-
 val motif = mmp.motifs(k = 2, count = 1).first()
-markdown("info", "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}")
+
+showSignals(
+    *Array(4) { k -> "${k + 1} channel(s)" to mmp.profile(k + 1) },
+    regions = motif.indices.map { SignalRegion("motif", it, it + mmp.m, "#8fff9a") },
+    title = "two-channel motif at ${motif.indices}, channels ${motif.channels.sorted()}",
+    channel = "main", width = 1000, height = 420, floatingLegend = true,
+)
 ```
 
 ![four profiles: the one- and two-channel profiles dip at two places, the three- and four-channel ones stay high](assets/matrix_profile/multidimensional.png)
@@ -231,7 +246,7 @@ expect:
   outputContains:
     - "plato in example"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/contrast.png" alt="the two positive examples laid end to end, and under them the contrast profile, which is near zero at the shared sine shape and peaks at the square step that only the positives contain" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" open-outputs="true" padding="20" name="mp-contrast"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/contrast.png" alt="the two positive examples laid end to end, and under them the contrast profile, which is near zero at the shared sine shape and peaks at the square step that only the positives contain, shaded as the two platos" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="mp-contrast"}
 :::static
 import afield.math.matrixprofile.*
 import kotlin.math.*
@@ -245,10 +260,15 @@ fun example(withStep: Boolean) = 600 { i ->
 }.toDoubleArray()
 
 val cp = contrastProfile(listOf(example(true), example(true)), listOf(example(false), example(false)), m = 40)
-showSignals("positives" to cp.positive.toList(), "contrast" to cp.profile, channel = "main", normalize = true)
+val platos = cp.platos(2)
+val plato = platos.first()
 
-val plato = cp.platos(1).first()
-markdown("info", "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}")
+showSignals(
+    "positives" to cp.positive.toList(), "contrast" to cp.profile,
+    regions = platos.map { SignalRegion("plato", it.index, it.index + cp.m, "#ffe066") },
+    title = "plato in example ${plato.example} at ${plato.offset}, contrast ${"%.2f".format(plato.contrast)}",
+    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+)
 ```
 
 ![the concatenated positives and their contrast profile, which peaks at the step](assets/matrix_profile/contrast.png)
