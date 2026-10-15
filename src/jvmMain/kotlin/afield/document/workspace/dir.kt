@@ -1321,7 +1321,7 @@ private fun searchWorkspaceIncludingDocuments(
     maxScanMillis: Long,
     cancellationCheck: () -> Unit,
     additionalDocuments: List<File>,
-    /** Listed names for [additionalDocuments] that differ from their directory's, by canonical path. */
+    // Listed names for additionalDocuments that differ from their directory's, by canonical path.
     documentNames: Map<String, String> = emptyMap(),
 ): WorkspaceSearchResponse {
     val query = rawQuery.trim()
