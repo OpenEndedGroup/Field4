@@ -629,6 +629,7 @@ object DemoTranscriptExecSmokeTest {
         "path_tracer_instrument",
         "path_tracing_emitters",
         "path_tracing_medium",
+        "python_box_parity",
         "python_cells",
         // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin
         // graphics boxes are compiled.

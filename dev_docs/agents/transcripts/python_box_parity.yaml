@@ -1,0 +1,71 @@
+name: python_box_parity
+description: |
+  **Python boxes doing what Kotlin boxes do: errors on the right line, and live controls.**
+  Three boxes: a Kotlin language root and two Python cells under it.
+
+    - **An error is marked on the line that raised it.** Run the cell: the red marker sits on
+      line 6, inside `mean`, not on the cell's first line as it used to.
+    - **A slider and a checkbox with Python callbacks.** The cell draws the same controls a Kotlin
+      box's `slider(...)` and `checkbox(...)` draw; moving them runs the Python function, whose
+      `display(...)` updates the box.
+
+  Same prerequisite as `python_cells`: Field must have found a Python with JEP before it started
+  (`public/docs/python.md`, "Setting Python up").
+operations:
+  - create:
+      box: parity_root
+      name: "Python root -- children of this box run as Python"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        mainLanguage: python
+        isPythonRoot: true
+        code: |
+          // The language root stays Kotlin; its `mainLanguage` makes its children Python.
+          println("the root stays Kotlin")
+  - create:
+      box: parity_error
+      name: "an error is marked where it happened"
+      frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Python
+        code: |
+          # The marker lands on line 6, inside mean(), where the division failed --
+          # not on line 1, and not on the call on line 8.
+          readings = []
+
+          def mean(values):
+              return sum(values) / len(values)
+
+          mean(readings)
+  - create:
+      box: parity_controls
+      name: "a slider and a checkbox, with Python callbacks"
+      frame: { x: 60.0, y: 2040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Python
+        code: |
+          # The same controls a Kotlin box draws, calling back into Python.
+          state = {"freq": 3.0, "square": False}
+
+          def redraw():
+              f, sq = state["freq"], state["square"]
+              wave = "square" if sq else "sine"
+              display("main", f"<b>{wave}</b> at {f:.1f} Hz")
+
+          @slider("frequency", min=1, max=10, step=0.1, value=3.0)
+          def on_freq(v):
+              state["freq"] = v
+              redraw()
+
+          @checkbox("square wave")
+          def on_square(checked):
+              state["square"] = checked
+              redraw()
+
+          redraw()
+  - connect: { parent: parity_root, child: parity_error }
+  - connect: { parent: parity_root, child: parity_controls }
+  - execute: { box: parity_root, property: code }
+  - await: {}
+  - execute: { box: parity_controls, property: code }
+  - await: {}
