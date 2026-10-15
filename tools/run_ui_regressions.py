@@ -3762,6 +3762,9 @@ def prepare_generated_files() -> dict[str, Path]:
     }
 
 
+SLIDE_EDITOR_SHOT = ["--uid", "@slide_target", "--with-editor", "--preserve-selection", "--no-pan"]
+
+
 def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegression]:
     pw_timeout = str(max(timeout, PLAYWRIGHT_TIMEOUT))
     timeout_text = str(timeout)
@@ -4358,6 +4361,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-camera.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="slideshow-annotation-zoom",
+            description="A slideshow annotation starts on its note and ends on its target editor line after a pan and at canvas zoom 0.5 and 2.",
+            document=f"ui-regression-slideshow-zoom-{int(time.time())}",
+            commands=[
+                "new-box --name SlideTarget --alias slide_target --x 160 --y 160",
+                shell_join(["run", "@slide_target", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-target.kt")]),
+                "new-box --name SlideHost --alias slide_host --x 160 --y 420",
+                "connect @slide_host @slide_target",
+                shell_join(["run", "@slide_host", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.js"), "--timeout", pw_timeout]),
+                shell_join(["screenshot-window", str(BUILD_ROOT / "scratch" / "slideshow-annotation-zoom-z0.5.png"), *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.js"), "--timeout", pw_timeout]),
+                shell_join(["screenshot-window", str(BUILD_ROOT / "scratch" / "slideshow-annotation-zoom-z1.png"), *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/slideshow-annotation-zoom.js"), "--timeout", pw_timeout]),
+                shell_join(["screenshot-window", str(BUILD_ROOT / "scratch" / "slideshow-annotation-zoom-z2.png"), *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
+            ],
+            # A plain screenshot-window deselects, which closes the editor and hides the arrow.
+            screenshot=shell_join(["screenshot-window", "{screenshot}", *SLIDE_EDITOR_SHOT, "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="canvas-split",

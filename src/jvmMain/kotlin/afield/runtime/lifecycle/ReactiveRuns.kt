@@ -442,8 +442,33 @@ object ReactiveRuns {
      * value changed, its readers rerun as they would after `holder.name = v`.
      */
     fun noteRawWrite(holder: Box, name: String, old: Any?, new: Any?) {
-        if (old != new && downDeclared.contains(downKey(holder, name))) noteChange(holder, name)
+        if (old != new && isDeclaredDown(holder, name)) noteChange(holder, name)
     }
+
+    /**
+     * Whether [box] still declares [name] Down. A declaration is recorded when the macro expands
+     * and is dropped here, lazily, once the box is deleted (tombstoned) or its code no longer
+     * contains a `propDown` / `propUpDown` of that name — so editing the macro out, or deleting the
+     * box, stops raw writes from rerunning readers.
+     */
+    fun isDeclaredDown(box: Box, name: String): Boolean {
+        val key = downKey(box, name)
+        if (!downDeclared.contains(key)) return false
+        val code = box.getPropertyRaw("code") as? String
+        val stillThere = !box.getPropertyRaw("_tombstone").isTrue() &&
+            (code == null || downMacroPattern(name).containsMatchIn(code))
+        if (!stillThere) downDeclared.remove(key)
+        return stillThere
+    }
+
+    /** Forgets every Down declaration of [box]; for box deletion. */
+    fun forgetDown(box: Box) {
+        val prefix = box.id + "\u0000"
+        downDeclared.removeIf { it.startsWith(prefix) }
+    }
+
+    private fun downMacroPattern(name: String) =
+        Regex("""propU?p?Down\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\b""")
 
     /** A `propDown` value changed: hold it to the end of the writer's run, or send it on now. */
     fun noteChange(holder: Box, name: String) {

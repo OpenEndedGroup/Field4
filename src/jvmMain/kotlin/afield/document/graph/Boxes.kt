@@ -44,6 +44,7 @@ import afield.runtime.kotlin.formatBoxKotlin
 import afield.runtime.kotlin.formatCodeProperty
 import afield.runtime.lifecycle.BoxRunScopes
 import afield.runtime.lifecycle.LazyVar
+import afield.runtime.lifecycle.ReactiveRuns
 import afield.runtime.lifecycle.inMain
 import afield.runtime.lifecycle.lazyVar
 import afield.runtime.lifecycle.map
@@ -955,6 +956,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         }
                         target.setPropertyRaw("_tombstone", true)
                         root.disconnect(target)
+                        ReactiveRuns.forgetDown(target)
                     }
                     // Stop what the deleted boxes were running, dispose any renderer they own, and
                     // release their K2 compilation state; a deleted box is never re-run.

@@ -21,6 +21,7 @@ import afield.document.graph.needsResync
 import afield.runtime.lifecycle.ReactiveRuns
 import afield.runtime.lifecycle.Runloop
 import afield.runtime.lifecycle.map
+import afield.runtime.macros.MacroRegistry
 import afield.document.properties.MissingInheritedPropertyException
 import afield.document.properties.Reactive
 import afield.document.properties.ReactiveInheritance
@@ -30,6 +31,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 private var Box.reactiveTestDown: Int? by ReactiveInheritance<Int?>(Reactive.DOWN)
@@ -205,6 +207,55 @@ class ReactivePropsTest {
         assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, "unchanged value noted")
         ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
         assertTrue(ReactiveRuns.recentEvents().any { it.contains("changed a.gain") }, ReactiveRuns.recentEvents().joinToString("\n"))
+    }
+
+    @Test
+    fun aDownDeclarationEditedOutOfTheCodeIsForgotten() {
+        val s = session("edited")
+        val a = boxIn(s, "a", "propDown<Double>(gain)\ngain = 1.0")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(a, "gain"))
+        a.setPropertyRaw("code", "prop<Double>(gain)\ngain = 1.0")
+        ReactiveRuns.clearEvents()
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, ReactiveRuns.recentEvents().joinToString("\n"))
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
+    }
+
+    /**
+     * Kotlin `propDown` always carries its type: without one the macro refuses to expand, so
+     * the code check in [ReactiveRuns.isDeclaredDown] only needs the `<T>(name...)` form, with
+     * any spacing and an optional default.
+     */
+    @Test
+    fun aDownDeclarationNeedsItsTypeAndToleratesSpacingAndDefaults() {
+        val s = session("forms")
+        val a = boxIn(s, "a", "propDown(gain)")
+        assertFailsWith<MacroRegistry.MacroExpansionProblem> {
+            a.macro_reactive_prop(listOf("(gain)"), Reactive.DOWN, "propDown")
+        }
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
+        val b = boxIn(s, "b", "propDown< Map<String, Double> >( gain , mapOf() )")
+        b.macro_reactive_prop(listOf("<Map<String, Double>>", "(gain, mapOf())"), Reactive.DOWN, "propDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(b, "gain"))
+        b.setPropertyRaw("code", "propDown<Double>(gainTrim)")
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"), "a longer name is not the same declaration")
+    }
+
+    @Test
+    fun aDeletedBoxsDownDeclarationIsForgotten() {
+        val s = session("deleted")
+        val a = boxIn(s, "a", "propUpDown<Double>(gain)")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.UP_DOWN, "propUpDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(a, "gain"))
+        a.setPropertyRaw("_tombstone", true)
+        ReactiveRuns.clearEvents()
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") })
+        val b = boxIn(s, "b", "propDown<Double>(gain)")
+        b.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        ReactiveRuns.forgetDown(b)
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"))
     }
 
     @Test
