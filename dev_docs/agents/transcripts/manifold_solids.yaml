@@ -221,11 +221,9 @@ operations:
               vec(majorRadius + minorRadius + 2, majorRadius + minorRadius + 2, minorRadius + 2),
           )
           
-          // The upcall. `field` is called by Manifold's own worker threads — measured at ~2x the
-          // sequential path on this machine — which is why it must be thread-safe, and is: it reads
-          // three captured doubles and allocates nothing. Pass parallel = false for one that is not.
+          // The upcall: Manifold's marcher calls `field` back for every sample.
           val start = System.nanoTime()
-          val solid = Solid.levelSet(bounds, edgeLength = 1.1, parallel = true, field = ::field)
+          val solid = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
           val marchMs = (System.nanoTime() - start) / 1e6
           
           println("level set: ${"%.0f".format(marchMs)} ms")

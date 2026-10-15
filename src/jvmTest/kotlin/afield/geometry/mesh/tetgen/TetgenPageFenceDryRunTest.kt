@@ -148,8 +148,8 @@ class TetgenPageFenceDryRunTest {
 
         println("h      box, worst error        sphere, worst error")
         for (h in listOf(0.4, 0.2, 0.1, 0.05)) {
-            val b = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }
-            val s = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -sphereDistance(x, y, z) }
+            val b = Solid.levelSet(bounds, h) { x, y, z -> -boxDistance(x, y, z) }
+            val s = Solid.levelSet(bounds, h) { x, y, z -> -sphereDistance(x, y, z) }
             val be = worstError(coordinates(b.toTriMesh()), ::boxDistance)
             val se = worstError(coordinates(s.toTriMesh()), ::sphereDistance)
             println("${"%.2f".format(h)}   ${"%.6f".format(be)} = ${"%.4f".format(be / h)} h    " +
@@ -171,7 +171,7 @@ class TetgenPageFenceDryRunTest {
         println("exact cross section: ${exactCorner.size} points, " +
             "corner at (${exactCorner.maxOf { it.x }}, ${exactCorner.maxOf { it.y }})")
         for (h in listOf(0.4, 0.2, 0.1)) {
-            Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }.use { b ->
+            Solid.levelSet(bounds, h) { x, y, z -> -boxDistance(x, y, z) }.use { b ->
                 val outline = b.slice(0.0).toPolygons().first()
                 val inWindow = outline.filter { it.x > 0.55 && it.y > 1.05 }
                 println("  h = $h: ${outline.size} points, ${inWindow.size} in the corner window, " +
@@ -196,7 +196,7 @@ class TetgenPageFenceDryRunTest {
         assertTrue(exFinite.all { it >= 0.82 - 1e-9 && it <= 1.06 + 1e-9 }, "exact x outside the window")
         assertTrue(eyFinite.all { it >= 1.32 - 1e-9 && it <= 1.56 + 1e-9 }, "exact y outside the window")
         for (h in listOf(0.4, 0.2, 0.1)) {
-            Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }.use { b ->
+            Solid.levelSet(bounds, h) { x, y, z -> -boxDistance(x, y, z) }.use { b ->
                 val (cx, cy) = clippedToWindow(b.slice(0.0).toPolygons().first())
                 val fx = cx.filter { it.isFinite() }
                 val fy = cy.filter { it.isFinite() }

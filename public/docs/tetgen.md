@@ -558,8 +558,8 @@ val corners = mutableListOf<Pair<String, List<Vec2>>>()
 
 println("h      box, worst error        sphere, worst error")
 for (h in sizes) {
-    val b = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }
-    val s = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -sphereDistance(x, y, z) }
+    val b = Solid.levelSet(bounds, h) { x, y, z -> -boxDistance(x, y, z) }
+    val s = Solid.levelSet(bounds, h) { x, y, z -> -sphereDistance(x, y, z) }
     boxError += worstError(coordinates(b.toTriMesh()), ::boxDistance)
     sphereError += worstError(coordinates(s.toTriMesh()), ::sphereDistance)
     println("${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +

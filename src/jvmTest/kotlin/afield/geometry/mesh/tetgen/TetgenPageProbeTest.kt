@@ -189,7 +189,7 @@ class TetgenPageProbeTest {
         for ((name, distance) in listOf<Pair<String, (Double, Double, Double) -> Double>>(
             "box   " to ::boxDistance, "sphere" to ::sphereDistance)) {
             for (h in listOf(0.4, 0.2, 0.1, 0.05)) {
-                Solid.levelSet(bounds, edgeLength = h, parallel = true,
+                Solid.levelSet(bounds, edgeLength = h,
                     field = { x, y, z -> -distance(x, y, z) }).use { marched ->
                     val m = marched.toTriMesh()
                     var worst = 0.0
