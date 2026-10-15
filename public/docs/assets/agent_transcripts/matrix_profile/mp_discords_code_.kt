@@ -15,7 +15,7 @@ val discord = mp.discords(1).first()
 
 showSignals(
     "beats" to beats, "matrix profile" to mp.profile,
-    regions = listOf(SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")),
+    regions = [SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")],
     title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
     channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
 )

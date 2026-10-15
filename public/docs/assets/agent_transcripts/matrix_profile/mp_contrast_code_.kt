@@ -9,7 +9,7 @@ fun example(withStep: Boolean) = 600 { i ->
         (if (withStep && i in 400 until 440) (if (i < 420) 3.0 else -3.0) else 0.0)
 }.toDoubleArray()
 
-val cp = contrastProfile(listOf(example(true), example(true)), listOf(example(false), example(false)), m = 40)
+val cp = contrastProfile([example(true), example(true)], [example(false), example(false)], m = 40)
 val platos = cp.platos(2)
 val plato = platos.first()
 

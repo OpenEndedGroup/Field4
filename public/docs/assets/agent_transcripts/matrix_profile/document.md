@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mp_contrast" index="0" -->
 
 ```edn [field-box id="mp_contrast" role="properties"]
-{"id" "mp_contrast" "index" 0 "name" "4 - contrast profile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - contrast profile" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_contrast_code_.kt" "lines" 21 "characters" 967 "sha256" "64202d7404524787e411166adc66e5cdb15401cac52233171439cc97e0c5ff75"}]}
+{"id" "mp_contrast" "index" 0 "name" "4 - contrast profile" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - contrast profile" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_contrast_code_.kt" "lines" 21 "characters" 955 "sha256" "a48d9b373034fc36f0f034781cf190220c47fea9bd41b8fd3da1c02cca99856e"}]}
 ```
 
 ```kotlin [field-property box="mp_contrast" name="code" path="mp_contrast_code_.kt"]
@@ -26,7 +26,7 @@ fun example(withStep: Boolean) = 600 { i ->
         (if (withStep && i in 400 until 440) (if (i < 420) 3.0 else -3.0) else 0.0)
 }.toDoubleArray()
 
-val cp = contrastProfile(listOf(example(true), example(true)), listOf(example(false), example(false)), m = 40)
+val cp = contrastProfile([example(true), example(true)], [example(false), example(false)], m = 40)
 val platos = cp.platos(2)
 val plato = platos.first()
 
@@ -43,7 +43,7 @@ showSignals(
 <!-- field-box id="mp_motifs" index="1" -->
 
 ```edn [field-box id="mp_motifs" role="properties"]
-{"id" "mp_motifs" "index" 1 "name" "1 - motifs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - motifs" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_motifs_code_.kt" "lines" 18 "characters" 766 "sha256" "a9fa432767deed6dd25354a6513df339e9ee9dac183a7bfe8112f241de10f8cc"}]}
+{"id" "mp_motifs" "index" 1 "name" "1 - motifs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - motifs" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_motifs_code_.kt" "lines" 18 "characters" 760 "sha256" "f17f51c3229a632b95cd55658e9ccb0e682cf96e48f20803495ec8402503c18c"}]}
 ```
 
 ```kotlin [field-property box="mp_motifs" name="code" path="mp_motifs_code_.kt"]
@@ -54,7 +54,7 @@ import kotlin.math.*
 val rnd = java.util.Random(4)
 var level = 0.0
 val series = 3000 { level += rnd.nextGaussian() * 0.1; level }.toMutableList()
-for (at in listOf(500, 1400, 2500)) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
+for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 val mp = matrixProfile(series, m = 60)
 val motif = mp.motifs(1).first()
@@ -72,7 +72,7 @@ showSignals(
 <!-- field-box id="mp_multidimensional" index="2" -->
 
 ```edn [field-box id="mp_multidimensional" role="properties"]
-{"id" "mp_multidimensional" "index" 2 "name" "3 - several channels (mSTAMP)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - several channels (mSTAMP)" "_tombstone" false "frame" #afield/rect [60.0 1460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_multidimensional_code_.kt" "lines" 20 "characters" 833 "sha256" "878e93d42d473322dbf8df3d7d69faa4186744bd51414033932f86fd96e64820"}]}
+{"id" "mp_multidimensional" "index" 2 "name" "3 - several channels (mSTAMP)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - several channels (mSTAMP)" "_tombstone" false "frame" #afield/rect [60.0 1460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_multidimensional_code_.kt" "lines" 20 "characters" 827 "sha256" "be6e03d698b076b9da06603f0f83bab8890903af70c5876edcbab1ef9fe01162"}]}
 ```
 
 ```kotlin [field-property box="mp_multidimensional" name="code" path="mp_multidimensional_code_.kt"]
@@ -82,7 +82,7 @@ import kotlin.math.*
 // Four channels of noise. A 40-sample gesture appears in channels 1 and 3, at two times.
 val rnd = java.util.Random(13)
 val channels = 4 { 1500 { rnd.nextGaussian() }.toMutableList() }
-for (at in listOf(300, 1000)) for (k in 0 until 40) {
+for (at in [300, 1000]) for (k in 0 until 40) {
     channels[1][at + k] += 4 * sin(2 * PI * k / 40)
     channels[3][at + k] -= 4 * sin(2 * PI * k / 40)
 }
@@ -103,7 +103,7 @@ showSignals(
 <!-- field-box id="mp_discords" index="3" -->
 
 ```edn [field-box id="mp_discords" role="properties"]
-{"id" "mp_discords" "index" 3 "name" "2 - discords" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - discords" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_discords_code_.kt" "lines" 21 "characters" 908 "sha256" "efefd915dc65f14ecc99d88573b8390fbae84afbd69a0ccf402b729cd2ad5733"}]}
+{"id" "mp_discords" "index" 3 "name" "2 - discords" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - discords" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mp_discords_code_.kt" "lines" 21 "characters" 902 "sha256" "20c10212b3ecf172c9663c1edf9379fa6c7bea4e78d6a37fc17e710e799e673d"}]}
 ```
 
 ```kotlin [field-property box="mp_discords" name="code" path="mp_discords_code_.kt"]
@@ -124,7 +124,7 @@ val discord = mp.discords(1).first()
 
 showSignals(
     "beats" to beats, "matrix profile" to mp.profile,
-    regions = listOf(SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")),
+    regions = [SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")],
     title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
     channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
 )

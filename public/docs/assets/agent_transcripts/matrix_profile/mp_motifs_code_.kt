@@ -5,7 +5,7 @@ import kotlin.math.*
 val rnd = java.util.Random(4)
 var level = 0.0
 val series = 3000 { level += rnd.nextGaussian() * 0.1; level }.toMutableList()
-for (at in listOf(500, 1400, 2500)) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
+for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 val mp = matrixProfile(series, m = 60)
 val motif = mp.motifs(1).first()

@@ -43,7 +43,7 @@ import kotlin.math.*
 val rnd = java.util.Random(4)
 var level = 0.0
 val series = 3000 { level += rnd.nextGaussian() * 0.1; level }.toMutableList()
-for (at in listOf(500, 1400, 2500)) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
+for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
 
 val mp = matrixProfile(series, m = 60)
 val motif = mp.motifs(1).first()
@@ -99,7 +99,7 @@ val discord = mp.discords(1).first()
 
 showSignals(
     "beats" to beats, "matrix profile" to mp.profile,
-    regions = listOf(SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")),
+    regions = [SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")],
     title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
     channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
 )
@@ -195,7 +195,7 @@ import kotlin.math.*
 // Four channels of noise. A 40-sample gesture appears in channels 1 and 3, at two times.
 val rnd = java.util.Random(13)
 val channels = 4 { 1500 { rnd.nextGaussian() }.toMutableList() }
-for (at in listOf(300, 1000)) for (k in 0 until 40) {
+for (at in [300, 1000]) for (k in 0 until 40) {
     channels[1][at + k] += 4 * sin(2 * PI * k / 40)
     channels[3][at + k] -= 4 * sin(2 * PI * k / 40)
 }
@@ -259,7 +259,7 @@ fun example(withStep: Boolean) = 600 { i ->
         (if (withStep && i in 400 until 440) (if (i < 420) 3.0 else -3.0) else 0.0)
 }.toDoubleArray()
 
-val cp = contrastProfile(listOf(example(true), example(true)), listOf(example(false), example(false)), m = 40)
+val cp = contrastProfile([example(true), example(true)], [example(false), example(false)], m = 40)
 val platos = cp.platos(2)
 val plato = platos.first()
 
