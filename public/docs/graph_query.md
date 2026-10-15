@@ -15,7 +15,7 @@ registration.
 ## A graph, addressed
 
 Give `graphPaths` a pattern and it hands back a `PathSet`: an ordered collection
-of *live lenses*: each one is an address plus a getter, and a setter too if the
+of *live lenses*. Each one is an address plus a getter, and a setter too if the
 slot is mutable. Nothing is copied, so if the value changes between two reads,
 the second read sees the change.
 
@@ -239,7 +239,7 @@ on their own. `clearModulation()` and `clearSuppliers()` detach them again.
 
 ## Notes on traversal
 
-Some behaviours to know about before you point this at something large:
+What the walk does on a large or unusual graph:
 
 - **Descent stops at the obvious leaves** — numbers, strings, booleans, enums,
   primitive arrays, functions, class objects — and at anything in the JDK's own
