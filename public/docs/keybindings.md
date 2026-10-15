@@ -306,7 +306,11 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**133 rebindable commands**, 55 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
+**133 rebindable commands**, 55 of them with a shortcut out of the box.
+
+??? aside "Agents: regenerating this table"
+
+    Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
 
 ### Global
 
