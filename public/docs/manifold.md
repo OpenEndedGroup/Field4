@@ -427,24 +427,18 @@ coming **out** narrows Manifold's internal doubles to precisely the precision `T
 
 ### Two meshes from `toTriMesh`
 
-`toTriMesh(normals = true)` is what you want for a picture and *not* what you want for a measurement,
-because a vertex on a hard edge needs a different normal per face and therefore cannot be shared:
+`toTriMesh(normals = true)` is the form for a picture, because a vertex on a hard edge needs a
+different normal per face and therefore cannot be shared:
 
-| Conversion | vertices | `isWatertight()` | `signedVolume()` |
-|---|---|---|---|
-| `cube.toTriMesh()` | 8 | `true` | `8.0` |
-| `cube.toTriMesh(normals = true)` | **24** | **`false`** | `8.0` |
+| Conversion | vertices | `topology().isWatertight` | `isWatertight()` | `signedVolume()` |
+|---|---|---|---|---|
+| `cube.toTriMesh()` | 8 | `true` | `true` | `8.0` |
+| `cube.toTriMesh(normals = true)` | **24** | **`false`** | `true` | `8.0` |
 
-Identical geometry, different *index* topology — and Field's `isWatertight()` and `genus()` read
-indices. A crease-split mesh therefore reports the wrong genus and looks exactly like a broken bridge.
-Ask for the plain form when you are measuring, the shaded form when you are drawing, and `weld()` if
-you need to put a shaded one back together.
-
-The figures above use the plain form, and the reason applies to your own: `showMesh` prints its own
-topology footer, so handing it a crease-split mesh puts *"χ=−4 genus 0 · open (42 boundary loop(s))"*
-on the line immediately above a caption reading *"genus 5 · guaranteed closed"*. Both lines are true —
-of different meshes. Field's own `withVertexNormals()` splits at creases too, so this is a property
-of crease normals rather than of this binding.
+`isWatertight()`, `genus()` and `showMesh`'s footer weld a mesh that carries normals by position
+before measuring, so both forms report the same surface. `topology()` reads the indices as they are,
+and `toSolid` needs the plain form: Manifold refuses a crease-split mesh. Ask for the plain form when
+the mesh goes back into Manifold, and `weld()` a shaded one if you need to.
 
 ## Lifetime
 

@@ -190,13 +190,6 @@ println("${added.triangleCount} triangles appended, ${added.degenerateCount} dro
 Manifold's output of a Boolean followed by a plane trim contains a few triangles of zero area; the
 scene skips them, and `degenerateCount` says how many.
 
-## One mesh to measure, another to draw
-
-`normals = true` splits a vertex per face at every hard edge so each face can carry its own normal.
-That is what makes a render read as facets, and it is also why that mesh shares no edges and reports
-the wrong genus. Measure on the plain mesh and render the split one. Asking either to do the other's
-job gets you a true statement about a different mesh rather than an error.
-
 ## Where each piece is documented
 
 * [Polytopes & the Conway Algebra](polytope_examples.md) for the topology, the operator algebra and

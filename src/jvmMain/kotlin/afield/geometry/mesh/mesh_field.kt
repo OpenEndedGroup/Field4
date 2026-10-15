@@ -177,7 +177,7 @@ fun TriMesh.toFLines(
         }
         MeshLines.EDGES -> topology().edges.map { (a, b) -> polylineFrom(listOf(position(a), position(b))) }
         MeshLines.CREASES -> {
-            val topo = topology()
+            val topo = surfaceTopology()
             val cosLimit = kotlin.math.cos(creaseAngleDegrees.coerceIn(0.0, 180.0) * Math.PI / 180.0).toFloat()
             topo.edges.indices.mapNotNull { e ->
                 val faces = topo.edgeTriangles[e]
@@ -477,7 +477,7 @@ fun TriMesh.toFigureHtml(view: MeshView = MeshView(), caption: String? = null, t
     val png = renderPng(view, caption = "", title = null)
     val b64 = Base64.getEncoder().encodeToString(png)
     val b = boundsArray()
-    val topo = topology()
+    val topo = surfaceTopology()
     val facts = buildString {
         append("%d verts · %d tris · extent %.3f × %.3f × %.3f".format(
             vertexCount, triangleCount, b[3] - b[0], b[4] - b[1], b[5] - b[2],
@@ -560,7 +560,7 @@ internal fun meshThumbnailHtml(mesh: TriMesh): String {
     )
     val b64 = Base64.getEncoder().encodeToString(png)
     val b = mesh.boundsArray()
-    val topo = mesh.topology()
+    val topo = mesh.surfaceTopology()
 
     val rows = ArrayList<Pair<String, String>>()
     rows += "size" to "${mesh.vertexCount} verts · ${mesh.triangleCount} tris" +
@@ -759,7 +759,7 @@ fun Box.showMeshTurntable(
  */
 fun TriMesh.summary(): String {
     if (triangleCount == 0) return "TriMesh(empty)"
-    val topo = topology()
+    val topo = surfaceTopology()
     val b = boundsArray()
     val q = quality()
     return buildString {
@@ -786,7 +786,7 @@ fun TriMesh.longestEdge(): Double {
 
 /** Mean edge length over the mesh's unique edges. */
 fun TriMesh.meanEdgeLength(): Double {
-    val topo = topology()
+    val topo = surfaceTopology()
     if (topo.edgeCount == 0) return 0.0
     var sum = 0.0
     for ((a, b) in topo.edges) sum += position(a).distance(position(b)).toDouble()

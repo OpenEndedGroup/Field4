@@ -9,6 +9,7 @@ import afield.geometry.mesh.icosphereMesh
 import afield.geometry.mesh.isWatertight
 import afield.geometry.mesh.signedVolume
 import afield.geometry.mesh.surfaceArea
+import afield.geometry.mesh.topology
 import afield.geometry.mesh.torusMesh
 import afield.geometry.mesh.weld
 import kotlin.math.PI
@@ -318,11 +319,11 @@ class ManifoldTest {
     @Test
     fun `asking for normals splits vertices at creases`() {
         if (!requireManifold()) return
-        // The surprise worth pinning down, because it makes an honest-looking check lie: a mesh with
-        // per-vertex normals CANNOT share a vertex across a hard edge, since the two faces need
-        // different normals there. So Manifold duplicates the position — and the result is a mesh that
-        // is geometrically closed but whose *index* topology is not, which is what Field's
-        // isWatertight() and genus() read.
+        // A mesh with per-vertex normals CANNOT share a vertex across a hard edge, since the two faces
+        // need different normals there. So Manifold duplicates the position, and the result is
+        // geometrically closed while its *index* topology is not. Field's isWatertight() and genus()
+        // weld an attributed mesh by position first, so they measure the surface; topology() still
+        // reads the indices.
         Solid.cube(2.0, 2.0, 2.0, center = true).use { cube ->
             val plain = cube.toTriMesh()
             assertEquals(8, plain.vertexCount, "a cube is 8 shared vertices")
@@ -331,23 +332,21 @@ class ManifoldTest {
 
             val shaded = cube.toTriMesh(normals = true)
             assertEquals(24, shaded.vertexCount, "each corner splits three ways, one per face")
-            assertTrue(
-                !shaded.isWatertight(),
-                "so the crease-split mesh is NOT index-watertight — this is the trap, not a bug",
-            )
+            assertTrue(!shaded.topology().isWatertight, "so the crease-split mesh is not index-watertight")
+            assertTrue(shaded.isWatertight(), "but the surface it describes is closed")
+            assertEquals(0, shaded.genus())
             assertEquals(plain.signedVolume(), shaded.signedVolume(), 1e-9, "though the geometry is identical")
             // ...and welding puts the topology back, at the cost of the normals that caused the split.
             assertTrue(shaded.weld(1e-6).isWatertight())
             assertEquals(0, shaded.weld(1e-6).genus())
         }
-        // Which is why the topology check in the round-trip test above uses the plain form. Asserted
-        // here rather than implied, so nobody "fixes" it by adding normals.
+        // And a genus-1 part reports 1 either way.
         Solid.scope {
             val part = Solid.cube(6.0, 4.0, 1.0, center = true) -
                 Solid.cylinder(4.0, 0.5, segments = 32, center = true)
             assertEquals(1, part.genus)
             assertEquals(1, part.toTriMesh().genus(), "Field agrees, on the plain mesh")
-            assertTrue(part.toTriMesh(normals = true).genus() != 1, "but not on the crease-split one")
+            assertEquals(1, part.toTriMesh(normals = true).genus(), "and on the crease-split one")
             Unit
         }
     }
