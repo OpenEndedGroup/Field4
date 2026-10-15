@@ -23,12 +23,10 @@ from typing import Callable, Iterator, Mapping, Sequence
 def pinned_graalvm_args(repo: Path) -> list[str]:
     """`-Dorg.gradle.java.installations.paths=<jdk>` for the GraalVM `field.sh` provisions, or `[]`.
 
-    The toolchain spec in build.gradle.kts can only say "GraalVM, Java 25", so a bare `./gradlew`
-    takes whichever GraalVM 25 Gradle already knows — often a stale foojay download in
-    ~/.gradle/jdks. `ensure_graalvm_toolchain` in field.sh pins the exact `graalvmVersion` build
-    under ~/.field4/toolchains by passing this flag; this finds the same JDK, so every Gradle a
-    tool starts runs on it too. Nothing is downloaded here: with no provisioned JDK the build falls
-    back to auto-detection and its own version-mismatch warning says so.
+    The toolchain spec can only say "GraalVM, Java 25". This finds the same cached
+    exact build as field.sh and the wrappers, and supplies it explicitly for tool launches.
+    Nothing is downloaded here: with no provisioned JDK the build's exact-version
+    check rejects a mismatched auto-detected JDK.
     """
     if os.environ.get("AFIELD_SKIP_TOOLCHAIN_PROVISION") == "1":
         return []

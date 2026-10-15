@@ -11,6 +11,42 @@ from pathlib import Path
 from tools.verification_runtime import field_instance_problem, run_with_watchdog, verification_lock, waive_execution_verdict
 
 
+@unittest.skipIf(os.name == "nt", "POSIX wrapper selection; Windows uses the PowerShell helper")
+class WrapperToolchainTests(unittest.TestCase):
+    def select(self, root, args):
+        wrapper = (Path(__file__).resolve().parent.parent / "gradlew").read_text()
+        block = wrapper.split("# FIELD TOOLCHAIN SELECTION START\n", 1)[1].split(
+            "# FIELD TOOLCHAIN SELECTION END", 1)[0]
+        result = subprocess.run(
+            ["sh", "-c", block + '\nprintf "%s\\0" "$@"', "gradlew", *args],
+            env={**os.environ, "APP_HOME": str(root), "HOME": str(root)},
+            capture_output=True, timeout=5, check=True,
+        )
+        return result.stdout.decode().rstrip("\0").split("\0")
+
+    def test_cached_exact_pin_preserves_spaces_and_arguments(self):
+        with tempfile.TemporaryDirectory(prefix="field toolchain ") as directory:
+            root = Path(directory)
+            (root / "build.gradle.kts").write_text('val graalvmVersion = "25.4.4.1.1"\n')
+            cache = root / ".field4/toolchains"
+            for name, version in (("a-25.4.4.1.1-corrupt", "25.0.2"),
+                                  ("z-25.4.4.1.1", "25.4.4.1.1")):
+                home = cache / ("graalvm-community-" + name) / "Contents/Home"
+                (home / "bin").mkdir(parents=True)
+                (home / "bin/java").write_text("#!/bin/sh\n")
+                (home / "bin/java").chmod(0o755)
+                (home / "release").write_text(f'GRAALVM_VERSION="{version}"\n')
+            args = ["verifyFieldToolchain", "--args=one two"]
+            self.assertEqual(self.select(root, args),
+                             [f"-Porg.gradle.java.installations.paths={home}", *args])
+
+    def test_no_cached_pin_leaves_selection_to_the_build_guard(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "build.gradle.kts").write_text('val graalvmVersion = "25.4.4.1.1"\n')
+            self.assertEqual(self.select(root, ["help"]), ["help"])
+
+
 class WatchdogOutputTests(unittest.TestCase):
     def test_completion_polling_preserves_chunked_json_and_child_file_offset(self) -> None:
         expected = json.dumps({"ok": True, "stdout": "x" * 20000})
