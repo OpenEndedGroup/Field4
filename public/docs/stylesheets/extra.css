@@ -1812,3 +1812,15 @@ html .md-typeset details.aside > :last-child {
     overflow-wrap: anywhere;
     white-space: normal;
 }
+
+.md-typeset .codebase-reference tr:has(.reference-internal),
+.md-typeset .reference-map .reference-internal {
+    opacity: .5;
+}
+
+.md-typeset .codebase-reference tr:has(.reference-internal):hover,
+.md-typeset .codebase-reference tr:has(.reference-internal):focus-within,
+.md-typeset .reference-map .reference-internal:hover,
+.md-typeset .reference-map .reference-internal:focus-within {
+    opacity: 1;
+}

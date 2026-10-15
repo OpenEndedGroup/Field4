@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-111 source file(s), 2967 public symbol(s), 1310 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+120 source file(s), 3060 public symbol(s), 1377 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -580,6 +580,21 @@ The concrete syntax. One hand-written lexer + recursive-descent parser, no depen
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">statements</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DlStatement</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/query/datalog/DatalogParser/#L75) | `source`'s statements in order, each with the lines it spans — what a line note needs to know which statement a line belongs to. Throws, as `parse` does, at the first statement that does not parse. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">parseGoal</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DlLiteral</span><span class="p">&gt;</span></code>](source/jvmMain/afield/data/query/datalog/DatalogParser/#L78) | Parse a body conjunction on its own — how `Datalog.query` and `#why` read their goal. |
 
+## DatalogSmokeTest.kt { #datalogsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/data/query/datalog/DatalogSmokeTest.kt` — [read the source](source/jvmMain/afield/data/query/datalog/DatalogSmokeTest/)
+
+### DatalogSmokeTest { #datalogsmoketest-kt-datalogsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">DatalogSmokeTest</span></code>](source/jvmMain/afield/data/query/datalog/DatalogSmokeTest/#L27)
+
+Smoke for `afield.data.query.datalog` — the deductive-database language.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/data/query/datalog/DatalogSmokeTest/#L30) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/data/query/datalog/DatalogSmokeTest/#L34) |  |
+
 ## DatalogWhyNot.kt { #datalogwhynot-kt }
 
 The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the
@@ -1037,7 +1052,7 @@ after it gets `EVar("Unit")` for a body.
 
 `src/jvmMain/kotlin/afield/lang/fieldml/ast/Expr.kt` — [read the source](source/jvmMain/afield/lang/fieldml/ast/Expr/)
 
-**Used in:** [FieldML stage by stage](../fieldml_stages.md), [Rewriting your own syntax](../pattern_rewrite.md)
+**Used in:** [FieldML stage by stage](../fieldml_stages.md)
 
 ### Expr { #expr-kt-expr }
 
@@ -2948,6 +2963,112 @@ The interpreter: the data stack, the dictionary, the tokenizer and `eval`.
 | <code class="highlight"><span class="k">val</span> <span class="n">word</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">documentation</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+## LuaCatalog.kt { #luacatalog-kt }
+
+`src/jvmMain/kotlin/afield/lang/lua/LuaCatalog.kt` — [read the source](source/jvmMain/afield/lang/lua/LuaCatalog/)
+
+### LuaCatalog { #luacatalog-kt-luacatalog }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">LuaCatalog</span></code>](source/jvmMain/afield/lang/lua/LuaCatalog/#L14)
+
+What completion says about a Lua name: its signature and one line on what it does.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">Entry</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">signature</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">doc</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fromField</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaCatalog/#L17) | One catalogued function: `name` as it is reached (`string.format`, `Line.moveTo`, `print`). |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stdlib</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Entry</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/lang/lua/LuaCatalog/#L34) | The Lua and LuaJIT library. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Entry</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/lang/lua/LuaCatalog/#L37) | What Field's prelude adds. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lookup</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Entry</span><span class="o">?</span></code>](source/jvmMain/afield/lang/lua/LuaCatalog/#L43) | The entry for `name` reached at `path` (`""` for a global, `"string"`, `"field"`, `"field.Line"`). Field's entry wins where both have one — `print` goes to the box, not stdout. |
+
+## LuaLanguage.kt { #lualanguage-kt }
+
+`src/jvmMain/kotlin/afield/lang/lua/LuaLanguage.kt` — [read the source](source/jvmMain/afield/lang/lua/LuaLanguage/)
+
+### Top-level functions { #lualanguage-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installLuaLanguage</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L634) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installLuaLanguagePlugin</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L648) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">luaTopologyNeedsUpdating</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L652) |  |
+
+### Top-level values { #lualanguage-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">isLuaRoot</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L631) |  |
+
+### LuaExecution { #lualanguage-kt-luaexecution }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">LuaExecution</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoxExecution</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L87)
+
+Lua as a box language, over LuaJIT: set a box's Main Language to Lua and its children hold Lua.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">languageName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L89) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">luaState</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">LuaState</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L95) | The box's Lua, opened on first use. Main thread only. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">hasState</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L105) | Whether this box has a Lua state open now; for tests and the census. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L113) | Close the box's Lua now; the next run opens a fresh one. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L118) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">launchAll</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L121) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeFragment</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">execute</span><span class="p">:</span> <span class="nc">Execute</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L124) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">executeSymbol</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">executeSymbol</span><span class="p">:</span> <span class="nc">ExecuteSymbol</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L127) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L229) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">complete</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">completionRequest</span><span class="p">:</span> <span class="nc">CompletionRequest</span><span class="p">,</span> <span class="n">reply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L235) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">luaCompletions</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/lua/LuaLanguage/#L256) | Names to offer at `path` (`""` for the globals) that start with `prefix`: text, kind, documentation. |
+
+## LuaNative.kt { #luanative-kt }
+
+`src/jvmMain/kotlin/afield/lang/lua/LuaNative.kt` — [read the source](source/jvmMain/afield/lang/lua/LuaNative/)
+
+### LuaLibrary { #luanative-kt-lualibrary }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">LuaLibrary</span></code>](source/jvmMain/afield/lang/lua/LuaNative/#L36)
+
+Where LuaJIT is, and what to do when it is not there.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fileNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/lua/LuaNative/#L41) | The platform's file names for LuaJIT, most specific first. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/lua/LuaNative/#L56) | Every path `resolvedPath` tries, in order — quoted in the "not installed" error. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/lang/lua/LuaNative/#L63) | Not cached: installing LuaJIT during a live session is picked up by the next box run. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/lua/LuaNative/#L66) | True when a LuaJIT is where `searchedPaths` looks. |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;INSTALL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/lua/LuaNative/#L69) | The one instruction a missing library needs. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/lua/LuaNative/#L77) | One line for a box or a test to print. |
+
+## LuaState.kt { #luastate-kt }
+
+`src/jvmMain/kotlin/afield/lang/lua/LuaState.kt` — [read the source](source/jvmMain/afield/lang/lua/LuaState/)
+
+### LuaState { #luastate-kt-luastate }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">LuaState</span><span class="p">(</span><span class="n">raw</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Handler</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L37)
+
+One LuaJIT `lua_State`: open, evaluate, marshal values both ways, let Lua call Kotlin, close.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">Handler</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L40) | A Kotlin function Lua can call. `args` are marshalled Lua values; the returned list is pushed as the results. |
+| [<code class="highlight"><span class="k">class</span> <span class="nc">LuaFunction</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">LuaState</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">ref</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L45) | A Lua function held from Kotlin: a reference in the registry, released when the state closes or `release` is called. |
+| [<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nc">Result</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L56) | What an evaluation came to. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isClosed</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L78) | True once `close` has run; every other method then refuses. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L100) | `jit.version` — "LuaJIT 2.1.…" — or `_VERSION` for a plain Lua. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">memoryKb</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L104) | Kilobytes the Lua heap holds. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setGlobal</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L110) | Set global `name` to `value`, marshalled. A `Handler` becomes a Lua function that raises on failure. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">getGlobal</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L125) | Global `name`, marshalled; raw access, so a strict-mode metatable on `_G` is not consulted. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">chunkName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">CHUNK</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L135) | Compile and run `code` as a chunk called `chunkName` (the name Lua puts in front of an error's line number: `=box` gives `box:3: …`). Returns what the chunk returned, or the error. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">chunkName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">CHUNK</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L142) | Compile `code` without running it: a `LuaFunction`, or the syntax error as a `Result.Err`. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">Outcome</span><span class="p">(</span><span class="k">val</span> <span class="n">result</span><span class="p">:</span> <span class="nc">Result</span><span class="p">,</span> <span class="k">val</span> <span class="n">lines</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">LineRecord</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L163) | What one guarded run came to: the `result`, and when lines were recorded, for each 1-based line of the chunk that ran, how often and (for the main chunk) the names it assigned with their values. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">LineRecord</span><span class="p">(</span><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">main</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L166) | One recorded line: `count` times it ran, `main` whether in the chunk's top level, `values` name → value as shown. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runGuarded</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">lineNames</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="n">asExpression</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Outcome</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L173) | Run `code` under the prelude's guard — stopped with an error after `field.budget` seconds — and, when `lineNames` is given (1-based chunk line → names assigned on it), record its lines as it runs. With `asExpression`, `return <code>` is tried first, the way the Lua REPL treats a line. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="n">now</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L184) | One frame of a launched box: `update(dt)` and the due tasks, guarded by `field.frameBudget`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">callGuarded</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">LuaFunction</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">args</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L189) | Call `fn` under the frame budget: a callback from Field (a slider moving) into the box's Lua. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">call</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">args</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L218) | Call the global function `name` with `args`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">call</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">LuaFunction</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">args</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L225) | Call `fn` with `args`. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L274) | Close the state: every `LuaFunction` and `Handler` it handed out goes with it. Idempotent. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BoxRef</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/lua/LuaState/#L403) | A Lua proxy for a Field box, as it arrives in Kotlin: the box's `id`. |
 
 ## MorphoCircuit.kt { #morphocircuit-kt }
 
@@ -5769,8 +5890,6 @@ on an empty mask would report "converged" without having moved, which is the fai
 
 `src/jvmMain/kotlin/afield/lang/rectsl/RectSLFit.kt` — [read the source](source/jvmMain/afield/lang/rectsl/RectSLFit/)
 
-**Used in:** [RectSL Inverse Animation](../rectsl_inverse_animation.md)
-
 ### Top-level functions { #rectslfit-kt-functions }
 
 | Declaration | Summary |
@@ -5817,6 +5936,22 @@ What a fit did, including where it started — because "the residual is 0.03" me
 | [<code class="highlight"><span class="k">val</span> <span class="n">improved</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFit/#L97) | True when the fit ended strictly closer to the targets than it started. |
 | [<code class="highlight"><span class="k">val</span> <span class="n">partlyStuck</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFit/#L103) | True when some — not all — free parameters could not move. The fit is real; it just solved for fewer parameters than were named. Read `stuckParameters` for which. |
 | [<code class="highlight"><span class="k">val</span> <span class="n">residualReduction</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFit/#L106) | How much of the starting residual was removed, in `0..1`. |
+
+## RectSLFitFigure.kt { #rectslfitfigure-kt }
+
+`src/jvmMain/kotlin/afield/lang/rectsl/RectSLFitFigure.kt` — [read the source](source/jvmMain/afield/lang/rectsl/RectSLFitFigure/)
+
+### RectSLFitFigure { #rectslfitfigure-kt-rectslfitfigure }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">RectSLFitFigure</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFitFigure/#L25)
+
+A fit, as a picture, with its counterfactual beside it.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Band</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">colour</span><span class="p">:</span> <span class="nc">Color4</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">strobe</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">rotation</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFitFigure/#L28) | One band of the figure: a pair of position tracks, strobed across time in one colour. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Marker</span><span class="p">(</span><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFitFigure/#L52) | A place the animation was asked to pass through, drawn as an outlined square on every band. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">bands</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Band</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">markers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Marker</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">wall</span><span class="p">:</span> <span class="nc">WallSpec</span><span class="p">,</span> <span class="n">rectSize</span><span class="p">:</span> <span class="nc">Vec2d</span><span class="p">,</span> <span class="n">times</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">980</span><span class="p">,</span> <span class="n">bandHeight</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">250</span><span class="p">,</span> <span class="n">pad</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span> <span class="n">viewScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLFitFigure/#L67) | Renders `bands` as stacked panels over the wall, strobing each at `times` and marking `markers` on all of them. |
 
 ## RectSLFn.kt { #rectslfn-kt }
 
@@ -5936,7 +6071,7 @@ a sampler bug introduced since. Nothing should be re-derived from those four as 
 
 `src/jvmMain/kotlin/afield/lang/rectsl/RectSLFn.kt` — [read the source](source/jvmMain/afield/lang/rectsl/RectSLFn/)
 
-**Used in:** [RectSL Inverse Animation](../rectsl_inverse_animation.md), [A solid, written down: `afield.lang.solidsl`](../solid_notation.md)
+**Used in:** [RectSL Inverse Animation](../rectsl_inverse_animation.md)
 
 ### Top-level functions { #rectslfn-kt-functions }
 
@@ -6725,6 +6860,23 @@ A raster loss and its exact gradient with respect to the scene's whole θ.
 | <code class="highlight"><span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">Double</span></code> | Mean squared coverage error over the image. |
 | <code class="highlight"><span class="k">val</span> <span class="n">gradient</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | `d(loss)/dθ`, one entry per `SceneAdField.theta` slot. |
 | [<code class="highlight"><span class="k">val</span> <span class="n">rmse</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRaster/#L535) | Root mean squared coverage error — the number worth printing. |
+
+## RectSLSoftRasterFigure.kt { #rectslsoftrasterfigure-kt }
+
+`src/jvmMain/kotlin/afield/lang/rectsl/RectSLSoftRasterFigure.kt` — [read the source](source/jvmMain/afield/lang/rectsl/RectSLSoftRasterFigure/)
+
+### RectSLSoftRasterFigure { #rectslsoftrasterfigure-kt-rectslsoftrasterfigure }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">RectSLSoftRasterFigure</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRasterFigure/#L21)
+
+A soft raster, its exact reference, and the difference between them — as a picture.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Panel</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">heat</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRasterFigure/#L29) | One panel of the figure: a coverage image, a label, and how to colour it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderBias</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">SceneAdField</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRasterFigure/#L63) | The three-panel figure for one scene and one raster spec: soft, exact, and their difference. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">SceneAdField</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">SoftRasterSpec</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRasterFigure/#L79) | The soft raster alone, at `scale` screen pixels per raster pixel. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderPanels</span><span class="p">(</span><span class="n">panels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Panel</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/lang/rectsl/RectSLSoftRasterFigure/#L92) | Lays `panels` out in a row, each `width` x `height` raster pixels at `scale` screen pixels per pixel, with a one-pixel rule between them and the label drawn over the top-left corner. |
 
 ## RectSLSource.kt { #rectslsource-kt }
 
@@ -8652,6 +8804,91 @@ Render StackSL on the CPU.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">renderStill</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.75f</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpu/#L328) | Render a StackSL program on the CPU, at `dim` square, exactly as the docs gallery renders it. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">renderProgram</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;program&quot;</span><span class="p">,</span> <span class="n">sampleTexture</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;source&quot;</span><span class="p">,</span> <span class="n">pushParams</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplers</span><span class="p">:</span> <span class="nc">GlslSamplers</span> <span class="o">=</span> <span class="nc">GlslSamplers</span><span class="p">.</span><span class="nc">REFUSE</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpu/#L337) | The one-call path: compile `program`, substitute it into `template`, render it. |
 
+## StackSLCpuContactSheet.kt { #stackslcpucontactsheet-kt }
+
+`src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuContactSheet.kt` — [read the source](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuContactSheet/)
+
+### Top-level functions { #stackslcpucontactsheet-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuContactSheet/#L217) | Command line: ``repoRoot` `outputDir``. |
+
+### StackSLCpuContactSheet { #stackslcpucontactsheet-kt-stackslcpucontactsheet }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLCpuContactSheet</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuContactSheet/#L34)
+
+Renders every gallery program on the CPU, compares it to the committed GPU still, and writes a contact sheet plus a markdown table.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TILE</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuContactSheet/#L37) | Side of one tile on the sheet. 512 decimated by 4; see `decimateAverage`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">repoRoot</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">outputDir</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">only</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GalleryAgreement</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuContactSheet/#L55) | Build the sheet. Returns the per-program statistics in the same order as the sheet's cells, so the caller can print them beside the picture rather than recomputing. |
+
+## StackSLCpuGallery.kt { #stackslcpugallery-kt }
+
+`src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt` — [read the source](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/)
+
+### GalleryEntry { #stackslcpugallery-kt-galleryentry }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">GalleryEntry</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fragmentTemplate</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">docOrder</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">animate</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">feedback</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">gpuPng</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L34)
+
+One gallery entry as it exists on disk.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fragmentTemplate</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">docOrder</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">animate</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">feedback</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gpuPng</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code> | The committed GPU still, or `null` if there is none. |
+
+### GalleryAgreement { #stackslcpugallery-kt-galleryagreement }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">GalleryAgreement</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">tier</span><span class="p">:</span> <span class="nc">AgreementTier</span><span class="p">,</span> <span class="k">val</span> <span class="n">meanLevels</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxLevels</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">withinOneFraction</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">exactFraction</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">worstPixel</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pixels</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L57)
+
+What the two backends did to each other, per program, in 8-bit levels.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tier</span><span class="p">:</span> <span class="nc">AgreementTier</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">meanLevels</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxLevels</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">withinOneFraction</span><span class="p">:</span> <span class="nc">Double</span></code> | Fraction of pixels whose three channels are all within one 8-bit level. |
+| <code class="highlight"><span class="k">val</span> <span class="n">exactFraction</span><span class="p">:</span> <span class="nc">Double</span></code> | Fraction of pixels that quantise to exactly the same three bytes. |
+| <code class="highlight"><span class="k">val</span> <span class="n">worstPixel</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixels</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L69) |  |
+
+### AgreementTier { #stackslcpugallery-kt-agreementtier }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">AgreementTier</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">why</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L83)
+
+Why a program is or is not entitled to agree tightly, decided from the **emitted GLSL text** rather than from a hand-kept list, so a program that gains an `fbm` gets reclassified without anyone remembering to.
+
+Constants: `EXACT_OPS`, `SMOOTH_TRANSCENDENTAL`, `HASH21_AMPLIFIED`, `HASH11_UNBOUNDED`, `FEEDBACK`.
+
+### StackSLCpuGallery { #stackslcpugallery-kt-stackslcpugallery }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLCpuGallery</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L143)
+
+Load the gallery from a checkout and compare the CPU backend against the committed GPU stills.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WORKSPACE&#95;DIR</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L146) | Where the programs and templates live, relative to a checkout root. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GPU&#95;STILL&#95;DIR</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L149) | Where the committed GPU stills live, relative to a checkout root. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DIM</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L152) | The side of the committed GPU stills; `StackSLGalleryHarness.OUTPUT_DIM`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">repoRoot</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GalleryEntry</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L155) | Load every entry, in the docs' own order. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">entry</span><span class="p">:</span> <span class="nc">GalleryEntry</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">DIM</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L181) | Render one entry on the CPU at `dim` square, through the committed template. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tierOf</span><span class="p">(</span><span class="n">entry</span><span class="p">:</span> <span class="nc">GalleryEntry</span><span class="p">)</span><span class="p">:</span> <span class="nc">AgreementTier</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L200) | The tier an entry falls in, from its *emitted* GLSL. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">galleryArgb</span><span class="p">(</span><span class="n">cpu</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L215) | A CPU raster as the gallery's GPU target stores it: 8-bit sRGB (`StackSLGalleryHarness.GALLERY_FORMAT`). Anything compared with or drawn beside a committed still goes through here, so the two sides are never in different encodings. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">compare</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">tier</span><span class="p">:</span> <span class="nc">AgreementTier</span><span class="p">,</span> <span class="n">cpu</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">gpuArgb</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">gpuWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">GalleryAgreement</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L222) | Compare a CPU raster against a committed GPU PNG. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">blackSampler</span></code>](source/jvmMain/afield/lang/stacksl/cpu/StackSLCpuGallery/#L265) | A sampler that reports black with alpha 1. |
+
 ## StackSLFit.kt { #stackslfit-kt }
 
 Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the
@@ -8968,7 +9205,7 @@ The numbers of a box's `stack.auto` slots, as sliders under the box: turn one an
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">StackAutoView</span></code>](source/jvmMain/afield/lang/stacksl/study/StackAutoStudy/#L37)
 
-Pictures of a `stack.auto` slot: `inShader` the end result — wherever its module is drawn, found by walking what the renderer draws, else the module drawn alone into a target of its own (`ModuleDestinations`) — and `alone`, the slot's program by itself on the StackSL study's frame. The numbers card and the slot study's tools both show them.
+Pictures of a `stack.auto` slot: `inShader` the end result — wherever its module is drawn, found by walking what the renderer draws, else the module drawn alone into a target of its own ([`ModuleDestinations`](graphics.md#moduledestinations-kt-moduledestinations)) — and `alone`, the slot's program by itself on the StackSL study's frame. The numbers card and the slot study's tools both show them.
 
 | Declaration | Summary |
 | --- | --- |

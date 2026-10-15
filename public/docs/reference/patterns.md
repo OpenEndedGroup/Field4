@@ -342,18 +342,18 @@ script.
 OpenXR and Steam Audio use the **same** frame: right-handed, +X right, +Y up, -Z ahead, metres.
 So `HeadPose.ofOpenXR` copies seven numbers and converts nothing. A handedness error between
 these two frames leaves level, distance, occlusion and reverb all correct and silently swaps the
-listener's ears. That is the failure `afield.audio.spatial.steamaudio.World2D` and
+listener's ears. That is the failure [`afield.audio.spatial.steamaudio.World2D`](audio.md#geometry2d-kt-world2d) and
 `World2DHandednessTest` guard against on the geometry side; `HeadTrackedSpatialSmokeTest` guards
 this side of it, on rendered audio rather than on the paragraph above.
 
 ### Where to pump from
 
-`OpenXRHmdTarget`'s pose comes from `xrLocateViews` on the renderer's queue thread and is stored
+[`OpenXRHmdTarget`](graphics.md#openxrhmdtarget-kt-openxrhmdtarget)'s pose comes from `xrLocateViews` on the renderer's queue thread and is stored
 as plain non-volatile floats, so a reader on another thread can in principle see a position from
 one frame with an orientation from the next. That is why [`HeadTrackedListener`](patterns.md#headtrackedspatial-kt-headtrackedlistener) can be driven two
 ways, and why the OpenXR one is the manual one: construct it with `hz = 0.0` and call
 `HeadTrackedListener.pump` once per frame from inside the frame callback, where the pose is whole.
-A `StereoPoseSource` has no such problem -- it latches by contract -- and is fine on the timer.
+A [`StereoPoseSource`](graphics.md#stereoposesource-kt-stereoposesource) has no such problem -- it latches by contract -- and is fine on the timer.
 
 `src/jvmMain/kotlin/afield/audio/synth/HeadTrackedSpatial.kt` — [read the source](source/jvmMain/afield/audio/synth/HeadTrackedSpatial/)
 

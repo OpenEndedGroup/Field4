@@ -268,7 +268,7 @@ evolution, and a montage of frozen generations is the one view that hides the th
 
 The whole file is `Box.animateEvolution` plus four small "show a prefix of something" helpers. It sits
 apart from the five simulation files for the same reason `alife_field.kt` does: those files name nothing
-from Field's box runtime, and this one is entirely about it ([`Box`](workspace.md#boxes-kt-box), [`Frames`](workspace.md#phased-kt-frames), `display`).
+from Field's box runtime, and this one is entirely about it (`Box`, [`Frames`](workspace.md#phased-kt-frames), `display`).
 
 **Pacing is the craft, and it is the reason this is a shared helper rather than a copied loop.** The
 naive animation — one simulation step per displayed frame — is wrong for almost every system here, and

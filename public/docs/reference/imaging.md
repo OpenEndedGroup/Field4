@@ -4,9 +4,686 @@
 
 Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. Dependency-free CPU float math built on one value type, `Img`, with the separable-convolution core vectorized to roughly OpenCV's single-threaded speed. Every detector hands back geometry, so results go straight to `lines()`.
 
-8 source file(s), 263 public symbol(s), 217 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+45 source file(s), 735 public symbol(s), 335 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## BitmapBrowserSurface.kt { #bitmapbrowsersurface-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/BitmapBrowserSurface.kt` — [read the source](source/jvmMain/afield/media/browser/BitmapBrowserSurface/)
+
+### BitmapBrowserSurface { #bitmapbrowsersurface-kt-bitmapbrowsersurface }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">BitmapBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="o">=</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="p">{</span> <span class="p">}</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CopiedExternalBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/BitmapBrowserSurface/#L35)
+
+The deliberately non-zero-copy browser receiver: frames arrive as CPU pixels and are uploaded, instead of arriving as a shared GPU allocation and being imported.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">importFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="p">)</span><span class="p">:</span> <span class="nc">ImportedImage</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/BitmapBrowserSurface/#L130) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">recordPreCopy</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">ImportedImage</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/BitmapBrowserSurface/#L154) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">cleanupImports</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/BitmapBrowserSurface/#L202) |  |
+
+## CopiedExternalBrowserSurface.kt { #copiedexternalbrowsersurface-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/CopiedExternalBrowserSurface.kt` — [read the source](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/)
+
+### CopiedExternalBrowserSurface { #copiedexternalbrowsersurface-kt-copiedexternalbrowsersurface }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">class</span> <span class="nf">CopiedExternalBrowserSurface</span><span class="p">(</span><span class="k">protected</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">final</span> <span class="k">override</span> <span class="k">val</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseListener</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ExternalBrowserSurface</span></code>](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/#L25)
+
+The platform-independent half of all native browser receivers. A backend only imports a frame's native image; this class owns conflation, the stable resident texture, copies, fence-delayed release acknowledgements, and close ordering.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">final</span> <span class="k">override</span> <span class="k">val</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span></code> |  |
+| [<code class="highlight"><span class="k">final</span> <span class="k">override</span> <span class="k">val</span> <span class="n">imageView</span><span class="p">:</span> <span class="nc">ImageView</span></code>](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/#L79) |  |
+| [<code class="highlight"><span class="k">final</span> <span class="k">override</span> <span class="k">val</span> <span class="n">imageViewArray</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HasImageView</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/#L82) |  |
+| [<code class="highlight"><span class="k">final</span> <span class="k">override</span> <span class="k">val</span> <span class="n">presentedFrame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/#L85) |  |
+| [<code class="highlight"><span class="k">final</span> <span class="k">override</span> <span class="k">fun</span> <span class="nf">offerFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="p">)</span><span class="p">:</span> <span class="nc">BrowserFrameOfferResult</span></code>](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/#L88) |  |
+| [<code class="highlight"><span class="k">final</span> <span class="k">override</span> <span class="k">fun</span> <span class="nf">prepareSampledImagesFor</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/#L90) |  |
+| [<code class="highlight"><span class="k">final</span> <span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/CopiedExternalBrowserSurface/#L283) |  |
+
+## ElectronBrowserTextureSession.kt { #electronbrowsertexturesession-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/ElectronBrowserTextureSession.kt` — [read the source](source/jvmMain/afield/media/browser/ElectronBrowserTextureSession/)
+
+## ExternalBrowserSurface.kt { #externalbrowsersurface-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/ExternalBrowserSurface.kt` — [read the source](source/jvmMain/afield/media/browser/ExternalBrowserSurface/)
+
+### ExternalBrowserSurfaceSpec { #externalbrowsersurface-kt-externalbrowsersurfacespec }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ExternalBrowserSurfaceSpec</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">pixelFormat</span><span class="p">:</span> <span class="nc">BrowserSurfacePixelFormat</span> <span class="o">=</span> <span class="nc">BrowserSurfacePixelFormat</span><span class="p">.</span><span class="nc">BGRA8&#95;SRGB</span><span class="p">,</span> <span class="k">val</span> <span class="n">slotCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="k">val</span> <span class="n">deviceScaleFactor</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L15)
+
+Fixed properties of the resident texture exposed to Field.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelFormat</span><span class="p">:</span> <span class="nc">BrowserSurfacePixelFormat</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">slotCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">deviceScaleFactor</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### BrowserSurfacePixelFormat { #externalbrowsersurface-kt-browsersurfacepixelformat }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BrowserSurfacePixelFormat</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L33)
+
+Pixel layouts and transfer functions accepted from accelerated browser producers.
+
+Constants: `BGRA8_SRGB`, `RGBA8_SRGB`, `BGRA8_UNORM`, `RGBA8_UNORM`, `RGBA16_FLOAT`.
+
+### BrowserSurfaceColorSpace { #externalbrowsersurface-kt-browsersurfacecolorspace }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BrowserSurfaceColorSpace</span><span class="p">(</span><span class="k">val</span> <span class="n">primaries</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">transfer</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">matrix</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L42)
+
+Electron's four color-space fields, preserved without baking its evolving string vocabulary in.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">primaries</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">transfer</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">matrix</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### BrowserSurfaceRect { #externalbrowsersurface-kt-browsersurfacerect }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BrowserSurfaceRect</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L49)
+
+### ExternalBrowserImageHandle { #externalbrowsersurface-kt-externalbrowserimagehandle }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">ExternalBrowserImageHandle</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L62)
+
+A receiver-side platform handle. IPC is responsible for turning Electron's process-local handle into one of these values. Each value owns the receiver-local handle(s) until a platform importer either consumes them or closes them. Closing a rejected or superseded frame is therefore enough to keep transport resources bounded.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L64) | Releases any live receiver-side transport resource. Implementations must be idempotent. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">MacIOSurfaceMachPort</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ExternalBrowserImageHandle</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L70) | A Mach port name in Field's process after the producer transferred an IOSurface send right. This is the normal Electron path: Electron's IOSurfaceRef itself is process-local. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MacIOSurfaceId</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ExternalBrowserImageHandle</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L85) | Same-process or explicitly global IOSurfaces only; not the normal Electron transport. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">WindowsD3D11NtHandle</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ExternalBrowserImageHandle</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L89) |  |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">CpuBitmap</span><span class="p">(</span><span class="k">val</span> <span class="n">pixels</span><span class="p">:</span> <span class="n">java</span><span class="p">.</span><span class="n">nio</span><span class="p">.</span><span class="nc">ByteBuffer</span><span class="p">,</span> <span class="k">val</span> <span class="n">stride</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ExternalBrowserImageHandle</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L108) | Pixels that have already been read back to the CPU, for the deliberately non-zero-copy fallback. Not a native handle at all: nothing is shared, and the bytes are owned by this value until `close` frees them. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">LinuxDmaBuf</span><span class="p">(</span><span class="k">val</span> <span class="n">planes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Plane</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">modifier</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ExternalBrowserImageHandle</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L123) |  |
+
+### ExternalBrowserFrame { #externalbrowsersurface-kt-externalbrowserframe }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ExternalBrowserFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">streamId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">frameId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">releaseToken</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="n">frameId</span><span class="p">,</span> <span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">pixelFormat</span><span class="p">:</span> <span class="nc">BrowserSurfacePixelFormat</span><span class="p">,</span> <span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">ExternalBrowserImageHandle</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">colorSpace</span><span class="p">:</span> <span class="nc">BrowserSurfaceColorSpace</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">visibleRect</span><span class="p">:</span> <span class="nc">BrowserSurfaceRect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">contentRect</span><span class="p">:</span> <span class="nc">BrowserSurfaceRect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">timestampMicros</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L172)
+
+One accelerated browser paint. Stream ids increase whenever the producer is replaced. `handle` is sticky within one `streamId`/`slot`: it may be omitted after the first announcement of that slot, but a new stream must announce its handles again. `releaseToken` is echoed when the GPU has finished copying the frame, allowing Electron's main process to call `OffscreenSharedTexture.release()` safely.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">streamId</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">frameId</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">releaseToken</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelFormat</span><span class="p">:</span> <span class="nc">BrowserSurfacePixelFormat</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">handle</span><span class="p">:</span> <span class="nc">ExternalBrowserImageHandle</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">colorSpace</span><span class="p">:</span> <span class="nc">BrowserSurfaceColorSpace</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">visibleRect</span><span class="p">:</span> <span class="nc">BrowserSurfaceRect</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">contentRect</span><span class="p">:</span> <span class="nc">BrowserSurfaceRect</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">timestampMicros</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span></code> |  |
+
+### BrowserFrameReleaseReason { #externalbrowsersurface-kt-browserframereleasereason }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BrowserFrameReleaseReason</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L187)
+
+Constants: `PRESENTED`, `SUPERSEDED`, `STALE`, `INVALID`, `IMPORT_FAILED`, `CLOSED`.
+
+### BrowserFrameRelease { #externalbrowsersurface-kt-browserframerelease }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BrowserFrameRelease</span><span class="p">(</span><span class="k">val</span> <span class="n">streamId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">frameId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">releaseToken</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseReason</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L202)
+
+The receiving surface was closed or its producer stream was replaced.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">streamId</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">frameId</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">releaseToken</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseReason</span></code> |  |
+
+### BrowserFrameReleaseListener { #externalbrowsersurface-kt-browserframereleaselistener }
+
+[<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">BrowserFrameReleaseListener</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L210)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">released</span><span class="p">(</span><span class="n">release</span><span class="p">:</span> <span class="nc">BrowserFrameRelease</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L211) |  |
+
+### BrowserFrameOfferResult { #externalbrowsersurface-kt-browserframeofferresult }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BrowserFrameOfferResult</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L214)
+
+Constants: `ACCEPTED`, `ACCEPTED_REPLACING_PENDING`, `REJECTED_STALE`, `REJECTED_INVALID`, `REJECTED_CLOSED`.
+
+### ExternalBrowserSurface { #externalbrowsersurface-kt-externalbrowsersurface }
+
+[<code class="highlight"><span class="k">interface</span> <span class="nc">ExternalBrowserSurface</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L227)
+
+A browser surface is deliberately a stable Field texture. Platform textures are copied on-GPU before their producer lease is released, so Chromium may recycle them without changing or corrupting what Field samples between browser paints.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L232) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">presentedFrame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L233) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">offerFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="p">)</span><span class="p">:</span> <span class="nc">BrowserFrameOfferResult</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L236) | Thread-safe; intended to be called by the IPC reader. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">prepareSampledImagesFor</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L239) | Records any pending platform import/copy before Field binds `imageView`. |
+
+### ExternalBrowserSurfaces { #externalbrowsersurface-kt-externalbrowsersurfaces }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ExternalBrowserSurfaces</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L243)
+
+The platform-neutral construction point; Windows and Linux backends can fill in behind it.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">graphics</span><span class="p">.</span><span class="n">vulkan</span><span class="p">.</span><span class="nc">Renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="o">=</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="p">{</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">ExternalBrowserSurface</span></code>](source/jvmMain/afield/media/browser/ExternalBrowserSurface/#L244) |  |
+
+## ExternalBrowserVulkanImports.kt { #externalbrowservulkanimports-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/ExternalBrowserVulkanImports.kt` — [read the source](source/jvmMain/afield/media/browser/ExternalBrowserVulkanImports/)
+
+## FieldUiBrowserTexture.kt { #fielduibrowsertexture-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/FieldUiBrowserTexture.kt` — [read the source](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/)
+
+### FieldUiBrowserTexture { #fielduibrowsertexture-kt-fielduibrowsertexture }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">FieldUiBrowserTexture</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">720</span><span class="p">,</span> <span class="n">slots</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">readyBoxUid</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">cpuBitmapFallback</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">PuppetBrowser</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L32)
+
+A live offscreen Chromium view exposed as an ordinary stable Field texture.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L86) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">presentedFrame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L87) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">PuppetBrowserState</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L88) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">pageReady</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L89) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">imageView</span><span class="p">:</span> <span class="nc">ImageView</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L91) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">offerFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="p">)</span><span class="p">:</span> <span class="nc">BrowserFrameOfferResult</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L94) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">prepareSampledImagesFor</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L96) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">addEventListener</span><span class="p">(</span><span class="n">listener</span><span class="p">:</span> <span class="p">(</span><span class="nc">PuppetBrowserEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L98) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">navigate</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L103) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">goBack</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L104) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">goForward</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L105) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">reload</span><span class="p">(</span><span class="n">ignoreCache</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L106) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L108) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">focus</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L109) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">blur</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L110) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">pointer</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">BrowserPointerEvent</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L112) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">key</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">BrowserKeyEvent</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L113) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">insertText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L114) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">setComposition</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">selectionStart</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">selectionEnd</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">replacementStart</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="n">replacementEnd</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L116) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">touch</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">BrowserTouchEventType</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BrowserTouchPoint</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L130) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">flushInput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L136) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">javascript</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">,</span> <span class="n">returnMode</span><span class="p">:</span> <span class="nc">BrowserJavascriptReturnMode</span><span class="p">,</span> <span class="n">userGesture</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">BrowserJavascriptResult</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L138) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">releaseJavascriptObject</span><span class="p">(</span><span class="n">objectId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L156) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">cdp</span><span class="p">(</span><span class="n">method</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">,</span> <span class="n">sessionId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JsonObject</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L159) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">forwardCdpEvents</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L166) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onPageRequest</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="p">(</span><span class="nc">JsonElement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JsonElement</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L169) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/FieldUiBrowserTexture/#L200) |  |
+
+## HeadlessPuppetBrowser.kt { #headlesspuppetbrowser-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt` — [read the source](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/)
+
+### HeadlessPuppetBrowser { #headlesspuppetbrowser-kt-headlesspuppetbrowser }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">HeadlessPuppetBrowser</span><span class="p">(</span><span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;about:blank&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">720</span><span class="p">,</span> <span class="n">deviceScaleFactor</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">framesPerSecond</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">projectRoot</span><span class="p">:</span> <span class="nc">File</span> <span class="o">=</span> <span class="nf">locateFieldProjectRoot</span><span class="p">(</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">PuppetBrowserControl</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L34)
+
+A Chromium tab with no picture: the whole [`PuppetBrowserControl`](imaging.md#puppetbrowser-kt-puppetbrowsercontrol) plane — navigation, pointer, keyboard, IME, touch, promise-aware JavaScript, the isolated world, arbitrary CDP and the allowlisted page→Field request bridge — with no [`afield.graphics.vulkan.Renderer`](graphics.md#renderer-kt-renderer), no Vulkan surface, no native handle bridge and no readback socket.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span></code> | Loaded as the producer starts; `loaded` completes when it has finished. |
+| <code class="highlight"><span class="k">val</span> <span class="n">framesPerSecond</span><span class="p">:</span> <span class="nc">Int</span></code> | Offscreen frames per second. Nothing consumes them, but Chromium only acknowledges a dispatched `mouseMoved` on the renderer's next frame, so this is the pointer's latency floor: at 1 a mouse move costs a second. Raise it if you are driving a page, drop it to 1 if you are only reading one. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">viewport</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L57) | Viewport size in CSS pixels. Nothing samples it; scripts and media queries still see it. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">PuppetBrowserState</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L79) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">loaded</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L86) | Completes when the tab first reaches `did-finish-load`. `navigate` is the barrier for every later page; this one exists because the constructor's `url` is loaded before you can call anything. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">addEventListener</span><span class="p">(</span><span class="n">listener</span><span class="p">:</span> <span class="p">(</span><span class="nc">PuppetBrowserEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L88) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">navigate</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L93) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">goBack</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L94) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">goForward</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L95) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">reload</span><span class="p">(</span><span class="n">ignoreCache</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L96) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L98) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">focus</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L99) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">blur</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L100) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">pointer</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">BrowserPointerEvent</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L102) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">key</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">BrowserKeyEvent</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L103) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">insertText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L104) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">setComposition</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">selectionStart</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">selectionEnd</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">replacementStart</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="n">replacementEnd</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L106) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">touch</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">BrowserTouchEventType</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BrowserTouchPoint</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L120) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">flushInput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L126) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">javascript</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">,</span> <span class="n">returnMode</span><span class="p">:</span> <span class="nc">BrowserJavascriptReturnMode</span><span class="p">,</span> <span class="n">userGesture</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">BrowserJavascriptResult</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L128) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">releaseJavascriptObject</span><span class="p">(</span><span class="n">objectId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L146) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">cdp</span><span class="p">(</span><span class="n">method</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">,</span> <span class="n">sessionId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JsonObject</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L149) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">forwardCdpEvents</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L156) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">onPageRequest</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="p">(</span><span class="nc">JsonElement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JsonElement</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L159) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/HeadlessPuppetBrowser/#L190) |  |
+
+## LinuxExternalBrowserSurface.kt { #linuxexternalbrowsersurface-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/LinuxExternalBrowserSurface.kt` — [read the source](source/jvmMain/afield/media/browser/LinuxExternalBrowserSurface/)
+
+### LinuxExternalBrowserSurface { #linuxexternalbrowsersurface-kt-linuxexternalbrowsersurface }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">LinuxExternalBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="o">=</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="p">{</span> <span class="p">}</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CopiedExternalBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/LinuxExternalBrowserSurface/#L17)
+
+Linux receiver for Electron nativePixmap dma-bufs. The producer must transfer every fd with `SCM_RIGHTS`; copying the integer values from Electron's process is not a transfer.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">importFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="p">)</span><span class="p">:</span> <span class="nc">ImportedImage</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/LinuxExternalBrowserSurface/#L32) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">cleanupImports</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/LinuxExternalBrowserSurface/#L66) |  |
+
+## MacExternalBrowserSurface.kt { #macexternalbrowsersurface-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/MacExternalBrowserSurface.kt` — [read the source](source/jvmMain/afield/media/browser/MacExternalBrowserSurface/)
+
+### MacExternalBrowserSurface { #macexternalbrowsersurface-kt-macexternalbrowsersurface }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">MacExternalBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="o">=</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="p">{</span> <span class="p">}</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CopiedExternalBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/MacExternalBrowserSurface/#L28)
+
+macOS implementation of [`ExternalBrowserSurface`](imaging.md#externalbrowsersurface-kt-externalbrowsersurface). A native producer transfers a Mach send right for Electron's process-local IOSurface; this receiver resolves and imports it, while [`CopiedExternalBrowserSurface`](imaging.md#copiedexternalbrowsersurface-kt-copiedexternalbrowsersurface) copies into a stable image and acknowledges only after the fence.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">importFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="p">)</span><span class="p">:</span> <span class="nc">ImportedImage</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/MacExternalBrowserSurface/#L80) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">recordPreCopy</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">ImportedImage</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/MacExternalBrowserSurface/#L159) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">cleanupImports</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/MacExternalBrowserSurface/#L179) |  |
+
+## PuppetBrowser.kt { #puppetbrowser-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt` — [read the source](source/jvmMain/afield/media/browser/PuppetBrowser/)
+
+**Used in:** [Chromium as a native Field surface](../puppet_browser.md)
+
+### PuppetBrowserState { #puppetbrowser-kt-puppetbrowserstate }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PuppetBrowserState</span><span class="p">(</span><span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;about:blank&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">loading</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">canGoBack</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">canGoForward</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">audible</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">focused</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">unresponsive</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">crashed</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;default&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">navigationGeneration</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L18)
+
+Current observable state of an offscreen Chromium tab.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">url</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">loading</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">canGoBack</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">canGoForward</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">audible</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">focused</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">unresponsive</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">crashed</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cursor</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">navigationGeneration</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+
+### PuppetBrowserEvent { #puppetbrowser-kt-puppetbrowserevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PuppetBrowserEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">sequence</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L33)
+
+One browser or protocol event. Payloads deliberately retain Electron/CDP fields verbatim.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">sequence</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">JsonObject</span></code> |  |
+
+### BrowserJavascriptWorld { #puppetbrowser-kt-browserjavascriptworld }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BrowserJavascriptWorld</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L39)
+
+Constants: `MAIN`, `ISOLATED`.
+
+### BrowserJavascriptReturnMode { #puppetbrowser-kt-browserjavascriptreturnmode }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BrowserJavascriptReturnMode</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L40)
+
+Constants: `VALUE`, `HANDLE`.
+
+### BrowserJavascriptResult { #puppetbrowser-kt-browserjavascriptresult }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BrowserJavascriptResult</span><span class="p">(</span><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">JsonElement</span> <span class="o">=</span> <span class="nc">JsonNull</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">unserializableValue</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">objectId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L43)
+
+A JavaScript result, either copied by value or retained in Chromium as `objectId`.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">JsonElement</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">unserializableValue</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">objectId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+
+### PuppetBrowserCommandException { #puppetbrowser-kt-puppetbrowsercommandexception }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PuppetBrowserCommandException</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">command</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">details</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L51)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">command</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">details</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span></code> |  |
+
+### BrowserModifier { #puppetbrowser-kt-browsermodifier }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BrowserModifier</span><span class="p">(</span><span class="k">val</span> <span class="n">cdpBit</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L57)
+
+Constants: `ALT`, `CONTROL`, `META`, `SHIFT`.
+
+### BrowserMouseButton { #puppetbrowser-kt-browsermousebutton }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BrowserMouseButton</span><span class="p">(</span><span class="k">val</span> <span class="n">cdpName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">cdpBit</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L64)
+
+Constants: `NONE`, `LEFT`, `RIGHT`, `MIDDLE`, `BACK`, `FORWARD`.
+
+### BrowserPointerType { #puppetbrowser-kt-browserpointertype }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BrowserPointerType</span><span class="p">(</span><span class="k">val</span> <span class="n">cdpName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L73)
+
+Constants: `MOUSE`, `PEN`.
+
+### BrowserPointerEventType { #puppetbrowser-kt-browserpointereventtype }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">BrowserPointerEventType</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L74)
+
+Constants: `MOVE`, `DOWN`, `UP`, `WHEEL`.
+
+### BrowserPointerEvent { #puppetbrowser-kt-browserpointerevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BrowserPointerEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">BrowserPointerEventType</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">button</span><span class="p">:</span> <span class="nc">BrowserMouseButton</span> <span class="o">=</span> <span class="nc">BrowserMouseButton</span><span class="p">.</span><span class="nc">NONE</span><span class="p">,</span> <span class="k">val</span> <span class="n">buttons</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">clickCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">deltaX</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">deltaY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointerType</span><span class="p">:</span> <span class="nc">BrowserPointerType</span> <span class="o">=</span> <span class="nc">BrowserPointerType</span><span class="p">.</span><span class="nc">MOUSE</span><span class="p">,</span> <span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">tiltX</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">tiltY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">twist</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L77)
+
+Browser pointer coordinates are CSS pixels, origin at the viewport's top-left.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">BrowserPointerEventType</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">button</span><span class="p">:</span> <span class="nc">BrowserMouseButton</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">buttons</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clickCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">deltaX</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">deltaY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointerType</span><span class="p">:</span> <span class="nc">BrowserPointerType</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tiltX</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tiltY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">twist</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+
+### BrowserKeyEventType { #puppetbrowser-kt-browserkeyeventtype }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BrowserKeyEventType</span><span class="p">(</span><span class="k">val</span> <span class="n">cdpName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L94)
+
+Constants: `RAW_KEY_DOWN`, `KEY_DOWN`, `KEY_UP`, `CHAR`.
+
+### BrowserKeyEvent { #puppetbrowser-kt-browserkeyevent }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BrowserKeyEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">BrowserKeyEventType</span><span class="p">,</span> <span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">key</span><span class="p">,</span> <span class="k">val</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">windowsVirtualKeyCode</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">nativeVirtualKeyCode</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">windowsVirtualKeyCode</span><span class="p">,</span> <span class="k">val</span> <span class="n">autoRepeat</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">keypad</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">unmodifiedText</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="n">text</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L101)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">BrowserKeyEventType</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">windowsVirtualKeyCode</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nativeVirtualKeyCode</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">autoRepeat</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">keypad</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">unmodifiedText</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+
+### BrowserTouchEventType { #puppetbrowser-kt-browsertoucheventtype }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">BrowserTouchEventType</span><span class="p">(</span><span class="k">val</span> <span class="n">cdpName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L114)
+
+Constants: `START`, `MOVE`, `END`, `CANCEL`.
+
+### BrowserTouchPoint { #puppetbrowser-kt-browsertouchpoint }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BrowserTouchPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">radiusX</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">radiusY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">rotationAngle</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">force</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L121)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">radiusX</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">radiusY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rotationAngle</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">force</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### PuppetBrowserControl { #puppetbrowser-kt-puppetbrowsercontrol }
+
+[<code class="highlight"><span class="k">interface</span> <span class="nc">PuppetBrowserControl</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L142)
+
+High-level control surface for a Chromium tab: navigation, input, JavaScript, the Chrome DevTools Protocol and the page→Field request bridge. Fire-and-forget input methods retain TCP order; commands return futures completed by Electron.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">PuppetBrowserState</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L143) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">addEventListener</span><span class="p">(</span><span class="n">listener</span><span class="p">:</span> <span class="p">(</span><span class="nc">PuppetBrowserEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L145) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">navigate</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L147) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">goBack</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L148) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">goForward</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L149) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reload</span><span class="p">(</span><span class="n">ignoreCache</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L150) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L151) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">focus</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L152) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">blur</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetBrowserState</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L153) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pointer</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">BrowserPointerEvent</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L155) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">key</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">BrowserKeyEvent</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L156) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">insertText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L157) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setComposition</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">selectionStart</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">text</span><span class="p">.</span><span class="n">length</span><span class="p">,</span> <span class="n">selectionEnd</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">selectionStart</span><span class="p">,</span> <span class="n">replacementStart</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">replacementEnd</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L158) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">touch</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">BrowserTouchEventType</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BrowserTouchPoint</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L165) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">flushInput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L167) | Completes after every previously posted pointer, keyboard, IME, and touch event was dispatched. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">javascript</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span> <span class="o">=</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">.</span><span class="nc">MAIN</span><span class="p">,</span> <span class="n">returnMode</span><span class="p">:</span> <span class="nc">BrowserJavascriptReturnMode</span> <span class="o">=</span> <span class="nc">BrowserJavascriptReturnMode</span><span class="p">.</span><span class="nc">VALUE</span><span class="p">,</span> <span class="n">userGesture</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">BrowserJavascriptResult</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L169) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">releaseJavascriptObject</span><span class="p">(</span><span class="n">objectId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L177) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">cdp</span><span class="p">(</span><span class="n">method</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="nc">JsonObject</span> <span class="o">=</span> <span class="nc">JsonObject</span><span class="p">(</span><span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="n">sessionId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JsonObject</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L178) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">forwardCdpEvents</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L183) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">onPageRequest</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="p">(</span><span class="nc">JsonElement</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JsonElement</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L186) | Register an allowlisted request callable as `window.fieldPuppet.request(name, value)`. |
+
+### PuppetBrowser { #puppetbrowser-kt-puppetbrowser }
+
+[<code class="highlight"><span class="k">interface</span> <span class="nc">PuppetBrowser</span> <span class="p">:</span> <span class="nc">PuppetBrowserControl</span><span class="p">,</span> <span class="nc">ExternalBrowserSurface</span></code>](source/jvmMain/afield/media/browser/PuppetBrowser/#L196)
+
+A [`PuppetBrowserControl`](imaging.md#puppetbrowser-kt-puppetbrowsercontrol) whose pixels are also a stable Field texture — the same Chromium tab, seen from the render loop as well as from the keyboard.
+
+## PuppetBrowserInteraction.kt { #puppetbrowserinteraction-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserInteraction.kt` — [read the source](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/)
+
+### PuppetBrowserUvInput { #puppetbrowserinteraction-kt-puppetbrowseruvinput }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PuppetBrowserUvInput</span><span class="p">(</span><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L11)
+
+Maps normalized panel UVs into the browser's CSS-pixel input coordinate system.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">cssWidth</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L12) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">cssHeight</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L13) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">modifiers</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">BrowserModifier</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L15) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">buttons</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L16) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">move</span><span class="p">(</span><span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">pointerType</span><span class="p">:</span> <span class="nc">BrowserPointerType</span> <span class="o">=</span> <span class="nc">BrowserPointerType</span><span class="p">.</span><span class="nc">MOUSE</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L26) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">down</span><span class="p">(</span><span class="n">button</span><span class="p">:</span> <span class="nc">BrowserMouseButton</span> <span class="o">=</span> <span class="nc">BrowserMouseButton</span><span class="p">.</span><span class="nc">LEFT</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">lastU</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">lastV</span><span class="p">,</span> <span class="n">pointerType</span><span class="p">:</span> <span class="nc">BrowserPointerType</span> <span class="o">=</span> <span class="nc">BrowserPointerType</span><span class="p">.</span><span class="nc">MOUSE</span><span class="p">,</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">if</span> <span class="p">(</span><span class="n">pointerType</span> <span class="o">=</span><span class="o">=</span> <span class="nc">BrowserPointerType</span><span class="p">.</span><span class="nc">PEN</span><span class="p">)</span> <span class="mf">1.0</span> <span class="n">else</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L32) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">up</span><span class="p">(</span><span class="n">button</span><span class="p">:</span> <span class="nc">BrowserMouseButton</span> <span class="o">=</span> <span class="nc">BrowserMouseButton</span><span class="p">.</span><span class="nc">LEFT</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">lastU</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">lastV</span><span class="p">,</span> <span class="n">pointerType</span><span class="p">:</span> <span class="nc">BrowserPointerType</span> <span class="o">=</span> <span class="nc">BrowserPointerType</span><span class="p">.</span><span class="nc">MOUSE</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L56) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">wheel</span><span class="p">(</span><span class="n">deltaX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">deltaY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">lastU</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">lastV</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L77) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">releaseAll</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L90) |  |
+
+### PuppetBrowserWindowInput { #puppetbrowserinteraction-kt-puppetbrowserwindowinput }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PuppetBrowserWindowInput</span><span class="p">(</span><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span><span class="p">,</span> <span class="k">val</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Window</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">hitTest</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="p">{</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">-&gt;</span> <span class="k">val</span> <span class="n">size</span> <span class="o">=</span> <span class="n">window</span><span class="p">.</span><span class="nf">size</span><span class="p">(</span><span class="p">)</span> <span class="n">if</span> <span class="p">(</span><span class="n">x</span> <span class="p">&lt;</span> <span class="mi">0</span> <span class="o">&#124;</span><span class="o">&#124;</span> <span class="n">y</span> <span class="p">&lt;</span> <span class="mi">0</span> <span class="o">&#124;</span><span class="o">&#124;</span> <span class="n">x</span> <span class="p">&gt;</span><span class="o">=</span> <span class="n">size</span><span class="p">.</span><span class="n">w</span> <span class="o">&#124;</span><span class="o">&#124;</span> <span class="n">y</span> <span class="p">&gt;</span><span class="o">=</span> <span class="n">size</span><span class="p">.</span><span class="n">h</span><span class="p">)</span> <span class="kc">null</span> <span class="n">else</span> <span class="n">x</span> <span class="p">/</span> <span class="n">size</span><span class="p">.</span><span class="n">w</span> <span class="n">to</span> <span class="n">y</span> <span class="p">/</span> <span class="n">size</span><span class="p">.</span><span class="n">h</span> <span class="p">}</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L131)
+
+Sends one Field [`Window`](graphics.md#window-kt-window)'s pointer and keyboard stream to a [`PuppetBrowser`](imaging.md#puppetbrowser-kt-puppetbrowser). `hitTest` converts window-local logical coordinates to browser UVs; return null when the browser was not hit.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Window</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">uv</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L139) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">active</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L140) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">takeFocus</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L208) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">releaseFocus</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L213) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L221) |  |
+
+### PuppetBrowserPanel { #puppetbrowserinteraction-kt-puppetbrowserpanel }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PuppetBrowserPanel</span><span class="p">(</span><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span><span class="p">,</span> <span class="k">var</span> <span class="n">halfWidth</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">var</span> <span class="n">halfHeight</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L229)
+
+A world-space rectangular browser panel with pointer capture for controller or mouse rays.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">halfWidth</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">halfHeight</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">model</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L234) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">uv</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L235) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Hit</span><span class="p">(</span><span class="k">val</span> <span class="n">worldPoint</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">onPanel</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L237) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">panelMvp</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="n">projection</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="n">destination</span><span class="p">:</span> <span class="nc">Matrix4f</span> <span class="o">=</span> <span class="nc">Matrix4f</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Matrix4f</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L249) | Compose this panel's world transform with one eye's view/projection matrices. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">place</span><span class="p">(</span><span class="n">position</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">up</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Matrix4f</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L255) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">faceToward</span><span class="p">(</span><span class="n">position</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">eye</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">worldUp</span><span class="p">:</span> <span class="nc">Vector3f</span> <span class="o">=</span> <span class="nc">Vector3f</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">1f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Matrix4f</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L267) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">raycast</span><span class="p">(</span><span class="n">origin</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Hit</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L277) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">interact</span><span class="p">(</span><span class="n">origin</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">triggerPressed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">scrollY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">pointerType</span><span class="p">:</span> <span class="nc">BrowserPointerType</span> <span class="o">=</span> <span class="nc">BrowserPointerType</span><span class="p">.</span><span class="nc">MOUSE</span><span class="p">)</span><span class="p">:</span> <span class="nc">Hit</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L291) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">interact</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">ControllerState</span><span class="p">,</span> <span class="n">scrollY</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">localForward</span><span class="p">:</span> <span class="nc">Vector3f</span> <span class="o">=</span> <span class="nc">Vector3f</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">,</span> <span class="mi">1f</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Hit</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserInteraction/#L320) | Feed an OpenXR controller directly into this panel. |
+
+## PuppetBrowserKaleidoscope.kt { #puppetbrowserkaleidoscope-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserKaleidoscope.kt` — [read the source](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/)
+
+### PuppetBrowserKaleidoscope { #puppetbrowserkaleidoscope-kt-puppetbrowserkaleidoscope }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PuppetBrowserKaleidoscope</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;puppet-browser-kaleidoscope&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span> <span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/#L21)
+
+Draws a live [`PuppetBrowser`](imaging.md#puppetbrowser-kt-puppetbrowser) through an animated, independently moving field of triangular shards.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">motion</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/#L33) | Vertex animation amplitude. Zero leaves a cracked but stationary mosaic. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">facets</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/#L36) | Base angular repetition used by the fragment-stage kaleidoscope. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">chroma</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/#L39) | Size of the RGB sampling separation, in texture-coordinate scale. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/#L41) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/#L47) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserKaleidoscope/#L109) |  |
+
+## PuppetBrowserPage.kt { #puppetbrowserpage-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserPage.kt` — [read the source](source/jvmMain/afield/media/browser/PuppetBrowserPage/)
+
+**Used in:** [Chromium as a native Field surface](../puppet_browser.md)
+
+### Top-level functions { #puppetbrowserpage-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PuppetBrowserControl</span><span class="p">.</span><span class="nf">text</span><span class="p">(</span><span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span> <span class="o">=</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">.</span><span class="nc">ISOLATED</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">String</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L31) | The single element matching `selector`, as trimmed text, or null if there is no such element. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PuppetBrowserControl</span><span class="p">.</span><span class="nf">texts</span><span class="p">(</span><span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span> <span class="o">=</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">.</span><span class="nc">ISOLATED</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L43) | Every element matching `selector`, as trimmed text, in document order. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PuppetBrowserControl</span><span class="p">.</span><span class="nf">attribute</span><span class="p">(</span><span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span> <span class="o">=</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">.</span><span class="nc">ISOLATED</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">String</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L58) | One attribute of the single element matching `selector`; null when either the element or the attribute is absent. Deliberately the *attribute* and not the property: `href` here is what the markup says, not the absolute URL Chromium resolved it to. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PuppetBrowserControl</span><span class="p">.</span><span class="nf">count</span><span class="p">(</span><span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span> <span class="o">=</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">.</span><span class="nc">ISOLATED</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L71) | How many elements match `selector`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PuppetBrowserControl</span><span class="p">.</span><span class="nf">table</span><span class="p">(</span><span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span> <span class="o">=</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">.</span><span class="nc">ISOLATED</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">PuppetPageTable</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L115) | The table matching `selector`, as a header and rows of trimmed cell text. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">PuppetBrowserControl</span><span class="p">.</span><span class="nf">waitFor</span><span class="p">(</span><span class="n">javascriptCondition</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeoutMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">pollMillis</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span> <span class="n">world</span><span class="p">:</span> <span class="nc">BrowserJavascriptWorld</span> <span class="o">=</span> <span class="nc">BrowserJavascriptWorld</span><span class="p">.</span><span class="nc">ISOLATED</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L161) | Waits, **in the page**, until `javascriptCondition` evaluates truthy, and fails if it has not within `timeoutMillis`. |
+
+### PuppetPageTable { #puppetbrowserpage-kt-puppetpagetable }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PuppetPageTable</span><span class="p">(</span><span class="k">val</span> <span class="n">header</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L82)
+
+A table's header cells and body rows, exactly as they were laid out.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">numbers</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L88) | Column `index` of every row as a number, with a cell that is not one becoming null rather than zero — a missing reading and a reading of zero are different facts, and a plot that cannot tell them apart is the reason this does not default. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">column</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L93) | A column by header name rather than by index. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">numbers</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserPage/#L100) | A column by header name, as numbers. |
+
+## PuppetBrowserVrPanel.kt { #puppetbrowservrpanel-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserVrPanel.kt` — [read the source](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/)
+
+### PuppetBrowserVrPanel { #puppetbrowservrpanel-kt-puppetbrowservrpanel }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PuppetBrowserVrPanel</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">stereo</span><span class="p">:</span> <span class="nc">SideBySideStereoTarget</span><span class="p">,</span> <span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span><span class="p">,</span> <span class="k">val</span> <span class="n">widthMeters</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.6f</span><span class="p">,</span> <span class="k">val</span> <span class="n">distanceMeters</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.7f</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;puppet-browser-panel&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/#L25)
+
+Presents a [`PuppetBrowser`](imaging.md#puppetbrowser-kt-puppetbrowser) as an aspect-correct, interactive world-space quad.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stereo</span><span class="p">:</span> <span class="nc">SideBySideStereoTarget</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">widthMeters</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distanceMeters</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">aspect</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/#L33) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">panel</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/#L34) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">lastHit</span><span class="p">:</span> <span class="nc">PuppetBrowserPanel</span><span class="p">.</span><span class="nc">Hit</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/#L37) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/#L51) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">enableDesktopInteraction</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/#L121) | Install the desktop preview's mouse ray. A headset controller automatically supersedes it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserVrPanel/#L142) |  |
+
+## PuppetBrowserWindowPanel.kt { #puppetbrowserwindowpanel-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserWindowPanel.kt` — [read the source](source/jvmMain/afield/media/browser/PuppetBrowserWindowPanel/)
+
+### PuppetBrowserWindowViewport { #puppetbrowserwindowpanel-kt-puppetbrowserwindowviewport }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PuppetBrowserWindowViewport</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserWindowPanel/#L14)
+
+An aspect-correct rectangle in one Field [`afield.graphics.vulkan.util.Window`](graphics.md#window-kt-window)'s logical coordinates.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">hitTest</span><span class="p">(</span><span class="n">px</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">py</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserWindowPanel/#L20) |  |
+
+### PuppetBrowserWindowPanel { #puppetbrowserwindowpanel-kt-puppetbrowserwindowpanel }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PuppetBrowserWindowPanel</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;puppet-browser-window-panel&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserWindowPanel/#L55)
+
+Draws one [`PuppetBrowser`](imaging.md#puppetbrowser-kt-puppetbrowser) into a native Field window and routes that window's real mouse, keyboard, text-input and wheel stream back into Chromium.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">browser</span><span class="p">:</span> <span class="nc">PuppetBrowser</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">viewport</span><span class="p">:</span> <span class="nc">PuppetBrowserWindowViewport</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserWindowPanel/#L61) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">takeFocus</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserWindowPanel/#L71) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/PuppetBrowserWindowPanel/#L145) |  |
+
+## WindowsExternalBrowserSurface.kt { #windowsexternalbrowsersurface-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/WindowsExternalBrowserSurface.kt` — [read the source](source/jvmMain/afield/media/browser/WindowsExternalBrowserSurface/)
+
+### WindowsExternalBrowserSurface { #windowsexternalbrowsersurface-kt-windowsexternalbrowsersurface }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">WindowsExternalBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">ExternalBrowserSurfaceSpec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">:</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="o">=</span> <span class="nc">BrowserFrameReleaseListener</span> <span class="p">{</span> <span class="p">}</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CopiedExternalBrowserSurface</span><span class="p">(</span><span class="n">renderer</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">releaseListener</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/WindowsExternalBrowserSurface/#L19)
+
+Windows receiver for Electron D3D11 shared textures. The producer must duplicate Electron's process-local NT handle into Field before constructing `ExternalBrowserImageHandle.WindowsD3D11NtHandle`.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">importFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ExternalBrowserFrame</span><span class="p">)</span><span class="p">:</span> <span class="nc">ImportedImage</span><span class="o">?</span></code>](source/jvmMain/afield/media/browser/WindowsExternalBrowserSurface/#L34) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">cleanupImports</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/browser/WindowsExternalBrowserSurface/#L70) |  |
+
+## NativeCaptureTarget.kt { #nativecapturetarget-kt }
+
+`src/jvmMain/kotlin/afield/media/capture/NativeCaptureTarget.kt` — [read the source](source/jvmMain/afield/media/capture/NativeCaptureTarget/)
 
 ## imaging.kt { #imaging-kt }
 
@@ -673,5 +1350,484 @@ Simple PNG encoder that creates PNG files from ARGB pixel data.
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">encode</span><span class="p">(</span><span class="n">pixels</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/media/image/util/PngEncoder/#L26) | Encode ARGB pixel data to PNG format. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">encodeFromBuffer</span><span class="p">(</span><span class="n">buffer</span><span class="p">:</span> <span class="nc">ByteBuffer</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">flipY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">opaque</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/media/image/util/PngEncoder/#L78) | Convert a ByteBuffer containing RGBA image data to PNG bytes. |
+
+## DlssReconstruction.kt { #dlssreconstruction-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/DlssReconstruction.kt` — [read the source](source/jvmMain/afield/media/reconstruction/DlssReconstruction/)
+
+**Used in:** [From modules to reconstruction](../reconstruction_plumbing.md), [Neural reconstruction](../neural_reconstruction.md), [Ray Reconstruction](../ray_reconstruction.md)
+
+### ReconstructionInputs { #dlssreconstruction-kt-reconstructioninputs }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ReconstructionInputs</span><span class="p">(</span><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">val</span> <span class="n">motion</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L21)
+
+Input pixel coordinates: origin top left, X right, Y down, current-to-previous, without jitter. Color is opaque linear HDR RGB, pre-exposure explicitly supplied; coverage/latent channels stay outside reconstruction. Depth is standard Vulkan [0,1], background=1. All inputs are render-resolution, sampled images, mip 0 / layer 0; producer and consumer must use the renderer's graphics queue.
+
+### RayReconstructionGuides { #dlssreconstruction-kt-rayreconstructionguides }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayReconstructionGuides</span><span class="p">(</span><span class="k">val</span> <span class="n">diffuseAlbedo</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">val</span> <span class="n">specularAlbedo</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalRoughness</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">val</span> <span class="n">worldToView</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">math</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nc">Matrix4f</span><span class="p">,</span><span class="k">val</span> <span class="n">viewToClip</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">math</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nc">Matrix4f</span><span class="p">,</span><span class="k">val</span> <span class="n">specularHitDistance</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="o">?</span><span class="o">=</span><span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L26)
+
+RR guides at input resolution. Diffuse/specular albedo are the actual BRDF response; normals.xyz are world-space unit normals and .w is linear roughness. Matrices are unjittered column-major right-multiply (equivalent to NGX's row-major left-multiply convention). Optional specular hit distance is world-space distance from the primary surface; sky=65504.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">normalRoughness</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">val</span> <span class="n">worldToView</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">math</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nc">Matrix4f</span><span class="p">,</span><span class="k">val</span> <span class="n">viewToClip</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">math</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nc">Matrix4f</span><span class="p">,</span><span class="k">val</span> <span class="n">specularHitDistance</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="o">?</span></code> |  |
+
+### ReconstructionFrame { #dlssreconstruction-kt-reconstructionframe }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ReconstructionFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span><span class="k">val</span> <span class="n">jitter</span><span class="p">:</span> <span class="nc">ReconstructionJitter</span><span class="p">,</span><span class="k">val</span> <span class="n">milliseconds</span><span class="p">:</span> <span class="nc">Float</span><span class="o">=</span><span class="mf">16.6667f</span><span class="p">,</span> <span class="k">val</span> <span class="n">preExposure</span><span class="p">:</span> <span class="nc">Float</span><span class="o">=</span><span class="mi">1f</span><span class="p">,</span><span class="k">val</span> <span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">false</span><span class="p">,</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">Long</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L28)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">preExposure</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+
+### ReconstructionJitter { #dlssreconstruction-kt-reconstructionjitter }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ReconstructionJitter</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L33)
+
+Projection displacement in input pixels, positive right/down. Sample the scene at pixel-jitter.
+
+### DlssReconstruction { #dlssreconstruction-kt-dlssreconstruction }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">DlssReconstruction</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">val</span> <span class="n">inputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="p">,</span><span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span><span class="p">,</span><span class="k">val</span> <span class="n">rayReconstruction</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L54)
+
+One mono view. Construct/edit/evaluate/close on the render thread, outside a render pass. Query `recommend` before allocating the scene targets. Recreate on resolution/mode/format change; the old instance retires behind Field's GPU completion queue. Failure leaves caller's source intact. SR is independent of ray tracing. UI and unsupported animated layers belong after this pass.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span><span class="p">,</span><span class="k">val</span> <span class="n">rayReconstruction</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">recommendation</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L58) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">output</span><span class="p">:</span> <span class="nc">RenderToTexture</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L68) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">resetCount</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L80) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">resetReason</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L81) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;camera cut or live edit&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L82) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span><span class="n">inputs</span><span class="p">:</span> <span class="nc">ReconstructionInputs</span><span class="p">,</span><span class="n">frame</span><span class="p">:</span> <span class="nc">ReconstructionFrame</span><span class="p">,</span><span class="n">guides</span><span class="p">:</span> <span class="nc">RayReconstructionGuides</span><span class="o">?</span><span class="o">=</span><span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L83) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/DlssReconstruction/#L144) |  |
+
+## NeuralToolsFallbackSmoke.kt { #neuraltoolsfallbacksmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/NeuralToolsFallbackSmoke.kt` — [read the source](source/jvmMain/afield/media/reconstruction/NeuralToolsFallbackSmoke/)
+
+### NeuralToolsFallbackSmoke { #neuraltoolsfallbacksmoke-kt-neuraltoolsfallbacksmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NeuralToolsFallbackSmoke</span></code>](source/jvmMain/afield/media/reconstruction/NeuralToolsFallbackSmoke/#L11)
+
+Exercises the same renderer with every newly optional native/hardware feature disabled.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/NeuralToolsFallbackSmoke/#L12) |  |
+
+## NgxSupport.kt { #ngxsupport-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/NgxSupport.kt` — [read the source](source/jvmMain/afield/media/reconstruction/NgxSupport/)
+
+**Used in:** [Neural reconstruction](../neural_reconstruction.md), [From modules to reconstruction](../reconstruction_plumbing.md)
+
+### NgxSupport { #ngxsupport-kt-ngxsupport }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NgxSupport</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L10)
+
+Feature-specific SR/DLAA discovery; ordinary rendering never requires NGX.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SDK&#95;REVISION</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L11) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SDK&#95;VERSION</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L12) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">availability</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="nc">Device</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L25) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rayReconstructionAvailability</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="nc">Device</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L28) |  |
+
+### ReconstructionMode { #ngxsupport-kt-reconstructionmode }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">ReconstructionMode</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">sdkValue</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L33)
+
+Constants: `DLAA`, `QUALITY`, `BALANCED`, `PERFORMANCE`, `ULTRA_PERFORMANCE`.
+
+### ReconstructionSize { #ngxsupport-kt-reconstructionsize }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ReconstructionSize</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L34)
+
+### ReconstructionRecommendation { #ngxsupport-kt-reconstructionrecommendation }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ReconstructionRecommendation</span><span class="p">(</span><span class="k">val</span> <span class="n">optimal</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="p">,</span><span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="p">,</span><span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L37)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">smallestFor</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="p">)</span><span class="p">:</span> <span class="nc">ReconstructionSize</span></code>](source/jvmMain/afield/media/reconstruction/NgxSupport/#L39) | Smallest legal input at the output's aspect ratio, rounded up to whole pixels. |
+
+## PathTracedReconstruction.kt { #pathtracedreconstruction-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/PathTracedReconstruction.kt` — [read the source](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/)
+
+### PathTracedReconstruction { #pathtracedreconstruction-kt-pathtracedreconstruction }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PathTracedReconstruction</span><span class="p">(</span><span class="k">val</span> <span class="n">tracer</span><span class="p">:</span> <span class="nc">PathTracingRenderer</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="o">=</span><span class="nc">ReconstructionSize</span><span class="p">(</span><span class="n">tracer</span><span class="p">.</span><span class="n">width</span><span class="p">,</span><span class="n">tracer</span><span class="p">.</span><span class="n">height</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span><span class="o">=</span><span class="nc">ReconstructionMode</span><span class="p">.</span><span class="nc">DLAA</span><span class="p">,</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;path-reconstruction&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span><span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L20)
+
+One ordered path-trace -> raw guides -> NGX pass. Pass an uninstalled tracer: this owner records it exactly once, and closes it. The raw and progressive sources remain inspectable at all times. Camera motion reprojects; call `reset` on cuts and appearance changes. Tracer property and shader revisions reset RR automatically. Recreate this owner to change input/output sizes.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span></code> |  |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">View</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L26) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">source</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L28) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">reconstruction</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L30) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">view</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L32) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PathTracedReconstruction</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L68) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;camera cut or appearance edit&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L76) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L77) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstruction/#L86) |  |
+
+## PathTracedReconstructionSmoke.kt { #pathtracedreconstructionsmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/PathTracedReconstructionSmoke.kt` — [read the source](source/jvmMain/afield/media/reconstruction/PathTracedReconstructionSmoke/)
+
+### PathTracedReconstructionSmoke { #pathtracedreconstructionsmoke-kt-pathtracedreconstructionsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PathTracedReconstructionSmoke</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstructionSmoke/#L19)
+
+Real GPU contract, quality, motion and lifetime check. Readback is diagnostic only.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/PathTracedReconstructionSmoke/#L20) |  |
+
+## RayReconstructionDemo.kt { #rayreconstructiondemo-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/RayReconstructionDemo.kt` — [read the source](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/)
+
+### RayReconstructionDemo { #rayreconstructiondemo-kt-rayreconstructiondemo }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">RayReconstructionDemo</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="o">=</span><span class="nc">ReconstructionSize</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span><span class="mi">1080</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;ray-reconstruction&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span><span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L21)
+
+Existing Fabricate G-buffer and RTXDI, with interchangeable reconstruction at native resolution. The direct-lighting bridge is Lambertian: specular albedo=0 and roughness=1 describe that BRDF. Do not reuse these guides for a glossy/path-traced signal. All editing happens between frames.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Path</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L23) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">scene</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L24) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">settings</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L25) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">rr</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L27) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">sr</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L28) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">path</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L29) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">animate</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L31) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">cameraMotion</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L32) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">time</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L33) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;camera cut or edit&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L69) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L72) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionDemo/#L92) |  |
+
+## RayReconstructionSmoke.kt { #rayreconstructionsmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/RayReconstructionSmoke.kt` — [read the source](source/jvmMain/afield/media/reconstruction/RayReconstructionSmoke/)
+
+### RayReconstructionSmoke { #rayreconstructionsmoke-kt-rayreconstructionsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">RayReconstructionSmoke</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionSmoke/#L11)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/RayReconstructionSmoke/#L12) |  |
+
+## ReconstructionDemo.kt { #reconstructiondemo-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionDemo.kt` — [read the source](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/)
+
+### ReconstructionDemo { #reconstructiondemo-kt-reconstructiondemo }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">ReconstructionDemo</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">ReconstructionMode</span><span class="o">?</span><span class="o">=</span><span class="nc">ReconstructionMode</span><span class="p">.</span><span class="nc">DLAA</span><span class="p">,</span> <span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="o">=</span><span class="nc">ReconstructionSize</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span><span class="mi">1080</span><span class="p">)</span><span class="p">,</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;neural-aa&quot;</span><span class="p">,</span><span class="n">attach</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">true</span><span class="p">,</span> <span class="n">inputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span><span class="o">?</span><span class="o">=</span><span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span><span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L20)
+
+Editable mono raster experiment; no ray tracing is needed. Replace at a frame boundary when changing mode/resolution. Leave `mode` null for the unjittered source at native output resolution.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">outputSize</span><span class="p">:</span> <span class="nc">ReconstructionSize</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">inputSize</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L23) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">reconstruction</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L36) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">time</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L46) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">abstractScene</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L47) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">cameraMotion</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L48) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">animate</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L49) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">horizontalShiftPixels</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L50) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">attach</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ReconstructionDemo</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L61) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;scene edit&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L64) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">reload</span><span class="p">(</span><span class="n">vertex</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="nf">shader</span><span class="p">(</span><span class="s">&quot;scene.vert&quot;</span><span class="p">)</span><span class="p">,</span><span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="nf">shader</span><span class="p">(</span><span class="s">&quot;scene.frag&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span><span class="p">&lt;</span><span class="nc">Unit</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L66) | Compile and reflect both shaders, reject changed layouts, then commit at a frame boundary. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L75) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionDemo/#L85) |  |
+
+## ReconstructionSmoke.kt { #reconstructionsmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionSmoke.kt` — [read the source](source/jvmMain/afield/media/reconstruction/ReconstructionSmoke/)
+
+### ReconstructionSmoke { #reconstructionsmoke-kt-reconstructionsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ReconstructionSmoke</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionSmoke/#L16)
+
+Actual NGX evaluation with RT disabled. --clip records consecutive scene frames, not wall time. --fallback verifies ordinary rendering with FIELD_NGX_DISABLE=1, without initializing NGX.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/ReconstructionSmoke/#L17) |  |
+
+## WaylandReconstructionSmoke.kt { #waylandreconstructionsmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/reconstruction/WaylandReconstructionSmoke.kt` — [read the source](source/jvmMain/afield/media/reconstruction/WaylandReconstructionSmoke/)
+
+### WaylandReconstructionSmoke { #waylandreconstructionsmoke-kt-waylandreconstructionsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">WaylandReconstructionSmoke</span></code>](source/jvmMain/afield/media/reconstruction/WaylandReconstructionSmoke/#L12)
+
+Driven by tools/lighting/check_wayland.py: the compositor, not GLFW, confirms minimization.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/reconstruction/WaylandReconstructionSmoke/#L13) |  |
+
+## ElectronRTTView.kt { #electronrttview-kt }
+
+`src/jvmMain/kotlin/afield/media/stream/ElectronRTTView.kt` — [read the source](source/jvmMain/afield/media/stream/ElectronRTTView/)
+
+### ElectronRTTView { #electronrttview-kt-electronrttview }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">ElectronRTTView</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">ringSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">format</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">VK&#95;FORMAT&#95;B8G8R8A8&#95;SRGB</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;electron-rtt-${counter.incrementAndGet()}&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span><span class="p">,</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L67)
+
+A Field 4 render target drawn straight into a box's output area in the Field Electron app.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">rtt</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L93) | Render your content into this; it is drawn to the canvas as is. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">viewId</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L102) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">stats</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L134) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L149) | The output-area widget: a canvas the preload draws into, and the script that wires it up. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L267) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L322) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Sample</span><span class="p">(</span><span class="k">val</span> <span class="n">toMain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">toRenderer</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">toDrawn</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L347) | One frame's timeline, in ms after its fence completed. |
+| [<code class="highlight"><span class="k">class</span> <span class="nc">Stats</span></code>](source/jvmMain/afield/media/stream/ElectronRTTView/#L349) |  |
+
+## FieldEncodeProcess.kt { #fieldencodeprocess-kt }
+
+`src/jvmMain/kotlin/afield/media/stream/FieldEncodeProcess.kt` — [read the source](source/jvmMain/afield/media/stream/FieldEncodeProcess/)
+
+### FieldEncodeProcess { #fieldencodeprocess-kt-fieldencodeprocess }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">FieldEncodeProcess</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">binaryPath</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">defaultBinaryPath</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">workingDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L24)
+
+Launches and drives the `field-encode` Swift co-process (`native/field-encode`) — the macOS VideoToolbox sender for the visionOS stereo/flat docks (see `dev_docs/vision_frontend.md` -> "The sender seam" and `native/field-encode/WIRE_FORMAT.md`).
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">var</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L35) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">lastEvent</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="o">?</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L39) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onEvent</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">JSONObject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L43) | Invoked for every JSON event line on the helper's stdout (opened/encoded/error/...). |
+| [<code class="highlight"><span class="k">var</span> <span class="n">onExit</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L46) | Invoked once when the process exits, with its exit code. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L49) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">alloc</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L103) | Allocate a ring of `count` IOSurfaces in the helper and get their global IDs back (via an `{"ev":"allocated","ids":[…]}` event on `onEvent`). Field imports these by ID as its RTT backing — they carry a real pixelFormat, unlike MoltenVK's export. Precedes `open`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="k">open</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">bitrateKbps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dest</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">codec</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;hevc&quot;</span><span class="p">,</span> <span class="n">idrIntervalMs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">surfaces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Long</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">fdSurfaces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="n">afield</span><span class="p">.</span><span class="n">graphics</span><span class="p">.</span><span class="n">texture</span><span class="p">.</span><span class="nc">VulkanExternalMemory</span><span class="p">.</span><span class="nc">FdHandle</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">fdSocket</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">stereo</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L118) | Set up the encoder + UDP stream to `dest` ("host:port"). On macOS, pass `surfaces` (global IOSurfaceIDs) to look them up in the helper (legacy); omit to use the ring created by a prior `alloc`. On Linux, pass `fdSurfaces` + `fdSocket` — the helper has no `alloc` (it can't allocate a Vulkan image itself), and a raw fd number can't travel over JSON (it's per-process, not a system-wide handle like an IOSurfaceID): the real fds cross over an SCM_RIGHTS handoff on `fdSocket` instead (see [`afield.graphics.texture.UnixFdPass`](graphics.md#unixfdpass-kt-unixfdpass) — caller sends them right after this command), and only `size`/`rowPitch` travel on the wire, in the same order as the fds sent over the socket. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">frame</span><span class="p">(</span><span class="n">surface</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">seq</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">ptsMicros</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="n">forceIdr</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">poseFrameId</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">poseDisplayTimeNanos</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L157) | Signal that ring surface `surface` is rendered and ready to encode now. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">bitrate</span><span class="p">(</span><span class="n">kbps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L171) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">selftest</span><span class="p">(</span><span class="n">dest</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">120</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">720</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">bitrateKbps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">20000</span><span class="p">,</span> <span class="n">codec</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;hevc&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L174) | Fire the helper's self-contained smoke test (synthetic frames, no RTT needed). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L183) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L195) | Graceful: send `close`, then close stdin (helper exits its readLine loop), then reap. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldEncodeProcess/#L201) |  |
+
+## FieldRTTStreamer.kt { #fieldrttstreamer-kt }
+
+`src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt` — [read the source](source/jvmMain/afield/media/stream/FieldRTTStreamer/)
+
+**Used in:** [Field on Apple Vision Pro](../vision.md)
+
+### FieldRTTStreamer { #fieldrttstreamer-kt-fieldrttstreamer }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">FieldRTTStreamer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">dest</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1:9000&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1280</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">720</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">ringSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">bitrateKbps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">20</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">codec</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;hevc&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">idrIntervalMs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">stereo</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">colorFormat</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">VK&#95;FORMAT&#95;B8G8R8A8&#95;UNORM</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field-stream&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">encoder</span><span class="p">:</span> <span class="nc">FieldEncodeProcess</span> <span class="o">=</span> <span class="nc">FieldEncodeProcess</span><span class="p">(</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Target</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L60)
+
+Streams an IOSurface-backed RTT off the GPU to the visionOS receiver via the `field-encode` co-process (the *producer* seam from `dev_docs/vision_frontend.md`).
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">surfaces</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L80) | The ring of RTTs to render into, created on `start`. Empty until then. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">ioSurfaceIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Long</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L86) | macOS: the global `IOSurfaceID`s of the helper's ring, in slot order. Empty until `start`. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">framesEncoded</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L90) | Frames the helper reported encoded. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">streaming</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L94) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">poseTag</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">StreamPose</span><span class="o">?</span><span class="p">)</span><span class="o">?</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L109) | The head pose the frame about to be submitted was rendered from, or null when there isn't one. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tagPosesFrom</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">graphics</span><span class="p">.</span><span class="n">vulkan</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="nc">SideBySideStereoTarget</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L118) | Tag each submitted frame with the pose `target` last latched. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">activeSlot</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L130) | The ring slot the *next* rendered frame will be encoded from (render into this one). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RenderToTexture</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L137) | Launch the helper, allocate + import the surface ring, open the stream, and register the per-frame tick. Returns the ring RTTs to render into (empty on failure). Call from the render thread (a box). Blocks briefly for the alloc round-trip. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L247) | Stop ticking, unregister from the render list, and tear down the helper. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L265) | Called during graphics recording each frame (this is a render-list [`Target`](graphics.md#renderer-kt-target)). Defers the encoder's per-frame ready tick until this frame's fence signals — the correctness gate. |
+
+### StreamPose { #fieldrttstreamer-kt-streampose }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StreamPose</span><span class="p">(</span><span class="k">val</span> <span class="n">frameId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">displayTimeNanos</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/FieldRTTStreamer/#L373)
+
+The head pose a streamed frame was rendered from, as the media wire carries it.
+
+## LinuxElectronImportProbe.kt { #linuxelectronimportprobe-kt }
+
+`src/jvmMain/kotlin/afield/media/stream/LinuxElectronImportProbe.kt` — [read the source](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/)
+
+### LinuxElectronImportProbe { #linuxelectronimportprobe-kt-linuxelectronimportprobe }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">LinuxElectronImportProbe</span></code>](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/#L23)
+
+One immutable, fence-completed Vulkan image for the Electron nativePixmap import spike. Arguments: evidence directory. Start tools/electron_dmabuf_probe/main.js first.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/#L24) |  |
+
+## OpticalFlow.kt { #opticalflow-kt }
+
+`src/jvmMain/kotlin/afield/media/vision/OpticalFlow.kt` — [read the source](source/jvmMain/afield/media/vision/OpticalFlow/)
+
+### OpticalFlow { #opticalflow-kt-opticalflow }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">OpticalFlow</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="k">val</span> <span class="n">quality</span><span class="p">:</span> <span class="nc">Quality</span><span class="o">=</span><span class="nc">Quality</span><span class="p">.</span><span class="nc">SLOW</span><span class="p">)</span> <span class="p">:</span> <span class="nc">OpticalFlowOperation</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L37)
+
+Dedicated hardware image correspondence. Call `evaluate` between Field frames, after producers have submitted. Images stay on the GPU. This first implementation waits for one final fence; it does not overlap pairs, and includes conversion/synchronization in `milliseconds`.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">Quality</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">vk</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L40) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">width</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L46) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">height</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L47) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowWidth</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L48) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowHeight</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L49) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">opticalTimestampBits</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L54) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L75) | Sampled RGBA32F texture: XY displacement in input pixels, Z matching cost, W = 1. Dimensions are ceil(input width/grid) by ceil(input height/grid), owned by this operation. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">milliseconds</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L86) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L141) | Reset temporal hints for a cut, image-order change or nonconsecutive pair. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L195) |  |
+
+## OpticalFlowDemo.kt { #opticalflowdemo-kt }
+
+`src/jvmMain/kotlin/afield/media/vision/OpticalFlowDemo.kt` — [read the source](source/jvmMain/afield/media/vision/OpticalFlowDemo/)
+
+### OpticalFlowDemo { #opticalflowdemo-kt-opticalflowdemo }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">OpticalFlowDemo</span><span class="p">(</span><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">960</span><span class="p">,</span><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">540</span><span class="p">,</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">=</span><span class="s">&quot;optical-flow&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">OpticalFlowBackend</span><span class="o">=</span><span class="nc">OpticalFlowBackend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L20)
+
+Two generated images, their motion/cost, and a feedback image driven by that motion. `backend` defaults to `OpticalFlowBackend.AUTO`: the NV engine where it exists, [`PyramidOpticalFlow`](imaging.md#pyramidopticalflow-kt-pyramidopticalflow) elsewhere.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">pair</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L22) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">flow</span><span class="p">:</span> <span class="nc">OpticalFlowOperation</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L25) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L27) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">dx</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L41) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">dy</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L42) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">gain</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L43) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">damping</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L44) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">costDisplayRange</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L48) | Cost at which the COST strip saturates. The backends' costs are on different scales (see [`OpticalFlowOperation`](imaging.md#opticalflowoperation-kt-opticalflowoperation)): the hardware engine's raw cost, or [`PyramidOpticalFlow`](imaging.md#pyramidopticalflow-kt-pyramidopticalflow)'s mean window residual in grey levels. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">costThreshold</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L50) | Advection keeps the previous image only where cost is below this; defaults are per backend, see `costDisplayRange`. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">deformation</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L51) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">pairStep</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L53) | Separation of the two source frames, in seconds. Advance update(time) by this amount. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">displayRange</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L55) | Only affects arrows/color intensity, never the displacement delivered to another shader. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">update</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Float</span><span class="o">=</span><span class="mi">0f</span><span class="p">,</span><span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L59) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L87) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">expectedDisplacement</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span><span class="n">time</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">math</span><span class="p">.</span><span class="n">linalg</span><span class="p">.</span><span class="nc">Vector2f</span></code>](source/jvmMain/afield/media/vision/OpticalFlowDemo/#L95) | Invert the known source warp: a feature at (x,y) in the first image moves to this offset. Diagnostic only; the runtime motion field comes exclusively from `flow`. |
+
+## OpticalFlowOperation.kt { #opticalflowoperation-kt }
+
+`src/jvmMain/kotlin/afield/media/vision/OpticalFlowOperation.kt` — [read the source](source/jvmMain/afield/media/vision/OpticalFlowOperation/)
+
+**Used in:** [Optical flow](../optical_flow.md)
+
+### Top-level functions { #opticalflowoperation-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">opticalFlow</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="n">first</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="n">second</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">OpticalFlowBackend</span><span class="o">=</span><span class="nc">OpticalFlowBackend</span><span class="p">.</span><span class="nc">AUTO</span><span class="p">)</span><span class="p">:</span> <span class="nc">OpticalFlowOperation</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L63) | Dense optical flow from `first` to `second` on whichever backend `backend` resolves to on this device. |
+
+### OpticalFlowBackend { #opticalflowoperation-kt-opticalflowbackend }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">OpticalFlowBackend</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L8)
+
+Which implementation computes a [`OpticalFlowOperation`](imaging.md#opticalflowoperation-kt-opticalflowoperation).
+
+Constants: `AUTO`, `HARDWARE`, `PYRAMID`.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">)</span><span class="p">:</span> <span class="nc">OpticalFlowBackend</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L16) | The backend `AUTO` would pick on this renderer; other values are returned unchanged. |
+
+### OpticalFlowOperation { #opticalflowoperation-kt-opticalflowoperation }
+
+[<code class="highlight"><span class="k">interface</span> <span class="nc">OpticalFlowOperation</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L31)
+
+A dense motion field between two same-sized images of one renderer, kept on the GPU.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L32) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">HasImageView</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L33) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">HasImageView</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L34) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L35) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L36) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L37) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">flowWidth</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L38) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">flowHeight</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L39) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">OpticalFlowBackend</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L41) | The backend that actually runs, never `OpticalFlowBackend.AUTO`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">output</span><span class="p">:</span> <span class="nc">RenderToTexture</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L43) | Sampled RGBA32F motion field and cost, owned by this operation. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">milliseconds</span><span class="p">:</span> <span class="nc">ArrayDeque</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L45) | Wall time of recent `evaluate` calls, including submission and the final fence. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">gpuTimings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L47) | Named GPU timestamp samples (milliseconds) for this backend's stages; empty lists without timestamps. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">allocatedBytes</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L49) | Bytes of the images and buffers this operation allocated (driver-private memory excluded). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlowOperation/#L51) | Compute `output` from the current contents of `first` and `second`. `reset` marks a cut: no temporal hints. |
+
+## OpticalFlowSmoke.kt { #opticalflowsmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/vision/OpticalFlowSmoke.kt` — [read the source](source/jvmMain/afield/media/vision/OpticalFlowSmoke/)
+
+### OpticalFlowSmoke { #opticalflowsmoke-kt-opticalflowsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OpticalFlowSmoke</span></code>](source/jvmMain/afield/media/vision/OpticalFlowSmoke/#L13)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlowSmoke/#L14) |  |
+
+## PortableOpticalFlowSmoke.kt { #portableopticalflowsmoke-kt }
+
+`src/jvmMain/kotlin/afield/media/vision/PortableOpticalFlowSmoke.kt` — [read the source](source/jvmMain/afield/media/vision/PortableOpticalFlowSmoke/)
+
+### PortableOpticalFlowSmoke { #portableopticalflowsmoke-kt-portableopticalflowsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PortableOpticalFlowSmoke</span></code>](source/jvmMain/afield/media/vision/PortableOpticalFlowSmoke/#L39)
+
+Holds [`PyramidOpticalFlow`](imaging.md#pyramidopticalflow-kt-pyramidopticalflow) to known synthetic motion, through the production consumer [`OpticalFlowDemo`](imaging.md#opticalflowdemo-kt-opticalflowdemo).
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/PortableOpticalFlowSmoke/#L45) |  |
+
+## PyramidOpticalFlow.kt { #pyramidopticalflow-kt }
+
+`src/jvmMain/kotlin/afield/media/vision/PyramidOpticalFlow.kt` — [read the source](source/jvmMain/afield/media/vision/PyramidOpticalFlow/)
+
+### PyramidOpticalFlow { #pyramidopticalflow-kt-pyramidopticalflow }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">PyramidOpticalFlow</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="k">val</span> <span class="n">levels</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span><span class="k">val</span> <span class="n">finestIterations</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="k">val</span> <span class="n">search</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="k">val</span> <span class="n">consistency</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">=</span><span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">OpticalFlowOperation</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L53)
+
+Portable dense optical flow: coarse-to-fine Lucas–Kanade in ordinary fragment passes.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">consistency</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">width</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L62) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">height</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L63) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowWidth</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L64) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowHeight</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L65) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L77) | The median of the finest level is `output`; every level has a raw and a median-filtered field. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">consistencyMap</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="o">?</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L118) | Forward–backward check, same dimensions as `output`; null unless `consistency`. See the class comment. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">gpuTimings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L126) | "pyramid" covers conversion, downsampling and gradients; "levelN" covers level N's search, track and median. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">milliseconds</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L128) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">allocatedBytes</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L129) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L133) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/PyramidOpticalFlow/#L159) |  |
 
 </div>

@@ -1429,7 +1429,7 @@ unapplied; the compiler-free `rewrite(...)` path never needs one.
 in.** Hydration evaluates on that box's own engine, which re-instantiates its snippet chain and so
 re-runs the body that is already running — once per matched node, until the stack goes. It is guarded
 now: the second hydration for a box on one thread throws [`FnRewriteSelfBoxReentry`](function.md#functionrewritekotlin-kt-fnrewriteselfboxreentry), whose message
-names the ways out. Same hazard as `afield.study.source.SourceBackedBlock`, reached by a second route; see
+names the ways out. Same hazard as [`afield.study.source.SourceBackedBlock`](internal.md#sourcebackedblock-kt-sourcebackedblock), reached by a second route; see
 `dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md`.
 
 `src/jvmMain/kotlin/afield/math/functions/FunctionRewriteKotlin.kt` — [read the source](source/jvmMain/afield/math/functions/FunctionRewriteKotlin/)
@@ -1452,7 +1452,7 @@ names the ways out. Same hazard as `afield.study.source.SourceBackedBlock`, reac
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">FnRewriteSelfBoxReentry</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">IllegalStateException</span><span class="p">(</span><span class="s">&quot;This rewrite is compiling '@{$source}' in box '${box.name}' (${box.id}) — the box that is running it, &quot;</span> <span class="p">+</span> <span class="s">&quot;whose body it therefore re-runs, once per matched node, until the stack overflows. &quot;</span> <span class="p">+</span> <span class="s">&quot;Run the rewrite somewhere that is not this box's own body: &quot;</span> <span class="p">+</span> <span class="s">&quot;(1) from another box — &#96;other.rewriteFn(fn, spec)&#96;, e.g. &#96;parents.last().rewriteFn(fn, spec)&#96;, &quot;</span> <span class="p">+</span> <span class="s">&quot;where &#96;other&#96; is idle; &quot;</span> <span class="p">+</span> <span class="s">&quot;(2) from a frame loop or a control callback, after this body has finished; or &quot;</span> <span class="p">+</span> <span class="s">&quot;(3) with a typed evaluator instead of a source string — &#96;fnRewriteNumber { value &#42; 2.0 }&#96; &quot;</span> <span class="p">+</span> <span class="s">&quot;carries a live lambda and never compiles anything. &quot;</span> <span class="p">+</span> <span class="s">&quot;See dev&#95;docs/FN&#95;REWRITE&#95;SELF&#95;BOX&#95;REENTRY.md.&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/math/functions/FunctionRewriteKotlin/#L97)
 
-Thrown when a `@{...}` right-hand side would be compiled in a box whose body is already running — the failure that used to be 172 nested body runs and a `StackOverflowError`. The in-flight set it consults is `afield.study.source.hydratingBoxes`, shared with `SourceBackedBlock`'s identical guard.
+Thrown when a `@{...}` right-hand side would be compiled in a box whose body is already running — the failure that used to be 172 nested body runs and a `StackOverflowError`. The in-flight set it consults is `afield.study.source.hydratingBoxes`, shared with [`SourceBackedBlock`](internal.md#sourcebackedblock-kt-sourcebackedblock)'s identical guard.
 
 ### SourceBackedFnRewriteNumberExpression { #functionrewritekotlin-kt-sourcebackedfnrewritenumberexpression }
 

@@ -84,8 +84,8 @@ object SourcePageGenerator {
      * set: two thirds of the files cited in `public/docs` are outside those packages, `VisionPose.kt`
      * — the file that started this — among them.
      *
-     * Everything else in `src/` is deliberately absent. 789 pages of internals is the shape
-     * `20e64da5` deleted Dokka for; a page nobody has a reason to arrive at is not documentation.
+     * The complete JVM file catalog includes implementation files as well as box-facing APIs.
+     * They all need readable destinations; shared/browser files join when published prose cites them.
      *
      * **Which packages those are is [StdlibReferenceGenerator]'s answer, not a second copy of it.**
      * The two lists were identical and independent, and that is a dead-link generator rather than a

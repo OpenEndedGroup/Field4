@@ -279,7 +279,7 @@ Evolution beat the random control on four of five targets under it, and the pict
 not look like their targets: a yellow disc evolved into dark diagonal streaks, four quadrants
 into a vertical gradient. An absolute error is satisfied first by matching the target's overall
 colour balance, and the search found that rather than the layout. `StackSLMetric.LPIPS`, the
-default, scores with a learned perceptual distance instead (`afield.ai.inference.onnx.Lpips`).
+default, scores with a learned perceptual distance instead ([`afield.ai.inference.onnx.Lpips`](machine-learning.md#lpips-kt-lpips)).
 `StackSLLayout.layoutAgreement` is the independent check on whether a result resembles its
 target, and `StackSLEvolveGallery.figureTargets` runs both metrics against each other and asserts
 on it.
