@@ -4,6 +4,7 @@
 - **Filed from:** https://openendedgroup.com/field4/keyframer_examples/
 - **Filed by:** human, 2026-10-15 13:44
 - **Close with:** `python tools/docs_notes.py handoff-close 9de9a0d2 "what happened"`
+- **Code:** `src/jvmMain/kotlin/afield/animation/keyframes/keyframer.kt:994#camera`
 
 Rule 25 sharp edge on keyframer_examples.md, aside "The camera target itself needs a renderer":
 
