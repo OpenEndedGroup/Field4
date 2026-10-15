@@ -360,7 +360,7 @@ The lambda demo is about callback parameter types: a warp with no `hostAs` in it
 
 ## Where to look
 
-The reflection lives in `afield.lang.fieldml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.lang.fieldml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. The macro layer is `afield.lang.fieldml.FieldMLMacroLayer`: expansion, the callee extraction, and the ledger of which macro is reachable how. `afield.document.properties.inheritedPropertyRaw` is the walk `prop` and Kotlin's `Inheritance` delegate share. The design notes are in `dev_docs/FIELDML_HOST_BRIDGE.md`.
+The reflection lives in `afield.lang.fieldml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.lang.fieldml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. The macro layer is `afield.lang.fieldml.FieldMLMacroLayer`: expansion, the callee extraction, and the ledger of which macro is reachable how. `afield.document.properties.inheritedPropertyRaw` is the walk `prop` and Kotlin's `Inheritance` delegate share. The design notes are in [`dev_docs/FIELDML_HOST_BRIDGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/FIELDML_HOST_BRIDGE.md).
 
 ??? aside "Which test holds which claim"
     `FieldMLHostBridgeTest` has one test per capability. `FieldMLHostSurfaceCoverageTest` is the
