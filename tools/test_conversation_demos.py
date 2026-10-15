@@ -27,12 +27,24 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.conversation_demo import settle_assets
+from tools.conversation_demo import current_kotlin_listing, settle_assets
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConversationDemoTest(unittest.TestCase):
+    def test_current_kotlin_listing_preserves_recording_and_nonrewritable_calls(self):
+        saved = ('val names = listOf("x", "y", "z").map { it }\n'
+                 'val points = listOf(c to 0f, ring[(k + 1) % ring.size] to 1f)\n'
+                 'val spread = listOf(*xs)\nval typed = listOf<Int>(1)\n'
+                 'val empty = listOf()\nval multiline = listOf(\n    1, 2\n)\n')
+        expected = saved.replace('listOf("x", "y", "z")', '["x", "y", "z"]').replace(
+            'listOf(c to 0f, ring[(k + 1) % ring.size] to 1f)',
+            '[c to 0f, ring[(k + 1) % ring.size] to 1f]')
+        self.assertEqual(expected, current_kotlin_listing(saved))
+        self.assertIn('listOf("x", "y", "z")', saved)
+        self.assertEqual(expected, current_kotlin_listing(expected))
+
     def test_finder_metadata_is_not_a_published_asset(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp)

@@ -150,6 +150,8 @@ def excerpt(source: str, start: str, end: str) -> str:
 
 
 def fence(source: str, lang: str = "stacksl") -> str:
+    if lang == "kotlin":
+        source = demo.current_kotlin_listing(source)
     return f"```diffstatic {{data-lang={lang}}}\n" + source.strip("\n") + "\n```"
 
 
@@ -163,7 +165,7 @@ def folded(title: str, source: str, lang: str = "stacksl") -> str:
 
 
 def source_blocks() -> dict[str, str]:
-    """Listings on the page, each copied from the starter, a saved revision or the recorded box."""
+    """Listings from saved sources, with the disclosed current Kotlin list spelling."""
     starter = DEMOS / STARTER
     code = (folder() / CODE_FILE).read_text()
     for slot in ("explode", "face_decay"):

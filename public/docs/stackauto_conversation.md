@@ -18,6 +18,10 @@ That is the recorded document running in Field, two cycles of its window capture
 is the same kind of conversation as [Talking a shader into existence](stacksl_conversation.md), with
 the StackSL living inside your own graphics code instead of in a window of its own.
 
+Kotlin listings on this page use Field’s current `[…]` spelling for single-line
+list constructors. Saved conversations, source revisions and downloadable documents
+retain their recorded spelling; this presentation update is not a new execution.
+
 ## Two slots in one box
 
 The box `polytope_source` builds the mesh in Kotlin and draws it with its own `vertex` and `fragment`
@@ -302,7 +306,7 @@ void main() {
             val n = solid.faceNormal(face.id)
             val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
             for (k in ring.indices) {
-                for ((p, r) in listOf(c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f)) {
+                for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
                     pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
                     fid.add(face.id.value.toFloat()); faceRadius.add(r)
                 }

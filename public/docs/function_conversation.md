@@ -11,6 +11,10 @@ viewer. The tools ship with Field, and a document can add its own from one of
 its boxes, giving the assistant new ways to measure and edit without rebuilding
 Field.
 
+Kotlin listings on this page use Field’s current `[…]` spelling for single-line
+list constructors. Saved conversations, source revisions and downloadable documents
+retain their recorded spelling; this presentation update is not a new execution.
+
 ## Start
 
 In any document, select a box (press **n** to make one) and choose **Make a
@@ -58,7 +62,7 @@ import afield.math.functions.StudyChoice
 // Three empty channels. Describe the function you want in this box's AI4 chat.
 with(Functions) {
     StudyComposition(
-        channels = listOf("x", "y", "z").map { name ->
+        channels = ["x", "y", "z"].map { name ->
             fn(0.0..3600.0, name) { 0.0 }
         },
         choices = listOf(
@@ -138,8 +142,8 @@ import afield.math.functions.StudyChoice
 // The final expression returns a candidate; the tools box compiles and checks it.
 with(Functions) {
     StudyComposition(
-        channels = listOf("x", "y", "z").map { name -> fn(0.0..3600.0, name) { 0.5 } },
-        choices = listOf(StudyChoice("Initial constant background is a disposable starting point", "agent assumption"))
+        channels = ["x", "y", "z"].map { name -> fn(0.0..3600.0, name) { 0.5 } },
+        choices = [StudyChoice("Initial constant background is a disposable starting point", "agent assumption")]
     )
 }
 ```
@@ -179,7 +183,7 @@ background into a pulse train and then into the hold.
 
 <!-- function-study-source:channels -->
 ```diffstatic {data-lang=kotlin}
-val channels = listOf("x", "y", "z").mapIndexed { index, name ->
+val channels = ["x", "y", "z"].mapIndexed { index, name ->
     fn(0.0..durationSeconds, name) { seconds ->
         // The background always uses absolute time; events never restart it.
         val base = background(seconds, index)
@@ -365,7 +369,7 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
             return (1.0 - merge) * pulsed + merge
         }
 
-        val channels = listOf("x", "y", "z").mapIndexed { index, name ->
+        val channels = ["x", "y", "z"].mapIndexed { index, name ->
             fn(0.0..durationSeconds, name) { seconds ->
                 // The background always uses absolute time; events never restart it.
                 val base = background(seconds, index)
