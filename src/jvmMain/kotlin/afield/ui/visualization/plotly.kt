@@ -203,9 +203,9 @@ val signalPalette: List<String> = listOf("#7ad9ff", "#ff9e4a", "#8fff9a", "#ffe0
  * - [regions]: translucent bands over x-spans, each labelled at the top — where a detector fired,
  *   where a motif occurs. Drawn under the traces.
  * - [width] / [height]: the figure size in CSS pixels; the default is Plotly's 700 × 450.
- * - [floatingLegend]: put the legend inside the plot's upper left on a translucent dark panel
+ * - [floatingLegend]: put the legend inside the plot's upper right on a translucent dark panel
  *   instead of outside its right edge, so a wide figure is all data area. It can cover data
- *   there, which is why it is not the default; use it when the upper left is quiet.
+ *   there, which is why it is not the default; use it when the upper right is quiet.
  *
  * The plot is already displayed on return; the [Plot] is returned only for further tweaking (do not
  * `display` it again).
@@ -294,9 +294,9 @@ fun Box.showSignals(
     }.darkMode()
     if (floatingLegend) plot.layout {
         legend {
-            xanchor = XAnchor.left
+            xanchor = XAnchor.right
             yanchor = YAnchor.top
-            this.x = 0.01
+            this.x = 0.99
             y = 0.99
             bgcolor("rgba(17,17,17,0.92)")
             bordercolor("rgba(170,170,170,0.35)")
