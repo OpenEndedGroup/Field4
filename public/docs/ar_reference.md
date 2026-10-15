@@ -159,26 +159,34 @@ Every execution carries a stable `box_NAME|UUID` source name. Runtime failures a
 
 ## Testing the head
 
-Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. Automation can read:
+Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. A script in the head's page can read the same state:
 
 ```diffstatic {data-lang=javascript}
 window.__fieldRemoteHead.snapshot()
 await window.__fieldRemoteHead.selfTest()
 ```
 
-The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. The browser regression additionally creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
+The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. It runs on a desktop browser; camera permission and entering an AR session on an Android phone or through Endrun/ARKit can only be checked on the device itself.
 
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/run_ui_regressions.py \
-  --id remote-ar-head --port 9490 --timeout 45
-```
+??? aside "Agents: the browser regression for the head"
 
-The test is a desktop check of the full transport and rendering head. Camera permission, native Android WebXR session entry, and Endrun/ARKit session entry still require their physical devices.
+    The UI regression creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
+
+    ```diffstatic {data-lang=bash}
+    uv run --project . --group backdoor python tools/run_ui_regressions.py \
+      --id remote-ar-head --port 9490 --timeout 45
+    ```
+
+    It is a desktop check of the full transport and rendering head. Camera permission, native Android WebXR session entry, and Endrun/ARKit session entry have no automated test: each needs its physical device, and nothing in the suites drives one.
 
 ## Vendored runtime
 
-The head loads local copies of A-Frame 1.8.0 and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`. A-Frame's browser bundle embeds its own `super-three` 0.184.0, so there is no separate Three.js here; the one Three.js anything imports directly is the stock build under `vendor/three/` that the docs viewer uses. Licenses, package metadata, archive checksums, and refresh instructions live beside them. To reproduce the vendor tree:
+The head loads local copies of A-Frame 1.8.0 and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`, so it needs no network beyond the connection to Field. A-Frame's browser bundle embeds its own `super-three` 0.184.0, so there is no separate Three.js in the head.
 
-```diffstatic {data-lang=bash}
-python3 tools/vendor_remote_ar_runtime.py
-```
+??? aside "Agents: refreshing the vendor tree"
+
+    The one Three.js anything imports directly is the stock build under `vendor/three/` that the docs viewer uses. Licenses, package metadata, archive checksums, and refresh instructions live beside the vendored files. To reproduce the vendor tree:
+
+    ```diffstatic {data-lang=bash}
+    python3 tools/vendor_remote_ar_runtime.py
+    ```
