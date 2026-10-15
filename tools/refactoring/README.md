@@ -7,7 +7,8 @@ container adapters, content hashes and a recovery journal. It never runs box cod
 The current engine provides **syntax evidence**, not compiler binding equivalence. A ready change
 is a mechanically applicable rewrite, not proof that the destination API exists or that the result
 compiles. This is the first working layer of the [package refactor proposal](../../dev_docs/PACKAGE_REFACTOR_PROPOSAL.md).
-The public-preview package migration itself has not been applied.
+The repository package relocation is implemented; the [migration recipe](../../refactors/preview-packages-v1/README.md)
+is the entry point for migrating external workspaces.
 
 ## Build once, before moving packages
 
