@@ -192,13 +192,20 @@ private fun <T> withClojureIO(
 }
 
 /**
- * Extract line/column from Clojure's nested exceptions if present.
+ * Extract line/column from Clojure's nested exceptions if present, and the message that says what
+ * went wrong.
+ *
+ * A `CompilerException`'s own message is only the place — `Syntax error compiling at (3:1).` — and
+ * the reason (`Unable to resolve symbol: x in this context`) is its cause's message, which Clojure's
+ * REPL prints on the next line. A box shows one message beside one line, so the reason goes first
+ * and the place follows it.
  */
 private fun extractCompilerError(t: Throwable): CompileError {
     // clojure.lang.Compiler$CompilerException exposes line/column; fall back to cause chain
     var cur: Throwable? = t
     var line: Int? = null
     var col: Int? = null
+    var reason: String? = null
     while (cur != null) {
         val cls = cur.javaClass
         if (cls.name.startsWith("clojure.lang.Compiler\$CompilerException")) {
@@ -210,12 +217,15 @@ private fun extractCompilerError(t: Throwable): CompileError {
                 col = (getCol?.invoke(cur) as? Int) ?: col
             } catch (_: Throwable) { /* ignore */
             }
+            reason = cur.cause?.let { it.message ?: it.toString() }?.takeIf { it.isNotBlank() }
             break
         }
         cur = cur.cause
     }
+    val place = t.message ?: t.toString()
     return CompileError(
-        message = t.message ?: t.toString(), line = line, column = col, causeClass = t.javaClass.name
+        message = if (reason != null && reason !in place) "$reason — $place" else place,
+        line = line, column = col, causeClass = t.javaClass.name
     )
 }
 

@@ -101,6 +101,24 @@ class ClojureHostTest {
     }
 
     @Test
+    fun `an unresolved symbol says which symbol, not only where`() {
+        val run = Run(
+            host(),
+            """
+            (println "before")
+
+            (no-such-function 3)
+            """.trimIndent()
+        )
+
+        // Clojure's own message here is just `Syntax error compiling at (3:1).`; the reason is the
+        // CompilerException's cause, and without it the box shows a place and no problem.
+        assertTrue("Unable to resolve symbol: no-such-function" in run.error.message, "unexpected message: ${run.error.message}")
+        assertTrue("Syntax error compiling" in run.error.message, "the place should still be there: ${run.error.message}")
+        assertEquals(3, run.error.line, "the error should sit on the form that failed: ${run.error}")
+    }
+
+    @Test
     fun `a read error is reported by compileOnly, which is what stops the box evaluating`() {
         val host = host()
         val code = """
