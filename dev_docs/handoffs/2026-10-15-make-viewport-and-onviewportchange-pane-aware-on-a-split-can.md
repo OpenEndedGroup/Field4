@@ -14,6 +14,7 @@ This is a sharp edge (DOCS_WRITING_RULES rule 25). The server's `viewport` rect 
 translation + window size (AGENTS.md: "Not yet zoom-aware: ... the server's `viewport` rect"), and on
 a split canvas it reports only the bottom-right pane. Fix in code: make `viewport` /
 `onViewportChange` pane-aware and zoom-aware (e.g. expose the main pane plus a per-pane list), in
-`src/jsMain/kotlin/afield/app/client/` (canvasCamera / `set-viewport`) and the server side that
-holds it. Delete the bullet from the page (and the AGENTS.md "not yet zoom-aware" note for viewport)
+`src/jsMain/kotlin/afield/app/canvas/canvasCamera.kt` and the `set-viewport` sender in
+`src/jsMain/kotlin/afield/app/client/Main.kt`, and the server side that holds it
+(`src/jvmMain/kotlin/afield/app/server/Server.kt`). Delete the bullet from the page (and the AGENTS.md "not yet zoom-aware" note for viewport)
 in the same change.
