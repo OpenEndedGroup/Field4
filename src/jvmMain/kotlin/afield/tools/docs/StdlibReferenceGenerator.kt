@@ -2265,8 +2265,9 @@ object StdlibReferenceGenerator {
         appendLine("| --- | --- | --- | --- | --- | --- |")
         documents.sortedBy { it.fileName.lowercase() }.forEach { doc ->
             val link = "[${doc.fileName}](${slug(doc.category)}.md#${fileAnchor(doc)})"
-            val sourcePath = escapeCell(doc.relativePath.replace("&", "&amp;")
-                .replace("<", "&lt;").replace(">", "&gt;"))
+            val sourceDirectory = doc.relativePath.substringBeforeLast('/') + "/"
+            val sourcePath = escapeCell(sourceDirectory.replace("&", "&amp;")
+                .replace("<", "&lt;").replace(">", "&gt;")).replace("/", "/<wbr>")
             val fileCell = "<small class=\"reference-file-path\">$sourcePath</small> $link"
             // linkify before stripLinks: `linkify` is what turns a KDoc `[Symbol]` into either a link
             // or inline code, and without it the raw brackets reach the page. `stripLinks` then flattens
