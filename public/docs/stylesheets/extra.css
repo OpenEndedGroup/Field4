@@ -1799,3 +1799,16 @@ html .md-typeset details.aside > :last-child {
 .md-typeset .reference-map a:focus-visible {
     text-decoration-color: currentColor;
 }
+
+/* Keep each file's location above its linked name without widening the table. */
+.md-typeset .codebase-reference .reference-file-path {
+    display: block;
+    max-width: 18rem;
+    margin-bottom: .25rem;
+    color: var(--mono-accent);
+    font-family: var(--md-code-font);
+    font-size: .58rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
