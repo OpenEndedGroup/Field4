@@ -30,17 +30,22 @@ Decisions worth keeping:
 Usage:
     python3 tools/loc_history.py && python3 tools/loc_chart.py
     python3 tools/loc_chart.py --series build/loc/series.json --out /tmp/loc.html
+    python3 tools/loc_chart.py --docs   # the hero atop docs/reference; at most once a day
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
+# Inlined under the h1 of the generated reference index by StdlibReferenceGenerator.
+DOCS_HERO_REL = "public/docs/assets/loc/loc_hero.html"
 
 # Plot boxes: the code chart inside a 960x430 viewBox, the docs chart inside 960x190.
 LEFT, RIGHT, TOP, BOTTOM = 56, 838, 18, 372
@@ -305,6 +310,42 @@ FOOT = (
 )
 
 
+# The docs site (public/docs/stylesheets/extra.css) is white-on-near-black and monochrome, so
+# the hero version swaps the categorical hues for a grey ramp that alternates light and dark
+# between neighbours, keeps one red for the band that is not a language, and takes the site's
+# fonts and transparent background. Values still ride the legend, so no band needs its own hue.
+DOCS_VARS = (
+    "color-scheme: dark; --surface-1:#0e0e0e; --text-primary:rgba(255,255,255,0.86); "
+    "--text-secondary:rgba(255,255,255,0.6); --text-muted:rgba(255,255,255,0.4); "
+    "--grid:rgba(255,255,255,0.07); --axis:rgba(255,255,255,0.22); "
+    "--hairline:rgba(255,255,255,0.12); --s1:#c4c4c4; --s2:#5e5e5e; --s3:#a2a2a2; "
+    "--s4:#474747; --s5:#8c8c8c; --s6:#3a3a3a; --s7:#b4b4b4; --s8:#6c6c6c; "
+    "--examples:#d9534a; background:transparent; border:0; border-radius:0; padding:0; "
+    "max-width:none; font-family:var(--md-code-font, monospace);"
+)
+DOCS_EXTRA = (
+    "<style>.md-typeset .viz-root{" + DOCS_VARS + "}"
+    ".md-typeset .viz-root p{text-align:left;margin:0 0 10px}"
+    ".md-typeset .viz-root h2,.md-typeset .viz-root h3{font-weight:300;letter-spacing:0;"
+    "color:var(--text-primary);margin-top:0}"
+    ".md-typeset .viz-root .hero{font-weight:300}"
+    ".md-typeset .viz-root .tip{background:#050505}"
+    ".md-typeset .viz-root table{display:table}"
+    ".md-typeset .viz-root{margin:0.4rem 0 1.6rem}</style>"
+)
+
+
+def docs_fragment(fragment: str) -> str:
+    """The widget restyled for the docs site, with no blank lines (Markdown would end the
+    raw HTML block at one) and the light/dark switch removed — the site is always dark."""
+    import re
+    fragment = re.sub(r"@media \(prefers-color-scheme: dark\)\{.*?\n\}\n", "", fragment,
+                      flags=re.S)
+    fragment = fragment.replace(':root[data-theme="dark"] .viz-root{ ' + DARK_VARS + ' }', "")
+    fragment = fragment.replace("</style>", "</style>" + DOCS_EXTRA, 1)
+    return "\n".join(line for line in fragment.splitlines() if line.strip()) + "\n"
+
+
 def _axis_scale(peak: int) -> tuple[int, int]:
     """(top, step) for the y-axis: a 1/2/5-series step, at most six gridlines.
 
@@ -484,17 +525,42 @@ def render(series: list[dict]) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--series", type=Path, default=REPO_ROOT / "build/loc/series.json")
-    ap.add_argument("--out", type=Path, default=REPO_ROOT / "build/loc/loc.html")
+    ap.add_argument("--out", type=Path)
     ap.add_argument("--fragment", action="store_true",
                     help="emit just the widget, without the surrounding page")
+    ap.add_argument("--force", action="store_true",
+                    help="with --docs, refresh even if the hero was already made today")
+    ap.add_argument("--docs", action="store_true",
+                    help="write the docs-site fragment the reference index inlines "
+                         f"(default --out {DOCS_HERO_REL})")
     args = ap.parse_args()
+
+    today = date.today().isoformat()
+    stamp = f"<!-- loc-hero {today} -->"
+    if args.docs:
+        # Walking the whole history takes minutes, so the docs hero refreshes at most daily:
+        # the fragment's first line records the day it was made, and the series is recomputed
+        # only when it was not already written today.
+        args.out = args.out or REPO_ROOT / DOCS_HERO_REL
+        if not args.force and args.out.exists() and \
+                args.out.read_text().split("\n", 1)[0] == stamp:
+            print(f"{args.out} already made today; --force to redo")
+            return 0
+        if not args.series.exists() or \
+                date.fromtimestamp(args.series.stat().st_mtime).isoformat() != today:
+            subprocess.run([sys.executable, str(TOOLS_ROOT / "loc_history.py"),
+                            "--out", str(args.series)], check=True)
 
     if not args.series.exists():
         print(f"{args.series} not found — run tools/loc_history.py first", file=sys.stderr)
         return 1
 
     fragment = render(json.loads(args.series.read_text()))
-    page = fragment if args.fragment else (
+    if args.docs:
+        page = stamp + "\n" + docs_fragment(fragment)
+    else:
+        args.out = args.out or REPO_ROOT / "build/loc/loc.html"
+    page = page if args.docs else fragment if args.fragment else (
         "<!doctype html><meta charset=utf-8><title>Field4 lines of code</title>"
         "<style>body{margin:0;padding:28px;background:#f9f9f7}"
         "@media(prefers-color-scheme:dark){body{background:#0d0d0d}}</style>"
