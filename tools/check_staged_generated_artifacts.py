@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import json
 import re
 import subprocess
 import sys
@@ -38,7 +39,7 @@ def _kotlin_source(path: str) -> bool:
 
 
 _REFERENCE_GENERATOR_REL = "src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt"
-_SOURCE_ROOTS_DECL = re.compile(r"private val SOURCE_ROOTS = listOf\((.*?)\n    \)", re.DOTALL)
+_SOURCE_ROOTS_DECL = re.compile(r"\bprivate\s+val\s+SOURCE_ROOTS\s*=\s*listOf\s*\(")
 _KOTLIN_STRING = re.compile(r'"([^"\n]+)"')
 
 
@@ -49,6 +50,43 @@ class ReferenceRootsUnreadable(RuntimeError):
     this whole derivation exists to remove: the guard would keep passing over whatever the fallback
     happened to name on the day the generator moved.
     """
+
+
+def _parse_reference_source_roots(text: str) -> tuple[str, ...]:
+    """Read a literal Kotlin list, stopping at its own closing parenthesis.
+
+    Formatting and comments may change; expressions/interpolations need an explicit
+    parser update rather than a guessed population.
+    """
+    match = _SOURCE_ROOTS_DECL.search(text)
+    if match is None:
+        raise ReferenceRootsUnreadable("no private val SOURCE_ROOTS = listOf(...) declaration")
+    pos, roots, need_value = match.end(), [], True
+    while pos < len(text):
+        trivia = re.match(r"(?:\s+|//[^\n]*|/\*.*?\*/)+", text[pos:], re.S)
+        if trivia:
+            pos += trivia.end()
+        if text[pos:pos + 1] == ")":
+            if not roots:
+                raise ReferenceRootsUnreadable("SOURCE_ROOTS is empty")
+            return tuple(roots)
+        if not need_value:
+            if text[pos:pos + 1] != ",":
+                break
+            pos += 1
+            need_value = True
+            continue
+        if text[pos:pos + 1] != '"':
+            break
+        try:
+            value, end = json.JSONDecoder().raw_decode(text, pos)
+        except ValueError as error:
+            raise ReferenceRootsUnreadable("invalid SOURCE_ROOTS string") from error
+        if not isinstance(value, str) or not value or "$" in value:
+            break
+        roots.append(value)
+        pos, need_value = end, False
+    raise ReferenceRootsUnreadable("SOURCE_ROOTS must be a closed list of literal path strings")
 
 
 @functools.lru_cache(maxsize=1)
@@ -82,19 +120,7 @@ def _reference_source_roots() -> tuple[str, ...]:
             "Point _REFERENCE_GENERATOR_REL at its new home; do not re-introduce a copy of "
             "SOURCE_ROOTS here."
         )
-    match = _SOURCE_ROOTS_DECL.search(generator.read_text())
-    if match is None:
-        raise ReferenceRootsUnreadable(
-            f"no `private val SOURCE_ROOTS = listOf(...)` in {_REFERENCE_GENERATOR_REL} — the "
-            "declaration this predicate reads was renamed or reshaped. Update "
-            "_SOURCE_ROOTS_DECL; do not re-introduce a copy of the list here."
-        )
-    roots = tuple(_KOTLIN_STRING.findall(match.group(1)))
-    if not roots:
-        raise ReferenceRootsUnreadable(
-            f"`SOURCE_ROOTS` in {_REFERENCE_GENERATOR_REL} parsed to an empty list"
-        )
-    return roots
+    return _parse_reference_source_roots(generator.read_text())
 
 
 def _reference_input(path: str) -> bool:
@@ -345,6 +371,19 @@ class Guard:
         return self.input_matches(path) or any(_under(path, root) for root in self.output_roots)
 
 
+def _python_tool_input(path: str) -> bool:
+    # The reference catalog is read by Python guard-selection and documentation
+    # detector tests. Its producer and generated pages must run those tests too.
+    return (
+        _demo_input(path)
+        or path == _REFERENCE_GENERATOR_REL
+        or _under(path, "public/docs/reference")
+        or (_under(path, "tools") and path.endswith(".py"))
+        or _under(path, "tools/refactor-engine")
+        or path in {"build.gradle.kts", "pyproject.toml", "uv.lock"}
+    )
+
+
 GUARDS = (
     Guard(
         "checkCodebaseReference",
@@ -362,7 +401,7 @@ GUARDS = (
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
     Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
     Guard("checkAgentDemos", "saved demo consistency", _demo_input),
-    Guard("checkPythonTools", "demo registration and corpus ledgers", _demo_input),
+    Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
     Guard(
         "checkCompletionCorpusFixtures",
         "completion-corpus fixtures",

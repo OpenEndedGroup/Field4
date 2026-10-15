@@ -664,17 +664,14 @@ java {
 //
 // A spec cannot name the build, though: any GraalVM 25 matches, and a stale foojay download in
 // ~/.gradle/jdks wins whenever the pinned one is not passed with -Dorg.gradle.java.installations.paths
-// (field.sh and the tools' Gradle calls pass it; a bare ./gradlew does not). That still runs, with the
-// polyglot $graalvmVersion jars on another Graal's JDK, so say so rather than fail.
-var warnedGraalvmMismatch = false
-fun warnOnGraalvmMismatch(launcher: JavaLauncher) {
-    if (warnedGraalvmMismatch) return
-    val home = launcher.metadata.installationPath.asFile
+// (the wrappers now discover the cached pin too). Reject mismatches before compiling or running
+// Field, so the polyglot jars and their JDK cannot silently drift apart.
+fun requirePinnedGraalvm(metadata: org.gradle.jvm.toolchain.JavaInstallationMetadata) {
+    val home = metadata.installationPath.asFile
     val found = home.resolve("release").takeIf { it.isFile }?.readLines()
         ?.firstNotNullOfOrNull { Regex("^GRAALVM_VERSION=\"?([^\"]+)\"?").find(it)?.groupValues?.get(1) }
     if (found == graalvmVersion) return
-    warnedGraalvmMismatch = true
-    logger.warn(
+    throw GradleException(
         "field: GraalVM toolchain mismatch: build.gradle.kts pins $graalvmVersion but Gradle chose " +
             "${found ?: "an unversioned GraalVM"} at $home. Run ./field.sh once to provision the pinned JDK, " +
             "or pass -Dorg.gradle.java.installations.paths=<its home>."
@@ -683,10 +680,24 @@ fun warnOnGraalvmMismatch(launcher: JavaLauncher) {
 fun JavaToolchainService.fieldLauncher(): Provider<JavaLauncher> = launcherFor {
     languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
     vendor.set(JvmVendorSpec.GRAAL_VM)
-}.map { launcher -> warnOnGraalvmMismatch(launcher); launcher }
+}.map { launcher -> requirePinnedGraalvm(launcher.metadata); launcher }
 // Test tasks (jvmTest above all) take the java.toolchain default rather than fieldLauncher().
 tasks.withType<Test>().configureEach {
-    doFirst { warnOnGraalvmMismatch(javaLauncher.get()) }
+    doFirst { requirePinnedGraalvm(javaLauncher.get().metadata) }
+}
+tasks.withType<JavaCompile>().configureEach {
+    doFirst { requirePinnedGraalvm(javaCompiler.get().metadata) }
+}
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
+    doFirst { javaToolchains.fieldLauncher().get() }
+}
+tasks.register("verifyFieldToolchain") {
+    group = "verification"
+    description = "Verify the exact pinned GraalVM used to compile and run Field."
+    doLast {
+        val metadata = javaToolchains.fieldLauncher().get().metadata
+        logger.lifecycle("Field GraalVM $graalvmVersion / Java ${metadata.javaRuntimeVersion} at ${metadata.installationPath}")
+    }
 }
 
 group = "afield"
@@ -2443,6 +2454,7 @@ tasks.register<Exec>("fieldAudioModelSmoke") {
 }
 
 tasks.named("check") {
+    dependsOn("verifyFieldToolchain")
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")
     dependsOn("checkSourcePartition")

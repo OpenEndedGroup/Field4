@@ -49,6 +49,7 @@ FENCE = re.compile(r"^(\s*)```.*$")
 
 LINK = re.compile(r"\[(?:`)?([A-Za-z_][\w.]*(?:\([^)]*\))?)(?:`)?\]\([^)]*\)")
 KDOC_LINK = re.compile(r"\[([A-Za-z_][\w.]*(?:\([^)]*\))?)\]")
+KDOC_LABELLED_LINK = re.compile(r"\[([^]\n]+)\]\[([A-Za-z_][\w.]*(?:\([^)]*\))?)\]")
 
 
 def file_overview(source: Path) -> list[str] | None:
@@ -103,6 +104,19 @@ def _body(block: list[str]) -> list[str]:
             line = line[1:] if line.startswith(" ") else line
         plain.append(line.rstrip())
 
+    # Match StdlibReferenceGenerator.dropBlockTags: remove only a trailing run
+    # of recognized tag lines. A continuation line ends that run, so prose after
+    # a tag remains visible and must still be compared.
+    cut = len(plain)
+    for i in range(len(plain) - 1, -1, -1):
+        if not plain[i].strip():
+            continue
+        if re.match(r"^@(param|return|throws|exception|see|since|sample|author|constructor|receiver|property|suppress)\b", plain[i].strip()):
+            cut = i
+            continue
+        break
+    plain = plain[:cut]
+
     # Which lines are headings, and which are `#` comments inside a code fence --
     # `RectSLFit.kt`'s overview has a fenced `# a bar whose height is unknown`.
     fenced, heading_at = False, {}
@@ -122,10 +136,6 @@ def _body(block: list[str]) -> list[str]:
     shift = PAGE_HEADING_LEVEL - min(heading_at.values()) if heading_at else 0
     out = []
     for i, line in enumerate(plain):
-        # KDoc block tags are trailing and are not published as overview prose --
-        # `@see` becomes a cross-reference elsewhere on the page, not a line here.
-        if re.match(r"^@\w+", line):
-            break
         if i in heading_at:
             level = max(1, heading_at[i] + shift)
             line = "#" * level + line[heading_at[i]:]
@@ -162,6 +172,7 @@ def normalise(line: str) -> str:
     """Collapse both sides' link syntax to the bare symbol name."""
     if FENCE.match(line):
         return FENCE.sub(r"\1```", line)
+    line = KDOC_LABELLED_LINK.sub(r"\1", line)
     line = LINK.sub(r"\1", line)
     line = KDOC_LINK.sub(r"\1", line)
     return line

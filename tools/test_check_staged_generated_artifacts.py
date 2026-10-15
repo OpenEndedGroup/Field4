@@ -13,6 +13,7 @@ from tools.check_staged_generated_artifacts import (
     PersonalBoundaryCorpusUnreadable,
     ReferenceRootsUnreadable,
     _personal_boundary_corpus,
+    _parse_reference_source_roots,
     _reference_input,
     _reference_source_roots,
     conflicting_unstaged_paths,
@@ -47,7 +48,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
     def test_macro_producer_is_discovered_from_its_registration(self) -> None:
         self.assertEqual(
             task_names(["src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt"]),
-            ["checkKDocAttachment", "checkCompletionCorpusFixtures", "citationGates"],
+            ["checkCodebaseReference", "checkKDocAttachment", "checkCompletionCorpusFixtures", "citationGates"],
         )
 
     def test_ordinary_kotlin_source_does_not_become_a_corpus_input(self) -> None:
@@ -78,7 +79,14 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         self.assertEqual(task_names(["public/docs_hooks.py"]), ["citationGates"])
 
     def test_citation_task_wiring_selects_citation_gate(self) -> None:
-        self.assertEqual(task_names(["build.gradle.kts"]), ["citationGates"])
+        self.assertEqual(task_names(["build.gradle.kts"]), ["checkPythonTools", "citationGates"])
+
+    def test_reference_and_python_producers_select_the_python_suite(self) -> None:
+        for path in (_REFERENCE_GENERATOR_REL, "public/docs/reference/graphics.md",
+                     "tools/docs_voice/check_anchors.py", "tools/test_guard_corpora.py",
+                     "tools/refactor-engine/src/main/kotlin/Parser.kt", "pyproject.toml"):
+            with self.subTest(path=path):
+                self.assertIn("checkPythonTools", task_names([path]))
 
     def test_transcript_change_selects_bundle_and_index(self) -> None:
         self.assertEqual(
@@ -179,11 +187,7 @@ class ReferenceSourceRootsTests(unittest.TestCase):
 
     def test_every_generator_root_selects_the_reference_guard(self) -> None:
         roots = _reference_source_roots()
-        # Premise, asserted rather than assumed: a one-root or empty read would make every
-        # assertion below pass while the predicate saw almost nothing.
-        self.assertGreaterEqual(
-            len(roots), 17, f"only {len(roots)} source root(s) parsed out of the generator"
-        )
+        self.assertEqual(roots, ("src/jvmMain/kotlin",))
         for root in roots:
             with self.subTest(root=root):
                 self.assertIn(
@@ -193,7 +197,7 @@ class ReferenceSourceRootsTests(unittest.TestCase):
                     "cannot see it",
                 )
 
-    def test_the_roots_that_were_blind_are_named_individually(self) -> None:
+    def test_the_packages_that_were_blind_are_still_covered(self) -> None:
         # Named one at a time, not as a loop over the parsed list, so deleting a root from the
         # generator fails here instead of shrinking the loop to nothing. These are the four the
         # 2026-09-17 evidence actually caught: +43 public symbols under `afield/four` went by
@@ -205,20 +209,42 @@ class ReferenceSourceRootsTests(unittest.TestCase):
             "src/jvmMain/kotlin/afield/lang/stacksl",
         ):
             with self.subTest(root=root):
-                self.assertIn(root, _reference_source_roots())
                 self.assertIn("checkCodebaseReference", task_names([f"{root}/Planted.kt"]))
 
     def test_the_generator_itself_is_an_input(self) -> None:
-        # It is under none of SOURCE_ROOTS, and every page's prose comes out of its blurbs.
+        # Its blurbs and extraction rules affect every page, as well as the source population.
         self.assertIn("checkCodebaseReference", task_names([_REFERENCE_GENERATOR_REL]))
 
     def test_a_package_outside_the_generator_roots_is_still_not_selected(self) -> None:
-        # The widening has to stay a widening to the generator's population, not to all of `src`.
+        # The complete JVM catalog includes server internals; JS and standalone tool source
+        # remain outside this generator's population.
+        self.assertIn("checkCodebaseReference", task_names(["src/jvmMain/kotlin/afield/app/server/Server.kt"]))
         self.assertNotIn(
             "checkCodebaseReference",
-            task_names(["src/jvmMain/kotlin/afield/app/server/Server.kt"]),
+            task_names(["src/jsMain/kotlin/afield/app/client/Main.kt"]),
         )
-        self.assertNotIn("src/jvmMain/kotlin/afield/graphics", _reference_source_roots())
+        self.assertNotIn("checkCodebaseReference", task_names(["tools/refactor-engine/src/main/kotlin/Main.kt"]))
+
+    def test_single_line_list_does_not_consume_later_comments_and_lists(self) -> None:
+        self.assertEqual(_parse_reference_source_roots('''private val SOURCE_ROOTS = listOf("src/jvmMain/kotlin")
+/** "read the source" */
+private val OTHER = listOf(
+    "unrelated/path"
+    )
+'''), ("src/jvmMain/kotlin",))
+
+    def test_multiline_list_ignores_quoted_comments(self) -> None:
+        self.assertEqual(_parse_reference_source_roots('''private val SOURCE_ROOTS = listOf(
+    // "not/a/root" )
+    "src/first", /* "also/not/a/root" */
+    "src/second",
+)
+'''), ("src/first", "src/second"))
+
+    def test_nonliteral_roots_fail_closed(self) -> None:
+        for body in ('rootPath()', '"src/first" + suffix', '"$generated"', ''):
+            with self.subTest(body=body), self.assertRaises(ReferenceRootsUnreadable):
+                _parse_reference_source_roots('private val SOURCE_ROOTS = listOf(' + body + ')')
 
     def test_non_kotlin_files_under_a_root_are_not_inputs(self) -> None:
         self.assertFalse(_reference_input("src/jvmMain/kotlin/afield/lang/stacksl/notes.txt"))
