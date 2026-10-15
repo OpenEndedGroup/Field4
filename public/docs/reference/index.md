@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**31906 public symbols across 1443 source files**, 15899 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**31909 public symbols across 1443 source files**, 15902 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -642,7 +642,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Data](data.md) | 23 | 967 | 408 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 288 | 6943 | 3419 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 741 | 371 (50%) | Turning a scene into pixels on a Vulkan device. |
-| [Polytopes](polytopes.md) | 17 | 583 | 428 (73%) | Polyhedra as topology first and coordinates second. |
+| [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 42 | 984 | 525 (53%) | Making a shape behave. |
 | [Imaging](imaging.md) | 45 | 735 | 335 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
@@ -807,7 +807,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Camera.kt](graphics.md#camera-kt) | Graphics | 24 | 18 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [CameraPose.kt](graphics.md#camerapose-kt) | Graphics | 14 | 1 |  | [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [CandidateBoard.kt](audio-ai.md#candidateboard-kt) | Audio AI | 1 | 1 | The candidate board: the instrument for choosing between the alternatives a generation produced. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Canonical.kt](polytopes.md#canonical-kt) | Polytopes | 42 | 40 | Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the solid you were picturing. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md), [Talking to the StackSL in your shader](../stackauto_conversation.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Canonical.kt](polytopes.md#canonical-kt) | Polytopes | 45 | 43 | Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the solid you were picturing. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, canonicalised, and sliced into layers](../chain_ceres_manifold_contours.md), [Talking to the StackSL in your shader](../stackauto_conversation.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [CappedTwistFixture.kt](graphics.md#cappedtwistfixture-kt) | Graphics | 14 | 14 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr></small> [CaptureOrientation.kt](graphics.md#captureorientation-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [CaSoundDocs.kt](patterns.md#casounddocs-kt) | Patterns | 14 | 12 | A cellular automaton as a rhythm, by way of the pattern language's own inverse parser. |  |
