@@ -137,7 +137,7 @@ about one marching cell. One walks a grid in Kotlin; the other is Manifold's own
 back into Kotlin for each sample. Either gets a plaque out of a depth map, and `Img.asHeightSdf` is
 the entry point to the second. This box builds both and compares them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/levelset.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="agreeing to about one marching cell" embed=true force=true timeout="300" w="1100" h="200" padding="18" name="chain-photo-levelset" alt="Two printed lines: the grid and marched plaque volumes and how far apart they are in percent, and that the two constructions agree to about one marching cell" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_levelset"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/levelset.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="display" wait-output-contains="agreeing to about one marching cell" embed=true force=true timeout="300" w="1100" h="200" padding="18" name="chain-photo-levelset" alt="A short panel giving the grid and marched plaque volumes and how far apart they are in percent, and saying the two constructions agree to about one marching cell" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_levelset"}
 // Built and launched from dev_docs/agents/transcripts/photo_to_solid_chain.yaml.
 ```
 
